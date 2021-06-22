@@ -1,2 +1,3 @@
-# accesskit
-UI accessibility infrastructure across platforms and programming languages
+# AccessKit: UI accessibility infrastructure across platforms and programming languages
+
+More information coming soon.
