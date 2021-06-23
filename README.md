@@ -2,7 +2,7 @@
 
 ## Motivation
 
-There are numerous UI toolkits, and new ones continue to proliferate. So far, only the largest UI toolkit projects, with corporate backing, implement accessibility for users who require assistive technologies, such as blind people using screen readers. If the long tail of UI toolkits are ever going to be made fully accessible, then we must pool as much of the required effort as possible across these toolkits. Many of these toolkits are cross-platform, but each platform has its own accessibility API. These toolkits are also written in many different programming languages, so the shared infrastructure must be usable across languages. This is the problem that AccessKit aims to solve.
+There are numerous UI toolkits, and new ones continue to proliferate. So far, only the largest UI toolkit projects, with corporate backing, implement accessibility for users who require assistive technologies, such as blind people using screen readers. If the long tail of UI toolkits are ever going to be made fully accessible, then we must pool as much of the required effort as possible across these toolkits. Many of these toolkits are cross-platform, but each platform has its own accessibility API. These toolkits are also written in many different programming languages, so the shared infrastructure must be usable across languages.
 
 ## Project plan
 
@@ -38,7 +38,3 @@ While many languages can use a C API, we also plan to provide libraries that mak
 ### Documentation
 
 We realize that most developers who might use AccessKit are not experts in accessibility. So this project will need to include comprehensive documentation, including a conceptual overview for developers that are learning about accessibility for the first time.
-
-## Who is behind this project?
-
-The founder of the AccessKit project is Matt Campbell, a legally blind software developer who has specialized in accessibility for over 20 years. Matt developed the System Access screen reader for Windows starting in 2004. He was a former member of the Windows accessibility team at Microsoft, where he worked on the Narrator screen reader and the UI Automation API. He is now the chief technology officer of [Pneuma Solutions](https://pneumasolutions.com/).
