@@ -298,6 +298,10 @@ message Node {
   RelativeBounds bounds = 3;
   repeated int32 child_id = 4;
 
+  google.protobuf.StringValue name = 5;
+  google.protobuf.StringValue description = 6;
+  google.protobuf.StringValue value = 7;
+
   // TODO: add many more fields.
 }
 
