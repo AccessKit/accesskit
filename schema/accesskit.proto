@@ -11,6 +11,8 @@ syntax = "proto3";
 
 package accesskit;
 
+import "google/protobuf/wrappers.proto";
+
 option csharp_namespace = "AccessKit.Schema";
 option java_package = "dev.accesskit.schema";
 option java_outer_classname = "AccessKitSchema";
@@ -245,4 +247,46 @@ enum Role {
   // Chromium internal
   // TBD: Do we need this for any anticipated use case of AccessKit?
   DESKTOP = 184;
+}
+
+message Rect {
+  float left = 1;
+  float top = 2;
+  float width = 3;
+  float height = 4;
+}
+
+// 4x4 transformation matrix. Omit this message for the identity matrix,
+// to save the cost of serialization and deserialization.
+message Transform {
+  // Column major order. Always 16 items.
+  repeated float matrix = 1;
+}
+
+// The relative bounding box of a Node.
+//
+// This is an efficient, compact, serializable representation of a node's
+// bounding box that requires minimal changes to the tree when layers are
+// moved or scrolled. Computing the absolute bounding box of a node requires
+// walking up the tree and applying node offsets and transforms until reaching
+// the top.
+//
+// If the offset container id is present, the bounds are relative
+// to the node with that offset container id.
+//
+// Otherwise, for a node other than the root, the bounds are relative to
+// the root of the tree, and for the root of a tree, the bounds are relative
+// to its immediate containing node.
+message RelativeBounds {
+  // The id of an ancestor node in the same Tree that this object's
+  // bounding box is relative to. Omit if there's no offset container.
+  google.protobuf.Int32Value offset_container_id = 1;
+
+  // The relative bounding box of this node.
+  Rect bounds = 2;
+
+  // An additional transform to apply to position this object and its subtree.
+  // This is rarely used and should be omitted if not needed, i.e. if
+  // the transform would be the identity matrix.
+  Transform transform = 3;
 }
