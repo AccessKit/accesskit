@@ -305,7 +305,7 @@ message Node {
 // tree and not associated with any particular node in the tree.
 message Tree {
   // The globally unique ID of this accessibility tree. The format of this ID
-  // is up to the implementer.
+  // is up to the implementer. A UUID v4 is a safe choice.
   string id = 1;
 
   // The ID of the accessibility tree that this tree is contained in, if any.
