@@ -290,3 +290,13 @@ message RelativeBounds {
   // the transform would be the identity matrix.
   Transform transform = 3;
 }
+
+// A single accessible object. A complete UI is represented as a tree of these.
+message Node {
+  int32 id = 1;
+  Role role = 2;
+  RelativeBounds bounds = 3;
+  repeated int32 child_id = 4;
+
+  // TODO: add many more fields.
+}
