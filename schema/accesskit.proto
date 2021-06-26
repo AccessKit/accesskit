@@ -300,3 +300,26 @@ message Node {
 
   // TODO: add many more fields.
 }
+
+// The data associated with an accessibility tree that's global to the
+// tree and not associated with any particular node in the tree.
+message Tree {
+  // The globally unique ID of this accessibility tree. The format of this ID
+  // is up to the implementer.
+  string id = 1;
+
+  // The ID of the accessibility tree that this tree is contained in, if any.
+  google.protobuf.StringValue parent_tree_id = 2;
+
+  // The ID of the accessibility tree that has focus, if it's a descendant
+  // of this tree.
+  google.protobuf.StringValue focused_tree_id = 3;
+
+  // The node with keyboard focus within this tree, if any.
+  google.protobuf.Int32Value focused_node_id = 4;
+
+  // The node that's used as the root scroller, if any. On some platforms
+  // like Android we need to ignore accessibility scroll offsets for
+  // that node and get them from the viewport instead.
+  google.protobuf.Int32Value root_scroller_id = 5;
+}
