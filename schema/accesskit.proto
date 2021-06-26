@@ -323,3 +323,51 @@ message Tree {
   // that node and get them from the viewport instead.
   google.protobuf.Int32Value root_scroller_id = 5;
 }
+
+// A TreeUpdate is a serializable representation of an atomic change
+// to a tree. The sender and receiver must be in sync; the update
+// is only meant to bring the tree from a specific previous state into
+// its next state. Trying to apply it to the wrong tree should immediately
+// die with a fatal assertion.
+//
+// A TreeUpdate consists of an optional node id to clear (meaning
+// that all of that node's children and their descendants are deleted),
+// followed by an ordered list of zero or more Node messages to be applied
+// to the tree in order. An update may also include an optional new version
+// of the Tree message that applies to the tree as a whole.
+//
+// Suppose that the next Node to be applied is |node|. The following
+// invariants must hold:
+// 1. Either
+//   a) |node.id| is already in the tree, or
+//   b) the tree is empty, and
+//      |node| is the new root of the tree.
+// 2. Every child id in |node.child_ids| must either be already a child
+//        of this node, or a new id not previously in the tree. It is not
+//        allowed to "reparent" a child to this node without first removing
+//        that child from its previous parent.
+// 3. When a new id appears in |node.child_ids|, the tree should create a
+//        new uninitialized placeholder node for it immediately. That
+//        placeholder must be updated within the same TreeUpdate, otherwise
+//        it's a fatal error. This guarantees the tree is always complete
+//        before or after a TreeUpdate.
+message TreeUpdate {
+  // The optional id of a node to clear, before applying any updates.
+  // Clearing a node means deleting all of its children and their descendants,
+  // but leaving that node in the tree. It's an error to clear a node but not
+  // subsequently update it as part of the tree update.
+  google.protobuf.Int32Value node_id_to_clear = 1;
+
+  // The ordered list of nodes to update, according to the rules above.
+  repeated Node node = 2;
+
+  // Updated information about the tree as a whole. This may be omitted
+  // if it has not changed since the previous update, but providing the same
+  // information again is also allowed. This is required when initializing
+  // a tree.
+  Tree tree = 3;
+
+  // The id of the tree's root node. This is required when the tree
+  // is being initialized or if the root is changing.
+  google.protobuf.Int32Value root_id = 4;
+}
