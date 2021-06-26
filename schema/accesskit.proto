@@ -302,6 +302,33 @@ message Node {
   google.protobuf.StringValue description = 6;
   google.protobuf.StringValue value = 7;
 
+  bool autofill_available = 8;
+  bool collapsed = 9;
+  bool expanded = 10;
+  bool default = 11;
+  bool editable = 12;
+  bool focusable = 13;
+
+  // Grows horizontally, e.g. most toolbars and separators.
+  bool horizontal = 14;
+
+  // Grows vertically, e.g. menu or combo box.
+  bool vertical = 15;
+
+  bool hovered = 16;
+
+  // Skip over this node in the accessibility tree, but keep its subtree.
+  bool ignored = 17;
+
+  bool invisible = 18;
+  bool linked = 19;
+  bool multiline = 20;
+  bool multiselectable = 21;
+  bool protected = 22;
+  bool required = 23;
+  bool richly_editable = 24;
+  bool visited = 25;
+
   // TODO: add many more fields.
 }
 
