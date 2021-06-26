@@ -1,0 +1,248 @@
+// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Derived from Chromium's accessibility abstraction.
+// Copyright 2018 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE.chromium file.
+
+syntax = "proto3";
+
+package accesskit;
+
+option csharp_namespace = "AccessKit.Schema";
+option java_package = "dev.accesskit.schema";
+option java_outer_classname = "AccessKitSchema";
+option java_multiple_files = true;
+option objc_class_prefix = "AXK";
+option go_package = "accesskit.dev/schema";
+
+// A role is the type of an accessibility node.
+//
+// The majority of these roles come from the ARIA specification. Reference
+// the latest draft for proper usage.
+//
+// Like the AccessKit schema as a whole, this list is largely taken
+// from Chromium. However, unlike Chromium's alphabetized list, this list
+// is ordered roughly by expected usage frequency (with the notable exception
+// of the default UNKNOWN role). This is more efficient on the wire, since
+// integers use a variable-length encoding. Also, since this schema
+// is intended to have a stable wire representation, new roles should only
+// be appended to this enum.
+enum Role {
+  UNKNOWN = 0;
+
+  INLINE_TEXT_BOX = 1;
+  CELL = 2;
+  STATIC_TEXT = 3;
+  IMAGE = 4;
+  LINK = 5;
+  ROW = 6;
+  LIST_ITEM = 7;
+
+  // Contains the bullet, number, or other marker for a list item.
+  LIST_MARKER = 8;
+
+  TREE_ITEM = 9;
+  LIST_BOX_OPTION = 10;
+  MENU_ITEM = 11;
+  MENU_LIST_OPTION = 12;
+
+  PARAGRAPH = 13;
+  GROUP = 14;
+
+  // Used for ARIA role="none"/"presentation" -- ignored in platform tree.
+  PRESENTATION = 15;
+
+  CHECK_BOX = 16;
+  RADIO_BUTTON = 17;
+  TEXT_FIELD = 18;
+  BUTTON = 19;
+  LABEL_TEXT = 20;
+  PANE = 21;
+  ROW_HEADER = 22;
+  COLUMN_HEADER = 23;
+  COLUMN = 24;
+  ROW_GROUP = 25;
+  LIST = 26;
+  TABLE = 27;
+  TABLE_HEADER_CONTAINER = 28;
+  LAYOUT_TABLE_CELL = 29;
+  LAYOUT_TABLE_ROW = 30;
+  LAYOUT_TABLE = 31;
+  SWITCH = 32;
+  TOGGLE_BUTTON = 33;
+  MENU = 34;
+
+  ABBR = 35;
+  ALERT = 36;
+  ALERT_DIALOG = 37;
+  APPLICATION = 38;
+  ARTICLE = 39;
+  AUDIO = 40;
+  BANNER = 41;
+  BLOCKQUOTE = 42;
+  CANVAS = 43;
+  CAPTION = 44;
+  CARET = 45;
+  CLIENT = 46;
+  CODE = 47;
+  COLOR_WELL = 48;
+  COMBO_BOX_GROUPING = 49;
+  COMBO_BOX_MENU_BUTTON = 50;
+  COMPLEMENTARY = 51;
+  COMMENT = 52;
+  CONTENT_DELETION = 53;
+  CONTENT_INSERTION = 54;
+  CONTENT_INFO = 55;
+  DATE = 56;
+  DATE_TIME = 57;
+  DEFINITION = 58;
+  DESCRIPTION_LIST = 59;
+  DESCRIPTION_LIST_DETAIL = 60;
+  DESCRIPTION_LIST_TERM = 61;
+  DETAILS = 62;
+  DIALOG = 63;
+  DIRECTORY = 64;
+  DISCLOSURE_TRIANGLE = 65;
+  DOCUMENT = 66;
+  EMBEDDED_OBJECT = 67;
+  EMPHASIS = 68;
+  FEED = 69;
+  FIGURE_CAPTION = 70;
+  FIGURE = 71;
+  FOOTER = 72;
+  FOOTER_AS_NON_LANDMARK = 73;
+  FORM = 74;
+  GENERIC_CONTAINER = 75;
+  GRID = 76;
+  HEADER = 77;
+  HEADER_AS_NON_LANDMARK = 78;
+  HEADING = 79;
+  IFRAME = 80;
+  IFRAME_PRESENTATIONAL = 81;
+  IME_CANDIDATE = 82;
+  INPUT_TIME = 83;
+  KEYBOARD = 84;
+  LEGEND = 85;
+  LINE_BREAK = 86;
+  LIST_BOX = 87;
+  LOG = 88;
+  MAIN = 89;
+  MARK = 90;
+  MARQUEE = 91;
+  MATH = 92;
+  MENU_BAR = 93;
+  MENU_ITEM_CHECK_BOX = 94;
+  MENU_ITEM_RADIO = 95;
+  MENU_LIST_POPUP = 96;
+  METER = 97;
+  NAVIGATION = 98;
+  NOTE = 99;
+  PLUGIN_OBJECT = 100;
+  POPUP_BUTTON = 101;
+  PORTAL = 102;
+  PRE = 103;
+  PROGRESS_INDICATOR = 104;
+  RADIO_GROUP = 105;
+  REGION = 106;
+  ROOT_WEB_AREA = 107;
+  RUBY = 108;
+  RUBY_ANNOTATION = 109;
+  SCROLL_BAR = 110;
+  SCROLL_VIEW = 111;
+  SEARCH = 112;
+  SEARCH_BOX = 113;
+  SECTION = 114;
+  SLIDER = 115;
+  SPIN_BUTTON = 116;
+  SPLITTER = 117;
+  STATUS = 118;
+  STRONG = 119;
+  SUGGESTION = 120;
+  SVG_ROOT = 121;
+  TAB = 122;
+  TAB_LIST = 123;
+  TAB_PANEL = 124;
+  TERM = 125;
+  TEXT_FIELD_WITH_COMBO_BOX = 126;
+  TIME = 127;
+  TIMER = 128;
+  TITLE_BAR = 129;
+  TOOLBAR = 130;
+  TOOLTIP = 131;
+  TREE = 132;
+  TREE_GRID = 133;
+  VIDEO = 134;
+  WEB_VIEW = 135;
+  WINDOW = 136;
+
+  PDF_ACTIONABLE_HIGHLIGHT = 137;
+  PDF_ROOT = 138;
+
+  // --------------------------------------------------------------
+  // ARIA Graphics module roles:
+  // https://rawgit.com/w3c/graphics-aam/master/#mapping_role_table
+  GRAPHICS_DOCUMENT = 139;
+  GRAPHICS_OBJECT = 140;
+  GRAPHICS_SYMBOL = 141;
+  // End ARIA Graphics module roles.
+  // --------------------------------------------------------------
+
+  // --------------------------------------------------------------
+  // DPub Roles:
+  // https://www.w3.org/TR/dpub-aam-1.0/#mapping_role_table
+  DOC_ABSTRACT = 142;
+  DOC_ACKNOWLEDGEMENTS = 143;
+  DOC_AFTERWORD = 144;
+  DOC_APPENDIX = 145;
+  DOC_BACK_LINK = 146;
+  DOC_BIBLIO_ENTRY = 147;
+  DOC_BIBLIOGRAPHY = 148;
+  DOC_BIBLIO_REF = 149;
+  DOC_CHAPTER = 150;
+  DOC_COLOPHON = 151;
+  DOC_CONCLUSION = 152;
+  DOC_COVER = 153;
+  DOC_CREDIT = 154;
+  DOC_CREDITS = 155;
+  DOC_DEDICATION = 156;
+  DOC_ENDNOTE = 157;
+  DOC_ENDNOTES = 158;
+  DOC_EPIGRAPH = 159;
+  DOC_EPILOGUE = 160;
+  DOC_ERRATA = 161;
+  DOC_EXAMPLE = 162;
+  DOC_FOOTNOTE = 163;
+  DOC_FOREWORD = 164;
+  DOC_GLOSSARY = 165;
+  DOC_GLOSS_REF = 166;
+  DOC_INDEX = 167;
+  DOC_INTRODUCTION = 168;
+  DOC_NOTE_REF = 169;
+  DOC_NOTICE = 170;
+  DOC_PAGE_BREAK = 171;
+  DOC_PAGE_FOOTER = 172;
+  DOC_PAGE_HEADER = 173;
+  DOC_PAGE_LIST = 174;
+  DOC_PART = 175;
+  DOC_PREFACE = 176;
+  DOC_PROLOGUE = 177;
+  DOC_PULLQUOTE = 178;
+  DOC_QNA = 179;
+  DOC_SUBTITLE = 180;
+  DOC_TIP = 181;
+  DOC_TOC = 182;
+  // End DPub roles.
+  // --------------------------------------------------------------
+
+  // LIST_GRID behaves similar to an ARIA grid but is primarily used by
+  // Chromium's TableView and its subclasses, so that they could be exposed
+  // correctly on certain platforms.
+  LIST_GRID = 183;
+
+  // Chromium internal
+  // TBD: Do we need this for any anticipated use case of AccessKit?
+  DESKTOP = 184;
+}
