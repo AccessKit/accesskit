@@ -291,6 +291,102 @@ message RelativeBounds {
   Transform transform = 3;
 }
 
+// An action to be taken on an accessibility node.
+// In contrast to |DefaultActionVerb|, these describe what happens to the
+// object, e.g. "FOCUS".
+enum Action {
+  // Do the default action for an object, typically this means "click".
+  DO_DEFAULT = 0;
+
+  // Request image annotations for all the eligible images on a page.
+  ANNOTATE_PAGE_IMAGES = 1;
+
+  BLUR = 2;
+
+  // Notifies a node that it no longer has accessibility focus.
+  // Currently used only on Android and only internally, it's not
+  // exposed to the open web. See SET_ACCESSIBILITY_FOCUS, below.
+  CLEAR_ACCESSIBILITY_FOCUS = 3;
+
+  // Collapse the collapsible node.
+  COLLAPSE = 4;
+
+  CUSTOM_ACTION = 5;
+
+  // Decrement a slider or range control by one step value.
+  DECREMENT = 6;
+
+  // Expand the expandable node.
+  EXPAND = 7;
+
+  FOCUS = 8;
+
+  // Return the content of this image object in the image_data attribute.
+  GET_IMAGE_DATA = 9;
+
+  // Gets the bounding rect for a range of text.
+  GET_TEXT_LOCATION = 10;
+
+  HIDE_TOOLTIP = 11;
+
+  // Given a point, find the object it corresponds to and fire a
+  // |ActionRequest.hit_test_event_to_fire| event on it in response.
+  HIT_TEST = 12;
+
+  // Increment a slider or range control by one step value.
+  INCREMENT = 13;
+
+  // Request that the tree source invalidate its entire tree.
+  INVALIDATE_TREE = 14;
+
+  // Load inline text boxes for this subtree, providing information
+  // about word boundaries, line layout, and individual character
+  // bounding boxes.
+  LOAD_INLINE_TEXT_BOXES = 15;
+
+  // Delete any selected text in the control's text value and
+  // insert |ActionRequest.value| in its place, like when typing or pasting.
+  REPLACE_SELECTED_TEXT = 16;
+
+  // Scrolls by approximately one screen in a specific direction. Should be
+  // called on a node that has scrollable boolean set to true.
+  SCROLL_BACKWARD = 17;
+  SCROLL_DOWN = 18;
+  SCROLL_FORWARD = 19;
+  SCROLL_LEFT = 20;
+  SCROLL_RIGHT = 21;
+  SCROLL_UP = 22;
+
+  // Scroll any scrollable containers to make the target object visible
+  // on the screen.  Optionally pass a subfocus rect in
+  // ActionRequest.target_rect, in node-local coordinates.
+  SCROLL_INTO_VIEW = 23;
+
+  // Scroll the given object to a specified point on the screen in
+  // global screen coordinates. Pass a point in ActionRequest.target_point.
+  SCROLL_TO_POINT = 24;
+
+  // Notifies a node that it has accessibility focus.
+  // Currently used only on Android and only internally, it's not
+  // exposed to the open web. See CLEAR_ACCESSIBILITY_FOCUS, above.
+  SET_ACCESSIBILITY_FOCUS = 25;
+
+  SET_SCROLL_OFFSET = 26;
+  SET_SELECTION = 27;
+
+  // Don't focus this node, but set it as the sequential focus navigation
+  // starting point, so that pressing Tab moves to the next element
+  // following this one, for example.
+  SET_SEQUENTIAL_FOCUS_NAVIGATION_STARTING_POINT = 28;
+
+  // Replace the value of the control with ActionRequest.value and
+  // reset the selection, if applicable.
+  SET_VALUE = 29;
+
+  SHOW_CONTEXT_MENU = 30;
+  SHOW_TOOLTIP = 31;
+}
+
 // A single accessible object. A complete UI is represented as a tree of these.
 message Node {
   int32 id = 1;
@@ -328,6 +424,9 @@ message Node {
   bool required = 23;
   bool richly_editable = 24;
   bool visited = 25;
+
+  // Unordered set of actions supported by this node.
+  repeated Action action = 26;
 
   // TODO: add many more fields.
 }
