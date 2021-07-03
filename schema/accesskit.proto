@@ -573,6 +573,77 @@ message Node {
   // What information was used to compute the object's name.
   NameFrom name_from = 67;
 
+  bool busy = 68;
+
+  // The object functions as a text field which exposes its descendants.
+  // Use cases include the root of a content-editable region, an ARIA
+  // textbox which isn't currently editable and which has interactive
+  // descendants, and a <body> element that has "design-mode" set to "on".
+  bool nonatomic_text_field_root = 69;
+
+  // Live region attributes.
+  bool container_live_atomic = 70;
+  bool container_live_busy = 71;
+  bool live_atomic = 72;
+
+  // If a dialog box is marked as explicitly modal
+  bool modal = 73;
+
+  // If this is set, all of the other fields in this message should
+  // be ignored and only the locations should change.
+  bool update_location_only = 74;
+
+  // Set on a canvas element if it has fallback content.
+  bool canvas_has_fallback = 75;
+
+  // Indicates this node is user-scrollable, e.g. overflow:scroll|auto, as
+  // opposed to only programmatically scrollable, like overflow:hidden, or
+  // not scrollable at all, e.g. overflow:visible.
+  bool scrollable = 76;
+
+  // A hint to clients that the node is clickable.
+  bool clickable = 77;
+
+  // Indicates that this node clips its children, i.e. may have
+  // overflow: hidden or clip children by default.
+  bool clips_children = 78;
+
+  // Indicates that this node is not selectable because the style has
+  // user-select: none. Note that there may be other reasons why a node is
+  // not selectable - for example, bullets in a list. However, this attribute
+  // is only set on user-select: none.
+  bool not_user_selectable_style = 79;
+
+  // Indicates whether this node is selected or unselected.
+  // The absence of this flag (as opposed to a false setting)
+  // means that the concept of "selected" doesn't apply.
+  google.protobuf.BoolValue selected = 80;
+
+  // Indicates whether this node is selected due to selection follows focus.
+  bool selected_from_focus = 81;
+
+  // Indicates whether this node supports text location.
+  bool supports_text_location = 82;
+
+  // Indicates whether this node can be grabbed for drag-and-drop operation.
+  // Note: aria-grabbed is deprecated in WAI-ARIA 1.1.
+  bool grabbed = 83;
+
+  // Indicates whether this node causes a hard line-break
+  // (e.g. block level elements, or <br>)
+  bool is_line_breaking_object = 84;
+
+  // Indicates whether this node causes a page break
+  bool is_page_breaking_object = 85;
+
+  // True if the node has any ARIA attributes set.
+  bool has_aria_attribute = 86;
+
+  // This element allows touches to be passed through when a screen reader
+  // is in touch exploration mode, e.g. a virtual keyboard normally
+  // behaves this way.
+  bool touch_pass_through = 87;
+
   // TODO: add many more fields.
 }
 
