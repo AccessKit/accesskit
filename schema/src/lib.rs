@@ -451,6 +451,10 @@ pub enum TextDecoration {
     Wavy,
 }
 
+// TBD: Should this be a struct? We want it to serialize as just an integer.
+// Also TBD: Is i32 the best underlying type for this?
+pub type NodeId = i32;
+
 #[derive(Clone, PartialEq)]
 pub struct Rect {
     pub left: f32,
@@ -484,7 +488,7 @@ pub struct Transform {
 pub struct RelativeBounds {
     /// The ID of an ancestor node in the same Tree that this object's
     /// bounding box is relative to.
-    pub offset_container_id: Option<i32>,
+    pub offset_container_id: Option<NodeId>,
     /// The relative bounding box of this node.
     pub bounds: Rect,
     /// An additional transform to apply to position this object and its subtree.
@@ -496,10 +500,10 @@ pub struct RelativeBounds {
 /// A single accessible object. A complete UI is represented as a tree of these.
 #[derive(Clone, PartialEq)]
 pub struct Node {
-    pub id: i32,
+    pub id: NodeId,
     pub role: Role,
     pub bounds: Option<RelativeBounds>,
-    pub child_ids: Vec<i32>,
+    pub child_ids: Vec<NodeId>,
 
     pub name: Option<String>,
     /// What information was used to compute the object's name.
@@ -540,22 +544,22 @@ pub struct Node {
     /// not children of this node in the tree structure. As an example,
     /// a table cell is a child of a row, and an 'indirect' child of a
     /// column.
-    pub indirect_child_ids: Vec<i32>,
+    pub indirect_child_ids: Vec<NodeId>,
 
     // Relationships between this node and other nodes.
-    pub active_descendant_id: Option<i32>,
-    pub error_message_id: Option<i32>,
-    pub in_page_link_target_id: Option<i32>,
-    pub member_of_id: Option<i32>,
-    pub next_on_line_id: Option<i32>,
-    pub previous_on_line_id: Option<i32>,
-    pub popup_for_id: Option<i32>,
-    pub controls_ids: Vec<i32>,
-    pub details_ids: Vec<i32>,
-    pub described_by_ids: Vec<i32>,
-    pub flow_to_ids: Vec<i32>,
-    pub labelled_by_ids: Vec<i32>,
-    pub radio_group_ids: Vec<i32>,
+    pub active_descendant_id: Option<NodeId>,
+    pub error_message_id: Option<NodeId>,
+    pub in_page_link_target_id: Option<NodeId>,
+    pub member_of_id: Option<NodeId>,
+    pub next_on_line_id: Option<NodeId>,
+    pub previous_on_line_id: Option<NodeId>,
+    pub popup_for_id: Option<NodeId>,
+    pub controls_ids: Vec<NodeId>,
+    pub details_ids: Vec<NodeId>,
+    pub described_by_ids: Vec<NodeId>,
+    pub flow_to_ids: Vec<NodeId>,
+    pub labelled_by_ids: Vec<NodeId>,
+    pub radio_group_ids: Vec<NodeId>,
 
     // For static text. These lists must be the same size.
     // The start and end indices are in UTF-8 code units.
@@ -579,6 +583,7 @@ pub struct Node {
 
     /// Defines custom actions for a UI element. For example, a list UI
     /// can allow a user to reorder items in the list by dragging the items.
+    // TBD: Are these node IDs or something else? Need to research in Chromium.
     pub custom_action_ids: Vec<i32>,
     /// Descriptions for custom actions. This must be aligned with
     /// [`Node::custom_action_ids`].
@@ -735,15 +740,15 @@ pub struct Node {
     // Table attributes.
     pub table_row_count: Option<usize>,
     pub table_column_count: Option<usize>,
-    pub table_header_id: Option<i32>,
+    pub table_header_id: Option<NodeId>,
 
     // Table row attributes.
     pub table_row_index: Option<usize>,
-    pub table_row_header_id: Option<i32>,
+    pub table_row_header_id: Option<NodeId>,
 
     // Table column attributes.
     pub table_column_index: Option<usize>,
-    pub table_column_header_id: Option<i32>,
+    pub table_column_header_id: Option<NodeId>,
 
     // Table cell attributes.
     pub table_cell_column_index: Option<usize>,
@@ -789,8 +794,8 @@ pub struct Node {
     pub underline: Option<TextDecoration>,
 
     // Focus traversal order.
-    pub previous_focus_id: Option<i32>,
-    pub next_focus_id: Option<i32>,
+    pub previous_focus_id: Option<NodeId>,
+    pub next_focus_id: Option<NodeId>,
 
     // Range attributes.
     pub value_for_range: Option<f32>,
@@ -823,12 +828,12 @@ pub struct Tree {
     /// but a descendant of it.
     pub focused_tree_id: Option<String>,
     /// The node with keyboard focus within this tree, if any.
-    pub focused_node_id: Option<i32>,
+    pub focused_node_id: Option<NodeId>,
 
     /// The node that's used as the root scroller, if any. On some platforms
     /// like Android we need to ignore accessibility scroll offsets for
     /// that node and get them from the viewport instead.
-    pub root_scroller_id: Option<i32>,
+    pub root_scroller_id: Option<NodeId>,
 }
 
 /// A serializable representation of an atomic change to a tree.
@@ -841,7 +846,7 @@ pub struct TreeUpdate {
     /// Clearing a node means deleting all of its children and their descendants,
     /// but leaving that node in the tree. It's an error to clear a node but not
     /// subsequently update it as part of the same `TreeUpdate`.
-    pub node_id_to_clear: Option<i32>,
+    pub node_id_to_clear: Option<NodeId>,
 
     /// An ordered list of zero or more node updates to apply to the tree.
     ///
@@ -870,5 +875,5 @@ pub struct TreeUpdate {
 
     /// The ID of the tree's root node. This is required when the tree
     /// is being initialized or if the root is changing.
-    pub root_id: Option<i32>,
+    pub root_id: Option<NodeId>,
 }
