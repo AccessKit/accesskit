@@ -408,7 +408,7 @@ message Node {
   int32 id = 1;
   Role role = 2;
   RelativeBounds bounds = 3;
-  repeated int32 child_id = 4;
+  repeated int32 child_ids = 4;
 
   google.protobuf.StringValue name = 5;
   google.protobuf.StringValue description = 6;
@@ -442,28 +442,28 @@ message Node {
   bool visited = 25;
 
   // Unordered set of actions supported by this node.
-  repeated Action action = 26;
+  repeated Action actions = 26;
 
   // Ids of nodes that are children of this node logically, but are
   // not children of this node in the tree structure. As an example,
   // a table cell is a child of a row, and an 'indirect' child of a
   // column.
-  repeated int32 indirect_child_id = 27;
+  repeated int32 indirect_child_ids = 27;
 
   // Relationships between this node and other nodes.
-  repeated int32 controls_id = 28;
-  repeated int32 details_id = 29;
-  repeated int32 described_by_id = 30;
-  repeated int32 flow_to_id = 31;
-  repeated int32 labelled_by_id = 32;
-  repeated int32 radio_group_id = 33;
+  repeated int32 controls_ids = 28;
+  repeated int32 details_ids = 29;
+  repeated int32 described_by_ids = 30;
+  repeated int32 flow_to_ids = 31;
+  repeated int32 labelled_by_ids = 32;
+  repeated int32 radio_group_ids = 33;
 
   // For static text. These lists must be the same size; they represent
   // the start and end character offset of each marker. Examples of markers
   // include spelling and grammar errors, and find-in-page matches.
-  repeated MarkerType marker_type = 34;
-  repeated int32 marker_start = 35;
-  repeated int32 marker_end = 36;
+  repeated MarkerType marker_types = 34;
+  repeated int32 marker_starts = 35;
+  repeated int32 marker_ends = 36;
 
   // For inline text. This is the pixel position of the end of this
   // character within the bounding rectangle of this object, in the
@@ -471,16 +471,16 @@ message Node {
   // text, the first offset is the right coordinate of the first
   // character within the object's bounds, the second offset
   // is the right coordinate of the second character, and so on.
-  repeated float character_offset = 37;
+  repeated float character_offsets = 37;
 
   // For inline text. These int lists must be the same size; they represent
   // the start and end character offset of each word within this text.
-  repeated int32 word_start = 38;
-  repeated int32 word_end = 39;
+  repeated int32 word_starts = 38;
+  repeated int32 word_ends = 39;
 
   // Defines custom actions for a UI element. For example, a list UI
   // can allow a user to reorder items in the list by dragging the items.
-  repeated int32 custom_action_id = 40;
+  repeated int32 custom_action_ids = 40;
 
   // Specifies the direction of the text, e.g. right-to-left.
   TextDirection text_direction = 41;
@@ -546,7 +546,7 @@ message TreeUpdate {
   google.protobuf.Int32Value node_id_to_clear = 1;
 
   // The ordered list of nodes to update, according to the rules above.
-  repeated Node node = 2;
+  repeated Node nodes = 2;
 
   // Updated information about the tree as a whole. This may be omitted
   // if it has not changed since the previous update, but providing the same
