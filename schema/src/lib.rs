@@ -493,8 +493,9 @@ pub struct RelativeBounds {
     pub bounds: Rect,
     /// An additional transform to apply to position this object and its subtree.
     /// This is rarely used and should be omitted if not needed, i.e. if
-    /// the transform would be the identity matrix.
-    pub transform: Option<Transform>,
+    /// the transform would be the identity matrix. It's rare enough
+    // that we box it to reduce memory usage.
+    pub transform: Option<Box<Transform>>,
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
