@@ -578,8 +578,8 @@ pub struct Node {
 
     // For inline text. These lists must be the same size; they represent
     // the start and end UTF-8 code unit index of each word within this text.
-    pub word_starts: Vec<i32>,
-    pub word_ends: Vec<i32>,
+    pub word_starts: Vec<usize>,
+    pub word_ends: Vec<usize>,
 
     /// Defines custom actions for a UI element. For example, a list UI
     /// can allow a user to reorder items in the list by dragging the items.
