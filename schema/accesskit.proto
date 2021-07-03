@@ -438,7 +438,116 @@ enum NameFrom {
 
   // E.g. <input type="button" value="Button's name">.
   NAME_FROM_VALUE = 8;
-};
+}
+
+enum DescriptionFrom {
+  UNKNOWN_DESCRIPTION_ORIGIN = 0;
+  DESCRIPTION_FROM_ARIA_DESCRIPTION = 1;
+
+  // HTML-AAM 5.2.2
+  DESCRIPTION_FROM_BUTTON_LABEL = 2;
+
+  DESCRIPTION_FROM_RELATED_ELEMENT = 3;
+  DESCRIPTION_FROM_RUBY_ANNOTATION = 4;
+
+  // HTML-AAM 5.8.2
+  DESCRIPTION_FROM_SUMMARY = 5;
+
+  // HTML-AAM 5.9.2
+  DESCRIPTION_FROM_TABLE_CAPTION = 6;
+
+  DESCRIPTION_FROM_TITLE = 7;
+}
+
+// A list of valid values for the default_action_verb field on Node.
+// These will describe the action that will be performed on a given node when
+// executing the default action, which is a click.
+// In contrast to Action, these describe what the user can do on the
+// object, e.g. "PRESS", not what happens to the object as a result.
+// Only one verb can be used at a time to describe the default action.
+enum DefaultActionVerb {
+  NO_DEFAULT_ACTION = 0;
+  ACTIVATE = 1;
+  CHECK = 2;
+  CLICK = 3;
+
+  // A click will be performed on one of the node's ancestors.
+  // This happens when the node itself is not clickable, but one of its
+  // ancestors has click handlers attached which are able to capture the click
+  // as it bubbles up.
+  CLICK_ANCESTOR = 4;
+
+  JUMP = 5;
+  OPEN = 6;
+  PRESS = 7;
+  SELECT = 8;
+  UNCHECK = 9;
+}
+
+enum SortDirection {
+  NO_SORT_DIRECTION = 0;
+  UNSORTED = 1;
+  ASCENDING = 2;
+  DESCENDING = 3;
+  OTHER_SORT_DIRECTION = 4;
+}
+
+enum AriaCurrentState {
+  NO_ARIA_CURRENT = 0;
+  ARIA_CURRENT_FALSE = 1;
+  ARIA_CURRENT_TRUE = 2;
+  ARIA_CURRENT_PAGE = 3;
+  ARIA_CURRENT_STEP = 4;
+  ARIA_CURRENT_LOCATION = 5;
+  ARIA_CURRENT_DATE = 6;
+  ARIA_CURRENT_TIME = 7;
+}
+
+enum HasPopup {
+  HAS_POPUP_FALSE = 0;
+  HAS_POPUP_TRUE = 1;
+  HAS_POPUP_MENU = 2;
+  HAS_POPUP_LISTBOX = 3;
+  HAS_POPUP_TREE = 4;
+  HAS_POPUP_GRID = 5;
+  HAS_POPUP_DIALOG = 6;
+}
+
+enum ListStyle {
+  NO_LIST_STYLE = 0;
+  CIRCLE_LIST_STYLE = 1;
+  DISC_LIST_STYLE = 2;
+  IMAGE_LIST_STYLE = 3;
+  NUMERIC_LIST_STYLE = 4;
+  SQUARE_LIST_STYLE = 5;
+
+  // Language specific ordering (alpha, roman, cjk-ideographic, etc...)
+  OTHER_LIST_STYLE = 6;
+}
+
+// Types of text alignment according to the IAccessible2 Object Attributes spec.
+enum TextAlign {
+  NO_ALIGN = 0;
+  LEFT_ALIGN = 1;
+  RIGHT_ALIGN = 2;
+  CENTER = 3;
+  JUSTIFY = 4;
+}
+
+enum TextPosition {
+  NORMAL_TEXT_POSITION = 0;
+  SUBSCRIPT = 1;
+  SUPERSCRIPT = 2;
+}
+
+enum TextDecorationStyle {
+  NO_DECORATION = 0;
+  DOTTED = 1;
+  DASHED = 2;
+  SOLID = 3;
+  DOUBLE = 4;
+  WAVY = 5;
+}
 
 // A single accessible object. A complete UI is represented as a tree of these.
 message Node {
@@ -644,7 +753,138 @@ message Node {
   // behaves this way.
   bool touch_pass_through = 87;
 
-  // TODO: add many more fields.
+  DefaultActionVerb default_action_verb = 88;
+
+  // Scrollable container attributes.
+  google.protobuf.FloatValue scroll_x = 89;
+  google.protobuf.FloatValue scroll_x_min = 90;
+  google.protobuf.FloatValue scroll_x_max = 91;
+  google.protobuf.FloatValue scroll_y = 92;
+  google.protobuf.FloatValue scroll_y_min = 93;
+  google.protobuf.FloatValue scroll_y_max = 94;
+
+  // Attributes for retrieving the endpoints of a selection.
+  google.protobuf.Int32Value text_sel_start = 95;
+  google.protobuf.Int32Value text_sel_end = 96;
+
+  google.protobuf.Int32Value aria_column_count = 97;
+  google.protobuf.Int32Value aria_cell_column_index = 98;
+  google.protobuf.Int32Value aria_cell_column_span = 99;
+  google.protobuf.Int32Value aria_row_count = 100;
+  google.protobuf.Int32Value aria_cell_row_index = 101;
+  google.protobuf.Int32Value aria_cell_row_span = 102;
+
+  // Table attributes.
+  google.protobuf.Int32Value table_row_count = 103;
+  google.protobuf.Int32Value table_column_count = 104;
+  google.protobuf.Int32Value table_header_id = 105;
+
+  // Table row attributes.
+  google.protobuf.Int32Value table_row_index = 106;
+  google.protobuf.Int32Value table_row_header_id = 107;
+
+  // Table column attributes.
+  google.protobuf.Int32Value table_column_index = 108;
+  google.protobuf.Int32Value table_column_header_id = 109;
+
+  // Table cell attributes.
+  google.protobuf.Int32Value table_cell_column_index = 110;
+  google.protobuf.Int32Value table_cell_column_span = 111;
+  google.protobuf.Int32Value table_cell_row_index = 112;
+  google.protobuf.Int32Value table_cell_row_span = 113;
+  SortDirection sort_direction = 114;
+
+  // Tree control attributes.
+  google.protobuf.Int32Value hierarchical_level = 115;
+
+  // What information was used to compute the object's description.
+  DescriptionFrom description_from = 116;
+
+  // Relationships between this node and other nodes.
+  google.protobuf.Int32Value active_descendant_id = 117;
+  google.protobuf.Int32Value error_message_id = 118;
+  google.protobuf.Int32Value in_page_link_target_id = 119;
+  google.protobuf.Int32Value member_of_id = 120;
+  google.protobuf.Int32Value next_on_line_id = 121;
+  google.protobuf.Int32Value previous_on_line_id = 122;
+  google.protobuf.Int32Value popup_for_id = 123;
+
+  // Use for a textbox that allows focus/selection but not input.
+  bool read_only = 124;
+
+  // Use for a control or group of controls that disallows input.
+  bool disabled = 125;
+
+  // Position or Number of items in current set of listitems or treeitems
+  google.protobuf.Int32Value set_size = 126;
+  google.protobuf.Int32Value pos_in_set = 127;
+
+  // For the COLOR_WELL role, specifies the selected color in RGBA.
+  google.protobuf.Int32Value color_value = 128;
+
+  AriaCurrentState aria_current_state = 129;
+
+  // Text attributes.
+
+  // Foreground and background color in RGBA.
+  google.protobuf.Int32Value background_color = 130;
+  google.protobuf.Int32Value color = 131;
+
+  HasPopup has_popup = 132;
+
+  // The list style type. Only available on list items.
+  ListStyle list_style = 133;
+
+  // Specifies the alignment of the text, e.g. left, center, right, justify
+  TextAlign text_align = 134;
+
+  // Specifies the position of the text, e.g., subscript.
+  TextPosition text_position = 135;
+
+  bool bold = 136;
+  bool italic = 137;
+  bool underline = 138;
+  bool line_through = 139;
+  bool overline = 140;
+
+  // The overline text decoration style.
+  TextDecorationStyle text_overline_style = 141;
+
+  // The strikethrough text decoration style.
+  TextDecorationStyle text_strikethrough_style = 142;
+
+  // The underline text decoration style.
+  TextDecorationStyle text_underline_style = 143;
+
+  // Focus traversal order.
+  google.protobuf.Int32Value previous_focus_id = 144;
+  google.protobuf.Int32Value next_focus_id = 145;
+
+  // For indicating what functions can be performed when a dragged object
+  // is released on the drop target.
+  // Note: aria-dropeffect is deprecated in WAI-ARIA 1.1.
+  bool drop_effect_copy = 146;
+  bool drop_effect_execute = 147;
+  bool drop_effect_link = 148;
+  bool drop_effect_move = 149;
+  bool drop_effect_popup = 150;
+
+  // Range attributes.
+  google.protobuf.FloatValue value_for_range = 151;
+  google.protobuf.FloatValue min_value_for_range = 152;
+  google.protobuf.FloatValue max_value_for_range = 153;
+  google.protobuf.FloatValue step_value_for_range = 154;
+
+  // Text attributes.
+  // Font size is in pixels.
+  google.protobuf.FloatValue font_size = 155;
+
+  // Font weight can take on any arbitrary numeric value. Increments of 100 in
+  // range [0, 900] represent keywords such as light, normal, bold, etc.
+  google.protobuf.FloatValue font_weight = 156;
+
+  // The text indent of the text, in mm.
+  google.protobuf.FloatValue text_indent = 157;
 }
 
 // The data associated with an accessibility tree that's global to the
