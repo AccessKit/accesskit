@@ -403,6 +403,43 @@ enum TextDirection {
   BOTTOM_TO_TOP = 3;
 }
 
+enum InvalidState {
+  VALID = 0;
+  INVALID = 1;
+  OTHER_INVALID_STATE = 2;
+}
+
+enum CheckedState {
+  NOT_CHECKED = 0;
+  CHECKED = 1;
+  MIXED = 2;
+}
+
+enum NameFrom {
+  UNKNOWN_NAME_ORIGIN = 0;
+
+  // E.g. aria-label.
+  NAME_FROM_ATTRIBUTE = 1;
+  NAME_FROM_ATTRIBUTE_EXPLICITLY_EMPTY = 2;
+
+  // E.g. in the case of a table, from a caption element.
+  NAME_FROM_CAPTION = 3;
+
+  NAME_FROM_CONTENTS = 4;
+
+  // E.g. from an HTML placeholder attribute on a text field.
+  NAME_FROM_PLACEHOLDER = 5;
+
+  // E.g. from a figcaption Element in a figure.
+  NAME_FROM_RELATED_ELEMENT = 6;
+
+  // E.g. <input type="text" title="title">.
+  NAME_FROM_TITLE = 7;
+
+  // E.g. <input type="button" value="Button's name">.
+  NAME_FROM_VALUE = 8;
+};
+
 // A single accessible object. A complete UI is represented as a tree of these.
 message Node {
   int32 id = 1;
@@ -482,8 +519,59 @@ message Node {
   // can allow a user to reorder items in the list by dragging the items.
   repeated int32 custom_action_ids = 40;
 
+  // Descriptions for custom actions. This must be aligned with
+  // custom_action_ids.
+  repeated string custom_action_descriptions = 41;
+
   // Specifies the direction of the text, e.g. right-to-left.
-  TextDirection text_direction = 41;
+  TextDirection text_direction = 42;
+
+  google.protobuf.StringValue access_key = 43;
+
+  // Indicates if a form control has invalid input or
+  // if a web DOM element has an aria-invalid attribute.
+  InvalidState invalid_state = 44;
+
+  // Only used when invalid_state == OTHER_INVALID_STATE.
+  google.protobuf.StringValue aria_invalid_value = 45;
+
+  google.protobuf.StringValue auto_complete = 46;
+  CheckedState checked_state = 47;
+  google.protobuf.StringValue checked_state_description = 48;
+  google.protobuf.StringValue child_tree_id = 49;
+  google.protobuf.StringValue class_name = 50;
+  google.protobuf.StringValue container_live_relevant = 51;
+  google.protobuf.StringValue container_live_status = 52;
+  google.protobuf.StringValue css_display = 53;
+
+  // Only present when different from parent.
+  google.protobuf.StringValue font_family = 54;
+
+  google.protobuf.StringValue html_tag = 55;
+
+  google.protobuf.StringValue inner_html = 56;
+  google.protobuf.StringValue input_type = 57;
+  google.protobuf.StringValue key_shortcuts = 58;
+
+  // Only present when different from parent.
+  google.protobuf.StringValue language = 59;
+
+  google.protobuf.StringValue live_relevant = 60;
+  google.protobuf.StringValue live_status = 61;
+
+  // Only if not already exposed in name (NAME_FROM_PLACEHOLDER)
+  google.protobuf.StringValue placeholder = 62;
+
+  google.protobuf.StringValue custom_role = 63;
+  google.protobuf.StringValue role_description = 64;
+
+  // Only if not already exposed in name (NAME_FROM_TITLE)
+  google.protobuf.StringValue tooltip = 65;
+
+  google.protobuf.StringValue url = 66;
+
+  // What information was used to compute the object's name.
+  NameFrom name_from = 67;
 
   // TODO: add many more fields.
 }
