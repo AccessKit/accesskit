@@ -387,6 +387,22 @@ enum Action {
   SHOW_TOOLTIP = 31;
 }
 
+enum MarkerType {
+  NO_MARKER = 0;
+  SPELLING_ERROR = 1;
+  GRAMMAR_ERROR = 2;
+  SEARCH_MATCH = 3;
+  ACTIVE_SUGGESTION = 4;
+  SUGGESTION_MARKER = 5; // name chosen to avoid conflict with SUGGESTION role
+}
+
+enum TextDirection {
+  LEFT_TO_RIGHT = 0;
+  RIGHT_TO_LEFT = 1;
+  TOP_TO_BOTTOM = 2;
+  BOTTOM_TO_TOP = 3;
+}
+
 // A single accessible object. A complete UI is represented as a tree of these.
 message Node {
   int32 id = 1;
@@ -427,6 +443,47 @@ message Node {
 
   // Unordered set of actions supported by this node.
   repeated Action action = 26;
+
+  // Ids of nodes that are children of this node logically, but are
+  // not children of this node in the tree structure. As an example,
+  // a table cell is a child of a row, and an 'indirect' child of a
+  // column.
+  repeated int32 indirect_child_id = 27;
+
+  // Relationships between this node and other nodes.
+  repeated int32 controls_id = 28;
+  repeated int32 details_id = 29;
+  repeated int32 described_by_id = 30;
+  repeated int32 flow_to_id = 31;
+  repeated int32 labelled_by_id = 32;
+  repeated int32 radio_group_id = 33;
+
+  // For static text. These lists must be the same size; they represent
+  // the start and end character offset of each marker. Examples of markers
+  // include spelling and grammar errors, and find-in-page matches.
+  repeated MarkerType marker_type = 34;
+  repeated int32 marker_start = 35;
+  repeated int32 marker_end = 36;
+
+  // For inline text. This is the pixel position of the end of this
+  // character within the bounding rectangle of this object, in the
+  // direction given by text_direction. For example, for left-to-right
+  // text, the first offset is the right coordinate of the first
+  // character within the object's bounds, the second offset
+  // is the right coordinate of the second character, and so on.
+  repeated float character_offset = 37;
+
+  // For inline text. These int lists must be the same size; they represent
+  // the start and end character offset of each word within this text.
+  repeated int32 word_start = 38;
+  repeated int32 word_end = 39;
+
+  // Defines custom actions for a UI element. For example, a list UI
+  // can allow a user to reorder items in the list by dragging the items.
+  repeated int32 custom_action_id = 40;
+
+  // Specifies the direction of the text, e.g. right-to-left.
+  TextDirection text_direction = 41;
 
   // TODO: add many more fields.
 }
