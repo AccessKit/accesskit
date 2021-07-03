@@ -452,8 +452,8 @@ pub enum TextDecoration {
 }
 
 // TBD: Should this be a struct? We want it to serialize as just an integer.
-// Also TBD: Is i32 the best underlying type for this?
-pub type NodeId = i32;
+// This is NonZeroU64 because we regularly store Option<NodeId>.
+pub type NodeId = std::num::NonZeroU64;
 
 #[derive(Clone, PartialEq)]
 pub struct Rect {
