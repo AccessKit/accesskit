@@ -33,220 +33,220 @@ option go_package = "accesskit.dev/schema";
 // is intended to have a stable wire representation, new roles should only
 // be appended to this enum.
 enum Role {
-  UNKNOWN = 0;
+  ROLE_UNKNOWN = 0;
 
-  INLINE_TEXT_BOX = 1;
-  CELL = 2;
-  STATIC_TEXT = 3;
-  IMAGE = 4;
-  LINK = 5;
-  ROW = 6;
-  LIST_ITEM = 7;
+  ROLE_INLINE_TEXT_BOX = 1;
+  ROLE_CELL = 2;
+  ROLE_STATIC_TEXT = 3;
+  ROLE_IMAGE = 4;
+  ROLE_LINK = 5;
+  ROLE_ROW = 6;
+  ROLE_LIST_ITEM = 7;
 
   // Contains the bullet, number, or other marker for a list item.
-  LIST_MARKER = 8;
+  ROLE_LIST_MARKER = 8;
 
-  TREE_ITEM = 9;
-  LIST_BOX_OPTION = 10;
-  MENU_ITEM = 11;
-  MENU_LIST_OPTION = 12;
+  ROLE_TREE_ITEM = 9;
+  ROLE_LIST_BOX_OPTION = 10;
+  ROLE_MENU_ITEM = 11;
+  ROLE_MENU_LIST_OPTION = 12;
 
-  PARAGRAPH = 13;
-  GROUP = 14;
+  ROLE_PARAGRAPH = 13;
+  ROLE_GROUP = 14;
 
   // Used for ARIA role="none"/"presentation" -- ignored in platform tree.
-  PRESENTATION = 15;
+  ROLE_PRESENTATION = 15;
 
-  CHECK_BOX = 16;
-  RADIO_BUTTON = 17;
-  TEXT_FIELD = 18;
-  BUTTON = 19;
-  LABEL_TEXT = 20;
-  PANE = 21;
-  ROW_HEADER = 22;
-  COLUMN_HEADER = 23;
-  COLUMN = 24;
-  ROW_GROUP = 25;
-  LIST = 26;
-  TABLE = 27;
-  TABLE_HEADER_CONTAINER = 28;
-  LAYOUT_TABLE_CELL = 29;
-  LAYOUT_TABLE_ROW = 30;
-  LAYOUT_TABLE = 31;
-  SWITCH = 32;
-  TOGGLE_BUTTON = 33;
-  MENU = 34;
+  ROLE_CHECK_BOX = 16;
+  ROLE_RADIO_BUTTON = 17;
+  ROLE_TEXT_FIELD = 18;
+  ROLE_BUTTON = 19;
+  ROLE_LABEL_TEXT = 20;
+  ROLE_PANE = 21;
+  ROLE_ROW_HEADER = 22;
+  ROLE_COLUMN_HEADER = 23;
+  ROLE_COLUMN = 24;
+  ROLE_ROW_GROUP = 25;
+  ROLE_LIST = 26;
+  ROLE_TABLE = 27;
+  ROLE_TABLE_HEADER_CONTAINER = 28;
+  ROLE_LAYOUT_TABLE_CELL = 29;
+  ROLE_LAYOUT_TABLE_ROW = 30;
+  ROLE_LAYOUT_TABLE = 31;
+  ROLE_SWITCH = 32;
+  ROLE_TOGGLE_BUTTON = 33;
+  ROLE_MENU = 34;
 
-  ABBR = 35;
-  ALERT = 36;
-  ALERT_DIALOG = 37;
-  APPLICATION = 38;
-  ARTICLE = 39;
-  AUDIO = 40;
-  BANNER = 41;
-  BLOCKQUOTE = 42;
-  CANVAS = 43;
-  CAPTION = 44;
-  CARET = 45;
-  CLIENT = 46;
-  CODE = 47;
-  COLOR_WELL = 48;
-  COMBO_BOX_GROUPING = 49;
-  COMBO_BOX_MENU_BUTTON = 50;
-  COMPLEMENTARY = 51;
-  COMMENT = 52;
-  CONTENT_DELETION = 53;
-  CONTENT_INSERTION = 54;
-  CONTENT_INFO = 55;
-  DATE = 56;
-  DATE_TIME = 57;
-  DEFINITION = 58;
-  DESCRIPTION_LIST = 59;
-  DESCRIPTION_LIST_DETAIL = 60;
-  DESCRIPTION_LIST_TERM = 61;
-  DETAILS = 62;
-  DIALOG = 63;
-  DIRECTORY = 64;
-  DISCLOSURE_TRIANGLE = 65;
-  DOCUMENT = 66;
-  EMBEDDED_OBJECT = 67;
-  EMPHASIS = 68;
-  FEED = 69;
-  FIGURE_CAPTION = 70;
-  FIGURE = 71;
-  FOOTER = 72;
-  FOOTER_AS_NON_LANDMARK = 73;
-  FORM = 74;
-  GENERIC_CONTAINER = 75;
-  GRID = 76;
-  HEADER = 77;
-  HEADER_AS_NON_LANDMARK = 78;
-  HEADING = 79;
-  IFRAME = 80;
-  IFRAME_PRESENTATIONAL = 81;
-  IME_CANDIDATE = 82;
-  INPUT_TIME = 83;
-  KEYBOARD = 84;
-  LEGEND = 85;
-  LINE_BREAK = 86;
-  LIST_BOX = 87;
-  LOG = 88;
-  MAIN = 89;
-  MARK = 90;
-  MARQUEE = 91;
-  MATH = 92;
-  MENU_BAR = 93;
-  MENU_ITEM_CHECK_BOX = 94;
-  MENU_ITEM_RADIO = 95;
-  MENU_LIST_POPUP = 96;
-  METER = 97;
-  NAVIGATION = 98;
-  NOTE = 99;
-  PLUGIN_OBJECT = 100;
-  POPUP_BUTTON = 101;
-  PORTAL = 102;
-  PRE = 103;
-  PROGRESS_INDICATOR = 104;
-  RADIO_GROUP = 105;
-  REGION = 106;
-  ROOT_WEB_AREA = 107;
-  RUBY = 108;
-  RUBY_ANNOTATION = 109;
-  SCROLL_BAR = 110;
-  SCROLL_VIEW = 111;
-  SEARCH = 112;
-  SEARCH_BOX = 113;
-  SECTION = 114;
-  SLIDER = 115;
-  SPIN_BUTTON = 116;
-  SPLITTER = 117;
-  STATUS = 118;
-  STRONG = 119;
-  SUGGESTION = 120;
-  SVG_ROOT = 121;
-  TAB = 122;
-  TAB_LIST = 123;
-  TAB_PANEL = 124;
-  TERM = 125;
-  TEXT_FIELD_WITH_COMBO_BOX = 126;
-  TIME = 127;
-  TIMER = 128;
-  TITLE_BAR = 129;
-  TOOLBAR = 130;
-  TOOLTIP = 131;
-  TREE = 132;
-  TREE_GRID = 133;
-  VIDEO = 134;
-  WEB_VIEW = 135;
-  WINDOW = 136;
+  ROLE_ABBR = 35;
+  ROLE_ALERT = 36;
+  ROLE_ALERT_DIALOG = 37;
+  ROLE_APPLICATION = 38;
+  ROLE_ARTICLE = 39;
+  ROLE_AUDIO = 40;
+  ROLE_BANNER = 41;
+  ROLE_BLOCKQUOTE = 42;
+  ROLE_CANVAS = 43;
+  ROLE_CAPTION = 44;
+  ROLE_CARET = 45;
+  ROLE_CLIENT = 46;
+  ROLE_CODE = 47;
+  ROLE_COLOR_WELL = 48;
+  ROLE_COMBO_BOX_GROUPING = 49;
+  ROLE_COMBO_BOX_MENU_BUTTON = 50;
+  ROLE_COMPLEMENTARY = 51;
+  ROLE_COMMENT = 52;
+  ROLE_CONTENT_DELETION = 53;
+  ROLE_CONTENT_INSERTION = 54;
+  ROLE_CONTENT_INFO = 55;
+  ROLE_DATE = 56;
+  ROLE_DATE_TIME = 57;
+  ROLE_DEFINITION = 58;
+  ROLE_DESCRIPTION_LIST = 59;
+  ROLE_DESCRIPTION_LIST_DETAIL = 60;
+  ROLE_DESCRIPTION_LIST_TERM = 61;
+  ROLE_DETAILS = 62;
+  ROLE_DIALOG = 63;
+  ROLE_DIRECTORY = 64;
+  ROLE_DISCLOSURE_TRIANGLE = 65;
+  ROLE_DOCUMENT = 66;
+  ROLE_EMBEDDED_OBJECT = 67;
+  ROLE_EMPHASIS = 68;
+  ROLE_FEED = 69;
+  ROLE_FIGURE_CAPTION = 70;
+  ROLE_FIGURE = 71;
+  ROLE_FOOTER = 72;
+  ROLE_FOOTER_AS_NON_LANDMARK = 73;
+  ROLE_FORM = 74;
+  ROLE_GENERIC_CONTAINER = 75;
+  ROLE_GRID = 76;
+  ROLE_HEADER = 77;
+  ROLE_HEADER_AS_NON_LANDMARK = 78;
+  ROLE_HEADING = 79;
+  ROLE_IFRAME = 80;
+  ROLE_IFRAME_PRESENTATIONAL = 81;
+  ROLE_IME_CANDIDATE = 82;
+  ROLE_INPUT_TIME = 83;
+  ROLE_KEYBOARD = 84;
+  ROLE_LEGEND = 85;
+  ROLE_LINE_BREAK = 86;
+  ROLE_LIST_BOX = 87;
+  ROLE_LOG = 88;
+  ROLE_MAIN = 89;
+  ROLE_MARK = 90;
+  ROLE_MARQUEE = 91;
+  ROLE_MATH = 92;
+  ROLE_MENU_BAR = 93;
+  ROLE_MENU_ITEM_CHECK_BOX = 94;
+  ROLE_MENU_ITEM_RADIO = 95;
+  ROLE_MENU_LIST_POPUP = 96;
+  ROLE_METER = 97;
+  ROLE_NAVIGATION = 98;
+  ROLE_NOTE = 99;
+  ROLE_PLUGIN_OBJECT = 100;
+  ROLE_POPUP_BUTTON = 101;
+  ROLE_PORTAL = 102;
+  ROLE_PRE = 103;
+  ROLE_PROGRESS_INDICATOR = 104;
+  ROLE_RADIO_GROUP = 105;
+  ROLE_REGION = 106;
+  ROLE_ROOT_WEB_AREA = 107;
+  ROLE_RUBY = 108;
+  ROLE_RUBY_ANNOTATION = 109;
+  ROLE_SCROLL_BAR = 110;
+  ROLE_SCROLL_VIEW = 111;
+  ROLE_SEARCH = 112;
+  ROLE_SEARCH_BOX = 113;
+  ROLE_SECTION = 114;
+  ROLE_SLIDER = 115;
+  ROLE_SPIN_BUTTON = 116;
+  ROLE_SPLITTER = 117;
+  ROLE_STATUS = 118;
+  ROLE_STRONG = 119;
+  ROLE_SUGGESTION = 120;
+  ROLE_SVG_ROOT = 121;
+  ROLE_TAB = 122;
+  ROLE_TAB_LIST = 123;
+  ROLE_TAB_PANEL = 124;
+  ROLE_TERM = 125;
+  ROLE_TEXT_FIELD_WITH_COMBO_BOX = 126;
+  ROLE_TIME = 127;
+  ROLE_TIMER = 128;
+  ROLE_TITLE_BAR = 129;
+  ROLE_TOOLBAR = 130;
+  ROLE_TOOLTIP = 131;
+  ROLE_TREE = 132;
+  ROLE_TREE_GRID = 133;
+  ROLE_VIDEO = 134;
+  ROLE_WEB_VIEW = 135;
+  ROLE_WINDOW = 136;
 
-  PDF_ACTIONABLE_HIGHLIGHT = 137;
-  PDF_ROOT = 138;
+  ROLE_PDF_ACTIONABLE_HIGHLIGHT = 137;
+  ROLE_PDF_ROOT = 138;
 
   // --------------------------------------------------------------
   // ARIA Graphics module roles:
   // https://rawgit.com/w3c/graphics-aam/master/#mapping_role_table
-  GRAPHICS_DOCUMENT = 139;
-  GRAPHICS_OBJECT = 140;
-  GRAPHICS_SYMBOL = 141;
+  ROLE_GRAPHICS_DOCUMENT = 139;
+  ROLE_GRAPHICS_OBJECT = 140;
+  ROLE_GRAPHICS_SYMBOL = 141;
   // End ARIA Graphics module roles.
   // --------------------------------------------------------------
 
   // --------------------------------------------------------------
   // DPub Roles:
   // https://www.w3.org/TR/dpub-aam-1.0/#mapping_role_table
-  DOC_ABSTRACT = 142;
-  DOC_ACKNOWLEDGEMENTS = 143;
-  DOC_AFTERWORD = 144;
-  DOC_APPENDIX = 145;
-  DOC_BACK_LINK = 146;
-  DOC_BIBLIO_ENTRY = 147;
-  DOC_BIBLIOGRAPHY = 148;
-  DOC_BIBLIO_REF = 149;
-  DOC_CHAPTER = 150;
-  DOC_COLOPHON = 151;
-  DOC_CONCLUSION = 152;
-  DOC_COVER = 153;
-  DOC_CREDIT = 154;
-  DOC_CREDITS = 155;
-  DOC_DEDICATION = 156;
-  DOC_ENDNOTE = 157;
-  DOC_ENDNOTES = 158;
-  DOC_EPIGRAPH = 159;
-  DOC_EPILOGUE = 160;
-  DOC_ERRATA = 161;
-  DOC_EXAMPLE = 162;
-  DOC_FOOTNOTE = 163;
-  DOC_FOREWORD = 164;
-  DOC_GLOSSARY = 165;
-  DOC_GLOSS_REF = 166;
-  DOC_INDEX = 167;
-  DOC_INTRODUCTION = 168;
-  DOC_NOTE_REF = 169;
-  DOC_NOTICE = 170;
-  DOC_PAGE_BREAK = 171;
-  DOC_PAGE_FOOTER = 172;
-  DOC_PAGE_HEADER = 173;
-  DOC_PAGE_LIST = 174;
-  DOC_PART = 175;
-  DOC_PREFACE = 176;
-  DOC_PROLOGUE = 177;
-  DOC_PULLQUOTE = 178;
-  DOC_QNA = 179;
-  DOC_SUBTITLE = 180;
-  DOC_TIP = 181;
-  DOC_TOC = 182;
+  ROLE_DOC_ABSTRACT = 142;
+  ROLE_DOC_ACKNOWLEDGEMENTS = 143;
+  ROLE_DOC_AFTERWORD = 144;
+  ROLE_DOC_APPENDIX = 145;
+  ROLE_DOC_BACK_LINK = 146;
+  ROLE_DOC_BIBLIO_ENTRY = 147;
+  ROLE_DOC_BIBLIOGRAPHY = 148;
+  ROLE_DOC_BIBLIO_REF = 149;
+  ROLE_DOC_CHAPTER = 150;
+  ROLE_DOC_COLOPHON = 151;
+  ROLE_DOC_CONCLUSION = 152;
+  ROLE_DOC_COVER = 153;
+  ROLE_DOC_CREDIT = 154;
+  ROLE_DOC_CREDITS = 155;
+  ROLE_DOC_DEDICATION = 156;
+  ROLE_DOC_ENDNOTE = 157;
+  ROLE_DOC_ENDNOTES = 158;
+  ROLE_DOC_EPIGRAPH = 159;
+  ROLE_DOC_EPILOGUE = 160;
+  ROLE_DOC_ERRATA = 161;
+  ROLE_DOC_EXAMPLE = 162;
+  ROLE_DOC_FOOTNOTE = 163;
+  ROLE_DOC_FOREWORD = 164;
+  ROLE_DOC_GLOSSARY = 165;
+  ROLE_DOC_GLOSS_REF = 166;
+  ROLE_DOC_INDEX = 167;
+  ROLE_DOC_INTRODUCTION = 168;
+  ROLE_DOC_NOTE_REF = 169;
+  ROLE_DOC_NOTICE = 170;
+  ROLE_DOC_PAGE_BREAK = 171;
+  ROLE_DOC_PAGE_FOOTER = 172;
+  ROLE_DOC_PAGE_HEADER = 173;
+  ROLE_DOC_PAGE_LIST = 174;
+  ROLE_DOC_PART = 175;
+  ROLE_DOC_PREFACE = 176;
+  ROLE_DOC_PROLOGUE = 177;
+  ROLE_DOC_PULLQUOTE = 178;
+  ROLE_DOC_QNA = 179;
+  ROLE_DOC_SUBTITLE = 180;
+  ROLE_DOC_TIP = 181;
+  ROLE_DOC_TOC = 182;
   // End DPub roles.
   // --------------------------------------------------------------
 
   // LIST_GRID behaves similar to an ARIA grid but is primarily used by
   // Chromium's TableView and its subclasses, so that they could be exposed
   // correctly on certain platforms.
-  LIST_GRID = 183;
+  ROLE_LIST_GRID = 183;
 
   // Chromium internal
   // TBD: Do we need this for any anticipated use case of AccessKit?
-  DESKTOP = 184;
+  ROLE_DESKTOP = 184;
 }
 
 message Rect {
@@ -296,127 +296,131 @@ message RelativeBounds {
 // object, e.g. "FOCUS".
 enum Action {
   // Do the default action for an object, typically this means "click".
-  DO_DEFAULT = 0;
+  ACTION_DO_DEFAULT = 0;
 
   // Request image annotations for all the eligible images on a page.
-  ANNOTATE_PAGE_IMAGES = 1;
+  ACTION_ANNOTATE_PAGE_IMAGES = 1;
 
-  BLUR = 2;
+  ACTION_BLUR = 2;
 
   // Notifies a node that it no longer has accessibility focus.
   // Currently used only on Android and only internally, it's not
   // exposed to the open web. See SET_ACCESSIBILITY_FOCUS, below.
-  CLEAR_ACCESSIBILITY_FOCUS = 3;
+  ACTION_CLEAR_ACCESSIBILITY_FOCUS = 3;
 
   // Collapse the collapsible node.
-  COLLAPSE = 4;
+  ACTION_COLLAPSE = 4;
 
-  CUSTOM_ACTION = 5;
+  ACTION_CUSTOM_ACTION = 5;
 
   // Decrement a slider or range control by one step value.
-  DECREMENT = 6;
+  ACTION_DECREMENT = 6;
 
   // Expand the expandable node.
-  EXPAND = 7;
+  ACTION_EXPAND = 7;
 
-  FOCUS = 8;
+  ACTION_FOCUS = 8;
 
   // Return the content of this image object in the image_data attribute.
-  GET_IMAGE_DATA = 9;
+  ACTION_GET_IMAGE_DATA = 9;
 
   // Gets the bounding rect for a range of text.
-  GET_TEXT_LOCATION = 10;
+  ACTION_GET_TEXT_LOCATION = 10;
 
-  HIDE_TOOLTIP = 11;
+  ACTION_HIDE_TOOLTIP = 11;
 
   // Given a point, find the object it corresponds to and fire a
   // |ActionRequest.hit_test_event_to_fire| event on it in response.
-  HIT_TEST = 12;
+  ACTION_HIT_TEST = 12;
 
   // Increment a slider or range control by one step value.
-  INCREMENT = 13;
+  ACTION_INCREMENT = 13;
 
   // Request that the tree source invalidate its entire tree.
-  INVALIDATE_TREE = 14;
+  ACTION_INVALIDATE_TREE = 14;
 
   // Load inline text boxes for this subtree, providing information
   // about word boundaries, line layout, and individual character
   // bounding boxes.
-  LOAD_INLINE_TEXT_BOXES = 15;
+  ACTION_LOAD_INLINE_TEXT_BOXES = 15;
 
   // Delete any selected text in the control's text value and
   // insert |ActionRequest.value| in its place, like when typing or pasting.
-  REPLACE_SELECTED_TEXT = 16;
+  ACTION_REPLACE_SELECTED_TEXT = 16;
 
   // Scrolls by approximately one screen in a specific direction. Should be
   // called on a node that has scrollable boolean set to true.
-  SCROLL_BACKWARD = 17;
-  SCROLL_DOWN = 18;
-  SCROLL_FORWARD = 19;
-  SCROLL_LEFT = 20;
-  SCROLL_RIGHT = 21;
-  SCROLL_UP = 22;
+  ACTION_SCROLL_BACKWARD = 17;
+  ACTION_SCROLL_DOWN = 18;
+  ACTION_SCROLL_FORWARD = 19;
+  ACTION_SCROLL_LEFT = 20;
+  ACTION_SCROLL_RIGHT = 21;
+  ACTION_SCROLL_UP = 22;
 
   // Scroll any scrollable containers to make the target object visible
   // on the screen.  Optionally pass a subfocus rect in
   // ActionRequest.target_rect, in node-local coordinates.
-  SCROLL_INTO_VIEW = 23;
+  ACTION_SCROLL_INTO_VIEW = 23;
 
   // Scroll the given object to a specified point on the screen in
   // global screen coordinates. Pass a point in ActionRequest.target_point.
-  SCROLL_TO_POINT = 24;
+  ACTION_SCROLL_TO_POINT = 24;
 
   // Notifies a node that it has accessibility focus.
   // Currently used only on Android and only internally, it's not
   // exposed to the open web. See CLEAR_ACCESSIBILITY_FOCUS, above.
-  SET_ACCESSIBILITY_FOCUS = 25;
+  ACTION_SET_ACCESSIBILITY_FOCUS = 25;
 
-  SET_SCROLL_OFFSET = 26;
-  SET_SELECTION = 27;
+  ACTION_SET_SCROLL_OFFSET = 26;
+  ACTION_SET_SELECTION = 27;
 
   // Don't focus this node, but set it as the sequential focus navigation
   // starting point, so that pressing Tab moves to the next element
   // following this one, for example.
-  SET_SEQUENTIAL_FOCUS_NAVIGATION_STARTING_POINT = 28;
+  ACTION_SET_SEQUENTIAL_FOCUS_NAVIGATION_STARTING_POINT = 28;
 
   // Replace the value of the control with ActionRequest.value and
   // reset the selection, if applicable.
-  SET_VALUE = 29;
+  ACTION_SET_VALUE = 29;
 
-  SHOW_CONTEXT_MENU = 30;
-  SHOW_TOOLTIP = 31;
+  ACTION_SHOW_CONTEXT_MENU = 30;
+  ACTION_SHOW_TOOLTIP = 31;
 }
 
 enum MarkerType {
-  NO_MARKER = 0;
-  SPELLING_ERROR = 1;
-  GRAMMAR_ERROR = 2;
-  SEARCH_MATCH = 3;
-  ACTIVE_SUGGESTION = 4;
-  SUGGESTION_MARKER = 5; // name chosen to avoid conflict with SUGGESTION role
+  MARKER_TYPE_NONE = 0;
+  MARKER_TYPE_SPELLING_ERROR = 1;
+  MARKER_TYPE_GRAMMAR_ERROR = 2;
+  MARKER_TYPE_SEARCH_MATCH = 3;
+  MARKER_TYPE_ACTIVE_SUGGESTION = 4;
+  MARKER_TYPE_SUGGESTION = 5;
 }
 
 enum TextDirection {
-  LEFT_TO_RIGHT = 0;
-  RIGHT_TO_LEFT = 1;
-  TOP_TO_BOTTOM = 2;
-  BOTTOM_TO_TOP = 3;
+  TEXT_DIRECTION_LEFT_TO_RIGHT = 0;
+  TEXT_DIRECTION_RIGHT_TO_LEFT = 1;
+  TEXT_DIRECTION_TOP_TO_BOTTOM = 2;
+  TEXT_DIRECTION_BOTTOM_TO_TOP = 3;
 }
 
 enum InvalidState {
-  VALID = 0;
-  INVALID = 1;
-  OTHER_INVALID_STATE = 2;
+  INVALID_STATE_FALSE = 0;
+  INVALID_STATE_TRUE = 1;
+  INVALID_STATE_OTHER = 2;
 }
 
+// To determine whether to use CHECKED_STATE_NONE or CHECKED_STATE_FALSE,
+// consider whether a screen reader should explicitly announce that
+// the node is not checked.
 enum CheckedState {
-  NOT_CHECKED = 0;
-  CHECKED = 1;
-  MIXED = 2;
+  CHECKED_STATE_NONE = 0;
+  CHECKED_STATE_FALSE = 1;
+  CHECKED_STATE_TRUE = 2;
+  CHECKED_STATE_MIXED = 3;
 }
 
 enum NameFrom {
-  UNKNOWN_NAME_ORIGIN = 0;
+  NAME_FROM_NONE = 0;
 
   // E.g. aria-label.
   NAME_FROM_ATTRIBUTE = 1;
@@ -441,7 +445,7 @@ enum NameFrom {
 }
 
 enum DescriptionFrom {
-  UNKNOWN_DESCRIPTION_ORIGIN = 0;
+  DESCRIPTION_FROM_NONE = 0;
   DESCRIPTION_FROM_ARIA_DESCRIPTION = 1;
 
   // HTML-AAM 5.2.2
@@ -466,34 +470,34 @@ enum DescriptionFrom {
 // object, e.g. "PRESS", not what happens to the object as a result.
 // Only one verb can be used at a time to describe the default action.
 enum DefaultActionVerb {
-  NO_DEFAULT_ACTION = 0;
-  ACTIVATE = 1;
-  CHECK = 2;
-  CLICK = 3;
+  DEFAULT_ACTION_VERB_NONE = 0;
+  DEFAULT_ACTION_VERB_ACTIVATE = 1;
+  DEFAULT_ACTION_VERB_CHECK = 2;
+  DEFAULT_ACTION_VERB_CLICK = 3;
 
   // A click will be performed on one of the node's ancestors.
   // This happens when the node itself is not clickable, but one of its
   // ancestors has click handlers attached which are able to capture the click
   // as it bubbles up.
-  CLICK_ANCESTOR = 4;
+  DEFAULT_ACTION_VERB_CLICK_ANCESTOR = 4;
 
-  JUMP = 5;
-  OPEN = 6;
-  PRESS = 7;
-  SELECT = 8;
-  UNCHECK = 9;
+  DEFAULT_ACTION_VERB_JUMP = 5;
+  DEFAULT_ACTION_VERB_OPEN = 6;
+  DEFAULT_ACTION_VERB_PRESS = 7;
+  DEFAULT_ACTION_VERB_SELECT = 8;
+  DEFAULT_ACTION_VERB_UNCHECK = 9;
 }
 
 enum SortDirection {
-  NO_SORT_DIRECTION = 0;
-  UNSORTED = 1;
-  ASCENDING = 2;
-  DESCENDING = 3;
-  OTHER_SORT_DIRECTION = 4;
+  SORT_DIRECTION_NONE = 0;
+  SORT_DIRECTION_UNSORTED = 1;
+  SORT_DIRECTION_ASCENDING = 2;
+  SORT_DIRECTION_DESCENDING = 3;
+  SORT_DIRECTION_OTHER = 4;
 }
 
-enum AriaCurrentState {
-  NO_ARIA_CURRENT = 0;
+enum AriaCurrent {
+  ARIA_CURRENT_NONE = 0;
   ARIA_CURRENT_FALSE = 1;
   ARIA_CURRENT_TRUE = 2;
   ARIA_CURRENT_PAGE = 3;
@@ -514,39 +518,39 @@ enum HasPopup {
 }
 
 enum ListStyle {
-  NO_LIST_STYLE = 0;
-  CIRCLE_LIST_STYLE = 1;
-  DISC_LIST_STYLE = 2;
-  IMAGE_LIST_STYLE = 3;
-  NUMERIC_LIST_STYLE = 4;
-  SQUARE_LIST_STYLE = 5;
+  LIST_STYLE_NONE = 0;
+  LIST_STYLE_CIRCLE = 1;
+  LIST_STYLE_DISC = 2;
+  LIST_STYLE_IMAGE = 3;
+  LIST_STYLE_NUMERIC = 4;
+  LIST_STYLE_SQUARE = 5;
 
   // Language specific ordering (alpha, roman, cjk-ideographic, etc...)
-  OTHER_LIST_STYLE = 6;
+  LIST_STYLE_OTHER = 6;
 }
 
 // Types of text alignment according to the IAccessible2 Object Attributes spec.
 enum TextAlign {
-  NO_ALIGN = 0;
-  LEFT_ALIGN = 1;
-  RIGHT_ALIGN = 2;
-  CENTER = 3;
-  JUSTIFY = 4;
+  TEXT_ALIGN_NONE = 0;
+  TEXT_ALIGN_LEFT = 1;
+  TEXT_ALIGN_RIGHT = 2;
+  TEXT_ALIGN_CENTER = 3;
+  TEXT_ALIGN_JUSTIFY = 4;
 }
 
-enum TextPosition {
-  NORMAL_TEXT_POSITION = 0;
-  SUBSCRIPT = 1;
-  SUPERSCRIPT = 2;
+enum VerticalOffset {
+  VERTICAL_OFFSET_NONE = 0;
+  VERTICAL_OFFSET_SUBSCRIPT = 1;
+  VERTICAL_OFFSET_SUPERSCRIPT = 2;
 }
 
 enum TextDecorationStyle {
-  NO_DECORATION = 0;
-  DOTTED = 1;
-  DASHED = 2;
-  SOLID = 3;
-  DOUBLE = 4;
-  WAVY = 5;
+  TEXT_DECORATION_STYLE_NONE = 0;
+  TEXT_DECORATION_STYLE_DOTTED = 1;
+  TEXT_DECORATION_STYLE_DASHED = 2;
+  TEXT_DECORATION_STYLE_SOLID = 3;
+  TEXT_DECORATION_STYLE_DOUBLE = 4;
+  TEXT_DECORATION_STYLE_WAVY = 5;
 }
 
 // A single accessible object. A complete UI is represented as a tree of these.
@@ -641,7 +645,7 @@ message Node {
   // if a web DOM element has an aria-invalid attribute.
   InvalidState invalid_state = 44;
 
-  // Only used when invalid_state == OTHER_INVALID_STATE.
+  // Only used when invalid_state == INVALID_STATE_OTHER.
   google.protobuf.StringValue aria_invalid_value = 45;
 
   google.protobuf.StringValue auto_complete = 46;
@@ -822,7 +826,7 @@ message Node {
   // For the COLOR_WELL role, specifies the selected color in RGBA.
   google.protobuf.Int32Value color_value = 128;
 
-  AriaCurrentState aria_current_state = 129;
+  AriaCurrent aria_current = 129;
 
   // Text attributes.
 
@@ -838,8 +842,8 @@ message Node {
   // Specifies the alignment of the text, e.g. left, center, right, justify
   TextAlign text_align = 134;
 
-  // Specifies the position of the text, e.g., subscript.
-  TextPosition text_position = 135;
+  // Specifies the vertical offset of the text, e.g., subscript.
+  VerticalOffset vertical_offset = 135;
 
   bool bold = 136;
   bool italic = 137;
