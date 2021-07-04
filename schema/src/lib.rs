@@ -352,11 +352,13 @@ pub enum TextDirection {
     BottomToTop,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// Indicates if a form control has invalid input or
+/// if a web DOM element has an aria-invalid attribute.
+#[derive(Clone, Debug, PartialEq)]
 pub enum InvalidState {
     False,
     True,
-    Other,
+    Other(String),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -670,11 +672,7 @@ pub struct Node {
 
     pub access_key: Option<String>,
 
-    /// Indicates if a form control has invalid input or
-    /// if a web DOM element has an aria-invalid attribute.
     pub invalid_state: Option<InvalidState>,
-    /// Only used when [`Node::invalid_state`] is [`InvalidState::Other`].
-    pub aria_invalid_value: Option<String>,
 
     pub auto_complete: Option<String>,
 
