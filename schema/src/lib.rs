@@ -510,6 +510,14 @@ pub struct TextMarker {
     pub range: Range<usize>,
 }
 
+/// Defines a custom action for a UI element. For example, a list UI
+/// can allow a user to reorder items in the list by dragging the items.
+#[derive(Clone, PartialEq)]
+pub struct CustomAction {
+    pub id: i32,
+    pub description: String,
+}
+
 /// A single accessible object. A complete UI is represented as a tree of these.
 #[derive(Clone, PartialEq)]
 pub struct Node {
@@ -666,13 +674,7 @@ pub struct Node {
     /// For inline text. The UTF-8 code unit indices of each word.
     pub words: Vec<Range<usize>>,
 
-    /// Defines custom actions for a UI element. For example, a list UI
-    /// can allow a user to reorder items in the list by dragging the items.
-    // TBD: Are these node IDs or something else? Need to research in Chromium.
-    pub custom_action_ids: Vec<i32>,
-    /// Descriptions for custom actions. This must be aligned with
-    /// [`Node::custom_action_ids`].
-    pub custom_action_descriptions: Vec<String>,
+    pub custom_actions: Vec<CustomAction>,
 
     pub access_key: Option<String>,
 
