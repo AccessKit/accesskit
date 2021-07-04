@@ -609,7 +609,7 @@ pub struct Node {
 
     /// Indicates whether this node can be grabbed for drag-and-drop operation.
     /// Setting this flag to false rather than omitting it means that
-    // this node is not currently grabbed but it can be.
+    /// this node is not currently grabbed but it can be.
     /// Note: aria-grabbed is deprecated in WAI-ARIA 1.1.
     pub grabbed: Option<bool>,
 
