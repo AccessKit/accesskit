@@ -538,6 +538,84 @@ pub struct Node {
     pub richly_editable: bool,
     pub visited: bool,
 
+    pub busy: bool,
+
+    /// The object functions as a text field which exposes its descendants.
+    /// Use cases include the root of a content-editable region, an ARIA
+    /// textbox which isn't currently editable and which has interactive
+    /// descendants, and a <body> element that has "design-mode" set to "on".
+    pub nonatomic_text_field_root: bool,
+
+    // Live region attributes.
+    pub container_live_atomic: bool,
+    pub container_live_busy: bool,
+    pub live_atomic: bool,
+
+    /// If a dialog box is marked as explicitly modal
+    pub modal: bool,
+
+    /// Set on a canvas element if it has fallback content.
+    pub canvas_has_fallback: bool,
+
+    /// Indicates this node is user-scrollable, e.g. overflow:scroll|auto, as
+    /// opposed to only programmatically scrollable, like overflow:hidden, or
+    /// not scrollable at all, e.g. overflow:visible.
+    pub scrollable: bool,
+
+    /// A hint to clients that the node is clickable.
+    pub clickable: bool,
+
+    /// Indicates that this node clips its children, i.e. may have
+    /// overflow: hidden or clip children by default.
+    pub clips_children: bool,
+
+    /// Indicates that this node is not selectable because the style has
+    /// user-select: none. Note that there may be other reasons why a node is
+    /// not selectable - for example, bullets in a list. However, this attribute
+    /// is only set on user-select: none.
+    pub not_user_selectable_style: bool,
+
+    /// Indicates whether this node is selected or unselected.
+    /// The absence of this flag (as opposed to a false setting)
+    /// means that the concept of "selected" doesn't apply.
+    /// When deciding whether to set the flag to false or omit it,
+    /// consider whether it would be appropriate for a screen reader
+    /// to announce "not selected". The ambiguity of this flag
+    /// in platform accessibility APIs has made extraneous
+    /// "not selected" announcements a common annoyance.
+    pub selected: Option<bool>,
+    /// Indicates whether this node is selected due to selection follows focus.
+    pub selected_from_focus: bool,
+
+    /// Indicates whether this node can be grabbed for drag-and-drop operation.
+    /// Setting this flag to false rather than omitting it means that
+    // this node is not currently grabbed but it can be.
+    /// Note: aria-grabbed is deprecated in WAI-ARIA 1.1.
+    pub grabbed: Option<bool>,
+
+    // For indicating what functions can be performed when a dragged object
+    // is released on the drop target.
+    // Note: aria-dropeffect is deprecated in WAI-ARIA 1.1.
+    pub drop_effect_copy: bool,
+    pub drop_effect_execute: bool,
+    pub drop_effect_link: bool,
+    pub drop_effect_move: bool,
+    pub drop_effect_popup: bool,
+
+    /// Indicates whether this node causes a hard line-break
+    /// (e.g. block level elements, or <br>)
+    pub is_line_breaking_object: bool,
+    /// Indicates whether this node causes a page break
+    pub is_page_breaking_object: bool,
+
+    /// True if the node has any ARIA attributes set.
+    pub has_aria_attribute: bool,
+
+    /// This element allows touches to be passed through when a screen reader
+    /// is in touch exploration mode, e.g. a virtual keyboard normally
+    /// behaves this way.
+    pub touch_pass_through: bool,
+
     /// Unordered set of actions supported by this node.
     pub actions: Vec<Action>,
 
@@ -638,84 +716,6 @@ pub struct Node {
     pub tooltip: Option<String>,
 
     pub url: Option<String>,
-
-    pub busy: bool,
-
-    /// The object functions as a text field which exposes its descendants.
-    /// Use cases include the root of a content-editable region, an ARIA
-    /// textbox which isn't currently editable and which has interactive
-    /// descendants, and a <body> element that has "design-mode" set to "on".
-    pub nonatomic_text_field_root: bool,
-
-    // Live region attributes.
-    pub container_live_atomic: bool,
-    pub container_live_busy: bool,
-    pub live_atomic: bool,
-
-    /// If a dialog box is marked as explicitly modal
-    pub modal: bool,
-
-    /// Set on a canvas element if it has fallback content.
-    pub canvas_has_fallback: bool,
-
-    /// Indicates this node is user-scrollable, e.g. overflow:scroll|auto, as
-    /// opposed to only programmatically scrollable, like overflow:hidden, or
-    /// not scrollable at all, e.g. overflow:visible.
-    pub scrollable: bool,
-
-    /// A hint to clients that the node is clickable.
-    pub clickable: bool,
-
-    /// Indicates that this node clips its children, i.e. may have
-    /// overflow: hidden or clip children by default.
-    pub clips_children: bool,
-
-    /// Indicates that this node is not selectable because the style has
-    /// user-select: none. Note that there may be other reasons why a node is
-    /// not selectable - for example, bullets in a list. However, this attribute
-    /// is only set on user-select: none.
-    pub not_user_selectable_style: bool,
-
-    /// Indicates whether this node is selected or unselected.
-    /// The absence of this flag (as opposed to a false setting)
-    /// means that the concept of "selected" doesn't apply.
-    /// When deciding whether to set the flag to false or omit it,
-    /// consider whether it would be appropriate for a screen reader
-    /// to announce "not selected". The ambiguity of this flag
-    /// in platform accessibility APIs has made extraneous
-    /// "not selected" announcements a common annoyance.
-    pub selected: Option<bool>,
-    /// Indicates whether this node is selected due to selection follows focus.
-    pub selected_from_focus: bool,
-
-    /// Indicates whether this node can be grabbed for drag-and-drop operation.
-    /// Setting this flag to false rather than omitting it means that
-    // this node is not currently grabbed but it can be.
-    /// Note: aria-grabbed is deprecated in WAI-ARIA 1.1.
-    pub grabbed: Option<bool>,
-
-    // For indicating what functions can be performed when a dragged object
-    // is released on the drop target.
-    // Note: aria-dropeffect is deprecated in WAI-ARIA 1.1.
-    pub drop_effect_copy: bool,
-    pub drop_effect_execute: bool,
-    pub drop_effect_link: bool,
-    pub drop_effect_move: bool,
-    pub drop_effect_popup: bool,
-
-    /// Indicates whether this node causes a hard line-break
-    /// (e.g. block level elements, or <br>)
-    pub is_line_breaking_object: bool,
-    /// Indicates whether this node causes a page break
-    pub is_page_breaking_object: bool,
-
-    /// True if the node has any ARIA attributes set.
-    pub has_aria_attribute: bool,
-
-    /// This element allows touches to be passed through when a screen reader
-    /// is in touch exploration mode, e.g. a virtual keyboard normally
-    /// behaves this way.
-    pub touch_pass_through: bool,
 
     pub default_action_verb: Option<DefaultActionVerb>,
 
