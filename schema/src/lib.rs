@@ -7,6 +7,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
+use std::ops::Range;
+
 /// The type of an accessibility node.
 ///
 /// The majority of these roles come from the ARIA specification. Reference
@@ -500,6 +502,14 @@ pub struct RelativeBounds {
     pub transform: Option<Box<Transform>>,
 }
 
+/// A marker spanning a range within text.
+#[derive(Clone, PartialEq)]
+pub struct TextMarker {
+    pub marker_type: MarkerType,
+    /// Indices are in UTF-8 code units.
+    pub range: Range<usize>,
+}
+
 /// A single accessible object. A complete UI is represented as a tree of these.
 #[derive(Clone, PartialEq)]
 pub struct Node {
@@ -642,11 +652,7 @@ pub struct Node {
     pub labelled_by_ids: Vec<NodeId>,
     pub radio_group_ids: Vec<NodeId>,
 
-    // For static text. These lists must be the same size.
-    // The start and end indices are in UTF-8 code units.
-    pub marker_types: Vec<MarkerType>,
-    pub marker_starts: Vec<usize>,
-    pub marker_ends: Vec<usize>,
+    pub markers: Vec<TextMarker>,
 
     pub text_direction: Option<TextDirection>,
     /// For inline text. This is the pixel position of the end of each
@@ -657,10 +663,8 @@ pub struct Node {
     /// is the right coordinate of the second character, and so on.
     pub character_offsets: Vec<f32>,
 
-    // For inline text. These lists must be the same size; they represent
-    // the start and end UTF-8 code unit index of each word within this text.
-    pub word_starts: Vec<usize>,
-    pub word_ends: Vec<usize>,
+    /// For inline text. The UTF-8 code unit indices of each word.
+    pub words: Vec<Range<usize>>,
 
     /// Defines custom actions for a UI element. For example, a list UI
     /// can allow a user to reorder items in the list by dragging the items.
@@ -725,9 +729,8 @@ pub struct Node {
     pub scroll_y_min: Option<f32>,
     pub scroll_y_max: Option<f32>,
 
-    // Attributes for retrieving the endpoints of a selection.
-    pub text_sel_start: Option<usize>,
-    pub text_sel_end: Option<usize>,
+    /// The endpoints of a text selection, in UTF-8 code units.
+    pub text_selection: Option<Range<usize>>,
 
     pub aria_column_count: Option<usize>,
     pub aria_cell_column_index: Option<usize>,
