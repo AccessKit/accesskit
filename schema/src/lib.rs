@@ -771,14 +771,14 @@ pub struct Node {
     pub pos_in_set: Option<usize>,
 
     /// For [`Role::ColorWell`], specifies the selected color in RGBA.
-    pub color_value: Option<i32>,
+    pub color_value: Option<u32>,
 
     pub aria_current: Option<AriaCurrent>,
 
     /// Background color in RGBA.
-    pub background_color: Option<i32>,
+    pub background_color: Option<u32>,
     /// Foreground color in RGBA.
-    pub foreground_color: Option<i32>,
+    pub foreground_color: Option<u32>,
 
     pub has_popup: Option<HasPopup>,
 
