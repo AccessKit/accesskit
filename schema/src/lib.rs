@@ -698,6 +698,9 @@ pub struct Node {
     pub font_family: Option<String>,
 
     pub html_tag: Option<String>,
+
+    /// Inner HTML of an element. Only used for a top-level math element,
+    /// to support third-party math accessibility products that parse MathML.
     pub inner_html: Option<String>,
 
     pub input_type: Option<String>,
