@@ -353,6 +353,19 @@ pub enum DescriptionFrom {
     Title,
 }
 
+/// Function that can be performed when a dragged object is released
+/// on a drop target.
+/// Note: aria-dropeffect is deprecated in WAI-ARIA 1.1.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum DropEffect {
+    Copy,
+    Execute,
+    Link,
+    Move,
+    Popup,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum MarkerType {
@@ -685,20 +698,8 @@ pub struct Node {
     /// this node is not currently grabbed but it can be.
     /// Note: aria-grabbed is deprecated in WAI-ARIA 1.1.
     pub grabbed: Option<bool>,
-
-    // For indicating what functions can be performed when a dragged object
-    // is released on the drop target.
-    // Note: aria-dropeffect is deprecated in WAI-ARIA 1.1.
     #[serde(default)]
-    pub drop_effect_copy: bool,
-    #[serde(default)]
-    pub drop_effect_execute: bool,
-    #[serde(default)]
-    pub drop_effect_link: bool,
-    #[serde(default)]
-    pub drop_effect_move: bool,
-    #[serde(default)]
-    pub drop_effect_popup: bool,
+    pub drop_effects: HashSet<DropEffect>,
 
     /// Indicates whether this node causes a hard line-break
     /// (e.g. block level elements, or <br>)
