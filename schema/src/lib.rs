@@ -23,6 +23,7 @@ use std::ops::Range;
 /// of [`Role::Unknown`]). This is more efficient in serialization formats
 /// where integers use a variable-length encoding.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum Role {
     Unknown,
     InlineTextBox,
@@ -238,6 +239,7 @@ pub enum Role {
 /// In contrast to [`DefaultActionVerb`], these describe what happens to the
 /// object, e.g. "focus".
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum Action {
     /// Do the default action for an object, typically this means "click".
     Default,
@@ -309,6 +311,7 @@ pub enum Action {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum NameFrom {
     /// E.g. `aria-label`.
     Attribute,
@@ -327,6 +330,7 @@ pub enum NameFrom {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum DescriptionFrom {
     AriaDescription,
     /// HTML-AAM 5.2.2
@@ -341,6 +345,7 @@ pub enum DescriptionFrom {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum MarkerType {
     SpellingError,
     GrammarError,
@@ -350,6 +355,7 @@ pub enum MarkerType {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum TextDirection {
     LeftToRight,
     RightToLeft,
@@ -360,6 +366,7 @@ pub enum TextDirection {
 /// Indicates if a form control has invalid input or
 /// if a web DOM element has an aria-invalid attribute.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum InvalidState {
     False,
     True,
@@ -367,6 +374,7 @@ pub enum InvalidState {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum CheckedState {
     False,
     True,
@@ -379,6 +387,7 @@ pub enum CheckedState {
 /// object, e.g. "press", not what happens to the object as a result.
 /// Only one verb can be used at a time to describe the default action.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum DefaultActionVerb {
     Activate,
     Check,
@@ -396,6 +405,7 @@ pub enum DefaultActionVerb {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum SortDirection {
     Unsorted,
     Ascending,
@@ -404,6 +414,7 @@ pub enum SortDirection {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum AriaCurrent {
     False,
     True,
@@ -415,6 +426,7 @@ pub enum AriaCurrent {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum HasPopup {
     True,
     Menu,
@@ -425,6 +437,7 @@ pub enum HasPopup {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum ListStyle {
     Circle,
     Disc,
@@ -436,6 +449,7 @@ pub enum ListStyle {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum TextAlign {
     Left,
     Right,
@@ -444,12 +458,14 @@ pub enum TextAlign {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum VerticalOffset {
     Subscript,
     Superscript,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum TextDecoration {
     Solid,
     Dotted,
@@ -470,6 +486,7 @@ pub struct TreeId(String);
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct Rect {
     pub left: f32,
     pub top: f32,
@@ -501,6 +518,7 @@ pub struct Transform {
 /// to its immediate containing node.
 #[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct RelativeBounds {
     /// The ID of an ancestor node in the same Tree that this object's
     /// bounding box is relative to.
@@ -517,6 +535,7 @@ pub struct RelativeBounds {
 /// A marker spanning a range within text.
 #[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct TextMarker {
     pub marker_type: MarkerType,
     /// Indices are in UTF-8 code units.
@@ -527,6 +546,7 @@ pub struct TextMarker {
 /// can allow a user to reorder items in the list by dragging the items.
 #[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct CustomAction {
     pub id: i32,
     pub description: String,
@@ -535,6 +555,7 @@ pub struct CustomAction {
 /// A single accessible object. A complete UI is represented as a tree of these.
 #[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct Node {
     pub id: NodeId,
     pub role: Role,
@@ -895,6 +916,7 @@ pub struct Node {
 /// tree and not associated with any particular node.
 #[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct Tree {
     pub id: TreeId,
 
@@ -918,6 +940,7 @@ pub struct Tree {
 /// Trying to apply it to the wrong tree should immediately panic.
 #[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct TreeUpdate {
     /// The optional ID of a node to clear, before applying any updates.
     /// Clearing a node means deleting all of its children and their descendants,
