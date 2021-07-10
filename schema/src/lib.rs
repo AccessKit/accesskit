@@ -457,9 +457,10 @@ pub enum TextDecoration {
     Wavy,
 }
 
-// TBD: Should this be a struct? We want it to serialize as just an integer.
+/// The stable identity of a node, unique within the node's tree.
 // This is NonZeroU64 because we regularly store Option<NodeId>.
-pub type NodeId = std::num::NonZeroU64;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+pub struct NodeId(std::num::NonZeroU64);
 
 #[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
 #[serde(deny_unknown_fields)]
