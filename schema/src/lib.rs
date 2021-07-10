@@ -575,10 +575,10 @@ pub struct Node {
 
     #[serde(default)]
     pub autofill_available: bool,
-    #[serde(default)]
-    pub collapsed: bool,
-    #[serde(default)]
-    pub expanded: bool,
+    /// Whether this node is expanded, collapsed, or neither. Setting this
+    /// to false means the node is collapsed; omitting it means this state
+    /// isn't applicable.
+    pub expanded: Option<bool>,
     #[serde(default)]
     pub default: bool,
     #[serde(default)]
