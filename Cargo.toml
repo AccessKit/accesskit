@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "schema",
+]
+default-members = [
+    "schema",
+]
