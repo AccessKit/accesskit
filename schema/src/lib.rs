@@ -462,6 +462,11 @@ pub enum TextDecoration {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub struct NodeId(std::num::NonZeroU64);
 
+/// The globally unique ID of a tree. The format of this ID
+/// is up to the implementer. A UUID v4 is a safe choice.
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+pub struct TreeId(String);
+
 #[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Rect {
@@ -746,7 +751,7 @@ pub struct Node {
     pub checked_state: Option<CheckedState>,
     pub checked_state_description: Option<String>,
 
-    pub child_tree_id: Option<String>,
+    pub child_tree_id: Option<TreeId>,
 
     pub class_name: Option<String>,
 
@@ -890,16 +895,14 @@ pub struct Node {
 #[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Tree {
-    /// The globally unique ID of this tree. The format of this ID
-    /// is up to the implementer. A UUID v4 is a safe choice.
-    pub id: String,
+    pub id: TreeId,
 
     /// The ID of the tree that this tree is contained in, if any.
-    pub parent_tree_id: Option<String>,
+    pub parent_tree_id: Option<TreeId>,
 
     /// The ID of the tree that has focus, if it's not this tree
     /// but a descendant of it.
-    pub focused_tree_id: Option<String>,
+    pub focused_tree_id: Option<TreeId>,
     /// The node with keyboard focus within this tree, if any.
     pub focused_node_id: Option<NodeId>,
 
