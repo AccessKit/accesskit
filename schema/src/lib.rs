@@ -9,6 +9,7 @@
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::ops::Range;
 
 /// The type of an accessibility node.
@@ -692,7 +693,7 @@ pub struct Node {
 
     /// Unordered set of actions supported by this node.
     #[serde(default)]
-    pub actions: Vec<Action>,
+    pub actions: HashSet<Action>,
 
     /// Ids of nodes that are children of this node logically, but are
     /// not children of this node in the tree structure. As an example,
