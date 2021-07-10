@@ -609,8 +609,6 @@ pub struct Node {
     #[serde(default)]
     pub required: bool,
     #[serde(default)]
-    pub richly_editable: bool,
-    #[serde(default)]
     pub visited: bool,
 
     #[serde(default)]
