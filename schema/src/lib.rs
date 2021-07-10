@@ -492,7 +492,7 @@ pub struct Transform {
 /// walking up the tree and applying node offsets and transforms until reaching
 /// the top.
 ///
-/// If [`RelativeBounds::offset_container_id`] is present, the bounds
+/// If [`RelativeBounds::offset_container`] is present, the bounds
 /// are relative to the node with that ID.
 ///
 /// Otherwise, for a node other than the root, the bounds are relative to
@@ -503,7 +503,7 @@ pub struct Transform {
 pub struct RelativeBounds {
     /// The ID of an ancestor node in the same Tree that this object's
     /// bounding box is relative to.
-    pub offset_container_id: Option<NodeId>,
+    pub offset_container: Option<NodeId>,
     /// The relative bounding box of this node.
     pub bounds: Rect,
     /// An additional transform to apply to position this object and its subtree.
@@ -539,7 +539,7 @@ pub struct Node {
     pub role: Role,
     pub bounds: Option<RelativeBounds>,
     #[serde(default)]
-    pub child_ids: Vec<NodeId>,
+    pub children: Vec<NodeId>,
 
     pub name: Option<String>,
     /// What information was used to compute the object's name.
@@ -699,28 +699,28 @@ pub struct Node {
     /// a table cell is a child of a row, and an 'indirect' child of a
     /// column.
     #[serde(default)]
-    pub indirect_child_ids: Vec<NodeId>,
+    pub indirect_children: Vec<NodeId>,
 
     // Relationships between this node and other nodes.
-    pub active_descendant_id: Option<NodeId>,
-    pub error_message_id: Option<NodeId>,
-    pub in_page_link_target_id: Option<NodeId>,
-    pub member_of_id: Option<NodeId>,
-    pub next_on_line_id: Option<NodeId>,
-    pub previous_on_line_id: Option<NodeId>,
-    pub popup_for_id: Option<NodeId>,
+    pub active_descendant: Option<NodeId>,
+    pub error_message: Option<NodeId>,
+    pub in_page_link_target: Option<NodeId>,
+    pub member_of: Option<NodeId>,
+    pub next_on_line: Option<NodeId>,
+    pub previous_on_line: Option<NodeId>,
+    pub popup_for: Option<NodeId>,
     #[serde(default)]
-    pub controls_ids: Vec<NodeId>,
+    pub controls: Vec<NodeId>,
     #[serde(default)]
-    pub details_ids: Vec<NodeId>,
+    pub details: Vec<NodeId>,
     #[serde(default)]
-    pub described_by_ids: Vec<NodeId>,
+    pub described_by: Vec<NodeId>,
     #[serde(default)]
-    pub flow_to_ids: Vec<NodeId>,
+    pub flow_to: Vec<NodeId>,
     #[serde(default)]
-    pub labelled_by_ids: Vec<NodeId>,
+    pub labelled_by: Vec<NodeId>,
     #[serde(default)]
-    pub radio_group_ids: Vec<NodeId>,
+    pub radio_groups: Vec<NodeId>,
 
     #[serde(default)]
     pub markers: Vec<TextMarker>,
@@ -751,7 +751,7 @@ pub struct Node {
     pub checked_state: Option<CheckedState>,
     pub checked_state_description: Option<String>,
 
-    pub child_tree_id: Option<TreeId>,
+    pub child_tree: Option<TreeId>,
 
     pub class_name: Option<String>,
 
@@ -813,15 +813,15 @@ pub struct Node {
     // Table attributes.
     pub table_row_count: Option<usize>,
     pub table_column_count: Option<usize>,
-    pub table_header_id: Option<NodeId>,
+    pub table_header: Option<NodeId>,
 
     // Table row attributes.
     pub table_row_index: Option<usize>,
-    pub table_row_header_id: Option<NodeId>,
+    pub table_row_header: Option<NodeId>,
 
     // Table column attributes.
     pub table_column_index: Option<usize>,
-    pub table_column_header_id: Option<NodeId>,
+    pub table_column_header: Option<NodeId>,
 
     // Table cell attributes.
     pub table_cell_column_index: Option<usize>,
@@ -871,8 +871,8 @@ pub struct Node {
     pub underline: Option<TextDecoration>,
 
     // Focus traversal order.
-    pub previous_focus_id: Option<NodeId>,
-    pub next_focus_id: Option<NodeId>,
+    pub previous_focus: Option<NodeId>,
+    pub next_focus: Option<NodeId>,
 
     // Range attributes.
     pub value_for_range: Option<f32>,
@@ -898,18 +898,18 @@ pub struct Tree {
     pub id: TreeId,
 
     /// The ID of the tree that this tree is contained in, if any.
-    pub parent_tree_id: Option<TreeId>,
+    pub parent: Option<TreeId>,
 
     /// The ID of the tree that has focus, if it's not this tree
     /// but a descendant of it.
-    pub focused_tree_id: Option<TreeId>,
+    pub focused_tree: Option<TreeId>,
     /// The node with keyboard focus within this tree, if any.
-    pub focused_node_id: Option<NodeId>,
+    pub focused_node: Option<NodeId>,
 
     /// The node that's used as the root scroller, if any. On some platforms
     /// like Android we need to ignore accessibility scroll offsets for
     /// that node and get them from the viewport instead.
-    pub root_scroller_id: Option<NodeId>,
+    pub root_scroller: Option<NodeId>,
 }
 
 /// A serializable representation of an atomic change to a tree.
@@ -923,7 +923,7 @@ pub struct TreeUpdate {
     /// Clearing a node means deleting all of its children and their descendants,
     /// but leaving that node in the tree. It's an error to clear a node but not
     /// subsequently update it as part of the same `TreeUpdate`.
-    pub node_id_to_clear: Option<NodeId>,
+    pub clear: Option<NodeId>,
 
     /// An ordered list of zero or more node updates to apply to the tree.
     ///
@@ -933,11 +933,11 @@ pub struct TreeUpdate {
     /// * Either:
     ///     1. `node.id` is already in the tree, or
     ///     2. the tree is empty, and `node` is the new root of the tree.
-    /// * Every child ID in `node.child_ids` must either be already a child
+    /// * Every child ID in `node.children` must either be already a child
     ///   of this node, or a new ID not previously in the tree. It is not
     ///   allowed to "reparent" a child to this node without first removing
     ///   that child from its previous parent.
-    /// * When a new ID appears in `node.child_ids`, the tree should create a
+    /// * When a new ID appears in `node.children`, the tree should create a
     ///   new uninitialized placeholder node for it immediately. That
     ///   placeholder must be updated within the same `TreeUpdate`, otherwise
     ///   it's a fatal error. This guarantees the tree is always complete
@@ -952,5 +952,5 @@ pub struct TreeUpdate {
 
     /// The ID of the tree's root node. This is required when the tree
     /// is being initialized or if the root is changing.
-    pub root_id: Option<NodeId>,
+    pub root: Option<NodeId>,
 }
