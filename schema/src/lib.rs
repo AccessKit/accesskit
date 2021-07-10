@@ -7,6 +7,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::ops::Range;
 
@@ -20,7 +21,7 @@ use std::ops::Range;
 /// is ordered roughly by expected usage frequency (with the notable exception
 /// of [`Role::Unknown`]). This is more efficient in serialization formats
 /// where integers use a variable-length encoding.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
 pub enum Role {
     Unknown,
     InlineTextBox,
@@ -235,7 +236,7 @@ pub enum Role {
 /// An action to be taken on an accessibility node.
 /// In contrast to [`DefaultActionVerb`], these describe what happens to the
 /// object, e.g. "focus".
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
 pub enum Action {
     /// Do the default action for an object, typically this means "click".
     Default,
@@ -306,7 +307,7 @@ pub enum Action {
     ShowContextMenu,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
 pub enum NameFrom {
     /// E.g. `aria-label`.
     Attribute,
@@ -324,7 +325,7 @@ pub enum NameFrom {
     Value,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
 pub enum DescriptionFrom {
     AriaDescription,
     /// HTML-AAM 5.2.2
@@ -338,7 +339,7 @@ pub enum DescriptionFrom {
     Title,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
 pub enum MarkerType {
     SpellingError,
     GrammarError,
@@ -347,7 +348,7 @@ pub enum MarkerType {
     Suggestion,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
 pub enum TextDirection {
     LeftToRight,
     RightToLeft,
@@ -357,14 +358,14 @@ pub enum TextDirection {
 
 /// Indicates if a form control has invalid input or
 /// if a web DOM element has an aria-invalid attribute.
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, Serialize)]
 pub enum InvalidState {
     False,
     True,
     Other(String),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
 pub enum CheckedState {
     False,
     True,
@@ -376,7 +377,7 @@ pub enum CheckedState {
 /// In contrast to [`Action`], these describe what the user can do on the
 /// object, e.g. "press", not what happens to the object as a result.
 /// Only one verb can be used at a time to describe the default action.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
 pub enum DefaultActionVerb {
     Activate,
     Check,
@@ -393,7 +394,7 @@ pub enum DefaultActionVerb {
     Select,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
 pub enum SortDirection {
     Unsorted,
     Ascending,
@@ -401,7 +402,7 @@ pub enum SortDirection {
     Other,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
 pub enum AriaCurrent {
     False,
     True,
@@ -412,7 +413,7 @@ pub enum AriaCurrent {
     Time,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
 pub enum HasPopup {
     True,
     Menu,
@@ -422,7 +423,7 @@ pub enum HasPopup {
     Dialog,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
 pub enum ListStyle {
     Circle,
     Disc,
@@ -433,7 +434,7 @@ pub enum ListStyle {
     Other,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
 pub enum TextAlign {
     Left,
     Right,
@@ -441,13 +442,13 @@ pub enum TextAlign {
     Justify,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
 pub enum VerticalOffset {
     Subscript,
     Superscript,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
 pub enum TextDecoration {
     Solid,
     Dotted,
@@ -460,7 +461,7 @@ pub enum TextDecoration {
 // This is NonZeroU64 because we regularly store Option<NodeId>.
 pub type NodeId = std::num::NonZeroU64;
 
-#[derive(Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Rect {
     pub left: f32,
@@ -470,7 +471,7 @@ pub struct Rect {
 }
 
 /// 4x4 transformation matrix.
-#[derive(Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
 #[serde(transparent)]
 pub struct Transform {
     /// Column major order.
@@ -491,7 +492,7 @@ pub struct Transform {
 /// Otherwise, for a node other than the root, the bounds are relative to
 /// the root of the tree, and for the root of a tree, the bounds are relative
 /// to its immediate containing node.
-#[derive(Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct RelativeBounds {
     /// The ID of an ancestor node in the same Tree that this object's
@@ -507,7 +508,7 @@ pub struct RelativeBounds {
 }
 
 /// A marker spanning a range within text.
-#[derive(Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct TextMarker {
     pub marker_type: MarkerType,
@@ -517,7 +518,7 @@ pub struct TextMarker {
 
 /// Defines a custom action for a UI element. For example, a list UI
 /// can allow a user to reorder items in the list by dragging the items.
-#[derive(Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CustomAction {
     pub id: i32,
@@ -525,12 +526,13 @@ pub struct CustomAction {
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
-#[derive(Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Node {
     pub id: NodeId,
     pub role: Role,
     pub bounds: Option<RelativeBounds>,
+    #[serde(default)]
     pub child_ids: Vec<NodeId>,
 
     pub name: Option<String>,
@@ -543,63 +545,92 @@ pub struct Node {
 
     pub value: Option<String>,
 
+    #[serde(default)]
     pub autofill_available: bool,
+    #[serde(default)]
     pub collapsed: bool,
+    #[serde(default)]
     pub expanded: bool,
+    #[serde(default)]
     pub default: bool,
+    #[serde(default)]
     pub editable: bool,
+    #[serde(default)]
     pub focusable: bool,
     /// Grows horizontally, e.g. most toolbars and separators.
+    #[serde(default)]
     pub horizontal: bool,
     /// Grows vertically, e.g. menu or combo box.
+    #[serde(default)]
     pub vertical: bool,
+    #[serde(default)]
     pub hovered: bool,
     /// Skip over this node in the accessibility tree, but keep its subtree.
+    #[serde(default)]
     pub ignored: bool,
+    #[serde(default)]
     pub invisible: bool,
+    #[serde(default)]
     pub linked: bool,
+    #[serde(default)]
     pub multiline: bool,
+    #[serde(default)]
     pub multiselectable: bool,
+    #[serde(default)]
     pub protected: bool,
+    #[serde(default)]
     pub required: bool,
+    #[serde(default)]
     pub richly_editable: bool,
+    #[serde(default)]
     pub visited: bool,
 
+    #[serde(default)]
     pub busy: bool,
 
     /// The object functions as a text field which exposes its descendants.
     /// Use cases include the root of a content-editable region, an ARIA
     /// textbox which isn't currently editable and which has interactive
     /// descendants, and a <body> element that has "design-mode" set to "on".
+    #[serde(default)]
     pub nonatomic_text_field_root: bool,
 
     // Live region attributes.
+    #[serde(default)]
     pub container_live_atomic: bool,
+    #[serde(default)]
     pub container_live_busy: bool,
+    #[serde(default)]
     pub live_atomic: bool,
 
     /// If a dialog box is marked as explicitly modal
+    #[serde(default)]
     pub modal: bool,
 
     /// Set on a canvas element if it has fallback content.
+    #[serde(default)]
     pub canvas_has_fallback: bool,
 
     /// Indicates this node is user-scrollable, e.g. overflow:scroll|auto, as
     /// opposed to only programmatically scrollable, like overflow:hidden, or
     /// not scrollable at all, e.g. overflow:visible.
+    #[serde(default)]
     pub scrollable: bool,
 
     /// A hint to clients that the node is clickable.
+    #[serde(default)]
     pub clickable: bool,
 
     /// Indicates that this node clips its children, i.e. may have
     /// overflow: hidden or clip children by default.
+    #[serde(default)]
     pub clips_children: bool,
 
     /// Indicates that this node is not selectable because the style has
     /// user-select: none. Note that there may be other reasons why a node is
     /// not selectable - for example, bullets in a list. However, this attribute
     /// is only set on user-select: none.
+    #[serde(default)]
     pub not_user_selectable_style: bool,
 
     /// Indicates whether this node is selected or unselected.
@@ -612,6 +643,7 @@ pub struct Node {
     /// "not selected" announcements a common annoyance.
     pub selected: Option<bool>,
     /// Indicates whether this node is selected due to selection follows focus.
+    #[serde(default)]
     pub selected_from_focus: bool,
 
     /// Indicates whether this node can be grabbed for drag-and-drop operation.
@@ -623,33 +655,44 @@ pub struct Node {
     // For indicating what functions can be performed when a dragged object
     // is released on the drop target.
     // Note: aria-dropeffect is deprecated in WAI-ARIA 1.1.
+    #[serde(default)]
     pub drop_effect_copy: bool,
+    #[serde(default)]
     pub drop_effect_execute: bool,
+    #[serde(default)]
     pub drop_effect_link: bool,
+    #[serde(default)]
     pub drop_effect_move: bool,
+    #[serde(default)]
     pub drop_effect_popup: bool,
 
     /// Indicates whether this node causes a hard line-break
     /// (e.g. block level elements, or <br>)
+    #[serde(default)]
     pub is_line_breaking_object: bool,
     /// Indicates whether this node causes a page break
+    #[serde(default)]
     pub is_page_breaking_object: bool,
 
     /// True if the node has any ARIA attributes set.
+    #[serde(default)]
     pub has_aria_attribute: bool,
 
     /// This element allows touches to be passed through when a screen reader
     /// is in touch exploration mode, e.g. a virtual keyboard normally
     /// behaves this way.
+    #[serde(default)]
     pub touch_pass_through: bool,
 
     /// Unordered set of actions supported by this node.
+    #[serde(default)]
     pub actions: Vec<Action>,
 
     /// Ids of nodes that are children of this node logically, but are
     /// not children of this node in the tree structure. As an example,
     /// a table cell is a child of a row, and an 'indirect' child of a
     /// column.
+    #[serde(default)]
     pub indirect_child_ids: Vec<NodeId>,
 
     // Relationships between this node and other nodes.
@@ -660,13 +703,20 @@ pub struct Node {
     pub next_on_line_id: Option<NodeId>,
     pub previous_on_line_id: Option<NodeId>,
     pub popup_for_id: Option<NodeId>,
+    #[serde(default)]
     pub controls_ids: Vec<NodeId>,
+    #[serde(default)]
     pub details_ids: Vec<NodeId>,
+    #[serde(default)]
     pub described_by_ids: Vec<NodeId>,
+    #[serde(default)]
     pub flow_to_ids: Vec<NodeId>,
+    #[serde(default)]
     pub labelled_by_ids: Vec<NodeId>,
+    #[serde(default)]
     pub radio_group_ids: Vec<NodeId>,
 
+    #[serde(default)]
     pub markers: Vec<TextMarker>,
 
     pub text_direction: Option<TextDirection>,
@@ -676,11 +726,14 @@ pub struct Node {
     /// text, the first offset is the right coordinate of the first
     /// character within the object's bounds, the second offset
     /// is the right coordinate of the second character, and so on.
+    #[serde(default)]
     pub character_offsets: Vec<f32>,
 
     /// For inline text. The UTF-8 code unit indices of each word.
+    #[serde(default)]
     pub words: Vec<Range<usize>>,
 
+    #[serde(default)]
     pub custom_actions: Vec<CustomAction>,
 
     pub access_key: Option<String>,
@@ -775,8 +828,10 @@ pub struct Node {
     pub hierarchical_level: Option<usize>,
 
     /// Use for a textbox that allows focus/selection but not input.
+    #[serde(default)]
     pub read_only: bool,
     /// Use for a control or group of controls that disallows input.
+    #[serde(default)]
     pub disabled: bool,
 
     // Position or Number of items in current set of listitems or treeitems
@@ -801,7 +856,9 @@ pub struct Node {
     pub text_align: Option<TextAlign>,
     pub vertical_offset: Option<VerticalOffset>,
 
+    #[serde(default)]
     pub bold: bool,
+    #[serde(default)]
     pub italic: bool,
     pub overline: Option<TextDecoration>,
     pub strikethrough: Option<TextDecoration>,
@@ -829,7 +886,7 @@ pub struct Node {
 
 /// The data associated with an accessibility tree that's global to the
 /// tree and not associated with any particular node.
-#[derive(Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Tree {
     /// The globally unique ID of this tree. The format of this ID
@@ -855,7 +912,7 @@ pub struct Tree {
 /// The sender and receiver must be in sync; the update is only meant
 /// to bring the tree from a specific previous state into its next state.
 /// Trying to apply it to the wrong tree should immediately panic.
-#[derive(Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct TreeUpdate {
     /// The optional ID of a node to clear, before applying any updates.

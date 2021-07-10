@@ -5,4 +5,5 @@ authors = ["Matt Campbell <mattcampbell@pobox.com>"]
 edition = "2018"
 
 [dependencies]
+schemars = "0.8.3"
 serde = { version = "1.0", features = ["derive"] }
