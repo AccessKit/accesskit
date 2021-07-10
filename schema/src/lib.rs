@@ -22,7 +22,7 @@ use std::ops::Range;
 /// is ordered roughly by expected usage frequency (with the notable exception
 /// of [`Role::Unknown`]). This is more efficient in serialization formats
 /// where integers use a variable-length encoding.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum Role {
     Unknown,
     InlineTextBox,
@@ -237,7 +237,7 @@ pub enum Role {
 /// An action to be taken on an accessibility node.
 /// In contrast to [`DefaultActionVerb`], these describe what happens to the
 /// object, e.g. "focus".
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum Action {
     /// Do the default action for an object, typically this means "click".
     Default,
@@ -308,7 +308,7 @@ pub enum Action {
     ShowContextMenu,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum NameFrom {
     /// E.g. `aria-label`.
     Attribute,
@@ -326,7 +326,7 @@ pub enum NameFrom {
     Value,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum DescriptionFrom {
     AriaDescription,
     /// HTML-AAM 5.2.2
@@ -340,7 +340,7 @@ pub enum DescriptionFrom {
     Title,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum MarkerType {
     SpellingError,
     GrammarError,
@@ -349,7 +349,7 @@ pub enum MarkerType {
     Suggestion,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum TextDirection {
     LeftToRight,
     RightToLeft,
@@ -359,14 +359,14 @@ pub enum TextDirection {
 
 /// Indicates if a form control has invalid input or
 /// if a web DOM element has an aria-invalid attribute.
-#[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub enum InvalidState {
     False,
     True,
     Other(String),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum CheckedState {
     False,
     True,
@@ -378,7 +378,7 @@ pub enum CheckedState {
 /// In contrast to [`Action`], these describe what the user can do on the
 /// object, e.g. "press", not what happens to the object as a result.
 /// Only one verb can be used at a time to describe the default action.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum DefaultActionVerb {
     Activate,
     Check,
@@ -395,7 +395,7 @@ pub enum DefaultActionVerb {
     Select,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum SortDirection {
     Unsorted,
     Ascending,
@@ -403,7 +403,7 @@ pub enum SortDirection {
     Other,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum AriaCurrent {
     False,
     True,
@@ -414,7 +414,7 @@ pub enum AriaCurrent {
     Time,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum HasPopup {
     True,
     Menu,
@@ -424,7 +424,7 @@ pub enum HasPopup {
     Dialog,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum ListStyle {
     Circle,
     Disc,
@@ -435,7 +435,7 @@ pub enum ListStyle {
     Other,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum TextAlign {
     Left,
     Right,
@@ -443,13 +443,13 @@ pub enum TextAlign {
     Justify,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum VerticalOffset {
     Subscript,
     Superscript,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum TextDecoration {
     Solid,
     Dotted,
@@ -468,7 +468,7 @@ pub struct NodeId(std::num::NonZeroU64);
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub struct TreeId(String);
 
-#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Rect {
     pub left: f32,
@@ -478,7 +478,7 @@ pub struct Rect {
 }
 
 /// 4x4 transformation matrix.
-#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(transparent)]
 pub struct Transform {
     /// Column major order.
@@ -499,7 +499,7 @@ pub struct Transform {
 /// Otherwise, for a node other than the root, the bounds are relative to
 /// the root of the tree, and for the root of a tree, the bounds are relative
 /// to its immediate containing node.
-#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct RelativeBounds {
     /// The ID of an ancestor node in the same Tree that this object's
@@ -515,7 +515,7 @@ pub struct RelativeBounds {
 }
 
 /// A marker spanning a range within text.
-#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct TextMarker {
     pub marker_type: MarkerType,
@@ -525,7 +525,7 @@ pub struct TextMarker {
 
 /// Defines a custom action for a UI element. For example, a list UI
 /// can allow a user to reorder items in the list by dragging the items.
-#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CustomAction {
     pub id: i32,
@@ -533,7 +533,7 @@ pub struct CustomAction {
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
-#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Node {
     pub id: NodeId,
@@ -893,7 +893,7 @@ pub struct Node {
 
 /// The data associated with an accessibility tree that's global to the
 /// tree and not associated with any particular node.
-#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Tree {
     pub id: TreeId,
@@ -916,7 +916,7 @@ pub struct Tree {
 /// The sender and receiver must be in sync; the update is only meant
 /// to bring the tree from a specific previous state into its next state.
 /// Trying to apply it to the wrong tree should immediately panic.
-#[derive(Clone, PartialEq, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct TreeUpdate {
     /// The optional ID of a node to clear, before applying any updates.
