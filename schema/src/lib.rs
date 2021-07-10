@@ -900,11 +900,10 @@ pub struct Tree {
     /// The ID of the tree that this tree is contained in, if any.
     pub parent: Option<TreeId>,
 
-    /// The ID of the tree that has focus, if it's not this tree
-    /// but a descendant of it.
-    pub focused_tree: Option<TreeId>,
     /// The node with keyboard focus within this tree, if any.
-    pub focused_node: Option<NodeId>,
+    /// If the focus is in a descendant tree, set this to the node
+    /// to which that tree is anchored.
+    pub focus: Option<NodeId>,
 
     /// The node that's used as the root scroller, if any. On some platforms
     /// like Android we need to ignore accessibility scroll offsets for
