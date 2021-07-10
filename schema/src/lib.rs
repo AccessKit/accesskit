@@ -312,6 +312,15 @@ pub enum Action {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+pub enum Orientation {
+    /// E.g. most toolbars and separators.
+    Horizontal,
+    /// E.g. menu or combo box.
+    Vertical
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum NameFrom {
     /// E.g. `aria-label`.
     Attribute,
@@ -589,12 +598,7 @@ pub struct Node {
     pub editable: bool,
     #[serde(default)]
     pub focusable: bool,
-    /// Grows horizontally, e.g. most toolbars and separators.
-    #[serde(default)]
-    pub horizontal: bool,
-    /// Grows vertically, e.g. menu or combo box.
-    #[serde(default)]
-    pub vertical: bool,
+    pub orientation: Option<Orientation>,
     #[serde(default)]
     pub hovered: bool,
     /// Skip over this node in the accessibility tree, but keep its subtree.
