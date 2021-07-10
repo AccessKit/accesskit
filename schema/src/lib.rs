@@ -563,6 +563,10 @@ pub struct Node {
     #[serde(default)]
     pub children: Vec<NodeId>,
 
+    /// Unordered set of actions supported by this node.
+    #[serde(default)]
+    pub actions: HashSet<Action>,
+
     pub name: Option<String>,
     /// What information was used to compute the object's name.
     pub name_from: Option<NameFrom>,
@@ -709,10 +713,6 @@ pub struct Node {
     /// behaves this way.
     #[serde(default)]
     pub touch_pass_through: bool,
-
-    /// Unordered set of actions supported by this node.
-    #[serde(default)]
-    pub actions: HashSet<Action>,
 
     /// Ids of nodes that are children of this node logically, but are
     /// not children of this node in the tree structure. As an example,
