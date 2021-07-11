@@ -496,6 +496,13 @@ pub enum TextDecoration {
     Wavy,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum StringEncoding {
+    Utf8,
+    Utf16
+}
+
 /// The stable identity of a node, unique within the node's tree.
 // This is NonZeroU64 because we regularly store Option<NodeId>.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
@@ -560,7 +567,8 @@ pub struct RelativeBounds {
 #[serde(rename_all = "camelCase")]
 pub struct TextMarker {
     pub marker_type: MarkerType,
-    /// Indices are in UTF-8 code units.
+    /// Indices are in code units for the encoding specified in
+    /// [`Tree::source_string_encoding`].
     pub range: Range<usize>,
 }
 
@@ -760,7 +768,8 @@ pub struct Node {
     #[serde(default)]
     pub character_offsets: Vec<f32>,
 
-    /// For inline text. The UTF-8 code unit indices of each word.
+    /// For inline text. The indices of each word, in code units for
+    /// the encoding specified in [`Tree::source_string_encoding`].
     #[serde(default)]
     pub words: Vec<Range<usize>>,
 
@@ -825,7 +834,8 @@ pub struct Node {
     pub scroll_y_min: Option<f32>,
     pub scroll_y_max: Option<f32>,
 
-    /// The endpoints of a text selection, in UTF-8 code units.
+    /// The endpoints of a text selection, in code units for the encoding
+    /// specified in [`Tree::source_string_encoding`].
     pub text_selection: Option<Range<usize>>,
 
     pub aria_column_count: Option<usize>,
@@ -922,6 +932,14 @@ pub struct Node {
 #[serde(rename_all = "camelCase")]
 pub struct Tree {
     pub id: TreeId,
+
+    /// The string encoding used by the tree source. This is required
+    /// to disambiguate string indices, e.g. in [`Node::words`].
+    /// When the tree is serialized, the encoding specified by
+    /// the target serialization format is always used. But this way,
+    /// the tree source doesn't have to convert string indices;
+    /// the platform adapter will do this if needed.
+    pub source_string_encoding: StringEncoding,
 
     /// The ID of the tree that this tree is contained in, if any.
     pub parent: Option<TreeId>,
