@@ -546,7 +546,7 @@ pub struct RelativeBounds {
     /// bounding box is relative to.
     pub offset_container: Option<NodeId>,
     /// The relative bounding box of this node.
-    pub bounds: Rect,
+    pub rect: Rect,
     /// An additional transform to apply to position this object and its subtree.
     /// This is rarely used and should be omitted if not needed, i.e. if
     /// the transform would be the identity matrix. It's rare enough
