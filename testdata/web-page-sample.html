@@ -1,0 +1,127 @@
+<!-- The following tells our modified Chromium test code to include
+     all attributes in its tree dump. -->
+<!--
+@BLINK-ALLOW:*
+-->
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Web Page Sample</title>
+  </head>
+  <body>
+    <h1>Web Page Sample</h1>
+    <ul>
+      <li><a href="#form-controls">Form Controls</a></li>
+      <li><a href="#numbered-list">Numbered List</a></li>
+      <li><a href="#table">Table</a></li>
+      <li><a href="#text">Text</a></li>
+    </ul>
+    <h2 id="form-controls">Form Controls</h2>
+    <div><label>Number: <input type="number" value="3"></label></div>
+    <div><label>Password: <input type="password" accesskey="p" value="pwd"></label></div>
+    <div><label>Text: <input type="text" value="just text"></label></div>
+    <div><label>Read-only text: <input type="text" readonly value="just text"></label></div>
+    <div><label>Disabled text: <input type="text" disabled value="just text"></label></div>
+    <div class="myClass"><textarea rows="4" style="font-family: monospace; width: 50ch">
+The 
+textarea tag  defines a multi-line text input control.
+</textarea></div>
+    <div>
+      <input type="button" value="Button">
+      <!-- If there's already a name, then the value should become the description -->
+      <input type="button" aria-label="Name" value="Description">
+    </div>
+    <div>
+      <select id="selectA" name="Select A">
+        <option value="">Placeholder option</option>
+        <option value="1">Option 1</option>
+        <option value="2">Option 2</option>
+      </select>
+    </div>
+    <div>
+      <select id="selectB" name="Select B">
+        <option value="1">Option 1</option>
+        <option value="2" selected>Option 2</option>
+        <option value="3">Option 3</option>
+      </select>
+    </div>
+    <div>
+      <select id="selectC" name="Select C" required>
+        <option value="1">Option 1</option>
+        <option value="2">Option 2</option>
+        <option value="3">Option 3</option>
+      </select>
+    </div>
+    <div>
+      <select id="selectD" name="Select D" multiple="2">
+        <option value="1" selected>Option 1</option>
+        <option value="2">Option 2</option>
+        <option value="3" selected>Option 3</option>
+      </select>
+    </div>
+    <div>
+      <select id="selectE" name="Select E" size="3">
+        <option value="1">Option 1</option>
+        <option value="2" selected>Option 2</option>
+        <option value="3">Option 3</option>
+      </select>
+    </div>
+    <form>
+      <label><input type="radio" name="rGroup" value="r1">Radio1</label>
+      <label><input type="radio" name="rGroup" checked value="r2">Radio2</label>
+    </form>
+    <h2 id="numbered-list">Numbered List</h2>
+    <ol>
+      <li>Finish the schema</li>
+      <li>Write platform adapters</li>
+      <li>Write language bindings</li>
+      <li>Write <em>lots</em> of docs</li>
+    </ol>
+    <h2 id="table">Table</h2>
+    <!-- Note from Matt: This is a test table that I wrote many years ago,
+         representing the version history of a product I used to work on. -->
+    <table>
+      <thead>
+        <tr>
+          <th>Year</th>
+          <th>Month</th>
+          <th>Code Base</th>
+          <th>Version</th>
+        </tr>
+      </thead>
+      <tr>
+        <td rowspan="2">2002</td>
+        <td>February</td>
+        <td rowspan="3">Classic</td>
+        <td>1.0</td>
+      </tr>
+      <tr>
+        <td>July</td>
+        <td>1.1</td>
+      </tr>
+      <tr>
+        <td>2003</td>
+        <td>April</td>
+        <td>1.2</td>
+      </tr>
+      <tr>
+        <td>2004</td>
+        <td>July</td>
+        <td rowspan="2">2</td>
+        <td>2.0</td>
+      </tr>
+      <tr>
+        <td>2005</td>
+        <td>June</td>
+        <td>2.2</td>
+      </tr>
+      <tr>
+        <th colspan="2">Next<br>version:</th>
+        <td>&nbsp;</td>
+        <td>2.3</td>
+      </tr>
+    </table>
+    <h2 id="text">Text</h2>
+    <p><a target="_blank" href="https://lipsum.com/">Lorem ipsum</a> dolor sit amet, consectetur adipiscing elit. Ut facilisis nisl vel eleifend vehicula. Quisque ipsum mi, lobortis sit amet lacinia non, fringilla bibendum ante. Vivamus dictum lorem ut diam bibendum, eget lobortis neque commodo. Integer mauris nibh, luctus sed ligula in, suscipit rutrum arcu. Aliquam dignissim nunc in justo lobortis molestie. Donec scelerisque ut leo et congue. Praesent turpis eros, mollis vel lacinia ac, ullamcorper a tortor. Proin id interdum tellus. Cras pellentesque urna felis, sed condimentum dui pretium vitae. Suspendisse sed enim tristique, tempor nunc vel, laoreet lacus. Quisque neque turpis, tincidunt id risus id, rutrum elementum sem. Praesent sit amet ante et metus consectetur auctor.</p>
+  </body>
+</html>
