@@ -30,7 +30,7 @@ impl State {
 }
 
 pub struct Tree {
-    state: RwLock<Option<State>>,
+    state: RwLock<State>,
 }
 
 impl Tree {
@@ -89,7 +89,7 @@ impl Tree {
         };
         state.validate_global();
         Self {
-            state: RwLock::new(Some(state)),
+            state: RwLock::new(state),
         }
     }
 
@@ -97,8 +97,7 @@ impl Tree {
         // TODO: handle TreeUpdate::clear
         assert!(update.clear.is_none());
 
-        let mut state_guard = self.state.write().unwrap();
-        let mut state = state_guard.as_mut().unwrap();
+        let mut state = self.state.write().unwrap();
 
         let root = update.root.unwrap_or(state.root);
         let mut pending_nodes: HashMap<NodeId, _> = HashMap::new();
@@ -198,15 +197,9 @@ impl Tree {
         state.validate_global();
     }
 
-    pub fn is_alive(&self) -> bool {
-        let state = self.state.read().unwrap();
-        state.is_some()
-    }
-
     // Intended for debugging.
     pub fn serialize(&self) -> TreeUpdate {
-        let state_guard = self.state.read().unwrap();
-        let state = state_guard.as_ref().unwrap();
+        let state = self.state.read().unwrap();
         let mut nodes = Vec::new();
 
         fn traverse(state: &State, nodes: &mut Vec<NodeData>, id: NodeId) {
@@ -218,7 +211,7 @@ impl Tree {
             }
         }
 
-        traverse(state, &mut nodes, state.root);
+        traverse(&state, &mut nodes, state.root);
         assert_eq!(nodes.len(), state.nodes.len());
 
         TreeUpdate {
