@@ -1,7 +1,9 @@
 [workspace]
 members = [
     "schema",
+    "consumer",
 ]
 default-members = [
     "schema",
+    "consumer",
 ]

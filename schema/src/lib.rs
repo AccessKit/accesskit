@@ -513,7 +513,7 @@ pub struct NodeId(std::num::NonZeroU64);
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub struct TreeId(String);
 
-#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct Rect {
@@ -524,7 +524,7 @@ pub struct Rect {
 }
 
 /// 4x4 transformation matrix.
-#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(transparent)]
 pub struct Transform {
     /// Column major order.
@@ -545,7 +545,7 @@ pub struct Transform {
 /// Otherwise, for a node other than the root, the bounds are relative to
 /// the root of the tree, and for the root of a tree, the bounds are relative
 /// to its immediate containing node.
-#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct RelativeBounds {
@@ -564,7 +564,7 @@ pub struct RelativeBounds {
 }
 
 /// A marker spanning a range within text.
-#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct TextMarker {
@@ -576,7 +576,7 @@ pub struct TextMarker {
 
 /// Defines a custom action for a UI element. For example, a list UI
 /// can allow a user to reorder items in the list by dragging the items.
-#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomAction {
@@ -595,7 +595,7 @@ fn is_empty<T>(slice: &[T]) -> bool {
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
-#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct Node {
