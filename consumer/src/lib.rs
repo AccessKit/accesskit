@@ -1,5 +1,4 @@
-pub type NodeData = accesskit_schema::Node;
-pub type TreeData = accesskit_schema::Tree;
+pub use accesskit_schema::{Node as NodeData, Tree as TreeData};
 
 mod tree;
 pub use tree::Tree;
