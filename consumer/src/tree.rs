@@ -167,6 +167,10 @@ impl Reader<'_> {
             state: node_state,
         })
     }
+
+    pub fn root<'a>(&'a self) -> Node<'a> {
+        self.node_by_id(self.state.root).unwrap()
+    }
 }
 
 pub struct Tree {

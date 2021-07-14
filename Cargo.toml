@@ -2,6 +2,7 @@
 members = [
     "schema",
     "consumer",
+    "platforms/mac",
 ]
 default-members = [
     "schema",
