@@ -7,7 +7,7 @@
 use std::ffi::c_void;
 
 use accesskit_consumer::{Node, WeakNode};
-use cocoa::base::{id, nil, BOOL, YES};
+use cocoa::base::{id, nil, BOOL, NO, YES};
 use cocoa::foundation::{NSSize, NSValue};
 use lazy_static::lazy_static;
 use objc::declare::ClassDecl;
@@ -59,6 +59,16 @@ impl State {
             })
             .unwrap_or(nil)
     }
+
+    fn is_ignored(&self) -> BOOL {
+        self.node.map(|node| {
+            if node.is_invisible_or_ignored() {
+                YES
+            } else {
+                NO
+            }
+        }).unwrap_or(YES)
+    }
 }
 
 pub(crate) struct PlatformNode;
@@ -97,6 +107,15 @@ lazy_static! {
                 let state: *mut c_void = *this.get_ivar(STATE_IVAR);
                 let state = &mut *(state as *mut State);
                 state.attribute_value(attribute_name)
+            }
+        }
+
+        decl.add_method(sel!(accessibilityIsIgnored), is_ignored as extern "C" fn(&Object, Sel) -> BOOL);
+        extern "C" fn is_ignored(this: &Object, _sel: Sel) -> BOOL {
+            unsafe {
+                let state: *mut c_void = *this.get_ivar(STATE_IVAR);
+                let state = &mut *(state as *mut State);
+                state.is_ignored()
             }
         }
 
