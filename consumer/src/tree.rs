@@ -8,7 +8,7 @@ use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 use crate::{Node, NodeData, TreeData};
 
-pub(crate) struct ParentAndIndex(NodeId, usize);
+pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
 
 pub(crate) struct NodeState {
     pub(crate) parent_and_index: Option<ParentAndIndex>,

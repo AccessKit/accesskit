@@ -5,7 +5,7 @@
 use accesskit_schema::{NodeId, Role};
 use std::sync::{Arc, Weak};
 
-use crate::tree::{NodeState, Reader as TreeReader, Tree};
+use crate::tree::{NodeState, ParentAndIndex, Reader as TreeReader, Tree};
 use crate::NodeData;
 
 pub struct Node<'a> {
@@ -28,6 +28,14 @@ impl Node<'_> {
 
     pub fn is_invisible_or_ignored(&self) -> bool {
         (self.is_invisible() || self.is_ignored()) && !self.is_focused()
+    }
+
+    pub fn parent<'a>(&'a self) -> Option<Node<'a>> {
+        if let Some(ParentAndIndex(parent, _)) = &self.state.parent_and_index {
+            Some(self.tree_reader.node_by_id(*parent).unwrap())
+        } else {
+            None
+        }
     }
 
     // Convenience getters
