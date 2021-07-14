@@ -1,20 +1,20 @@
 use accesskit_schema::{NodeId, TreeUpdate};
 use std::collections::{HashMap, HashSet};
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 
-use crate::{NodeData, TreeData};
+use crate::{Node, NodeData, TreeData};
 
-struct ParentAndIndex(NodeId, usize);
+pub(crate) struct ParentAndIndex(NodeId, usize);
 
-struct NodeState {
-    parent_and_index: Option<ParentAndIndex>,
-    data: NodeData,
+pub(crate) struct NodeState {
+    pub(crate) parent_and_index: Option<ParentAndIndex>,
+    pub(crate) data: NodeData,
 }
 
-struct State {
-    nodes: HashMap<NodeId, NodeState>,
-    root: NodeId,
-    data: TreeData,
+pub(crate) struct State {
+    pub(crate) nodes: HashMap<NodeId, NodeState>,
+    pub(crate) root: NodeId,
+    pub(crate) data: TreeData,
 }
 
 impl State {
@@ -27,85 +27,19 @@ impl State {
             assert!(self.nodes.contains_key(&id));
         }
     }
-}
 
-pub struct Tree {
-    state: RwLock<State>,
-}
-
-impl Tree {
-    pub fn new(initial_state: TreeUpdate) -> Self {
-        assert!(initial_state.clear.is_none());
-
-        let root = initial_state.root.unwrap();
-        let mut nodes = HashMap::new();
-        let mut pending_nodes = HashMap::new();
-        let mut pending_children = HashMap::new();
-
-        for node_data in initial_state.nodes {
-            let node_id = node_data.id;
-            assert!(!nodes.contains_key(&node_id));
-
-            let mut seen_child_ids = HashSet::new();
-            for (child_index, child_id) in node_data.children.iter().enumerate() {
-                assert!(!seen_child_ids.contains(child_id));
-                let parent_and_index = ParentAndIndex(node_id, child_index);
-                if let Some(child_data) = pending_nodes.remove(child_id) {
-                    let node_state = NodeState {
-                        parent_and_index: Some(parent_and_index),
-                        data: child_data,
-                    };
-                    nodes.insert(*child_id, node_state);
-                } else {
-                    pending_children.insert(*child_id, parent_and_index);
-                }
-                seen_child_ids.insert(child_id);
-            }
-
-            if let Some(parent_and_index) = pending_children.remove(&node_id) {
-                let node_state = NodeState {
-                    parent_and_index: Some(parent_and_index),
-                    data: node_data,
-                };
-                nodes.insert(node_id, node_state);
-            } else if node_id == root {
-                let node_state = NodeState {
-                    parent_and_index: None,
-                    data: node_data,
-                };
-                nodes.insert(node_id, node_state);
-            } else {
-                pending_nodes.insert(node_id, node_data);
-            }
-        }
-
-        assert_eq!(pending_nodes.len(), 0);
-        assert_eq!(pending_children.len(), 0);
-
-        let state = State {
-            nodes,
-            root,
-            data: initial_state.tree.unwrap(),
-        };
-        state.validate_global();
-        Self {
-            state: RwLock::new(state),
-        }
-    }
-
-    pub fn update(&self, update: TreeUpdate) {
+    fn update(&mut self, update: TreeUpdate) {
         // TODO: handle TreeUpdate::clear
         assert!(update.clear.is_none());
 
-        let mut state = self.state.write().unwrap();
-
-        let root = update.root.unwrap_or(state.root);
+        let root = update.root.unwrap_or(self.root);
         let mut pending_nodes: HashMap<NodeId, _> = HashMap::new();
         let mut pending_children = HashMap::new();
         let mut orphans = HashSet::new();
 
-        if root != state.root {
-            orphans.insert(root);
+        if root != self.root {
+            orphans.insert(self.root);
+            self.root = root;
         }
 
         for node_data in update.nodes {
@@ -117,21 +51,21 @@ impl Tree {
                 assert!(!seen_child_ids.contains(child_id));
                 orphans.remove(child_id);
                 let parent_and_index = ParentAndIndex(node_id, child_index);
-                if let Some(child_state) = state.nodes.get_mut(child_id) {
+                if let Some(child_state) = self.nodes.get_mut(child_id) {
                     child_state.parent_and_index = Some(parent_and_index);
                 } else if let Some(child_data) = pending_nodes.remove(child_id) {
                     let node_state = NodeState {
                         parent_and_index: Some(parent_and_index),
                         data: child_data,
                     };
-                    state.nodes.insert(*child_id, node_state);
+                    self.nodes.insert(*child_id, node_state);
                 } else {
                     pending_children.insert(*child_id, parent_and_index);
                 }
                 seen_child_ids.insert(child_id);
             }
 
-            if let Some(node_state) = state.nodes.get_mut(&node_id) {
+            if let Some(node_state) = self.nodes.get_mut(&node_id) {
                 if node_id == root {
                     node_state.parent_and_index = None
                 }
@@ -146,13 +80,13 @@ impl Tree {
                     parent_and_index: Some(parent_and_index),
                     data: node_data,
                 };
-                state.nodes.insert(node_id, node_state);
+                self.nodes.insert(node_id, node_state);
             } else if node_id == root {
                 let node_state = NodeState {
                     parent_and_index: None,
                     data: node_data,
                 };
-                state.nodes.insert(node_id, node_state);
+                self.nodes.insert(node_id, node_state);
             } else {
                 pending_nodes.insert(node_id, node_data);
             }
@@ -177,29 +111,23 @@ impl Tree {
             }
 
             for id in orphans {
-                traverse_orphan(&state.nodes, &mut to_remove, id);
+                traverse_orphan(&self.nodes, &mut to_remove, id);
             }
 
             for id in to_remove {
-                state.nodes.remove(&id);
+                self.nodes.remove(&id);
             }
         }
 
         if let Some(tree) = update.tree {
-            assert_eq!(tree.id, state.data.id);
-            state.data = tree;
+            assert_eq!(tree.id, self.data.id);
+            self.data = tree;
         }
 
-        if let Some(root) = update.root {
-            state.root = root;
-        }
-
-        state.validate_global();
+        self.validate_global();
     }
 
-    // Intended for debugging.
-    pub fn serialize(&self) -> TreeUpdate {
-        let state = self.state.read().unwrap();
+    fn serialize(&self) -> TreeUpdate {
         let mut nodes = Vec::new();
 
         fn traverse(state: &State, nodes: &mut Vec<NodeData>, id: NodeId) {
@@ -211,14 +139,66 @@ impl Tree {
             }
         }
 
-        traverse(&state, &mut nodes, state.root);
-        assert_eq!(nodes.len(), state.nodes.len());
+        traverse(self, &mut nodes, self.root);
+        assert_eq!(nodes.len(), self.nodes.len());
 
         TreeUpdate {
             clear: None,
             nodes,
-            tree: Some(state.data.clone()),
-            root: Some(state.root),
+            tree: Some(self.data.clone()),
+            root: Some(self.root),
+        }
+    }
+}
+
+pub struct Reader<'a> {
+    pub(crate) tree: &'a Arc<Tree>,
+    pub(crate) state: RwLockReadGuard<'a, State>,
+}
+
+impl Reader<'_> {
+    pub fn node_by_id<'a>(&'a self, id: NodeId) -> Option<Node<'a>> {
+        self.state.nodes.get(&id).map(|node_state| Node {
+            tree_reader: &self,
+            state: node_state,
+        })
+    }
+}
+
+pub struct Tree {
+    state: RwLock<State>,
+}
+
+impl Tree {
+    pub fn new(mut initial_state: TreeUpdate) -> Arc<Self> {
+        assert!(initial_state.clear.is_none());
+
+        let mut state = State {
+            nodes: HashMap::new(),
+            root: initial_state.root.take().unwrap(),
+            data: initial_state.tree.take().unwrap(),
+        };
+        state.update(initial_state);
+        Arc::new(Self {
+            state: RwLock::new(state),
+        })
+    }
+
+    pub fn update(&self, update: TreeUpdate) {
+        let mut state = self.state.write().unwrap();
+        state.update(update)
+    }
+
+    // Intended for debugging.
+    pub fn serialize(&self) -> TreeUpdate {
+        let state = self.state.read().unwrap();
+        state.serialize()
+    }
+
+    pub fn read<'a>(self: &'a Arc<Tree>) -> Reader<'a> {
+        Reader {
+            tree: self,
+            state: self.state.read().unwrap(),
         }
     }
 }

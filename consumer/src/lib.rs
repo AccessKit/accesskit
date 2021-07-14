@@ -1,7 +1,10 @@
 pub use accesskit_schema::{Node as NodeData, Tree as TreeData};
 
-mod tree;
-pub use tree::Tree;
+pub(crate) mod tree;
+pub use tree::{Reader as TreeReader, Tree};
+
+pub(crate) mod node;
+pub use node::{Node, WeakNode};
 
 #[cfg(test)]
 mod tests {
