@@ -8,7 +8,7 @@ use std::ffi::c_void;
 
 use accesskit_consumer::{Node, WeakNode};
 use cocoa::base::{id, nil, BOOL, NO, YES};
-use cocoa::foundation::{NSSize, NSValue};
+use cocoa::foundation::{NSArray, NSSize, NSValue};
 use lazy_static::lazy_static;
 use objc::declare::ClassDecl;
 use objc::rc::StrongPtr;
@@ -40,6 +40,15 @@ struct State {
 }
 
 impl State {
+    fn attribute_names(&self) -> id {
+        let names = ATTRIBUTE_MAP.iter().map(|Attribute(name_ptr, _)| {
+            unsafe { **name_ptr }
+        }).collect::<Vec<id>>();
+        // TODO: role-specific attributes
+        println!("returning attribute names {:?}", names);
+        unsafe { NSArray::arrayWithObjects(nil, &names) }
+    }
+
     fn attribute_value(&self, attribute_name: id) -> id {
         self.node
             .map(|node| {
@@ -100,6 +109,15 @@ lazy_static! {
         decl.add_ivar::<*mut c_void>(STATE_IVAR);
 
         // TODO: methods
+
+        decl.add_method(sel!(accessibilityAttributeNames), attribute_names as extern "C" fn(&Object, Sel) -> id);
+        extern "C" fn attribute_names(this: &Object, _sel: Sel) -> id {
+            unsafe {
+                let state: *mut c_void = *this.get_ivar(STATE_IVAR);
+                let state = &mut *(state as *mut State);
+                state.attribute_names()
+            }
+        }
 
         decl.add_method(sel!(accessibilityAttributeValue:), attribute_value as extern "C" fn(&Object, Sel, id) -> id);
         extern "C" fn attribute_value(this: &Object, _sel: Sel, attribute_name: id) -> id {
