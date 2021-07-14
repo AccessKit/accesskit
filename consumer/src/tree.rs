@@ -1,3 +1,7 @@
+// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 use accesskit_schema::{NodeId, TreeUpdate};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock, RwLockReadGuard};
