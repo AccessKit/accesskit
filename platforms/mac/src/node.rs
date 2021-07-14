@@ -17,10 +17,10 @@ use objc::{class, msg_send, sel, sel_impl};
 
 use crate::util::from_nsstring;
 
-struct Attribute(*const id, fn(&Node) -> id);
+struct Attribute(*const id, fn(&State, &Node) -> id);
 unsafe impl Sync for Attribute {}
 
-fn get_position(node: &Node) -> id {
+fn get_position(_state: &State, node: &Node) -> id {
     if let Some(bounds) = &node.data().bounds {
         // TODO: implement for real
         let ns_point = NSPoint { x: 100., y: 100. };
@@ -30,12 +30,12 @@ fn get_position(node: &Node) -> id {
     }
 }
 
-fn get_role(node: &Node) -> id {
+fn get_role(_state: &State, node: &Node) -> id {
     // TODO: implement for real
     unsafe { NSAccessibilityWindowRole }
 }
 
-fn get_size(node: &Node) -> id {
+fn get_size(_state: &State, node: &Node) -> id {
     if let Some(bounds) = &node.data().bounds {
         let ns_size = NSSize {
             width: bounds.rect.width as f64,
@@ -81,7 +81,7 @@ impl State {
                         msg_send![attribute_name, isEqualToString: test_name]
                     };
                     if equal == YES {
-                        return f(&node);
+                        return f(&self, &node);
                     }
                 }
 
