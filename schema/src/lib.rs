@@ -506,12 +506,12 @@ pub enum StringEncoding {
 /// The stable identity of a node, unique within the node's tree.
 // This is NonZeroU64 because we regularly store Option<NodeId>.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-pub struct NodeId(std::num::NonZeroU64);
+pub struct NodeId(pub std::num::NonZeroU64);
 
 /// The globally unique ID of a tree. The format of this ID
 /// is up to the implementer. A UUID v4 is a safe choice.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-pub struct TreeId(String);
+pub struct TreeId(pub String);
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
