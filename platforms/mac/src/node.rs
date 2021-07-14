@@ -11,7 +11,7 @@ use cocoa::base::{id, nil, BOOL, NO, YES};
 use cocoa::foundation::{NSArray, NSPoint, NSSize, NSValue};
 use lazy_static::lazy_static;
 use objc::declare::ClassDecl;
-use objc::rc::StrongPtr;
+use objc::rc::{StrongPtr, WeakPtr};
 use objc::runtime::{Class, Object, Sel};
 use objc::{class, msg_send, sel, sel_impl};
 
@@ -57,6 +57,7 @@ static ATTRIBUTE_MAP: &[Attribute] = unsafe {
 
 struct State {
     node: WeakNode,
+    view: WeakPtr,
 }
 
 impl State {
@@ -106,9 +107,10 @@ impl State {
 pub(crate) struct PlatformNode;
 
 impl PlatformNode {
-    pub(crate) fn new(node: &Node) -> StrongPtr {
+    pub(crate) fn new(node: &Node, view: &StrongPtr) -> StrongPtr {
         let state = Box::new(State {
             node: node.downgrade(),
+            view: view.weak(),
         });
         unsafe {
             let object: id = msg_send![PLATFORM_NODE_CLASS.0, alloc];

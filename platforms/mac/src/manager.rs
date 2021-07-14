@@ -35,7 +35,7 @@ impl Manager {
     pub fn root_platform_node(&self) -> StrongPtr {
         let reader = self.tree.read();
         let node = reader.root();
-        PlatformNode::new(&node)
+        PlatformNode::new(&node, &self.view)
     }
 
     /// Inject accessibility into the root view.
