@@ -8,7 +8,7 @@ use std::ffi::c_void;
 
 use accesskit_consumer::{Node, WeakNode};
 use cocoa::base::{id, nil, BOOL, NO, YES};
-use cocoa::foundation::{NSArray, NSSize, NSValue};
+use cocoa::foundation::{NSArray, NSPoint, NSSize, NSValue};
 use lazy_static::lazy_static;
 use objc::declare::ClassDecl;
 use objc::rc::StrongPtr;
@@ -19,6 +19,21 @@ use crate::util::from_nsstring;
 
 struct Attribute(*const id, fn(&Node) -> id);
 unsafe impl Sync for Attribute {}
+
+fn get_position(node: &Node) -> id {
+    if let Some(bounds) = &node.data().bounds {
+        // TODO: implement for real
+        let ns_point = NSPoint { x: 100., y: 100. };
+        unsafe { NSValue::valueWithPoint(nil, ns_point) }
+    } else {
+        nil
+    }
+}
+
+fn get_role(node: &Node) -> id {
+    // TODO: implement for real
+    unsafe { NSAccessibilityWindowRole }
+}
 
 fn get_size(node: &Node) -> id {
     if let Some(bounds) = &node.data().bounds {
@@ -32,8 +47,13 @@ fn get_size(node: &Node) -> id {
     }
 }
 
-static ATTRIBUTE_MAP: &[Attribute] =
-    unsafe { &[Attribute(&NSAccessibilitySizeAttribute, get_size)] };
+static ATTRIBUTE_MAP: &[Attribute] = unsafe {
+    &[
+        Attribute(&NSAccessibilityPositionAttribute, get_position),
+        Attribute(&NSAccessibilityRoleAttribute, get_role),
+        Attribute(&NSAccessibilitySizeAttribute, get_size),
+    ]
+};
 
 struct State {
     node: WeakNode,
@@ -41,9 +61,10 @@ struct State {
 
 impl State {
     fn attribute_names(&self) -> id {
-        let names = ATTRIBUTE_MAP.iter().map(|Attribute(name_ptr, _)| {
-            unsafe { **name_ptr }
-        }).collect::<Vec<id>>();
+        let names = ATTRIBUTE_MAP
+            .iter()
+            .map(|Attribute(name_ptr, _)| unsafe { **name_ptr })
+            .collect::<Vec<id>>();
         // TODO: role-specific attributes
         println!("returning attribute names {:?}", names);
         unsafe { NSArray::arrayWithObjects(nil, &names) }
@@ -70,13 +91,15 @@ impl State {
     }
 
     fn is_ignored(&self) -> BOOL {
-        self.node.map(|node| {
-            if node.is_invisible_or_ignored() {
-                YES
-            } else {
-                NO
-            }
-        }).unwrap_or(YES)
+        self.node
+            .map(|node| {
+                if node.is_invisible_or_ignored() {
+                    YES
+                } else {
+                    NO
+                }
+            })
+            .unwrap_or(YES)
     }
 }
 
@@ -152,5 +175,11 @@ lazy_static! {
 // Constants declared in AppKit
 #[link(name = "AppKit", kind = "framework")]
 extern "C" {
+    // Attributes
+    static NSAccessibilityPositionAttribute: id;
+    static NSAccessibilityRoleAttribute: id;
     static NSAccessibilitySizeAttribute: id;
+
+    // Roles
+    static NSAccessibilityWindowRole: id;
 }

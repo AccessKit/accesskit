@@ -44,14 +44,13 @@ fn main() {
         // create Window
         let window = NSWindow::alloc(nil)
             .initWithContentRect_styleMask_backing_defer_(
-                NSRect::new(NSPoint::new(0., 0.), NSSize::new(200., 200.)),
+                NSRect::new(NSPoint::new(100., 100.), NSSize::new(800., 600.)),
                 NSWindowStyleMask::NSTitledWindowMask,
                 NSBackingStoreBuffered,
                 NO,
             )
             .autorelease();
         window.cascadeTopLeftFromPoint_(NSPoint::new(20., 20.));
-        window.center();
         let title = NSString::alloc(nil).init_str("Hello World!");
         window.setTitle_(title);
 
