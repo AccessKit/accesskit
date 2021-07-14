@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#![allow(non_upper_case_globals)]
+
 use std::ffi::c_void;
 
 use accesskit_consumer::{Node, WeakNode};
-use cocoa::base::{id, nil};
+use cocoa::base::{id, nil, BOOL, YES};
+use cocoa::foundation::{NSSize, NSValue};
 use lazy_static::lazy_static;
 use objc::declare::ClassDecl;
 use objc::rc::StrongPtr;
@@ -14,14 +17,47 @@ use objc::{class, msg_send, sel, sel_impl};
 
 use crate::util::from_nsstring;
 
+struct Attribute(*const id, fn(&Node) -> id);
+unsafe impl Sync for Attribute {}
+
+fn get_size(node: &Node) -> id {
+    if let Some(bounds) = &node.data().bounds {
+        let ns_size = NSSize {
+            width: bounds.rect.width as f64,
+            height: bounds.rect.height as f64,
+        };
+        unsafe { NSValue::valueWithSize(nil, ns_size) }
+    } else {
+        nil
+    }
+}
+
+static ATTRIBUTE_MAP: &[Attribute] =
+    unsafe { &[Attribute(&NSAccessibilitySizeAttribute, get_size)] };
+
 struct State {
     node: WeakNode,
 }
 
 impl State {
     fn attribute_value(&self, attribute_name: id) -> id {
-        println!("get attribute value {}", from_nsstring(attribute_name));
-        nil
+        self.node
+            .map(|node| {
+                println!("get attribute value {}", from_nsstring(attribute_name));
+
+                for Attribute(test_name_ptr, f) in ATTRIBUTE_MAP {
+                    let equal: BOOL = unsafe {
+                        let test_name: id = **test_name_ptr;
+                        msg_send![attribute_name, isEqualToString: test_name]
+                    };
+                    if equal == YES {
+                        return f(&node);
+                    }
+                }
+
+                nil
+            })
+            .unwrap_or(nil)
     }
 }
 
@@ -29,7 +65,9 @@ pub(crate) struct PlatformNode;
 
 impl PlatformNode {
     pub(crate) fn new(node: &Node) -> StrongPtr {
-        let state = Box::new(State { node: node.downgrade() });
+        let state = Box::new(State {
+            node: node.downgrade(),
+        });
         unsafe {
             let object: id = msg_send![PLATFORM_NODE_CLASS.0, alloc];
             let () = msg_send![object, init];
@@ -72,4 +110,10 @@ lazy_static! {
 
         PlatformNodeClass(decl.register())
     };
+}
+
+// Constants declared in AppKit
+#[link(name = "AppKit", kind = "framework")]
+extern "C" {
+    static NSAccessibilitySizeAttribute: id;
 }
