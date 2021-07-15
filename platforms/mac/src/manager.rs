@@ -45,6 +45,8 @@ impl Manager {
         unsafe {
             let array = NSArray::arrayWithObjects(nil, &ids);
             let () = msg_send![*self.view, setAccessibilityChildren: array];
+            let description: id = msg_send![*self.view, debugDescription];
+            println!("injected into {}", crate::util::from_nsstring(description));
         }
     }
 }
