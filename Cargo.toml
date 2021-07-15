@@ -3,8 +3,12 @@ members = [
     "schema",
     "consumer",
     "platforms/mac",
+    "platforms/mac/jni",
 ]
 default-members = [
     "schema",
     "consumer",
 ]
+
+[profile.release]
+lto = true
