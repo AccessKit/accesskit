@@ -20,6 +20,19 @@ use crate::util::from_nsstring;
 struct Attribute(*const id, fn(&State, &Node) -> id);
 unsafe impl Sync for Attribute {}
 
+fn get_parent(state: &State, node: &Node) -> id {
+    let view = state.view.load();
+    if view.is_null() {
+        return nil;
+    }
+
+    if let Some(parent) = node.parent() {
+        PlatformNode::new(&parent, &view).autorelease()
+    } else {
+        view.autorelease()
+    }
+}
+
 fn get_position(_state: &State, node: &Node) -> id {
     if let Some(bounds) = &node.data().bounds {
         // TODO: implement for real
@@ -49,6 +62,7 @@ fn get_size(_state: &State, node: &Node) -> id {
 
 static ATTRIBUTE_MAP: &[Attribute] = unsafe {
     &[
+        Attribute(&NSAccessibilityParentAttribute, get_parent),
         Attribute(&NSAccessibilityPositionAttribute, get_position),
         Attribute(&NSAccessibilityRoleAttribute, get_role),
         Attribute(&NSAccessibilitySizeAttribute, get_size),
@@ -178,6 +192,7 @@ lazy_static! {
 #[link(name = "AppKit", kind = "framework")]
 extern "C" {
     // Attributes
+    static NSAccessibilityParentAttribute: id;
     static NSAccessibilityPositionAttribute: id;
     static NSAccessibilityRoleAttribute: id;
     static NSAccessibilitySizeAttribute: id;
