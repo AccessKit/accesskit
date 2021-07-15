@@ -12,6 +12,7 @@
 use std::ffi::c_void;
 
 use accesskit_consumer::{Node, WeakNode};
+use accesskit_schema::Role;
 use cocoa::base::{id, nil, BOOL, NO, YES};
 use cocoa::foundation::{NSArray, NSPoint, NSSize, NSValue};
 use lazy_static::lazy_static;
@@ -49,8 +50,199 @@ fn get_position(_state: &State, node: &Node) -> id {
 }
 
 fn get_role(_state: &State, node: &Node) -> id {
-    // TODO: implement for real
-    unsafe { NSAccessibilityWindowRole }
+    let role = node.role();
+    // TODO: Handle special cases.
+    unsafe {
+        match role {
+            Role::Unknown => NSAccessibilityUnknownRole,
+            Role::InlineTextBox => NSAccessibilityUnknownRole,
+            Role::Cell => NSAccessibilityCellRole,
+            Role::StaticText => NSAccessibilityStaticTextRole,
+            Role::Image => NSAccessibilityImageRole,
+            Role::Link => NSAccessibilityLinkRole,
+            Role::Row => NSAccessibilityRowRole,
+            Role::ListItem => NSAccessibilityGroupRole,
+            Role::ListMarker => NSAccessibilityUnknownRole,
+            Role::TreeItem => NSAccessibilityRowRole,
+            Role::ListBoxOption => NSAccessibilityStaticTextRole,
+            Role::MenuItem => NSAccessibilityMenuItemRole,
+            Role::MenuListOption => NSAccessibilityMenuItemRole,
+            Role::Paragraph => NSAccessibilityGroupRole,
+            Role::GenericContainer => NSAccessibilityGroupRole,
+            Role::Presentation => NSAccessibilityGroupRole,
+            Role::CheckBox => NSAccessibilityCheckBoxRole,
+            Role::RadioButton => NSAccessibilityRadioButtonRole,
+            Role::TextField => NSAccessibilityTextFieldRole,
+            Role::Button => NSAccessibilityButtonRole,
+            Role::LabelText => NSAccessibilityGroupRole,
+            Role::Pane => NSAccessibilityUnknownRole,
+            Role::RowHeader => NSAccessibilityCellRole,
+            Role::ColumnHeader => NSAccessibilityCellRole,
+            Role::Column => NSAccessibilityColumnRole,
+            Role::RowGroup => NSAccessibilityGroupRole,
+            Role::List => NSAccessibilityListRole,
+            Role::Table => NSAccessibilityTableRole,
+            Role::TableHeaderContainer => NSAccessibilityGroupRole,
+            Role::LayoutTableCell => NSAccessibilityGroupRole,
+            Role::LayoutTableRow => NSAccessibilityGroupRole,
+            Role::LayoutTable => NSAccessibilityGroupRole,
+            Role::Switch => NSAccessibilityCheckBoxRole,
+            Role::ToggleButton => NSAccessibilityCheckBoxRole,
+            Role::Menu => NSAccessibilityMenuRole,
+            // TODO: continue mapping here
+            Role::Abbr => NSAccessibilityUnknownRole,
+            Role::Alert => NSAccessibilityUnknownRole,
+            Role::AlertDialog => NSAccessibilityUnknownRole,
+            Role::Application => NSAccessibilityUnknownRole,
+            Role::Article => NSAccessibilityUnknownRole,
+            Role::Audio => NSAccessibilityUnknownRole,
+            Role::Banner => NSAccessibilityUnknownRole,
+            Role::Blockquote => NSAccessibilityUnknownRole,
+            Role::Canvas => NSAccessibilityUnknownRole,
+            Role::Caption => NSAccessibilityUnknownRole,
+            Role::Caret => NSAccessibilityUnknownRole,
+            Role::Client => NSAccessibilityUnknownRole,
+            Role::Code => NSAccessibilityUnknownRole,
+            Role::ColorWell => NSAccessibilityUnknownRole,
+            Role::ComboBoxGrouping => NSAccessibilityUnknownRole,
+            Role::ComboBoxMenuButton => NSAccessibilityUnknownRole,
+            Role::Complementary => NSAccessibilityUnknownRole,
+            Role::Comment => NSAccessibilityUnknownRole,
+            Role::ContentDeletion => NSAccessibilityUnknownRole,
+            Role::ContentInsertion => NSAccessibilityUnknownRole,
+            Role::ContentInfo => NSAccessibilityUnknownRole,
+            Role::Date => NSAccessibilityUnknownRole,
+            Role::DateTime => NSAccessibilityUnknownRole,
+            Role::Definition => NSAccessibilityUnknownRole,
+            Role::DescriptionList => NSAccessibilityUnknownRole,
+            Role::DescriptionListDetail => NSAccessibilityUnknownRole,
+            Role::DescriptionListTerm => NSAccessibilityUnknownRole,
+            Role::Details => NSAccessibilityUnknownRole,
+            Role::Dialog => NSAccessibilityUnknownRole,
+            Role::Directory => NSAccessibilityUnknownRole,
+            Role::DisclosureTriangle => NSAccessibilityUnknownRole,
+            Role::Document => NSAccessibilityUnknownRole,
+            Role::EmbeddedObject => NSAccessibilityUnknownRole,
+            Role::Emphasis => NSAccessibilityUnknownRole,
+            Role::Feed => NSAccessibilityUnknownRole,
+            Role::FigureCaption => NSAccessibilityUnknownRole,
+            Role::Figure => NSAccessibilityUnknownRole,
+            Role::Footer => NSAccessibilityUnknownRole,
+            Role::FooterAsNonLandmark => NSAccessibilityUnknownRole,
+            Role::Form => NSAccessibilityUnknownRole,
+            Role::Grid => NSAccessibilityUnknownRole,
+            Role::Group => NSAccessibilityGroupRole,
+            Role::Header => NSAccessibilityUnknownRole,
+            Role::HeaderAsNonLandmark => NSAccessibilityUnknownRole,
+            Role::Heading => NSAccessibilityUnknownRole,
+            Role::Iframe => NSAccessibilityUnknownRole,
+            Role::IframePresentational => NSAccessibilityUnknownRole,
+            Role::ImeCandidate => NSAccessibilityUnknownRole,
+            Role::InputTime => NSAccessibilityUnknownRole,
+            Role::Keyboard => NSAccessibilityUnknownRole,
+            Role::Legend => NSAccessibilityUnknownRole,
+            Role::LineBreak => NSAccessibilityUnknownRole,
+            Role::ListBox => NSAccessibilityUnknownRole,
+            Role::Log => NSAccessibilityUnknownRole,
+            Role::Main => NSAccessibilityUnknownRole,
+            Role::Mark => NSAccessibilityUnknownRole,
+            Role::Marquee => NSAccessibilityUnknownRole,
+            Role::Math => NSAccessibilityUnknownRole,
+            Role::MenuBar => NSAccessibilityUnknownRole,
+            Role::MenuItemCheckBox => NSAccessibilityUnknownRole,
+            Role::MenuItemRadio => NSAccessibilityUnknownRole,
+            Role::MenuListPopup => NSAccessibilityUnknownRole,
+            Role::Meter => NSAccessibilityUnknownRole,
+            Role::Navigation => NSAccessibilityUnknownRole,
+            Role::Note => NSAccessibilityUnknownRole,
+            Role::PluginObject => NSAccessibilityUnknownRole,
+            Role::PopupButton => NSAccessibilityUnknownRole,
+            Role::Portal => NSAccessibilityUnknownRole,
+            Role::Pre => NSAccessibilityUnknownRole,
+            Role::ProgressIndicator => NSAccessibilityUnknownRole,
+            Role::RadioGroup => NSAccessibilityUnknownRole,
+            Role::Region => NSAccessibilityUnknownRole,
+            Role::RootWebArea => NSAccessibilityUnknownRole,
+            Role::Ruby => NSAccessibilityUnknownRole,
+            Role::RubyAnnotation => NSAccessibilityUnknownRole,
+            Role::ScrollBar => NSAccessibilityUnknownRole,
+            Role::ScrollView => NSAccessibilityUnknownRole,
+            Role::Search => NSAccessibilityUnknownRole,
+            Role::SearchBox => NSAccessibilityUnknownRole,
+            Role::Section => NSAccessibilityUnknownRole,
+            Role::Slider => NSAccessibilityUnknownRole,
+            Role::SpinButton => NSAccessibilityUnknownRole,
+            Role::Splitter => NSAccessibilityUnknownRole,
+            Role::Status => NSAccessibilityUnknownRole,
+            Role::Strong => NSAccessibilityUnknownRole,
+            Role::Suggestion => NSAccessibilityUnknownRole,
+            Role::SvgRoot => NSAccessibilityUnknownRole,
+            Role::Tab => NSAccessibilityUnknownRole,
+            Role::TabList => NSAccessibilityUnknownRole,
+            Role::TabPanel => NSAccessibilityUnknownRole,
+            Role::Term => NSAccessibilityUnknownRole,
+            Role::TextFieldWithComboBox => NSAccessibilityUnknownRole,
+            Role::Time => NSAccessibilityUnknownRole,
+            Role::Timer => NSAccessibilityUnknownRole,
+            Role::TitleBar => NSAccessibilityUnknownRole,
+            Role::Toolbar => NSAccessibilityUnknownRole,
+            Role::Tooltip => NSAccessibilityUnknownRole,
+            Role::Tree => NSAccessibilityUnknownRole,
+            Role::TreeGrid => NSAccessibilityUnknownRole,
+            Role::Video => NSAccessibilityUnknownRole,
+            Role::WebView => NSAccessibilityUnknownRole,
+            // Use the group role for Role::Window, since the NSWindow
+            // provides the top-level accessibility object for the window.
+            Role::Window => NSAccessibilityGroupRole,
+            Role::PdfActionableHighlight => NSAccessibilityUnknownRole,
+            Role::PdfRoot => NSAccessibilityUnknownRole,
+            Role::GraphicsDocument => NSAccessibilityUnknownRole,
+            Role::GraphicsObject => NSAccessibilityUnknownRole,
+            Role::GraphicsSymbol => NSAccessibilityUnknownRole,
+            Role::DocAbstract => NSAccessibilityUnknownRole,
+            Role::DocAcknowledgements => NSAccessibilityUnknownRole,
+            Role::DocAfterword => NSAccessibilityUnknownRole,
+            Role::DocAppendix => NSAccessibilityUnknownRole,
+            Role::DocBackLink => NSAccessibilityUnknownRole,
+            Role::DocBiblioEntry => NSAccessibilityUnknownRole,
+            Role::DocBibliography => NSAccessibilityUnknownRole,
+            Role::DocBiblioRef => NSAccessibilityUnknownRole,
+            Role::DocChapter => NSAccessibilityUnknownRole,
+            Role::DocColophon => NSAccessibilityUnknownRole,
+            Role::DocConclusion => NSAccessibilityUnknownRole,
+            Role::DocCover => NSAccessibilityUnknownRole,
+            Role::DocCredit => NSAccessibilityUnknownRole,
+            Role::DocCredits => NSAccessibilityUnknownRole,
+            Role::DocDedication => NSAccessibilityUnknownRole,
+            Role::DocEndnote => NSAccessibilityUnknownRole,
+            Role::DocEndnotes => NSAccessibilityUnknownRole,
+            Role::DocEpigraph => NSAccessibilityUnknownRole,
+            Role::DocEpilogue => NSAccessibilityUnknownRole,
+            Role::DocErrata => NSAccessibilityUnknownRole,
+            Role::DocExample => NSAccessibilityUnknownRole,
+            Role::DocFootnote => NSAccessibilityUnknownRole,
+            Role::DocForeword => NSAccessibilityUnknownRole,
+            Role::DocGlossary => NSAccessibilityUnknownRole,
+            Role::DocGlossRef => NSAccessibilityUnknownRole,
+            Role::DocIndex => NSAccessibilityUnknownRole,
+            Role::DocIntroduction => NSAccessibilityUnknownRole,
+            Role::DocNoteRef => NSAccessibilityUnknownRole,
+            Role::DocNotice => NSAccessibilityUnknownRole,
+            Role::DocPageBreak => NSAccessibilityUnknownRole,
+            Role::DocPageFooter => NSAccessibilityUnknownRole,
+            Role::DocPageHeader => NSAccessibilityUnknownRole,
+            Role::DocPageList => NSAccessibilityUnknownRole,
+            Role::DocPart => NSAccessibilityUnknownRole,
+            Role::DocPreface => NSAccessibilityUnknownRole,
+            Role::DocPrologue => NSAccessibilityUnknownRole,
+            Role::DocPullquote => NSAccessibilityUnknownRole,
+            Role::DocQna => NSAccessibilityUnknownRole,
+            Role::DocSubtitle => NSAccessibilityUnknownRole,
+            Role::DocTip => NSAccessibilityUnknownRole,
+            Role::DocToc => NSAccessibilityUnknownRole,
+            Role::ListGrid => NSAccessibilityUnknownRole,
+        }
+    }
 }
 
 fn get_size(_state: &State, node: &Node) -> id {
@@ -203,5 +395,20 @@ extern "C" {
     static NSAccessibilitySizeAttribute: id;
 
     // Roles
-    static NSAccessibilityWindowRole: id;
+    static NSAccessibilityButtonRole: id;
+    static NSAccessibilityCheckBoxRole: id;
+    static NSAccessibilityCellRole: id;
+    static NSAccessibilityColumnRole: id;
+    static NSAccessibilityGroupRole: id;
+    static NSAccessibilityImageRole: id;
+    static NSAccessibilityLinkRole: id;
+    static NSAccessibilityListRole: id;
+    static NSAccessibilityMenuRole: id;
+    static NSAccessibilityMenuItemRole: id;
+    static NSAccessibilityRadioButtonRole: id;
+    static NSAccessibilityRowRole: id;
+    static NSAccessibilityStaticTextRole: id;
+    static NSAccessibilityTableRole: id;
+    static NSAccessibilityTextFieldRole: id;
+    static NSAccessibilityUnknownRole: id;
 }
