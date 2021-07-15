@@ -42,7 +42,7 @@ pub enum Role {
     MenuItem,
     MenuListOption,
     Paragraph,
-    Group,
+    GenericContainer,
 
     /// Used for ARIA role="none"/"presentation" -- ignored in platform tree.
     Presentation,
@@ -107,8 +107,8 @@ pub enum Role {
     Footer,
     FooterAsNonLandmark,
     Form,
-    GenericContainer,
     Grid,
+    Group,
     Header,
     HeaderAsNonLandmark,
     Heading,
