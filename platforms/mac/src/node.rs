@@ -21,7 +21,7 @@ use objc::rc::{StrongPtr, WeakPtr};
 use objc::runtime::{Class, Object, Sel};
 use objc::{class, msg_send, sel, sel_impl};
 
-use crate::util::{from_nsstring, make_nsstring};
+use crate::util::{from_nsstring, make_nsstring, nsstrings_equal};
 
 struct Attribute(*const id, fn(&State, &Node) -> id);
 unsafe impl Sync for Attribute {}
@@ -287,11 +287,8 @@ impl State {
                 println!("get attribute value {}", from_nsstring(attribute_name));
 
                 for Attribute(test_name_ptr, f) in ATTRIBUTE_MAP {
-                    let equal: BOOL = unsafe {
-                        let test_name: id = **test_name_ptr;
-                        msg_send![attribute_name, isEqualToString: test_name]
-                    };
-                    if equal == YES {
+                    let test_name = unsafe { **test_name_ptr };
+                    if nsstrings_equal(attribute_name, test_name) {
                         return f(&self, &node);
                     }
                 }
