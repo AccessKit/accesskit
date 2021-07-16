@@ -9,10 +9,12 @@
 
 #![allow(non_upper_case_globals)]
 
+use std::collections::HashMap;
 use std::ffi::c_void;
+use std::sync::Mutex;
 
 use accesskit_consumer::{Node, WeakNode};
-use accesskit_schema::Role;
+use accesskit_schema::{NodeId, Role, TreeId};
 use cocoa::base::{id, nil, BOOL, NO, YES};
 use cocoa::foundation::{NSArray, NSPoint, NSSize, NSValue};
 use lazy_static::lazy_static;
@@ -33,7 +35,7 @@ fn get_parent(state: &State, node: &Node) -> id {
     }
 
     if let Some(parent) = node.unignored_parent() {
-        PlatformNode::new(&parent, &view).autorelease()
+        PlatformNode::get_or_create(&parent, &view).autorelease()
     } else {
         view.autorelease()
     }
@@ -47,7 +49,7 @@ fn get_children(state: &State, node: &Node) -> id {
 
     // TODO: handle ignored and indirect children; see Chromium's
     // content/browser/accessibility/browser_accessibility_cocoa.mm
-    let platform_nodes = node.children().map(|child| PlatformNode::new(&child, &view).autorelease()).collect::<Vec<id>>();
+    let platform_nodes = node.children().map(|child| PlatformNode::get_or_create(&child, &view).autorelease()).collect::<Vec<id>>();
     unsafe { NSArray::arrayWithObjects(nil, &platform_nodes) }
 }
 
@@ -332,25 +334,40 @@ impl State {
 pub(crate) struct PlatformNode;
 
 impl PlatformNode {
-    pub(crate) fn new(node: &Node, view: &StrongPtr) -> StrongPtr {
+    pub(crate) fn get_or_create(node: &Node, view: &StrongPtr) -> StrongPtr {
+        let mut platform_nodes = PLATFORM_NODES.lock().unwrap();
+        let key = (node.tree_reader.id().clone(), node.id());
+        if let Some(result) = platform_nodes.get(&key) {
+            return result.0.clone();
+        }
+
         let state = Box::new(State {
             node: node.downgrade(),
             view: view.weak(),
         });
-        unsafe {
+        let result = unsafe {
             let object: id = msg_send![PLATFORM_NODE_CLASS.0, alloc];
             let () = msg_send![object, init];
             let state_ptr = Box::into_raw(state);
             (*object).set_ivar(STATE_IVAR, state_ptr as *mut c_void);
             StrongPtr::new(object)
-        }
+        };
+
+        platform_nodes.insert(key, PlatformNodePtr(result.clone()));
+        result
     }
+
+    // TODO: clean up platform nodes when underlying nodes are deleted
 }
 
 static STATE_IVAR: &str = "accessKitPlatformNodeState";
 
 struct PlatformNodeClass(*const Class);
 unsafe impl Sync for PlatformNodeClass {}
+
+struct PlatformNodePtr(StrongPtr);
+unsafe impl Send for PlatformNodePtr {}
+unsafe impl Sync for PlatformNodePtr {}
 
 lazy_static! {
     static ref PLATFORM_NODE_CLASS: PlatformNodeClass = unsafe {
@@ -397,6 +414,8 @@ lazy_static! {
 
         PlatformNodeClass(decl.register())
     };
+
+    static ref PLATFORM_NODES: Mutex<HashMap<(TreeId, NodeId), PlatformNodePtr>> = Mutex::new(HashMap::new());
 }
 
 // Constants declared in AppKit
