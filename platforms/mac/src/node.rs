@@ -51,6 +51,11 @@ fn get_children(state: &State, node: &Node) -> id {
     unsafe { NSArray::arrayWithObjects(nil, &platform_nodes) }
 }
 
+fn get_identifier(_state: &State, node: &Node) -> id {
+    let id = node.global_id();
+    make_nsstring(&id)
+}
+
 fn get_position(_state: &State, node: &Node) -> id {
     if let Some(bounds) = &node.data().bounds {
         // TODO: implement for real
@@ -272,6 +277,7 @@ static ATTRIBUTE_MAP: &[Attribute] = unsafe {
     &[
         Attribute(&NSAccessibilityParentAttribute, get_parent),
         Attribute(&NSAccessibilityChildrenAttribute, get_children),
+        Attribute(&NSAccessibilityIdentifierAttribute, get_identifier),
         Attribute(&NSAccessibilityPositionAttribute, get_position),
         Attribute(&NSAccessibilityRoleAttribute, get_role),
         Attribute(&NSAccessibilitySizeAttribute, get_size),
@@ -398,6 +404,7 @@ lazy_static! {
 extern "C" {
     // Attributes
     static NSAccessibilityChildrenAttribute: id;
+    static NSAccessibilityIdentifierAttribute: id;
     static NSAccessibilityParentAttribute: id;
     static NSAccessibilityPositionAttribute: id;
     static NSAccessibilityRoleAttribute: id;
