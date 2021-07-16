@@ -270,6 +270,12 @@ struct State {
     view: WeakPtr,
 }
 
+fn is_ignored(state: &State, node: &Node) -> bool {
+    let ns_role = get_role(state, node);
+    nsstrings_equal(ns_role, unsafe { NSAccessibilityUnknownRole })
+        || node.is_invisible_or_ignored()
+}
+
 impl State {
     fn attribute_names(&self) -> id {
         let names = ATTRIBUTE_MAP
@@ -300,13 +306,7 @@ impl State {
 
     fn is_ignored(&self) -> BOOL {
         self.node
-            .map(|node| {
-                if node.is_invisible_or_ignored() {
-                    YES
-                } else {
-                    NO
-                }
-            })
+            .map(|node| if is_ignored(&self, &node) { YES } else { NO })
             .unwrap_or(YES)
     }
 }
