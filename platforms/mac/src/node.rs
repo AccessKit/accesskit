@@ -291,6 +291,12 @@ fn get_role(_state: &State, node: &Node) -> id {
     }
 }
 
+fn get_title(_state: &State, node: &Node) -> id {
+    // TODO: implement proper logic for title, description, and value;
+    // see Chromium's content/browser/accessibility/browser_accessibility_cocoa.mm
+    make_nsstring(node.name().unwrap_or(""))
+}
+
 static ATTRIBUTE_MAP: &[Attribute] = unsafe {
     &[
         Attribute(&NSAccessibilityParentAttribute, get_parent),
@@ -299,6 +305,7 @@ static ATTRIBUTE_MAP: &[Attribute] = unsafe {
         Attribute(&NSAccessibilityPositionAttribute, get_position),
         Attribute(&NSAccessibilitySizeAttribute, get_size),
         Attribute(&NSAccessibilityRoleAttribute, get_role),
+        Attribute(&NSAccessibilityTitleAttribute, get_title),
     ]
 };
 
@@ -444,6 +451,7 @@ extern "C" {
     static NSAccessibilityPositionAttribute: id;
     static NSAccessibilityRoleAttribute: id;
     static NSAccessibilitySizeAttribute: id;
+    static NSAccessibilityTitleAttribute: id;
 
     // Roles
     static NSAccessibilityButtonRole: id;

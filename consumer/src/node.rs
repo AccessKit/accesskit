@@ -101,6 +101,14 @@ impl Node<'_> {
     pub fn is_invisible(&self) -> bool {
         self.data().invisible
     }
+
+    pub fn name<'a>(&'a self) -> Option<&'a str> {
+        if let Some(name) = &self.data().name {
+            Some(name)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Clone)]
