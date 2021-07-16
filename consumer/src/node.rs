@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use accesskit_schema::{NodeId, Role};
+use std::iter::FusedIterator;
 use std::sync::{Arc, Weak};
+
+use accesskit_schema::{NodeId, Role};
 
 use crate::tree::{NodeState, ParentAndIndex, Reader as TreeReader, Tree};
 use crate::NodeData;
@@ -19,7 +21,7 @@ impl Node<'_> {
     }
 
     pub fn is_focused(&self) -> bool {
-        return self.tree_reader.state.data.focus == Some(self.id())
+        return self.tree_reader.state.data.focus == Some(self.id());
     }
 
     pub fn is_ignored(&self) -> bool {
@@ -53,6 +55,18 @@ impl Node<'_> {
         } else {
             None
         }
+    }
+
+    pub fn children<'a>(
+        &'a self,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>>
+           + ExactSizeIterator<Item = Node<'a>>
+           + FusedIterator<Item = Node<'a>>
+           + 'a {
+        self.data()
+            .children
+            .iter()
+            .map(move |id| self.tree_reader.node_by_id(*id).unwrap())
     }
 
     // Convenience getters
