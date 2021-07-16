@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use accesskit_schema::{NodeId, TreeUpdate};
+use accesskit_schema::{NodeId, TreeId, TreeUpdate};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 
@@ -176,6 +176,10 @@ impl Reader<'_> {
 
     pub fn root<'a>(&'a self) -> Node<'a> {
         self.node_by_id(self.state.root).unwrap()
+    }
+
+    pub fn id<'a>(&'a self) -> &'a TreeId {
+        &self.state.data.id
     }
 }
 

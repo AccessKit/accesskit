@@ -71,6 +71,10 @@ impl Node<'_> {
 
     // TODO: get unignored children; see Chromium's ui/accessibility/ax_node.cc
 
+    pub fn global_id(&self) -> String {
+        format!("{}:{}", self.tree_reader.id().0, self.id().0)
+    }
+
     // Convenience getters
 
     pub fn id(&self) -> NodeId {
