@@ -15,8 +15,9 @@ use std::sync::Mutex;
 
 use accesskit_consumer::{Node, WeakNode};
 use accesskit_schema::{NodeId, Role, TreeId};
+use cocoa::appkit::NSWindow;
 use cocoa::base::{id, nil, BOOL, NO, YES};
-use cocoa::foundation::{NSArray, NSPoint, NSSize, NSValue};
+use cocoa::foundation::{NSArray, NSPoint, NSRect, NSSize, NSValue};
 use lazy_static::lazy_static;
 use objc::declare::ClassDecl;
 use objc::rc::{StrongPtr, WeakPtr};
@@ -58,11 +59,38 @@ fn get_identifier(_state: &State, node: &Node) -> id {
     make_nsstring(&id)
 }
 
-fn get_position(_state: &State, node: &Node) -> id {
-    if let Some(bounds) = &node.data().bounds {
-        // TODO: implement for real
-        let ns_point = NSPoint { x: 100., y: 100. };
-        unsafe { NSValue::valueWithPoint(nil, ns_point) }
+fn get_screen_bounds(state: &State, node: &Node) -> Option<NSRect> {
+    let view = state.view.load();
+    if view.is_null() {
+        return None;
+    }
+
+    node.bounds().map(|rect| {
+        let root_bounds = node.tree_reader.root().bounds().unwrap();
+        let root_bottom = root_bounds.top + root_bounds.height;
+        let bottom = rect.top + rect.height;
+        let y = root_bottom - bottom;
+        let rect = NSRect {
+            origin: NSPoint { x: rect.left as f64, y: y as f64 },
+            size: NSSize { width: rect.width as f64, height: rect.height as f64 }
+        };
+        let rect: NSRect = unsafe { msg_send![*view, convertRect:rect toView:nil] };
+        let window: id = unsafe { msg_send![*view, window] };
+        unsafe { window.convertRectToScreen_(rect) }
+    })
+}
+
+fn get_position(state: &State, node: &Node) -> id {
+    if let Some(rect) = get_screen_bounds(state, node) {
+        unsafe { NSValue::valueWithPoint(nil, rect.origin) }
+    } else {
+        nil
+    }
+}
+
+fn get_size(state: &State, node: &Node) -> id {
+    if let Some(rect) = get_screen_bounds(state, node) {
+        unsafe { NSValue::valueWithSize(nil, rect.size) }
     } else {
         nil
     }
@@ -263,26 +291,14 @@ fn get_role(_state: &State, node: &Node) -> id {
     }
 }
 
-fn get_size(_state: &State, node: &Node) -> id {
-    if let Some(bounds) = &node.data().bounds {
-        let ns_size = NSSize {
-            width: bounds.rect.width as f64,
-            height: bounds.rect.height as f64,
-        };
-        unsafe { NSValue::valueWithSize(nil, ns_size) }
-    } else {
-        nil
-    }
-}
-
 static ATTRIBUTE_MAP: &[Attribute] = unsafe {
     &[
         Attribute(&NSAccessibilityParentAttribute, get_parent),
         Attribute(&NSAccessibilityChildrenAttribute, get_children),
         Attribute(&NSAccessibilityIdentifierAttribute, get_identifier),
         Attribute(&NSAccessibilityPositionAttribute, get_position),
-        Attribute(&NSAccessibilityRoleAttribute, get_role),
         Attribute(&NSAccessibilitySizeAttribute, get_size),
+        Attribute(&NSAccessibilityRoleAttribute, get_role),
     ]
 };
 
