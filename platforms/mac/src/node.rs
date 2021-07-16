@@ -32,7 +32,7 @@ fn get_parent(state: &State, node: &Node) -> id {
         return nil;
     }
 
-    if let Some(parent) = node.parent() {
+    if let Some(parent) = node.unignored_parent() {
         PlatformNode::new(&parent, &view).autorelease()
     } else {
         view.autorelease()

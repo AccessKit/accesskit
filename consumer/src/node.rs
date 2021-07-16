@@ -38,6 +38,23 @@ impl Node<'_> {
         }
     }
 
+    pub fn unignored_parent<'a>(&'a self) -> Option<Node<'a>> {
+        if let Some(parent) = self.parent() {
+            if parent.is_ignored() {
+                // Work around lifetime issues.
+                if let Some(result_node) = parent.unignored_parent() {
+                    Some(self.tree_reader.node_by_id(result_node.id()).unwrap())
+                } else {
+                    None
+                }
+            } else {
+                Some(parent)
+            }
+        } else {
+            None
+        }
+    }
+
     // Convenience getters
 
     pub fn id(&self) -> NodeId {
