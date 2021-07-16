@@ -69,6 +69,8 @@ impl Node<'_> {
             .map(move |id| self.tree_reader.node_by_id(*id).unwrap())
     }
 
+    // TODO: get unignored children; see Chromium's ui/accessibility/ax_node.cc
+
     // Convenience getters
 
     pub fn id(&self) -> NodeId {
