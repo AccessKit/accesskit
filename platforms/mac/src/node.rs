@@ -283,7 +283,6 @@ impl State {
             .map(|Attribute(name_ptr, _)| unsafe { **name_ptr })
             .collect::<Vec<id>>();
         // TODO: role-specific attributes
-        println!("returning attribute names {:?}", names);
         unsafe { NSArray::arrayWithObjects(nil, &names) }
     }
 
