@@ -5,7 +5,7 @@
 use std::iter::FusedIterator;
 use std::sync::{Arc, Weak};
 
-use accesskit_schema::{NodeId, Role};
+use accesskit_schema::{NodeId, Rect, Role};
 
 use crate::tree::{NodeState, ParentAndIndex, Reader as TreeReader, Tree};
 use crate::NodeData;
@@ -73,6 +73,19 @@ impl Node<'_> {
 
     pub fn global_id(&self) -> String {
         format!("{}:{}", self.tree_reader.id().0, self.id().0)
+    }
+
+    /// Returns the node's bounds relative to the root of the tree.
+    pub fn bounds(&self) -> Option<Rect> {
+        if let Some(bounds) = &self.data().bounds {
+            // TODO: handle offset container
+            assert!(bounds.offset_container.is_none());
+            // TODO: handle transform
+            assert!(bounds.transform.is_none());
+            Some(bounds.rect.clone())
+        } else {
+            None
+        }
     }
 
     // Convenience getters
