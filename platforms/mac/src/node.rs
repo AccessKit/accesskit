@@ -39,6 +39,18 @@ fn get_parent(state: &State, node: &Node) -> id {
     }
 }
 
+fn get_children(state: &State, node: &Node) -> id {
+    let view = state.view.load();
+    if view.is_null() {
+        return nil;
+    }
+
+    // TODO: handle ignored and indirect children; see Chromium's
+    // content/browser/accessibility/browser_accessibility_cocoa.mm
+    let platform_nodes = node.children().map(|child| PlatformNode::new(&child, &view).autorelease()).collect::<Vec<id>>();
+    unsafe { NSArray::arrayWithObjects(nil, &platform_nodes) }
+}
+
 fn get_position(_state: &State, node: &Node) -> id {
     if let Some(bounds) = &node.data().bounds {
         // TODO: implement for real
@@ -259,6 +271,7 @@ fn get_size(_state: &State, node: &Node) -> id {
 static ATTRIBUTE_MAP: &[Attribute] = unsafe {
     &[
         Attribute(&NSAccessibilityParentAttribute, get_parent),
+        Attribute(&NSAccessibilityChildrenAttribute, get_children),
         Attribute(&NSAccessibilityPositionAttribute, get_position),
         Attribute(&NSAccessibilityRoleAttribute, get_role),
         Attribute(&NSAccessibilitySizeAttribute, get_size),
@@ -289,7 +302,7 @@ impl State {
     fn attribute_value(&self, attribute_name: id) -> id {
         self.node
             .map(|node| {
-                println!("get attribute value {}", from_nsstring(attribute_name));
+                println!("get attribute value {} on {:?}", from_nsstring(attribute_name), node.id());
 
                 for Attribute(test_name_ptr, f) in ATTRIBUTE_MAP {
                     let test_name = unsafe { **test_name_ptr };
@@ -384,6 +397,7 @@ lazy_static! {
 #[link(name = "AppKit", kind = "framework")]
 extern "C" {
     // Attributes
+    static NSAccessibilityChildrenAttribute: id;
     static NSAccessibilityParentAttribute: id;
     static NSAccessibilityPositionAttribute: id;
     static NSAccessibilityRoleAttribute: id;
