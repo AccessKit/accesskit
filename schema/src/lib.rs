@@ -909,7 +909,7 @@ pub struct Node {
     pub placeholder: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub custom_role: Option<String>,
+    pub aria_role: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub role_description: Option<String>,
 

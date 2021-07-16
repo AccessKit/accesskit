@@ -32,7 +32,7 @@ def translate_role(input_role):
 def add_attr(input_node, node, input_name, *, converter=None):
     renames = {
         "display": "cssDisplay",
-        "role": "customRole",
+        "role": "ariaRole",
         "text-align": "textAlign",
         "ariaCurrentState": "ariaCurrent",
         "haspopup": "hasPopup",

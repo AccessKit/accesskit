@@ -3543,7 +3543,7 @@
       "isLineBreakingObject": true,
       "cssDisplay": "block",
       "htmlTag": "form",
-      "customRole": "form",
+      "ariaRole": "form",
       "foregroundColor": 0,
       "textAlign": "left",
       "fontSize": 16.0,
