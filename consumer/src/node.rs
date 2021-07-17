@@ -21,7 +21,7 @@ impl Node<'_> {
     }
 
     pub fn is_focused(&self) -> bool {
-        return self.tree_reader.state.data.focus == Some(self.id());
+        self.tree_reader.state.data.focus == Some(self.id())
     }
 
     pub fn is_ignored(&self) -> bool {
@@ -32,7 +32,7 @@ impl Node<'_> {
         (self.is_invisible() || self.is_ignored()) && !self.is_focused()
     }
 
-    pub fn parent<'a>(&'a self) -> Option<Node<'a>> {
+    pub fn parent(&self) -> Option<Node<'_>> {
         if let Some(ParentAndIndex(parent, _)) = &self.state.parent_and_index {
             Some(self.tree_reader.node_by_id(*parent).unwrap())
         } else {
@@ -40,15 +40,13 @@ impl Node<'_> {
         }
     }
 
-    pub fn unignored_parent<'a>(&'a self) -> Option<Node<'a>> {
+    pub fn unignored_parent(&self) -> Option<Node<'_>> {
         if let Some(parent) = self.parent() {
             if parent.is_ignored() {
                 // Work around lifetime issues.
-                if let Some(result_node) = parent.unignored_parent() {
-                    Some(self.tree_reader.node_by_id(result_node.id()).unwrap())
-                } else {
-                    None
-                }
+                parent
+                    .unignored_parent()
+                    .map(|node| self.tree_reader.node_by_id(node.id()).unwrap())
             } else {
                 Some(parent)
             }
@@ -57,12 +55,11 @@ impl Node<'_> {
         }
     }
 
-    pub fn children<'a>(
-        &'a self,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>>
-           + ExactSizeIterator<Item = Node<'a>>
-           + FusedIterator<Item = Node<'a>>
-           + 'a {
+    pub fn children(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = Node<'_>>
+           + ExactSizeIterator<Item = Node<'_>>
+           + FusedIterator<Item = Node<'_>> {
         self.data()
             .children
             .iter()
@@ -102,7 +99,7 @@ impl Node<'_> {
         self.data().invisible
     }
 
-    pub fn name<'a>(&'a self) -> Option<&'a str> {
+    pub fn name(&self) -> Option<&str> {
         if let Some(name) = &self.data().name {
             Some(name)
         } else {

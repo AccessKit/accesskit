@@ -167,18 +167,18 @@ pub struct Reader<'a> {
 }
 
 impl Reader<'_> {
-    pub fn node_by_id<'a>(&'a self, id: NodeId) -> Option<Node<'a>> {
+    pub fn node_by_id(&self, id: NodeId) -> Option<Node<'_>> {
         self.state.nodes.get(&id).map(|node_state| Node {
             tree_reader: &self,
             state: node_state,
         })
     }
 
-    pub fn root<'a>(&'a self) -> Node<'a> {
+    pub fn root(&self) -> Node<'_> {
         self.node_by_id(self.state.root).unwrap()
     }
 
-    pub fn id<'a>(&'a self) -> &'a TreeId {
+    pub fn id(&self) -> &TreeId {
         &self.state.data.id
     }
 }
