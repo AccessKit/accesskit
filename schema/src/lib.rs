@@ -173,16 +173,12 @@ pub enum Role {
     PdfActionableHighlight,
     PdfRoot,
 
-    // --------------------------------------------------------------
     // ARIA Graphics module roles:
     // https://rawgit.com/w3c/graphics-aam/master/#mapping_role_table
     GraphicsDocument,
     GraphicsObject,
     GraphicsSymbol,
-    // End ARIA Graphics module roles.
-    // --------------------------------------------------------------
 
-    // --------------------------------------------------------------
     // DPub Roles:
     // https://www.w3.org/TR/dpub-aam-1.0/#mapping_role_table
     DocAbstract,
@@ -226,8 +222,6 @@ pub enum Role {
     DocSubtitle,
     DocTip,
     DocToc,
-    // End DPub roles.
-    // --------------------------------------------------------------
 
     /// Behaves similar to an ARIA grid but is primarily used by Chromium's
     /// `TableView` and its subclasses, so they can be exposed correctly
