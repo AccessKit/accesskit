@@ -50,7 +50,10 @@ fn get_children(state: &State, node: &Node) -> id {
 
     // TODO: handle ignored and indirect children; see Chromium's
     // content/browser/accessibility/browser_accessibility_cocoa.mm
-    let platform_nodes = node.children().map(|child| PlatformNode::get_or_create(&child, &view).autorelease()).collect::<Vec<id>>();
+    let platform_nodes = node
+        .children()
+        .map(|child| PlatformNode::get_or_create(&child, &view).autorelease())
+        .collect::<Vec<id>>();
     unsafe { NSArray::arrayWithObjects(nil, &platform_nodes) }
 }
 
@@ -71,8 +74,14 @@ fn get_screen_bounds(state: &State, node: &Node) -> Option<NSRect> {
         let bottom = rect.top + rect.height;
         let y = root_bottom - bottom;
         let rect = NSRect {
-            origin: NSPoint { x: rect.left as f64, y: y as f64 },
-            size: NSSize { width: rect.width as f64, height: rect.height as f64 }
+            origin: NSPoint {
+                x: rect.left as f64,
+                y: y as f64,
+            },
+            size: NSSize {
+                width: rect.width as f64,
+                height: rect.height as f64,
+            },
         };
         let rect: NSRect = unsafe { msg_send![*view, convertRect:rect toView:nil] };
         let window: id = unsafe { msg_send![*view, window] };
@@ -333,7 +342,11 @@ impl State {
     fn attribute_value(&self, attribute_name: id) -> id {
         self.node
             .map(|node| {
-                println!("get attribute value {} on {:?}", from_nsstring(attribute_name), node.id());
+                println!(
+                    "get attribute value {} on {:?}",
+                    from_nsstring(attribute_name),
+                    node.id()
+                );
 
                 for Attribute(test_name_ptr, f) in ATTRIBUTE_MAP {
                     let test_name = unsafe { **test_name_ptr };

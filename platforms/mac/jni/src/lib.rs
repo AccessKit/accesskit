@@ -6,19 +6,12 @@ use accesskit_mac::Manager;
 use accesskit_schema::TreeUpdate;
 use cocoa::appkit::NSWindow;
 use cocoa::base::id;
-use jni::JNIEnv;
 use jni::objects::{JClass, JString};
 use jni::sys::jlong;
+use jni::JNIEnv;
 
-unsafe fn new_common(
-    env: JNIEnv,
-    view: id,
-    initial_state_json: JString,
-) -> jlong {
-    let initial_state_json: String = env
-        .get_string(initial_state_json)
-        .unwrap()
-        .into();
+unsafe fn new_common(env: JNIEnv, view: id, initial_state_json: JString) -> jlong {
+    let initial_state_json: String = env.get_string(initial_state_json).unwrap().into();
     let initial_state = serde_json::from_str::<TreeUpdate>(&initial_state_json).unwrap();
     let manager = Manager::new(view, initial_state);
     Box::into_raw(Box::new(manager)) as jlong
@@ -65,10 +58,7 @@ pub unsafe extern "system" fn Java_dev_accesskit_mac_AccessKitMacManager_nativeU
     update_json: JString,
 ) {
     let manager = &mut *(ptr as *mut Manager);
-    let update_json: String = env
-        .get_string(update_json)
-        .unwrap()
-        .into();
+    let update_json: String = env.get_string(update_json).unwrap().into();
     let update = serde_json::from_str::<TreeUpdate>(&update_json).unwrap();
     manager.update(update);
 }

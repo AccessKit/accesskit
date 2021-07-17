@@ -310,7 +310,7 @@ pub enum Orientation {
     /// E.g. most toolbars and separators.
     Horizontal,
     /// E.g. menu or combo box.
-    Vertical
+    Vertical,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
@@ -494,7 +494,7 @@ pub enum TextDecoration {
 #[serde(rename_all = "camelCase")]
 pub enum StringEncoding {
     Utf8,
-    Utf16
+    Utf16,
 }
 
 /// The stable identity of a node, unique within the node's tree.
