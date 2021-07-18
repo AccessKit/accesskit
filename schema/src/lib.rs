@@ -9,7 +9,7 @@
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::ops::Range;
 
 /// The type of an accessibility node.
@@ -232,7 +232,9 @@ pub enum Role {
 /// An action to be taken on an accessibility node.
 /// In contrast to [`DefaultActionVerb`], these describe what happens to the
 /// object, e.g. "focus".
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum Action {
     /// Do the default action for an object, typically this means "click".
@@ -350,7 +352,9 @@ pub enum DescriptionFrom {
 /// Function that can be performed when a dragged object is released
 /// on a drop target.
 /// Note: aria-dropeffect is deprecated in WAI-ARIA 1.1.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum DropEffect {
     Copy,
@@ -603,8 +607,8 @@ pub struct Node {
 
     /// Unordered set of actions supported by this node.
     #[serde(default)]
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    pub actions: HashSet<Action>,
+    #[serde(skip_serializing_if = "BTreeSet::is_empty")]
+    pub actions: BTreeSet<Action>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -750,8 +754,8 @@ pub struct Node {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub grabbed: Option<bool>,
     #[serde(default)]
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    pub drop_effects: HashSet<DropEffect>,
+    #[serde(skip_serializing_if = "BTreeSet::is_empty")]
+    pub drop_effects: BTreeSet<DropEffect>,
 
     /// Indicates whether this node causes a hard line-break
     /// (e.g. block level elements, or <br>)
