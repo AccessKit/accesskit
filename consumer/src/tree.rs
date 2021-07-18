@@ -213,6 +213,8 @@ impl Tree {
         state.serialize()
     }
 
+    // https://github.com/rust-lang/rust-clippy/issues/7296
+    #[allow(clippy::needless_lifetimes)]
     pub fn read<'a>(self: &'a Arc<Tree>) -> Reader<'a> {
         Reader {
             tree: self,
