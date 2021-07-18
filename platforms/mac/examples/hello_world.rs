@@ -9,12 +9,16 @@ use cocoa::appkit::{
 use cocoa::base::{nil, selector, NO};
 use cocoa::foundation::{NSAutoreleasePool, NSPoint, NSProcessInfo, NSRect, NSSize, NSString};
 
+fn get_initial_state() -> TreeUpdate {
+    let mut args = std::env::args();
+    let _arg0 = args.next().unwrap();
+    let initial_state_filename = args.next().unwrap();
+    let initial_state_str = std::fs::read_to_string(&initial_state_filename).unwrap();
+    serde_json::from_str(&initial_state_str).unwrap()
+}
+
 fn main() {
-    // Yes, this is a very crude way to handle command-line arguments.
-    let mut args = Vec::new();
-    for arg in std::env::args() {
-        args.push(String::from(arg));
-    }
+    let initial_state = get_initial_state();
 
     unsafe {
         let _pool = NSAutoreleasePool::new(nil);
@@ -56,8 +60,6 @@ fn main() {
 
         // Set up accessibility
         let view = window.contentView();
-        let initial_state_str = std::fs::read_to_string(&args[1]).unwrap();
-        let initial_state = serde_json::from_str::<TreeUpdate>(&initial_state_str).unwrap();
         let manager = accesskit_mac::Manager::new(view, initial_state);
         manager.inject();
 
