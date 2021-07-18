@@ -38,7 +38,16 @@ impl Manager {
         PlatformNode::get_or_create(&node, &self.view)
     }
 
-    /// Inject accessibility into the root view.
+    /// Inject accessibility into the view specified at initialization time.
+    /// This is useful when working with libraries that create an NSView
+    /// and don't provide an easy way to customize it.
+    // TODO: In the common case where the role of the tree root is Window,
+    // the approach taken by this function doesn't work well, because
+    // it introduces an extraneous "group" object as the one child
+    // of the view. It should really inject all of the unignored children
+    // of the root. But that list of children is often dynamic,
+    // so we need something different than the static solution used here.
+    // Maybe we can patch the accessibilityChildren method on the view?
     pub fn inject(&self) {
         let platform_node = self.root_platform_node();
         let ids = [*platform_node];
