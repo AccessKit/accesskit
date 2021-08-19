@@ -222,3 +222,153 @@ impl Tree {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+    use std::num::NonZeroU64;
+
+    const TREE_ID: &str = "test_tree";
+    const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
+    const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
+    const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
+
+    #[test]
+    fn init_tree_with_root_node() {
+        let update = TreeUpdate {
+            clear: None,
+            nodes: vec![Node::new(NODE_ID_1, Role::Window)],
+            tree: Some(Tree::new(TreeId(TREE_ID.to_string()), StringEncoding::Utf8)),
+            root: Some(NODE_ID_1),
+        };
+        let tree = super::Tree::new(update);
+        assert_eq!(&TreeId(TREE_ID.to_string()), tree.read().id());
+        assert_eq!(NODE_ID_1, tree.read().root().id());
+        assert_eq!(Role::Window, tree.read().root().role());
+        assert!(tree.read().root().parent().is_none());
+    }
+
+    #[test]
+    fn root_node_has_children() {
+        let update = TreeUpdate {
+            clear: None,
+            nodes: vec![
+                Node {
+                    children: vec![NODE_ID_2, NODE_ID_3],
+                    ..Node::new(NODE_ID_1, Role::Window)
+                },
+                Node::new(NODE_ID_2, Role::Button),
+                Node::new(NODE_ID_3, Role::Button),
+            ],
+            tree: Some(Tree::new(TreeId(TREE_ID.to_string()), StringEncoding::Utf8)),
+            root: Some(NODE_ID_1),
+        };
+        let tree = super::Tree::new(update);
+        let reader = tree.read();
+        assert_eq!(
+            NODE_ID_1,
+            reader.node_by_id(NODE_ID_2).unwrap().parent().unwrap().id()
+        );
+        assert_eq!(
+            NODE_ID_1,
+            reader.node_by_id(NODE_ID_3).unwrap().parent().unwrap().id()
+        );
+        assert_eq!(2, reader.root().children().count());
+    }
+
+    #[test]
+    fn add_child_to_root_node() {
+        let root_node = Node::new(NODE_ID_1, Role::Window);
+        let first_update = TreeUpdate {
+            clear: None,
+            nodes: vec![root_node.clone()],
+            tree: Some(Tree::new(TreeId(TREE_ID.to_string()), StringEncoding::Utf8)),
+            root: Some(NODE_ID_1),
+        };
+        let tree = super::Tree::new(first_update);
+        assert_eq!(0, tree.read().root().children().count());
+        let second_update = TreeUpdate {
+            clear: None,
+            nodes: vec![
+                Node {
+                    children: vec![NODE_ID_2],
+                    ..root_node
+                },
+                Node::new(NODE_ID_2, Role::RootWebArea),
+            ],
+            tree: None,
+            root: None,
+        };
+        tree.update(second_update);
+        let reader = tree.read();
+        assert_eq!(1, reader.root().children().count());
+        assert_eq!(NODE_ID_2, reader.root().children().next().unwrap().id());
+        assert_eq!(
+            NODE_ID_1,
+            reader.node_by_id(NODE_ID_2).unwrap().parent().unwrap().id()
+        );
+    }
+
+    #[test]
+    fn remove_child_from_root_node() {
+        let root_node = Node::new(NODE_ID_1, Role::Window);
+        let first_update = TreeUpdate {
+            clear: None,
+            nodes: vec![
+                Node {
+                    children: vec![NODE_ID_2],
+                    ..root_node.clone()
+                },
+                Node::new(NODE_ID_2, Role::RootWebArea),
+            ],
+            tree: Some(Tree::new(TreeId(TREE_ID.to_string()), StringEncoding::Utf8)),
+            root: Some(NODE_ID_1),
+        };
+        let tree = super::Tree::new(first_update);
+        assert_eq!(1, tree.read().root().children().count());
+        let second_update = TreeUpdate {
+            clear: None,
+            nodes: vec![root_node],
+            tree: None,
+            root: None,
+        };
+        tree.update(second_update);
+        assert_eq!(0, tree.read().root().children().count());
+        assert!(tree.read().node_by_id(NODE_ID_2).is_none());
+    }
+
+    #[test]
+    fn move_focus_between_siblings() {
+        let tree_data = Tree::new(TreeId(TREE_ID.to_string()), StringEncoding::Utf8);
+        let first_update = TreeUpdate {
+            clear: None,
+            nodes: vec![
+                Node {
+                    children: vec![NODE_ID_2, NODE_ID_3],
+                    ..Node::new(NODE_ID_1, Role::Window)
+                },
+                Node::new(NODE_ID_2, Role::Button),
+                Node::new(NODE_ID_3, Role::Button),
+            ],
+            tree: Some(Tree {
+                focus: Some(NODE_ID_2),
+                ..tree_data.clone()
+            }),
+            root: Some(NODE_ID_1),
+        };
+        let tree = super::Tree::new(first_update);
+        assert!(tree.read().node_by_id(NODE_ID_2).unwrap().is_focused());
+        let second_update = TreeUpdate {
+            clear: None,
+            nodes: vec![],
+            tree: Some(Tree {
+                focus: Some(NODE_ID_3),
+                ..tree_data
+            }),
+            root: None,
+        };
+        tree.update(second_update);
+        assert!(tree.read().node_by_id(NODE_ID_3).unwrap().is_focused());
+        assert!(!tree.read().node_by_id(NODE_ID_2).unwrap().is_focused());
+    }
+}
