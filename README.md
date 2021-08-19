@@ -1,6 +1,6 @@
 # AccessKit: UI accessibility infrastructure across platforms and programming languages
 
-![CI status](https://github.com/AccessKit/accesskit/actions/workflows/ci.yml/badge.svg)
+[![Build Status](https://github.com/DataTriny/accesskit/actions/workflows/ci.yml/badge.svg)](https://github.com/DataTriny/accesskit/actions)
 
 ## Motivation
 
