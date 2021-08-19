@@ -1251,6 +1251,18 @@ pub struct Tree {
     pub root_scroller: Option<NodeId>,
 }
 
+impl Tree {
+    pub fn new(id: TreeId, source_string_encoding: StringEncoding) -> Tree {
+        Tree {
+            id,
+            source_string_encoding,
+            parent: None,
+            focus: None,
+            root_scroller: None,
+        }
+    }
+}
+
 /// A serializable representation of an atomic change to a tree.
 /// The sender and receiver must be in sync; the update is only meant
 /// to bring the tree from a specific previous state into its next state.

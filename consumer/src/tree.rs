@@ -238,13 +238,10 @@ mod tests {
         let update = TreeUpdate {
             clear: None,
             nodes: vec![Node::new(NodeId(ONE), Role::Application)],
-            tree: Some(Tree {
-                id: TreeId("test_tree".to_string()),
-                source_string_encoding: StringEncoding::Utf16,
-                parent: None,
-                focus: None,
-                root_scroller: None,
-            }),
+            tree: Some(Tree::new(
+                TreeId("test_tree".to_string()),
+                StringEncoding::Utf16,
+            )),
             root: Some(NodeId(ONE)),
         };
         let tree = super::Tree::new(update);
@@ -265,13 +262,10 @@ mod tests {
                 Node::new(NodeId(TWO), Role::Window),
                 Node::new(NodeId(THREE), Role::Window),
             ],
-            tree: Some(Tree {
-                id: TreeId("test_tree".to_string()),
-                source_string_encoding: StringEncoding::Utf16,
-                parent: None,
-                focus: None,
-                root_scroller: None,
-            }),
+            tree: Some(Tree::new(
+                TreeId("test_tree".to_string()),
+                StringEncoding::Utf16,
+            )),
             root: Some(NodeId(ONE)),
         };
         let tree = super::Tree::new(update);
@@ -303,13 +297,10 @@ mod tests {
         let first_update = TreeUpdate {
             clear: None,
             nodes: vec![root_node.clone()],
-            tree: Some(Tree {
-                id: TreeId("test_tree".to_string()),
-                source_string_encoding: StringEncoding::Utf16,
-                parent: None,
-                focus: None,
-                root_scroller: None,
-            }),
+            tree: Some(Tree::new(
+                TreeId("test_tree".to_string()),
+                StringEncoding::Utf16,
+            )),
             root: Some(NodeId(ONE)),
         };
         let tree = super::Tree::new(first_update);
@@ -344,13 +335,10 @@ mod tests {
                 },
                 Node::new(NodeId(TWO), Role::RootWebArea),
             ],
-            tree: Some(Tree {
-                id: TreeId("test_tree".to_string()),
-                source_string_encoding: StringEncoding::Utf16,
-                parent: None,
-                focus: None,
-                root_scroller: None,
-            }),
+            tree: Some(Tree::new(
+                TreeId("test_tree".to_string()),
+                StringEncoding::Utf16,
+            )),
             root: Some(NodeId(ONE)),
         };
         let tree = super::Tree::new(first_update);
@@ -368,6 +356,7 @@ mod tests {
 
     #[test]
     fn move_focus_between_siblings() {
+        let tree_data = Tree::new(TreeId("test_tree".to_string()), StringEncoding::Utf16);
         let first_update = TreeUpdate {
             clear: None,
             nodes: vec![
@@ -383,11 +372,8 @@ mod tests {
                 Node::new(NodeId(FOUR), Role::Button),
             ],
             tree: Some(Tree {
-                id: TreeId("test_tree".to_string()),
-                source_string_encoding: StringEncoding::Utf16,
-                parent: None,
                 focus: Some(NodeId(THREE)),
-                root_scroller: None,
+                ..tree_data.clone()
             }),
             root: Some(NodeId(ONE)),
         };
@@ -397,11 +383,8 @@ mod tests {
             clear: None,
             nodes: vec![],
             tree: Some(Tree {
-                id: TreeId("test_tree".to_string()),
-                source_string_encoding: StringEncoding::Utf16,
-                parent: None,
                 focus: Some(NodeId(FOUR)),
-                root_scroller: None,
+                ..tree_data
             }),
             root: None,
         };
