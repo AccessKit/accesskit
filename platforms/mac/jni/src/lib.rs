@@ -10,7 +10,7 @@ use jni::objects::{JClass, JString};
 use jni::sys::jlong;
 use jni::JNIEnv;
 
- fn new_common(env: JNIEnv, view: id, initial_state_json: JString) -> jlong {
+fn new_common(env: JNIEnv, view: id, initial_state_json: JString) -> jlong {
     let initial_state_json: String = env.get_string(initial_state_json).unwrap().into();
     let initial_state = serde_json::from_str::<TreeUpdate>(&initial_state_json).unwrap();
     let manager = Manager::new(view, initial_state);
