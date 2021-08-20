@@ -169,7 +169,7 @@ pub struct Reader<'a> {
 impl Reader<'_> {
     pub fn node_by_id(&self, id: NodeId) -> Option<Node<'_>> {
         self.state.nodes.get(&id).map(|node_state| Node {
-            tree_reader: &self,
+            tree_reader: self,
             state: node_state,
         })
     }
