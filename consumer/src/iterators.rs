@@ -231,79 +231,82 @@ impl<'a> Iterator for UnignoredChildren<'a> {
     type Item = NodeId;
 
     fn next(&mut self) -> Option<Self::Item> {
+        let current_id = self.front_id;
         if self.done {
             return None;
-        }
-        self.done = self.front_id == self.back_id;
-        let mut front_id = self.front_id;
-        let mut consider_children = false;
-        while let Some(current_node) = front_id.and_then(|id| self.reader.node_by_id(id)) {
-            if let Some(Some(child)) = consider_children.then(|| current_node.children().next()) {
-                front_id = Some(child.id());
-                if !child.is_ignored() {
-                    break;
-                }
-            } else if let Some(sibling) = current_node.following_siblings().next() {
-                front_id = Some(sibling.id());
-                if !sibling.is_ignored() {
-                    break;
-                }
-                consider_children = true;
-            } else {
-                let parent = current_node.parent();
-                front_id = parent.as_ref().map(|parent| parent.id());
-                if let Some(parent) = parent {
-                    if !parent.is_ignored() {
+        } else {
+            self.done = self.front_id == self.back_id;
+            let mut front_id = self.front_id;
+            let mut consider_children = false;
+            while let Some(current_node) = front_id.and_then(|id| self.reader.node_by_id(id)) {
+                if let Some(Some(child)) = consider_children.then(|| current_node.children().next())
+                {
+                    front_id = Some(child.id());
+                    if !child.is_ignored() {
                         break;
                     }
+                } else if let Some(sibling) = current_node.following_siblings().next() {
+                    front_id = Some(sibling.id());
+                    if !sibling.is_ignored() {
+                        break;
+                    }
+                    consider_children = true;
                 } else {
-                    break;
+                    let parent = current_node.parent();
+                    front_id = parent.as_ref().map(|parent| parent.id());
+                    if let Some(parent) = parent {
+                        if !parent.is_ignored() {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
                 }
             }
+            self.front_id = front_id;
         }
-        let value = self.front_id;
-        self.front_id = front_id;
-        value
+        current_id
     }
 }
 
 impl<'a> DoubleEndedIterator for UnignoredChildren<'a> {
     fn next_back(&mut self) -> Option<Self::Item> {
+        let current_id = self.back_id;
         if self.done {
             return None;
-        }
-        self.done = self.back_id == self.front_id;
-        let mut back_id = self.back_id;
-        let mut consider_children = false;
-        while let Some(current_node) = back_id.and_then(|id| self.reader.node_by_id(id)) {
-            if let Some(Some(child)) =
-                consider_children.then(|| current_node.children().next_back())
-            {
-                back_id = Some(child.id());
-                if !child.is_ignored() {
-                    break;
-                }
-            } else if let Some(sibling) = current_node.preceding_siblings().next() {
-                back_id = Some(sibling.id());
-                if !sibling.is_ignored() {
-                    break;
-                }
-                consider_children = true;
-            } else {
-                let parent = current_node.parent();
-                back_id = parent.as_ref().map(|parent| parent.id());
-                if let Some(parent) = parent {
-                    if !parent.is_ignored() {
+        } else {
+            self.done = self.back_id == self.front_id;
+            let mut back_id = self.back_id;
+            let mut consider_children = false;
+            while let Some(current_node) = back_id.and_then(|id| self.reader.node_by_id(id)) {
+                if let Some(Some(child)) =
+                    consider_children.then(|| current_node.children().next_back())
+                {
+                    back_id = Some(child.id());
+                    if !child.is_ignored() {
                         break;
                     }
+                } else if let Some(sibling) = current_node.preceding_siblings().next() {
+                    back_id = Some(sibling.id());
+                    if !sibling.is_ignored() {
+                        break;
+                    }
+                    consider_children = true;
                 } else {
-                    break;
+                    let parent = current_node.parent();
+                    back_id = parent.as_ref().map(|parent| parent.id());
+                    if let Some(parent) = parent {
+                        if !parent.is_ignored() {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
                 }
             }
+            self.back_id = back_id;
         }
-        let value = self.back_id;
-        self.back_id = back_id;
-        value
+        current_id
     }
 }
 
