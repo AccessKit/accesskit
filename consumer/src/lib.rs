@@ -12,4 +12,7 @@ pub(crate) mod node;
 pub use node::{Node, WeakNode};
 
 pub(crate) mod iterators;
-pub use iterators::{FollowingSiblings, PrecedingSiblings, UnignoredChildren};
+pub use iterators::{
+    FollowingSiblings, FollowingUnignoredSiblings, PrecedingSiblings, PrecedingUnignoredSiblings,
+    UnignoredChildren,
+};
