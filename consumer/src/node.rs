@@ -652,10 +652,15 @@ mod tests {
     fn unignored_children_reversed() {
         let tree = test_tree();
         assert_eq!(
-            [BUTTON_3_1_ID, STATIC_TEXT_3_0_0_ID],
+            [
+                BUTTON_3_1_ID,
+                STATIC_TEXT_3_0_0_ID,
+                PARAGRAPH_2_ID,
+                STATIC_TEXT_1_0_ID,
+                PARAGRAPH_0_ID
+            ],
             tree.read()
-                .node_by_id(PARAGRAPH_3_IGNORED_ID)
-                .unwrap()
+                .root()
                 .unignored_children()
                 .rev()
                 .map(|node| node.id())
