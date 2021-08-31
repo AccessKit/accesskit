@@ -8,4 +8,7 @@ pub(crate) mod tree;
 pub use tree::{Reader as TreeReader, Tree};
 
 pub(crate) mod node;
-pub use node::{FollowingSiblings, Node, PrecedingSiblings, UnignoredChildren, WeakNode};
+pub use node::{Node, WeakNode};
+
+pub(crate) mod iterators;
+pub use iterators::{FollowingSiblings, PrecedingSiblings, UnignoredChildren};
