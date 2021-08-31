@@ -7,7 +7,10 @@ use std::sync::{Arc, Weak};
 
 use accesskit_schema::{NodeId, Rect, Role};
 
-use crate::iterators::{FollowingSiblings, PrecedingSiblings, UnignoredChildren};
+use crate::iterators::{
+    FollowingSiblings, FollowingUnignoredSiblings, PrecedingSiblings, PrecedingUnignoredSiblings,
+    UnignoredChildren,
+};
 use crate::tree::{NodeState, ParentAndIndex, Reader as TreeReader, Tree};
 use crate::NodeData;
 
@@ -81,12 +84,26 @@ impl Node<'_> {
         FollowingSiblings::new(self).map(move |id| self.tree_reader.node_by_id(id).unwrap())
     }
 
+    pub fn following_unignored_siblings(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = Node<'_>> + FusedIterator<Item = Node<'_>> {
+        FollowingUnignoredSiblings::new(self)
+            .map(move |id| self.tree_reader.node_by_id(id).unwrap())
+    }
+
     pub fn preceding_siblings(
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'_>>
            + ExactSizeIterator<Item = Node<'_>>
            + FusedIterator<Item = Node<'_>> {
         PrecedingSiblings::new(self).map(move |id| self.tree_reader.node_by_id(id).unwrap())
+    }
+
+    pub fn preceding_unignored_siblings(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = Node<'_>> + FusedIterator<Item = Node<'_>> {
+        PrecedingUnignoredSiblings::new(self)
+            .map(move |id| self.tree_reader.node_by_id(id).unwrap())
     }
 
     pub fn global_id(&self) -> String {
