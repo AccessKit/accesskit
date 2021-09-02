@@ -59,6 +59,13 @@ impl Node<'_> {
         }
     }
 
+    pub fn index_in_parent(&self) -> Option<usize> {
+        self.state
+            .parent_and_index
+            .as_ref()
+            .map(|ParentAndIndex(_, index)| *index)
+    }
+
     pub fn children(
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'_>>
@@ -170,5 +177,58 @@ impl Node<'_> {
             tree: Arc::downgrade(self.tree_reader.tree),
             id: self.id(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+    use std::num::NonZeroU64;
+
+    const TREE_ID: &str = "test_tree";
+    const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
+    const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
+    const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
+    const NODE_ID_4: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(4) });
+
+    #[test]
+    fn index_in_parent() {
+        let update = TreeUpdate {
+            clear: None,
+            nodes: vec![
+                Node {
+                    children: vec![NODE_ID_2],
+                    ..Node::new(NODE_ID_1, Role::Window)
+                },
+                Node {
+                    children: vec![NODE_ID_3, NODE_ID_4],
+                    ..Node::new(NODE_ID_2, Role::RootWebArea)
+                },
+                Node {
+                    name: Some(String::from("Button 1")),
+                    ..Node::new(NODE_ID_3, Role::Button)
+                },
+                Node {
+                    name: Some(String::from("Button 2")),
+                    ..Node::new(NODE_ID_4, Role::Button)
+                },
+            ],
+            tree: Some(Tree::new(TreeId(TREE_ID.to_string()), StringEncoding::Utf8)),
+            root: Some(NODE_ID_1),
+        };
+        let tree = super::Tree::new(update);
+        assert!(tree.read().root().index_in_parent().is_none());
+        assert_eq!(
+            Some(0),
+            tree.read().node_by_id(NODE_ID_2).unwrap().index_in_parent()
+        );
+        assert_eq!(
+            Some(0),
+            tree.read().node_by_id(NODE_ID_3).unwrap().index_in_parent()
+        );
+        assert_eq!(
+            Some(1),
+            tree.read().node_by_id(NODE_ID_4).unwrap().index_in_parent()
+        );
     }
 }
