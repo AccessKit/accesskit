@@ -7,7 +7,7 @@ use std::iter::FusedIterator;
 use accesskit_schema::NodeId;
 
 use crate::node::Node;
-use crate::tree::{ParentAndIndex, Reader as TreeReader};
+use crate::tree::Reader as TreeReader;
 
 /// An iterator that yields following siblings of a node.
 ///
@@ -23,7 +23,7 @@ impl<'a> FollowingSiblings<'a> {
     pub(crate) fn new(node: &'a Node<'a>) -> Self {
         let parent = node.parent();
         let (back_position, front_position, done) = if let Some(parent) = parent.as_ref() {
-            if let Some(ParentAndIndex(_, index)) = node.state.parent_and_index {
+            if let Some(index) = node.index_in_parent() {
                 let back_position = parent.data().children.len() - 1;
                 let front_position = index + 1;
                 (
@@ -110,7 +110,7 @@ impl<'a> PrecedingSiblings<'a> {
     pub(crate) fn new(node: &'a Node<'a>) -> Self {
         let parent = node.parent();
         let (back_position, front_position, done) = if parent.is_some() {
-            if let Some(ParentAndIndex(_, index)) = node.state.parent_and_index {
+            if let Some(index) = node.index_in_parent() {
                 let front_position = index.saturating_sub(1);
                 (0, front_position, index == 0)
             } else {
