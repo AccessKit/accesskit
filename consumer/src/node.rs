@@ -113,6 +113,63 @@ impl Node<'_> {
             .map(move |id| self.tree_reader.node_by_id(id).unwrap())
     }
 
+    pub fn deepest_first_child(&self) -> Option<Node<'_>> {
+        let mut deepest_child = *self.data().children.get(0)?;
+        while let Some(first_child) = self
+            .tree_reader
+            .node_by_id(deepest_child)
+            .unwrap()
+            .data()
+            .children
+            .get(0)
+        {
+            deepest_child = *first_child;
+        }
+        self.tree_reader.node_by_id(deepest_child)
+    }
+
+    pub fn deepest_first_unignored_child(&self) -> Option<Node<'_>> {
+        let mut deepest_child = self.first_unignored_child()?;
+        while let Some(first_child) = self
+            .tree_reader
+            .node_by_id(deepest_child)
+            .unwrap()
+            .first_unignored_child()
+        {
+            deepest_child = first_child;
+        }
+        self.tree_reader.node_by_id(deepest_child)
+    }
+
+    pub fn deepest_last_child(&self) -> Option<Node<'_>> {
+        let mut deepest_child = *self.data().children.iter().next_back()?;
+        while let Some(last_child) = self
+            .tree_reader
+            .node_by_id(deepest_child)
+            .unwrap()
+            .data()
+            .children
+            .iter()
+            .next_back()
+        {
+            deepest_child = *last_child;
+        }
+        self.tree_reader.node_by_id(deepest_child)
+    }
+
+    pub fn deepest_last_unignored_child(&self) -> Option<Node<'_>> {
+        let mut deepest_child = self.last_unignored_child()?;
+        while let Some(last_child) = self
+            .tree_reader
+            .node_by_id(deepest_child)
+            .unwrap()
+            .last_unignored_child()
+        {
+            deepest_child = last_child;
+        }
+        self.tree_reader.node_by_id(deepest_child)
+    }
+
     pub fn global_id(&self) -> String {
         format!("{}:{}", self.tree_reader.id().0, self.id().0)
     }
@@ -151,6 +208,30 @@ impl Node<'_> {
             None
         }
     }
+
+    pub(crate) fn first_unignored_child(&self) -> Option<NodeId> {
+        for child in self.children() {
+            if !child.is_ignored() {
+                return Some(child.id());
+            }
+            if let Some(descendant) = child.first_unignored_child() {
+                return Some(descendant);
+            }
+        }
+        None
+    }
+
+    pub(crate) fn last_unignored_child(&self) -> Option<NodeId> {
+        for child in self.children().rev() {
+            if !child.is_ignored() {
+                return Some(child.id());
+            }
+            if let Some(descendant) = child.last_unignored_child() {
+                return Some(descendant);
+            }
+        }
+        None
+    }
 }
 
 #[derive(Clone)]
@@ -182,53 +263,139 @@ impl Node<'_> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
-    use std::num::NonZeroU64;
-
-    const TREE_ID: &str = "test_tree";
-    const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
-    const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
-    const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
-    const NODE_ID_4: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(4) });
+    use crate::tests::*;
 
     #[test]
     fn index_in_parent() {
-        let update = TreeUpdate {
-            clear: None,
-            nodes: vec![
-                Node {
-                    children: vec![NODE_ID_2],
-                    ..Node::new(NODE_ID_1, Role::Window)
-                },
-                Node {
-                    children: vec![NODE_ID_3, NODE_ID_4],
-                    ..Node::new(NODE_ID_2, Role::RootWebArea)
-                },
-                Node {
-                    name: Some(String::from("Button 1")),
-                    ..Node::new(NODE_ID_3, Role::Button)
-                },
-                Node {
-                    name: Some(String::from("Button 2")),
-                    ..Node::new(NODE_ID_4, Role::Button)
-                },
-            ],
-            tree: Some(Tree::new(TreeId(TREE_ID.to_string()), StringEncoding::Utf8)),
-            root: Some(NODE_ID_1),
-        };
-        let tree = super::Tree::new(update);
+        let tree = test_tree();
         assert!(tree.read().root().index_in_parent().is_none());
         assert_eq!(
             Some(0),
-            tree.read().node_by_id(NODE_ID_2).unwrap().index_in_parent()
+            tree.read()
+                .node_by_id(PARAGRAPH_0_ID)
+                .unwrap()
+                .index_in_parent()
         );
         assert_eq!(
             Some(0),
-            tree.read().node_by_id(NODE_ID_3).unwrap().index_in_parent()
+            tree.read()
+                .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
+                .unwrap()
+                .index_in_parent()
         );
         assert_eq!(
             Some(1),
-            tree.read().node_by_id(NODE_ID_4).unwrap().index_in_parent()
+            tree.read()
+                .node_by_id(PARAGRAPH_1_IGNORED_ID)
+                .unwrap()
+                .index_in_parent()
         );
+    }
+
+    #[test]
+    fn deepest_first_child() {
+        let tree = test_tree();
+        assert_eq!(
+            STATIC_TEXT_0_0_IGNORED_ID,
+            tree.read().root().deepest_first_child().unwrap().id()
+        );
+        assert_eq!(
+            STATIC_TEXT_0_0_IGNORED_ID,
+            tree.read()
+                .node_by_id(PARAGRAPH_0_ID)
+                .unwrap()
+                .deepest_first_child()
+                .unwrap()
+                .id()
+        );
+        assert!(tree
+            .read()
+            .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
+            .unwrap()
+            .deepest_first_child()
+            .is_none());
+    }
+
+    #[test]
+    fn deepest_first_unignored_child() {
+        let tree = test_tree();
+        assert_eq!(
+            PARAGRAPH_0_ID,
+            tree.read()
+                .root()
+                .deepest_first_unignored_child()
+                .unwrap()
+                .id()
+        );
+        assert!(tree
+            .read()
+            .node_by_id(PARAGRAPH_0_ID)
+            .unwrap()
+            .deepest_first_unignored_child()
+            .is_none());
+        assert!(tree
+            .read()
+            .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
+            .unwrap()
+            .deepest_first_unignored_child()
+            .is_none());
+    }
+
+    #[test]
+    fn deepest_last_child() {
+        let tree = test_tree();
+        assert_eq!(
+            BUTTON_3_1_ID,
+            tree.read().root().deepest_last_child().unwrap().id()
+        );
+        assert_eq!(
+            BUTTON_3_1_ID,
+            tree.read()
+                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .unwrap()
+                .deepest_last_child()
+                .unwrap()
+                .id()
+        );
+        assert!(tree
+            .read()
+            .node_by_id(BUTTON_3_1_ID)
+            .unwrap()
+            .deepest_last_child()
+            .is_none());
+    }
+
+    #[test]
+    fn deepest_last_unignored_child() {
+        let tree = test_tree();
+        assert_eq!(
+            BUTTON_3_1_ID,
+            tree.read()
+                .root()
+                .deepest_last_unignored_child()
+                .unwrap()
+                .id()
+        );
+        assert_eq!(
+            BUTTON_3_1_ID,
+            tree.read()
+                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .unwrap()
+                .deepest_last_unignored_child()
+                .unwrap()
+                .id()
+        );
+        assert!(tree
+            .read()
+            .node_by_id(BUTTON_3_1_ID)
+            .unwrap()
+            .deepest_last_unignored_child()
+            .is_none());
+        assert!(tree
+            .read()
+            .node_by_id(PARAGRAPH_0_ID)
+            .unwrap()
+            .deepest_last_unignored_child()
+            .is_none());
     }
 }

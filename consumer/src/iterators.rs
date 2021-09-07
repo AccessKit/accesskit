@@ -180,30 +180,6 @@ impl<'a> ExactSizeIterator for PrecedingSiblings<'a> {}
 
 impl<'a> FusedIterator for PrecedingSiblings<'a> {}
 
-fn first_unignored_child(node: &Node<'_>) -> Option<NodeId> {
-    for child in node.children() {
-        if !child.is_ignored() {
-            return Some(child.id());
-        }
-        if let Some(descendant) = first_unignored_child(&child) {
-            return Some(descendant);
-        }
-    }
-    None
-}
-
-fn last_unignored_child(node: &Node<'_>) -> Option<NodeId> {
-    for child in node.children().rev() {
-        if !child.is_ignored() {
-            return Some(child.id());
-        }
-        if let Some(descendant) = last_unignored_child(&child) {
-            return Some(descendant);
-        }
-    }
-    None
-}
-
 fn next_unignored_sibling(node_id: Option<NodeId>, reader: &TreeReader) -> Option<NodeId> {
     let mut next_id = node_id;
     let mut consider_children = false;
@@ -277,10 +253,7 @@ pub struct FollowingUnignoredSiblings<'a> {
 impl<'a> FollowingUnignoredSiblings<'a> {
     pub(crate) fn new(node: &'a Node<'a>) -> Self {
         let front_id = next_unignored_sibling(Some(node.id()), node.tree_reader);
-        let back_id = node
-            .parent()
-            .as_ref()
-            .and_then(|parent| last_unignored_child(parent));
+        let back_id = node.parent().as_ref().and_then(Node::last_unignored_child);
         Self {
             back_id,
             done: back_id.is_none() || front_id.is_none(),
@@ -333,10 +306,7 @@ pub struct PrecedingUnignoredSiblings<'a> {
 impl<'a> PrecedingUnignoredSiblings<'a> {
     pub(crate) fn new(node: &'a Node<'a>) -> Self {
         let front_id = previous_unignored_sibling(Some(node.id()), node.tree_reader);
-        let back_id = node
-            .parent()
-            .as_ref()
-            .and_then(|parent| first_unignored_child(parent));
+        let back_id = node.parent().as_ref().and_then(Node::first_unignored_child);
         Self {
             back_id,
             done: back_id.is_none() || front_id.is_none(),
@@ -388,8 +358,8 @@ pub struct UnignoredChildren<'a> {
 
 impl<'a> UnignoredChildren<'a> {
     pub(crate) fn new(node: &'a Node<'a>) -> Self {
-        let front_id = first_unignored_child(node);
-        let back_id = last_unignored_child(node);
+        let front_id = node.first_unignored_child();
+        let back_id = node.last_unignored_child();
         Self {
             back_id,
             done: back_id.is_none() || front_id.is_none(),
@@ -431,21 +401,8 @@ impl<'a> FusedIterator for UnignoredChildren<'a> {}
 
 #[cfg(test)]
 mod tests {
-    use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
-    use std::num::NonZeroU64;
-    use std::sync::Arc;
-
-    const ROOT_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
-    const PARAGRAPH_0_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
-    const STATIC_TEXT_0_0_IGNORED_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
-    const PARAGRAPH_1_IGNORED_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(4) });
-    const STATIC_TEXT_1_0_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(5) });
-    const PARAGRAPH_2_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(6) });
-    const STATIC_TEXT_2_0_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(7) });
-    const PARAGRAPH_3_IGNORED_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(8) });
-    const LINK_3_0_IGNORED_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(9) });
-    const STATIC_TEXT_3_0_0_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(10) });
-    const BUTTON_3_1_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(11) });
+    use crate::tests::*;
+    use accesskit_schema::NodeId;
 
     #[test]
     fn following_siblings() {
@@ -774,84 +731,5 @@ mod tests {
             .unignored_children()
             .next_back()
             .is_none());
-    }
-
-    fn test_tree() -> Arc<crate::tree::Tree> {
-        let root = Node {
-            children: vec![
-                PARAGRAPH_0_ID,
-                PARAGRAPH_1_IGNORED_ID,
-                PARAGRAPH_2_ID,
-                PARAGRAPH_3_IGNORED_ID,
-            ],
-            ..Node::new(ROOT_ID, Role::RootWebArea)
-        };
-        let paragraph_0 = Node {
-            children: vec![STATIC_TEXT_0_0_IGNORED_ID],
-            ..Node::new(PARAGRAPH_0_ID, Role::Paragraph)
-        };
-        let static_text_0_0_ignored = Node {
-            ignored: true,
-            name: Some("static_text_0_0_ignored".to_string()),
-            ..Node::new(STATIC_TEXT_0_0_IGNORED_ID, Role::StaticText)
-        };
-        let paragraph_1_ignored = Node {
-            children: vec![STATIC_TEXT_1_0_ID],
-            ignored: true,
-            ..Node::new(PARAGRAPH_1_IGNORED_ID, Role::Paragraph)
-        };
-        let static_text_1_0 = Node {
-            name: Some("static_text_1_0".to_string()),
-            ..Node::new(STATIC_TEXT_1_0_ID, Role::StaticText)
-        };
-        let paragraph_2 = Node {
-            children: vec![STATIC_TEXT_2_0_ID],
-            ..Node::new(PARAGRAPH_2_ID, Role::Paragraph)
-        };
-        let static_text_2_0 = Node {
-            name: Some("static_text_2_0".to_string()),
-            ..Node::new(STATIC_TEXT_2_0_ID, Role::StaticText)
-        };
-        let paragraph_3_ignored = Node {
-            children: vec![LINK_3_0_IGNORED_ID, BUTTON_3_1_ID],
-            ignored: true,
-            ..Node::new(PARAGRAPH_3_IGNORED_ID, Role::Paragraph)
-        };
-        let link_3_0_ignored = Node {
-            children: vec![STATIC_TEXT_3_0_0_ID],
-            ignored: true,
-            linked: true,
-            ..Node::new(LINK_3_0_IGNORED_ID, Role::Link)
-        };
-        let static_text_3_0_0 = Node {
-            name: Some("static_text_3_0_0".to_string()),
-            ..Node::new(STATIC_TEXT_3_0_0_ID, Role::StaticText)
-        };
-        let button_3_1 = Node {
-            name: Some("button_3_1".to_string()),
-            ..Node::new(BUTTON_3_1_ID, Role::Button)
-        };
-        let initial_update = TreeUpdate {
-            clear: None,
-            nodes: vec![
-                root,
-                paragraph_0,
-                static_text_0_0_ignored,
-                paragraph_1_ignored,
-                static_text_1_0,
-                paragraph_2,
-                static_text_2_0,
-                paragraph_3_ignored,
-                link_3_0_ignored,
-                static_text_3_0_0,
-                button_3_1,
-            ],
-            tree: Some(Tree::new(
-                TreeId("test_tree".to_string()),
-                StringEncoding::Utf8,
-            )),
-            root: Some(ROOT_ID),
-        };
-        crate::tree::Tree::new(initial_update)
     }
 }
