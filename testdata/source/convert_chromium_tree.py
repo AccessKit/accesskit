@@ -1,6 +1,7 @@
 # Copyright 2021 The AccessKit Authors. All rights reserved.
-# Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE file.
+# Licensed under the Apache License, Version 2.0 (found in
+# the LICENSE-APACHE file) or the MIT license (found in
+# the LICENSE-MIT file), at your option.
 
 # Converts the JSON tree dump produced by a DumpAccessibilityTree test
 # in our modified version of Chromium into the AccessKit schema.
