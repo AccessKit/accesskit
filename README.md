@@ -67,3 +67,11 @@ While many languages can use a C API, we also plan to provide libraries that mak
 ### Documentation
 
 We realize that most developers who might use AccessKit are not experts in accessibility. So this project will need to include comprehensive documentation, including a conceptual overview for developers that are learning about accessibility for the first time.
+
+## License
+
+AccessKit is licensed under the [Apache License, Version 2.0](LICENSE-APACHE) or the [MIT license](LICENSE-MIT), at your option.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in AccessKit by you, as defined in the Apache License, shall be dual-licensed as above, without any additional terms or conditions.
+
+Significant portions of AccessKit are derived from Chromium and are covered by its [BSD-style license](LICENSE.chromium).
