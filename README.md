@@ -74,4 +74,6 @@ AccessKit is licensed under the [Apache License, Version 2.0](LICENSE-APACHE) or
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in AccessKit by you, as defined in the Apache License, shall be dual-licensed as above, without any additional terms or conditions.
 
+The list of authors for copyright purposes is in the [AUTHORS](AUTHORS) file.
+
 Significant portions of AccessKit are derived from Chromium and are covered by its [BSD-style license](LICENSE.chromium).
