@@ -1,0 +1,10 @@
+[package]
+name = "accesskit_windows_bindings"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+windows = "0.20.1"
+
+[build-dependencies]
+windows = "0.20.1"
