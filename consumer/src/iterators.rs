@@ -3,6 +3,11 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+// Derived from Chromium's accessibility abstraction.
+// Copyright 2018 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE.chromium file.
+
 use std::iter::FusedIterator;
 
 use accesskit_schema::NodeId;
@@ -22,9 +27,9 @@ pub struct FollowingSiblings<'a> {
 
 impl<'a> FollowingSiblings<'a> {
     pub(crate) fn new(node: &'a Node<'a>) -> Self {
-        let parent = node.parent();
-        let (back_position, front_position, done) = if let Some(parent) = parent.as_ref() {
-            if let Some(index) = node.index_in_parent() {
+        let parent_and_index = node.parent_and_index();
+        let (back_position, front_position, done) =
+            if let Some((ref parent, index)) = parent_and_index {
                 let back_position = parent.data().children.len() - 1;
                 let front_position = index + 1;
                 (
@@ -34,15 +39,12 @@ impl<'a> FollowingSiblings<'a> {
                 )
             } else {
                 (0, 0, true)
-            }
-        } else {
-            (0, 0, true)
-        };
+            };
         Self {
             back_position,
             done,
             front_position,
-            parent,
+            parent: parent_and_index.map(|(parent, _)| parent),
         }
     }
 }
@@ -109,14 +111,10 @@ pub struct PrecedingSiblings<'a> {
 
 impl<'a> PrecedingSiblings<'a> {
     pub(crate) fn new(node: &'a Node<'a>) -> Self {
-        let parent = node.parent();
-        let (back_position, front_position, done) = if parent.is_some() {
-            if let Some(index) = node.index_in_parent() {
-                let front_position = index.saturating_sub(1);
-                (0, front_position, index == 0)
-            } else {
-                (0, 0, true)
-            }
+        let parent_and_index = node.parent_and_index();
+        let (back_position, front_position, done) = if let Some((_, index)) = parent_and_index {
+            let front_position = index.saturating_sub(1);
+            (0, front_position, index == 0)
         } else {
             (0, 0, true)
         };
@@ -124,7 +122,7 @@ impl<'a> PrecedingSiblings<'a> {
             back_position,
             done,
             front_position,
-            parent,
+            parent: parent_and_index.map(|(parent, _)| parent),
         }
     }
 }
@@ -182,6 +180,16 @@ impl<'a> ExactSizeIterator for PrecedingSiblings<'a> {}
 impl<'a> FusedIterator for PrecedingSiblings<'a> {}
 
 fn next_unignored_sibling(node_id: Option<NodeId>, reader: &TreeReader) -> Option<NodeId> {
+    // Search for the next sibling of this node, skipping over any ignored nodes
+    // encountered.
+    //
+    // In our search:
+    //   If we find an ignored sibling, we consider its children as our siblings.
+    //   If we run out of siblings, we consider an ignored parent's siblings as our
+    //     own siblings.
+    //
+    // Note: this behaviour of 'skipping over' an ignored node makes this subtly
+    // different to finding the next (direct) sibling which is unignored.
     let mut next_id = node_id;
     let mut consider_children = false;
     while let Some(current_node) = next_id.and_then(|id| reader.node_by_id(id)) {
@@ -212,6 +220,13 @@ fn next_unignored_sibling(node_id: Option<NodeId>, reader: &TreeReader) -> Optio
 }
 
 fn previous_unignored_sibling(node_id: Option<NodeId>, reader: &TreeReader) -> Option<NodeId> {
+    // Search for the previous sibling of this node, skipping over any ignored nodes
+    // encountered.
+    //
+    // In our search for a sibling:
+    //   If we find an ignored sibling, we may consider its children as siblings.
+    //   If we run out of siblings, we may consider an ignored parent's siblings as
+    //     our own.
     let mut previous_id = node_id;
     let mut consider_children = false;
     while let Some(current_node) = previous_id.and_then(|id| reader.node_by_id(id)) {

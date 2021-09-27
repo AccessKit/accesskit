@@ -60,11 +60,13 @@ impl Node<'_> {
         }
     }
 
-    pub fn index_in_parent(&self) -> Option<usize> {
+    pub fn parent_and_index(&self) -> Option<(Node<'_>, usize)> {
         self.state
             .parent_and_index
             .as_ref()
-            .map(|ParentAndIndex(_, index)| *index)
+            .map(|ParentAndIndex(parent, index)| {
+                (self.tree_reader.node_by_id(*parent).unwrap(), *index)
+            })
     }
 
     pub fn children(
@@ -279,29 +281,32 @@ mod tests {
     use crate::tests::*;
 
     #[test]
-    fn index_in_parent() {
+    fn parent_and_index() {
         let tree = test_tree();
-        assert!(tree.read().root().index_in_parent().is_none());
+        assert!(tree.read().root().parent_and_index().is_none());
         assert_eq!(
-            Some(0),
+            Some((ROOT_ID, 0)),
             tree.read()
                 .node_by_id(PARAGRAPH_0_ID)
                 .unwrap()
-                .index_in_parent()
+                .parent_and_index()
+                .map(|(parent, index)| (parent.id(), index))
         );
         assert_eq!(
-            Some(0),
+            Some((PARAGRAPH_0_ID, 0)),
             tree.read()
                 .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
                 .unwrap()
-                .index_in_parent()
+                .parent_and_index()
+                .map(|(parent, index)| (parent.id(), index))
         );
         assert_eq!(
-            Some(1),
+            Some((ROOT_ID, 1)),
             tree.read()
                 .node_by_id(PARAGRAPH_1_IGNORED_ID)
                 .unwrap()
-                .index_in_parent()
+                .parent_and_index()
+                .map(|(parent, index)| (parent.id(), index))
         );
     }
 
