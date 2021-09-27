@@ -1,7 +1,5 @@
 // Based on the create_window sample in windows-samples-rs.
 
-use std::mem::MaybeUninit;
-
 use accesskit_schema::TreeUpdate;
 use accesskit_windows_bindings::Windows::Win32::{
     Foundation::*, Graphics::Gdi::ValidateRect, System::LibraryLoader::GetModuleHandleA,
@@ -19,7 +17,7 @@ fn get_initial_state() -> TreeUpdate {
 
 // This simple example doesn't have a way of associating data with an HWND.
 // So we'll just use a global variable for the AccessKit manager.
-static mut MANAGER: MaybeUninit<accesskit_windows::Manager> = MaybeUninit::uninit();
+static mut MANAGER: Option<accesskit_windows::Manager> = None;
 
 fn main() -> Result<()> {
     let initial_state = get_initial_state();
@@ -59,7 +57,7 @@ fn main() -> Result<()> {
         );
 
         let manager = accesskit_windows::Manager::new(hwnd, initial_state);
-        MANAGER.write(manager);
+        MANAGER = Some(manager);
 
         let mut message = MSG::default();
 
@@ -86,8 +84,12 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             }
             WM_GETOBJECT => {
                 println!("WM_GETOBJECT");
-                let manager = MANAGER.assume_init_ref();
-                manager.handle_wm_getobject(wparam, lparam)
+                if let Some(manager) = MANAGER.as_ref() {
+                    manager.handle_wm_getobject(wparam, lparam)
+                } else {
+                    println!("no AccessKit manager yet");
+                    LRESULT(0)
+                }
             }
             _ => DefWindowProcA(window, message, wparam, lparam),
         }
