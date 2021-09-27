@@ -43,7 +43,7 @@ mod tests {
                 PARAGRAPH_2_ID,
                 PARAGRAPH_3_IGNORED_ID,
             ],
-            ..Node::new(ROOT_ID, Role::Window)
+            ..Node::new(ROOT_ID, Role::RootWebArea)
         };
         let paragraph_0 = Node {
             children: vec![STATIC_TEXT_0_0_IGNORED_ID],

@@ -173,14 +173,12 @@ impl Node<'_> {
         self.tree_reader.node_by_id(deepest_child)
     }
 
-    pub fn is_descendant_of(&self, ancestor: Option<&Node>) -> bool {
-        if let Some(ancestor) = ancestor {
-            if self.id() == ancestor.id() {
-                return true;
-            }
-            if let Some(parent) = self.parent() {
-                return parent.is_descendant_of(Some(ancestor));
-            }
+    pub fn is_descendant_of(&self, ancestor: &Node) -> bool {
+        if self.id() == ancestor.id() {
+            return true;
+        }
+        if let Some(parent) = self.parent() {
+            return parent.is_descendant_of(ancestor);
         }
         false
     }
@@ -424,26 +422,26 @@ mod tests {
             .read()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
-            .is_descendant_of(Some(&tree.read().root())));
+            .is_descendant_of(&tree.read().root()));
         assert!(tree
             .read()
             .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
             .unwrap()
-            .is_descendant_of(Some(&tree.read().root())));
+            .is_descendant_of(&tree.read().root()));
         assert!(tree
             .read()
             .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
             .unwrap()
-            .is_descendant_of(tree.read().node_by_id(PARAGRAPH_0_ID).as_ref()));
+            .is_descendant_of(&tree.read().node_by_id(PARAGRAPH_0_ID).unwrap()));
         assert!(!tree
             .read()
             .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
             .unwrap()
-            .is_descendant_of(tree.read().node_by_id(PARAGRAPH_2_ID).as_ref()));
+            .is_descendant_of(&tree.read().node_by_id(PARAGRAPH_2_ID).unwrap()));
         assert!(!tree
             .read()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
-            .is_descendant_of(tree.read().node_by_id(PARAGRAPH_2_ID).as_ref()));
+            .is_descendant_of(&tree.read().node_by_id(PARAGRAPH_2_ID).unwrap()));
     }
 }
