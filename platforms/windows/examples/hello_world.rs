@@ -88,7 +88,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                     manager.handle_wm_getobject(wparam, lparam)
                 } else {
                     println!("no AccessKit manager yet");
-                    LRESULT(0)
+                    DefWindowProcA(window, message, wparam, lparam)
                 }
             }
             _ => DefWindowProcA(window, message, wparam, lparam),
