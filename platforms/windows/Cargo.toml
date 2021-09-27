@@ -8,3 +8,7 @@ accesskit_consumer = { path = "../../consumer" }
 accesskit_schema = { path = "../../schema" }
 accesskit_windows_bindings = { path = "bindings" }
 windows = "0.21.0"
+
+[dev-dependencies]
+serde = "1.0"
+serde_json = "1.0"

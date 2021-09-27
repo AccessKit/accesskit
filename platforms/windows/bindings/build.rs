@@ -7,9 +7,14 @@ fn main() {
     windows::build!(
         Windows::Win32::{
             Foundation::*,
-            System::OleAutomation::*,
+            Graphics::Gdi::ValidateRect,
+            System::{
+                LibraryLoader::GetModuleHandleA,
+                OleAutomation::*,
+            },
             UI::{
                 Accessibility::*,
+                WindowsAndMessaging::*,
             },
         },
     );

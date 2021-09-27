@@ -51,6 +51,8 @@ dependencies = [
  "accesskit_consumer",
  "accesskit_schema",
  "accesskit_windows_bindings",
+ "serde",
+ "serde_json",
  "windows",
 ]
 
