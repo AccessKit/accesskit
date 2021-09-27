@@ -45,7 +45,7 @@ fn main() -> Result<()> {
             Default::default(),
             window_class,
             "This is a sample window",
-            WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+            WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
@@ -59,8 +59,9 @@ fn main() -> Result<()> {
         let manager = accesskit_windows::Manager::new(hwnd, initial_state);
         MANAGER = Some(manager);
 
-        let mut message = MSG::default();
+        ShowWindow(hwnd, SW_SHOW);
 
+        let mut message = MSG::default();
         while GetMessageA(&mut message, HWND(0), 0, 0).into() {
             DispatchMessageA(&mut message);
         }
