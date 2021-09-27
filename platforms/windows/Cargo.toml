@@ -7,4 +7,4 @@ edition = "2018"
 accesskit_consumer = { path = "../../consumer" }
 accesskit_schema = { path = "../../schema" }
 accesskit_windows_bindings = { path = "bindings" }
-windows = "0.20.1"
+windows = "0.21.0"
