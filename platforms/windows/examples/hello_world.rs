@@ -1,18 +1,35 @@
 // Based on the create_window sample in windows-samples-rs.
 
-use accesskit_schema::TreeUpdate;
+use std::num::NonZeroU64;
+
+use accesskit_schema::{NodeId, Role, Node, TreeId, StringEncoding, Tree, TreeUpdate};
 use accesskit_windows_bindings::Windows::Win32::{
     Foundation::*, Graphics::Gdi::ValidateRect, System::LibraryLoader::GetModuleHandleA,
     UI::WindowsAndMessaging::*,
 };
 use windows::*;
 
+const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
+
 fn get_initial_state() -> TreeUpdate {
     let mut args = std::env::args();
     let _arg0 = args.next().unwrap();
-    let initial_state_filename = args.next().unwrap();
-    let initial_state_str = std::fs::read_to_string(&initial_state_filename).unwrap();
-    serde_json::from_str(&initial_state_str).unwrap()
+    if let Some(initial_state_filename) = args.next() {
+        let initial_state_str = std::fs::read_to_string(&initial_state_filename).unwrap();
+        serde_json::from_str(&initial_state_str).unwrap()
+    } else {
+        let root = Node {
+            name: Some("Hello world".to_string()),
+            ..Node::new(NODE_ID_1, Role::Window)
+        };
+        let tree = Tree::new(TreeId("test".to_string()), StringEncoding::Utf8);
+        TreeUpdate {
+            clear: None,
+            nodes: vec![root],
+            tree: Some(tree),
+            root: Some(NODE_ID_1),
+        }
+    }
 }
 
 // This simple example doesn't have a way of associating data with an HWND.
