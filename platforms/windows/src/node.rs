@@ -3,6 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+#![allow(non_upper_case_globals)]
+
 use accesskit_consumer::{Node, WeakNode};
 use accesskit_windows_bindings::Windows::Win32::{
     Foundation::*, System::OleAutomation::*, UI::Accessibility::*,
@@ -12,13 +14,50 @@ use windows::*;
 
 use crate::util::*;
 
+struct ResolvedPlatformNode<'a> {
+    node: &'a Node<'a>,
+    hwnd: HWND,
+}
+
+impl ResolvedPlatformNode<'_> {
+    fn provider_options(&self) -> ProviderOptions {
+        ProviderOptions_ServerSideProvider
+    }
+
+    fn is_pattern_supported(&self, _pattern_id: i32) -> bool {
+        // TODO: add patterns
+        false
+    }
+
+    fn get_property_value(&self, property_id: i32) -> VARIANT {
+        // TODO: add properties
+        match property_id {
+            UIA_NamePropertyId => {
+                if let Some(name) = self.node.name() {
+                    return variant_from_bstr(name.into());
+                }
+            }
+            _ => (),
+        }
+        empty_variant()
+    }
+
+    fn host_provider(&self) -> Result<IRawElementProviderSimple> {
+        if self.node.is_root() {
+            unsafe { UiaHostProviderFromHwnd(self.hwnd) }
+        } else {
+            Err(Error::OK)
+        }
+    }
+}
+
 #[implement(Windows::Win32::UI::Accessibility::IRawElementProviderSimple)]
 pub(crate) struct PlatformNode {
     node: WeakNode,
     hwnd: HWND,
 }
 
-#[allow(non_snake_case, non_upper_case_globals)]
+#[allow(non_snake_case)]
 impl PlatformNode {
     pub(crate) fn new(node: &Node, hwnd: HWND) -> PlatformNode {
         Self {
@@ -29,10 +68,15 @@ impl PlatformNode {
 
     fn resolve<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(&Node<'a>) -> Result<T>,
+        for<'a> F: FnOnce(ResolvedPlatformNode<'a>) -> Result<T>,
     {
         self.node
-            .map(f)
+            .map(|node| {
+                f(ResolvedPlatformNode {
+                    node,
+                    hwnd: self.hwnd,
+                })
+            })
             .unwrap_or_else(|| Err(Error::new(HRESULT(UIA_E_ELEMENTNOTAVAILABLE), "")))
     }
 
@@ -43,38 +87,24 @@ impl PlatformNode {
         // the node and just ignore it. There's precedent for this;
         // Chromium's implementation of this method validates the node
         // even though the return value is hard-coded.
-        self.resolve(|_node| Ok(ProviderOptions_ServerSideProvider))
+        self.resolve(|resolved| Ok(resolved.provider_options()))
     }
 
-    fn GetPatternProvider(&self, _pattern_id: i32) -> Result<IUnknown> {
-        self.resolve(|_node| {
-            // TODO: add patterns
+    fn GetPatternProvider(&mut self, pattern_id: i32) -> Result<IUnknown> {
+        let supported = self.resolve(|resolved| Ok(resolved.is_pattern_supported(pattern_id)))?;
+        if supported {
+            let intermediate: IRawElementProviderSimple = self.into();
+            Ok(intermediate.into())
+        } else {
             Err(Error::OK)
-        })
+        }
     }
 
     fn GetPropertyValue(&self, property_id: i32) -> Result<VARIANT> {
-        self.resolve(|node| {
-            // TODO: add properties
-            match property_id {
-                UIA_NamePropertyId => {
-                    if let Some(name) = node.name() {
-                        return Ok(variant_from_bstr(name.into()));
-                    }
-                }
-                _ => (),
-            }
-            Ok(empty_variant())
-        })
+        self.resolve(|resolved| Ok(resolved.get_property_value(property_id)))
     }
 
     fn HostRawElementProvider(&self) -> Result<IRawElementProviderSimple> {
-        self.resolve(|node| {
-            if node.is_root() {
-                unsafe { UiaHostProviderFromHwnd(self.hwnd) }
-            } else {
-                Err(Error::OK)
-            }
-        })
+        self.resolve(|resolved| resolved.host_provider())
     }
 }
