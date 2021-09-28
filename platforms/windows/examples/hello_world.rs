@@ -44,7 +44,7 @@ fn main() -> Result<()> {
         let hwnd = CreateWindowExA(
             Default::default(),
             window_class,
-            "This is a sample window",
+            "Hello world",
             WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
