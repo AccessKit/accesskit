@@ -9,6 +9,7 @@ fn main() {
             Foundation::*,
             Graphics::Gdi::ValidateRect,
             System::{
+                Com::CoInitializeEx,
                 LibraryLoader::GetModuleHandleA,
                 OleAutomation::*,
             },

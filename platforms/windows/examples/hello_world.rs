@@ -4,8 +4,8 @@ use std::num::NonZeroU64;
 
 use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
 use accesskit_windows_bindings::Windows::Win32::{
-    Foundation::*, Graphics::Gdi::ValidateRect, System::LibraryLoader::GetModuleHandleA,
-    UI::WindowsAndMessaging::*,
+    Foundation::*, Graphics::Gdi::ValidateRect, System::Com::*,
+    System::LibraryLoader::GetModuleHandleA, UI::WindowsAndMessaging::*,
 };
 use windows::*;
 
@@ -40,6 +40,9 @@ fn main() -> Result<()> {
     let initial_state = get_initial_state();
 
     unsafe {
+        // Workaround for #37
+        CoInitializeEx(std::ptr::null_mut(), COINIT_MULTITHREADED)?;
+
         let instance = GetModuleHandleA(None);
         debug_assert!(instance.0 != 0);
 
