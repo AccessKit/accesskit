@@ -38,6 +38,12 @@ impl<'a> Node<'a> {
         (self.is_invisible() || self.is_ignored()) && !self.is_focused()
     }
 
+    pub fn is_root(&self) -> bool {
+        // Don't check for absence of a parent node, in case a non-root node
+        // somehow gets detached from the tree.
+        self.id() == self.tree_reader.state.root
+    }
+
     pub fn parent(self) -> Option<Node<'a>> {
         if let Some(ParentAndIndex(parent, _)) = &self.state.parent_and_index {
             Some(self.tree_reader.node_by_id(*parent).unwrap())
