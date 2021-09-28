@@ -62,7 +62,7 @@ impl PlatformNode {
     pub(crate) fn new(node: &Node, hwnd: HWND) -> PlatformNode {
         Self {
             node: node.downgrade(),
-            hwnd: hwnd,
+            hwnd,
         }
     }
 
