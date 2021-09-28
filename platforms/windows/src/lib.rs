@@ -4,6 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 mod node;
+mod util;
 
 mod manager;
 pub use manager::Manager;

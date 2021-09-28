@@ -10,13 +10,15 @@ use accesskit_windows_bindings::Windows::Win32::{
 use accesskit_windows_bindings::*;
 use windows::*;
 
+use crate::util::*;
+
 #[implement(Windows::Win32::UI::Accessibility::IRawElementProviderSimple)]
 pub(crate) struct PlatformNode {
     node: WeakNode,
     hwnd: HWND,
 }
 
-#[allow(non_snake_case)]
+#[allow(non_snake_case, non_upper_case_globals)]
 impl PlatformNode {
     pub(crate) fn new(node: &Node, hwnd: HWND) -> PlatformNode {
         Self {
@@ -51,10 +53,18 @@ impl PlatformNode {
         })
     }
 
-    fn GetPropertyValue(&self, _property_id: i32) -> Result<VARIANT> {
-        self.resolve(|_node| {
+    fn GetPropertyValue(&self, property_id: i32) -> Result<VARIANT> {
+        self.resolve(|node| {
             // TODO: add properties
-            Err(Error::OK)
+            match property_id {
+                UIA_NamePropertyId => {
+                    if let Some(name) = node.name() {
+                        return Ok(variant_from_bstr(name.into()));
+                    }
+                }
+                _ => (),
+            }
+            Ok(empty_variant())
         })
     }
 
