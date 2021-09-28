@@ -7,9 +7,7 @@ use std::sync::Arc;
 
 use accesskit_consumer::Tree;
 use accesskit_schema::TreeUpdate;
-use accesskit_windows_bindings::Windows::Win32::{
-    Foundation::*, UI::Accessibility::*,
-};
+use accesskit_windows_bindings::Windows::Win32::{Foundation::*, UI::Accessibility::*};
 
 use crate::node::PlatformNode;
 

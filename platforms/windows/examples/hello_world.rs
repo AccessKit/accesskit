@@ -2,7 +2,7 @@
 
 use std::num::NonZeroU64;
 
-use accesskit_schema::{NodeId, Role, Node, TreeId, StringEncoding, Tree, TreeUpdate};
+use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
 use accesskit_windows_bindings::Windows::Win32::{
     Foundation::*, Graphics::Gdi::ValidateRect, System::LibraryLoader::GetModuleHandleA,
     UI::WindowsAndMessaging::*,
