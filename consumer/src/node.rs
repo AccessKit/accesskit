@@ -431,15 +431,7 @@ mod tests {
     #[test]
     fn is_root() {
         let tree = test_tree();
-        assert!(tree
-            .read()
-            .node_by_id(ROOT_ID)
-            .unwrap()
-            .is_root());
-        assert!(!tree
-            .read()
-            .node_by_id(PARAGRAPH_0_ID)
-            .unwrap()
-            .is_root());
+        assert!(tree.read().node_by_id(ROOT_ID).unwrap().is_root());
+        assert!(!tree.read().node_by_id(PARAGRAPH_0_ID).unwrap().is_root());
     }
 }
