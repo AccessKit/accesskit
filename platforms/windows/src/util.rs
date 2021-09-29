@@ -35,6 +35,10 @@ pub(crate) const fn variant_from_bstr(value: BSTR) -> VARIANT {
     )
 }
 
+pub(crate) const fn variant_from_i32(value: i32) -> VARIANT {
+    variant(VT_I4, VARIANT_0_0_0 { lVal: value })
+}
+
 fn safe_array_from_slice<T>(vt: VARENUM, slice: &[T]) -> *mut SAFEARRAY {
     let sa = unsafe { SafeArrayCreateVector(vt.0 as u16, 0, slice.len().try_into().unwrap()) };
     if sa.is_null() {

@@ -6,7 +6,7 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit_consumer::{Node, WeakNode};
-use accesskit_schema::NodeIdContent;
+use accesskit_schema::{NodeIdContent, Role};
 use accesskit_windows_bindings::Windows::Win32::{
     Foundation::*, Graphics::Gdi::*, System::OleAutomation::*, UI::Accessibility::*,
 };
@@ -43,9 +43,226 @@ impl ResolvedPlatformNode<'_> {
         false
     }
 
+    fn control_type(&self) -> i32 {
+        let role = self.node.role();
+        // TODO: Handle special cases.
+        match role {
+            Role::Unknown => UIA_CustomControlTypeId,
+            Role::InlineTextBox => UIA_CustomControlTypeId,
+            Role::Cell => UIA_DataItemControlTypeId,
+            Role::StaticText => UIA_TextControlTypeId,
+            Role::Image => UIA_ImageControlTypeId,
+            Role::Link => UIA_HyperlinkControlTypeId,
+            Role::Row => UIA_DataItemControlTypeId,
+            Role::ListItem => UIA_ListItemControlTypeId,
+            Role::ListMarker => UIA_GroupControlTypeId,
+            Role::TreeItem => UIA_TreeItemControlTypeId,
+            Role::ListBoxOption => UIA_ListItemControlTypeId,
+            Role::MenuItem => UIA_MenuItemControlTypeId,
+            Role::MenuListOption => UIA_ListItemControlTypeId,
+            Role::Paragraph => UIA_GroupControlTypeId,
+            Role::GenericContainer => UIA_GroupControlTypeId,
+            Role::Presentation => UIA_GroupControlTypeId,
+            Role::CheckBox => UIA_CheckBoxControlTypeId,
+            Role::RadioButton => UIA_RadioButtonControlTypeId,
+            Role::TextField => UIA_EditControlTypeId,
+            Role::Button => UIA_ButtonControlTypeId,
+            Role::LabelText => UIA_TextControlTypeId,
+            Role::Pane => UIA_PaneControlTypeId,
+            Role::RowHeader => UIA_DataItemControlTypeId,
+            Role::ColumnHeader => UIA_DataItemControlTypeId,
+            Role::Column => UIA_GroupControlTypeId,
+            Role::RowGroup => UIA_GroupControlTypeId,
+            Role::List => UIA_ListControlTypeId,
+            Role::Table => UIA_TableControlTypeId,
+            Role::TableHeaderContainer => UIA_GroupControlTypeId,
+            Role::LayoutTableCell => UIA_DataItemControlTypeId,
+            Role::LayoutTableRow => UIA_DataItemControlTypeId,
+            Role::LayoutTable => UIA_TableControlTypeId,
+            Role::Switch => UIA_ButtonControlTypeId,
+            Role::ToggleButton => UIA_ButtonControlTypeId,
+            Role::Menu => UIA_MenuControlTypeId,
+            Role::Abbr => UIA_TextControlTypeId,
+            Role::Alert => UIA_TextControlTypeId,
+            Role::AlertDialog => {
+                // Chromium's implementation suggests the use of
+                // UIA_TextControlTypeId, not UIA_PaneControlTypeId, because some
+                // Windows screen readers are not compatible with
+                // Role::AlertDialog yet.
+                UIA_TextControlTypeId
+            }
+            Role::Application => UIA_PaneControlTypeId,
+            Role::Article => UIA_GroupControlTypeId,
+            Role::Audio => UIA_GroupControlTypeId,
+            Role::Banner => UIA_GroupControlTypeId,
+            Role::Blockquote => UIA_GroupControlTypeId,
+            Role::Canvas => UIA_ImageControlTypeId,
+            Role::Caption => UIA_TextControlTypeId,
+            Role::Caret => UIA_GroupControlTypeId,
+            Role::Client => UIA_PaneControlTypeId,
+            Role::Code => UIA_TextControlTypeId,
+            Role::ColorWell => UIA_ButtonControlTypeId,
+            Role::ComboBoxGrouping => UIA_ComboBoxControlTypeId,
+            Role::ComboBoxMenuButton => UIA_ComboBoxControlTypeId,
+            Role::Complementary => UIA_GroupControlTypeId,
+            Role::Comment => UIA_GroupControlTypeId,
+            Role::ContentDeletion => UIA_GroupControlTypeId,
+            Role::ContentInsertion => UIA_GroupControlTypeId,
+            Role::ContentInfo => UIA_GroupControlTypeId,
+            Role::Date => UIA_EditControlTypeId,
+            Role::DateTime => UIA_EditControlTypeId,
+            Role::Definition => UIA_GroupControlTypeId,
+            Role::DescriptionList => UIA_ListControlTypeId,
+            Role::DescriptionListDetail => UIA_TextControlTypeId,
+            Role::DescriptionListTerm => UIA_ListItemControlTypeId,
+            Role::Details => UIA_GroupControlTypeId,
+            Role::Dialog => UIA_PaneControlTypeId,
+            Role::Directory => UIA_ListControlTypeId,
+            Role::DisclosureTriangle => UIA_ButtonControlTypeId,
+            Role::Document => UIA_DocumentControlTypeId,
+            Role::EmbeddedObject => UIA_PaneControlTypeId,
+            Role::Emphasis => UIA_TextControlTypeId,
+            Role::Feed => UIA_GroupControlTypeId,
+            Role::FigureCaption => UIA_TextControlTypeId,
+            Role::Figure => UIA_GroupControlTypeId,
+            Role::Footer => UIA_GroupControlTypeId,
+            Role::FooterAsNonLandmark => UIA_GroupControlTypeId,
+            Role::Form => UIA_GroupControlTypeId,
+            Role::Grid => UIA_DataGridControlTypeId,
+            Role::Group => UIA_GroupControlTypeId,
+            Role::Header => UIA_GroupControlTypeId,
+            Role::HeaderAsNonLandmark => UIA_GroupControlTypeId,
+            Role::Heading => UIA_TextControlTypeId,
+            Role::Iframe => UIA_DocumentControlTypeId,
+            Role::IframePresentational => UIA_GroupControlTypeId,
+            Role::ImeCandidate => UIA_PaneControlTypeId,
+            Role::InputTime => UIA_GroupControlTypeId,
+            Role::Keyboard => UIA_PaneControlTypeId,
+            Role::Legend => UIA_TextControlTypeId,
+            Role::LineBreak => UIA_TextControlTypeId,
+            Role::ListBox => UIA_ListControlTypeId,
+            Role::Log => UIA_GroupControlTypeId,
+            Role::Main => UIA_GroupControlTypeId,
+            Role::Mark => UIA_TextControlTypeId,
+            Role::Marquee => UIA_TextControlTypeId,
+            Role::Math => UIA_GroupControlTypeId,
+            Role::MenuBar => UIA_MenuBarControlTypeId,
+            Role::MenuItemCheckBox => UIA_CheckBoxControlTypeId,
+            Role::MenuItemRadio => UIA_RadioButtonControlTypeId,
+            Role::MenuListPopup => UIA_ListControlTypeId,
+            Role::Meter => UIA_ProgressBarControlTypeId,
+            Role::Navigation => UIA_GroupControlTypeId,
+            Role::Note => UIA_GroupControlTypeId,
+            Role::PluginObject => UIA_GroupControlTypeId,
+            Role::PopupButton => {
+                // TODO: handle combo-box special case.
+                UIA_ButtonControlTypeId
+            }
+            Role::Portal => UIA_ButtonControlTypeId,
+            Role::Pre => UIA_GroupControlTypeId,
+            Role::ProgressIndicator => UIA_ProgressBarControlTypeId,
+            Role::RadioGroup => UIA_GroupControlTypeId,
+            Role::Region => UIA_GroupControlTypeId,
+            Role::RootWebArea => UIA_DocumentControlTypeId,
+            Role::Ruby => UIA_GroupControlTypeId,
+            Role::RubyAnnotation => {
+                // Generally exposed as description on <ruby> (Role::Ruby)
+                // element, not as its own object in the tree.
+                // However, it's possible to make a RubyAnnotation element
+                // show up in the AX tree, for example by adding tabindex="0"
+                // to the source <rp> or <rt> element or making the source element
+                // the target of an aria-owns. Therefore, browser side needs to
+                // gracefully handle it if it actually shows up in the tree.
+                UIA_TextControlTypeId
+            }
+            Role::ScrollBar => UIA_ScrollBarControlTypeId,
+            Role::ScrollView => UIA_PaneControlTypeId,
+            Role::Search => UIA_GroupControlTypeId,
+            Role::SearchBox => UIA_EditControlTypeId,
+            Role::Section => UIA_GroupControlTypeId,
+            Role::Slider => UIA_SliderControlTypeId,
+            Role::SpinButton => UIA_SpinnerControlTypeId,
+            Role::Splitter => UIA_SeparatorControlTypeId,
+            Role::Status => UIA_StatusBarControlTypeId,
+            Role::Strong => UIA_TextControlTypeId,
+            Role::Suggestion => UIA_GroupControlTypeId,
+            Role::SvgRoot => UIA_ImageControlTypeId,
+            Role::Tab => UIA_TabItemControlTypeId,
+            Role::TabList => UIA_TabControlTypeId,
+            Role::TabPanel => UIA_PaneControlTypeId,
+            Role::Term => UIA_ListItemControlTypeId,
+            Role::TextFieldWithComboBox => UIA_ComboBoxControlTypeId,
+            Role::Time => UIA_TextControlTypeId,
+            Role::Timer => UIA_PaneControlTypeId,
+            Role::TitleBar => UIA_PaneControlTypeId,
+            Role::Toolbar => UIA_ToolBarControlTypeId,
+            Role::Tooltip => UIA_ToolTipControlTypeId,
+            Role::Tree => UIA_TreeControlTypeId,
+            Role::TreeGrid => UIA_DataGridControlTypeId,
+            Role::Video => UIA_GroupControlTypeId,
+            Role::WebView => UIA_DocumentControlTypeId,
+            Role::Window => {
+                // TODO: determine whether to use Window or Pane.
+                // It may be good to use Pane for nested windows,
+                // as Chromium does.
+                UIA_WindowControlTypeId
+            }
+            Role::PdfActionableHighlight => UIA_CustomControlTypeId,
+            Role::PdfRoot => UIA_DocumentControlTypeId,
+            Role::GraphicsDocument => UIA_DocumentControlTypeId,
+            Role::GraphicsObject => UIA_PaneControlTypeId,
+            Role::GraphicsSymbol => UIA_ImageControlTypeId,
+            Role::DocAbstract => UIA_GroupControlTypeId,
+            Role::DocAcknowledgements => UIA_GroupControlTypeId,
+            Role::DocAfterword => UIA_GroupControlTypeId,
+            Role::DocAppendix => UIA_GroupControlTypeId,
+            Role::DocBackLink => UIA_HyperlinkControlTypeId,
+            Role::DocBiblioEntry => UIA_ListItemControlTypeId,
+            Role::DocBibliography => UIA_GroupControlTypeId,
+            Role::DocBiblioRef => UIA_HyperlinkControlTypeId,
+            Role::DocChapter => UIA_GroupControlTypeId,
+            Role::DocColophon => UIA_GroupControlTypeId,
+            Role::DocConclusion => UIA_GroupControlTypeId,
+            Role::DocCover => UIA_ImageControlTypeId,
+            Role::DocCredit => UIA_GroupControlTypeId,
+            Role::DocCredits => UIA_GroupControlTypeId,
+            Role::DocDedication => UIA_GroupControlTypeId,
+            Role::DocEndnote => UIA_ListItemControlTypeId,
+            Role::DocEndnotes => UIA_GroupControlTypeId,
+            Role::DocEpigraph => UIA_GroupControlTypeId,
+            Role::DocEpilogue => UIA_GroupControlTypeId,
+            Role::DocErrata => UIA_GroupControlTypeId,
+            Role::DocExample => UIA_GroupControlTypeId,
+            Role::DocFootnote => UIA_ListItemControlTypeId,
+            Role::DocForeword => UIA_GroupControlTypeId,
+            Role::DocGlossary => UIA_GroupControlTypeId,
+            Role::DocGlossRef => UIA_HyperlinkControlTypeId,
+            Role::DocIndex => UIA_GroupControlTypeId,
+            Role::DocIntroduction => UIA_GroupControlTypeId,
+            Role::DocNoteRef => UIA_HyperlinkControlTypeId,
+            Role::DocNotice => UIA_GroupControlTypeId,
+            Role::DocPageBreak => UIA_SeparatorControlTypeId,
+            Role::DocPageFooter => UIA_GroupControlTypeId,
+            Role::DocPageHeader => UIA_GroupControlTypeId,
+            Role::DocPageList => UIA_GroupControlTypeId,
+            Role::DocPart => UIA_GroupControlTypeId,
+            Role::DocPreface => UIA_GroupControlTypeId,
+            Role::DocPrologue => UIA_GroupControlTypeId,
+            Role::DocPullquote => UIA_GroupControlTypeId,
+            Role::DocQna => UIA_GroupControlTypeId,
+            Role::DocSubtitle => UIA_GroupControlTypeId,
+            Role::DocTip => UIA_GroupControlTypeId,
+            Role::DocToc => UIA_GroupControlTypeId,
+            Role::ListGrid => UIA_DataGridControlTypeId,
+        }
+    }
+
     fn get_property_value(&self, property_id: i32) -> VARIANT {
         // TODO: add properties
         match property_id {
+            UIA_ControlTypePropertyId => {
+                return variant_from_i32(self.control_type());
+            }
             UIA_NamePropertyId => {
                 if let Some(name) = self.node.name() {
                     return variant_from_bstr(name.into());
