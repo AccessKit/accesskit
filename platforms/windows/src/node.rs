@@ -20,6 +20,18 @@ struct ResolvedPlatformNode<'a> {
 }
 
 impl ResolvedPlatformNode<'_> {
+    fn new<'a>(node: &'a Node<'a>, hwnd: HWND) -> ResolvedPlatformNode<'a> {
+        ResolvedPlatformNode { node, hwnd }
+    }
+
+    fn relative<'a>(&self, node: &'a Node<'a>) -> ResolvedPlatformNode<'a> {
+        ResolvedPlatformNode::new(node, self.hwnd)
+    }
+
+    fn downgrade(&self) -> PlatformNode {
+        PlatformNode::new(self.node, self.hwnd)
+    }
+
     fn provider_options(&self) -> ProviderOptions {
         ProviderOptions_ServerSideProvider
     }
@@ -62,7 +74,7 @@ pub(crate) struct PlatformNode {
 
 #[allow(non_snake_case)]
 impl PlatformNode {
-    pub(crate) fn new(node: &Node, hwnd: HWND) -> PlatformNode {
+    pub(crate) fn new(node: &Node, hwnd: HWND) -> Self {
         Self {
             node: node.downgrade(),
             hwnd,
@@ -74,12 +86,7 @@ impl PlatformNode {
         for<'a> F: FnOnce(ResolvedPlatformNode<'a>) -> Result<T>,
     {
         self.node
-            .map(|node| {
-                f(ResolvedPlatformNode {
-                    node,
-                    hwnd: self.hwnd,
-                })
-            })
+            .map(|node| f(ResolvedPlatformNode::new(node, self.hwnd)))
             .unwrap_or_else(|| Err(Error::new(HRESULT(UIA_E_ELEMENTNOTAVAILABLE), "")))
     }
 
