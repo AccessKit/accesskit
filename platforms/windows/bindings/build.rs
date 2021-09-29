@@ -7,7 +7,10 @@ fn main() {
     windows::build!(
         Windows::Win32::{
             Foundation::*,
-            Graphics::Gdi::ValidateRect,
+            Graphics::Gdi::{
+                ClientToScreen,
+                ValidateRect,
+            },
             System::{
                 Com::CoInitializeEx,
                 LibraryLoader::GetModuleHandleA,

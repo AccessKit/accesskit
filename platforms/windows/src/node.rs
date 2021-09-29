@@ -8,7 +8,7 @@
 use accesskit_consumer::{Node, WeakNode};
 use accesskit_schema::NodeIdContent;
 use accesskit_windows_bindings::Windows::Win32::{
-    Foundation::*, System::OleAutomation::*, UI::Accessibility::*,
+    Foundation::*, Graphics::Gdi::*, System::OleAutomation::*, UI::Accessibility::*,
 };
 use accesskit_windows_bindings::*;
 use arrayvec::ArrayVec;
@@ -88,6 +88,22 @@ impl ResolvedPlatformNode<'_> {
         result
     }
 
+    fn bounding_rectangle(&self) -> UiaRect {
+        self.node.bounds().map_or(UiaRect::default(), |rect| {
+            let mut result = UiaRect {
+                left: rect.left.into(),
+                top: rect.top.into(),
+                width: rect.width.into(),
+                height: rect.height.into(),
+            };
+            let mut client_top_left = POINT::default();
+            unsafe { ClientToScreen(self.hwnd, &mut client_top_left) }.unwrap();
+            result.left += f64::from(client_top_left.x);
+            result.top += f64::from(client_top_left.y);
+            result
+        })
+    }
+
     fn set_focus(&self) {
         // TODO: request action
     }
@@ -163,7 +179,7 @@ impl PlatformNode {
     }
 
     fn BoundingRectangle(&self) -> Result<UiaRect> {
-        unimplemented!()
+        self.resolve(|resolved| Ok(resolved.bounding_rectangle()))
     }
 
     fn GetEmbeddedFragmentRoots(&self) -> Result<*mut SAFEARRAY> {
