@@ -15,21 +15,21 @@ use windows::*;
 use crate::util::*;
 
 struct ResolvedPlatformNode<'a> {
-    node: &'a Node<'a>,
+    node: Node<'a>,
     hwnd: HWND,
 }
 
 impl ResolvedPlatformNode<'_> {
-    fn new<'a>(node: &'a Node<'a>, hwnd: HWND) -> ResolvedPlatformNode<'a> {
+    fn new<'a>(node: Node<'a>, hwnd: HWND) -> ResolvedPlatformNode<'a> {
         ResolvedPlatformNode { node, hwnd }
     }
 
-    fn relative<'a>(&self, node: &'a Node<'a>) -> ResolvedPlatformNode<'a> {
+    fn relative<'a>(&self, node: Node<'a>) -> ResolvedPlatformNode<'a> {
         ResolvedPlatformNode::new(node, self.hwnd)
     }
 
     fn downgrade(&self) -> PlatformNode {
-        PlatformNode::new(self.node, self.hwnd)
+        PlatformNode::new(&self.node, self.hwnd)
     }
 
     fn provider_options(&self) -> ProviderOptions {
@@ -71,8 +71,7 @@ impl ResolvedPlatformNode<'_> {
             NavigateDirection_LastChild => self.node.unignored_children().next_back(),
             _ => None,
         };
-        // TODO
-        None
+        result.map(|node| self.relative(node))
     }
 }
 

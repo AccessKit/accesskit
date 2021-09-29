@@ -245,11 +245,11 @@ pub struct WeakNode {
 impl WeakNode {
     pub fn map<F, T>(&self, f: F) -> Option<T>
     where
-        for<'a> F: FnOnce(&Node<'a>) -> T,
+        for<'a> F: FnOnce(Node<'a>) -> T,
     {
         self.tree
             .upgrade()
-            .map(|tree| tree.read().node_by_id(self.id).map(|node| f(&node)))
+            .map(|tree| tree.read().node_by_id(self.id).map(|node| f(node)))
             .flatten()
     }
 }
