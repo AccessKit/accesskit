@@ -73,6 +73,10 @@ impl ResolvedPlatformNode<'_> {
         };
         result.map(|node| self.relative(node))
     }
+
+    fn set_focus(&self) {
+        // TODO: request action
+    }
 }
 
 #[implement(
@@ -150,7 +154,10 @@ impl PlatformNode {
     }
 
     fn SetFocus(&self) -> Result<()> {
-        unimplemented!()
+        self.resolve(|resolved| {
+            resolved.set_focus();
+            Ok(())
+        })
     }
 
     fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
