@@ -107,11 +107,22 @@ impl ResolvedPlatformNode<'_> {
     fn set_focus(&self) {
         // TODO: request action
     }
+
+    fn hit_test(&self, _x: f64, _y: f64) -> Option<ResolvedPlatformNode> {
+        // TODO: Either request a hit test from the toolkit, or do our own.
+        None
+    }
+
+    fn focus(&self) -> Option<ResolvedPlatformNode> {
+        // TODO: Get focus from tree; don't return self.
+        None
+    }
 }
 
 #[implement(
     Windows::Win32::UI::Accessibility::IRawElementProviderSimple,
-    Windows::Win32::UI::Accessibility::IRawElementProviderFragment
+    Windows::Win32::UI::Accessibility::IRawElementProviderFragment,
+    Windows::Win32::UI::Accessibility::IRawElementProviderFragmentRoot
 )]
 pub(crate) struct PlatformNode {
     node: WeakNode,
@@ -196,5 +207,19 @@ impl PlatformNode {
 
     fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
         unimplemented!()
+    }
+
+    fn ElementProviderFromPoint(&self, x: f64, y: f64) -> Result<IRawElementProviderFragment> {
+        self.resolve(|resolved| match resolved.hit_test(x, y) {
+            Some(result) => Ok(result.downgrade().into()),
+            None => Err(Error::OK),
+        })
+    }
+
+    fn GetFocus(&self) -> Result<IRawElementProviderFragment> {
+        self.resolve(|resolved| match resolved.focus() {
+            Some(result) => Ok(result.downgrade().into()),
+            None => Err(Error::OK),
+        })
     }
 }
