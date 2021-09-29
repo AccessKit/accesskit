@@ -51,7 +51,10 @@ impl ResolvedPlatformNode<'_> {
     }
 }
 
-#[implement(Windows::Win32::UI::Accessibility::IRawElementProviderSimple)]
+#[implement(
+    Windows::Win32::UI::Accessibility::IRawElementProviderSimple,
+    Windows::Win32::UI::Accessibility::IRawElementProviderFragment
+)]
 pub(crate) struct PlatformNode {
     node: WeakNode,
     hwnd: HWND,
@@ -106,5 +109,29 @@ impl PlatformNode {
 
     fn HostRawElementProvider(&self) -> Result<IRawElementProviderSimple> {
         self.resolve(|resolved| resolved.host_provider())
+    }
+
+    fn Navigate(&self, _direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
+        unimplemented!()
+    }
+
+    fn GetRuntimeId(&self) -> Result<*mut SAFEARRAY> {
+        unimplemented!()
+    }
+
+    fn BoundingRectangle(&self) -> Result<UiaRect> {
+        unimplemented!()
+    }
+
+    fn GetEmbeddedFragmentRoots(&self) -> Result<*mut SAFEARRAY> {
+        unimplemented!()
+    }
+
+    fn SetFocus(&self) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
+        unimplemented!()
     }
 }
