@@ -61,6 +61,19 @@ impl ResolvedPlatformNode<'_> {
             Err(Error::OK)
         }
     }
+
+    fn navigate(&self, direction: NavigateDirection) -> Option<ResolvedPlatformNode> {
+        let result = match direction {
+            NavigateDirection_Parent => self.node.unignored_parent(),
+            NavigateDirection_NextSibling => self.node.following_unignored_siblings().next(),
+            NavigateDirection_PreviousSibling => self.node.preceding_unignored_siblings().next(),
+            NavigateDirection_FirstChild => self.node.unignored_children().next(),
+            NavigateDirection_LastChild => self.node.unignored_children().next_back(),
+            _ => None,
+        };
+        // TODO
+        None
+    }
 }
 
 #[implement(
@@ -118,8 +131,11 @@ impl PlatformNode {
         self.resolve(|resolved| resolved.host_provider())
     }
 
-    fn Navigate(&self, _direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
-        unimplemented!()
+    fn Navigate(&self, direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
+        self.resolve(|resolved| match resolved.navigate(direction) {
+            Some(result) => Ok(result.downgrade().into()),
+            None => Err(Error::OK),
+        })
     }
 
     fn GetRuntimeId(&self) -> Result<*mut SAFEARRAY> {
