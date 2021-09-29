@@ -205,8 +205,25 @@ impl PlatformNode {
         })
     }
 
-    fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
-        unimplemented!()
+    fn FragmentRoot(&mut self) -> Result<IRawElementProviderFragmentRoot> {
+        enum FragmentRootResult {
+            This,
+            Other(PlatformNode),
+        }
+        let result = self.resolve(|resolved| {
+            if resolved.node.is_root() {
+                Ok(FragmentRootResult::This)
+            } else {
+                let root = resolved.node.tree_reader.root();
+                Ok(FragmentRootResult::Other(
+                    resolved.relative(root).downgrade(),
+                ))
+            }
+        })?;
+        match result {
+            FragmentRootResult::This => Ok(self.into()),
+            FragmentRootResult::Other(node) => Ok(node.into()),
+        }
     }
 
     fn ElementProviderFromPoint(&self, x: f64, y: f64) -> Result<IRawElementProviderFragment> {
