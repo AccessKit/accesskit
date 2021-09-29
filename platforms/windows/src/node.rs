@@ -20,7 +20,7 @@ struct ResolvedPlatformNode<'a> {
 }
 
 impl ResolvedPlatformNode<'_> {
-    fn new<'a>(node: Node<'a>, hwnd: HWND) -> ResolvedPlatformNode<'a> {
+    fn new(node: Node, hwnd: HWND) -> ResolvedPlatformNode {
         ResolvedPlatformNode { node, hwnd }
     }
 
