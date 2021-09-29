@@ -6,10 +6,12 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit_consumer::{Node, WeakNode};
+use accesskit_schema::NodeIdContent;
 use accesskit_windows_bindings::Windows::Win32::{
     Foundation::*, System::OleAutomation::*, UI::Accessibility::*,
 };
 use accesskit_windows_bindings::*;
+use arrayvec::ArrayVec;
 use windows::*;
 
 use crate::util::*;
@@ -72,6 +74,18 @@ impl ResolvedPlatformNode<'_> {
             _ => None,
         };
         result.map(|node| self.relative(node))
+    }
+
+    fn runtime_id(&self) -> impl std::ops::Deref<Target = [i32]> {
+        let mut result = ArrayVec::<i32, { std::mem::size_of::<NodeIdContent>() + 1 }>::new();
+        result.push(UiaAppendRuntimeId as i32);
+        let id = self.node.id().0;
+        let id_bytes = id.get().to_be_bytes();
+        let start_index: usize = (id.leading_zeros() / 8) as usize;
+        for byte in &id_bytes[start_index..] {
+            result.push((*byte).into());
+        }
+        result
     }
 
     fn set_focus(&self) {
@@ -142,7 +156,10 @@ impl PlatformNode {
     }
 
     fn GetRuntimeId(&self) -> Result<*mut SAFEARRAY> {
-        unimplemented!()
+        self.resolve(|resolved| {
+            let runtime_id = resolved.runtime_id();
+            Ok(safe_array_from_i32_slice(&runtime_id))
+        })
     }
 
     fn BoundingRectangle(&self) -> Result<UiaRect> {

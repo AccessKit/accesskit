@@ -3,9 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::mem::ManuallyDrop;
-
 use accesskit_windows_bindings::Windows::Win32::{Foundation::*, System::OleAutomation::*};
+use std::{convert::TryInto, mem::ManuallyDrop};
 
 pub(crate) const fn variant(vt: VARENUM, value: VARIANT_0_0_0) -> VARIANT {
     VARIANT {
@@ -34,4 +33,20 @@ pub(crate) const fn variant_from_bstr(value: BSTR) -> VARIANT {
             bstrVal: ManuallyDrop::new(value),
         },
     )
+}
+
+fn safe_array_from_slice<T>(vt: VARENUM, slice: &[T]) -> *mut SAFEARRAY {
+    let sa = unsafe { SafeArrayCreateVector(vt.0 as u16, 0, slice.len().try_into().unwrap()) };
+    if sa.is_null() {
+        panic!("SAFEARRAY allocation failed");
+    }
+    for (i, item) in slice.iter().enumerate() {
+        let i: i32 = i.try_into().unwrap();
+        unsafe { SafeArrayPutElement(sa, &i, (item as *const T) as *const _) }.unwrap();
+    }
+    sa
+}
+
+pub(crate) fn safe_array_from_i32_slice(slice: &[i32]) -> *mut SAFEARRAY {
+    safe_array_from_slice(VT_I4, slice)
 }
