@@ -150,7 +150,8 @@ impl PlatformNode {
     }
 
     fn GetEmbeddedFragmentRoots(&self) -> Result<*mut SAFEARRAY> {
-        unimplemented!()
+        // As with ProviderOptions above, avoid leaking implementation details.
+        self.resolve(|_resolved| Ok(std::ptr::null_mut()))
     }
 
     fn SetFocus(&self) -> Result<()> {
