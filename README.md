@@ -18,7 +18,7 @@ The canonical definition of the schema is in the Rust programming language. Rust
 
 When both the toolkit and the platform adapter (see below) are written in Rust or another language that can efficiently access Rust data structures (such as C++), the data defined in the schema can be passed back and forth with no serialization overhead. In other cases, serialization will be required to minimize the overhead of language interoperability. The plan is to use JSON serialization for now, and possibly add other serialization options later, for better performance or to please toolkit developers who would rather not use JSON.
 
-A draft of the schema is defined in [the `schema` directory](https://github.com/AccessKit/accesskit/tree/main/schema). It has the following known limitations:
+A draft of the schema is defined in [the `schema` directory](https://github.com/AccessKit/accesskit/tree/main/schema).
 
 * While a list of action types is defined, the `ActionRequest` struct that will represent a request from an assistive technology to perform an action, with parameters for some types of actions, has not yet been defined.
 * he schema doesn't yet define any events. While some events in platform accessibility APIs, such as focus change and property changes, can be implied from tree updates, others cannot.
@@ -48,15 +48,6 @@ A prototype platform adapter for macOS is in [the `platforms/mac` directory](htt
 ### Consumer library
 
 Some of the code required by the platform adapters is platform-independent. This code is in what we currently call the consumer library, in [the `consumer` directory](https://github.com/AccessKit/accesskit/tree/main/consumer).
-
-The consumer library has these known limitations:
-
-* `Tree::update` needs to raise events when nodes are added, removed, or updated. In the last case, an event should only be raised if the node was actually updated.
-* The `Tree::update` function doesn't handle the schema's `TreeUpdate::clear` field. It's not clear whether this field will actually be needed in any anticipated use case of AccessKit; the field was simply copied from Chromium. If we don't need it, we should drop it.
-* The `Node` struct needs traversal functions that skip ignored children, as in Chromium's `AXNode` class.
-* `AXNode::bounds` needs to account for the container offset and/or transform.
-* `Node` needs many more functions for getting computed data. For example, the position of an item in the list and the number of items in the list are often computed, not specified directly. The same is true for some table attributes. As is often the case, we'll follow Chromium's lead here unless we have a reason to do otherwise.
-* This library needs tests.
 
 ### Language bindings
 
