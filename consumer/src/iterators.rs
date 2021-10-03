@@ -13,7 +13,6 @@ use std::iter::FusedIterator;
 use accesskit_schema::NodeId;
 
 use crate::node::Node;
-use crate::tree::Reader as TreeReader;
 
 /// An iterator that yields following siblings of a node.
 ///
@@ -26,7 +25,7 @@ pub struct FollowingSiblings<'a> {
 }
 
 impl<'a> FollowingSiblings<'a> {
-    pub(crate) fn new(node: &'a Node<'a>) -> Self {
+    pub(crate) fn new(node: Node<'a>) -> Self {
         let parent_and_index = node.parent_and_index();
         let (back_position, front_position, done) =
             if let Some((ref parent, index)) = parent_and_index {
@@ -110,7 +109,7 @@ pub struct PrecedingSiblings<'a> {
 }
 
 impl<'a> PrecedingSiblings<'a> {
-    pub(crate) fn new(node: &'a Node<'a>) -> Self {
+    pub(crate) fn new(node: Node<'a>) -> Self {
         let parent_and_index = node.parent_and_index();
         let (back_position, front_position, done) = if let Some((_, index)) = parent_and_index {
             let front_position = index.saturating_sub(1);
@@ -179,7 +178,7 @@ impl<'a> ExactSizeIterator for PrecedingSiblings<'a> {}
 
 impl<'a> FusedIterator for PrecedingSiblings<'a> {}
 
-fn next_unignored_sibling(node_id: Option<NodeId>, reader: &TreeReader) -> Option<NodeId> {
+fn next_unignored_sibling(node: Option<Node>) -> Option<Node> {
     // Search for the next sibling of this node, skipping over any ignored nodes
     // encountered.
     //
@@ -190,23 +189,23 @@ fn next_unignored_sibling(node_id: Option<NodeId>, reader: &TreeReader) -> Optio
     //
     // Note: this behaviour of 'skipping over' an ignored node makes this subtly
     // different to finding the next (direct) sibling which is unignored.
-    let mut next_id = node_id;
+    let mut next = node;
     let mut consider_children = false;
-    while let Some(current_node) = next_id.and_then(|id| reader.node_by_id(id)) {
-        if let Some(Some(child)) = consider_children.then(|| current_node.children().next()) {
-            next_id = Some(child.id());
+    while let Some(current) = next {
+        if let Some(Some(child)) = consider_children.then(|| current.children().next()) {
+            next = Some(child);
             if !child.is_ignored() {
-                return next_id;
+                return next;
             }
-        } else if let Some(sibling) = current_node.following_siblings().next() {
-            next_id = Some(sibling.id());
+        } else if let Some(sibling) = current.following_siblings().next() {
+            next = Some(sibling);
             if !sibling.is_ignored() {
-                return next_id;
+                return next;
             }
             consider_children = true;
         } else {
-            let parent = current_node.parent();
-            next_id = parent.as_ref().map(|parent| parent.id());
+            let parent = current.parent();
+            next = parent;
             if let Some(parent) = parent {
                 if !parent.is_ignored() {
                     return None;
@@ -219,7 +218,7 @@ fn next_unignored_sibling(node_id: Option<NodeId>, reader: &TreeReader) -> Optio
     None
 }
 
-fn previous_unignored_sibling(node_id: Option<NodeId>, reader: &TreeReader) -> Option<NodeId> {
+fn previous_unignored_sibling(node: Option<Node>) -> Option<Node> {
     // Search for the previous sibling of this node, skipping over any ignored nodes
     // encountered.
     //
@@ -227,23 +226,23 @@ fn previous_unignored_sibling(node_id: Option<NodeId>, reader: &TreeReader) -> O
     //   If we find an ignored sibling, we may consider its children as siblings.
     //   If we run out of siblings, we may consider an ignored parent's siblings as
     //     our own.
-    let mut previous_id = node_id;
+    let mut previous = node;
     let mut consider_children = false;
-    while let Some(current_node) = previous_id.and_then(|id| reader.node_by_id(id)) {
-        if let Some(Some(child)) = consider_children.then(|| current_node.children().next_back()) {
-            previous_id = Some(child.id());
+    while let Some(current) = previous {
+        if let Some(Some(child)) = consider_children.then(|| current.children().next_back()) {
+            previous = Some(child);
             if !child.is_ignored() {
-                return previous_id;
+                return previous;
             }
-        } else if let Some(sibling) = current_node.preceding_siblings().next() {
-            previous_id = Some(sibling.id());
+        } else if let Some(sibling) = current.preceding_siblings().next() {
+            previous = Some(sibling);
             if !sibling.is_ignored() {
-                return previous_id;
+                return previous;
             }
             consider_children = true;
         } else {
-            let parent = current_node.parent();
-            previous_id = parent.as_ref().map(|parent| parent.id());
+            let parent = current.parent();
+            previous = parent;
             if let Some(parent) = parent {
                 if !parent.is_ignored() {
                     return None;
@@ -260,36 +259,34 @@ fn previous_unignored_sibling(node_id: Option<NodeId>, reader: &TreeReader) -> O
 ///
 /// This struct is created by the [following_unignored_siblings](Node::following_unignored_siblings) method on [Node].
 pub struct FollowingUnignoredSiblings<'a> {
-    back_id: Option<NodeId>,
+    back: Option<Node<'a>>,
     done: bool,
-    front_id: Option<NodeId>,
-    reader: &'a TreeReader<'a>,
+    front: Option<Node<'a>>,
 }
 
 impl<'a> FollowingUnignoredSiblings<'a> {
-    pub(crate) fn new(node: &'a Node<'a>) -> Self {
-        let front_id = next_unignored_sibling(Some(node.id()), node.tree_reader);
-        let back_id = node.parent().as_ref().and_then(Node::last_unignored_child);
+    pub(crate) fn new(node: Node<'a>) -> Self {
+        let front = next_unignored_sibling(Some(node));
+        let back = node.parent().and_then(Node::last_unignored_child);
         Self {
-            back_id,
-            done: back_id.is_none() || front_id.is_none(),
-            front_id,
-            reader: node.tree_reader,
+            back,
+            done: back.is_none() || front.is_none(),
+            front,
         }
     }
 }
 
 impl<'a> Iterator for FollowingUnignoredSiblings<'a> {
-    type Item = NodeId;
+    type Item = Node<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.done {
             None
         } else {
-            self.done = self.front_id == self.back_id;
-            let current_id = self.front_id;
-            self.front_id = next_unignored_sibling(self.front_id, self.reader);
-            current_id
+            self.done = self.front.as_ref().unwrap().id() == self.back.as_ref().unwrap().id();
+            let current = self.front;
+            self.front = next_unignored_sibling(self.front);
+            current
         }
     }
 }
@@ -299,10 +296,10 @@ impl<'a> DoubleEndedIterator for FollowingUnignoredSiblings<'a> {
         if self.done {
             None
         } else {
-            self.done = self.back_id == self.front_id;
-            let current_id = self.back_id;
-            self.back_id = previous_unignored_sibling(self.back_id, self.reader);
-            current_id
+            self.done = self.back.as_ref().unwrap().id() == self.front.as_ref().unwrap().id();
+            let current = self.back;
+            self.back = previous_unignored_sibling(self.back);
+            current
         }
     }
 }
@@ -313,36 +310,34 @@ impl<'a> FusedIterator for FollowingUnignoredSiblings<'a> {}
 ///
 /// This struct is created by the [preceding_unignored_siblings](Node::preceding_unignored_siblings) method on [Node].
 pub struct PrecedingUnignoredSiblings<'a> {
-    back_id: Option<NodeId>,
+    back: Option<Node<'a>>,
     done: bool,
-    front_id: Option<NodeId>,
-    reader: &'a TreeReader<'a>,
+    front: Option<Node<'a>>,
 }
 
 impl<'a> PrecedingUnignoredSiblings<'a> {
-    pub(crate) fn new(node: &'a Node<'a>) -> Self {
-        let front_id = previous_unignored_sibling(Some(node.id()), node.tree_reader);
-        let back_id = node.parent().as_ref().and_then(Node::first_unignored_child);
+    pub(crate) fn new(node: Node<'a>) -> Self {
+        let front = previous_unignored_sibling(Some(node));
+        let back = node.parent().and_then(Node::first_unignored_child);
         Self {
-            back_id,
-            done: back_id.is_none() || front_id.is_none(),
-            front_id,
-            reader: node.tree_reader,
+            back,
+            done: back.is_none() || front.is_none(),
+            front,
         }
     }
 }
 
 impl<'a> Iterator for PrecedingUnignoredSiblings<'a> {
-    type Item = NodeId;
+    type Item = Node<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.done {
             None
         } else {
-            self.done = self.front_id == self.back_id;
-            let current_id = self.front_id;
-            self.front_id = previous_unignored_sibling(self.front_id, self.reader);
-            current_id
+            self.done = self.front.as_ref().unwrap().id() == self.back.as_ref().unwrap().id();
+            let current = self.front;
+            self.front = previous_unignored_sibling(self.front);
+            current
         }
     }
 }
@@ -352,10 +347,10 @@ impl<'a> DoubleEndedIterator for PrecedingUnignoredSiblings<'a> {
         if self.done {
             None
         } else {
-            self.done = self.back_id == self.front_id;
-            let current_id = self.back_id;
-            self.back_id = next_unignored_sibling(self.back_id, self.reader);
-            current_id
+            self.done = self.back.as_ref().unwrap().id() == self.front.as_ref().unwrap().id();
+            let current = self.back;
+            self.back = next_unignored_sibling(self.back);
+            current
         }
     }
 }
@@ -366,36 +361,34 @@ impl<'a> FusedIterator for PrecedingUnignoredSiblings<'a> {}
 ///
 /// This struct is created by the [unignored_children](Node::unignored_children) method on [Node].
 pub struct UnignoredChildren<'a> {
-    back_id: Option<NodeId>,
+    back: Option<Node<'a>>,
     done: bool,
-    front_id: Option<NodeId>,
-    reader: &'a TreeReader<'a>,
+    front: Option<Node<'a>>,
 }
 
 impl<'a> UnignoredChildren<'a> {
-    pub(crate) fn new(node: &'a Node<'a>) -> Self {
-        let front_id = node.first_unignored_child();
-        let back_id = node.last_unignored_child();
+    pub(crate) fn new(node: Node<'a>) -> Self {
+        let front = node.first_unignored_child();
+        let back = node.last_unignored_child();
         Self {
-            back_id,
-            done: back_id.is_none() || front_id.is_none(),
-            front_id,
-            reader: node.tree_reader,
+            back,
+            done: back.is_none() || front.is_none(),
+            front,
         }
     }
 }
 
 impl<'a> Iterator for UnignoredChildren<'a> {
-    type Item = NodeId;
+    type Item = Node<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.done {
             None
         } else {
-            self.done = self.front_id == self.back_id;
-            let current_id = self.front_id;
-            self.front_id = next_unignored_sibling(self.front_id, self.reader);
-            current_id
+            self.done = self.front.as_ref().unwrap().id() == self.back.as_ref().unwrap().id();
+            let current = self.front;
+            self.front = next_unignored_sibling(self.front);
+            current
         }
     }
 }
@@ -405,10 +398,10 @@ impl<'a> DoubleEndedIterator for UnignoredChildren<'a> {
         if self.done {
             None
         } else {
-            self.done = self.back_id == self.front_id;
-            let current_id = self.back_id;
-            self.back_id = previous_unignored_sibling(self.back_id, self.reader);
-            current_id
+            self.done = self.back.as_ref().unwrap().id() == self.front.as_ref().unwrap().id();
+            let current = self.back;
+            self.back = previous_unignored_sibling(self.back);
+            current
         }
     }
 }

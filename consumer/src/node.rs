@@ -15,12 +15,13 @@ use crate::iterators::{
 use crate::tree::{NodeState, ParentAndIndex, Reader as TreeReader, Tree};
 use crate::NodeData;
 
+#[derive(Copy, Clone)]
 pub struct Node<'a> {
     pub tree_reader: &'a TreeReader<'a>,
     pub(crate) state: &'a NodeState,
 }
 
-impl Node<'_> {
+impl<'a> Node<'a> {
     pub fn data(&self) -> &NodeData {
         &self.state.data
     }
@@ -37,7 +38,7 @@ impl Node<'_> {
         (self.is_invisible() || self.is_ignored()) && !self.is_focused()
     }
 
-    pub fn parent(&self) -> Option<Node<'_>> {
+    pub fn parent(self) -> Option<Node<'a>> {
         if let Some(ParentAndIndex(parent, _)) = &self.state.parent_and_index {
             Some(self.tree_reader.node_by_id(*parent).unwrap())
         } else {
@@ -45,13 +46,10 @@ impl Node<'_> {
         }
     }
 
-    pub fn unignored_parent(&self) -> Option<Node<'_>> {
+    pub fn unignored_parent(self) -> Option<Node<'a>> {
         if let Some(parent) = self.parent() {
             if parent.is_ignored() {
-                // Work around lifetime issues.
-                parent
-                    .unignored_parent()
-                    .map(|node| self.tree_reader.node_by_id(node.id()).unwrap())
+                parent.unignored_parent()
             } else {
                 Some(parent)
             }
@@ -60,7 +58,7 @@ impl Node<'_> {
         }
     }
 
-    pub fn parent_and_index(&self) -> Option<(Node<'_>, usize)> {
+    pub fn parent_and_index(self) -> Option<(Node<'a>, usize)> {
         self.state
             .parent_and_index
             .as_ref()
@@ -70,107 +68,86 @@ impl Node<'_> {
     }
 
     pub fn children(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'_>>
-           + ExactSizeIterator<Item = Node<'_>>
-           + FusedIterator<Item = Node<'_>> {
-        self.data()
-            .children
+        self,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>>
+           + ExactSizeIterator<Item = Node<'a>>
+           + FusedIterator<Item = Node<'a>>
+           + 'a {
+        let data = &self.state.data;
+        let reader = self.tree_reader;
+        data.children
             .iter()
-            .map(move |id| self.tree_reader.node_by_id(*id).unwrap())
+            .map(move |id| reader.node_by_id(*id).unwrap())
     }
 
     pub fn unignored_children(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'_>> + FusedIterator<Item = Node<'_>> {
-        UnignoredChildren::new(self).map(move |id| self.tree_reader.node_by_id(id).unwrap())
+        self,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+        UnignoredChildren::new(self)
     }
 
     pub fn following_siblings(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'_>>
-           + ExactSizeIterator<Item = Node<'_>>
-           + FusedIterator<Item = Node<'_>> {
-        FollowingSiblings::new(self).map(move |id| self.tree_reader.node_by_id(id).unwrap())
+        self,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>>
+           + ExactSizeIterator<Item = Node<'a>>
+           + FusedIterator<Item = Node<'a>>
+           + 'a {
+        let reader = self.tree_reader;
+        FollowingSiblings::new(self).map(move |id| reader.node_by_id(id).unwrap())
     }
 
     pub fn following_unignored_siblings(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'_>> + FusedIterator<Item = Node<'_>> {
+        self,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
         FollowingUnignoredSiblings::new(self)
-            .map(move |id| self.tree_reader.node_by_id(id).unwrap())
     }
 
     pub fn preceding_siblings(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'_>>
-           + ExactSizeIterator<Item = Node<'_>>
-           + FusedIterator<Item = Node<'_>> {
-        PrecedingSiblings::new(self).map(move |id| self.tree_reader.node_by_id(id).unwrap())
+        self,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>>
+           + ExactSizeIterator<Item = Node<'a>>
+           + FusedIterator<Item = Node<'a>>
+           + 'a {
+        let reader = self.tree_reader;
+        PrecedingSiblings::new(self).map(move |id| reader.node_by_id(id).unwrap())
     }
 
     pub fn preceding_unignored_siblings(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'_>> + FusedIterator<Item = Node<'_>> {
+        self,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
         PrecedingUnignoredSiblings::new(self)
-            .map(move |id| self.tree_reader.node_by_id(id).unwrap())
     }
 
-    pub fn deepest_first_child(&self) -> Option<Node<'_>> {
-        let mut deepest_child = *self.data().children.get(0)?;
-        while let Some(first_child) = self
-            .tree_reader
-            .node_by_id(deepest_child)
-            .unwrap()
-            .data()
-            .children
-            .get(0)
-        {
-            deepest_child = *first_child;
-        }
-        self.tree_reader.node_by_id(deepest_child)
-    }
-
-    pub fn deepest_first_unignored_child(&self) -> Option<Node<'_>> {
-        let mut deepest_child = self.first_unignored_child()?;
-        while let Some(first_child) = self
-            .tree_reader
-            .node_by_id(deepest_child)
-            .unwrap()
-            .first_unignored_child()
-        {
+    pub fn deepest_first_child(self) -> Option<Node<'a>> {
+        let mut deepest_child = self.children().next()?;
+        while let Some(first_child) = deepest_child.children().next() {
             deepest_child = first_child;
         }
-        self.tree_reader.node_by_id(deepest_child)
+        Some(deepest_child)
     }
 
-    pub fn deepest_last_child(&self) -> Option<Node<'_>> {
-        let mut deepest_child = *self.data().children.iter().next_back()?;
-        while let Some(last_child) = self
-            .tree_reader
-            .node_by_id(deepest_child)
-            .unwrap()
-            .data()
-            .children
-            .iter()
-            .next_back()
-        {
-            deepest_child = *last_child;
+    pub fn deepest_first_unignored_child(self) -> Option<Node<'a>> {
+        let mut deepest_child = self.first_unignored_child()?;
+        while let Some(first_child) = deepest_child.first_unignored_child() {
+            deepest_child = first_child;
         }
-        self.tree_reader.node_by_id(deepest_child)
+        Some(deepest_child)
     }
 
-    pub fn deepest_last_unignored_child(&self) -> Option<Node<'_>> {
-        let mut deepest_child = self.last_unignored_child()?;
-        while let Some(last_child) = self
-            .tree_reader
-            .node_by_id(deepest_child)
-            .unwrap()
-            .last_unignored_child()
-        {
+    pub fn deepest_last_child(self) -> Option<Node<'a>> {
+        let mut deepest_child = self.children().next_back()?;
+        while let Some(last_child) = deepest_child.children().next_back() {
             deepest_child = last_child;
         }
-        self.tree_reader.node_by_id(deepest_child)
+        Some(deepest_child)
+    }
+
+    pub fn deepest_last_unignored_child(self) -> Option<Node<'a>> {
+        let mut deepest_child = self.last_unignored_child()?;
+        while let Some(last_child) = deepest_child.last_unignored_child() {
+            deepest_child = last_child;
+        }
+        Some(deepest_child)
     }
 
     pub fn is_descendant_of(&self, ancestor: &Node) -> bool {
@@ -222,10 +199,10 @@ impl Node<'_> {
         }
     }
 
-    pub(crate) fn first_unignored_child(&self) -> Option<NodeId> {
+    pub(crate) fn first_unignored_child(self) -> Option<Node<'a>> {
         for child in self.children() {
             if !child.is_ignored() {
-                return Some(child.id());
+                return Some(child);
             }
             if let Some(descendant) = child.first_unignored_child() {
                 return Some(descendant);
@@ -234,10 +211,10 @@ impl Node<'_> {
         None
     }
 
-    pub(crate) fn last_unignored_child(&self) -> Option<NodeId> {
+    pub(crate) fn last_unignored_child(self) -> Option<Node<'a>> {
         for child in self.children().rev() {
             if !child.is_ignored() {
-                return Some(child.id());
+                return Some(child);
             }
             if let Some(descendant) = child.last_unignored_child() {
                 return Some(descendant);
