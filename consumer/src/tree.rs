@@ -74,7 +74,7 @@ impl State {
                 if node_id == root {
                     node_state.parent_and_index = None
                 }
-                for child_id in &node_state.data.children {
+                for child_id in node_state.data.children.iter() {
                     if !seen_child_ids.contains(child_id) {
                         orphans.insert(*child_id);
                     }
@@ -116,7 +116,7 @@ impl State {
             ) {
                 to_remove.insert(id);
                 let node = nodes.get(&id).unwrap();
-                for child_id in &node.data.children {
+                for child_id in node.data.children.iter() {
                     traverse_orphan(nodes, to_remove, *child_id);
                 }
             }
@@ -145,7 +145,7 @@ impl State {
             let node = state.nodes.get(&id).unwrap();
             nodes.push(node.data.clone());
 
-            for child_id in &node.data.children {
+            for child_id in node.data.children.iter() {
                 traverse(state, nodes, *child_id);
             }
         }
@@ -239,11 +239,11 @@ mod tests {
         let update = TreeUpdate {
             clear: None,
             nodes: vec![Node::new(NODE_ID_1, Role::Window)],
-            tree: Some(Tree::new(TreeId(TREE_ID.to_string()), StringEncoding::Utf8)),
+            tree: Some(Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8)),
             root: Some(NODE_ID_1),
         };
         let tree = super::Tree::new(update);
-        assert_eq!(&TreeId(TREE_ID.to_string()), tree.read().id());
+        assert_eq!(&TreeId(TREE_ID.into()), tree.read().id());
         assert_eq!(NODE_ID_1, tree.read().root().id());
         assert_eq!(Role::Window, tree.read().root().role());
         assert!(tree.read().root().parent().is_none());
@@ -255,13 +255,13 @@ mod tests {
             clear: None,
             nodes: vec![
                 Node {
-                    children: vec![NODE_ID_2, NODE_ID_3],
+                    children: Box::new([NODE_ID_2, NODE_ID_3]),
                     ..Node::new(NODE_ID_1, Role::Window)
                 },
                 Node::new(NODE_ID_2, Role::Button),
                 Node::new(NODE_ID_3, Role::Button),
             ],
-            tree: Some(Tree::new(TreeId(TREE_ID.to_string()), StringEncoding::Utf8)),
+            tree: Some(Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8)),
             root: Some(NODE_ID_1),
         };
         let tree = super::Tree::new(update);
@@ -283,7 +283,7 @@ mod tests {
         let first_update = TreeUpdate {
             clear: None,
             nodes: vec![root_node.clone()],
-            tree: Some(Tree::new(TreeId(TREE_ID.to_string()), StringEncoding::Utf8)),
+            tree: Some(Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8)),
             root: Some(NODE_ID_1),
         };
         let tree = super::Tree::new(first_update);
@@ -292,7 +292,7 @@ mod tests {
             clear: None,
             nodes: vec![
                 Node {
-                    children: vec![NODE_ID_2],
+                    children: Box::new([NODE_ID_2]),
                     ..root_node
                 },
                 Node::new(NODE_ID_2, Role::RootWebArea),
@@ -317,12 +317,12 @@ mod tests {
             clear: None,
             nodes: vec![
                 Node {
-                    children: vec![NODE_ID_2],
+                    children: Box::new([NODE_ID_2]),
                     ..root_node.clone()
                 },
                 Node::new(NODE_ID_2, Role::RootWebArea),
             ],
-            tree: Some(Tree::new(TreeId(TREE_ID.to_string()), StringEncoding::Utf8)),
+            tree: Some(Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8)),
             root: Some(NODE_ID_1),
         };
         let tree = super::Tree::new(first_update);
@@ -340,12 +340,12 @@ mod tests {
 
     #[test]
     fn move_focus_between_siblings() {
-        let tree_data = Tree::new(TreeId(TREE_ID.to_string()), StringEncoding::Utf8);
+        let tree_data = Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8);
         let first_update = TreeUpdate {
             clear: None,
             nodes: vec![
                 Node {
-                    children: vec![NODE_ID_2, NODE_ID_3],
+                    children: Box::new([NODE_ID_2, NODE_ID_3]),
                     ..Node::new(NODE_ID_1, Role::Window)
                 },
                 Node::new(NODE_ID_2, Role::Button),

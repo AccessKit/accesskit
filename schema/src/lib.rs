@@ -391,7 +391,7 @@ pub enum TextDirection {
 pub enum InvalidState {
     False,
     True,
-    Other(String),
+    Other(Box<str>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
@@ -510,7 +510,7 @@ pub struct NodeId(pub std::num::NonZeroU64);
 /// The globally unique ID of a tree. The format of this ID
 /// is up to the implementer. A UUID v4 is a safe choice.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-pub struct TreeId(pub String);
+pub struct TreeId(pub Box<str>);
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -580,7 +580,7 @@ pub struct TextMarker {
 #[serde(rename_all = "camelCase")]
 pub struct CustomAction {
     pub id: i32,
-    pub description: String,
+    pub description: Box<str>,
 }
 
 // Helper for skipping false values in serialization.
@@ -604,7 +604,7 @@ pub struct Node {
     pub bounds: Option<RelativeBounds>,
     #[serde(default)]
     #[serde(skip_serializing_if = "is_empty")]
-    pub children: Vec<NodeId>,
+    pub children: Box<[NodeId]>,
 
     /// Unordered set of actions supported by this node.
     #[serde(default)]
@@ -612,19 +612,19 @@ pub struct Node {
     pub actions: BTreeSet<Action>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub name: Option<Box<str>>,
     /// What information was used to compute the object's name.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name_from: Option<NameFrom>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
+    pub description: Option<Box<str>>,
     /// What information was used to compute the object's description.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description_from: Option<DescriptionFrom>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub value: Option<String>,
+    pub value: Option<Box<str>>,
 
     #[serde(default)]
     #[serde(skip_serializing_if = "is_false")]
@@ -786,7 +786,7 @@ pub struct Node {
     /// column.
     #[serde(default)]
     #[serde(skip_serializing_if = "is_empty")]
-    pub indirect_children: Vec<NodeId>,
+    pub indirect_children: Box<[NodeId]>,
 
     // Relationships between this node and other nodes.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -805,26 +805,26 @@ pub struct Node {
     pub popup_for: Option<NodeId>,
     #[serde(default)]
     #[serde(skip_serializing_if = "is_empty")]
-    pub controls: Vec<NodeId>,
+    pub controls: Box<[NodeId]>,
     #[serde(default)]
     #[serde(skip_serializing_if = "is_empty")]
-    pub details: Vec<NodeId>,
+    pub details: Box<[NodeId]>,
     #[serde(default)]
     #[serde(skip_serializing_if = "is_empty")]
-    pub described_by: Vec<NodeId>,
+    pub described_by: Box<[NodeId]>,
     #[serde(default)]
     #[serde(skip_serializing_if = "is_empty")]
-    pub flow_to: Vec<NodeId>,
+    pub flow_to: Box<[NodeId]>,
     #[serde(default)]
     #[serde(skip_serializing_if = "is_empty")]
-    pub labelled_by: Vec<NodeId>,
+    pub labelled_by: Box<[NodeId]>,
     #[serde(default)]
     #[serde(skip_serializing_if = "is_empty")]
-    pub radio_groups: Vec<NodeId>,
+    pub radio_groups: Box<[NodeId]>,
 
     #[serde(default)]
     #[serde(skip_serializing_if = "is_empty")]
-    pub markers: Vec<TextMarker>,
+    pub markers: Box<[TextMarker]>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text_direction: Option<TextDirection>,
@@ -836,88 +836,88 @@ pub struct Node {
     /// is the right coordinate of the second character, and so on.
     #[serde(default)]
     #[serde(skip_serializing_if = "is_empty")]
-    pub character_offsets: Vec<f32>,
+    pub character_offsets: Box<[f32]>,
 
     /// For inline text. The indices of each word, in code units for
     /// the encoding specified in [`Tree::source_string_encoding`].
     #[serde(default)]
     #[serde(skip_serializing_if = "is_empty")]
-    pub words: Vec<Range<usize>>,
+    pub words: Box<[Range<usize>]>,
 
     #[serde(default)]
     #[serde(skip_serializing_if = "is_empty")]
-    pub custom_actions: Vec<CustomAction>,
+    pub custom_actions: Box<[CustomAction]>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub access_key: Option<String>,
+    pub access_key: Option<Box<str>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub invalid_state: Option<InvalidState>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub auto_complete: Option<String>,
+    pub auto_complete: Option<Box<str>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub checked_state: Option<CheckedState>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub checked_state_description: Option<String>,
+    pub checked_state_description: Option<Box<str>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub child_tree: Option<TreeId>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub class_name: Option<String>,
+    pub class_name: Option<Box<str>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub container_live_relevant: Option<String>,
+    pub container_live_relevant: Option<Box<str>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub container_live_status: Option<String>,
+    pub container_live_status: Option<Box<str>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub css_display: Option<String>,
+    pub css_display: Option<Box<str>>,
 
     /// Only present when different from parent.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub font_family: Option<String>,
+    pub font_family: Option<Box<str>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub html_tag: Option<String>,
+    pub html_tag: Option<Box<str>>,
 
     /// Inner HTML of an element. Only used for a top-level math element,
     /// to support third-party math accessibility products that parse MathML.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub inner_html: Option<String>,
+    pub inner_html: Option<Box<str>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub input_type: Option<String>,
+    pub input_type: Option<Box<str>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub key_shortcuts: Option<String>,
+    pub key_shortcuts: Option<Box<str>>,
 
     /// Only present when different from parent.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub language: Option<String>,
+    pub language: Option<Box<str>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub live_relevant: Option<String>,
+    pub live_relevant: Option<Box<str>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub live_status: Option<String>,
+    pub live_status: Option<Box<str>>,
 
     /// Only if not already exposed in [`Node::name`] ([`NameFrom::Placeholder`]).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub placeholder: Option<String>,
+    pub placeholder: Option<Box<str>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub aria_role: Option<String>,
+    pub aria_role: Option<Box<str>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub role_description: Option<String>,
+    pub role_description: Option<Box<str>>,
 
     /// Only if not already exposed in [`Node::name`] ([`NameFrom::Title`]).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tooltip: Option<String>,
+    pub tooltip: Option<Box<str>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub url: Option<String>,
+    pub url: Option<Box<str>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub default_action_verb: Option<DefaultActionVerb>,
@@ -1079,7 +1079,7 @@ impl Node {
             id,
             role,
             bounds: None,
-            children: vec![],
+            children: Default::default(),
             actions: BTreeSet::new(),
             name: None,
             name_from: None,
@@ -1120,7 +1120,7 @@ impl Node {
             is_page_breaking_object: false,
             has_aria_attribute: false,
             touch_pass_through: false,
-            indirect_children: vec![],
+            indirect_children: Default::default(),
             active_descendant: None,
             error_message: None,
             in_page_link_target: None,
@@ -1128,17 +1128,17 @@ impl Node {
             next_on_line: None,
             previous_on_line: None,
             popup_for: None,
-            controls: vec![],
-            details: vec![],
-            described_by: vec![],
-            flow_to: vec![],
-            labelled_by: vec![],
-            radio_groups: vec![],
-            markers: vec![],
+            controls: Default::default(),
+            details: Default::default(),
+            described_by: Default::default(),
+            flow_to: Default::default(),
+            labelled_by: Default::default(),
+            radio_groups: Default::default(),
+            markers: Default::default(),
             text_direction: None,
-            character_offsets: vec![],
-            words: vec![],
-            custom_actions: vec![],
+            character_offsets: Default::default(),
+            words: Default::default(),
+            custom_actions: Default::default(),
             access_key: None,
             invalid_state: None,
             auto_complete: None,
