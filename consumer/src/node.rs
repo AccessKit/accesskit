@@ -452,7 +452,7 @@ mod tests {
                 left: 10.0f32,
                 top: 40.0f32,
                 width: 800.0f32,
-                height: 20.0f32,
+                height: 40.0f32,
             }),
             tree.read()
                 .node_by_id(PARAGRAPH_1_IGNORED_ID)
@@ -461,8 +461,8 @@ mod tests {
         );
         assert_eq!(
             Some(Rect {
-                left: 10.0f32,
-                top: 40.0f32,
+                left: 20.0f32,
+                top: 50.0f32,
                 width: 80.0f32,
                 height: 20.0f32,
             }),

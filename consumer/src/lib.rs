@@ -63,7 +63,7 @@ mod tests {
                     left: 10.0f32,
                     top: 40.0f32,
                     width: 800.0f32,
-                    height: 20.0f32,
+                    height: 40.0f32,
                 },
                 transform: None,
             }),
@@ -75,8 +75,8 @@ mod tests {
             bounds: Some(RelativeBounds {
                 offset_container: Some(PARAGRAPH_1_IGNORED_ID),
                 rect: Rect {
-                    left: 0.0f32,
-                    top: 0.0f32,
+                    left: 10.0f32,
+                    top: 10.0f32,
                     width: 80.0f32,
                     height: 20.0f32,
                 },
