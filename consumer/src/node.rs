@@ -344,11 +344,11 @@ mod tests {
     fn deepest_last_child() {
         let tree = test_tree();
         assert_eq!(
-            BUTTON_3_1_ID,
+            EMPTY_CONTAINER_3_3_IGNORED_ID,
             tree.read().root().deepest_last_child().unwrap().id()
         );
         assert_eq!(
-            BUTTON_3_1_ID,
+            EMPTY_CONTAINER_3_3_IGNORED_ID,
             tree.read()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
@@ -358,7 +358,7 @@ mod tests {
         );
         assert!(tree
             .read()
-            .node_by_id(BUTTON_3_1_ID)
+            .node_by_id(BUTTON_3_2_ID)
             .unwrap()
             .deepest_last_child()
             .is_none());
@@ -368,7 +368,7 @@ mod tests {
     fn deepest_last_unignored_child() {
         let tree = test_tree();
         assert_eq!(
-            BUTTON_3_1_ID,
+            BUTTON_3_2_ID,
             tree.read()
                 .root()
                 .deepest_last_unignored_child()
@@ -376,7 +376,7 @@ mod tests {
                 .id()
         );
         assert_eq!(
-            BUTTON_3_1_ID,
+            BUTTON_3_2_ID,
             tree.read()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
@@ -386,7 +386,7 @@ mod tests {
         );
         assert!(tree
             .read()
-            .node_by_id(BUTTON_3_1_ID)
+            .node_by_id(BUTTON_3_2_ID)
             .unwrap()
             .deepest_last_unignored_child()
             .is_none());
