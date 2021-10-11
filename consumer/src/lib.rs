@@ -19,7 +19,9 @@ pub use iterators::{
 
 #[cfg(test)]
 mod tests {
-    use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+    use accesskit_schema::{
+        Node, NodeId, Rect, RelativeBounds, Role, StringEncoding, Tree, TreeId, TreeUpdate,
+    };
     use std::num::NonZeroU64;
     use std::sync::Arc;
 
@@ -55,11 +57,31 @@ mod tests {
             ..Node::new(STATIC_TEXT_0_0_IGNORED_ID, Role::StaticText)
         };
         let paragraph_1_ignored = Node {
+            bounds: Some(RelativeBounds {
+                offset_container: None,
+                rect: Rect {
+                    left: 10.0f32,
+                    top: 40.0f32,
+                    width: 800.0f32,
+                    height: 20.0f32,
+                },
+                transform: None,
+            }),
             children: Box::new([STATIC_TEXT_1_0_ID]),
             ignored: true,
             ..Node::new(PARAGRAPH_1_IGNORED_ID, Role::Paragraph)
         };
         let static_text_1_0 = Node {
+            bounds: Some(RelativeBounds {
+                offset_container: Some(PARAGRAPH_1_IGNORED_ID),
+                rect: Rect {
+                    left: 0.0f32,
+                    top: 0.0f32,
+                    width: 80.0f32,
+                    height: 20.0f32,
+                },
+                transform: None,
+            }),
             name: Some("static_text_1_0".into()),
             ..Node::new(STATIC_TEXT_1_0_ID, Role::StaticText)
         };
