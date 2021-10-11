@@ -104,7 +104,6 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 LRESULT(0)
             }
             WM_GETOBJECT => {
-                println!("WM_GETOBJECT");
                 if let Some(manager) = MANAGER.as_ref() {
                     manager.handle_wm_getobject(wparam, lparam)
                 } else {
