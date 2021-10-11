@@ -466,10 +466,7 @@ mod tests {
                 width: 80.0f32,
                 height: 20.0f32,
             }),
-            tree.read()
-                .node_by_id(STATIC_TEXT_1_0_ID)
-                .unwrap()
-                .bounds()
+            tree.read().node_by_id(STATIC_TEXT_1_0_ID).unwrap().bounds()
         );
     }
 }
