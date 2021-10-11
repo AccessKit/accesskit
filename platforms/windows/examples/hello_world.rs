@@ -19,10 +19,10 @@ fn get_initial_state() -> TreeUpdate {
         serde_json::from_str(&initial_state_str).unwrap()
     } else {
         let root = Node {
-            name: Some("Hello world".to_string()),
+            name: Some("Hello world".into()),
             ..Node::new(NODE_ID_1, Role::Window)
         };
-        let tree = Tree::new(TreeId("test".to_string()), StringEncoding::Utf8);
+        let tree = Tree::new(TreeId("test".into()), StringEncoding::Utf8);
         TreeUpdate {
             clear: None,
             nodes: vec![root],
