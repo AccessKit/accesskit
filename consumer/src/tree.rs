@@ -4,8 +4,9 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit_schema::{NodeId, TreeId, TreeUpdate};
+use parking_lot::{RwLock, RwLockReadGuard};
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::sync::Arc;
 
 use crate::{Node, NodeData, TreeData};
 
@@ -204,13 +205,13 @@ impl Tree {
     }
 
     pub fn update(&self, update: TreeUpdate) {
-        let mut state = self.state.write().unwrap();
+        let mut state = self.state.write();
         state.update(update)
     }
 
     // Intended for debugging.
     pub fn serialize(&self) -> TreeUpdate {
-        let state = self.state.read().unwrap();
+        let state = self.state.read();
         state.serialize()
     }
 
@@ -219,7 +220,7 @@ impl Tree {
     pub fn read<'a>(self: &'a Arc<Tree>) -> Reader<'a> {
         Reader {
             tree: self,
-            state: self.state.read().unwrap(),
+            state: self.state.read(),
         }
     }
 }
