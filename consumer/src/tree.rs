@@ -17,7 +17,7 @@ pub(crate) struct NodeState {
 }
 
 pub(crate) struct State {
-    pub(crate) nodes: HashMap<NodeId, NodeState>,
+    pub(crate) nodes: HashMap<NodeId, Box<NodeState>>,
     pub(crate) root: NodeId,
     pub(crate) data: TreeData,
 }
@@ -63,7 +63,7 @@ impl State {
                         parent_and_index: Some(parent_and_index),
                         data: child_data,
                     };
-                    self.nodes.insert(*child_id, node_state);
+                    self.nodes.insert(*child_id, Box::new(node_state));
                 } else {
                     pending_children.insert(*child_id, parent_and_index);
                 }
@@ -85,13 +85,13 @@ impl State {
                     parent_and_index: Some(parent_and_index),
                     data: node_data,
                 };
-                self.nodes.insert(node_id, node_state);
+                self.nodes.insert(node_id, Box::new(node_state));
             } else if node_id == root {
                 let node_state = NodeState {
                     parent_and_index: None,
                     data: node_data,
                 };
-                self.nodes.insert(node_id, node_state);
+                self.nodes.insert(node_id, Box::new(node_state));
             } else {
                 pending_nodes.insert(node_id, node_data);
             }
@@ -110,7 +110,7 @@ impl State {
             let mut to_remove = HashSet::new();
 
             fn traverse_orphan(
-                nodes: &HashMap<NodeId, NodeState>,
+                nodes: &HashMap<NodeId, Box<NodeState>>,
                 to_remove: &mut HashSet<NodeId>,
                 id: NodeId,
             ) {
