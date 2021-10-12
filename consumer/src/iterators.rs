@@ -210,6 +210,7 @@ fn next_unignored_sibling(node: Option<Node>) -> Option<Node> {
                 if !parent.is_ignored() {
                     return None;
                 }
+                consider_children = false;
             } else {
                 return None;
             }
@@ -247,6 +248,7 @@ fn previous_unignored_sibling(node: Option<Node>) -> Option<Node> {
                 if !parent.is_ignored() {
                     return None;
                 }
+                consider_children = false;
             } else {
                 return None;
             }
@@ -568,8 +570,8 @@ mod tests {
             [
                 STATIC_TEXT_1_0_ID,
                 PARAGRAPH_2_ID,
-                STATIC_TEXT_3_0_0_ID,
-                BUTTON_3_1_ID
+                STATIC_TEXT_3_1_0_ID,
+                BUTTON_3_2_ID
             ],
             tree.read()
                 .node_by_id(PARAGRAPH_0_ID)
@@ -598,8 +600,8 @@ mod tests {
             .is_none());
         assert_eq!(
             [
-                BUTTON_3_1_ID,
-                STATIC_TEXT_3_0_0_ID,
+                BUTTON_3_2_ID,
+                STATIC_TEXT_3_1_0_ID,
                 PARAGRAPH_2_ID,
                 STATIC_TEXT_1_0_ID
             ],
@@ -683,8 +685,8 @@ mod tests {
                 PARAGRAPH_0_ID,
                 STATIC_TEXT_1_0_ID,
                 PARAGRAPH_2_ID,
-                STATIC_TEXT_3_0_0_ID,
-                BUTTON_3_1_ID
+                STATIC_TEXT_3_1_0_ID,
+                BUTTON_3_2_ID
             ],
             tree.read()
                 .root()
@@ -713,8 +715,8 @@ mod tests {
         let tree = test_tree();
         assert_eq!(
             [
-                BUTTON_3_1_ID,
-                STATIC_TEXT_3_0_0_ID,
+                BUTTON_3_2_ID,
+                STATIC_TEXT_3_1_0_ID,
                 PARAGRAPH_2_ID,
                 STATIC_TEXT_1_0_ID,
                 PARAGRAPH_0_ID
