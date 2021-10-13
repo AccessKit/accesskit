@@ -25,10 +25,10 @@ pub(crate) struct State {
 }
 
 enum InternalChange {
-    NewNode(NodeId),
-    UpdatedNode(Box<NodeData>),
-    FocusChange((Option<NodeId>, Option<NodeId>)),
-    RemovedNode(Box<NodeData>),
+    NodeAdded(NodeId),
+    NodeUpdated(Box<NodeData>),
+    FocusMoved((Option<NodeId>, Option<NodeId>)),
+    NodeRemoved(Box<NodeData>),
 }
 
 impl State {
@@ -69,7 +69,7 @@ impl State {
             };
             nodes.insert(id, state);
             if let Some(changes) = changes {
-                changes.push(InternalChange::NewNode(id));
+                changes.push(InternalChange::NodeAdded(id));
             }
         }
 
@@ -111,7 +111,7 @@ impl State {
                 if *node_state.data != node_data {
                     let old_data = std::mem::replace(&mut node_state.data, Box::new(node_data));
                     if let Some(changes) = &mut changes {
-                        changes.push(InternalChange::UpdatedNode(old_data));
+                        changes.push(InternalChange::NodeUpdated(old_data));
                     }
                 }
             } else if let Some(parent_and_index) = pending_children.remove(&node_id) {
@@ -141,7 +141,7 @@ impl State {
             assert_eq!(tree.id, self.data.id);
             if tree.focus != self.data.focus {
                 if let Some(changes) = &mut changes {
-                    changes.push(InternalChange::FocusChange((self.data.focus, tree.focus)));
+                    changes.push(InternalChange::FocusMoved((self.data.focus, tree.focus)));
                 }
             }
             self.data = tree;
@@ -169,7 +169,7 @@ impl State {
             for id in to_remove {
                 if let Some(old_state) = self.nodes.remove(&id) {
                     if let Some(changes) = &mut changes {
-                        changes.push(InternalChange::RemovedNode(old_state.data));
+                        changes.push(InternalChange::NodeRemoved(old_state.data));
                     }
                 }
             }
@@ -225,10 +225,10 @@ impl Reader<'_> {
 }
 
 pub enum Change<'a> {
-    NewNode(Node<'a>),
-    UpdatedNode((Box<NodeData>, Node<'a>)),
-    FocusChange((Option<NodeId>, Option<Node<'a>>)),
-    RemovedNode(Box<NodeData>),
+    NodeAdded(Node<'a>),
+    NodeUpdated((Box<NodeData>, Node<'a>)),
+    FocusMoved((Option<NodeId>, Option<Node<'a>>)),
+    NodeRemoved(Box<NodeData>),
 }
 
 pub struct Tree {
@@ -266,21 +266,21 @@ impl Tree {
         let reader = Reader { tree: self, state };
         for change in changes {
             match change {
-                InternalChange::NewNode(id) => {
+                InternalChange::NodeAdded(id) => {
                     let node = reader.node_by_id(id).unwrap();
-                    f(Change::NewNode(node));
+                    f(Change::NodeAdded(node));
                 }
-                InternalChange::UpdatedNode(old_data) => {
+                InternalChange::NodeUpdated(old_data) => {
                     let id = old_data.id;
                     let new_node = reader.node_by_id(id).unwrap();
-                    f(Change::UpdatedNode((old_data, new_node)));
+                    f(Change::NodeUpdated((old_data, new_node)));
                 }
-                InternalChange::FocusChange((old_id, new_id)) => {
+                InternalChange::FocusMoved((old_id, new_id)) => {
                     let new_node = new_id.map(|id| reader.node_by_id(id)).flatten();
-                    f(Change::FocusChange((old_id, new_node)));
+                    f(Change::FocusMoved((old_id, new_node)));
                 }
-                InternalChange::RemovedNode(old_data) => {
-                    f(Change::RemovedNode(old_data));
+                InternalChange::NodeRemoved(old_data) => {
+                    f(Change::NodeRemoved(old_data));
                 }
             };
         }
@@ -381,7 +381,7 @@ mod tests {
         let mut got_updated_root_node = false;
         let mut got_new_child_node = false;
         tree.update_and_process_changes(second_update, |change| {
-            if let super::Change::UpdatedNode((old_data, new_node)) = &change {
+            if let super::Change::NodeUpdated((old_data, new_node)) = &change {
                 if new_node.id() == NODE_ID_1
                     && old_data.children == Box::new([])
                     && new_node.data().children == Box::new([NODE_ID_2])
@@ -390,7 +390,7 @@ mod tests {
                     return;
                 }
             }
-            if let super::Change::NewNode(node) = &change {
+            if let super::Change::NodeAdded(node) = &change {
                 if node.id() == NODE_ID_2 {
                     got_new_child_node = true;
                     return;
@@ -435,7 +435,7 @@ mod tests {
         let mut got_updated_root_node = false;
         let mut got_removed_child_node = false;
         tree.update_and_process_changes(second_update, |change| {
-            if let super::Change::UpdatedNode((old_data, new_node)) = &change {
+            if let super::Change::NodeUpdated((old_data, new_node)) = &change {
                 if new_node.id() == NODE_ID_1
                     && old_data.children == Box::new([NODE_ID_2])
                     && new_node.data().children == Box::new([])
@@ -444,7 +444,7 @@ mod tests {
                     return;
                 }
             }
-            if let super::Change::RemovedNode(old_data) = &change {
+            if let super::Change::NodeRemoved(old_data) = &change {
                 if old_data.id == NODE_ID_2 {
                     got_removed_child_node = true;
                     return;
@@ -490,7 +490,7 @@ mod tests {
         };
         let mut got_focus_change = false;
         tree.update_and_process_changes(second_update, |change| {
-            if let super::Change::FocusChange((old_id, new_node)) = &change {
+            if let super::Change::FocusMoved((old_id, new_node)) = &change {
                 if let Some(new_node) = new_node {
                     if *old_id == Some(NODE_ID_2) && new_node.id() == NODE_ID_3 {
                         got_focus_change = true;
@@ -540,7 +540,7 @@ mod tests {
         };
         let mut got_updated_child_node = false;
         tree.update_and_process_changes(second_update, |change| {
-            if let super::Change::UpdatedNode((old_data, new_node)) = &change {
+            if let super::Change::NodeUpdated((old_data, new_node)) = &change {
                 if new_node.id() == NODE_ID_2
                     && old_data.name == Some("foo".into())
                     && new_node.name() == Some("bar")
