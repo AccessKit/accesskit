@@ -504,7 +504,11 @@ mod tests {
         };
         let mut got_focus_change = false;
         tree.update_and_process_changes(second_update, |change| {
-            if let super::Change::FocusMoved { old_id, new_node: Some(new_node) } = &change {
+            if let super::Change::FocusMoved {
+                old_id,
+                new_node: Some(new_node),
+            } = &change
+            {
                 if *old_id == Some(NODE_ID_2) && new_node.id() == NODE_ID_3 {
                     got_focus_change = true;
                     return;
