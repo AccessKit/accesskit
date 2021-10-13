@@ -504,12 +504,10 @@ mod tests {
         };
         let mut got_focus_change = false;
         tree.update_and_process_changes(second_update, |change| {
-            if let super::Change::FocusMoved { old_id, new_node } = &change {
-                if let Some(new_node) = new_node {
-                    if *old_id == Some(NODE_ID_2) && new_node.id() == NODE_ID_3 {
-                        got_focus_change = true;
-                        return;
-                    }
+            if let super::Change::FocusMoved { old_id, new_node: Some(new_node) } = &change {
+                if *old_id == Some(NODE_ID_2) && new_node.id() == NODE_ID_3 {
+                    got_focus_change = true;
+                    return;
                 }
             }
             panic!("expected only focus change");
@@ -547,7 +545,7 @@ mod tests {
             clear: None,
             nodes: vec![Node {
                 name: Some("bar".into()),
-                ..child_node.clone()
+                ..child_node
             }],
             tree: None,
             root: None,
@@ -592,7 +590,7 @@ mod tests {
             root: Some(NODE_ID_1),
         };
         let tree = super::Tree::new(update.clone());
-        tree.update_and_process_changes(update.clone(), |_| {
+        tree.update_and_process_changes(update, |_| {
             panic!("expected no changes");
         });
     }
