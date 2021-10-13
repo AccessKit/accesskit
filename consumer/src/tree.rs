@@ -410,7 +410,7 @@ mod tests {
                     return;
                 }
             }
-            assert!(false);
+            panic!("expected only new child node and updated root node");
         });
         assert!(got_updated_root_node);
         assert!(got_new_child_node);
@@ -464,7 +464,7 @@ mod tests {
                     return;
                 }
             }
-            assert!(false);
+            panic!("expected only removed child node and updated root node");
         });
         assert!(got_updated_root_node);
         assert!(got_removed_child_node);
@@ -512,7 +512,7 @@ mod tests {
                     }
                 }
             }
-            assert!(false);
+            panic!("expected only focus change");
         });
         assert!(got_focus_change);
         assert!(tree.read().node_by_id(NODE_ID_3).unwrap().is_focused());
@@ -563,7 +563,7 @@ mod tests {
                     return;
                 }
             }
-            assert!(false);
+            panic!("expected only updated child node");
         });
         assert!(got_updated_child_node);
         assert_eq!(
@@ -593,8 +593,7 @@ mod tests {
         };
         let tree = super::Tree::new(update.clone());
         tree.update_and_process_changes(update.clone(), |_| {
-            // We don't expect any changes to be reported.
-            assert!(false);
+            panic!("expected no changes");
         });
     }
 }
