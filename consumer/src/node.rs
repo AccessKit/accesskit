@@ -172,15 +172,21 @@ impl<'a> Node<'a> {
 
     /// Returns the node's bounds relative to the root of the tree.
     pub fn bounds(&self) -> Option<Rect> {
-        if let Some(bounds) = &self.data().bounds {
-            // TODO: handle offset container
-            assert!(bounds.offset_container.is_none());
+        self.data().bounds.as_ref().map(|bounds| {
+            let mut rect = bounds.rect;
+
+            if let Some(offset_id) = bounds.offset_container {
+                let offset_node = self.tree_reader.node_by_id(offset_id).unwrap();
+                let offset_rect = offset_node.bounds().unwrap();
+                rect.left += offset_rect.left;
+                rect.top += offset_rect.top;
+            }
+
             // TODO: handle transform
             assert!(bounds.transform.is_none());
-            Some(bounds.rect.clone())
-        } else {
-            None
-        }
+
+            rect
+        })
     }
 
     // Convenience getters
@@ -259,6 +265,8 @@ impl Node<'_> {
 
 #[cfg(test)]
 mod tests {
+    use accesskit_schema::Rect;
+
     use crate::tests::*;
 
     #[test]
@@ -344,11 +352,11 @@ mod tests {
     fn deepest_last_child() {
         let tree = test_tree();
         assert_eq!(
-            BUTTON_3_1_ID,
+            EMPTY_CONTAINER_3_3_IGNORED_ID,
             tree.read().root().deepest_last_child().unwrap().id()
         );
         assert_eq!(
-            BUTTON_3_1_ID,
+            EMPTY_CONTAINER_3_3_IGNORED_ID,
             tree.read()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
@@ -358,7 +366,7 @@ mod tests {
         );
         assert!(tree
             .read()
-            .node_by_id(BUTTON_3_1_ID)
+            .node_by_id(BUTTON_3_2_ID)
             .unwrap()
             .deepest_last_child()
             .is_none());
@@ -368,7 +376,7 @@ mod tests {
     fn deepest_last_unignored_child() {
         let tree = test_tree();
         assert_eq!(
-            BUTTON_3_1_ID,
+            BUTTON_3_2_ID,
             tree.read()
                 .root()
                 .deepest_last_unignored_child()
@@ -376,7 +384,7 @@ mod tests {
                 .id()
         );
         assert_eq!(
-            BUTTON_3_1_ID,
+            BUTTON_3_2_ID,
             tree.read()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
@@ -386,7 +394,7 @@ mod tests {
         );
         assert!(tree
             .read()
-            .node_by_id(BUTTON_3_1_ID)
+            .node_by_id(BUTTON_3_2_ID)
             .unwrap()
             .deepest_last_unignored_child()
             .is_none());
@@ -433,5 +441,32 @@ mod tests {
         let tree = test_tree();
         assert!(tree.read().node_by_id(ROOT_ID).unwrap().is_root());
         assert!(!tree.read().node_by_id(PARAGRAPH_0_ID).unwrap().is_root());
+    }
+
+    #[test]
+    fn bounds() {
+        let tree = test_tree();
+        assert!(tree.read().node_by_id(ROOT_ID).unwrap().bounds().is_none());
+        assert_eq!(
+            Some(Rect {
+                left: 10.0f32,
+                top: 40.0f32,
+                width: 800.0f32,
+                height: 40.0f32,
+            }),
+            tree.read()
+                .node_by_id(PARAGRAPH_1_IGNORED_ID)
+                .unwrap()
+                .bounds()
+        );
+        assert_eq!(
+            Some(Rect {
+                left: 20.0f32,
+                top: 50.0f32,
+                width: 80.0f32,
+                height: 20.0f32,
+            }),
+            tree.read().node_by_id(STATIC_TEXT_1_0_ID).unwrap().bounds()
+        );
     }
 }

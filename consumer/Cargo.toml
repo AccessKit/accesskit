@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 accesskit_schema = { path = "../schema" }
+parking_lot = "0.11.2"
