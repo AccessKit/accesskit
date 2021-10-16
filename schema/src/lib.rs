@@ -507,6 +507,8 @@ pub enum StringEncoding {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub struct NodeId(pub std::num::NonZeroU64);
 
+impl nohash_hasher::IsEnabled for NodeId {}
+
 /// The globally unique ID of a tree. The format of this ID
 /// is up to the implementer. A UUID v4 is a safe choice.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]

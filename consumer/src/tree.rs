@@ -4,8 +4,8 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit_schema::{NodeId, TreeId, TreeUpdate};
+use nohash_hasher::{IntMap, IntSet};
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::{Node, NodeData, TreeData};
@@ -19,7 +19,7 @@ pub(crate) struct NodeState {
 }
 
 pub(crate) struct State {
-    pub(crate) nodes: HashMap<NodeId, NodeState>,
+    pub(crate) nodes: IntMap<NodeId, NodeState>,
     pub(crate) root: NodeId,
     pub(crate) data: TreeData,
 }
@@ -52,9 +52,9 @@ impl State {
         assert!(update.clear.is_none());
 
         let root = update.root.unwrap_or(self.root);
-        let mut pending_nodes: HashMap<NodeId, _> = HashMap::new();
-        let mut pending_children = HashMap::new();
-        let mut orphans = HashSet::new();
+        let mut pending_nodes: IntMap<NodeId, _> = IntMap::default();
+        let mut pending_children = IntMap::default();
+        let mut orphans = IntSet::default();
 
         if root != self.root {
             orphans.insert(self.root);
@@ -62,7 +62,7 @@ impl State {
         }
 
         fn add_node(
-            nodes: &mut HashMap<NodeId, NodeState>,
+            nodes: &mut IntMap<NodeId, NodeState>,
             changes: &mut Option<&mut Vec<InternalChange>>,
             parent_and_index: Option<ParentAndIndex>,
             data: NodeData,
@@ -82,7 +82,7 @@ impl State {
             let node_id = node_data.id;
             orphans.remove(&node_id);
 
-            let mut seen_child_ids = HashSet::new();
+            let mut seen_child_ids: IntSet<NodeId> = IntSet::default();
             for (child_index, child_id) in node_data.children.iter().enumerate() {
                 assert!(!seen_child_ids.contains(child_id));
                 orphans.remove(child_id);
@@ -101,7 +101,7 @@ impl State {
                 } else {
                     pending_children.insert(*child_id, parent_and_index);
                 }
-                seen_child_ids.insert(child_id);
+                seen_child_ids.insert(*child_id);
             }
 
             if let Some(node_state) = self.nodes.get_mut(&node_id) {
@@ -156,11 +156,11 @@ impl State {
         }
 
         if !orphans.is_empty() {
-            let mut to_remove = HashSet::new();
+            let mut to_remove = IntSet::default();
 
             fn traverse_orphan(
-                nodes: &HashMap<NodeId, NodeState>,
-                to_remove: &mut HashSet<NodeId>,
+                nodes: &IntMap<NodeId, NodeState>,
+                to_remove: &mut IntSet<NodeId>,
                 id: NodeId,
             ) {
                 to_remove.insert(id);
@@ -254,7 +254,7 @@ impl Tree {
         assert!(initial_state.clear.is_none());
 
         let mut state = State {
-            nodes: HashMap::new(),
+            nodes: IntMap::default(),
             root: initial_state.root.take().unwrap(),
             data: initial_state.tree.take().unwrap(),
         };
