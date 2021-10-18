@@ -16,7 +16,7 @@ use windows::*;
 
 use crate::util::*;
 
-struct ResolvedPlatformNode<'a> {
+pub(crate) struct ResolvedPlatformNode<'a> {
     node: Node<'a>,
     hwnd: HWND,
 }
@@ -32,7 +32,7 @@ macro_rules! properties {
                 _ => None
             }
         }
-        fn raise_property_changes(&self, old: &ResolvedPlatformNode) {
+        pub(crate) fn raise_property_changes(&self, old: &ResolvedPlatformNode) {
             $({
                 let old_value = old.$m();
                 let new_value = self.$m();
@@ -49,7 +49,7 @@ macro_rules! properties {
 }
 
 impl ResolvedPlatformNode<'_> {
-    fn new(node: Node, hwnd: HWND) -> ResolvedPlatformNode {
+    pub(crate) fn new(node: Node, hwnd: HWND) -> ResolvedPlatformNode {
         ResolvedPlatformNode { node, hwnd }
     }
 
@@ -306,7 +306,11 @@ impl ResolvedPlatformNode<'_> {
         old_value: Option<VariantFactory>,
         new_value: Option<VariantFactory>,
     ) {
-        // TODO
+        let el: IRawElementProviderSimple = self.downgrade().into();
+        let old_value: VARIANT = old_value.unwrap_or_else(|| VariantFactory::empty()).into();
+        let new_value: VARIANT = new_value.unwrap_or_else(|| VariantFactory::empty()).into();
+        unsafe { UiaRaiseAutomationPropertyChangedEvent(el, property_id, old_value, new_value) }
+            .unwrap();
     }
 
     properties! {

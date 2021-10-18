@@ -9,7 +9,7 @@ use accesskit_consumer::{Tree, TreeChange};
 use accesskit_schema::TreeUpdate;
 use accesskit_windows_bindings::Windows::Win32::{Foundation::*, UI::Accessibility::*};
 
-use crate::node::PlatformNode;
+use crate::node::{PlatformNode, ResolvedPlatformNode};
 
 pub struct Manager {
     hwnd: HWND,
@@ -37,6 +37,11 @@ impl Manager {
                         unsafe { UiaRaiseAutomationEvent(el, UIA_AutomationFocusChangedEventId) }
                             .unwrap();
                     }
+                }
+                TreeChange::NodeUpdated { old_node, new_node } => {
+                    let old_node = ResolvedPlatformNode::new(old_node, self.hwnd);
+                    let new_node = ResolvedPlatformNode::new(new_node, self.hwnd);
+                    new_node.raise_property_changes(&old_node);
                 }
                 // TODO: handle other events
                 _ => (),
