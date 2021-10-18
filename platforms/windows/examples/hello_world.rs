@@ -4,8 +4,11 @@ use std::num::NonZeroU64;
 
 use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
 use accesskit_windows_bindings::Windows::Win32::{
-    Foundation::*, Graphics::Gdi::ValidateRect, System::Com::*,
-    System::LibraryLoader::GetModuleHandleA, UI::{KeyboardAndMouseInput::*, WindowsAndMessaging::*},
+    Foundation::*,
+    Graphics::Gdi::ValidateRect,
+    System::Com::*,
+    System::LibraryLoader::GetModuleHandleA,
+    UI::{KeyboardAndMouseInput::*, WindowsAndMessaging::*},
 };
 use windows::*;
 
@@ -145,20 +148,18 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 update_focus(false);
                 LRESULT(0)
             }
-            WM_KEYDOWN => {
-                match VIRTUAL_KEY(wparam.0 as u16) {
-                    VK_TAB => {
-                        FOCUS = if FOCUS == NODE_ID_2 {
-                            NODE_ID_3
-                        } else {
-                            NODE_ID_2
-                        };
-                        update_focus(true);
-                        LRESULT(0)
-                    }
-                    _ => DefWindowProcA(window, message, wparam, lparam),
+            WM_KEYDOWN => match VIRTUAL_KEY(wparam.0 as u16) {
+                VK_TAB => {
+                    FOCUS = if FOCUS == NODE_ID_2 {
+                        NODE_ID_3
+                    } else {
+                        NODE_ID_2
+                    };
+                    update_focus(true);
+                    LRESULT(0)
                 }
-            }
+                _ => DefWindowProcA(window, message, wparam, lparam),
+            },
             _ => DefWindowProcA(window, message, wparam, lparam),
         }
     }

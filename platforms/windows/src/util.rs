@@ -4,7 +4,10 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit_windows_bindings::Windows::Win32::{Foundation::*, System::OleAutomation::*};
-use std::{convert::{From, Into, TryInto}, mem::ManuallyDrop};
+use std::{
+    convert::{From, Into, TryInto},
+    mem::ManuallyDrop,
+};
 
 pub(crate) struct VariantFactory(VARENUM, VARIANT_0_0_0);
 
@@ -27,7 +30,7 @@ impl Into<VARIANT> for VariantFactory {
 
 impl VariantFactory {
     pub(crate) fn empty() -> Self {
-        // The choice of value field is probably arbitrary, but it seems 
+        // The choice of value field is probably arbitrary, but it seems
         // reasonable to make sure that at least a whole machine word is zero.
         Self(VT_EMPTY, VARIANT_0_0_0 { llVal: 0 })
     }
