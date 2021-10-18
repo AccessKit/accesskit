@@ -32,6 +32,19 @@ macro_rules! properties {
                 _ => None
             }
         }
+        fn raise_property_changes(&self, old: &ResolvedPlatformNode) {
+            $({
+                let old_value = old.$m();
+                let new_value = self.$m();
+                if old_value != new_value {
+                    self.raise_property_change(
+                        $id,
+                        old_value.map(|value| value.into()),
+                        new_value.map(|value| value.into()),
+                    );
+                }
+            })*
+        }
     };
 }
 
@@ -285,6 +298,15 @@ impl ResolvedPlatformNode<'_> {
 
     fn is_focused_wrapped(&self) -> Option<bool> {
         Some(self.node.is_focused())
+    }
+
+    fn raise_property_change(
+        &self,
+        property_id: i32,
+        old_value: Option<VariantFactory>,
+        new_value: Option<VariantFactory>,
+    ) {
+        // TODO
     }
 
     properties! {
