@@ -23,22 +23,30 @@ fn get_tree(is_window_focused: bool) -> Tree {
     }
 }
 
+fn get_button_1(name: &str) -> Node {
+    Node {
+        name: Some(name.into()),
+        focusable: true,
+        ..Node::new(NODE_ID_2, Role::Button)
+    }
+}
+
+fn get_button_2(name: &str) -> Node {
+    Node {
+        name: Some(name.into()),
+        focusable: true,
+        ..Node::new(NODE_ID_3, Role::Button)
+    }
+}
+
 fn get_initial_state() -> TreeUpdate {
     let root = Node {
         children: Box::new([NODE_ID_2, NODE_ID_3]),
         name: Some("Hello world".into()),
         ..Node::new(NODE_ID_1, Role::Window)
     };
-    let button_1 = Node {
-        name: Some("Button 1".into()),
-        focusable: true,
-        ..Node::new(NODE_ID_2, Role::Button)
-    };
-    let button_2 = Node {
-        name: Some("Button 2".into()),
-        focusable: true,
-        ..Node::new(NODE_ID_3, Role::Button)
-    };
+    let button_1 = get_button_1("Button 1");
+    let button_2 = get_button_2("Button 2");
     TreeUpdate {
         clear: None,
         nodes: vec![root, button_1, button_2],
@@ -156,6 +164,26 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                         NODE_ID_2
                     };
                     update_focus(true);
+                    LRESULT(0)
+                }
+                VK_SPACE => {
+                    if let Some(manager) = MANAGER.as_ref() {
+                        // This is a pretty hacky way of updating a node.
+                        // A real GUI framework would have a consistent way
+                        // of building a node from underlying data.
+                        let node = if FOCUS == NODE_ID_2 {
+                            get_button_1("You pressed button 1")
+                        } else {
+                            get_button_2("You pressed button 2")
+                        };
+                        let update = TreeUpdate {
+                            clear: None,
+                            nodes: vec![node],
+                            tree: None,
+                            root: None,
+                        };
+                        manager.update(update);
+                    }
                     LRESULT(0)
                 }
                 _ => DefWindowProcA(window, message, wparam, lparam),
