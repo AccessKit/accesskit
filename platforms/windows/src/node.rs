@@ -21,6 +21,20 @@ struct ResolvedPlatformNode<'a> {
     hwnd: HWND,
 }
 
+macro_rules! properties {
+    ($(($id:ident, $m:ident)),+) => {
+        fn get_property_value(&self, property_id: i32) -> Option<VariantFactory> {
+            match property_id {
+                $($id => {
+                    let value = self.$m();
+                    value.map(|value| value.into())
+                })*
+                _ => None
+            }
+        }
+    };
+}
+
 impl ResolvedPlatformNode<'_> {
     fn new(node: Node, hwnd: HWND) -> ResolvedPlatformNode {
         ResolvedPlatformNode { node, hwnd }
@@ -257,26 +271,27 @@ impl ResolvedPlatformNode<'_> {
         }
     }
 
-    fn get_property_value(&self, property_id: i32) -> VARIANT {
-        // TODO: add properties
-        match property_id {
-            UIA_ControlTypePropertyId => {
-                return variant_from_i32(self.control_type());
-            }
-            UIA_NamePropertyId => {
-                if let Some(name) = self.node.name() {
-                    return variant_from_bstr(name.into());
-                }
-            }
-            UIA_IsKeyboardFocusablePropertyId => {
-                return variant_from_bool(self.node.is_focusable());
-            }
-            UIA_HasKeyboardFocusPropertyId => {
-                return variant_from_bool(self.node.is_focused());
-            }
-            _ => (),
-        }
-        empty_variant()
+    fn control_type_wrapped(&self) -> Option<i32> {
+        Some(self.control_type())
+    }
+
+    fn name(&self) -> Option<&str> {
+        self.node.name()
+    }
+
+    fn is_focusable_wrapped(&self) -> Option<bool> {
+        Some(self.node.is_focusable())
+    }
+
+    fn is_focused_wrapped(&self) -> Option<bool> {
+        Some(self.node.is_focused())
+    }
+
+    properties! {
+        (UIA_ControlTypePropertyId, control_type_wrapped),
+        (UIA_NamePropertyId, name),
+        (UIA_IsKeyboardFocusablePropertyId, is_focusable_wrapped),
+        (UIA_HasKeyboardFocusPropertyId, is_focused_wrapped)
     }
 
     fn host_provider(&self) -> Result<IRawElementProviderSimple> {
@@ -395,7 +410,10 @@ impl PlatformNode {
     }
 
     fn GetPropertyValue(&self, property_id: i32) -> Result<VARIANT> {
-        self.resolve(|resolved| Ok(resolved.get_property_value(property_id)))
+        self.resolve(|resolved| {
+            let result = resolved.get_property_value(property_id);
+            Ok(result.unwrap_or_else(|| VariantFactory::empty()).into())
+        })
     }
 
     fn HostRawElementProvider(&self) -> Result<IRawElementProviderSimple> {
