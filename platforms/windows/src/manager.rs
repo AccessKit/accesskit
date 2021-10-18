@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use accesskit_consumer::Tree;
+use accesskit_consumer::{Tree, TreeChange};
 use accesskit_schema::TreeUpdate;
 use accesskit_windows_bindings::Windows::Win32::{Foundation::*, UI::Accessibility::*};
 
@@ -25,8 +25,23 @@ impl Manager {
     }
 
     pub fn update(&self, update: TreeUpdate) {
-        self.tree.update(update);
-        // TODO: events
+        self.tree.update_and_process_changes(update, |change| {
+            match change {
+                TreeChange::FocusMoved {
+                    old_node: _,
+                    new_node,
+                } => {
+                    if let Some(new_node) = new_node {
+                        let platform_node = PlatformNode::new(&new_node, self.hwnd);
+                        let el: IRawElementProviderSimple = platform_node.into();
+                        unsafe { UiaRaiseAutomationEvent(el, UIA_AutomationFocusChangedEventId) }
+                            .unwrap();
+                    }
+                }
+                // TODO: handle other events
+                _ => (),
+            };
+        });
     }
 
     fn root_platform_node(&self) -> PlatformNode {

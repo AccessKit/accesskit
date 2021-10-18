@@ -30,6 +30,12 @@ impl<'a> Node<'a> {
         self.tree_reader.state.focus == Some(self.id())
     }
 
+    pub fn is_focusable(&self) -> bool {
+        // TBD: Is it ever safe to imply this on a node that doesn't explicitly
+        // specify it?
+        self.data().focusable
+    }
+
     pub fn is_ignored(&self) -> bool {
         self.data().ignored || (self.role() == Role::Presentation)
     }

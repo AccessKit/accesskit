@@ -18,6 +18,7 @@ fn main() {
             },
             UI::{
                 Accessibility::*,
+                KeyboardAndMouseInput::*,
                 WindowsAndMessaging::*,
             },
         },

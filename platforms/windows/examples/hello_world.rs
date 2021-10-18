@@ -5,36 +5,49 @@ use std::num::NonZeroU64;
 use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
 use accesskit_windows_bindings::Windows::Win32::{
     Foundation::*, Graphics::Gdi::ValidateRect, System::Com::*,
-    System::LibraryLoader::GetModuleHandleA, UI::WindowsAndMessaging::*,
+    System::LibraryLoader::GetModuleHandleA, UI::{KeyboardAndMouseInput::*, WindowsAndMessaging::*},
 };
 use windows::*;
 
 const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
+const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
+const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
+
+fn get_tree(is_window_focused: bool) -> Tree {
+    Tree {
+        focus: is_window_focused.then(|| unsafe { FOCUS }),
+        ..Tree::new(TreeId("test".into()), StringEncoding::Utf8)
+    }
+}
 
 fn get_initial_state() -> TreeUpdate {
-    let mut args = std::env::args();
-    let _arg0 = args.next().unwrap();
-    if let Some(initial_state_filename) = args.next() {
-        let initial_state_str = std::fs::read_to_string(&initial_state_filename).unwrap();
-        serde_json::from_str(&initial_state_str).unwrap()
-    } else {
-        let root = Node {
-            name: Some("Hello world".into()),
-            ..Node::new(NODE_ID_1, Role::Window)
-        };
-        let tree = Tree::new(TreeId("test".into()), StringEncoding::Utf8);
-        TreeUpdate {
-            clear: None,
-            nodes: vec![root],
-            tree: Some(tree),
-            root: Some(NODE_ID_1),
-        }
+    let root = Node {
+        children: Box::new([NODE_ID_2, NODE_ID_3]),
+        name: Some("Hello world".into()),
+        ..Node::new(NODE_ID_1, Role::Window)
+    };
+    let button_1 = Node {
+        name: Some("Button 1".into()),
+        focusable: true,
+        ..Node::new(NODE_ID_2, Role::Button)
+    };
+    let button_2 = Node {
+        name: Some("Button 2".into()),
+        focusable: true,
+        ..Node::new(NODE_ID_3, Role::Button)
+    };
+    TreeUpdate {
+        clear: None,
+        nodes: vec![root, button_1, button_2],
+        tree: Some(get_tree(false)),
+        root: Some(NODE_ID_1),
     }
 }
 
 // This simple example doesn't have a way of associating data with an HWND.
-// So we'll just use a global variable for the AccessKit manager.
+// So we'll just use global variables.
 static mut MANAGER: Option<accesskit_windows::Manager> = None;
+static mut FOCUS: NodeId = NODE_ID_2;
 
 fn main() -> Result<()> {
     let initial_state = get_initial_state();
@@ -90,6 +103,19 @@ fn main() -> Result<()> {
     }
 }
 
+fn update_focus(is_window_focused: bool) {
+    if let Some(manager) = unsafe { MANAGER.as_ref() } {
+        let tree = get_tree(is_window_focused);
+        let update = TreeUpdate {
+            clear: None,
+            nodes: vec![],
+            tree: Some(tree),
+            root: None,
+        };
+        manager.update(update);
+    }
+}
+
 extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     unsafe {
         match message as u32 {
@@ -109,6 +135,28 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 } else {
                     println!("no AccessKit manager yet");
                     DefWindowProcA(window, message, wparam, lparam)
+                }
+            }
+            WM_SETFOCUS => {
+                update_focus(true);
+                LRESULT(0)
+            }
+            WM_KILLFOCUS => {
+                update_focus(false);
+                LRESULT(0)
+            }
+            WM_KEYDOWN => {
+                match VIRTUAL_KEY(wparam.0 as u16) {
+                    VK_TAB => {
+                        FOCUS = if FOCUS == NODE_ID_2 {
+                            NODE_ID_3
+                        } else {
+                            NODE_ID_2
+                        };
+                        update_focus(true);
+                        LRESULT(0)
+                    }
+                    _ => DefWindowProcA(window, message, wparam, lparam),
                 }
             }
             _ => DefWindowProcA(window, message, wparam, lparam),

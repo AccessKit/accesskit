@@ -268,6 +268,12 @@ impl ResolvedPlatformNode<'_> {
                     return variant_from_bstr(name.into());
                 }
             }
+            UIA_IsKeyboardFocusablePropertyId => {
+                return variant_from_bool(self.node.is_focusable());
+            }
+            UIA_HasKeyboardFocusPropertyId => {
+                return variant_from_bool(self.node.is_focused());
+            }
             _ => (),
         }
         empty_variant()
@@ -331,7 +337,11 @@ impl ResolvedPlatformNode<'_> {
     }
 
     fn focus(&self) -> Option<ResolvedPlatformNode> {
-        // TODO: Get focus from tree; don't return self.
+        if let Some(node) = self.node.tree_reader.focus() {
+            if node.id() != self.node.id() {
+                return Some(self.relative(node));
+            }
+        }
         None
     }
 }

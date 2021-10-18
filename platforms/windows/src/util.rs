@@ -39,6 +39,18 @@ pub(crate) const fn variant_from_i32(value: i32) -> VARIANT {
     variant(VT_I4, VARIANT_0_0_0 { lVal: value })
 }
 
+const VARIANT_FALSE: i16 = 0i16;
+const VARIANT_TRUE: i16 = -1i16;
+
+pub(crate) const fn variant_from_bool(value: bool) -> VARIANT {
+    variant(
+        VT_BOOL,
+        VARIANT_0_0_0 {
+            boolVal: if value { VARIANT_TRUE } else { VARIANT_FALSE },
+        },
+    )
+}
+
 fn safe_array_from_slice<T>(vt: VARENUM, slice: &[T]) -> *mut SAFEARRAY {
     let sa = unsafe { SafeArrayCreateVector(vt.0 as u16, 0, slice.len().try_into().unwrap()) };
     if sa.is_null() {
