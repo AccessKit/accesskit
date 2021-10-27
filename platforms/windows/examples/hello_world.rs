@@ -11,7 +11,7 @@ use windows::{
         System::Com::*,
         System::LibraryLoader::GetModuleHandleA,
         UI::{KeyboardAndMouseInput::*, WindowsAndMessaging::*},
-    }
+    },
 };
 
 const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });

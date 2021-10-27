@@ -8,13 +8,11 @@
 use accesskit_consumer::{Node, WeakNode};
 use accesskit_schema::{NodeIdContent, Role};
 use arrayvec::ArrayVec;
+use windows as Windows;
 use windows::{
     runtime::*,
-    Win32::{
-        Foundation::*, Graphics::Gdi::*, System::OleAutomation::*, UI::Accessibility::*,
-    }
+    Win32::{Foundation::*, Graphics::Gdi::*, System::OleAutomation::*, UI::Accessibility::*},
 };
-use windows as Windows;
 
 use crate::util::*;
 
