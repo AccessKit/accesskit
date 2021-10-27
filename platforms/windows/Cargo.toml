@@ -9,7 +9,7 @@ accesskit_schema = { path = "../../schema" }
 arrayvec = "0.7.1"
 
 [dependencies.windows]
-git = "https://github.com/microsoft/windows-rs"
+version = "0.22.1"
 features = [
     "build",
     "Win32_Foundation",
