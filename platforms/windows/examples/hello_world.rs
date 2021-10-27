@@ -14,9 +14,9 @@ use windows::{
     },
 };
 
-const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
-const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
-const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
+const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
+const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
+const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
 
 fn get_tree(is_window_focused: bool) -> Tree {
     Tree {
@@ -29,7 +29,7 @@ fn get_button_1(name: &str) -> Node {
     Node {
         name: Some(name.into()),
         focusable: true,
-        ..Node::new(NODE_ID_2, Role::Button)
+        ..Node::new(BUTTON_1_ID, Role::Button)
     }
 }
 
@@ -37,15 +37,15 @@ fn get_button_2(name: &str) -> Node {
     Node {
         name: Some(name.into()),
         focusable: true,
-        ..Node::new(NODE_ID_3, Role::Button)
+        ..Node::new(BUTTON_2_ID, Role::Button)
     }
 }
 
 fn get_initial_state() -> TreeUpdate {
     let root = Node {
-        children: Box::new([NODE_ID_2, NODE_ID_3]),
+        children: Box::new([BUTTON_1_ID, BUTTON_2_ID]),
         name: Some("Hello world".into()),
-        ..Node::new(NODE_ID_1, Role::Window)
+        ..Node::new(WINDOW_ID, Role::Window)
     };
     let button_1 = get_button_1("Button 1");
     let button_2 = get_button_2("Button 2");
@@ -53,14 +53,14 @@ fn get_initial_state() -> TreeUpdate {
         clear: None,
         nodes: vec![root, button_1, button_2],
         tree: Some(get_tree(false)),
-        root: Some(NODE_ID_1),
+        root: Some(WINDOW_ID),
     }
 }
 
 // This simple example doesn't have a way of associating data with an HWND.
 // So we'll just use global variables.
 static mut MANAGER: Option<accesskit_windows::Manager> = None;
-static mut FOCUS: NodeId = NODE_ID_2;
+static mut FOCUS: NodeId = BUTTON_1_ID;
 
 fn main() -> Result<()> {
     let initial_state = get_initial_state();
@@ -156,10 +156,10 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             }
             WM_KEYDOWN => match VIRTUAL_KEY(wparam.0 as u16) {
                 VK_TAB => {
-                    FOCUS = if FOCUS == NODE_ID_2 {
-                        NODE_ID_3
+                    FOCUS = if FOCUS == BUTTON_1_ID {
+                        BUTTON_2_ID
                     } else {
-                        NODE_ID_2
+                        BUTTON_1_ID
                     };
                     update_focus(true);
                     LRESULT(0)
@@ -169,7 +169,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                         // This is a pretty hacky way of updating a node.
                         // A real GUI framework would have a consistent way
                         // of building a node from underlying data.
-                        let node = if FOCUS == NODE_ID_2 {
+                        let node = if FOCUS == BUTTON_1_ID {
                             get_button_1("You pressed button 1")
                         } else {
                             get_button_2("You pressed button 2")
