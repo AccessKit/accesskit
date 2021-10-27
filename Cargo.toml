@@ -5,7 +5,6 @@ members = [
     "platforms/mac",
     "platforms/mac/jni",
     "platforms/windows",
-    "platforms/windows/bindings",
 ]
 default-members = [
     "schema",

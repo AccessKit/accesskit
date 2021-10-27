@@ -50,15 +50,7 @@ version = "0.1.0"
 dependencies = [
  "accesskit_consumer",
  "accesskit_schema",
- "accesskit_windows_bindings",
  "arrayvec",
- "windows",
-]
-
-[[package]]
-name = "accesskit_windows_bindings"
-version = "0.1.0"
-dependencies = [
  "windows",
 ]
 
@@ -147,12 +139,6 @@ dependencies = [
  "bytes",
  "memchr",
 ]
-
-[[package]]
-name = "const-sha1"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb58b6451e8c2a812ad979ed1d83378caa5e927eef2622017a45f251457c2c9d"
 
 [[package]]
 name = "core-foundation"
@@ -582,31 +568,34 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "windows"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b9cb284fd6f8023b2b6b6fb642bd4e7c4353720a188a4ee94300a957c8a8f26"
+version = "0.22.1"
+source = "git+https://github.com/microsoft/windows-rs#f687137697350910de5b31f174d9940a16cb93f6"
 dependencies = [
- "const-sha1",
  "windows_gen",
+ "windows_i686_msvc",
  "windows_macros",
  "windows_reader",
+ "windows_x86_64_msvc",
 ]
 
 [[package]]
 name = "windows_gen"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02628c4268e6951a754ff59ec6c926ed8be8d0dd4cda539e63b7b84f340bc412"
+version = "0.22.1"
+source = "git+https://github.com/microsoft/windows-rs#f687137697350910de5b31f174d9940a16cb93f6"
 dependencies = [
  "windows_quote",
  "windows_reader",
 ]
 
 [[package]]
+name = "windows_i686_msvc"
+version = "0.22.1"
+source = "git+https://github.com/microsoft/windows-rs#f687137697350910de5b31f174d9940a16cb93f6"
+
+[[package]]
 name = "windows_macros"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e49d7ad6737f778bf2ebc9b56edfec293492656b171c327b8194582ec553bde"
+version = "0.22.1"
+source = "git+https://github.com/microsoft/windows-rs#f687137697350910de5b31f174d9940a16cb93f6"
 dependencies = [
  "syn",
  "windows_gen",
@@ -616,12 +605,15 @@ dependencies = [
 
 [[package]]
 name = "windows_quote"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "717eb8c05c85f244b544b14a56e6ad42068898c5fe418ee2e0f14821837d7093"
+version = "0.22.1"
+source = "git+https://github.com/microsoft/windows-rs#f687137697350910de5b31f174d9940a16cb93f6"
 
 [[package]]
 name = "windows_reader"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02e3bc4e236cb35f742c2215e7a16db411203fb3a57d9384cdca2fccf7866c84"
+version = "0.22.1"
+source = "git+https://github.com/microsoft/windows-rs#f687137697350910de5b31f174d9940a16cb93f6"
+
+[[package]]
+name = "windows_x86_64_msvc"
+version = "0.22.1"
+source = "git+https://github.com/microsoft/windows-rs#f687137697350910de5b31f174d9940a16cb93f6"

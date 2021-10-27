@@ -3,14 +3,16 @@
 use std::num::NonZeroU64;
 
 use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
-use accesskit_windows_bindings::Windows::Win32::{
-    Foundation::*,
-    Graphics::Gdi::ValidateRect,
-    System::Com::*,
-    System::LibraryLoader::GetModuleHandleA,
-    UI::{KeyboardAndMouseInput::*, WindowsAndMessaging::*},
+use windows::{
+    runtime::*,
+    Win32::{
+        Foundation::*,
+        Graphics::Gdi::ValidateRect,
+        System::Com::*,
+        System::LibraryLoader::GetModuleHandleA,
+        UI::{KeyboardAndMouseInput::*, WindowsAndMessaging::*},
+    }
 };
-use windows::*;
 
 const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
 const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });

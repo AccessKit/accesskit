@@ -7,12 +7,14 @@
 
 use accesskit_consumer::{Node, WeakNode};
 use accesskit_schema::{NodeIdContent, Role};
-use accesskit_windows_bindings::Windows::Win32::{
-    Foundation::*, Graphics::Gdi::*, System::OleAutomation::*, UI::Accessibility::*,
-};
-use accesskit_windows_bindings::*;
 use arrayvec::ArrayVec;
-use windows::*;
+use windows::{
+    runtime::*,
+    Win32::{
+        Foundation::*, Graphics::Gdi::*, System::OleAutomation::*, UI::Accessibility::*,
+    }
+};
+use windows as Windows;
 
 use crate::util::*;
 

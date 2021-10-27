@@ -3,11 +3,11 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit_windows_bindings::Windows::Win32::{Foundation::*, System::OleAutomation::*};
 use std::{
     convert::{From, Into, TryInto},
     mem::ManuallyDrop,
 };
+use windows::Win32::{Foundation::*, System::OleAutomation::*};
 
 pub(crate) struct VariantFactory(VARENUM, VARIANT_0_0_0);
 
