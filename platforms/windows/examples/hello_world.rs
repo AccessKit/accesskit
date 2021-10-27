@@ -14,6 +14,9 @@ use windows::{
     },
 };
 
+const WINDOW_CLASS_NAME: &str = "AccessKitExample";
+const WINDOW_TITLE: &str = "Hello world";
+
 const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
 const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
@@ -44,7 +47,7 @@ fn get_button_2(name: &str) -> Node {
 fn get_initial_state() -> TreeUpdate {
     let root = Node {
         children: Box::new([BUTTON_1_ID, BUTTON_2_ID]),
-        name: Some("Hello world".into()),
+        name: Some(WINDOW_TITLE.into()),
         ..Node::new(WINDOW_ID, Role::Window)
     };
     let button_1 = get_button_1("Button 1");
@@ -72,13 +75,15 @@ fn main() -> Result<()> {
         let instance = GetModuleHandleA(None);
         debug_assert!(instance.0 != 0);
 
-        let window_class = "window";
+        let class_name_sz: Vec<_> = WINDOW_CLASS_NAME
+            .bytes()
+            .chain(std::iter::once(0))
+            .collect();
 
         let wc = WNDCLASSA {
             hCursor: LoadCursorW(None, IDC_ARROW),
             hInstance: instance,
-            lpszClassName: PSTR(b"window\0".as_ptr() as _),
-
+            lpszClassName: PSTR(class_name_sz.as_ptr() as _),
             style: CS_HREDRAW | CS_VREDRAW,
             lpfnWndProc: Some(wndproc),
             ..Default::default()
@@ -89,8 +94,8 @@ fn main() -> Result<()> {
 
         let hwnd = CreateWindowExA(
             Default::default(),
-            window_class,
-            "Hello world",
+            WINDOW_CLASS_NAME,
+            WINDOW_TITLE,
             WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
