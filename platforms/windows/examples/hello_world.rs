@@ -9,7 +9,7 @@ use windows::{
         Foundation::*,
         Graphics::Gdi::ValidateRect,
         System::Com::*,
-        System::LibraryLoader::GetModuleHandleA,
+        System::LibraryLoader::GetModuleHandleW,
         UI::{KeyboardAndMouseInput::*, WindowsAndMessaging::*},
     },
 };
@@ -72,27 +72,27 @@ fn main() -> Result<()> {
         // Workaround for #37
         CoInitializeEx(std::ptr::null_mut(), COINIT_MULTITHREADED)?;
 
-        let instance = GetModuleHandleA(None);
+        let instance = GetModuleHandleW(None);
         debug_assert!(instance.0 != 0);
 
-        let class_name_sz: Vec<_> = WINDOW_CLASS_NAME
-            .bytes()
+        let class_name_wsz: Vec<_> = WINDOW_CLASS_NAME
+            .encode_utf16()
             .chain(std::iter::once(0))
             .collect();
 
-        let wc = WNDCLASSA {
+        let wc = WNDCLASSW {
             hCursor: LoadCursorW(None, IDC_ARROW),
             hInstance: instance,
-            lpszClassName: PSTR(class_name_sz.as_ptr() as _),
+            lpszClassName: PWSTR(class_name_wsz.as_ptr() as _),
             style: CS_HREDRAW | CS_VREDRAW,
             lpfnWndProc: Some(wndproc),
             ..Default::default()
         };
 
-        let atom = RegisterClassA(&wc);
+        let atom = RegisterClassW(&wc);
         debug_assert!(atom != 0);
 
-        let hwnd = CreateWindowExA(
+        let hwnd = CreateWindowExW(
             Default::default(),
             WINDOW_CLASS_NAME,
             WINDOW_TITLE,
@@ -113,8 +113,8 @@ fn main() -> Result<()> {
         ShowWindow(hwnd, SW_SHOW);
 
         let mut message = MSG::default();
-        while GetMessageA(&mut message, HWND(0), 0, 0).into() {
-            DispatchMessageA(&mut message);
+        while GetMessageW(&mut message, HWND(0), 0, 0).into() {
+            DispatchMessageW(&mut message);
         }
 
         Ok(())
@@ -189,9 +189,9 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                     }
                     LRESULT(0)
                 }
-                _ => DefWindowProcA(window, message, wparam, lparam),
+                _ => DefWindowProcW(window, message, wparam, lparam),
             },
-            _ => DefWindowProcA(window, message, wparam, lparam),
+            _ => DefWindowProcW(window, message, wparam, lparam),
         }
     }
 }
