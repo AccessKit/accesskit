@@ -143,12 +143,8 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 LRESULT(0)
             }
             WM_GETOBJECT => {
-                if let Some(manager) = MANAGER.as_ref() {
-                    manager.handle_wm_getobject(wparam, lparam)
-                } else {
-                    println!("no AccessKit manager yet");
-                    DefWindowProcA(window, message, wparam, lparam)
-                }
+                let manager = MANAGER.as_ref().unwrap();
+                manager.handle_wm_getobject(wparam, lparam)
             }
             WM_SETFOCUS => {
                 update_focus(true);
