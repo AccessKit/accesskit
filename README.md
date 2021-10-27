@@ -21,7 +21,7 @@ When both the toolkit and the platform adapter (see below) are written in Rust o
 A draft of the schema is defined in [the `schema` directory](https://github.com/AccessKit/accesskit/tree/main/schema).
 
 * While a list of action types is defined, the `ActionRequest` struct that will represent a request from an assistive technology to perform an action, with parameters for some types of actions, has not yet been defined.
-* he schema doesn't yet define any events. While some events in platform accessibility APIs, such as focus change and property changes, can be implied from tree updates, others cannot.
+* The schema doesn't yet define any events. While some events in platform accessibility APIs, such as focus change and property changes, can be implied from tree updates, others cannot.
 * The in-memory representation of a node has not yet been optimized.
 
 ### Platform adapters
