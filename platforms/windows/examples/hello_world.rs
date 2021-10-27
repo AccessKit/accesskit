@@ -75,6 +75,8 @@ fn main() -> Result<()> {
         let instance = GetModuleHandleW(None);
         debug_assert!(instance.0 != 0);
 
+        // The following is a combination of the implementation of
+        // IntoParam<PWSTR> and the class registration function from winit.
         let class_name_wsz: Vec<_> = WINDOW_CLASS_NAME
             .encode_utf16()
             .chain(std::iter::once(0))
