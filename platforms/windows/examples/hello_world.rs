@@ -72,7 +72,9 @@ fn main() -> Result<()> {
         CoInitializeEx(std::ptr::null_mut(), COINIT_MULTITHREADED)?;
 
         let instance = GetModuleHandleW(None);
-        debug_assert!(instance.0 != 0);
+        if instance.0 == 0 {
+            Err(Error::from_win32())?;
+        }
 
         // The following is a combination of the implementation of
         // IntoParam<PWSTR> and the class registration function from winit.
@@ -91,7 +93,9 @@ fn main() -> Result<()> {
         };
 
         let class_atom = RegisterClassW(&wc);
-        debug_assert!(class_atom != 0);
+        if class_atom == 0 {
+            Err(Error::from_win32())?;
+        }
 
         let hwnd = CreateWindowExW(
             Default::default(),
@@ -107,6 +111,9 @@ fn main() -> Result<()> {
             instance,
             std::ptr::null_mut(),
         );
+        if hwnd.0 == 0 {
+            Err(Error::from_win32())?;
+        }
 
         let manager = accesskit_windows::Manager::new(hwnd, initial_state);
         MANAGER = Some(manager);
