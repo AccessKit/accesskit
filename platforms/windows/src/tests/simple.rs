@@ -65,7 +65,7 @@ fn has_native_uia() -> Result<()> {
 fn navigation() -> Result<()> {
     scope(WINDOW_TITLE, get_initial_state(), BUTTON_1_ID, |s| {
         let root = unsafe { s.uia.ElementFromHandle(s.window) }?;
-        let walker = unsafe { s.uia.RawViewWalker() }?;
+        let walker = unsafe { s.uia.ControlViewWalker() }?;
 
         // The children of the window include the children that we provide,
         // but also the title bar provided by the OS. We know that our own
