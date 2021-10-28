@@ -5,13 +5,14 @@
 
 use accesskit_schema::{NodeId, TreeUpdate};
 use lazy_static::lazy_static;
+use parking_lot::{Condvar, Mutex};
 use windows::{
     runtime::*,
     Win32::{
         Foundation::*,
         Graphics::Gdi::ValidateRect,
         System::{Com::*, LibraryLoader::GetModuleHandleW},
-        UI::WindowsAndMessaging::*,
+        UI::{Accessibility::*, WindowsAndMessaging::*},
     },
 };
 
@@ -127,43 +128,92 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
     }
 }
 
-pub(crate) struct Window {
-    pub(crate) handle: HWND,
-}
+fn create_window(title: &str, initial_state: TreeUpdate, initial_focus: NodeId) -> Result<HWND> {
+    let create_params = Box::new(WindowCreateParams(initial_state, initial_focus));
 
-impl Window {
-    pub(crate) fn new(
-        title: &str,
-        initial_state: TreeUpdate,
-        initial_focus: NodeId,
-    ) -> Result<Self> {
-        let create_params = Box::new(WindowCreateParams(initial_state, initial_focus));
-
-        let handle = unsafe {
-            CreateWindowExW(
-                Default::default(),
-                PWSTR(*WINDOW_CLASS_ATOM as usize as _),
-                title,
-                WS_OVERLAPPEDWINDOW,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                None,
-                None,
-                *WIN32_INSTANCE,
-                Box::into_raw(create_params) as _,
-            )
-        };
-        if handle.0 == 0 {
-            Err(Error::from_win32())?;
-        }
-
-        Ok(Self { handle })
+    let window = unsafe {
+        CreateWindowExW(
+            Default::default(),
+            PWSTR(*WINDOW_CLASS_ATOM as usize as _),
+            title,
+            WS_OVERLAPPEDWINDOW,
+            CW_USEDEFAULT,
+            CW_USEDEFAULT,
+            CW_USEDEFAULT,
+            CW_USEDEFAULT,
+            None,
+            None,
+            *WIN32_INSTANCE,
+            Box::into_raw(create_params) as _,
+        )
+    };
+    if window.0 == 0 {
+        Err(Error::from_win32())?;
     }
+
+    Ok(window)
 }
 
-pub(crate) fn init_com() -> impl Drop {
-    unsafe { CoInitializeEx(std::ptr::null_mut(), COINIT_MULTITHREADED) }.unwrap();
-    scopeguard::guard((), |_| unsafe { CoUninitialize() })
+pub(crate) struct Scope {
+    pub(crate) uia: IUIAutomation,
+    pub(crate) window: HWND,
 }
+
+pub(crate) fn scope<F>(
+    window_title: &str,
+    initial_state: TreeUpdate,
+    initial_focus: NodeId,
+    f: F,
+) -> Result<()>
+where
+    F: FnOnce(&Scope) -> Result<()>,
+{
+    unsafe { CoInitializeEx(std::ptr::null_mut(), COINIT_MULTITHREADED) }.unwrap();
+    let _com_guard = scopeguard::guard((), |_| unsafe { CoUninitialize() });
+
+    let uia: IUIAutomation =
+        unsafe { CoCreateInstance(&CUIAutomation8, None, CLSCTX_INPROC_SERVER) }?;
+
+    let window_mutex: Mutex<Option<HWND>> = Mutex::new(None);
+    let window_cv = Condvar::new();
+
+    crossbeam_utils::thread::scope(|thread_scope| {
+        thread_scope.spawn(|_| {
+            unsafe { CoInitializeEx(std::ptr::null_mut(), COINIT_MULTITHREADED) }.unwrap();
+            let _com_guard = scopeguard::guard((), |_| unsafe { CoUninitialize() });
+
+            let window = create_window(window_title, initial_state, initial_focus).unwrap();
+            unsafe { ShowWindow(window, SW_SHOW) };
+
+            {
+                let mut state = window_mutex.lock();
+                *state = Some(window);
+                window_cv.notify_one();
+            }
+
+            let mut message = MSG::default();
+            while unsafe { GetMessageW(&mut message, HWND(0), 0, 0) }.into() {
+                unsafe { TranslateMessage(&mut message) };
+                unsafe { DispatchMessageW(&mut message) };
+            }
+        });
+
+        let window = {
+            let mut state = window_mutex.lock();
+            if state.is_none() {
+                window_cv.wait(&mut state);
+            }
+            state.take().unwrap()
+        };
+
+        let _window_guard = scopeguard::guard((), |_| {
+            unsafe { PostMessageW(window, WM_CLOSE, WPARAM(0), LPARAM(0)) }.unwrap()
+        });
+
+        let s = Scope { uia, window };
+        f(&s)
+    })
+    .unwrap()
+}
+
+mod simple;
