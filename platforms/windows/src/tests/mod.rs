@@ -69,44 +69,6 @@ unsafe fn get_window_state(window: HWND) -> *mut WindowState {
     GetWindowLongPtrW(window, GWLP_USERDATA) as _
 }
 
-pub(crate) struct Window {
-    pub(crate) handle: HWND,
-}
-
-struct WindowCreateParams(TreeUpdate, NodeId);
-
-impl Window {
-    pub(crate) fn new(
-        title: &str,
-        initial_state: TreeUpdate,
-        initial_focus: NodeId,
-    ) -> Result<Self> {
-        let create_params = Box::new(WindowCreateParams(initial_state, initial_focus));
-
-        let handle = unsafe {
-            CreateWindowExW(
-                Default::default(),
-                PWSTR(*WINDOW_CLASS_ATOM as usize as _),
-                title,
-                WS_OVERLAPPEDWINDOW,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                None,
-                None,
-                *WIN32_INSTANCE,
-                Box::into_raw(create_params) as _,
-            )
-        };
-        if handle.0 == 0 {
-            Err(Error::from_win32())?;
-        }
-
-        Ok(Self { handle })
-    }
-}
-
 fn update_focus(window: HWND, is_window_focused: bool) {
     let window_state = unsafe { &*get_window_state(window) };
     let update = TreeUpdate {
@@ -117,6 +79,8 @@ fn update_focus(window: HWND, is_window_focused: bool) {
     };
     window_state.manager.update(update);
 }
+
+struct WindowCreateParams(TreeUpdate, NodeId);
 
 extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     match message as u32 {
@@ -158,5 +122,41 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             LRESULT(0)
         }
         _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
+    }
+}
+
+pub(crate) struct Window {
+    pub(crate) handle: HWND,
+}
+
+impl Window {
+    pub(crate) fn new(
+        title: &str,
+        initial_state: TreeUpdate,
+        initial_focus: NodeId,
+    ) -> Result<Self> {
+        let create_params = Box::new(WindowCreateParams(initial_state, initial_focus));
+
+        let handle = unsafe {
+            CreateWindowExW(
+                Default::default(),
+                PWSTR(*WINDOW_CLASS_ATOM as usize as _),
+                title,
+                WS_OVERLAPPEDWINDOW,
+                CW_USEDEFAULT,
+                CW_USEDEFAULT,
+                CW_USEDEFAULT,
+                CW_USEDEFAULT,
+                None,
+                None,
+                *WIN32_INSTANCE,
+                Box::into_raw(create_params) as _,
+            )
+        };
+        if handle.0 == 0 {
+            Err(Error::from_win32())?;
+        }
+
+        Ok(Self { handle })
     }
 }
