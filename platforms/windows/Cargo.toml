@@ -25,3 +25,4 @@ features = [
 
 [dev-dependencies]
 lazy_static = "1.4.0"
+scopeguard = "1.1.0"

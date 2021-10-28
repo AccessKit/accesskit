@@ -52,6 +52,7 @@ dependencies = [
  "accesskit_schema",
  "arrayvec",
  "lazy_static",
+ "scopeguard",
  "windows",
 ]
 

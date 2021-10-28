@@ -8,7 +8,9 @@ use lazy_static::lazy_static;
 use windows::{
     runtime::*,
     Win32::{
-        Foundation::*, Graphics::Gdi::ValidateRect, System::LibraryLoader::GetModuleHandleW,
+        Foundation::*,
+        Graphics::Gdi::ValidateRect,
+        System::{Com::*, LibraryLoader::GetModuleHandleW},
         UI::WindowsAndMessaging::*,
     },
 };
@@ -75,7 +77,7 @@ fn update_focus(window: HWND, is_window_focused: bool) {
         clear: None,
         nodes: vec![],
         tree: None,
-        focus: is_window_focused.then(|| window_state.focus ),
+        focus: is_window_focused.then(|| window_state.focus),
     };
     window_state.manager.update(update);
 }
@@ -159,4 +161,9 @@ impl Window {
 
         Ok(Self { handle })
     }
+}
+
+pub(crate) fn init_com() -> impl Drop {
+    unsafe { CoInitializeEx(std::ptr::null_mut(), COINIT_MULTITHREADED) }.unwrap();
+    scopeguard::guard((), |_| unsafe { CoUninitialize() })
 }

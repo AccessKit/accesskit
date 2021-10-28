@@ -47,7 +47,11 @@ fn get_initial_state() -> TreeUpdate {
     TreeUpdate {
         clear: None,
         nodes: vec![root, button_1, button_2],
-        tree: Some(Tree::new(TreeId("test".into()), WINDOW_ID, StringEncoding::Utf8)),
+        tree: Some(Tree::new(
+            TreeId("test".into()),
+            WINDOW_ID,
+            StringEncoding::Utf8,
+        )),
         focus: None,
     }
 }
