@@ -22,8 +22,8 @@ pub(crate) struct NodeState {
 #[derive(Clone)]
 pub(crate) struct State {
     pub(crate) nodes: im::HashMap<NodeId, NodeState>,
-    pub(crate) root: NodeId,
     pub(crate) data: TreeData,
+    pub(crate) focus: Option<NodeId>,
 }
 
 enum InternalChange {
@@ -35,8 +35,8 @@ enum InternalChange {
 
 impl State {
     fn validate_global(&self) {
-        assert!(self.nodes.contains_key(&self.root));
-        if let Some(id) = self.data.focus {
+        assert!(self.nodes.contains_key(&self.data.root));
+        if let Some(id) = self.focus {
             assert!(self.nodes.contains_key(&id));
         }
         if let Some(id) = self.data.root_scroller {
@@ -48,15 +48,19 @@ impl State {
         // TODO: handle TreeUpdate::clear
         assert!(update.clear.is_none());
 
-        let root = update.root.unwrap_or(self.root);
-        let mut pending_nodes: HashMap<NodeId, _> = HashMap::new();
-        let mut pending_children = HashMap::new();
         let mut orphans = HashSet::new();
 
-        if root != self.root {
-            orphans.insert(self.root);
-            self.root = root;
+        if let Some(tree) = update.tree {
+            assert_eq!(tree.id, self.data.id);
+            if tree.root != self.data.root {
+                orphans.insert(self.data.root);
+            }
+            self.data = tree;
         }
+
+        let root = self.data.root;
+        let mut pending_nodes: HashMap<NodeId, _> = HashMap::new();
+        let mut pending_children = HashMap::new();
 
         fn add_node(
             nodes: &mut im::HashMap<NodeId, NodeState>,
@@ -139,14 +143,11 @@ impl State {
 
         assert_eq!(pending_children.len(), 0);
 
-        if let Some(tree) = update.tree {
-            assert_eq!(tree.id, self.data.id);
-            if tree.focus != self.data.focus {
-                if let Some(changes) = &mut changes {
-                    changes.push(InternalChange::FocusMoved);
-                }
+        if update.focus != self.focus {
+            if let Some(changes) = &mut changes {
+                changes.push(InternalChange::FocusMoved);
             }
-            self.data = tree;
+            self.focus = update.focus;
         }
 
         if !orphans.is_empty() {
@@ -192,14 +193,14 @@ impl State {
             }
         }
 
-        traverse(self, &mut nodes, self.root);
+        traverse(self, &mut nodes, self.data.root);
         assert_eq!(nodes.len(), self.nodes.len());
 
         TreeUpdate {
             clear: None,
             nodes,
             tree: Some(self.data.clone()),
-            root: Some(self.root),
+            focus: self.focus,
         }
     }
 }
@@ -218,7 +219,7 @@ impl Reader<'_> {
     }
 
     pub fn root(&self) -> Node<'_> {
-        self.node_by_id(self.state.root).unwrap()
+        self.node_by_id(self.state.data.root).unwrap()
     }
 
     pub fn id(&self) -> &TreeId {
@@ -226,7 +227,7 @@ impl Reader<'_> {
     }
 
     pub fn focus(&self) -> Option<Node<'_>> {
-        self.state.data.focus.map(|id| self.node_by_id(id).unwrap())
+        self.state.focus.map(|id| self.node_by_id(id).unwrap())
     }
 }
 
@@ -253,8 +254,8 @@ impl Tree {
 
         let mut state = State {
             nodes: im::HashMap::new(),
-            root: initial_state.root.take().unwrap(),
             data: initial_state.tree.take().unwrap(),
+            focus: None,
         };
         state.update(initial_state, None);
         Arc::new(Self {
@@ -344,8 +345,12 @@ mod tests {
         let update = TreeUpdate {
             clear: None,
             nodes: vec![Node::new(NODE_ID_1, Role::Window)],
-            tree: Some(Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8)),
-            root: Some(NODE_ID_1),
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
         };
         let tree = super::Tree::new(update);
         assert_eq!(&TreeId(TREE_ID.into()), tree.read().id());
@@ -366,8 +371,12 @@ mod tests {
                 Node::new(NODE_ID_2, Role::Button),
                 Node::new(NODE_ID_3, Role::Button),
             ],
-            tree: Some(Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8)),
-            root: Some(NODE_ID_1),
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
         };
         let tree = super::Tree::new(update);
         let reader = tree.read();
@@ -388,8 +397,12 @@ mod tests {
         let first_update = TreeUpdate {
             clear: None,
             nodes: vec![root_node.clone()],
-            tree: Some(Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8)),
-            root: Some(NODE_ID_1),
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
         };
         let tree = super::Tree::new(first_update);
         assert_eq!(0, tree.read().root().children().count());
@@ -403,7 +416,7 @@ mod tests {
                 Node::new(NODE_ID_2, Role::RootWebArea),
             ],
             tree: None,
-            root: None,
+            focus: None,
         };
         let mut got_updated_root_node = false;
         let mut got_new_child_node = false;
@@ -448,8 +461,12 @@ mod tests {
                 },
                 Node::new(NODE_ID_2, Role::RootWebArea),
             ],
-            tree: Some(Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8)),
-            root: Some(NODE_ID_1),
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
         };
         let tree = super::Tree::new(first_update);
         assert_eq!(1, tree.read().root().children().count());
@@ -457,7 +474,7 @@ mod tests {
             clear: None,
             nodes: vec![root_node],
             tree: None,
-            root: None,
+            focus: None,
         };
         let mut got_updated_root_node = false;
         let mut got_removed_child_node = false;
@@ -487,7 +504,6 @@ mod tests {
 
     #[test]
     fn move_focus_between_siblings() {
-        let tree_data = Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8);
         let first_update = TreeUpdate {
             clear: None,
             nodes: vec![
@@ -498,22 +514,20 @@ mod tests {
                 Node::new(NODE_ID_2, Role::Button),
                 Node::new(NODE_ID_3, Role::Button),
             ],
-            tree: Some(Tree {
-                focus: Some(NODE_ID_2),
-                ..tree_data.clone()
-            }),
-            root: Some(NODE_ID_1),
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: Some(NODE_ID_2),
         };
         let tree = super::Tree::new(first_update);
         assert!(tree.read().node_by_id(NODE_ID_2).unwrap().is_focused());
         let second_update = TreeUpdate {
             clear: None,
             nodes: vec![],
-            tree: Some(Tree {
-                focus: Some(NODE_ID_3),
-                ..tree_data
-            }),
-            root: None,
+            tree: None,
+            focus: Some(NODE_ID_3),
         };
         let mut got_focus_change = false;
         tree.update_and_process_changes(second_update, |change| {
@@ -536,7 +550,6 @@ mod tests {
 
     #[test]
     fn update_node() {
-        let tree_data = Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8);
         let child_node = Node::new(NODE_ID_2, Role::Button);
         let first_update = TreeUpdate {
             clear: None,
@@ -550,8 +563,12 @@ mod tests {
                     ..child_node.clone()
                 },
             ],
-            tree: Some(tree_data),
-            root: Some(NODE_ID_1),
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
         };
         let tree = super::Tree::new(first_update);
         assert_eq!(
@@ -565,7 +582,7 @@ mod tests {
                 ..child_node
             }],
             tree: None,
-            root: None,
+            focus: None,
         };
         let mut got_updated_child_node = false;
         tree.update_and_process_changes(second_update, |change| {
@@ -603,8 +620,12 @@ mod tests {
                 Node::new(NODE_ID_2, Role::Button),
                 Node::new(NODE_ID_3, Role::Button),
             ],
-            tree: Some(Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8)),
-            root: Some(NODE_ID_1),
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: Some(NODE_ID_2),
         };
         let tree = super::Tree::new(update.clone());
         tree.update_and_process_changes(update, |_| {
