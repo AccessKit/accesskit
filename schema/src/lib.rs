@@ -1226,6 +1226,7 @@ impl Node {
 #[serde(rename_all = "camelCase")]
 pub struct Tree {
     pub id: TreeId,
+    pub root: NodeId,
 
     /// The string encoding used by the tree source. This is required
     /// to disambiguate string indices, e.g. in [`Node::words`].
@@ -1239,12 +1240,6 @@ pub struct Tree {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent: Option<TreeId>,
 
-    /// The node with keyboard focus within this tree, if any.
-    /// If the focus is in a descendant tree, set this to the node
-    /// to which that tree is anchored.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub focus: Option<NodeId>,
-
     /// The node that's used as the root scroller, if any. On some platforms
     /// like Android we need to ignore accessibility scroll offsets for
     /// that node and get them from the viewport instead.
@@ -1253,12 +1248,12 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub fn new(id: TreeId, source_string_encoding: StringEncoding) -> Tree {
+    pub fn new(id: TreeId, root: NodeId, source_string_encoding: StringEncoding) -> Tree {
         Tree {
             id,
+            root,
             source_string_encoding,
             parent: None,
-            focus: None,
             root_scroller: None,
         }
     }
@@ -1298,15 +1293,17 @@ pub struct TreeUpdate {
     ///   before or after a `TreeUpdate`.
     pub nodes: Vec<Node>,
 
-    /// Updated information about the tree as a whole. This may be omitted
+    /// Rarely updated information about the tree as a whole. This may be omitted
     /// if it has not changed since the previous update, but providing the same
     /// information again is also allowed. This is required when initializing
     /// a tree.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tree: Option<Tree>,
 
-    /// The ID of the tree's root node. This is required when the tree
-    /// is being initialized or if the root is changing.
+    /// The node with keyboard focus within this tree, if any.
+    /// If the focus is in a descendant tree, set this to the node
+    /// to which that tree is anchored. The most recent focus, if any,
+    /// must be provided with every tree update.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub root: Option<NodeId>,
+    pub focus: Option<NodeId>,
 }

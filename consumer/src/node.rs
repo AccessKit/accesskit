@@ -27,7 +27,7 @@ impl<'a> Node<'a> {
     }
 
     pub fn is_focused(&self) -> bool {
-        self.tree_reader.state.data.focus == Some(self.id())
+        self.tree_reader.state.focus == Some(self.id())
     }
 
     pub fn is_ignored(&self) -> bool {
@@ -41,7 +41,7 @@ impl<'a> Node<'a> {
     pub fn is_root(&self) -> bool {
         // Don't check for absence of a parent node, in case a non-root node
         // somehow gets detached from the tree.
-        self.id() == self.tree_reader.state.root
+        self.id() == self.tree_reader.state.data.root
     }
 
     pub fn parent(self) -> Option<Node<'a>> {

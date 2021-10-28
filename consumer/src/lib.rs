@@ -146,8 +146,12 @@ mod tests {
                 button_3_2,
                 empty_container_3_3_ignored,
             ],
-            tree: Some(Tree::new(TreeId("test_tree".into()), StringEncoding::Utf8)),
-            root: Some(ROOT_ID),
+            tree: Some(Tree::new(
+                TreeId("test_tree".into()),
+                ROOT_ID,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
         };
         crate::tree::Tree::new(initial_update)
     }
