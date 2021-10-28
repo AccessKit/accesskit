@@ -115,6 +115,7 @@ fn main() -> Result<()> {
 
         let mut message = MSG::default();
         while GetMessageW(&mut message, HWND(0), 0, 0).into() {
+            TranslateMessage(&mut message);
             DispatchMessageW(&mut message);
         }
 
