@@ -5,7 +5,7 @@
 
 use accesskit_schema::{NodeId, TreeUpdate};
 use lazy_static::lazy_static;
-use parking_lot::{Condvar, Mutex};
+use parking_lot::{const_mutex, Condvar, Mutex};
 use windows::{
     runtime::*,
     Win32::{
@@ -159,6 +159,9 @@ pub(crate) struct Scope {
     pub(crate) window: HWND,
 }
 
+// It's not safe to run these UI-related tests concurrently.
+static MUTEX: Mutex<()> = const_mutex(());
+
 pub(crate) fn scope<F>(
     window_title: &str,
     initial_state: TreeUpdate,
@@ -168,6 +171,8 @@ pub(crate) fn scope<F>(
 where
     F: FnOnce(&Scope) -> Result<()>,
 {
+    let _lock_guard = MUTEX.lock();
+
     unsafe { CoInitializeEx(std::ptr::null_mut(), COINIT_MULTITHREADED) }.unwrap();
     let _com_guard = scopeguard::guard((), |_| unsafe { CoUninitialize() });
 
