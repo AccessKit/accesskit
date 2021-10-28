@@ -8,3 +8,6 @@ mod util;
 
 mod manager;
 pub use manager::Manager;
+
+#[cfg(test)]
+mod tests;

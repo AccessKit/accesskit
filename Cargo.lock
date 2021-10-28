@@ -51,6 +51,7 @@ dependencies = [
  "accesskit_consumer",
  "accesskit_schema",
  "arrayvec",
+ "lazy_static",
  "windows",
 ]
 

@@ -22,3 +22,6 @@ features = [
     "Win32_UI_KeyboardAndMouseInput",
     "Win32_UI_WindowsAndMessaging",
 ]
+
+[dev-dependencies]
+lazy_static = "1.4.0"
