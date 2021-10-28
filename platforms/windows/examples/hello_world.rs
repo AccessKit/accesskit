@@ -20,13 +20,6 @@ const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
 const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
 
-fn get_tree(is_window_focused: bool) -> Tree {
-    Tree {
-        focus: is_window_focused.then(|| unsafe { FOCUS }),
-        ..Tree::new(TreeId("test".into()), StringEncoding::Utf8)
-    }
-}
-
 fn get_button_1(name: &str) -> Node {
     Node {
         name: Some(name.into()),
@@ -54,8 +47,8 @@ fn get_initial_state() -> TreeUpdate {
     TreeUpdate {
         clear: None,
         nodes: vec![root, button_1, button_2],
-        tree: Some(get_tree(false)),
-        root: Some(WINDOW_ID),
+        tree: Some(Tree::new(TreeId("test".into()), WINDOW_ID, StringEncoding::Utf8)),
+        focus: None,
     }
 }
 
@@ -132,12 +125,11 @@ fn main() -> Result<()> {
 
 fn update_focus(is_window_focused: bool) {
     if let Some(manager) = unsafe { MANAGER.as_ref() } {
-        let tree = get_tree(is_window_focused);
         let update = TreeUpdate {
             clear: None,
             nodes: vec![],
-            tree: Some(tree),
-            root: None,
+            tree: None,
+            focus: is_window_focused.then(|| unsafe { FOCUS }),
         };
         manager.update(update);
     }
@@ -192,7 +184,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                             clear: None,
                             nodes: vec![node],
                             tree: None,
-                            root: None,
+                            focus: Some(FOCUS),
                         };
                         manager.update(update);
                     }
