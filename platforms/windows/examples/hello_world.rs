@@ -91,12 +91,12 @@ fn main() -> Result<()> {
             ..Default::default()
         };
 
-        let atom = RegisterClassW(&wc);
-        debug_assert!(atom != 0);
+        let class_atom = RegisterClassW(&wc);
+        debug_assert!(class_atom != 0);
 
         let hwnd = CreateWindowExW(
             Default::default(),
-            WINDOW_CLASS_NAME,
+            PWSTR(class_atom as usize as _),
             WINDOW_TITLE,
             WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT,
