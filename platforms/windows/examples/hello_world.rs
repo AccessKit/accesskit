@@ -14,7 +14,6 @@ use windows::{
     },
 };
 
-const WINDOW_CLASS_NAME: &str = "AccessKitExample";
 const WINDOW_TITLE: &str = "Hello world";
 
 const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
@@ -77,7 +76,7 @@ fn main() -> Result<()> {
 
         // The following is a combination of the implementation of
         // IntoParam<PWSTR> and the class registration function from winit.
-        let class_name_wsz: Vec<_> = WINDOW_CLASS_NAME
+        let class_name_wsz: Vec<_> = "AccessKitExample"
             .encode_utf16()
             .chain(std::iter::once(0))
             .collect();
