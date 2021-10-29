@@ -1,0 +1,17 @@
+[package]
+name = "accesskit_linux"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+accesskit_consumer = { path = "../../consumer" }
+accesskit_schema = { path = "../../schema" }
+serde = "1.0"
+x11rb = "0.8.1"
+zbus = "2.0.0-beta.7"
+zvariant = "2.9.0"
+
+[dev-dependencies]
+winit = "0.25.0"
