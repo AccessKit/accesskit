@@ -61,6 +61,21 @@ fn has_native_uia() -> Result<()> {
     })
 }
 
+fn is_button_named(element: &IUIAutomationElement, expected_name: &str) -> bool {
+    let control_type = unsafe { element.CurrentControlType() }.unwrap();
+    let name = unsafe { element.CurrentName() }.unwrap();
+    let name: String = name.try_into().unwrap();
+    control_type == UIA_ButtonControlTypeId && name == expected_name
+}
+
+fn is_button_1(element: &IUIAutomationElement) -> bool {
+    is_button_named(element, "Button 1")
+}
+
+fn is_button_2(element: &IUIAutomationElement) -> bool {
+    is_button_named(element, "Button 2")
+}
+
 #[test]
 fn navigation() -> Result<()> {
     scope(WINDOW_TITLE, get_initial_state(), BUTTON_1_ID, |s| {
@@ -82,58 +97,42 @@ fn navigation() -> Result<()> {
         let mut button_1_forward: Option<IUIAutomationElement> = None;
         let mut wrapped_child = unsafe { walker.GetFirstChildElement(&root) };
         while let Ok(child) = wrapped_child {
-            let name = unsafe { child.CurrentName() }?;
-            let name: String = name.try_into().unwrap();
-            if name == "Button 1" {
+            if is_button_1(&child) {
                 button_1_forward = Some(child.clone());
                 break;
             }
             wrapped_child = unsafe { walker.GetNextSiblingElement(&child) };
         }
         let button_1_forward = button_1_forward.unwrap();
-        let control_type = unsafe { button_1_forward.CurrentControlType() }?;
-        assert_eq!(UIA_ButtonControlTypeId, control_type);
 
         let mut button_2_forward: Option<IUIAutomationElement> = None;
         let wrapped_child = unsafe { walker.GetNextSiblingElement(&button_1_forward) };
         if let Ok(child) = wrapped_child {
-            let name = unsafe { child.CurrentName() }?;
-            let name: String = name.try_into().unwrap();
-            if name == "Button 2" {
+            if is_button_2(&child) {
                 button_2_forward = Some(child.clone());
             }
         }
-        let button_2_forward = button_2_forward.unwrap();
-        let control_type = unsafe { button_2_forward.CurrentControlType() }?;
-        assert_eq!(UIA_ButtonControlTypeId, control_type);
+        let _button_2_forward = button_2_forward.unwrap();
 
         let mut button_2_backward: Option<IUIAutomationElement> = None;
         let mut wrapped_child = unsafe { walker.GetLastChildElement(&root) };
         while let Ok(child) = wrapped_child {
-            let name = unsafe { child.CurrentName() }?;
-            let name: String = name.try_into().unwrap();
-            if name == "Button 2" {
+            if is_button_2(&child) {
                 button_2_backward = Some(child.clone());
                 break;
             }
             wrapped_child = unsafe { walker.GetPreviousSiblingElement(&child) };
         }
         let button_2_backward = button_2_backward.unwrap();
-        let control_type = unsafe { button_2_backward.CurrentControlType() }?;
-        assert_eq!(UIA_ButtonControlTypeId, control_type);
 
         let mut button_1_backward: Option<IUIAutomationElement> = None;
         let wrapped_child = unsafe { walker.GetPreviousSiblingElement(&button_2_backward) };
         if let Ok(child) = wrapped_child {
-            let name = unsafe { child.CurrentName() }?;
-            let name: String = name.try_into().unwrap();
-            if name == "Button 1" {
+            if is_button_1(&child) {
                 button_1_backward = Some(child.clone());
             }
         }
         let button_1_backward = button_1_backward.unwrap();
-        let control_type = unsafe { button_1_backward.CurrentControlType() }?;
-        assert_eq!(UIA_ButtonControlTypeId, control_type);
 
         let equal: bool =
             unsafe { s.uia.CompareElements(&button_1_forward, &button_1_backward) }?.into();
@@ -153,6 +152,28 @@ fn navigation() -> Result<()> {
 
         let wrapped_child = unsafe { walker.GetLastChildElement(&button_1_forward) };
         assert_eq!(Err(Error::OK), wrapped_child);
+
+        Ok(())
+    })
+}
+
+#[test]
+fn focus() -> Result<()> {
+    scope(WINDOW_TITLE, get_initial_state(), BUTTON_1_ID, |s| {
+        let (focus_event_handler, received_focus_event) = FocusEventHandler::new();
+        unsafe { s.uia.AddFocusChangedEventHandler(None, focus_event_handler) }?;
+
+        s.show_and_focus_window();
+        let focus_from_event = received_focus_event.wait(is_button_1);
+        let has_focus: bool = unsafe { focus_from_event.CurrentHasKeyboardFocus() }?.into();
+        assert!(has_focus);
+        let is_focusable: bool = unsafe { focus_from_event.CurrentIsKeyboardFocusable() }?.into();
+        assert!(is_focusable);
+
+        let focus_on_demand = unsafe { s.uia.GetFocusedElement() }?;
+        let equal: bool =
+            unsafe { s.uia.CompareElements(&focus_from_event, &focus_on_demand) }?.into();
+        assert!(equal);
 
         Ok(())
     })

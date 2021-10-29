@@ -6,6 +6,8 @@
 use accesskit_schema::{NodeId, TreeUpdate};
 use lazy_static::lazy_static;
 use parking_lot::{const_mutex, Condvar, Mutex};
+use std::{sync::Arc, time::Duration};
+use windows as Windows;
 use windows::{
     runtime::*,
     Win32::{
@@ -17,6 +19,8 @@ use windows::{
 };
 
 use super::Manager;
+
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
 
 lazy_static! {
     static ref WIN32_INSTANCE: HINSTANCE = {
@@ -159,6 +163,13 @@ pub(crate) struct Scope {
     pub(crate) window: HWND,
 }
 
+impl Scope {
+    pub(crate) fn show_and_focus_window(&self) {
+        unsafe { ShowWindow(self.window, SW_SHOW) };
+        unsafe { SetForegroundWindow(self.window) };
+    }
+}
+
 // It's not safe to run these UI-related tests concurrently.
 static MUTEX: Mutex<()> = const_mutex(());
 
@@ -188,7 +199,6 @@ where
             let _com_guard = scopeguard::guard((), |_| unsafe { CoUninitialize() });
 
             let window = create_window(window_title, initial_state, initial_focus).unwrap();
-            unsafe { ShowWindow(window, SW_SHOW) };
 
             {
                 let mut state = window_mutex.lock();
@@ -219,6 +229,69 @@ where
         f(&s)
     })
     .unwrap()
+}
+
+pub(crate) struct ReceivedFocusEvent {
+    mutex: Mutex<Option<IUIAutomationElement>>,
+    cv: Condvar,
+}
+
+impl ReceivedFocusEvent {
+    fn new() -> Arc<Self> {
+        Arc::new(Self {
+            mutex: Mutex::new(None),
+            cv: Condvar::new(),
+        })
+    }
+
+    pub(crate) fn wait<F>(&self, f: F) -> IUIAutomationElement
+    where
+        F: Fn(&IUIAutomationElement) -> bool,
+    {
+        let mut received = self.mutex.lock();
+        loop {
+            if let Some(element) = received.take() {
+                if f(&element) {
+                    return element;
+                }
+            }
+            let result = self.cv.wait_for(&mut received, DEFAULT_TIMEOUT);
+            assert!(!result.timed_out());
+        }
+    }
+
+    fn put(&self, element: IUIAutomationElement) {
+        let mut received = self.mutex.lock();
+        *received = Some(element);
+        self.cv.notify_one();
+    }
+}
+
+#[implement(Windows::Win32::UI::Accessibility::IUIAutomationFocusChangedEventHandler)]
+pub(crate) struct FocusEventHandler {
+    received: Arc<ReceivedFocusEvent>,
+}
+
+#[allow(non_snake_case)]
+impl FocusEventHandler {
+    pub(crate) fn new() -> (
+        IUIAutomationFocusChangedEventHandler,
+        Arc<ReceivedFocusEvent>,
+    ) {
+        let received = ReceivedFocusEvent::new();
+        (
+            Self {
+                received: received.clone(),
+            }
+            .into(),
+            received,
+        )
+    }
+
+    fn HandleFocusChangedEvent(&self, sender: &Option<IUIAutomationElement>) -> Result<()> {
+        self.received.put(sender.as_ref().unwrap().clone());
+        Ok(())
+    }
 }
 
 mod simple;
