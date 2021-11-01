@@ -26,11 +26,12 @@ pub(crate) struct State {
     pub(crate) focus: Option<NodeId>,
 }
 
-enum InternalChange {
-    NodeAdded(NodeId),
-    NodeUpdated(NodeId),
-    FocusMoved,
-    NodeRemoved(NodeId),
+#[derive(Default)]
+struct InternalChanges {
+    added_node_ids: HashSet<NodeId>,
+    updated_node_ids: HashSet<NodeId>,
+    focus_moved: bool,
+    removed_node_ids: HashSet<NodeId>,
 }
 
 impl State {
@@ -44,7 +45,7 @@ impl State {
         }
     }
 
-    fn update(&mut self, update: TreeUpdate, mut changes: Option<&mut Vec<InternalChange>>) {
+    fn update(&mut self, update: TreeUpdate, mut changes: Option<&mut InternalChanges>) {
         // TODO: handle TreeUpdate::clear
         assert!(update.clear.is_none());
 
@@ -64,7 +65,7 @@ impl State {
 
         fn add_node(
             nodes: &mut im::HashMap<NodeId, NodeState>,
-            changes: &mut Option<&mut Vec<InternalChange>>,
+            changes: &mut Option<&mut InternalChanges>,
             parent_and_index: Option<ParentAndIndex>,
             data: NodeData,
         ) {
@@ -75,7 +76,7 @@ impl State {
             };
             nodes.insert(id, state);
             if let Some(changes) = changes {
-                changes.push(InternalChange::NodeAdded(id));
+                changes.added_node_ids.insert(id);
             }
         }
 
@@ -117,7 +118,7 @@ impl State {
                 if *node_state.data != node_data {
                     node_state.data = Box::new(node_data);
                     if let Some(changes) = &mut changes {
-                        changes.push(InternalChange::NodeUpdated(node_id));
+                        changes.updated_node_ids.insert(node_id);
                     }
                 }
             } else if let Some(parent_and_index) = pending_children.remove(&node_id) {
@@ -145,7 +146,7 @@ impl State {
 
         if update.focus != self.focus {
             if let Some(changes) = &mut changes {
-                changes.push(InternalChange::FocusMoved);
+                changes.focus_moved = true;
             }
             self.focus = update.focus;
         }
@@ -172,7 +173,7 @@ impl State {
             for id in to_remove {
                 if self.nodes.remove(&id).is_some() {
                     if let Some(changes) = &mut changes {
-                        changes.push(InternalChange::NodeRemoved(id));
+                        changes.removed_node_ids.insert(id);
                     }
                 }
             }
@@ -272,7 +273,7 @@ impl Tree {
     where
         for<'a> F: FnMut(Change<'a>),
     {
-        let mut changes = Vec::<InternalChange>::new();
+        let mut changes = InternalChanges::default();
         let mut state = self.state.write();
         let old_state = state.clone();
         state.update(update, Some(&mut changes));
@@ -290,27 +291,48 @@ impl Tree {
             tree: self,
             state: old_state.read(),
         };
-        for change in changes {
-            match change {
-                InternalChange::NodeAdded(id) => {
-                    let node = reader.node_by_id(id).unwrap();
-                    f(Change::NodeAdded(node));
+        for id in &changes.added_node_ids {
+            let node = reader.node_by_id(*id).unwrap();
+            f(Change::NodeAdded(node));
+        }
+        for id in &changes.updated_node_ids {
+            let old_node = old_reader.node_by_id(*id).unwrap();
+            let new_node = reader.node_by_id(*id).unwrap();
+            f(Change::NodeUpdated { old_node, new_node });
+        }
+        if changes.focus_moved {
+            let old_node = old_reader.focus();
+            if let Some(old_node) = old_node {
+                let id = old_node.id();
+                if !changes.updated_node_ids.contains(&id)
+                    && !changes.removed_node_ids.contains(&id)
+                {
+                    if let Some(old_node_new_version) = reader.node_by_id(id) {
+                        f(Change::NodeUpdated {
+                            old_node,
+                            new_node: old_node_new_version,
+                        });
+                    }
                 }
-                InternalChange::NodeUpdated(id) => {
-                    let old_node = old_reader.node_by_id(id).unwrap();
-                    let new_node = reader.node_by_id(id).unwrap();
-                    f(Change::NodeUpdated { old_node, new_node });
+            }
+            let new_node = reader.focus();
+            if let Some(new_node) = new_node {
+                let id = new_node.id();
+                if !changes.added_node_ids.contains(&id) && !changes.updated_node_ids.contains(&id)
+                {
+                    if let Some(new_node_old_version) = old_reader.node_by_id(id) {
+                        f(Change::NodeUpdated {
+                            old_node: new_node_old_version,
+                            new_node,
+                        });
+                    }
                 }
-                InternalChange::FocusMoved => {
-                    let old_node = old_reader.focus();
-                    let new_node = reader.focus();
-                    f(Change::FocusMoved { old_node, new_node });
-                }
-                InternalChange::NodeRemoved(id) => {
-                    let node = old_reader.node_by_id(id).unwrap();
-                    f(Change::NodeRemoved(node));
-                }
-            };
+            }
+            f(Change::FocusMoved { old_node, new_node });
+        }
+        for id in &changes.removed_node_ids {
+            let node = old_reader.node_by_id(*id).unwrap();
+            f(Change::NodeRemoved(node));
         }
     }
 
@@ -529,8 +551,28 @@ mod tests {
             tree: None,
             focus: Some(NODE_ID_3),
         };
+        let mut got_old_focus_node_update = false;
+        let mut got_new_focus_node_update = false;
         let mut got_focus_change = false;
         tree.update_and_process_changes(second_update, |change| {
+            if let super::Change::NodeUpdated { old_node, new_node } = change {
+                if old_node.id() == NODE_ID_2
+                    && new_node.id() == NODE_ID_2
+                    && old_node.is_focused()
+                    && !new_node.is_focused()
+                {
+                    got_old_focus_node_update = true;
+                    return;
+                }
+                if old_node.id() == NODE_ID_3
+                    && new_node.id() == NODE_ID_3
+                    && !old_node.is_focused()
+                    && new_node.is_focused()
+                {
+                    got_new_focus_node_update = true;
+                    return;
+                }
+            }
             if let super::Change::FocusMoved {
                 old_node: Some(old_node),
                 new_node: Some(new_node),
@@ -543,6 +585,8 @@ mod tests {
             }
             panic!("expected only focus change");
         });
+        assert!(got_old_focus_node_update);
+        assert!(got_new_focus_node_update);
         assert!(got_focus_change);
         assert!(tree.read().node_by_id(NODE_ID_3).unwrap().is_focused());
         assert!(!tree.read().node_by_id(NODE_ID_2).unwrap().is_focused());
