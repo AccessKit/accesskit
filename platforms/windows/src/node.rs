@@ -72,7 +72,7 @@ impl ResolvedPlatformNode<'_> {
 
     fn control_type(&self) -> i32 {
         let role = self.node.role();
-        // TODO: Handle special cases.
+        // TODO: Handle special cases. (#14)
         match role {
             Role::Unknown => UIA_CustomControlTypeId,
             Role::InlineTextBox => UIA_CustomControlTypeId,
@@ -182,7 +182,7 @@ impl ResolvedPlatformNode<'_> {
             Role::Note => UIA_GroupControlTypeId,
             Role::PluginObject => UIA_GroupControlTypeId,
             Role::PopupButton => {
-                // TODO: handle combo-box special case.
+                // TODO: handle combo-box special case. (#25)
                 UIA_ButtonControlTypeId
             }
             Role::Portal => UIA_ButtonControlTypeId,
@@ -231,7 +231,7 @@ impl ResolvedPlatformNode<'_> {
             Role::Window => {
                 // TODO: determine whether to use Window or Pane.
                 // It may be good to use Pane for nested windows,
-                // as Chromium does.
+                // as Chromium does. (#14)
                 UIA_WindowControlTypeId
             }
             Role::PdfActionableHighlight => UIA_CustomControlTypeId,
@@ -369,11 +369,11 @@ impl ResolvedPlatformNode<'_> {
     }
 
     fn set_focus(&self) {
-        // TODO: request action
+        // TODO: request action (#53)
     }
 
     fn hit_test(&self, _x: f64, _y: f64) -> Option<ResolvedPlatformNode> {
-        // TODO: Either request a hit test from the toolkit, or do our own.
+        // TODO: Either request a hit test from the toolkit, or do our own. (#54)
         None
     }
 

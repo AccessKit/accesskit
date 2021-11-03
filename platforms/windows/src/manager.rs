@@ -43,7 +43,7 @@ impl Manager {
                     let new_node = ResolvedPlatformNode::new(new_node, self.hwnd);
                     new_node.raise_property_changes(&old_node);
                 }
-                // TODO: handle other events
+                // TODO: handle other events (#20)
                 _ => (),
             };
         });
