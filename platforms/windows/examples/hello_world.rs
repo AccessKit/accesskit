@@ -67,19 +67,11 @@ const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
 const INITIAL_FOCUS: NodeId = BUTTON_1_ID;
 
-fn get_button_1(name: &str) -> Node {
+fn make_button(id: NodeId, name: &str) -> Node {
     Node {
         name: Some(name.into()),
         focusable: true,
-        ..Node::new(BUTTON_1_ID, Role::Button)
-    }
-}
-
-fn get_button_2(name: &str) -> Node {
-    Node {
-        name: Some(name.into()),
-        focusable: true,
-        ..Node::new(BUTTON_2_ID, Role::Button)
+        ..Node::new(id, Role::Button)
     }
 }
 
@@ -89,8 +81,8 @@ fn get_initial_state() -> TreeUpdate {
         name: Some(WINDOW_TITLE.into()),
         ..Node::new(WINDOW_ID, Role::Window)
     };
-    let button_1 = get_button_1("Button 1");
-    let button_2 = get_button_2("Button 2");
+    let button_1 = make_button(BUTTON_1_ID, "Button 1");
+    let button_2 = make_button(BUTTON_2_ID, "Button 2");
     TreeUpdate {
         clear: None,
         nodes: vec![root, button_1, button_2],
@@ -181,9 +173,9 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 // A real GUI framework would have a consistent way
                 // of building a node from underlying data.
                 let node = if window_state.focus == BUTTON_1_ID {
-                    get_button_1("You pressed button 1")
+                    make_button(BUTTON_1_ID, "You pressed button 1")
                 } else {
-                    get_button_2("You pressed button 2")
+                    make_button(BUTTON_2_ID, "You pressed button 2")
                 };
                 let update = TreeUpdate {
                     clear: None,
