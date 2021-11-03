@@ -29,14 +29,12 @@ impl Manager {
             match change {
                 TreeChange::FocusMoved {
                     old_node: _,
-                    new_node,
+                    new_node: Some(new_node),
                 } => {
-                    if let Some(new_node) = new_node {
-                        let platform_node = PlatformNode::new(&new_node, self.hwnd);
-                        let el: IRawElementProviderSimple = platform_node.into();
-                        unsafe { UiaRaiseAutomationEvent(el, UIA_AutomationFocusChangedEventId) }
-                            .unwrap();
-                    }
+                    let platform_node = PlatformNode::new(&new_node, self.hwnd);
+                    let el: IRawElementProviderSimple = platform_node.into();
+                    unsafe { UiaRaiseAutomationEvent(el, UIA_AutomationFocusChangedEventId) }
+                        .unwrap();
                 }
                 TreeChange::NodeUpdated { old_node, new_node } => {
                     let old_node = ResolvedPlatformNode::new(old_node, self.hwnd);

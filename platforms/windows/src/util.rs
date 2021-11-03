@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use std::{
-    convert::{From, Into, TryInto},
+    convert::{From, TryInto},
     mem::ManuallyDrop,
 };
 use windows::Win32::{
@@ -14,10 +14,10 @@ use windows::Win32::{
 
 pub(crate) struct VariantFactory(VARENUM, VARIANT_0_0_0);
 
-impl Into<VARIANT> for VariantFactory {
-    fn into(self) -> VARIANT {
-        let VariantFactory(vt, value) = self;
-        VARIANT {
+impl From<VariantFactory> for VARIANT {
+    fn from(factory: VariantFactory) -> Self {
+        let VariantFactory(vt, value) = factory;
+        Self {
             Anonymous: VARIANT_0 {
                 Anonymous: ManuallyDrop::new(VARIANT_0_0 {
                     vt: vt.0 as u16,

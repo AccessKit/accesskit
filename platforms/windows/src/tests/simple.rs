@@ -90,7 +90,7 @@ fn navigation() -> Result<()> {
         let mut wrapped_child = unsafe { walker.GetFirstChildElement(&root) };
         while let Ok(child) = wrapped_child {
             if is_button_1(&child) {
-                button_1_forward = Some(child.clone());
+                button_1_forward = Some(child);
                 break;
             }
             wrapped_child = unsafe { walker.GetNextSiblingElement(&child) };
@@ -101,7 +101,7 @@ fn navigation() -> Result<()> {
         let wrapped_child = unsafe { walker.GetNextSiblingElement(&button_1_forward) };
         if let Ok(child) = wrapped_child {
             if is_button_2(&child) {
-                button_2_forward = Some(child.clone());
+                button_2_forward = Some(child);
             }
         }
         let _button_2_forward = button_2_forward.unwrap();
@@ -110,7 +110,7 @@ fn navigation() -> Result<()> {
         let mut wrapped_child = unsafe { walker.GetLastChildElement(&root) };
         while let Ok(child) = wrapped_child {
             if is_button_2(&child) {
-                button_2_backward = Some(child.clone());
+                button_2_backward = Some(child);
                 break;
             }
             wrapped_child = unsafe { walker.GetPreviousSiblingElement(&child) };
@@ -121,7 +121,7 @@ fn navigation() -> Result<()> {
         let wrapped_child = unsafe { walker.GetPreviousSiblingElement(&button_2_backward) };
         if let Ok(child) = wrapped_child {
             if is_button_1(&child) {
-                button_1_backward = Some(child.clone());
+                button_1_backward = Some(child);
             }
         }
         let button_1_backward = button_1_backward.unwrap();

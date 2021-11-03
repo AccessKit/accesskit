@@ -307,8 +307,8 @@ impl ResolvedPlatformNode<'_> {
         new_value: Option<VariantFactory>,
     ) {
         let el: IRawElementProviderSimple = self.downgrade().into();
-        let old_value: VARIANT = old_value.unwrap_or_else(|| VariantFactory::empty()).into();
-        let new_value: VARIANT = new_value.unwrap_or_else(|| VariantFactory::empty()).into();
+        let old_value: VARIANT = old_value.unwrap_or_else(VariantFactory::empty).into();
+        let new_value: VARIANT = new_value.unwrap_or_else(VariantFactory::empty).into();
         unsafe { UiaRaiseAutomationPropertyChangedEvent(el, property_id, old_value, new_value) }
             .unwrap();
     }
@@ -438,7 +438,7 @@ impl PlatformNode {
     fn GetPropertyValue(&self, property_id: i32) -> Result<VARIANT> {
         self.resolve(|resolved| {
             let result = resolved.get_property_value(property_id);
-            Ok(result.unwrap_or_else(|| VariantFactory::empty()).into())
+            Ok(result.unwrap_or_else(VariantFactory::empty).into())
         })
     }
 

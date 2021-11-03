@@ -152,7 +152,7 @@ fn create_window(title: &str, initial_state: TreeUpdate, initial_focus: NodeId) 
         )
     };
     if window.0 == 0 {
-        Err(Error::from_win32())?;
+        return Err(Error::from_win32());
     }
 
     Ok(window)
@@ -208,8 +208,8 @@ where
 
             let mut message = MSG::default();
             while unsafe { GetMessageW(&mut message, HWND(0), 0, 0) }.into() {
-                unsafe { TranslateMessage(&mut message) };
-                unsafe { DispatchMessageW(&mut message) };
+                unsafe { TranslateMessage(&message) };
+                unsafe { DispatchMessageW(&message) };
             }
         });
 
@@ -274,6 +274,7 @@ pub(crate) struct FocusEventHandler {
 
 #[allow(non_snake_case)]
 impl FocusEventHandler {
+    #[allow(clippy::new_ret_no_self)] // it does return self, but wrapped
     pub(crate) fn new() -> (
         IUIAutomationFocusChangedEventHandler,
         Arc<ReceivedFocusEvent>,

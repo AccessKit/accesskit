@@ -212,7 +212,7 @@ fn create_window(title: &str, initial_state: TreeUpdate, initial_focus: NodeId) 
         )
     };
     if window.0 == 0 {
-        Err(Error::from_win32())?;
+        return Err(Error::from_win32());
     }
 
     Ok(window)
@@ -236,8 +236,8 @@ fn main() -> Result<()> {
 
     let mut message = MSG::default();
     while unsafe { GetMessageW(&mut message, HWND(0), 0, 0) }.into() {
-        unsafe { TranslateMessage(&mut message) };
-        unsafe { DispatchMessageW(&mut message) };
+        unsafe { TranslateMessage(&message) };
+        unsafe { DispatchMessageW(&message) };
     }
 
     Ok(())
