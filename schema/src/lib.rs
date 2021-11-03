@@ -8,7 +8,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
+#[cfg(feature = "schemars")]
 use schemars::JsonSchema;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::ops::Range;
@@ -23,8 +25,10 @@ use std::ops::Range;
 /// is ordered roughly by expected usage frequency (with the notable exception
 /// of [`Role::Unknown`]). This is more efficient in serialization formats
 /// where integers use a variable-length encoding.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum Role {
     Unknown,
     InlineTextBox,
@@ -233,10 +237,10 @@ pub enum Role {
 /// An action to be taken on an accessibility node.
 /// In contrast to [`DefaultActionVerb`], these describe what happens to the
 /// object, e.g. "focus".
-#[derive(
-    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
-)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum Action {
     /// Do the default action for an object, typically this means "click".
     Default,
@@ -307,8 +311,10 @@ pub enum Action {
     ShowContextMenu,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum Orientation {
     /// E.g. most toolbars and separators.
     Horizontal,
@@ -316,8 +322,10 @@ pub enum Orientation {
     Vertical,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum NameFrom {
     /// E.g. `aria-label`.
     Attribute,
@@ -335,8 +343,10 @@ pub enum NameFrom {
     Value,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum DescriptionFrom {
     AriaDescription,
     /// HTML-AAM 5.2.2
@@ -353,10 +363,10 @@ pub enum DescriptionFrom {
 /// Function that can be performed when a dragged object is released
 /// on a drop target.
 /// Note: aria-dropeffect is deprecated in WAI-ARIA 1.1.
-#[derive(
-    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
-)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum DropEffect {
     Copy,
     Execute,
@@ -365,8 +375,10 @@ pub enum DropEffect {
     Popup,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum MarkerType {
     SpellingError,
     GrammarError,
@@ -375,8 +387,10 @@ pub enum MarkerType {
     Suggestion,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum TextDirection {
     LeftToRight,
     RightToLeft,
@@ -386,16 +400,20 @@ pub enum TextDirection {
 
 /// Indicates if a form control has invalid input or
 /// if a web DOM element has an aria-invalid attribute.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum InvalidState {
     False,
     True,
     Other(Box<str>),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum CheckedState {
     False,
     True,
@@ -407,8 +425,10 @@ pub enum CheckedState {
 /// In contrast to [`Action`], these describe what the user can do on the
 /// object, e.g. "press", not what happens to the object as a result.
 /// Only one verb can be used at a time to describe the default action.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum DefaultActionVerb {
     Activate,
     Check,
@@ -425,8 +445,10 @@ pub enum DefaultActionVerb {
     Select,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum SortDirection {
     Unsorted,
     Ascending,
@@ -434,8 +456,10 @@ pub enum SortDirection {
     Other,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum AriaCurrent {
     False,
     True,
@@ -446,8 +470,10 @@ pub enum AriaCurrent {
     Time,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum HasPopup {
     True,
     Menu,
@@ -457,8 +483,10 @@ pub enum HasPopup {
     Dialog,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum ListStyle {
     Circle,
     Disc,
@@ -469,8 +497,10 @@ pub enum ListStyle {
     Other,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum TextAlign {
     Left,
     Right,
@@ -478,15 +508,19 @@ pub enum TextAlign {
     Justify,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum VerticalOffset {
     Subscript,
     Superscript,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum TextDecoration {
     Solid,
     Dotted,
@@ -495,8 +529,10 @@ pub enum TextDecoration {
     Wavy,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum StringEncoding {
     Utf8,
     Utf16,
@@ -506,17 +542,23 @@ pub enum StringEncoding {
 pub type NodeIdContent = std::num::NonZeroU64;
 
 /// The stable identity of a node, unique within the node's tree.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
 pub struct NodeId(pub NodeIdContent);
 
 /// The globally unique ID of a tree. The format of this ID
 /// is up to the implementer. A UUID v4 is a safe choice.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
 pub struct TreeId(pub Box<str>);
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct Rect {
     pub left: f32,
     pub top: f32,
@@ -525,8 +567,10 @@ pub struct Rect {
 }
 
 /// 4x4 transformation matrix.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(transparent)]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(transparent))]
 pub struct Transform {
     /// Column major order.
     pub matrix: [f32; 16],
@@ -546,13 +590,15 @@ pub struct Transform {
 /// Otherwise, for a node other than the root, the bounds are relative to
 /// the root of the tree, and for the root of a tree, the bounds are relative
 /// to its immediate containing node.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct RelativeBounds {
     /// The ID of an ancestor node in the same Tree that this object's
     /// bounding box is relative to.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub offset_container: Option<NodeId>,
     /// The relative bounding box of this node.
     pub rect: Rect,
@@ -560,14 +606,16 @@ pub struct RelativeBounds {
     /// This is rarely used and should be omitted if not needed, i.e. if
     /// the transform would be the identity matrix. It's rare enough
     // that we box it to reduce memory usage.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub transform: Option<Box<Transform>>,
 }
 
 /// A marker spanning a range within text.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TextMarker {
     pub marker_type: MarkerType,
     /// Indices are in code units for the encoding specified in
@@ -577,162 +625,168 @@ pub struct TextMarker {
 
 /// Defines a custom action for a UI element. For example, a list UI
 /// can allow a user to reorder items in the list by dragging the items.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct CustomAction {
     pub id: i32,
     pub description: Box<str>,
 }
 
 // Helper for skipping false values in serialization.
+#[cfg(feature = "serde")]
 fn is_false(b: &bool) -> bool {
     !b
 }
 
 // Helper for skipping empty slices in serialization.
+#[cfg(feature = "serde")]
 fn is_empty<T>(slice: &[T]) -> bool {
     slice.is_empty()
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct Node {
     pub id: NodeId,
     pub role: Role,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub bounds: Option<RelativeBounds>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_empty")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub children: Box<[NodeId]>,
 
     /// Unordered set of actions supported by this node.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "BTreeSet::is_empty")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "BTreeSet::is_empty"))]
     pub actions: BTreeSet<Action>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub name: Option<Box<str>>,
     /// What information was used to compute the object's name.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub name_from: Option<NameFrom>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub description: Option<Box<str>>,
     /// What information was used to compute the object's description.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub description_from: Option<DescriptionFrom>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub value: Option<Box<str>>,
 
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub autofill_available: bool,
     /// Whether this node is expanded, collapsed, or neither. Setting this
     /// to false means the node is collapsed; omitting it means this state
     /// isn't applicable.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub expanded: Option<bool>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub default: bool,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub editable: bool,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub focusable: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub orientation: Option<Orientation>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub hovered: bool,
     /// Skip over this node in the accessibility tree, but keep its subtree.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub ignored: bool,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub invisible: bool,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub linked: bool,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub multiline: bool,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub multiselectable: bool,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub protected: bool,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub required: bool,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub visited: bool,
 
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub busy: bool,
 
     /// The object functions as a text field which exposes its descendants.
     /// Use cases include the root of a content-editable region, an ARIA
     /// textbox which isn't currently editable and which has interactive
     /// descendants, and a <body> element that has "design-mode" set to "on".
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub nonatomic_text_field_root: bool,
 
     // Live region attributes.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub container_live_atomic: bool,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub container_live_busy: bool,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub live_atomic: bool,
 
     /// If a dialog box is marked as explicitly modal
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub modal: bool,
 
     /// Set on a canvas element if it has fallback content.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub canvas_has_fallback: bool,
 
     /// Indicates this node is user-scrollable, e.g. overflow:scroll|auto, as
     /// opposed to only programmatically scrollable, like overflow:hidden, or
     /// not scrollable at all, e.g. overflow:visible.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub scrollable: bool,
 
     /// A hint to clients that the node is clickable.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub clickable: bool,
 
     /// Indicates that this node clips its children, i.e. may have
     /// overflow: hidden or clip children by default.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub clips_children: bool,
 
     /// Indicates that this node is not selectable because the style has
     /// user-select: none. Note that there may be other reasons why a node is
     /// not selectable - for example, bullets in a list. However, this attribute
     /// is only set on user-select: none.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub not_user_selectable_style: bool,
 
     /// Indicates whether this node is selected or unselected.
@@ -743,92 +797,92 @@ pub struct Node {
     /// to announce "not selected". The ambiguity of this flag
     /// in platform accessibility APIs has made extraneous
     /// "not selected" announcements a common annoyance.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub selected: Option<bool>,
     /// Indicates whether this node is selected due to selection follows focus.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub selected_from_focus: bool,
 
     /// Indicates whether this node can be grabbed for drag-and-drop operation.
     /// Setting this flag to false rather than omitting it means that
     /// this node is not currently grabbed but it can be.
     /// Note: aria-grabbed is deprecated in WAI-ARIA 1.1.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub grabbed: Option<bool>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "BTreeSet::is_empty")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "BTreeSet::is_empty"))]
     pub drop_effects: BTreeSet<DropEffect>,
 
     /// Indicates whether this node causes a hard line-break
     /// (e.g. block level elements, or <br>)
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub is_line_breaking_object: bool,
     /// Indicates whether this node causes a page break
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub is_page_breaking_object: bool,
 
     /// True if the node has any ARIA attributes set.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub has_aria_attribute: bool,
 
     /// This element allows touches to be passed through when a screen reader
     /// is in touch exploration mode, e.g. a virtual keyboard normally
     /// behaves this way.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub touch_pass_through: bool,
 
     /// Ids of nodes that are children of this node logically, but are
     /// not children of this node in the tree structure. As an example,
     /// a table cell is a child of a row, and an 'indirect' child of a
     /// column.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_empty")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub indirect_children: Box<[NodeId]>,
 
     // Relationships between this node and other nodes.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub active_descendant: Option<NodeId>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub error_message: Option<NodeId>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub in_page_link_target: Option<NodeId>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub member_of: Option<NodeId>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub next_on_line: Option<NodeId>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub previous_on_line: Option<NodeId>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub popup_for: Option<NodeId>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_empty")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub controls: Box<[NodeId]>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_empty")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub details: Box<[NodeId]>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_empty")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub described_by: Box<[NodeId]>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_empty")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub flow_to: Box<[NodeId]>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_empty")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub labelled_by: Box<[NodeId]>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_empty")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub radio_groups: Box<[NodeId]>,
 
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_empty")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub markers: Box<[TextMarker]>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub text_direction: Option<TextDirection>,
     /// For inline text. This is the pixel position of the end of each
     /// character within the bounding rectangle of this object, in the
@@ -836,242 +890,242 @@ pub struct Node {
     /// text, the first offset is the right coordinate of the first
     /// character within the object's bounds, the second offset
     /// is the right coordinate of the second character, and so on.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_empty")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub character_offsets: Box<[f32]>,
 
     /// For inline text. The indices of each word, in code units for
     /// the encoding specified in [`Tree::source_string_encoding`].
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_empty")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub words: Box<[Range<usize>]>,
 
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_empty")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub custom_actions: Box<[CustomAction]>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub access_key: Option<Box<str>>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub invalid_state: Option<InvalidState>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub auto_complete: Option<Box<str>>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub checked_state: Option<CheckedState>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub checked_state_description: Option<Box<str>>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub child_tree: Option<TreeId>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub class_name: Option<Box<str>>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub container_live_relevant: Option<Box<str>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub container_live_status: Option<Box<str>>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub css_display: Option<Box<str>>,
 
     /// Only present when different from parent.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub font_family: Option<Box<str>>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub html_tag: Option<Box<str>>,
 
     /// Inner HTML of an element. Only used for a top-level math element,
     /// to support third-party math accessibility products that parse MathML.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub inner_html: Option<Box<str>>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub input_type: Option<Box<str>>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub key_shortcuts: Option<Box<str>>,
 
     /// Only present when different from parent.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub language: Option<Box<str>>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub live_relevant: Option<Box<str>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub live_status: Option<Box<str>>,
 
     /// Only if not already exposed in [`Node::name`] ([`NameFrom::Placeholder`]).
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub placeholder: Option<Box<str>>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub aria_role: Option<Box<str>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub role_description: Option<Box<str>>,
 
     /// Only if not already exposed in [`Node::name`] ([`NameFrom::Title`]).
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub tooltip: Option<Box<str>>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub url: Option<Box<str>>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub default_action_verb: Option<DefaultActionVerb>,
 
     // Scrollable container attributes.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub scroll_x: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub scroll_x_min: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub scroll_x_max: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub scroll_y: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub scroll_y_min: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub scroll_y_max: Option<f32>,
 
     /// The endpoints of a text selection, in code units for the encoding
     /// specified in [`Tree::source_string_encoding`].
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub text_selection: Option<Range<usize>>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub aria_column_count: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub aria_cell_column_index: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub aria_cell_column_span: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub aria_row_count: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub aria_cell_row_index: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub aria_cell_row_span: Option<usize>,
 
     // Table attributes.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub table_row_count: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub table_column_count: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub table_header: Option<NodeId>,
 
     // Table row attributes.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub table_row_index: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub table_row_header: Option<NodeId>,
 
     // Table column attributes.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub table_column_index: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub table_column_header: Option<NodeId>,
 
     // Table cell attributes.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub table_cell_column_index: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub table_cell_column_span: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub table_cell_row_index: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub table_cell_row_span: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub sort_direction: Option<SortDirection>,
 
     /// Tree control attributes.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub hierarchical_level: Option<usize>,
 
     /// Use for a textbox that allows focus/selection but not input.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub read_only: bool,
     /// Use for a control or group of controls that disallows input.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub disabled: bool,
 
     // Position or Number of items in current set of listitems or treeitems
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub set_size: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub pos_in_set: Option<usize>,
 
     /// For [`Role::ColorWell`], specifies the selected color in RGBA.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub color_value: Option<u32>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub aria_current: Option<AriaCurrent>,
 
     /// Background color in RGBA.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub background_color: Option<u32>,
     /// Foreground color in RGBA.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub foreground_color: Option<u32>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub has_popup: Option<HasPopup>,
 
     /// The list style type. Only available on list items.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub list_style: Option<ListStyle>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub text_align: Option<TextAlign>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub vertical_offset: Option<VerticalOffset>,
 
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub bold: bool,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub italic: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub overline: Option<TextDecoration>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub strikethrough: Option<TextDecoration>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub underline: Option<TextDecoration>,
 
     // Focus traversal order.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub previous_focus: Option<NodeId>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub next_focus: Option<NodeId>,
 
     // Range attributes.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub value_for_range: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub min_value_for_range: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub max_value_for_range: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub step_value_for_range: Option<f32>,
 
     // Text attributes.
     /// Font size is in pixels.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub font_size: Option<f32>,
     /// Font weight can take on any arbitrary numeric value. Increments of 100 in
     /// range [0, 900] represent keywords such as light, normal, bold, etc.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub font_weight: Option<f32>,
     /// The text indent of the text, in mm.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub text_indent: Option<f32>,
 }
 
@@ -1223,9 +1277,11 @@ impl Node {
 
 /// The data associated with an accessibility tree that's global to the
 /// tree and not associated with any particular node.
-#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct Tree {
     pub id: TreeId,
     pub root: NodeId,
@@ -1239,13 +1295,13 @@ pub struct Tree {
     pub source_string_encoding: StringEncoding,
 
     /// The ID of the tree that this tree is contained in, if any.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub parent: Option<TreeId>,
 
     /// The node that's used as the root scroller, if any. On some platforms
     /// like Android we need to ignore accessibility scroll offsets for
     /// that node and get them from the viewport instead.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub root_scroller: Option<NodeId>,
 }
 
@@ -1265,15 +1321,17 @@ impl Tree {
 /// The sender and receiver must be in sync; the update is only meant
 /// to bring the tree from a specific previous state into its next state.
 /// Trying to apply it to the wrong tree should immediately panic.
-#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TreeUpdate {
     /// The optional ID of a node to clear, before applying any updates.
     /// Clearing a node means deleting all of its children and their descendants,
     /// but leaving that node in the tree. It's an error to clear a node but not
     /// subsequently update it as part of the same `TreeUpdate`.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub clear: Option<NodeId>,
 
     /// An ordered list of zero or more node updates to apply to the tree.
@@ -1299,13 +1357,13 @@ pub struct TreeUpdate {
     /// if it has not changed since the previous update, but providing the same
     /// information again is also allowed. This is required when initializing
     /// a tree.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub tree: Option<Tree>,
 
     /// The node with keyboard focus within this tree, if any.
     /// If the focus is in a descendant tree, set this to the node
     /// to which that tree is anchored. The most recent focus, if any,
     /// must be provided with every tree update.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub focus: Option<NodeId>,
 }

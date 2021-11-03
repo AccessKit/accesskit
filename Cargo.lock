@@ -20,7 +20,6 @@ dependencies = [
  "cocoa",
  "lazy_static",
  "objc",
- "serde",
  "serde_json",
 ]
 
@@ -32,7 +31,6 @@ dependencies = [
  "accesskit_schema",
  "cocoa",
  "jni",
- "serde",
  "serde_json",
 ]
 
