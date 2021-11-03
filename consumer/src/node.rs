@@ -30,6 +30,12 @@ impl<'a> Node<'a> {
         self.tree_reader.state.focus == Some(self.id())
     }
 
+    pub fn is_focusable(&self) -> bool {
+        // TBD: Is it ever safe to imply this on a node that doesn't explicitly
+        // specify it?
+        self.data().focusable
+    }
+
     pub fn is_ignored(&self) -> bool {
         self.data().ignored || (self.role() == Role::Presentation)
     }
@@ -245,11 +251,11 @@ pub struct WeakNode {
 impl WeakNode {
     pub fn map<F, T>(&self, f: F) -> Option<T>
     where
-        for<'a> F: FnOnce(&Node<'a>) -> T,
+        for<'a> F: FnOnce(Node<'a>) -> T,
     {
         self.tree
             .upgrade()
-            .map(|tree| tree.read().node_by_id(self.id).map(|node| f(&node)))
+            .map(|tree| tree.read().node_by_id(self.id).map(|node| f(node)))
             .flatten()
     }
 }
