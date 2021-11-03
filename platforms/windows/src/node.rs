@@ -11,7 +11,7 @@ use arrayvec::ArrayVec;
 use windows as Windows;
 use windows::{
     runtime::*,
-    Win32::{Foundation::*, Graphics::Gdi::*, System::OleAutomation::*, UI::Accessibility::*},
+    Win32::{Foundation::*, Graphics::Gdi::*, System::Com::*, UI::Accessibility::*},
 };
 
 use crate::util::*;

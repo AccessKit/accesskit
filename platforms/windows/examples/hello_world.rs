@@ -11,7 +11,7 @@ use windows::{
         Graphics::Gdi::ValidateRect,
         System::Com::*,
         System::LibraryLoader::GetModuleHandleW,
-        UI::{KeyboardAndMouseInput::*, WindowsAndMessaging::*},
+        UI::{Input::KeyboardAndMouse::*, WindowsAndMessaging::*},
     },
 };
 

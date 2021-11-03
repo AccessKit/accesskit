@@ -7,7 +7,10 @@ use std::{
     convert::{From, Into, TryInto},
     mem::ManuallyDrop,
 };
-use windows::Win32::{Foundation::*, System::OleAutomation::*};
+use windows::Win32::{
+    Foundation::*,
+    System::{Com::*, Ole::Automation::*},
+};
 
 pub(crate) struct VariantFactory(VARENUM, VARIANT_0_0_0);
 
