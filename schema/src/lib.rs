@@ -1364,6 +1364,15 @@ pub struct TreeUpdate {
     /// If the focus is in a descendant tree, set this to the node
     /// to which that tree is anchored. The most recent focus, if any,
     /// must be provided with every tree update.
+    ///
+    /// This field must contain a value if and only if the native host
+    /// (e.g. window) currently has the keyboard focus. This implies
+    /// that the AccessKit provider must track the native focus state
+    /// and send matching tree updates. Rationale: A robust GUI toolkit
+    /// must do this native focus tracking anyway in order to correctly
+    /// render widgets (e.g. to draw or not draw a focus rectangle),
+    /// so this focus tracking should not be duplicated between the toolkit
+    /// and the AccessKit platform adapters.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub focus: Option<NodeId>,
 }
