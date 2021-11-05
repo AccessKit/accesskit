@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use std::{
-    convert::{From, TryInto},
+    convert::{From, Into, TryInto},
     mem::ManuallyDrop,
 };
 use windows::Win32::{
@@ -68,6 +68,12 @@ impl From<bool> for VariantFactory {
                 boolVal: if value { VARIANT_TRUE } else { VARIANT_FALSE },
             },
         )
+    }
+}
+
+impl<T: Into<VariantFactory>> From<Option<T>> for VariantFactory {
+    fn from(value: Option<T>) -> Self {
+        value.map_or_else(Self::empty, T::into)
     }
 }
 
