@@ -11,7 +11,12 @@ pub trait Bus {
     fn get_address(&self) -> Result<String>;
 }
 
-#[dbus_proxy(interface = "org.a11y.atspi.Socket")]
+#[dbus_proxy(
+    default_path = "/org/a11y/atspi/socket",
+    default_service = "org.a11y.atspi.Register",
+    gen_async = false,
+    interface = "org.a11y.atspi.Socket"
+)]
 trait Socket {
     fn embed<'a>(&self, plug: ObjectAddress<'a>) -> Result<OwnedObjectAddress>;
 

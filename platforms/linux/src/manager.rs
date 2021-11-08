@@ -8,22 +8,23 @@ use std::sync::Arc;
 use accesskit_consumer::{Tree, TreeChange};
 use accesskit_schema::TreeUpdate;
 
-use crate::atspi::a11y_bus;
-use crate::node::PlatformNode;
-
-use zbus::blocking::Connection;
+use crate::atspi::Bus;
+use crate::node::{PlatformNode, RootPlatformNode};
 
 pub struct Manager {
-    atspi_bus: Connection,
+    atspi_bus: Bus,
     tree: Arc<Tree>,
 }
 
 impl Manager {
-    pub fn new(initial_state: TreeUpdate) -> Self {
-        Self {
-            atspi_bus: a11y_bus().unwrap(),
+    pub fn new(app_name: String, toolkit_name: String, toolkit_version: String, initial_state: TreeUpdate) -> Option<Self> {
+        let mut atspi_bus = Bus::a11y_bus()?;
+        let app_node = RootPlatformNode::new(app_name, toolkit_name, toolkit_version);
+        atspi_bus.register_root(app_node);
+        Some(Self {
+            atspi_bus,
             tree: Tree::new(initial_state),
-        }
+        })
     }
 
     pub fn update(&self, update: TreeUpdate) {

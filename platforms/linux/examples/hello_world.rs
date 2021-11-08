@@ -55,7 +55,7 @@ fn get_initial_state() -> TreeUpdate {
 static mut FOCUS: NodeId = BUTTON_1_ID;
 
 fn main() {
-    let manager = Manager::new(get_initial_state());
+    let manager = Manager::new(String::from("hello_world"), String::from("ExampleUI"), String::from("0.1.0"), get_initial_state()).unwrap();
     let event_loop = EventLoop::new();
 
     let window = WindowBuilder::new()
