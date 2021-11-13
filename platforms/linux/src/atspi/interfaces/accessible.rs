@@ -1,24 +1,28 @@
-use crate::atspi::{ObjectAddress, ObjectId, Role};
+// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (found in
+// the LICENSE-APACHE file) or the MIT license (found in
+// the LICENSE-MIT file), at your option.
+
+use crate::atspi::{ObjectAddress, ObjectId, ObjectRef, OwnedObjectAddress, Role};
 use std::convert::TryInto;
 use zbus::names::OwnedUniqueName;
-use zvariant::Str;
 
 pub trait AccessibleInterface {
-    fn name(&self) -> Str;
+    fn name(&self) -> String;
 
-    fn description(&self) -> Str;
+    fn description(&self) -> String;
 
-    fn parent(&self) -> Option<ObjectId>;
+    fn parent(&self) -> Option<ObjectRef>;
 
     fn child_count(&self) -> usize;
 
-    fn locale(&self) -> Str;
+    fn locale(&self) -> String;
 
     fn id(&self) -> ObjectId;
 
-    fn child_at_index(&self, index: usize) -> Option<ObjectId>;
+    fn child_at_index(&self, index: usize) -> Option<ObjectRef>;
 
-    fn children(&self) -> Vec<ObjectId>;
+    fn children(&self) -> Vec<ObjectRef>;
 
     fn index_in_parent(&self) -> Option<usize>;
 
@@ -30,26 +34,35 @@ pub struct AccessibleInterfaceObject<T> {
     object: T,
 }
 
+impl<T> AccessibleInterfaceObject<T> {
+    pub fn new(bus_name: OwnedUniqueName, object: T) -> Self {
+        Self {
+            bus_name,
+            object
+        }
+    }
+}
+
 #[dbus_interface(name = "org.a11y.atspi.Accessible")]
 impl<T> AccessibleInterfaceObject<T>
 where T: AccessibleInterface + Send + Sync + 'static
 {
     #[dbus_interface(property)]
-    fn name(&self) -> Str {
+    fn name(&self) -> String {
         self.object.name()
     }
 
     #[dbus_interface(property)]
-    fn description(&self) -> Str {
+    fn description(&self) -> String {
         self.object.description()
     }
 
     #[dbus_interface(property)]
-    fn parent(&self) -> ObjectAddress {
-        if let Some(parent) = self.object.parent() {
-            ObjectAddress::accessible(self.bus_name.as_ref(), parent)
-        } else {
-            ObjectAddress::null(self.bus_name.as_ref())
+    fn parent(&self) -> OwnedObjectAddress {
+        match self.object.parent() {
+            Some(ObjectRef::Managed(id)) => ObjectAddress::accessible(self.bus_name.as_ref(), id).into(),
+            Some(ObjectRef::Unmanaged(address)) => address,
+            None => ObjectAddress::null(self.bus_name.as_ref()).into()
         }
     }
 
@@ -59,7 +72,7 @@ where T: AccessibleInterface + Send + Sync + 'static
     }
 
     #[dbus_interface(property)]
-    fn locale(&self) -> Str {
+    fn locale(&self) -> String {
         self.object.locale()
     }
 
@@ -68,21 +81,25 @@ where T: AccessibleInterface + Send + Sync + 'static
         self.object.id()
     }
 
-    fn get_child_at_index(&self, index: i32) -> ObjectAddress {
-        index
-        .try_into()
-        .ok()
-        .map(|index| self.object.child_at_index(index))
-        .flatten()
-        .map_or_else(|| ObjectAddress::null(self.bus_name.as_ref()), |id| ObjectAddress::accessible(self.bus_name.as_ref(), id))
+    fn get_child_at_index(&self, index: i32) -> OwnedObjectAddress {
+        match index.try_into().ok().map(|index| self.object.child_at_index(index)).flatten() {
+            Some(ObjectRef::Managed(id)) => ObjectAddress::accessible(self.bus_name.as_ref(), id).into(),
+            Some(ObjectRef::Unmanaged(address)) => address,
+            None => ObjectAddress::null(self.bus_name.as_ref()).into()
+        }
     }
 
-    fn get_children(&self) -> () {//&[ObjectAddress] {
-        self.object.children();
+    fn get_children(&self) -> Vec<OwnedObjectAddress> {
+        self.object.children().into_iter().map(|child| {
+            match child {
+                ObjectRef::Managed(id) => ObjectAddress::accessible(self.bus_name.as_ref(), id).into(),
+                ObjectRef::Unmanaged(address) => address
+            }
+        }).collect()
     }
 
     fn get_index_in_parent(&self) -> i32 {
-        self.object.index_in_parent().map_or(-1, |index| index.try_into().unwrap_or(-1))
+        self.object.index_in_parent().map(|index| index.try_into().ok()).flatten().unwrap_or(-1)
     }
 
     fn get_role(&self) -> Role {

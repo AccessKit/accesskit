@@ -1,34 +1,19 @@
+// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (found in
+// the LICENSE-APACHE file) or the MIT license (found in
+// the LICENSE-MIT file), at your option.
+
 use serde::{Deserialize, Serialize};
-use zbus::names::OwnedUniqueName;
 use zvariant::{
-    derive::{Type, Value},
-    OwnedObjectPath
+    derive::Type
 };
 
 mod bus;
 pub mod interfaces;
 mod object_address;
 mod object_id;
+mod object_ref;
 pub mod proxies;
-
-#[derive(Clone, Debug, Deserialize, Serialize, Type, Value)]
-pub struct OwnedObjectAddress {
-    bus_name: OwnedUniqueName,
-    path: OwnedObjectPath,
-}
-
-impl OwnedObjectAddress {
-    pub fn new<S, O>(bus_name: S, path: O) -> Self
-    where
-        S: Into<OwnedUniqueName>,
-        O: Into<OwnedObjectPath>
-    {
-        Self {
-            bus_name: bus_name.into(),
-            path: path.into()
-        }
-    }
-}
 
 /// Enumeration used by interface #AtspiAccessible to specify the role
 /// of an #AtspiAccessible object.
@@ -483,3 +468,4 @@ pub enum Role {
 pub use bus::Bus;
 pub use object_address::*;
 pub use object_id::*;
+pub use object_ref::*;

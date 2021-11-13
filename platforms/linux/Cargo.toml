@@ -8,6 +8,7 @@ edition = "2018"
 [dependencies]
 accesskit_consumer = { path = "../../consumer" }
 accesskit_schema = { path = "../../schema" }
+parking_lot = "0.11.1"
 serde = "1.0"
 x11rb = "0.8.1"
 zbus = "2.0.0-beta.7"

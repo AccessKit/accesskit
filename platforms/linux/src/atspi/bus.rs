@@ -1,11 +1,18 @@
+// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (found in
+// the LICENSE-APACHE file) or the MIT license (found in
+// the LICENSE-MIT file), at your option.
+
 use crate::atspi::{
     interfaces::*,
-    proxies::{BusProxy, SocketProxy},
-    ObjectAddress
+    object_address::*,
+    proxies::{BusProxy, SocketProxy}
 };
+use parking_lot::RwLock;
 use std::{
     env::var,
     os::unix::net::{SocketAddr, UnixStream},
+    sync::Arc,
     str::FromStr
 };
 use x11rb::{
@@ -24,14 +31,25 @@ impl Bus {
         Some(Bus(a11y_bus()?))
     }
 
+    pub fn register_accessible<T>(&mut self, object: T) -> bool
+    where T: AccessibleInterface + Send + Sync + 'static
+    {
+        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, object.id().as_str());
+        self.0.object_server_mut().at(path, AccessibleInterfaceObject::new(self.0.unique_name().unwrap().to_owned(), object)).unwrap()
+    }
+
     pub fn register_root<T>(&mut self, root: T)
     where T: AccessibleInterface + ApplicationInterface + Send + Sync + 'static
     {
-        self.0.object_server_mut().at("/org/a11y/atspi/accessible/root", ApplicationInterfaceObject(root)).unwrap();
-        SocketProxy::new(&self.0)
+        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, AccessibleInterface::id(&root).as_str());
+        let root = Arc::new(RwLock::new(root));
+        self.0.object_server_mut().at(path, ApplicationInterfaceObject(ApplicationObjectWrapper(root.clone()))).unwrap();
+        self.register_accessible(ApplicationObjectWrapper(root.clone()));
+        let desktop_address = SocketProxy::new(&self.0)
         .unwrap()
         .embed(ObjectAddress::root(
-            self.0.unique_name().unwrap().as_ref()));
+            self.0.unique_name().unwrap().as_ref())).unwrap();
+        root.write().set_desktop(desktop_address);
     }
 }
 

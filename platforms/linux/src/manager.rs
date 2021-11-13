@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use accesskit_consumer::{Tree, TreeChange};
+use accesskit_consumer::{Node, Tree, TreeChange};
 use accesskit_schema::TreeUpdate;
 
 use crate::atspi::Bus;
@@ -19,11 +19,25 @@ pub struct Manager {
 impl Manager {
     pub fn new(app_name: String, toolkit_name: String, toolkit_version: String, initial_state: TreeUpdate) -> Option<Self> {
         let mut atspi_bus = Bus::a11y_bus()?;
-        let app_node = RootPlatformNode::new(app_name, toolkit_name, toolkit_version);
+        let tree = Tree::new(initial_state);
+        let app_node = RootPlatformNode::new(app_name, toolkit_name, toolkit_version, tree.clone());
+        let mut objects_to_add = Vec::new();
+
+        fn add_children(node: Node, to_add: &mut Vec<PlatformNode>) {
+            for child in node.unignored_children() {
+                to_add.push(PlatformNode::new(&child));
+                add_children(child, to_add);
+            }
+        }
+
+        add_children(tree.read().root(), &mut objects_to_add);
+        for node in objects_to_add {
+            atspi_bus.register_accessible(node);
+        }
         atspi_bus.register_root(app_node);
         Some(Self {
             atspi_bus,
-            tree: Tree::new(initial_state),
+            tree
         })
     }
 

@@ -1,9 +1,14 @@
+// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (found in
+// the LICENSE-APACHE file) or the MIT license (found in
+// the LICENSE-MIT file), at your option.
+
 use crate::atspi::ObjectId;
 use serde::{Deserialize, Serialize};
-use zbus::names::UniqueName;
+use zbus::names::{OwnedUniqueName, UniqueName};
 use zvariant::{
     derive::{Type, Value},
-    ObjectPath
+    ObjectPath, OwnedObjectPath
 };
 
 pub const ACCESSIBLE_PATH_PREFIX: &'static str = "/org/a11y/atspi/accessible/";
@@ -41,6 +46,21 @@ impl<'a> ObjectAddress<'a> {
         Self {
             bus_name,
             path: ObjectPath::from_str_unchecked(ROOT_PATH)
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Type, Value)]
+pub struct OwnedObjectAddress {
+    bus_name: OwnedUniqueName,
+    path: OwnedObjectPath,
+}
+
+impl From<ObjectAddress<'_>> for OwnedObjectAddress {
+    fn from(value: ObjectAddress) -> OwnedObjectAddress {
+        OwnedObjectAddress {
+            bus_name: value.bus_name.into(),
+            path: value.path.into()
         }
     }
 }
