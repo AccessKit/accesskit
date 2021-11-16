@@ -5,7 +5,7 @@ use std::num::NonZeroU64;
 use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
 use lazy_static::lazy_static;
 use windows::{
-    runtime::*,
+    core::*,
     Win32::{
         Foundation::*,
         Graphics::Gdi::ValidateRect,

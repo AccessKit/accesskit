@@ -9,7 +9,7 @@ use parking_lot::{const_mutex, Condvar, Mutex};
 use std::{sync::Arc, time::Duration};
 use windows as Windows;
 use windows::{
-    runtime::*,
+    core::*,
     Win32::{
         Foundation::*,
         Graphics::Gdi::ValidateRect,
