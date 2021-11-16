@@ -3,10 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::{
-    convert::{From, TryInto},
-    mem::ManuallyDrop,
-};
+use std::{convert::TryInto, mem::ManuallyDrop};
 use windows::Win32::{
     Foundation::*,
     System::{Com::*, Ole::Automation::*},
@@ -68,6 +65,12 @@ impl From<bool> for VariantFactory {
                 boolVal: if value { VARIANT_TRUE } else { VARIANT_FALSE },
             },
         )
+    }
+}
+
+impl<T: Into<VariantFactory>> From<Option<T>> for VariantFactory {
+    fn from(value: Option<T>) -> Self {
+        value.map_or_else(Self::empty, T::into)
     }
 }
 

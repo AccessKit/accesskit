@@ -23,13 +23,12 @@ pub(crate) struct ResolvedPlatformNode<'a> {
 
 macro_rules! properties {
     ($(($id:ident, $m:ident)),+) => {
-        fn get_property_value(&self, property_id: i32) -> Option<VariantFactory> {
+        fn get_property_value(&self, property_id: i32) -> VariantFactory {
             match property_id {
                 $($id => {
-                    let value = self.$m();
-                    value.map(|value| value.into())
+                    self.$m().into()
                 })*
-                _ => None
+                _ => VariantFactory::empty()
             }
         }
         pub(crate) fn raise_property_changes(&self, old: &ResolvedPlatformNode) {
@@ -37,11 +36,7 @@ macro_rules! properties {
                 let old_value = old.$m();
                 let new_value = self.$m();
                 if old_value != new_value {
-                    self.raise_property_change(
-                        $id,
-                        old_value.map(|value| value.into()),
-                        new_value.map(|value| value.into()),
-                    );
+                    self.raise_property_change($id, old_value.into(), new_value.into());
                 }
             })*
         }
@@ -284,40 +279,47 @@ impl ResolvedPlatformNode<'_> {
         }
     }
 
-    fn control_type_wrapped(&self) -> Option<i32> {
-        Some(self.control_type())
-    }
-
     fn name(&self) -> Option<&str> {
         self.node.name()
     }
 
-    fn is_focusable_wrapped(&self) -> Option<bool> {
-        Some(self.node.is_focusable())
+    fn is_content_element(&self) -> bool {
+        !self.node.is_invisible_or_ignored()
     }
 
-    fn is_focused_wrapped(&self) -> Option<bool> {
-        Some(self.node.is_focused())
+    fn is_enabled(&self) -> bool {
+        !self.node.is_disabled()
+    }
+
+    fn is_focusable(&self) -> bool {
+        self.node.is_focusable()
+    }
+
+    fn is_focused(&self) -> bool {
+        self.node.is_focused()
     }
 
     fn raise_property_change(
         &self,
         property_id: i32,
-        old_value: Option<VariantFactory>,
-        new_value: Option<VariantFactory>,
+        old_value: VariantFactory,
+        new_value: VariantFactory,
     ) {
         let el: IRawElementProviderSimple = self.downgrade().into();
-        let old_value: VARIANT = old_value.unwrap_or_else(VariantFactory::empty).into();
-        let new_value: VARIANT = new_value.unwrap_or_else(VariantFactory::empty).into();
+        let old_value: VARIANT = old_value.into();
+        let new_value: VARIANT = new_value.into();
         unsafe { UiaRaiseAutomationPropertyChangedEvent(el, property_id, old_value, new_value) }
             .unwrap();
     }
 
     properties! {
-        (UIA_ControlTypePropertyId, control_type_wrapped),
+        (UIA_ControlTypePropertyId, control_type),
         (UIA_NamePropertyId, name),
-        (UIA_IsKeyboardFocusablePropertyId, is_focusable_wrapped),
-        (UIA_HasKeyboardFocusPropertyId, is_focused_wrapped)
+        (UIA_IsContentElementPropertyId, is_content_element),
+        (UIA_IsControlElementPropertyId, is_content_element),
+        (UIA_IsEnabledPropertyId, is_enabled),
+        (UIA_IsKeyboardFocusablePropertyId, is_focusable),
+        (UIA_HasKeyboardFocusPropertyId, is_focused)
     }
 
     fn host_provider(&self) -> Result<IRawElementProviderSimple> {
@@ -330,11 +332,11 @@ impl ResolvedPlatformNode<'_> {
 
     fn navigate(&self, direction: NavigateDirection) -> Option<ResolvedPlatformNode> {
         let result = match direction {
-            NavigateDirection_Parent => self.node.unignored_parent(),
-            NavigateDirection_NextSibling => self.node.following_unignored_siblings().next(),
-            NavigateDirection_PreviousSibling => self.node.preceding_unignored_siblings().next(),
-            NavigateDirection_FirstChild => self.node.unignored_children().next(),
-            NavigateDirection_LastChild => self.node.unignored_children().next_back(),
+            NavigateDirection_Parent => self.node.parent(),
+            NavigateDirection_NextSibling => self.node.following_siblings().next(),
+            NavigateDirection_PreviousSibling => self.node.preceding_siblings().next(),
+            NavigateDirection_FirstChild => self.node.children().next(),
+            NavigateDirection_LastChild => self.node.children().next_back(),
             _ => None,
         };
         result.map(|node| self.relative(node))
@@ -438,7 +440,7 @@ impl PlatformNode {
     fn GetPropertyValue(&self, property_id: i32) -> Result<VARIANT> {
         self.resolve(|resolved| {
             let result = resolved.get_property_value(property_id);
-            Ok(result.unwrap_or_else(VariantFactory::empty).into())
+            Ok(result.into())
         })
     }
 

@@ -209,6 +209,10 @@ impl<'a> Node<'a> {
         self.data().invisible
     }
 
+    pub fn is_disabled(&self) -> bool {
+        self.data().disabled
+    }
+
     pub fn name(&self) -> Option<&str> {
         if let Some(name) = &self.data().name {
             Some(name)
