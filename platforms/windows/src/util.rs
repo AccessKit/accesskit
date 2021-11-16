@@ -3,10 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::{
-    convert::{From, Into, TryInto},
-    mem::ManuallyDrop,
-};
+use std::{convert::TryInto, mem::ManuallyDrop};
 use windows::Win32::{
     Foundation::*,
     System::{Com::*, Ole::Automation::*},
