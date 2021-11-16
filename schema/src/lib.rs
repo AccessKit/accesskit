@@ -237,7 +237,7 @@ pub enum Role {
 /// An action to be taken on an accessibility node.
 /// In contrast to [`DefaultActionVerb`], these describe what happens to the
 /// object, e.g. "focus".
-#[derive(EnumSetType, Debug, Hash)]
+#[derive(EnumSetType, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -364,7 +364,7 @@ pub enum DescriptionFrom {
 /// Function that can be performed when a dragged object is released
 /// on a drop target.
 /// Note: aria-dropeffect is deprecated in WAI-ARIA 1.1.
-#[derive(EnumSetType, Debug, Hash)]
+#[derive(EnumSetType, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
