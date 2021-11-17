@@ -10,7 +10,7 @@ use accesskit_schema::{NodeIdContent, Role};
 use arrayvec::ArrayVec;
 use windows as Windows;
 use windows::{
-    runtime::*,
+    core::*,
     Win32::{Foundation::*, Graphics::Gdi::*, System::Com::*, UI::Accessibility::*},
 };
 
@@ -414,7 +414,7 @@ impl PlatformNode {
     {
         self.node
             .map(|node| f(ResolvedPlatformNode::new(node, self.hwnd)))
-            .unwrap_or_else(|| Err(Error::new(HRESULT(UIA_E_ELEMENTNOTAVAILABLE), "")))
+            .unwrap_or_else(|| Err(Error::new(HRESULT(UIA_E_ELEMENTNOTAVAILABLE), "".into())))
     }
 
     fn ProviderOptions(&self) -> Result<ProviderOptions> {

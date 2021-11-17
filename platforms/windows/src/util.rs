@@ -6,7 +6,7 @@
 use std::{convert::TryInto, mem::ManuallyDrop};
 use windows::Win32::{
     Foundation::*,
-    System::{Com::*, Ole::Automation::*},
+    System::{Com::*, Ole::*},
 };
 
 pub(crate) struct VariantFactory(VARENUM, VARIANT_0_0_0);

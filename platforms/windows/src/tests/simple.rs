@@ -6,7 +6,7 @@
 use std::{convert::TryInto, num::NonZeroU64};
 
 use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
-use windows::{runtime::*, Win32::UI::Accessibility::*};
+use windows::{core::*, Win32::UI::Accessibility::*};
 
 use super::*;
 
