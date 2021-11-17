@@ -5,7 +5,7 @@
 
 use accesskit_schema::TreeUpdate;
 
-pub trait InitTree {
+pub trait InitTree: Send {
     fn init_accesskit_tree(self) -> TreeUpdate;
 }
 
@@ -15,7 +15,7 @@ impl InitTree for TreeUpdate {
     }
 }
 
-impl<T: FnOnce() -> TreeUpdate> InitTree for T {
+impl<T: FnOnce() -> TreeUpdate + Send> InitTree for T {
     fn init_accesskit_tree(self) -> TreeUpdate {
         self()
     }
