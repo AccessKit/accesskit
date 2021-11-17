@@ -14,3 +14,9 @@ impl InitTree for TreeUpdate {
         self
     }
 }
+
+impl<T: FnOnce() -> TreeUpdate> InitTree for T {
+    fn init_accesskit_tree(self) -> TreeUpdate {
+        self()
+    }
+}
