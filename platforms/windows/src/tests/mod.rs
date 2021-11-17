@@ -125,7 +125,8 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 return unsafe { DefWindowProcW(window, message, wparam, lparam) };
             }
             let window_state = unsafe { &*window_state };
-            window_state.manager.handle_wm_getobject(wparam, lparam)
+            let result = window_state.manager.handle_wm_getobject(wparam, lparam);
+            result.unwrap_or_else(|| unsafe { DefWindowProcW(window, message, wparam, lparam) })
         }
         WM_SETFOCUS | WM_EXITMENULOOP | WM_EXITSIZEMOVE => {
             update_focus(window, true);

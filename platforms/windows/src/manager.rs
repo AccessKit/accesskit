@@ -9,7 +9,10 @@ use accesskit_consumer::{Tree, TreeChange};
 use accesskit_provider::InitTree;
 use accesskit_schema::TreeUpdate;
 use lazy_init::LazyTransform;
-use windows::Win32::{Foundation::*, UI::Accessibility::*};
+use windows::Win32::{
+    Foundation::*,
+    UI::{Accessibility::*, WindowsAndMessaging::*},
+};
 
 use crate::node::{PlatformNode, ResolvedPlatformNode};
 
@@ -84,9 +87,18 @@ impl<Init: InitTree> Manager<Init> {
         PlatformNode::new(&node, self.hwnd)
     }
 
-    pub fn handle_wm_getobject(&self, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    pub fn handle_wm_getobject(&self, wparam: WPARAM, lparam: LPARAM) -> Option<LRESULT> {
+        // Don't bother with MSAA object IDs that are asking for something other
+        // than the client area of the window. DefWindowProc can handle those.
+        // First, cast the lparam to i32, to handle inconsistent conversion
+        // behavior in senders.
+        let objid: i32 = (lparam.0 & 0xFFFFFFFF) as _;
+        if objid < 0 && objid != UiaRootObjectId && objid != OBJID_CLIENT.0 {
+            return None;
+        }
+
         let el: IRawElementProviderSimple = self.root_platform_node().into();
-        unsafe { UiaReturnRawElementProvider(self.hwnd, wparam, lparam, el) }
+        Some(unsafe { UiaReturnRawElementProvider(self.hwnd, wparam, lparam, el) })
     }
 }
 
