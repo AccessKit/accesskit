@@ -5,8 +5,10 @@ edition = "2018"
 
 [dependencies]
 accesskit_consumer = { path = "../../consumer" }
+accesskit_provider = { path = "../../provider" }
 accesskit_schema = { path = "../../schema" }
 arrayvec = "0.7.1"
+lazy-init = "0.5.0"
 
 [dependencies.windows]
 version = "0.27.0"
