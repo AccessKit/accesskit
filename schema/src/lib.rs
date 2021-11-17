@@ -8,11 +8,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
+use enumset::{EnumSet, EnumSetType};
 #[cfg(feature = "schemars")]
 use schemars::JsonSchema;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
 use std::ops::Range;
 
 /// The type of an accessibility node.
@@ -237,10 +237,11 @@ pub enum Role {
 /// An action to be taken on an accessibility node.
 /// In contrast to [`DefaultActionVerb`], these describe what happens to the
 /// object, e.g. "focus".
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(EnumSetType, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "serde", enumset(serialize_as_list))]
 pub enum Action {
     /// Do the default action for an object, typically this means "click".
     Default,
@@ -363,10 +364,11 @@ pub enum DescriptionFrom {
 /// Function that can be performed when a dragged object is released
 /// on a drop target.
 /// Note: aria-dropeffect is deprecated in WAI-ARIA 1.1.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(EnumSetType, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "serde", enumset(serialize_as_list))]
 pub enum DropEffect {
     Copy,
     Execute,
@@ -664,8 +666,8 @@ pub struct Node {
 
     /// Unordered set of actions supported by this node.
     #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "BTreeSet::is_empty"))]
-    pub actions: BTreeSet<Action>,
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "EnumSet::is_empty"))]
+    pub actions: EnumSet<Action>,
 
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub name: Option<Box<str>>,
@@ -811,8 +813,8 @@ pub struct Node {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub grabbed: Option<bool>,
     #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "BTreeSet::is_empty"))]
-    pub drop_effects: BTreeSet<DropEffect>,
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "EnumSet::is_empty"))]
+    pub drop_effects: EnumSet<DropEffect>,
 
     /// Indicates whether this node causes a hard line-break
     /// (e.g. block level elements, or <br>)
@@ -1136,7 +1138,7 @@ impl Node {
             role,
             bounds: None,
             children: Default::default(),
-            actions: BTreeSet::new(),
+            actions: EnumSet::new(),
             name: None,
             name_from: None,
             description: None,
@@ -1171,7 +1173,7 @@ impl Node {
             selected: None,
             selected_from_focus: false,
             grabbed: None,
-            drop_effects: BTreeSet::new(),
+            drop_effects: EnumSet::new(),
             is_line_breaking_object: false,
             is_page_breaking_object: false,
             has_aria_attribute: false,
