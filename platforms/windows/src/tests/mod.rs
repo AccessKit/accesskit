@@ -3,10 +3,11 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use accesskit_provider::InitTree;
 use accesskit_schema::{NodeId, TreeUpdate};
 use lazy_static::lazy_static;
 use parking_lot::{const_mutex, Condvar, Mutex};
-use std::{cell::Cell, sync::Arc, time::Duration};
+use std::{cell::RefCell, rc::Rc, sync::Arc, time::Duration};
 use windows as Windows;
 use windows::{
     core::*,
@@ -67,9 +68,28 @@ lazy_static! {
     };
 }
 
+struct InnerWindowState {
+    focus: NodeId,
+    is_window_focused: bool,
+}
+
+struct WindowTreeInitializer {
+    initial_tree_state: TreeUpdate,
+    inner_window_state: Rc<RefCell<InnerWindowState>>,
+}
+
+impl InitTree for WindowTreeInitializer {
+    fn init_accesskit_tree(self) -> TreeUpdate {
+        let mut result = self.initial_tree_state;
+        let state = self.inner_window_state.borrow();
+        result.focus = state.is_window_focused.then(|| state.focus);
+        result
+    }
+}
+
 struct WindowState {
-    manager: Manager,
-    focus: Cell<NodeId>,
+    manager: Manager<WindowTreeInitializer>,
+    inner_state: Rc<RefCell<InnerWindowState>>,
 }
 
 unsafe fn get_window_state(window: HWND) -> *const WindowState {
@@ -78,13 +98,16 @@ unsafe fn get_window_state(window: HWND) -> *const WindowState {
 
 fn update_focus(window: HWND, is_window_focused: bool) {
     let window_state = unsafe { &*get_window_state(window) };
-    let update = TreeUpdate {
+    let mut inner_state = window_state.inner_state.borrow_mut();
+    inner_state.is_window_focused = is_window_focused;
+    let focus = inner_state.focus;
+    drop(inner_state);
+    window_state.manager.update_if_active(|| TreeUpdate {
         clear: None,
         nodes: vec![],
         tree: None,
-        focus: is_window_focused.then(|| window_state.focus.get()),
-    };
-    window_state.manager.update(update);
+        focus: is_window_focused.then(|| focus),
+    });
 }
 
 struct WindowCreateParams(TreeUpdate, NodeId);
@@ -96,10 +119,20 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             let create_params: Box<WindowCreateParams> =
                 unsafe { Box::from_raw(create_struct.lpCreateParams as _) };
             let WindowCreateParams(initial_state, initial_focus) = *create_params;
-            let manager = Manager::new(window, initial_state);
+            let inner_state = Rc::new(RefCell::new(InnerWindowState {
+                focus: initial_focus,
+                is_window_focused: false,
+            }));
+            let manager = Manager::new(
+                window,
+                WindowTreeInitializer {
+                    initial_tree_state: initial_state,
+                    inner_window_state: inner_state.clone(),
+                },
+            );
             let state = Box::new(WindowState {
                 manager,
-                focus: Cell::new(initial_focus),
+                inner_state,
             });
             unsafe { SetWindowLongPtrW(window, GWLP_USERDATA, Box::into_raw(state) as _) };
             unsafe { DefWindowProcW(window, message, wparam, lparam) }
