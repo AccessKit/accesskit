@@ -1,7 +1,8 @@
 // Based on the create_window sample in windows-samples-rs.
 
-use std::{cell::Cell, num::NonZeroU64};
+use std::{cell::RefCell, mem::drop, num::NonZeroU64, rc::Rc};
 
+use accesskit_provider::InitTree;
 use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
 use lazy_static::lazy_static;
 use windows::{
@@ -94,9 +95,28 @@ fn get_initial_state() -> TreeUpdate {
     }
 }
 
+struct InnerWindowState {
+    focus: NodeId,
+    is_window_focused: bool,
+}
+
+struct WindowTreeInitializer {
+    initial_tree_state: TreeUpdate,
+    inner_window_state: Rc<RefCell<InnerWindowState>>,
+}
+
+impl InitTree for WindowTreeInitializer {
+    fn init_accesskit_tree(self) -> TreeUpdate {
+        let mut result = self.initial_tree_state;
+        let state = self.inner_window_state.borrow();
+        result.focus = state.is_window_focused.then(|| state.focus);
+        result
+    }
+}
+
 struct WindowState {
-    manager: accesskit_windows::Manager,
-    focus: Cell<NodeId>,
+    manager: accesskit_windows::Manager<WindowTreeInitializer>,
+    inner_state: Rc<RefCell<InnerWindowState>>,
 }
 
 unsafe fn get_window_state(window: HWND) -> *const WindowState {
@@ -105,13 +125,16 @@ unsafe fn get_window_state(window: HWND) -> *const WindowState {
 
 fn update_focus(window: HWND, is_window_focused: bool) {
     let window_state = unsafe { &*get_window_state(window) };
-    let update = TreeUpdate {
+    let mut inner_state = window_state.inner_state.borrow_mut();
+    inner_state.is_window_focused = is_window_focused;
+    let focus = inner_state.focus;
+    drop(inner_state);
+    window_state.manager.update_if_active(|| TreeUpdate {
         clear: None,
         nodes: vec![],
         tree: None,
-        focus: is_window_focused.then(|| window_state.focus.get()),
-    };
-    window_state.manager.update(update);
+        focus: is_window_focused.then(|| focus),
+    });
 }
 
 struct WindowCreateParams(TreeUpdate, NodeId);
@@ -123,10 +146,20 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             let create_params: Box<WindowCreateParams> =
                 unsafe { Box::from_raw(create_struct.lpCreateParams as _) };
             let WindowCreateParams(initial_state, initial_focus) = *create_params;
-            let manager = accesskit_windows::Manager::new(window, initial_state);
+            let inner_state = Rc::new(RefCell::new(InnerWindowState {
+                focus: initial_focus,
+                is_window_focused: false,
+            }));
+            let manager = accesskit_windows::Manager::new(
+                window,
+                WindowTreeInitializer {
+                    initial_tree_state: initial_state,
+                    inner_window_state: inner_state.clone(),
+                },
+            );
             let state = Box::new(WindowState {
                 manager,
-                focus: Cell::new(initial_focus),
+                inner_state,
             });
             unsafe { SetWindowLongPtrW(window, GWLP_USERDATA, Box::into_raw(state) as _) };
             unsafe { DefWindowProcW(window, message, wparam, lparam) }
@@ -166,13 +199,13 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
         WM_KEYDOWN => match VIRTUAL_KEY(wparam.0 as u16) {
             VK_TAB => {
                 let window_state = unsafe { &*get_window_state(window) };
-                window_state
-                    .focus
-                    .set(if window_state.focus.get() == BUTTON_1_ID {
-                        BUTTON_2_ID
-                    } else {
-                        BUTTON_1_ID
-                    });
+                let mut inner_state = window_state.inner_state.borrow_mut();
+                inner_state.focus = if inner_state.focus == BUTTON_1_ID {
+                    BUTTON_2_ID
+                } else {
+                    BUTTON_1_ID
+                };
+                drop(inner_state);
                 update_focus(window, true);
                 LRESULT(0)
             }
@@ -181,7 +214,14 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 // This is a pretty hacky way of updating a node.
                 // A real GUI framework would have a consistent way
                 // of building a node from underlying data.
-                let focus = window_state.focus.get();
+                // Also, this update isn't as lazy as it could be;
+                // we force the AccessKit tree to be initialized.
+                // This is expedient in this case, because that tree
+                // is the only place where the state of the buttons
+                // is stored. It's not a problem because we're really
+                // only concerned with testing lazy updates in the context
+                // of focus changes.
+                let focus = window_state.inner_state.borrow().focus;
                 let node = if focus == BUTTON_1_ID {
                     make_button(BUTTON_1_ID, "You pressed button 1")
                 } else {
