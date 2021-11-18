@@ -191,6 +191,10 @@ where
 {
     let _lock_guard = MUTEX.lock();
 
+    // We must initialize COM before creating the UIA client. The MTA option
+    // is cleaner by far, especially when we want to wait for a UIA event handler
+    // to be called, and there's no reason not to use it here. Note that we don't
+    // initialize COM this way on the provider thread, as explained below.
     unsafe { CoInitializeEx(std::ptr::null_mut(), COINIT_MULTITHREADED) }.unwrap();
     let _com_guard = scopeguard::guard((), |_| unsafe { CoUninitialize() });
 
@@ -202,8 +206,12 @@ where
 
     crossbeam_utils::thread::scope(|thread_scope| {
         thread_scope.spawn(|_| {
-            unsafe { CoInitializeEx(std::ptr::null_mut(), COINIT_MULTITHREADED) }.unwrap();
-            let _com_guard = scopeguard::guard((), |_| unsafe { CoUninitialize() });
+            // We explicitly don't want to initialize COM on the provider thread,
+            // because we want to make sure that the provider side of UIA works
+            // even if COM is never initialized on the provider thread
+            // (as is the case if the window is never shown), or if COM is
+            // initialized after the window is shown (as is the case,
+            // at least on some Windows 10 machines, due to IME support).
 
             let window = create_window(window_title, initial_state, initial_focus).unwrap();
 
