@@ -191,16 +191,6 @@ where
 {
     let _lock_guard = MUTEX.lock();
 
-    // We must initialize COM before creating the UIA client. The MTA option
-    // is cleaner by far, especially when we want to wait for a UIA event handler
-    // to be called, and there's no reason not to use it here. Note that we don't
-    // initialize COM this way on the provider thread, as explained below.
-    unsafe { CoInitializeEx(std::ptr::null_mut(), COINIT_MULTITHREADED) }.unwrap();
-    let _com_guard = scopeguard::guard((), |_| unsafe { CoUninitialize() });
-
-    let uia: IUIAutomation =
-        unsafe { CoCreateInstance(&CUIAutomation8, None, CLSCTX_INPROC_SERVER) }?;
-
     let window_mutex: Mutex<Option<HWND>> = Mutex::new(None);
     let window_cv = Condvar::new();
 
@@ -239,6 +229,24 @@ where
         let _window_guard = scopeguard::guard((), |_| {
             unsafe { PostMessageW(window, WM_CLOSE, WPARAM(0), LPARAM(0)) }.unwrap()
         });
+
+        // We must initialize COM before creating the UIA client. The MTA option
+        // is cleaner by far, especially when we want to wait for a UIA event
+        // handler to be called, and there's no reason not to use it here.
+        // Note that we don't initialize COM this way on the provider thread,
+        // as explained above. It's also important that we let the provider
+        // thread do its forced initialization of UIA, in an environment
+        // where COM has not been initialized, before we create the UIA client,
+        // which also triggers UIA initialization, in a thread where COM
+        // _has_ been initialized. This way, we ensure that the provider side
+        // of UIA works even if it is set up in an environment where COM
+        // has not been initialized, and that this sequence of events
+        // doesn't prevent the UIA client from working.
+        unsafe { CoInitializeEx(std::ptr::null_mut(), COINIT_MULTITHREADED) }.unwrap();
+        let _com_guard = scopeguard::guard((), |_| unsafe { CoUninitialize() });
+
+        let uia: IUIAutomation =
+            unsafe { CoCreateInstance(&CUIAutomation8, None, CLSCTX_INPROC_SERVER) }?;
 
         let s = Scope { uia, window };
         f(&s)
