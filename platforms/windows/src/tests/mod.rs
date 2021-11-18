@@ -6,7 +6,7 @@
 use accesskit_schema::{NodeId, TreeUpdate};
 use lazy_static::lazy_static;
 use parking_lot::{const_mutex, Condvar, Mutex};
-use std::{sync::Arc, time::Duration};
+use std::{cell::Cell, sync::Arc, time::Duration};
 use windows as Windows;
 use windows::{
     core::*,
@@ -69,10 +69,10 @@ lazy_static! {
 
 struct WindowState {
     manager: Manager,
-    focus: NodeId,
+    focus: Cell<NodeId>,
 }
 
-unsafe fn get_window_state(window: HWND) -> *mut WindowState {
+unsafe fn get_window_state(window: HWND) -> *const WindowState {
     GetWindowLongPtrW(window, GWLP_USERDATA) as _
 }
 
@@ -82,7 +82,7 @@ fn update_focus(window: HWND, is_window_focused: bool) {
         clear: None,
         nodes: vec![],
         tree: None,
-        focus: is_window_focused.then(|| window_state.focus),
+        focus: is_window_focused.then(|| window_state.focus.get()),
     };
     window_state.manager.update(update);
 }
@@ -99,7 +99,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             let manager = Manager::new(window, initial_state);
             let state = Box::new(WindowState {
                 manager,
-                focus: initial_focus,
+                focus: Cell::new(initial_focus),
             });
             unsafe { SetWindowLongPtrW(window, GWLP_USERDATA, Box::into_raw(state) as _) };
             unsafe { DefWindowProcW(window, message, wparam, lparam) }
