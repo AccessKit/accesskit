@@ -145,7 +145,14 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             LRESULT(0)
         }
         WM_GETOBJECT => {
-            let window_state = unsafe { &*get_window_state(window) };
+            let window_state = unsafe { get_window_state(window) };
+            if window_state.is_null() {
+                // We need to be prepared to gracefully handle WM_GETOBJECT
+                // while the window is being destroyed; this can happen if
+                // the thread is using a COM STA.
+                return unsafe { DefWindowProcW(window, message, wparam, lparam) };
+            }
+            let window_state = unsafe { &*window_state };
             window_state.manager.handle_wm_getobject(wparam, lparam)
         }
         WM_SETFOCUS | WM_EXITMENULOOP | WM_EXITSIZEMOVE => {
