@@ -252,15 +252,13 @@ pub enum Action {
     Collapse,
     Expand,
 
+    /// Requires [`ActionRequest::data`] to be set to [`ActionData::CustomAction`].
     CustomAction,
 
     /// Decrement a slider or range control by one step value.
     Decrement,
     /// Increment a slider or range control by one step value.
     Increment,
-
-    /// Get the bounding rect for a range of text.
-    GetTextLocation,
 
     HideTooltip,
     ShowTooltip,
@@ -274,7 +272,8 @@ pub enum Action {
     LoadInlineTextBoxes,
 
     /// Delete any selected text in the control's text value and
-    /// insert |ActionRequest.value| in its place, like when typing or pasting.
+    /// insert the specified value in its place, like when typing or pasting.
+    /// Requires [`ActionRequest::data`] to be set to [`ActionData::Value`].
     ReplaceSelectedText,
 
     // Scrolls by approximately one screen in a specific direction. Should be
@@ -289,24 +288,28 @@ pub enum Action {
     ScrollUp,
 
     /// Scroll any scrollable containers to make the target object visible
-    /// on the screen.  Optionally pass a subfocus rect in
-    /// ActionRequest.target_rect, in node-local coordinates.
+    /// on the screen.  Optionally set [`ActionRequest::data`] to
+    /// [`ActionData::ScrollTargetRect`].
     ScrollIntoView,
 
-    /// Scroll the given object to a specified point on the screen in
-    /// global screen coordinates. Pass a point in ActionRequest.target_point.
+    /// Scroll the given object to a specified point on the screen.
+    /// Requires [`ActionRequest::data`] to be set to [`ActionData::ScrollToPoint`].
     ScrollToPoint,
 
+    /// Requires [`ActionRequest::data`] to be set to [`ActionData::ScrollOffset`].
     SetScrollOffset,
-    SetSelection,
+
+    /// Requires [`ActionRequest::data`] to be set to [`ActionData::TextSelection`].
+    SetTextSelection,
 
     /// Don't focus this node, but set it as the sequential focus navigation
     /// starting point, so that pressing Tab moves to the next element
     /// following this one, for example.
     SetSequentialFocusNavigationStartingPoint,
 
-    /// Replace the value of the control with ActionRequest.value and
-    /// reset the selection, if applicable.
+    /// Replace the value of the control with the specified value and
+    /// reset the selection, if applicable. Requires [`ActionRequest::data`]
+    /// to be set to [`ActionData::Value`].
     SetValue,
 
     ShowContextMenu,
@@ -561,6 +564,16 @@ pub struct TreeId(pub Box<str>);
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+pub struct Point {
+    pub x: f32,
+    pub y: f32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct Rect {
     pub left: f32,
     pub top: f32,
@@ -647,6 +660,20 @@ fn is_false(b: &bool) -> bool {
 #[cfg(feature = "serde")]
 fn is_empty<T>(slice: &[T]) -> bool {
     slice.is_empty()
+}
+
+/// Offsets are in code units for the encoding specified in
+/// [`Tree::source_string_encoding`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+pub struct TextSelection {
+    anchor_node: NodeId,
+    anchor_offset: usize,
+    focus_node: NodeId,
+    focus_offset: usize,
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
@@ -994,10 +1021,8 @@ pub struct Node {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub scroll_y_max: Option<f32>,
 
-    /// The endpoints of a text selection, in code units for the encoding
-    /// specified in [`Tree::source_string_encoding`].
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub text_selection: Option<Range<usize>>,
+    pub text_selection: Option<TextSelection>,
 
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub aria_column_count: Option<usize>,
@@ -1377,4 +1402,32 @@ pub struct TreeUpdate {
     /// and the AccessKit platform adapters.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub focus: Option<NodeId>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+pub enum ActionData {
+    CustomAction(i32),
+    Value(Box<str>),
+    /// Optional target rectangle for [`Action::ScrollIntoView`], in node-local
+    /// coordinates.
+    ScrollTargetRect(Rect),
+    /// Target for [`Action::ScrollToPoint`], in screen coordinates.
+    ScrollToPoint(Point),
+    /// Target for [`Action::SetScrollOffset`], in node-local coordinates.
+    SetScrollOffset(Point),
+    SetTextSelection(TextSelection),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+pub struct ActionRequest {
+    action: Action,
+    target: NodeId,
+    data: Option<ActionData>,
 }
