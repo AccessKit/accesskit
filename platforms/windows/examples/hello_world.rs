@@ -9,7 +9,6 @@ use windows::{
     Win32::{
         Foundation::*,
         Graphics::Gdi::ValidateRect,
-        System::Com::*,
         System::LibraryLoader::GetModuleHandleW,
         UI::{Input::KeyboardAndMouse::*, WindowsAndMessaging::*},
     },
@@ -229,18 +228,6 @@ fn create_window(title: &str, initial_state: TreeUpdate, initial_focus: NodeId) 
 }
 
 fn main() -> Result<()> {
-    // There isn't a single correct answer to the question of how, or whether,
-    // to initialize COM. It's not clear whether this should even matter
-    // for a UI Automation provider that, like AccessKit, doesn't use
-    // COM threading. However, as discussed in #37, it apparently does matter,
-    // at least on some machines. If a program depends on legacy code
-    // that requires a single-threaded apartment (STA), then it should
-    // initialize COM that way. But that's not the case for AccessKit's
-    // examples and tests, and the multi-threaded apartment (MTA)
-    // is apparently more reliable for our use case, so we choose that.
-    unsafe { CoInitializeEx(std::ptr::null_mut(), COINIT_MULTITHREADED) }?;
-    let _com_guard = scopeguard::guard((), |_| unsafe { CoUninitialize() });
-
     let window = create_window(WINDOW_TITLE, get_initial_state(), INITIAL_FOCUS)?;
     unsafe { ShowWindow(window, SW_SHOW) };
 

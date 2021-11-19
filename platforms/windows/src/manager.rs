@@ -18,6 +18,14 @@ pub struct Manager {
 
 impl Manager {
     pub fn new(hwnd: HWND, initial_state: TreeUpdate) -> Self {
+        // It's unfortunate that we have to force UIA to initialize early;
+        // it would be more optimal to let UIA lazily initialize itself
+        // when we receive the first `WM_GETOBJECT`. But if we don't do this,
+        // then on a thread that's using a COM STA, we can get a race condition
+        // that leads to nested WM_GETOBJECT messages and, in some cases,
+        // ATs not realizing that our window natively implements UIA. See #37.
+        force_init_uia();
+
         Self {
             hwnd,
             tree: Tree::new(initial_state),
@@ -57,4 +65,14 @@ impl Manager {
         let el: IRawElementProviderSimple = self.root_platform_node().into();
         unsafe { UiaReturnRawElementProvider(self.hwnd, wparam, lparam, el) }
     }
+}
+
+fn force_init_uia() {
+    // `UiaLookupId` is a cheap way of forcing UIA to initialize itself.
+    unsafe {
+        UiaLookupId(
+            AutomationIdentifierType_Property,
+            &ControlType_Property_GUID,
+        )
+    };
 }
