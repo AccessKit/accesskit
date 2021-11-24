@@ -14,3 +14,17 @@ impl InitTree for TreeUpdate {
         self
     }
 }
+
+// Based on the standard library's impl of Error for Box<T: Error>
+impl<T: InitTree> InitTree for Box<T> {
+    fn init_accesskit_tree(self) -> TreeUpdate {
+        InitTree::init_accesskit_tree(*self)
+    }
+}
+
+// Based on the standard library's impl of From<E: Error> for Box<dyn Error>
+impl<'a, T: InitTree + 'a> From<T> for Box<dyn InitTree + 'a> {
+    fn from(init: T) -> Box<dyn InitTree + 'a> {
+        Box::new(init)
+    }
+}
