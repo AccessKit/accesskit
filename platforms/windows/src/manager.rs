@@ -6,18 +6,23 @@
 use std::sync::Arc;
 
 use accesskit_consumer::{Tree, TreeChange};
+use accesskit_provider::InitTree;
 use accesskit_schema::TreeUpdate;
-use windows::Win32::{Foundation::*, UI::Accessibility::*};
+use lazy_init::LazyTransform;
+use windows::Win32::{
+    Foundation::*,
+    UI::{Accessibility::*, WindowsAndMessaging::*},
+};
 
 use crate::node::{PlatformNode, ResolvedPlatformNode};
 
-pub struct Manager {
+pub struct Manager<Init: InitTree = TreeUpdate> {
     hwnd: HWND,
-    tree: Arc<Tree>,
+    tree: LazyTransform<Init, Arc<Tree>>,
 }
 
-impl Manager {
-    pub fn new(hwnd: HWND, initial_state: TreeUpdate) -> Self {
+impl<Init: InitTree> Manager<Init> {
+    pub fn new(hwnd: HWND, init: Init) -> Self {
         // It's unfortunate that we have to force UIA to initialize early;
         // it would be more optimal to let UIA lazily initialize itself
         // when we receive the first `WM_GETOBJECT`. But if we don't do this,
@@ -28,12 +33,32 @@ impl Manager {
 
         Self {
             hwnd,
-            tree: Tree::new(initial_state),
+            tree: LazyTransform::new(init),
         }
     }
 
+    fn get_or_create_tree(&self) -> &Arc<Tree> {
+        self.tree
+            .get_or_create(|init| Tree::new(init.init_accesskit_tree()))
+    }
+
     pub fn update(&self, update: TreeUpdate) {
-        self.tree.update_and_process_changes(update, |change| {
+        let tree = self.get_or_create_tree();
+        self.update_internal(tree, update);
+    }
+
+    pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
+        let tree = match self.tree.get() {
+            Some(tree) => tree,
+            None => {
+                return;
+            }
+        };
+        self.update_internal(tree, updater());
+    }
+
+    fn update_internal(&self, tree: &Arc<Tree>, update: TreeUpdate) {
+        tree.update_and_process_changes(update, |change| {
             match change {
                 TreeChange::FocusMoved {
                     old_node: _,
@@ -56,14 +81,24 @@ impl Manager {
     }
 
     fn root_platform_node(&self) -> PlatformNode {
-        let reader = self.tree.read();
+        let tree = self.get_or_create_tree();
+        let reader = tree.read();
         let node = reader.root();
         PlatformNode::new(&node, self.hwnd)
     }
 
-    pub fn handle_wm_getobject(&self, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    pub fn handle_wm_getobject(&self, wparam: WPARAM, lparam: LPARAM) -> Option<LRESULT> {
+        // Don't bother with MSAA object IDs that are asking for something other
+        // than the client area of the window. DefWindowProc can handle those.
+        // First, cast the lparam to i32, to handle inconsistent conversion
+        // behavior in senders.
+        let objid: i32 = (lparam.0 & 0xFFFFFFFF) as _;
+        if objid < 0 && objid != UiaRootObjectId && objid != OBJID_CLIENT.0 {
+            return None;
+        }
+
         let el: IRawElementProviderSimple = self.root_platform_node().into();
-        unsafe { UiaReturnRawElementProvider(self.hwnd, wparam, lparam, el) }
+        Some(unsafe { UiaReturnRawElementProvider(self.hwnd, wparam, lparam, el) })
     }
 }
 

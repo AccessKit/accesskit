@@ -1,0 +1,8 @@
+[package]
+name = "accesskit_provider"
+version = "0.1.0"
+authors = ["Matt Campbell <mattcampbell@pobox.com>"]
+edition = "2018"
+
+[dependencies]
+accesskit_schema = { path = "../schema" }

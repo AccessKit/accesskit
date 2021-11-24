@@ -35,6 +35,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "accesskit_provider"
+version = "0.1.0"
+dependencies = [
+ "accesskit_schema",
+]
+
+[[package]]
 name = "accesskit_schema"
 version = "0.1.0"
 dependencies = [
@@ -48,9 +55,11 @@ name = "accesskit_windows"
 version = "0.1.0"
 dependencies = [
  "accesskit_consumer",
+ "accesskit_provider",
  "accesskit_schema",
  "arrayvec",
  "crossbeam-utils",
+ "lazy-init",
  "lazy_static",
  "parking_lot",
  "scopeguard",
@@ -332,6 +341,12 @@ name = "jni-sys"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8eaf4bc02d17cbdd7ff4c7438cafcdf7fb9a4613313ad11b4f8fefe7d3fa0130"
+
+[[package]]
+name = "lazy-init"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23517540be87a91d06324e6bf6286ba8214171123ee8862ae9a5e7d938d71815"
 
 [[package]]
 name = "lazy_static"
