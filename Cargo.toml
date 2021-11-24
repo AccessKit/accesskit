@@ -2,7 +2,6 @@
 members = [
     "schema",
     "consumer",
-    "provider",
     "platforms/mac",
     "platforms/mac/jni",
     "platforms/windows",
@@ -10,7 +9,6 @@ members = [
 default-members = [
     "schema",
     "consumer",
-    "provider",
 ]
 
 [profile.release]

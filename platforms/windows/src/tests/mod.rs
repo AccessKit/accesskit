@@ -3,7 +3,6 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit_provider::InitTree;
 use accesskit_schema::{NodeId, TreeUpdate};
 use lazy_static::lazy_static;
 use parking_lot::{const_mutex, Condvar, Mutex};
@@ -73,22 +72,8 @@ struct InnerWindowState {
     is_window_focused: bool,
 }
 
-struct WindowTreeInitializer {
-    initial_tree_state: TreeUpdate,
-    inner_window_state: Rc<RefCell<InnerWindowState>>,
-}
-
-impl InitTree for WindowTreeInitializer {
-    fn init_accesskit_tree(self) -> TreeUpdate {
-        let mut result = self.initial_tree_state;
-        let state = self.inner_window_state.borrow();
-        result.focus = state.is_window_focused.then(|| state.focus);
-        result
-    }
-}
-
 struct WindowState {
-    manager: Manager<WindowTreeInitializer>,
+    manager: Manager,
     inner_state: Rc<RefCell<InnerWindowState>>,
 }
 
@@ -123,12 +108,15 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 focus: initial_focus,
                 is_window_focused: false,
             }));
+            let inner_state_for_tree_init = inner_state.clone();
             let manager = Manager::new(
                 window,
-                WindowTreeInitializer {
-                    initial_tree_state: initial_state,
-                    inner_window_state: inner_state.clone(),
-                },
+                Box::new(move || {
+                    let mut result = initial_state;
+                    let state = inner_state_for_tree_init.borrow();
+                    result.focus = state.is_window_focused.then(|| state.focus);
+                    result
+                }),
             );
             let state = Box::new(WindowState {
                 manager,

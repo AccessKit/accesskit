@@ -6,7 +6,6 @@
 use std::sync::Arc;
 
 use accesskit_consumer::{Tree, TreeChange};
-use accesskit_provider::InitTree;
 use accesskit_schema::TreeUpdate;
 use lazy_init::LazyTransform;
 use windows::Win32::{
@@ -16,13 +15,13 @@ use windows::Win32::{
 
 use crate::node::{PlatformNode, ResolvedPlatformNode};
 
-pub struct Manager<Init: InitTree = TreeUpdate> {
+pub struct Manager {
     hwnd: HWND,
-    tree: LazyTransform<Init, Arc<Tree>>,
+    tree: LazyTransform<Box<dyn FnOnce() -> TreeUpdate>, Arc<Tree>>,
 }
 
-impl<Init: InitTree> Manager<Init> {
-    pub fn new(hwnd: HWND, init: Init) -> Self {
+impl Manager {
+    pub fn new(hwnd: HWND, init: Box<dyn FnOnce() -> TreeUpdate>) -> Self {
         // It's unfortunate that we have to force UIA to initialize early;
         // it would be more optimal to let UIA lazily initialize itself
         // when we receive the first `WM_GETOBJECT`. But if we don't do this,
@@ -38,8 +37,7 @@ impl<Init: InitTree> Manager<Init> {
     }
 
     fn get_or_create_tree(&self) -> &Arc<Tree> {
-        self.tree
-            .get_or_create(|init| Tree::new(init.init_accesskit_tree()))
+        self.tree.get_or_create(|init| Tree::new(init()))
     }
 
     pub fn update(&self, update: TreeUpdate) {
