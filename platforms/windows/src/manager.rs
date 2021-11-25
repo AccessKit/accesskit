@@ -21,7 +21,7 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub fn new(hwnd: HWND, init: Box<dyn FnOnce() -> TreeUpdate>) -> Self {
+    pub fn new(hwnd: HWND, factory: Box<dyn FnOnce() -> TreeUpdate>) -> Self {
         // It's unfortunate that we have to force UIA to initialize early;
         // it would be more optimal to let UIA lazily initialize itself
         // when we receive the first `WM_GETOBJECT`. But if we don't do this,
@@ -32,12 +32,12 @@ impl Manager {
 
         Self {
             hwnd,
-            tree: LazyTransform::new(init),
+            tree: LazyTransform::new(factory),
         }
     }
 
     fn get_or_create_tree(&self) -> &Arc<Tree> {
-        self.tree.get_or_create(|init| Tree::new(init()))
+        self.tree.get_or_create(|factory| Tree::new(factory()))
     }
 
     pub fn update(&self, update: TreeUpdate) {
