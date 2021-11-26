@@ -109,17 +109,16 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 is_window_focused: false,
             }));
             let inner_state_for_tree_init = inner_state.clone();
-            let manager = Manager::new(
-                window,
-                Box::new(move || {
-                    let mut result = initial_state;
-                    let state = inner_state_for_tree_init.borrow();
-                    result.focus = state.is_window_focused.then(|| state.focus);
-                    result
-                }),
-            );
             let state = Box::new(WindowState {
-                manager,
+                manager: Manager::new(
+                    window,
+                    Box::new(move || {
+                        let mut result = initial_state;
+                        let state = inner_state_for_tree_init.borrow();
+                        result.focus = state.is_window_focused.then(|| state.focus);
+                        result
+                    }),
+                ),
                 inner_state,
             });
             unsafe { SetWindowLongPtrW(window, GWLP_USERDATA, Box::into_raw(state) as _) };
