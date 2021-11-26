@@ -15,16 +15,16 @@ use windows::Win32::{
 
 use crate::node::{PlatformNode, ResolvedPlatformNode};
 
-pub struct Manager<Factory = Box<dyn FnOnce() -> TreeUpdate>>
+pub struct Manager<Source = Box<dyn FnOnce() -> TreeUpdate>>
 where
-    Factory: FnOnce() -> TreeUpdate,
+    Source: Into<TreeUpdate>,
 {
     hwnd: HWND,
-    tree: LazyTransform<Factory, Arc<Tree>>,
+    tree: LazyTransform<Source, Arc<Tree>>,
 }
 
-impl<Factory: FnOnce() -> TreeUpdate> Manager<Factory> {
-    pub fn new(hwnd: HWND, factory: Factory) -> Self {
+impl<Source: Into<TreeUpdate>> Manager<Source> {
+    pub fn new(hwnd: HWND, source: Source) -> Self {
         // It's unfortunate that we have to force UIA to initialize early;
         // it would be more optimal to let UIA lazily initialize itself
         // when we receive the first `WM_GETOBJECT`. But if we don't do this,
@@ -35,12 +35,12 @@ impl<Factory: FnOnce() -> TreeUpdate> Manager<Factory> {
 
         Self {
             hwnd,
-            tree: LazyTransform::new(factory),
+            tree: LazyTransform::new(source),
         }
     }
 
     fn get_or_create_tree(&self) -> &Arc<Tree> {
-        self.tree.get_or_create(|factory| Tree::new(factory()))
+        self.tree.get_or_create(|source| Tree::new(source.into()))
     }
 
     pub fn update(&self, update: TreeUpdate) {
