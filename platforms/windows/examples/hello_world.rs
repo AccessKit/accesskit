@@ -2,7 +2,6 @@
 
 use std::{cell::RefCell, mem::drop, num::NonZeroU64, rc::Rc};
 
-use accesskit_provider::InitTree;
 use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
 use lazy_static::lazy_static;
 use windows::{
@@ -100,22 +99,8 @@ struct InnerWindowState {
     is_window_focused: bool,
 }
 
-struct WindowTreeInitializer {
-    initial_tree_state: TreeUpdate,
-    inner_window_state: Rc<RefCell<InnerWindowState>>,
-}
-
-impl InitTree for WindowTreeInitializer {
-    fn init_accesskit_tree(self) -> TreeUpdate {
-        let mut result = self.initial_tree_state;
-        let state = self.inner_window_state.borrow();
-        result.focus = state.is_window_focused.then(|| state.focus);
-        result
-    }
-}
-
 struct WindowState {
-    manager: accesskit_windows::Manager<WindowTreeInitializer>,
+    manager: accesskit_windows::Manager,
     inner_state: Rc<RefCell<InnerWindowState>>,
 }
 
@@ -150,15 +135,17 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 focus: initial_focus,
                 is_window_focused: false,
             }));
-            let manager = accesskit_windows::Manager::new(
-                window,
-                WindowTreeInitializer {
-                    initial_tree_state: initial_state,
-                    inner_window_state: inner_state.clone(),
-                },
-            );
+            let inner_state_for_tree_init = inner_state.clone();
             let state = Box::new(WindowState {
-                manager,
+                manager: accesskit_windows::Manager::new(
+                    window,
+                    Box::new(move || {
+                        let mut result = initial_state;
+                        let state = inner_state_for_tree_init.borrow();
+                        result.focus = state.is_window_focused.then(|| state.focus);
+                        result
+                    }),
+                ),
                 inner_state,
             });
             unsafe { SetWindowLongPtrW(window, GWLP_USERDATA, Box::into_raw(state) as _) };

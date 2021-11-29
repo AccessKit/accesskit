@@ -1404,6 +1404,12 @@ pub struct TreeUpdate {
     pub focus: Option<NodeId>,
 }
 
+impl<T: FnOnce() -> TreeUpdate> From<T> for TreeUpdate {
+    fn from(factory: T) -> Self {
+        factory()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]

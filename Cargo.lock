@@ -35,13 +35,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "accesskit_provider"
-version = "0.1.0"
-dependencies = [
- "accesskit_schema",
-]
-
-[[package]]
 name = "accesskit_schema"
 version = "0.1.0"
 dependencies = [
@@ -55,7 +48,6 @@ name = "accesskit_windows"
 version = "0.1.0"
 dependencies = [
  "accesskit_consumer",
- "accesskit_provider",
  "accesskit_schema",
  "arrayvec",
  "crossbeam-utils",
