@@ -7,6 +7,7 @@ use std::{convert::TryInto, mem::ManuallyDrop};
 use windows::Win32::{
     Foundation::*,
     System::{Com::*, Ole::*},
+    UI::Accessibility::*,
 };
 
 pub(crate) struct VariantFactory(VARENUM, VARIANT_0_0_0);
@@ -88,4 +89,17 @@ fn safe_array_from_slice<T>(vt: VARENUM, slice: &[T]) -> *mut SAFEARRAY {
 
 pub(crate) fn safe_array_from_i32_slice(slice: &[i32]) -> *mut SAFEARRAY {
     safe_array_from_slice(VT_I4, slice)
+}
+
+pub(crate) enum Event {
+    Simple {
+        element: IRawElementProviderSimple,
+        event_id: i32,
+    },
+    PropertyChanged {
+        element: IRawElementProviderSimple,
+        property_id: i32,
+        old_value: VARIANT,
+        new_value: VARIANT,
+    },
 }

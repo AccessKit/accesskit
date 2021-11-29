@@ -87,12 +87,13 @@ fn update_focus(window: HWND, is_window_focused: bool) {
     inner_state.is_window_focused = is_window_focused;
     let focus = inner_state.focus;
     drop(inner_state);
-    window_state.manager.update_if_active(|| TreeUpdate {
+    let events = window_state.manager.update_if_active(|| TreeUpdate {
         clear: None,
         nodes: vec![],
         tree: None,
         focus: is_window_focused.then(|| focus),
     });
+    events.raise();
 }
 
 struct WindowCreateParams(TreeUpdate, NodeId);

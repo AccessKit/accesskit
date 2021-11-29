@@ -31,12 +31,12 @@ macro_rules! properties {
                 _ => VariantFactory::empty()
             }
         }
-        pub(crate) fn raise_property_changes(&self, old: &ResolvedPlatformNode) {
+        pub(crate) fn enqueue_property_changes(&self, queue: &mut Vec<Event>, old: &ResolvedPlatformNode) {
             $({
                 let old_value = old.$m();
                 let new_value = self.$m();
                 if old_value != new_value {
-                    self.raise_property_change($id, old_value.into(), new_value.into());
+                    self.enqueue_property_change(queue, $id, old_value.into(), new_value.into());
                 }
             })*
         }
@@ -299,17 +299,22 @@ impl ResolvedPlatformNode<'_> {
         self.node.is_focused()
     }
 
-    fn raise_property_change(
+    fn enqueue_property_change(
         &self,
+        queue: &mut Vec<Event>,
         property_id: i32,
         old_value: VariantFactory,
         new_value: VariantFactory,
     ) {
-        let el: IRawElementProviderSimple = self.downgrade().into();
+        let element: IRawElementProviderSimple = self.downgrade().into();
         let old_value: VARIANT = old_value.into();
         let new_value: VARIANT = new_value.into();
-        unsafe { UiaRaiseAutomationPropertyChangedEvent(el, property_id, old_value, new_value) }
-            .unwrap();
+        queue.push(Event::PropertyChanged {
+            element,
+            property_id,
+            old_value,
+            new_value,
+        });
     }
 
     properties! {

@@ -7,7 +7,7 @@ mod node;
 mod util;
 
 mod manager;
-pub use manager::Manager;
+pub use manager::{Manager, QueuedEvents};
 
 #[cfg(test)]
 mod tests;
