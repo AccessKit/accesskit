@@ -88,7 +88,26 @@ impl<Source: Into<TreeUpdate>> Manager<Source> {
         PlatformNode::new(&node, self.hwnd)
     }
 
-    pub fn handle_wm_getobject(&self, wparam: WPARAM, lparam: LPARAM) -> Option<LRESULT> {
+    /// Handle the `WM_GETOBJECT` window message.
+    ///
+    /// This returns an `Option` so the caller can pass the message
+    /// to `DefWindowProc` if AccessKit decides not to handle it.
+    /// The optional value is an `Into<LRESULT>` rather than simply an `LRESULT`
+    /// so the necessary call to UIA, which may lead to a nested `WM_GETOBJECT`
+    /// message, can be done outside of any lock that the caller might hold
+    /// on the `Manager` or window state, while still abstracting away
+    /// the details of that call to UIA.
+    ///
+    /// Callers must avoid a second deadlock scenario. The tree is lazily
+    /// initialized on the first call to this method. So if the caller
+    /// holds a lock while calling this method, it must be careful to ensure
+    /// that running its tree initialization function while holding that lock
+    /// doesn't lead to deadlock.
+    pub fn handle_wm_getobject(
+        &self,
+        wparam: WPARAM,
+        lparam: LPARAM,
+    ) -> Option<impl Into<LRESULT>> {
         // Don't bother with MSAA object IDs that are asking for something other
         // than the client area of the window. DefWindowProc can handle those.
         // First, cast the lparam to i32, to handle inconsistent conversion
@@ -99,7 +118,25 @@ impl<Source: Into<TreeUpdate>> Manager<Source> {
         }
 
         let el: IRawElementProviderSimple = self.root_platform_node().into();
-        Some(unsafe { UiaReturnRawElementProvider(self.hwnd, wparam, lparam, el) })
+        Some(WmGetObjectResult {
+            hwnd: self.hwnd,
+            wparam,
+            lparam,
+            el,
+        })
+    }
+}
+
+struct WmGetObjectResult {
+    hwnd: HWND,
+    wparam: WPARAM,
+    lparam: LPARAM,
+    el: IRawElementProviderSimple,
+}
+
+impl From<WmGetObjectResult> for LRESULT {
+    fn from(this: WmGetObjectResult) -> Self {
+        unsafe { UiaReturnRawElementProvider(this.hwnd, this.wparam, this.lparam, this.el) }
     }
 }
 
