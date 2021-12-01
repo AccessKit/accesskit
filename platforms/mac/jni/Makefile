@@ -1,6 +1,6 @@
 BUILD_TYPE ?= debug
 JAR = build/accesskit-mac.jar
-JAVA_SRC = java/dev/accesskit/mac/AccessKitMacManager.java
+JAVA_SRC = java/dev/accesskit/mac/AccessKitMacAdapter.java
 DYLIB = ../../../target/$(BUILD_TYPE)/libaccesskit_mac_jni.dylib
 RUST_SRC = src/lib.rs
 DIST_TGZ = build/accesskit-mac-jni-$(BUILD_TYPE).tar.gz

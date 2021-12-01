@@ -18,7 +18,7 @@ use crate::{
     util::Event,
 };
 
-pub struct Manager<Source = Box<dyn FnOnce() -> TreeUpdate>>
+pub struct Adapter<Source = Box<dyn FnOnce() -> TreeUpdate>>
 where
     Source: Into<TreeUpdate>,
 {
@@ -26,7 +26,7 @@ where
     tree: LazyTransform<Source, Arc<Tree>>,
 }
 
-impl<Source: Into<TreeUpdate>> Manager<Source> {
+impl<Source: Into<TreeUpdate>> Adapter<Source> {
     pub fn new(hwnd: HWND, source: Source) -> Self {
         // It's unfortunate that we have to force UIA to initialize early;
         // it would be more optimal to let UIA lazily initialize itself
@@ -118,7 +118,7 @@ impl<Source: Into<TreeUpdate>> Manager<Source> {
     /// The optional value is an `Into<LRESULT>` rather than simply an `LRESULT`
     /// so the necessary call to UIA, which may lead to a nested `WM_GETOBJECT`
     /// message, can be done outside of any lock that the caller might hold
-    /// on the `Manager` or window state, while still abstracting away
+    /// on the `Adapter` or window state, while still abstracting away
     /// the details of that call to UIA.
     ///
     /// Callers must avoid a second deadlock scenario. The tree is lazily

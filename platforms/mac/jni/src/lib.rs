@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::TreeUpdate;
-use accesskit_mac::Manager;
+use accesskit_mac::Adapter;
 use cocoa::appkit::NSWindow;
 use cocoa::base::id;
 use jni::objects::{JClass, JString};
@@ -14,12 +14,12 @@ use jni::JNIEnv;
 fn new_common(env: JNIEnv, view: id, initial_state_json: JString) -> jlong {
     let initial_state_json: String = env.get_string(initial_state_json).unwrap().into();
     let initial_state = serde_json::from_str::<TreeUpdate>(&initial_state_json).unwrap();
-    let manager = Manager::new(view, initial_state);
-    Box::into_raw(Box::new(manager)) as jlong
+    let adapter = Adapter::new(view, initial_state);
+    Box::into_raw(Box::new(adapter)) as jlong
 }
 
 #[no_mangle]
-pub extern "system" fn Java_dev_accesskit_mac_AccessKitMacManager_nativeNewForNSWindow(
+pub extern "system" fn Java_dev_accesskit_mac_AccessKitMacAdapter_nativeNewForNSWindow(
     env: JNIEnv,
     _class: JClass,
     window_ptr: jlong,
@@ -31,7 +31,7 @@ pub extern "system" fn Java_dev_accesskit_mac_AccessKitMacManager_nativeNewForNS
 }
 
 #[no_mangle]
-pub extern "system" fn Java_dev_accesskit_mac_AccessKitMacManager_nativeNewForNSView(
+pub extern "system" fn Java_dev_accesskit_mac_AccessKitMacAdapter_nativeNewForNSView(
     env: JNIEnv,
     _class: JClass,
     view_ptr: jlong,
@@ -42,34 +42,34 @@ pub extern "system" fn Java_dev_accesskit_mac_AccessKitMacManager_nativeNewForNS
 }
 
 #[no_mangle]
-pub extern "system" fn Java_dev_accesskit_mac_AccessKitMacManager_nativeDestroy(
+pub extern "system" fn Java_dev_accesskit_mac_AccessKitMacAdapter_nativeDestroy(
     _env: JNIEnv,
     _class: JClass,
     ptr: jlong,
 ) {
-    let _boxed_manager = unsafe { Box::from_raw(ptr as *mut Manager) };
+    let _boxed_adapter = unsafe { Box::from_raw(ptr as *mut Adapter) };
     // Let the box drop at the end of the scope.
 }
 
 #[no_mangle]
-pub extern "system" fn Java_dev_accesskit_mac_AccessKitMacManager_nativeUpdate(
+pub extern "system" fn Java_dev_accesskit_mac_AccessKitMacAdapter_nativeUpdate(
     env: JNIEnv,
     _class: JClass,
     ptr: jlong,
     update_json: JString,
 ) {
-    let manager = unsafe { &mut *(ptr as *mut Manager) };
+    let adapter = unsafe { &mut *(ptr as *mut Adapter) };
     let update_json: String = env.get_string(update_json).unwrap().into();
     let update = serde_json::from_str::<TreeUpdate>(&update_json).unwrap();
-    manager.update(update);
+    adapter.update(update);
 }
 
 #[no_mangle]
-pub extern "system" fn Java_dev_accesskit_mac_AccessKitMacManager_nativeInject(
+pub extern "system" fn Java_dev_accesskit_mac_AccessKitMacAdapter_nativeInject(
     _env: JNIEnv,
     _class: JClass,
     ptr: jlong,
 ) {
-    let manager = unsafe { &mut *(ptr as *mut Manager) };
-    manager.inject();
+    let adapter = unsafe { &mut *(ptr as *mut Adapter) };
+    adapter.inject();
 }
