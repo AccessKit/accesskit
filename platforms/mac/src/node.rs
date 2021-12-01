@@ -14,8 +14,8 @@ use std::collections::HashMap;
 use std::ffi::c_void;
 use std::sync::Mutex;
 
+use accesskit::{NodeId, Role, TreeId};
 use accesskit_consumer::{Node, WeakNode};
-use accesskit_schema::{NodeId, Role, TreeId};
 use cocoa::appkit::NSWindow;
 use cocoa::base::{id, nil, BOOL, NO, YES};
 use cocoa::foundation::{NSArray, NSPoint, NSRect, NSSize, NSValue};

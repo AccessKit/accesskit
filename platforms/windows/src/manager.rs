@@ -5,8 +5,8 @@
 
 use std::sync::Arc;
 
+use accesskit::TreeUpdate;
 use accesskit_consumer::{Tree, TreeChange};
-use accesskit_schema::TreeUpdate;
 use lazy_init::LazyTransform;
 use windows::Win32::{
     Foundation::*,

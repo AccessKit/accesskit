@@ -5,8 +5,8 @@
 
 #![allow(non_upper_case_globals)]
 
+use accesskit::{NodeIdContent, Role};
 use accesskit_consumer::{Node, WeakNode};
-use accesskit_schema::{NodeIdContent, Role};
 use arrayvec::ArrayVec;
 use windows as Windows;
 use windows::{

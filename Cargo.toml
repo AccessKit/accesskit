@@ -1,13 +1,13 @@
 [workspace]
 members = [
-    "schema",
+    "common",
     "consumer",
     "platforms/mac",
     "platforms/mac/jni",
     "platforms/windows",
 ]
 default-members = [
-    "schema",
+    "common",
     "consumer",
 ]
 

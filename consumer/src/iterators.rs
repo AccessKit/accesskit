@@ -10,7 +10,7 @@
 
 use std::iter::FusedIterator;
 
-use accesskit_schema::NodeId;
+use accesskit::NodeId;
 
 use crate::node::Node;
 
@@ -413,7 +413,7 @@ impl<'a> FusedIterator for UnignoredChildren<'a> {}
 #[cfg(test)]
 mod tests {
     use crate::tests::*;
-    use accesskit_schema::NodeId;
+    use accesskit::NodeId;
 
     #[test]
     fn following_siblings() {

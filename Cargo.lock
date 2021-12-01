@@ -3,10 +3,19 @@
 version = 3
 
 [[package]]
+name = "accesskit"
+version = "0.1.0"
+dependencies = [
+ "enumset",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "accesskit_consumer"
 version = "0.1.0"
 dependencies = [
- "accesskit_schema",
+ "accesskit",
  "im",
  "parking_lot",
 ]
@@ -15,8 +24,8 @@ dependencies = [
 name = "accesskit_mac"
 version = "0.1.0"
 dependencies = [
+ "accesskit",
  "accesskit_consumer",
- "accesskit_schema",
  "cocoa",
  "lazy_static",
  "objc",
@@ -27,28 +36,19 @@ dependencies = [
 name = "accesskit_mac_jni"
 version = "0.1.0"
 dependencies = [
+ "accesskit",
  "accesskit_mac",
- "accesskit_schema",
  "cocoa",
  "jni",
  "serde_json",
 ]
 
 [[package]]
-name = "accesskit_schema"
-version = "0.1.0"
-dependencies = [
- "enumset",
- "schemars",
- "serde",
-]
-
-[[package]]
 name = "accesskit_windows"
 version = "0.1.0"
 dependencies = [
+ "accesskit",
  "accesskit_consumer",
- "accesskit_schema",
  "arrayvec",
  "crossbeam-utils",
  "lazy-init",

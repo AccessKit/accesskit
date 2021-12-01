@@ -3,8 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use accesskit::TreeUpdate;
 use accesskit_mac::Manager;
-use accesskit_schema::TreeUpdate;
 use cocoa::appkit::NSWindow;
 use cocoa::base::id;
 use jni::objects::{JClass, JString};
