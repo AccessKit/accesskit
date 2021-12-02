@@ -5,8 +5,8 @@
 
 use std::sync::Arc;
 
+use accesskit::TreeUpdate;
 use accesskit_consumer::Tree;
-use accesskit_schema::TreeUpdate;
 use cocoa::base::{id, nil};
 use cocoa::foundation::NSArray;
 use objc::rc::StrongPtr;

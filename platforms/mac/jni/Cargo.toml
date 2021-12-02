@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
+accesskit = { path = "../../../common", features = ["serde"] }
 accesskit_mac = { path = ".." }
-accesskit_schema = { path = "../../../schema", features = ["serde"] }
 cocoa = "0.24.0"
 jni = "0.19.0"
 serde_json = "1.0"

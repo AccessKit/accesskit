@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-pub use accesskit_schema::{Node as NodeData, Tree as TreeData};
+pub use accesskit::{Node as NodeData, Tree as TreeData};
 
 pub(crate) mod tree;
 pub use tree::{Change as TreeChange, Reader as TreeReader, Tree};
@@ -19,7 +19,7 @@ pub use iterators::{
 
 #[cfg(test)]
 mod tests {
-    use accesskit_schema::{
+    use accesskit::{
         Node, NodeId, Rect, RelativeBounds, Role, StringEncoding, Tree, TreeId, TreeUpdate,
     };
     use std::num::NonZeroU64;

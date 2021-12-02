@@ -6,7 +6,7 @@
 use std::iter::FusedIterator;
 use std::sync::{Arc, Weak};
 
-use accesskit_schema::{NodeId, Rect, Role};
+use accesskit::{NodeId, Rect, Role};
 
 use crate::iterators::{
     FollowingSiblings, FollowingUnignoredSiblings, PrecedingSiblings, PrecedingUnignoredSiblings,
@@ -275,7 +275,7 @@ impl Node<'_> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit_schema::Rect;
+    use accesskit::Rect;
 
     use crate::tests::*;
 

@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit_schema::{NodeId, TreeId, TreeUpdate};
+use accesskit::{NodeId, TreeId, TreeUpdate};
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -354,7 +354,7 @@ impl Tree {
 
 #[cfg(test)]
 mod tests {
-    use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+    use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
     use std::num::NonZeroU64;
 
     const TREE_ID: &str = "test_tree";

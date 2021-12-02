@@ -1,6 +1,6 @@
 // Based on cocoa/examples/hello_world.rs in core-foundation-rs
 
-use accesskit_schema::TreeUpdate;
+use accesskit::TreeUpdate;
 use cocoa::appkit::{
     NSApp, NSApplication, NSApplicationActivateIgnoringOtherApps,
     NSApplicationActivationPolicyRegular, NSBackingStoreBuffered, NSMenu, NSMenuItem,

@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit_schema::{NodeId, TreeUpdate};
+use accesskit::{NodeId, TreeUpdate};
 use lazy_static::lazy_static;
 use parking_lot::{const_mutex, Condvar, Mutex};
 use std::{cell::RefCell, rc::Rc, sync::Arc, time::Duration};

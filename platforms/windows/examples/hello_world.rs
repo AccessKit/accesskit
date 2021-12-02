@@ -2,7 +2,7 @@
 
 use std::{cell::RefCell, mem::drop, num::NonZeroU64, rc::Rc};
 
-use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
 use lazy_static::lazy_static;
 use windows::{
     core::*,
