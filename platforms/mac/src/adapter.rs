@@ -14,12 +14,12 @@ use objc::{msg_send, sel, sel_impl};
 
 use crate::node::PlatformNode;
 
-pub struct Manager {
+pub struct Adapter {
     view: StrongPtr,
     tree: Arc<Tree>,
 }
 
-impl Manager {
+impl Adapter {
     pub fn new(view: id, initial_state: TreeUpdate) -> Self {
         assert!(!view.is_null());
         Self {

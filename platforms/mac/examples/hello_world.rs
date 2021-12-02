@@ -60,8 +60,8 @@ fn main() {
 
         // Set up accessibility
         let view = window.contentView();
-        let manager = accesskit_mac::Manager::new(view, initial_state);
-        manager.inject();
+        let adapter = accesskit_mac::Adapter::new(view, initial_state);
+        adapter.inject();
 
         window.makeKeyAndOrderFront_(nil);
         let current_app = NSRunningApplication::currentApplication(nil);

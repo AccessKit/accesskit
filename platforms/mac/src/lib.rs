@@ -6,5 +6,5 @@
 mod node;
 mod util;
 
-mod manager;
-pub use manager::Manager;
+mod adapter;
+pub use adapter::Adapter;

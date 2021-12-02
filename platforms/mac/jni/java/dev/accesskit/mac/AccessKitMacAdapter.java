@@ -5,15 +5,15 @@
 
 package dev.accesskit.mac;
 
-public final class AccessKitMacManager implements AutoCloseable {
-    public static AccessKitMacManager forNSWindow(long nsWindow, String initialStateJson) {
+public final class AccessKitMacAdapter implements AutoCloseable {
+    public static AccessKitMacAdapter forNSWindow(long nsWindow, String initialStateJson) {
         long ptr = nativeNewForNSWindow(nsWindow, initialStateJson);
-        return new AccessKitMacManager(ptr);
+        return new AccessKitMacAdapter(ptr);
     }
 
-    public static AccessKitMacManager forNSView(long nsView, String initialStateJson) {
+    public static AccessKitMacAdapter forNSView(long nsView, String initialStateJson) {
         long ptr = nativeNewForNSView(nsView, initialStateJson);
-        return new AccessKitMacManager(ptr);
+        return new AccessKitMacAdapter(ptr);
     }
 
     @Override
@@ -44,7 +44,7 @@ public final class AccessKitMacManager implements AutoCloseable {
 
     private long ptr;
 
-    private AccessKitMacManager(long ptr) {
+    private AccessKitMacAdapter(long ptr) {
         this.ptr = ptr;
     }
 

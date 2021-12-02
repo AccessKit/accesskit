@@ -100,7 +100,7 @@ struct InnerWindowState {
 }
 
 struct WindowState {
-    manager: accesskit_windows::Manager,
+    adapter: accesskit_windows::Adapter,
     inner_state: Rc<RefCell<InnerWindowState>>,
 }
 
@@ -114,7 +114,7 @@ fn update_focus(window: HWND, is_window_focused: bool) {
     inner_state.is_window_focused = is_window_focused;
     let focus = inner_state.focus;
     drop(inner_state);
-    let events = window_state.manager.update_if_active(|| TreeUpdate {
+    let events = window_state.adapter.update_if_active(|| TreeUpdate {
         clear: None,
         nodes: vec![],
         tree: None,
@@ -138,7 +138,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             }));
             let inner_state_for_tree_init = inner_state.clone();
             let state = Box::new(WindowState {
-                manager: accesskit_windows::Manager::new(
+                adapter: accesskit_windows::Adapter::new(
                     window,
                     Box::new(move || {
                         let mut result = initial_state;
@@ -173,7 +173,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 return unsafe { DefWindowProcW(window, message, wparam, lparam) };
             }
             let window_state = unsafe { &*window_state };
-            let result = window_state.manager.handle_wm_getobject(wparam, lparam);
+            let result = window_state.adapter.handle_wm_getobject(wparam, lparam);
             result.map_or_else(
                 || unsafe { DefWindowProcW(window, message, wparam, lparam) },
                 |result| result.into(),
@@ -224,7 +224,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                     tree: None,
                     focus: Some(focus),
                 };
-                let events = window_state.manager.update(update);
+                let events = window_state.adapter.update(update);
                 events.raise();
                 LRESULT(0)
             }
