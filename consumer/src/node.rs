@@ -259,7 +259,7 @@ impl WeakNode {
     {
         self.tree
             .upgrade()
-            .map(|tree| tree.read().node_by_id(self.id).map(|node| f(node)))
+            .map(|tree| tree.read().node_by_id(self.id).map(f))
             .flatten()
     }
 }
