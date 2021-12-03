@@ -890,22 +890,22 @@ pub struct Node {
     pub popup_for: Option<NodeId>,
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub controls: Box<[NodeId]>,
+    pub controls: Vec<NodeId>,
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub details: Box<[NodeId]>,
+    pub details: Vec<NodeId>,
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub described_by: Box<[NodeId]>,
+    pub described_by: Vec<NodeId>,
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub flow_to: Box<[NodeId]>,
+    pub flow_to: Vec<NodeId>,
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub labelled_by: Box<[NodeId]>,
+    pub labelled_by: Vec<NodeId>,
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub radio_groups: Box<[NodeId]>,
+    pub radio_groups: Vec<NodeId>,
 
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
