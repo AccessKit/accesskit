@@ -43,16 +43,16 @@ mod tests {
 
     pub fn test_tree() -> Arc<crate::tree::Tree> {
         let root = Node {
-            children: Box::new([
+            children: vec![
                 PARAGRAPH_0_ID,
                 PARAGRAPH_1_IGNORED_ID,
                 PARAGRAPH_2_ID,
                 PARAGRAPH_3_IGNORED_ID,
-            ]),
+            ],
             ..Node::new(ROOT_ID, Role::RootWebArea)
         };
         let paragraph_0 = Node {
-            children: Box::new([STATIC_TEXT_0_0_IGNORED_ID]),
+            children: vec![STATIC_TEXT_0_0_IGNORED_ID],
             ..Node::new(PARAGRAPH_0_ID, Role::Paragraph)
         };
         let static_text_0_0_ignored = Node {
@@ -71,7 +71,7 @@ mod tests {
                 },
                 transform: None,
             }),
-            children: Box::new([STATIC_TEXT_1_0_ID]),
+            children: vec![STATIC_TEXT_1_0_ID],
             ignored: true,
             ..Node::new(PARAGRAPH_1_IGNORED_ID, Role::Paragraph)
         };
@@ -90,7 +90,7 @@ mod tests {
             ..Node::new(STATIC_TEXT_1_0_ID, Role::StaticText)
         };
         let paragraph_2 = Node {
-            children: Box::new([STATIC_TEXT_2_0_ID]),
+            children: vec![STATIC_TEXT_2_0_ID],
             ..Node::new(PARAGRAPH_2_ID, Role::Paragraph)
         };
         let static_text_2_0 = Node {
@@ -98,12 +98,12 @@ mod tests {
             ..Node::new(STATIC_TEXT_2_0_ID, Role::StaticText)
         };
         let paragraph_3_ignored = Node {
-            children: Box::new([
+            children: vec![
                 EMPTY_CONTAINER_3_0_IGNORED_ID,
                 LINK_3_1_IGNORED_ID,
                 BUTTON_3_2_ID,
                 EMPTY_CONTAINER_3_3_IGNORED_ID,
-            ]),
+            ],
             ignored: true,
             ..Node::new(PARAGRAPH_3_IGNORED_ID, Role::Paragraph)
         };
@@ -112,7 +112,7 @@ mod tests {
             ..Node::new(EMPTY_CONTAINER_3_0_IGNORED_ID, Role::GenericContainer)
         };
         let link_3_1_ignored = Node {
-            children: Box::new([STATIC_TEXT_3_1_0_ID]),
+            children: vec![STATIC_TEXT_3_1_0_ID],
             ignored: true,
             linked: true,
             ..Node::new(LINK_3_1_IGNORED_ID, Role::Link)

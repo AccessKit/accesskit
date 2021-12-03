@@ -387,7 +387,7 @@ mod tests {
             clear: None,
             nodes: vec![
                 Node {
-                    children: Box::new([NODE_ID_2, NODE_ID_3]),
+                    children: vec![NODE_ID_2, NODE_ID_3],
                     ..Node::new(NODE_ID_1, Role::Window)
                 },
                 Node::new(NODE_ID_2, Role::Button),
@@ -432,7 +432,7 @@ mod tests {
             clear: None,
             nodes: vec![
                 Node {
-                    children: Box::new([NODE_ID_2]),
+                    children: vec![NODE_ID_2],
                     ..root_node
                 },
                 Node::new(NODE_ID_2, Role::RootWebArea),
@@ -445,8 +445,8 @@ mod tests {
         tree.update_and_process_changes(second_update, |change| {
             if let super::Change::NodeUpdated { old_node, new_node } = &change {
                 if new_node.id() == NODE_ID_1
-                    && old_node.data().children == Box::new([])
-                    && new_node.data().children == Box::new([NODE_ID_2])
+                    && old_node.data().children == vec![]
+                    && new_node.data().children == vec![NODE_ID_2]
                 {
                     got_updated_root_node = true;
                     return;
@@ -478,7 +478,7 @@ mod tests {
             clear: None,
             nodes: vec![
                 Node {
-                    children: Box::new([NODE_ID_2]),
+                    children: vec![NODE_ID_2],
                     ..root_node.clone()
                 },
                 Node::new(NODE_ID_2, Role::RootWebArea),
@@ -503,8 +503,8 @@ mod tests {
         tree.update_and_process_changes(second_update, |change| {
             if let super::Change::NodeUpdated { old_node, new_node } = &change {
                 if new_node.id() == NODE_ID_1
-                    && old_node.data().children == Box::new([NODE_ID_2])
-                    && new_node.data().children == Box::new([])
+                    && old_node.data().children == vec![NODE_ID_2]
+                    && new_node.data().children == vec![]
                 {
                     got_updated_root_node = true;
                     return;
@@ -530,7 +530,7 @@ mod tests {
             clear: None,
             nodes: vec![
                 Node {
-                    children: Box::new([NODE_ID_2, NODE_ID_3]),
+                    children: vec![NODE_ID_2, NODE_ID_3],
                     ..Node::new(NODE_ID_1, Role::Window)
                 },
                 Node::new(NODE_ID_2, Role::Button),
@@ -599,7 +599,7 @@ mod tests {
             clear: None,
             nodes: vec![
                 Node {
-                    children: Box::new([NODE_ID_2]),
+                    children: vec![NODE_ID_2],
                     ..Node::new(NODE_ID_1, Role::Window)
                 },
                 Node {
@@ -658,7 +658,7 @@ mod tests {
             clear: None,
             nodes: vec![
                 Node {
-                    children: Box::new([NODE_ID_2, NODE_ID_3]),
+                    children: vec![NODE_ID_2, NODE_ID_3],
                     ..Node::new(NODE_ID_1, Role::Window)
                 },
                 Node::new(NODE_ID_2, Role::Button),

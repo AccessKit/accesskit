@@ -26,7 +26,7 @@ fn make_button(id: NodeId, name: &str) -> Node {
 
 fn get_initial_state() -> TreeUpdate {
     let root = Node {
-        children: Box::new([BUTTON_1_ID, BUTTON_2_ID]),
+        children: vec![BUTTON_1_ID, BUTTON_2_ID],
         name: Some(WINDOW_TITLE.into()),
         ..Node::new(WINDOW_ID, Role::Window)
     };
