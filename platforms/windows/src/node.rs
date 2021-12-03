@@ -5,9 +5,10 @@
 
 #![allow(non_upper_case_globals)]
 
-use accesskit::{NodeIdContent, Role};
+use accesskit::{CheckedState, NodeIdContent, Role};
 use accesskit_consumer::{Node, WeakNode};
 use arrayvec::ArrayVec;
+use paste::paste;
 use windows as Windows;
 use windows::{
     core::*,
@@ -19,28 +20,6 @@ use crate::util::*;
 pub(crate) struct ResolvedPlatformNode<'a> {
     node: Node<'a>,
     hwnd: HWND,
-}
-
-macro_rules! properties {
-    ($(($id:ident, $m:ident)),+) => {
-        fn get_property_value(&self, property_id: i32) -> VariantFactory {
-            match property_id {
-                $($id => {
-                    self.$m().into()
-                })*
-                _ => VariantFactory::empty()
-            }
-        }
-        pub(crate) fn enqueue_property_changes(&self, queue: &mut Vec<Event>, old: &ResolvedPlatformNode) {
-            $({
-                let old_value = old.$m();
-                let new_value = self.$m();
-                if old_value != new_value {
-                    self.enqueue_property_change(queue, $id, old_value.into(), new_value.into());
-                }
-            })*
-        }
-    };
 }
 
 impl ResolvedPlatformNode<'_> {
@@ -58,11 +37,6 @@ impl ResolvedPlatformNode<'_> {
 
     fn provider_options(&self) -> ProviderOptions {
         ProviderOptions_ServerSideProvider
-    }
-
-    fn is_pattern_supported(&self, _pattern_id: i32) -> bool {
-        // TODO: add patterns
-        false
     }
 
     fn control_type(&self) -> i32 {
@@ -299,6 +273,27 @@ impl ResolvedPlatformNode<'_> {
         self.node.is_focused()
     }
 
+    fn is_toggle_pattern_supported(&self) -> bool {
+        self.node.checked_state().is_some()
+    }
+
+    fn toggle_state(&self) -> ToggleState {
+        match self.node.checked_state().unwrap() {
+            CheckedState::False => ToggleState_Off,
+            CheckedState::True => ToggleState_On,
+            CheckedState::Mixed => ToggleState_Indeterminate,
+        }
+    }
+
+    pub(crate) fn enqueue_property_changes(
+        &self,
+        queue: &mut Vec<Event>,
+        old: &ResolvedPlatformNode,
+    ) {
+        self.enqueue_simple_property_changes(queue, old);
+        self.enqueue_pattern_property_changes(queue, old);
+    }
+
     fn enqueue_property_change(
         &self,
         queue: &mut Vec<Event>,
@@ -315,16 +310,6 @@ impl ResolvedPlatformNode<'_> {
             old_value,
             new_value,
         });
-    }
-
-    properties! {
-        (UIA_ControlTypePropertyId, control_type),
-        (UIA_NamePropertyId, name),
-        (UIA_IsContentElementPropertyId, is_content_element),
-        (UIA_IsControlElementPropertyId, is_content_element),
-        (UIA_IsEnabledPropertyId, is_enabled),
-        (UIA_IsKeyboardFocusablePropertyId, is_focusable),
-        (UIA_HasKeyboardFocusPropertyId, is_focused)
     }
 
     fn host_provider(&self) -> Result<IRawElementProviderSimple> {
@@ -392,12 +377,17 @@ impl ResolvedPlatformNode<'_> {
         }
         None
     }
+
+    fn toggle(&self) {
+        // TODO: request action (#53)
+    }
 }
 
 #[implement(
     Windows::Win32::UI::Accessibility::IRawElementProviderSimple,
     Windows::Win32::UI::Accessibility::IRawElementProviderFragment,
-    Windows::Win32::UI::Accessibility::IRawElementProviderFragmentRoot
+    Windows::Win32::UI::Accessibility::IRawElementProviderFragmentRoot,
+    Windows::Win32::UI::Accessibility::IToggleProvider
 )]
 pub(crate) struct PlatformNode {
     node: WeakNode,
@@ -517,4 +507,103 @@ impl PlatformNode {
             None => Err(Error::OK),
         })
     }
+
+    fn Toggle(&self) -> Result<()> {
+        self.resolve(|resolved| {
+            resolved.toggle();
+            Ok(())
+        })
+    }
+}
+
+macro_rules! properties {
+    ($(($base_id:ident, $m:ident)),+) => {
+        impl ResolvedPlatformNode<'_> {
+            fn get_property_value(&self, property_id: i32) -> VariantFactory {
+                match property_id {
+                    $(paste! { [< UIA_ $base_id PropertyId>] } => {
+                        self.$m().into()
+                    })*
+                    _ => VariantFactory::empty()
+                }
+            }
+            fn enqueue_simple_property_changes(
+                &self,
+                queue: &mut Vec<Event>,
+                old: &ResolvedPlatformNode,
+            ) {
+                $({
+                    let old_value = old.$m();
+                    let new_value = self.$m();
+                    if old_value != new_value {
+                        self.enqueue_property_change(
+                            queue,
+                            paste! { [<UIA_ $base_id PropertyId>] },
+                            old_value.into(),
+                            new_value.into(),
+                        );
+                    }
+                })*
+            }
+        }
+    };
+}
+
+macro_rules! patterns {
+    ($(($base_pattern_id:ident, $is_supported:ident, (
+        $(($base_property_id:ident, $getter:ident, $com_type:ident)),+
+    ))),+) => {
+        impl ResolvedPlatformNode<'_> {
+            fn is_pattern_supported(&self, pattern_id: i32) -> bool {
+                match pattern_id {
+                    $(paste! { [< UIA_ $base_pattern_id PatternId>] } => {
+                        self.$is_supported()
+                    })*
+                    _ => false,
+                }
+            }
+            fn enqueue_pattern_property_changes(
+                &self,
+                queue: &mut Vec<Event>,
+                old: &ResolvedPlatformNode,
+            ) {
+                $(if self.$is_supported() {
+                    $({
+                        let old_value = old.$getter();
+                        let new_value = self.$getter();
+                        if old_value != new_value {
+                            self.enqueue_property_change(
+                                queue,
+                                paste! { [<UIA_ $base_pattern_id $base_property_id PropertyId>] },
+                                old_value.into(),
+                                new_value.into(),
+                            );
+                        }
+                    })*
+                })*
+            }
+        }
+        #[allow(non_snake_case)]
+        impl PlatformNode {
+            $($(fn $base_property_id(&self) -> Result<$com_type> {
+                self.resolve(|resolved| Ok(resolved.$getter().into()))
+            })*)*
+        }
+    };
+}
+
+properties! {
+    (ControlType, control_type),
+    (Name, name),
+    (IsContentElement, is_content_element),
+    (IsControlElement, is_content_element),
+    (IsEnabled, is_enabled),
+    (IsKeyboardFocusable, is_focusable),
+    (HasKeyboardFocus, is_focused)
+}
+
+patterns! {
+    (Toggle, is_toggle_pattern_supported, (
+        (ToggleState, toggle_state, ToggleState)
+    ))
 }

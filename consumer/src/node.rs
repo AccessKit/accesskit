@@ -6,7 +6,7 @@
 use std::iter::FusedIterator;
 use std::sync::{Arc, Weak};
 
-use accesskit::{NodeId, Rect, Role};
+use accesskit::{CheckedState, NodeId, Rect, Role};
 
 use crate::iterators::{
     FollowingSiblings, FollowingUnignoredSiblings, PrecedingSiblings, PrecedingUnignoredSiblings,
@@ -211,6 +211,10 @@ impl<'a> Node<'a> {
 
     pub fn is_disabled(&self) -> bool {
         self.data().disabled
+    }
+
+    pub fn checked_state(&self) -> Option<CheckedState> {
+        self.data().checked_state
     }
 
     pub fn name(&self) -> Option<String> {
