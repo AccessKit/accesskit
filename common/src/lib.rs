@@ -689,7 +689,7 @@ pub struct Node {
     pub bounds: Option<RelativeBounds>,
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub children: Box<[NodeId]>,
+    pub children: Vec<NodeId>,
 
     /// Unordered set of actions supported by this node.
     #[cfg_attr(feature = "serde", serde(default))]
@@ -871,7 +871,7 @@ pub struct Node {
     /// column.
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub indirect_children: Box<[NodeId]>,
+    pub indirect_children: Vec<NodeId>,
 
     // Relationships between this node and other nodes.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
