@@ -213,11 +213,22 @@ impl<'a> Node<'a> {
         self.data().disabled
     }
 
-    pub fn name(&self) -> Option<&str> {
+    pub fn name(&self) -> Option<String> {
         if let Some(name) = &self.data().name {
-            Some(name)
+            Some(name.to_string())
         } else {
-            None
+            let labelled_by = &self.data().labelled_by;
+            if labelled_by.is_empty() {
+                None
+            } else {
+                Some(
+                    labelled_by
+                        .iter()
+                        .map(|id| self.tree_reader.node_by_id(*id).unwrap().name().unwrap())
+                        .collect::<Vec<String>>()
+                        .join(" "),
+                )
+            }
         }
     }
 

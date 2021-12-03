@@ -616,7 +616,7 @@ mod tests {
         };
         let tree = super::Tree::new(first_update);
         assert_eq!(
-            Some("foo"),
+            Some("foo".into()),
             tree.read().node_by_id(NODE_ID_2).unwrap().name()
         );
         let second_update = TreeUpdate {
@@ -632,8 +632,8 @@ mod tests {
         tree.update_and_process_changes(second_update, |change| {
             if let super::Change::NodeUpdated { old_node, new_node } = &change {
                 if new_node.id() == NODE_ID_2
-                    && old_node.name() == Some("foo")
-                    && new_node.name() == Some("bar")
+                    && old_node.name() == Some("foo".into())
+                    && new_node.name() == Some("bar".into())
                 {
                     got_updated_child_node = true;
                     return;
@@ -643,7 +643,7 @@ mod tests {
         });
         assert!(got_updated_child_node);
         assert_eq!(
-            Some("bar"),
+            Some("bar".into()),
             tree.read().node_by_id(NODE_ID_2).unwrap().name()
         );
     }
