@@ -3,11 +3,14 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::atspi::{ObjectAddress, ObjectId, ObjectRef, OwnedObjectAddress, Role};
+use crate::atspi::{
+    interfaces::{Interface, Interfaces},
+    ObjectAddress, ObjectId, ObjectRef, OwnedObjectAddress, Role, StateSet
+};
 use std::convert::TryInto;
 use zbus::names::OwnedUniqueName;
 
-pub trait AccessibleInterface {
+pub trait Accessible: Clone + Send + Sync + 'static {
     fn name(&self) -> String;
 
     fn description(&self) -> String;
@@ -27,14 +30,18 @@ pub trait AccessibleInterface {
     fn index_in_parent(&self) -> Option<usize>;
 
     fn role(&self) -> Role;
+
+    fn state(&self) -> StateSet;
+
+    fn interfaces(&self) -> Interfaces;
 }
 
-pub struct AccessibleInterfaceObject<T> {
+pub struct AccessibleInterface<T> {
     bus_name: OwnedUniqueName,
     object: T,
 }
 
-impl<T> AccessibleInterfaceObject<T> {
+impl<T> AccessibleInterface<T> {
     pub fn new(bus_name: OwnedUniqueName, object: T) -> Self {
         Self {
             bus_name,
@@ -43,10 +50,13 @@ impl<T> AccessibleInterfaceObject<T> {
     }
 }
 
+const INTERFACES: &[&'static str] = &[
+    "org.a11y.atspi.Accessible",
+    "org.a11y.atspi.Application"
+];
+
 #[dbus_interface(name = "org.a11y.atspi.Accessible")]
-impl<T> AccessibleInterfaceObject<T>
-where T: AccessibleInterface + Send + Sync + 'static
-{
+impl<T: Accessible> AccessibleInterface<T> {
     #[dbus_interface(property)]
     fn name(&self) -> String {
         self.object.name()
@@ -81,12 +91,12 @@ where T: AccessibleInterface + Send + Sync + 'static
         self.object.id()
     }
 
-    fn get_child_at_index(&self, index: i32) -> OwnedObjectAddress {
-        match index.try_into().ok().map(|index| self.object.child_at_index(index)).flatten() {
+    fn get_child_at_index(&self, index: i32) -> (OwnedObjectAddress,) {
+        (match index.try_into().ok().map(|index| self.object.child_at_index(index)).flatten() {
             Some(ObjectRef::Managed(id)) => ObjectAddress::accessible(self.bus_name.as_ref(), id).into(),
             Some(ObjectRef::Unmanaged(address)) => address,
             None => ObjectAddress::null(self.bus_name.as_ref()).into()
-        }
+        },)
     }
 
     fn get_children(&self) -> Vec<OwnedObjectAddress> {
@@ -104,5 +114,20 @@ where T: AccessibleInterface + Send + Sync + 'static
 
     fn get_role(&self) -> Role {
         self.object.role()
+    }
+
+    fn get_state(&self) -> StateSet {
+        self.object.state()
+    }
+
+    fn get_interfaces(&self) -> Vec<&'static str> {
+        let mut interfaces = Vec::with_capacity(INTERFACES.len());
+        for interface in self.object.interfaces().iter() {
+            if interface > Interface::Application {
+                break;
+            }
+            interfaces.push(INTERFACES[(interface as u8).trailing_zeros() as usize]);
+        }
+        interfaces
     }
 }

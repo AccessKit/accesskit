@@ -6,17 +6,20 @@
 use std::sync::Arc;
 
 use accesskit_consumer::{Node, Tree, TreeChange};
-use accesskit_schema::TreeUpdate;
+use accesskit_schema::{NodeId, TreeUpdate};
 
-use crate::atspi::Bus;
+use crate::atspi::{
+    interfaces::{ObjectEvent, WindowEvent},
+    Bus
+};
 use crate::node::{PlatformNode, RootPlatformNode};
 
-pub struct Manager {
+pub struct Adapter {
     atspi_bus: Bus,
     tree: Arc<Tree>,
 }
 
-impl Manager {
+impl Adapter {
     pub fn new(app_name: String, toolkit_name: String, toolkit_version: String, initial_state: TreeUpdate) -> Option<Self> {
         let mut atspi_bus = Bus::a11y_bus()?;
         let tree = Tree::new(initial_state);
@@ -30,11 +33,12 @@ impl Manager {
             }
         }
 
+        objects_to_add.push(PlatformNode::new(&tree.read().root()));
         add_children(tree.read().root(), &mut objects_to_add);
         for node in objects_to_add {
-            atspi_bus.register_accessible(node);
+            atspi_bus.register_accessible_interface(node);
         }
-        atspi_bus.register_root(app_node);
+        atspi_bus.register_application_interface(app_node);
         Some(Self {
             atspi_bus,
             tree
@@ -45,14 +49,17 @@ impl Manager {
         self.tree.update_and_process_changes(update, |change| {
             match change {
                 TreeChange::FocusMoved {
-                    old_node: _,
+                    old_node,
                     new_node,
                 } => {
+                    if let Some(old_node) = old_node {
+                        let old_node = PlatformNode::new(&old_node);
+                        self.atspi_bus.emit_object_event(&old_node, ObjectEvent::FocusLost).unwrap();
+                    }
                     if let Some(new_node) = new_node {
-                        //let platform_node = PlatformNode::new(&new_node, self.hwnd);
-                        //let el: IRawElementProviderSimple = platform_node.into();
-                        //unsafe { UiaRaiseAutomationEvent(el, UIA_AutomationFocusChangedEventId) }
-                        //    .unwrap();
+                        let new_node = PlatformNode::new(&new_node);
+                        self.atspi_bus.emit_object_event(&new_node, ObjectEvent::FocusGained).unwrap();
+                        self.atspi_bus.emit_focus_event(&new_node).unwrap();
                     }
                 }
                 TreeChange::NodeUpdated { old_node, new_node } => {
@@ -64,6 +71,20 @@ impl Manager {
                 _ => (),
             };
         });
+    }
+
+    pub fn window_activated(&self, window_id: NodeId) {
+        let reader = self.tree.read();
+        let node = PlatformNode::new(&reader.node_by_id(window_id).unwrap());
+        self.atspi_bus.emit_object_event(&node, ObjectEvent::Activated);
+        self.atspi_bus.emit_window_event(&node, WindowEvent::Activated);
+    }
+
+    pub fn window_deactivated(&self, window_id: NodeId) {
+        let reader = self.tree.read();
+        let node = PlatformNode::new(&reader.node_by_id(window_id).unwrap());
+        self.atspi_bus.emit_object_event(&node, ObjectEvent::Deactivated);
+        self.atspi_bus.emit_window_event(&node, WindowEvent::Deactivated);
     }
 
     fn root_platform_node(&self) -> PlatformNode {

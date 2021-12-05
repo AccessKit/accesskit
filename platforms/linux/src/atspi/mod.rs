@@ -14,10 +14,11 @@ mod object_address;
 mod object_id;
 mod object_ref;
 pub mod proxies;
+mod state;
 
 /// Enumeration used by interface #AtspiAccessible to specify the role
 /// of an #AtspiAccessible object.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, Type)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, Type)]
 pub enum Role {
     /// A role indicating an error condition, such as
     /// uninitialized Role data.
@@ -469,3 +470,4 @@ pub use bus::Bus;
 pub use object_address::*;
 pub use object_id::*;
 pub use object_ref::*;
+pub use state::*;

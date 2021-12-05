@@ -3,11 +3,18 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use accesskit_schema::NodeId;
 use crate::atspi::{ObjectId, OwnedObjectAddress};
 
 pub enum ObjectRef {
     Managed(ObjectId<'static>),
     Unmanaged(OwnedObjectAddress),
+}
+
+impl From<NodeId> for ObjectRef {
+    fn from(value: NodeId) -> ObjectRef {
+        ObjectRef::Managed(value.into())
+    }
 }
 
 impl From<ObjectId<'static>> for ObjectRef {

@@ -3,8 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use accesskit_schema::NodeId;
 use serde::{Deserialize, Serialize};
-use std::num::NonZeroU64;
 use zvariant::{
     derive::{Type, Value},
     Str
@@ -35,8 +35,8 @@ impl<'a> ObjectId<'a> {
     }
 }
 
-impl From<NonZeroU64> for ObjectId<'static> {
-    fn from(value: NonZeroU64) -> Self {
-        Self(Str::from(value.to_string()))
+impl From<NodeId> for ObjectId<'static> {
+    fn from(value: NodeId) -> Self {
+        Self(Str::from(value.0.to_string()))
     }
 }

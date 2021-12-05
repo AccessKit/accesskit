@@ -7,8 +7,8 @@
 
 #[macro_use] extern crate zbus;
 
+mod adapter;
 mod atspi;
-mod manager;
 mod node;
 
-pub use manager::Manager;
+pub use adapter::Adapter;

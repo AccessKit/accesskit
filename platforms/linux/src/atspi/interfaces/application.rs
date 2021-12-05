@@ -4,13 +4,13 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::atspi::{
-    interfaces::AccessibleInterface,
-    ObjectId, ObjectRef, OwnedObjectAddress, Role
+    interfaces::{Accessible, Interface, Interfaces},
+    ObjectId, ObjectRef, OwnedObjectAddress, Role, StateSet
 };
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-pub trait ApplicationInterface {
+pub trait Application: Accessible {
     fn name(&self) -> String;
 
     fn child_count(&self) -> usize;
@@ -38,11 +38,9 @@ pub trait ApplicationInterface {
     fn deregister_event_listener(&mut self, event: String);
 }
 
-impl<T> AccessibleInterface for T
-where T: ApplicationInterface
-{
+impl<T: Application> Accessible for T {
     fn name(&self) -> String {
-        self.name()
+        Application::name(self)
     }
 
     fn description(&self) -> String {
@@ -54,7 +52,7 @@ where T: ApplicationInterface
     }
 
     fn child_count(&self) -> usize {
-        self.child_count()
+        Application::child_count(self)
     }
 
     fn locale(&self) -> String {
@@ -66,11 +64,11 @@ where T: ApplicationInterface
     }
 
     fn child_at_index(&self, index: usize) -> Option<ObjectRef> {
-        self.child_at_index(index)
+        Application::child_at_index(self, index)
     }
 
     fn children(&self) -> Vec<ObjectRef> {
-        self.children()
+        Application::children(self)
     }
 
     fn index_in_parent(&self) -> Option<usize> {
@@ -80,28 +78,34 @@ where T: ApplicationInterface
     fn role(&self) -> Role {
         Role::Application
     }
+
+    fn state(&self) -> StateSet {
+        StateSet::empty()
+    }
+
+    fn interfaces(&self) -> Interfaces {
+        Interface::Accessible | Interface::Application
+    }
 }
 
 #[derive(Clone, Debug)]
-pub struct ApplicationObjectWrapper<T>(pub Arc<RwLock<T>>);
+pub struct ApplicationInterfaceWrapper<T>(pub Arc<RwLock<T>>);
 
-impl<T> ApplicationInterface for ApplicationObjectWrapper<T>
-where T: ApplicationInterface
-{
+impl<T: Application> Application for ApplicationInterfaceWrapper<T> {
     fn name(&self) -> String {
-        self.0.read().name()
+        Application::name(&*self.0.read())
     }
 
     fn child_count(&self) -> usize {
-        self.0.read().child_count()
+        Application::child_count(&*self.0.read())
     }
 
     fn child_at_index(&self, index: usize) -> Option<ObjectRef> {
-        self.0.read().child_at_index(index)
+        Application::child_at_index(&*self.0.read(), index)
     }
 
     fn children(&self) -> Vec<ObjectRef> {
-        self.0.read().children()
+        Application::children(&*self.0.read())
     }
 
     fn toolkit_name(&self) -> String {
@@ -113,7 +117,7 @@ where T: ApplicationInterface
     }
 
     fn id(&self) -> Option<i32> {
-        self.0.read().id()
+        Application::id(&*self.0.read())
     }
 
     fn set_id(&mut self, id: i32) {
@@ -121,7 +125,7 @@ where T: ApplicationInterface
     }
 
     fn locale(&self, lctype: u32) -> String {
-        self.0.read().locale(lctype)
+        Application::locale(&*self.0.read(), lctype)
     }
 
     fn desktop(&self) -> Option<OwnedObjectAddress> {
@@ -141,12 +145,10 @@ where T: ApplicationInterface
     }
 }
 
-pub struct ApplicationInterfaceObject<T>(pub T);
+pub struct ApplicationInterface<T>(pub T);
 
 #[dbus_interface(name = "org.a11y.atspi.Application")]
-impl<T> ApplicationInterfaceObject<T>
-where T: ApplicationInterface + Send + Sync + 'static
-{
+impl<T: Application> ApplicationInterface<T> {
     #[dbus_interface(property)]
     fn toolkit_name(&self) -> String {
         self.0.toolkit_name()
@@ -164,7 +166,7 @@ where T: ApplicationInterface + Send + Sync + 'static
 
     #[dbus_interface(property)]
     fn id(&self) -> i32 {
-        self.0.id().unwrap_or(-1)
+        Application::id(&self.0).unwrap_or(-1)
     }
 
     #[dbus_interface(property)]
@@ -173,7 +175,7 @@ where T: ApplicationInterface + Send + Sync + 'static
     }
 
     fn get_locale(&self, lctype: u32) -> String {
-        self.0.locale(lctype)
+        Application::locale(&self.0, lctype)
     }
 
     fn register_event_listener(&self, _event: String) {}

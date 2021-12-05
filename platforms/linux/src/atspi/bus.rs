@@ -3,6 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use async_io::block_on;
 use crate::atspi::{
     interfaces::*,
     object_address::*,
@@ -21,7 +22,7 @@ use x11rb::{
 };
 use zbus::{
     blocking::{ConnectionBuilder, Connection},
-    Address
+    Address, InterfaceDeref, Result
 };
 
 pub struct Bus(Connection);
@@ -31,25 +32,86 @@ impl Bus {
         Some(Bus(a11y_bus()?))
     }
 
-    pub fn register_accessible<T>(&mut self, object: T) -> bool
-    where T: AccessibleInterface + Send + Sync + 'static
+    pub fn register_accessible_interface<T>(&mut self, object: T) -> Result<bool>
+    where T: Accessible
     {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, object.id().as_str());
-        self.0.object_server_mut().at(path, AccessibleInterfaceObject::new(self.0.unique_name().unwrap().to_owned(), object)).unwrap()
+        if self.0.object_server_mut().at(path.clone(), AccessibleInterface::new(self.0.unique_name().unwrap().to_owned(), object.clone()))? {
+            let interfaces = object.interfaces();
+            if interfaces.contains(Interface::FocusEvents) {
+                self.register_focus_events_interface(&path)?;
+            }
+            if interfaces.contains(Interface::ObjectEvents) {
+                self.register_object_events_interface(&path)?;
+            }
+            if interfaces.contains(Interface::WindowEvents) {
+                self.register_window_events_interface(&path, object)
+            } else {
+                Ok(true)
+            }
+        } else {
+            Ok(false)
+        }
     }
 
-    pub fn register_root<T>(&mut self, root: T)
-    where T: AccessibleInterface + ApplicationInterface + Send + Sync + 'static
+    pub fn register_application_interface<T>(&mut self, root: T) -> Result<bool>
+    where T: Application
     {
-        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, AccessibleInterface::id(&root).as_str());
+        println!("Registering on {:?}", self.0.unique_name().unwrap());
+        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, Accessible::id(&root).as_str());
         let root = Arc::new(RwLock::new(root));
-        self.0.object_server_mut().at(path, ApplicationInterfaceObject(ApplicationObjectWrapper(root.clone()))).unwrap();
-        self.register_accessible(ApplicationObjectWrapper(root.clone()));
-        let desktop_address = SocketProxy::new(&self.0)
-        .unwrap()
-        .embed(ObjectAddress::root(
-            self.0.unique_name().unwrap().as_ref())).unwrap();
-        root.write().set_desktop(desktop_address);
+        let registered = self.0.object_server_mut().at(path, ApplicationInterface(ApplicationInterfaceWrapper(root.clone())))?;
+        if registered && self.register_accessible_interface(ApplicationInterfaceWrapper(root.clone()))? {
+            let desktop_address = SocketProxy::new(&self.0)
+                .unwrap()
+                .embed(ObjectAddress::root(
+                    self.0.unique_name().unwrap().as_ref()))?;
+            root.write().set_desktop(desktop_address);
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    fn register_focus_events_interface(&mut self, path: &str) -> Result<bool> {
+        self.0.object_server_mut().at(path, FocusEventsInterface { })
+    }
+
+    fn register_object_events_interface(&mut self, path: &str) -> Result<bool> {
+        self.0.object_server_mut().at(path, ObjectEventsInterface { })
+    }
+
+    fn register_window_events_interface<T>(&mut self, path: &str, object: T) -> Result<bool>
+    where T: Accessible
+    {
+        self.0.object_server_mut().at(path, WindowEventsInterface(object))
+    }
+
+    pub fn emit_focus_event<T>(&self, target: &T) -> Result<()>
+    where T: Accessible
+    {
+        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
+        self.0.object_server().with(path, |iface: InterfaceDeref<'_, FocusEventsInterface>, ctxt| {
+            block_on(iface.focused(&ctxt))
+        })
+    }
+
+    pub fn emit_object_event<T>(&self, target: &T, event: ObjectEvent) -> Result<()>
+    where T: Accessible
+    {
+        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
+        self.0.object_server().with(path, |iface: InterfaceDeref<'_, ObjectEventsInterface>, ctxt| {
+            block_on(iface.emit(event, &ctxt))
+        })
+    }
+
+    pub fn emit_window_event<T>(&self, target: &T, event: WindowEvent) -> Result<()>
+    where T: Accessible
+    {
+        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
+        self.0.object_server().with(path, |iface: InterfaceDeref<'_, WindowEventsInterface::<T>>, ctxt| {
+            block_on(iface.emit(event, &ctxt))
+        })
     }
 }
 

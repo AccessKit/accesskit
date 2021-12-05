@@ -6,11 +6,12 @@
 use accesskit_consumer::{Node, Tree, WeakNode};
 use accesskit_schema::Role;
 use crate::atspi::{
-    interfaces::{AccessibleInterface, ApplicationInterface},
-    ObjectId, ObjectRef, OwnedObjectAddress, Role as AtspiRole
+    interfaces::{Accessible, Application, Interface, Interfaces},
+    ObjectId, ObjectRef, OwnedObjectAddress, Role as AtspiRole, State, StateSet
 };
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct PlatformNode(WeakNode);
 
 impl PlatformNode {
@@ -19,7 +20,7 @@ impl PlatformNode {
     }
 }
 
-impl AccessibleInterface for PlatformNode {
+impl Accessible for PlatformNode {
     fn name(&self) -> String {
         self.0.map(|node| node.name().map(|name| name.to_string())).flatten().unwrap_or(String::new())
     }
@@ -31,13 +32,13 @@ impl AccessibleInterface for PlatformNode {
     fn parent(&self) -> Option<ObjectRef> {
         Some(self
         .0
-        .map(|node| node.parent().map(|parent| ObjectId::from(parent.id().0).to_owned().into()))
+        .map(|node| node.parent().map(|parent| parent.id().into()))
         .flatten()
         .unwrap_or(ObjectId::root().into()))
     }
 
     fn child_count(&self) -> usize {
-        self.0.map(|node| node.unignored_children().count()).unwrap_or(0)
+        self.0.map(|node| node.children().count()).unwrap_or(0)
     }
 
     fn locale(&self) -> String {
@@ -45,19 +46,19 @@ impl AccessibleInterface for PlatformNode {
     }
 
     fn id(&self) -> ObjectId<'static> {
-        self.0.map(|node| ObjectId::from(node.id().0).to_owned()).unwrap()
+        self.0.map(|node| node.id().into()).unwrap()
     }
 
     fn child_at_index(&self, index: usize) -> Option<ObjectRef> {
-        self.0.map(|node| node.unignored_children().nth(index).map(|child| ObjectId::from(child.id().0).to_owned().into())).flatten()
+        self.0.map(|node| node.children().nth(index).map(|child| child.id().into())).flatten()
     }
 
     fn children(&self) -> Vec<ObjectRef> {
-        todo!()
+        self.0.map(|node| node.children().map(|child| child.id().into()).collect()).unwrap_or(Vec::new())
     }
 
     fn index_in_parent(&self) -> Option<usize> {
-        todo!()
+        self.0.map(|node| node.parent_and_index().map(|(_, index)| index)).flatten()
     }
 
     fn role(&self) -> AtspiRole {
@@ -69,8 +70,39 @@ impl AccessibleInterface for PlatformNode {
             }
         }).unwrap_or(AtspiRole::Invalid)
     }
+
+    fn state(&self) -> StateSet {
+        self.0.map(|node| {
+            if node.role() == Role::Window {
+                (State::Active | State::Sensitive | State::Showing | State::Visible).into()
+            } else {
+                let mut state: StateSet = (State::Enabled | State::Sensitive | State::Showing | State::Visible).into();
+                if node.data().focusable {
+                    state.insert(State::Focusable);
+                    if node.is_focused() {
+                        state.insert(State::Focused);
+                    }
+                }
+                state
+            }
+        }).unwrap()
+    }
+
+    fn interfaces(&self) -> Interfaces {
+        self.0.map(|node| {
+            let mut interfaces: Interfaces = Interface::Accessible | Interface::ObjectEvents;
+            if node.role() == Role::Window {
+                interfaces.insert(Interface::WindowEvents);
+            }
+            if node.data().focusable {
+                interfaces.insert(Interface::FocusEvents);
+            }
+            interfaces
+        }).unwrap()
+    }
 }
 
+#[derive(Clone)]
 pub struct RootPlatformNode {
     app_name: String,
     app_id: Option<i32>,
@@ -93,7 +125,7 @@ impl RootPlatformNode {
     }
 }
 
-impl ApplicationInterface for RootPlatformNode {
+impl Application for RootPlatformNode {
     fn name(&self) -> String {
         self.app_name.clone()
     }
@@ -104,14 +136,14 @@ impl ApplicationInterface for RootPlatformNode {
 
     fn child_at_index(&self, index: usize) -> Option<ObjectRef> {
         if index == 0 {
-            Some(ObjectId::from(self.tree.read().root().id().0).to_owned().into())
+            Some(self.tree.read().root().id().into())
         } else {
             None
         }
     }
 
     fn children(&self) -> Vec<ObjectRef> {
-        vec![ObjectId::from(self.tree.read().root().id().0).to_owned().into()]
+        vec![self.tree.read().root().id().into()]
     }
 
     fn toolkit_name(&self) -> String {
