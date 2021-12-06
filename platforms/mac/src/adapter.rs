@@ -5,8 +5,8 @@
 
 use std::sync::Arc;
 
+use accesskit::TreeUpdate;
 use accesskit_consumer::Tree;
-use accesskit_schema::TreeUpdate;
 use cocoa::base::{id, nil};
 use cocoa::foundation::NSArray;
 use objc::rc::StrongPtr;
@@ -14,12 +14,12 @@ use objc::{msg_send, sel, sel_impl};
 
 use crate::node::PlatformNode;
 
-pub struct Manager {
+pub struct Adapter {
     view: StrongPtr,
     tree: Arc<Tree>,
 }
 
-impl Manager {
+impl Adapter {
     pub fn new(view: id, initial_state: TreeUpdate) -> Self {
         assert!(!view.is_null());
         Self {

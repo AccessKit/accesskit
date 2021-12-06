@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-pub use accesskit_schema::{Node as NodeData, Tree as TreeData};
+pub use accesskit::{Node as NodeData, Tree as TreeData};
 
 pub(crate) mod tree;
 pub use tree::{Change as TreeChange, Reader as TreeReader, Tree};
@@ -19,7 +19,7 @@ pub use iterators::{
 
 #[cfg(test)]
 mod tests {
-    use accesskit_schema::{
+    use accesskit::{
         Node, NodeId, Rect, RelativeBounds, Role, StringEncoding, Tree, TreeId, TreeUpdate,
     };
     use std::num::NonZeroU64;
@@ -43,16 +43,16 @@ mod tests {
 
     pub fn test_tree() -> Arc<crate::tree::Tree> {
         let root = Node {
-            children: Box::new([
+            children: vec![
                 PARAGRAPH_0_ID,
                 PARAGRAPH_1_IGNORED_ID,
                 PARAGRAPH_2_ID,
                 PARAGRAPH_3_IGNORED_ID,
-            ]),
+            ],
             ..Node::new(ROOT_ID, Role::RootWebArea)
         };
         let paragraph_0 = Node {
-            children: Box::new([STATIC_TEXT_0_0_IGNORED_ID]),
+            children: vec![STATIC_TEXT_0_0_IGNORED_ID],
             ..Node::new(PARAGRAPH_0_ID, Role::Paragraph)
         };
         let static_text_0_0_ignored = Node {
@@ -71,7 +71,7 @@ mod tests {
                 },
                 transform: None,
             }),
-            children: Box::new([STATIC_TEXT_1_0_ID]),
+            children: vec![STATIC_TEXT_1_0_ID],
             ignored: true,
             ..Node::new(PARAGRAPH_1_IGNORED_ID, Role::Paragraph)
         };
@@ -90,7 +90,7 @@ mod tests {
             ..Node::new(STATIC_TEXT_1_0_ID, Role::StaticText)
         };
         let paragraph_2 = Node {
-            children: Box::new([STATIC_TEXT_2_0_ID]),
+            children: vec![STATIC_TEXT_2_0_ID],
             ..Node::new(PARAGRAPH_2_ID, Role::Paragraph)
         };
         let static_text_2_0 = Node {
@@ -98,12 +98,12 @@ mod tests {
             ..Node::new(STATIC_TEXT_2_0_ID, Role::StaticText)
         };
         let paragraph_3_ignored = Node {
-            children: Box::new([
+            children: vec![
                 EMPTY_CONTAINER_3_0_IGNORED_ID,
                 LINK_3_1_IGNORED_ID,
                 BUTTON_3_2_ID,
                 EMPTY_CONTAINER_3_3_IGNORED_ID,
-            ]),
+            ],
             ignored: true,
             ..Node::new(PARAGRAPH_3_IGNORED_ID, Role::Paragraph)
         };
@@ -112,7 +112,7 @@ mod tests {
             ..Node::new(EMPTY_CONTAINER_3_0_IGNORED_ID, Role::GenericContainer)
         };
         let link_3_1_ignored = Node {
-            children: Box::new([STATIC_TEXT_3_1_0_ID]),
+            children: vec![STATIC_TEXT_3_1_0_ID],
             ignored: true,
             linked: true,
             ..Node::new(LINK_3_1_IGNORED_ID, Role::Link)
@@ -146,8 +146,12 @@ mod tests {
                 button_3_2,
                 empty_container_3_3_ignored,
             ],
-            tree: Some(Tree::new(TreeId("test_tree".into()), StringEncoding::Utf8)),
-            root: Some(ROOT_ID),
+            tree: Some(Tree::new(
+                TreeId("test_tree".into()),
+                ROOT_ID,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
         };
         crate::tree::Tree::new(initial_update)
     }

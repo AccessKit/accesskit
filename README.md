@@ -18,10 +18,10 @@ The canonical definition of the schema is in the Rust programming language. Rust
 
 When both the toolkit and the platform adapter (see below) are written in Rust or another language that can efficiently access Rust data structures (such as C++), the data defined in the schema can be passed back and forth with no serialization overhead. In other cases, serialization will be required to minimize the overhead of language interoperability. The plan is to use JSON serialization for now, and possibly add other serialization options later, for better performance or to please toolkit developers who would rather not use JSON.
 
-A draft of the schema is defined in [the `schema` directory](https://github.com/AccessKit/accesskit/tree/main/schema).
+A draft of the schema is defined in [the `common` directory](https://github.com/AccessKit/accesskit/tree/main/common).
 
 * While a list of action types is defined, the `ActionRequest` struct that will represent a request from an assistive technology to perform an action, with parameters for some types of actions, has not yet been defined.
-* he schema doesn't yet define any events. While some events in platform accessibility APIs, such as focus change and property changes, can be implied from tree updates, others cannot.
+* The schema doesn't yet define any events. While some events in platform accessibility APIs, such as focus change and property changes, can be implied from tree updates, others cannot.
 * The in-memory representation of a node has not yet been optimized.
 
 ### Platform adapters

@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit_schema::{NodeId, TreeId, TreeUpdate};
+use accesskit::{NodeId, TreeId, TreeUpdate};
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -22,21 +22,22 @@ pub(crate) struct NodeState {
 #[derive(Clone)]
 pub(crate) struct State {
     pub(crate) nodes: im::HashMap<NodeId, NodeState>,
-    pub(crate) root: NodeId,
     pub(crate) data: TreeData,
+    pub(crate) focus: Option<NodeId>,
 }
 
-enum InternalChange {
-    NodeAdded(NodeId),
-    NodeUpdated(NodeId),
-    FocusMoved,
-    NodeRemoved(NodeId),
+#[derive(Default)]
+struct InternalChanges {
+    added_node_ids: HashSet<NodeId>,
+    updated_node_ids: HashSet<NodeId>,
+    focus_moved: bool,
+    removed_node_ids: HashSet<NodeId>,
 }
 
 impl State {
     fn validate_global(&self) {
-        assert!(self.nodes.contains_key(&self.root));
-        if let Some(id) = self.data.focus {
+        assert!(self.nodes.contains_key(&self.data.root));
+        if let Some(id) = self.focus {
             assert!(self.nodes.contains_key(&id));
         }
         if let Some(id) = self.data.root_scroller {
@@ -44,23 +45,27 @@ impl State {
         }
     }
 
-    fn update(&mut self, update: TreeUpdate, mut changes: Option<&mut Vec<InternalChange>>) {
+    fn update(&mut self, update: TreeUpdate, mut changes: Option<&mut InternalChanges>) {
         // TODO: handle TreeUpdate::clear
         assert!(update.clear.is_none());
 
-        let root = update.root.unwrap_or(self.root);
-        let mut pending_nodes: HashMap<NodeId, _> = HashMap::new();
-        let mut pending_children = HashMap::new();
         let mut orphans = HashSet::new();
 
-        if root != self.root {
-            orphans.insert(self.root);
-            self.root = root;
+        if let Some(tree) = update.tree {
+            assert_eq!(tree.id, self.data.id);
+            if tree.root != self.data.root {
+                orphans.insert(self.data.root);
+            }
+            self.data = tree;
         }
+
+        let root = self.data.root;
+        let mut pending_nodes: HashMap<NodeId, _> = HashMap::new();
+        let mut pending_children = HashMap::new();
 
         fn add_node(
             nodes: &mut im::HashMap<NodeId, NodeState>,
-            changes: &mut Option<&mut Vec<InternalChange>>,
+            changes: &mut Option<&mut InternalChanges>,
             parent_and_index: Option<ParentAndIndex>,
             data: NodeData,
         ) {
@@ -71,7 +76,7 @@ impl State {
             };
             nodes.insert(id, state);
             if let Some(changes) = changes {
-                changes.push(InternalChange::NodeAdded(id));
+                changes.added_node_ids.insert(id);
             }
         }
 
@@ -113,7 +118,7 @@ impl State {
                 if *node_state.data != node_data {
                     node_state.data = Box::new(node_data);
                     if let Some(changes) = &mut changes {
-                        changes.push(InternalChange::NodeUpdated(node_id));
+                        changes.updated_node_ids.insert(node_id);
                     }
                 }
             } else if let Some(parent_and_index) = pending_children.remove(&node_id) {
@@ -139,14 +144,11 @@ impl State {
 
         assert_eq!(pending_children.len(), 0);
 
-        if let Some(tree) = update.tree {
-            assert_eq!(tree.id, self.data.id);
-            if tree.focus != self.data.focus {
-                if let Some(changes) = &mut changes {
-                    changes.push(InternalChange::FocusMoved);
-                }
+        if update.focus != self.focus {
+            if let Some(changes) = &mut changes {
+                changes.focus_moved = true;
             }
-            self.data = tree;
+            self.focus = update.focus;
         }
 
         if !orphans.is_empty() {
@@ -171,7 +173,7 @@ impl State {
             for id in to_remove {
                 if self.nodes.remove(&id).is_some() {
                     if let Some(changes) = &mut changes {
-                        changes.push(InternalChange::NodeRemoved(id));
+                        changes.removed_node_ids.insert(id);
                     }
                 }
             }
@@ -192,14 +194,14 @@ impl State {
             }
         }
 
-        traverse(self, &mut nodes, self.root);
+        traverse(self, &mut nodes, self.data.root);
         assert_eq!(nodes.len(), self.nodes.len());
 
         TreeUpdate {
             clear: None,
             nodes,
             tree: Some(self.data.clone()),
-            root: Some(self.root),
+            focus: self.focus,
         }
     }
 }
@@ -218,7 +220,7 @@ impl Reader<'_> {
     }
 
     pub fn root(&self) -> Node<'_> {
-        self.node_by_id(self.state.root).unwrap()
+        self.node_by_id(self.state.data.root).unwrap()
     }
 
     pub fn id(&self) -> &TreeId {
@@ -226,7 +228,7 @@ impl Reader<'_> {
     }
 
     pub fn focus(&self) -> Option<Node<'_>> {
-        self.state.data.focus.map(|id| self.node_by_id(id).unwrap())
+        self.state.focus.map(|id| self.node_by_id(id).unwrap())
     }
 }
 
@@ -253,8 +255,8 @@ impl Tree {
 
         let mut state = State {
             nodes: im::HashMap::new(),
-            root: initial_state.root.take().unwrap(),
             data: initial_state.tree.take().unwrap(),
+            focus: None,
         };
         state.update(initial_state, None);
         Arc::new(Self {
@@ -271,7 +273,7 @@ impl Tree {
     where
         for<'a> F: FnMut(Change<'a>),
     {
-        let mut changes = Vec::<InternalChange>::new();
+        let mut changes = InternalChanges::default();
         let mut state = self.state.write();
         let old_state = state.clone();
         state.update(update, Some(&mut changes));
@@ -289,27 +291,48 @@ impl Tree {
             tree: self,
             state: old_state.read(),
         };
-        for change in changes {
-            match change {
-                InternalChange::NodeAdded(id) => {
-                    let node = reader.node_by_id(id).unwrap();
-                    f(Change::NodeAdded(node));
+        for id in &changes.added_node_ids {
+            let node = reader.node_by_id(*id).unwrap();
+            f(Change::NodeAdded(node));
+        }
+        for id in &changes.updated_node_ids {
+            let old_node = old_reader.node_by_id(*id).unwrap();
+            let new_node = reader.node_by_id(*id).unwrap();
+            f(Change::NodeUpdated { old_node, new_node });
+        }
+        if changes.focus_moved {
+            let old_node = old_reader.focus();
+            if let Some(old_node) = old_node {
+                let id = old_node.id();
+                if !changes.updated_node_ids.contains(&id)
+                    && !changes.removed_node_ids.contains(&id)
+                {
+                    if let Some(old_node_new_version) = reader.node_by_id(id) {
+                        f(Change::NodeUpdated {
+                            old_node,
+                            new_node: old_node_new_version,
+                        });
+                    }
                 }
-                InternalChange::NodeUpdated(id) => {
-                    let old_node = old_reader.node_by_id(id).unwrap();
-                    let new_node = reader.node_by_id(id).unwrap();
-                    f(Change::NodeUpdated { old_node, new_node });
+            }
+            let new_node = reader.focus();
+            if let Some(new_node) = new_node {
+                let id = new_node.id();
+                if !changes.added_node_ids.contains(&id) && !changes.updated_node_ids.contains(&id)
+                {
+                    if let Some(new_node_old_version) = old_reader.node_by_id(id) {
+                        f(Change::NodeUpdated {
+                            old_node: new_node_old_version,
+                            new_node,
+                        });
+                    }
                 }
-                InternalChange::FocusMoved => {
-                    let old_node = old_reader.focus();
-                    let new_node = reader.focus();
-                    f(Change::FocusMoved { old_node, new_node });
-                }
-                InternalChange::NodeRemoved(id) => {
-                    let node = old_reader.node_by_id(id).unwrap();
-                    f(Change::NodeRemoved(node));
-                }
-            };
+            }
+            f(Change::FocusMoved { old_node, new_node });
+        }
+        for id in &changes.removed_node_ids {
+            let node = old_reader.node_by_id(*id).unwrap();
+            f(Change::NodeRemoved(node));
         }
     }
 
@@ -331,7 +354,7 @@ impl Tree {
 
 #[cfg(test)]
 mod tests {
-    use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+    use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
     use std::num::NonZeroU64;
 
     const TREE_ID: &str = "test_tree";
@@ -344,8 +367,12 @@ mod tests {
         let update = TreeUpdate {
             clear: None,
             nodes: vec![Node::new(NODE_ID_1, Role::Window)],
-            tree: Some(Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8)),
-            root: Some(NODE_ID_1),
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
         };
         let tree = super::Tree::new(update);
         assert_eq!(&TreeId(TREE_ID.into()), tree.read().id());
@@ -360,14 +387,18 @@ mod tests {
             clear: None,
             nodes: vec![
                 Node {
-                    children: Box::new([NODE_ID_2, NODE_ID_3]),
+                    children: vec![NODE_ID_2, NODE_ID_3],
                     ..Node::new(NODE_ID_1, Role::Window)
                 },
                 Node::new(NODE_ID_2, Role::Button),
                 Node::new(NODE_ID_3, Role::Button),
             ],
-            tree: Some(Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8)),
-            root: Some(NODE_ID_1),
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
         };
         let tree = super::Tree::new(update);
         let reader = tree.read();
@@ -388,8 +419,12 @@ mod tests {
         let first_update = TreeUpdate {
             clear: None,
             nodes: vec![root_node.clone()],
-            tree: Some(Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8)),
-            root: Some(NODE_ID_1),
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
         };
         let tree = super::Tree::new(first_update);
         assert_eq!(0, tree.read().root().children().count());
@@ -397,21 +432,21 @@ mod tests {
             clear: None,
             nodes: vec![
                 Node {
-                    children: Box::new([NODE_ID_2]),
+                    children: vec![NODE_ID_2],
                     ..root_node
                 },
                 Node::new(NODE_ID_2, Role::RootWebArea),
             ],
             tree: None,
-            root: None,
+            focus: None,
         };
         let mut got_updated_root_node = false;
         let mut got_new_child_node = false;
         tree.update_and_process_changes(second_update, |change| {
             if let super::Change::NodeUpdated { old_node, new_node } = &change {
                 if new_node.id() == NODE_ID_1
-                    && old_node.data().children == Box::new([])
-                    && new_node.data().children == Box::new([NODE_ID_2])
+                    && old_node.data().children == vec![]
+                    && new_node.data().children == vec![NODE_ID_2]
                 {
                     got_updated_root_node = true;
                     return;
@@ -443,13 +478,17 @@ mod tests {
             clear: None,
             nodes: vec![
                 Node {
-                    children: Box::new([NODE_ID_2]),
+                    children: vec![NODE_ID_2],
                     ..root_node.clone()
                 },
                 Node::new(NODE_ID_2, Role::RootWebArea),
             ],
-            tree: Some(Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8)),
-            root: Some(NODE_ID_1),
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
         };
         let tree = super::Tree::new(first_update);
         assert_eq!(1, tree.read().root().children().count());
@@ -457,15 +496,15 @@ mod tests {
             clear: None,
             nodes: vec![root_node],
             tree: None,
-            root: None,
+            focus: None,
         };
         let mut got_updated_root_node = false;
         let mut got_removed_child_node = false;
         tree.update_and_process_changes(second_update, |change| {
             if let super::Change::NodeUpdated { old_node, new_node } = &change {
                 if new_node.id() == NODE_ID_1
-                    && old_node.data().children == Box::new([NODE_ID_2])
-                    && new_node.data().children == Box::new([])
+                    && old_node.data().children == vec![NODE_ID_2]
+                    && new_node.data().children == vec![]
                 {
                     got_updated_root_node = true;
                     return;
@@ -487,36 +526,53 @@ mod tests {
 
     #[test]
     fn move_focus_between_siblings() {
-        let tree_data = Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8);
         let first_update = TreeUpdate {
             clear: None,
             nodes: vec![
                 Node {
-                    children: Box::new([NODE_ID_2, NODE_ID_3]),
+                    children: vec![NODE_ID_2, NODE_ID_3],
                     ..Node::new(NODE_ID_1, Role::Window)
                 },
                 Node::new(NODE_ID_2, Role::Button),
                 Node::new(NODE_ID_3, Role::Button),
             ],
-            tree: Some(Tree {
-                focus: Some(NODE_ID_2),
-                ..tree_data.clone()
-            }),
-            root: Some(NODE_ID_1),
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: Some(NODE_ID_2),
         };
         let tree = super::Tree::new(first_update);
         assert!(tree.read().node_by_id(NODE_ID_2).unwrap().is_focused());
         let second_update = TreeUpdate {
             clear: None,
             nodes: vec![],
-            tree: Some(Tree {
-                focus: Some(NODE_ID_3),
-                ..tree_data
-            }),
-            root: None,
+            tree: None,
+            focus: Some(NODE_ID_3),
         };
+        let mut got_old_focus_node_update = false;
+        let mut got_new_focus_node_update = false;
         let mut got_focus_change = false;
         tree.update_and_process_changes(second_update, |change| {
+            if let super::Change::NodeUpdated { old_node, new_node } = change {
+                if old_node.id() == NODE_ID_2
+                    && new_node.id() == NODE_ID_2
+                    && old_node.is_focused()
+                    && !new_node.is_focused()
+                {
+                    got_old_focus_node_update = true;
+                    return;
+                }
+                if old_node.id() == NODE_ID_3
+                    && new_node.id() == NODE_ID_3
+                    && !old_node.is_focused()
+                    && new_node.is_focused()
+                {
+                    got_new_focus_node_update = true;
+                    return;
+                }
+            }
             if let super::Change::FocusMoved {
                 old_node: Some(old_node),
                 new_node: Some(new_node),
@@ -529,6 +585,8 @@ mod tests {
             }
             panic!("expected only focus change");
         });
+        assert!(got_old_focus_node_update);
+        assert!(got_new_focus_node_update);
         assert!(got_focus_change);
         assert!(tree.read().node_by_id(NODE_ID_3).unwrap().is_focused());
         assert!(!tree.read().node_by_id(NODE_ID_2).unwrap().is_focused());
@@ -536,13 +594,12 @@ mod tests {
 
     #[test]
     fn update_node() {
-        let tree_data = Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8);
         let child_node = Node::new(NODE_ID_2, Role::Button);
         let first_update = TreeUpdate {
             clear: None,
             nodes: vec![
                 Node {
-                    children: Box::new([NODE_ID_2]),
+                    children: vec![NODE_ID_2],
                     ..Node::new(NODE_ID_1, Role::Window)
                 },
                 Node {
@@ -550,8 +607,12 @@ mod tests {
                     ..child_node.clone()
                 },
             ],
-            tree: Some(tree_data),
-            root: Some(NODE_ID_1),
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
         };
         let tree = super::Tree::new(first_update);
         assert_eq!(
@@ -565,7 +626,7 @@ mod tests {
                 ..child_node
             }],
             tree: None,
-            root: None,
+            focus: None,
         };
         let mut got_updated_child_node = false;
         tree.update_and_process_changes(second_update, |change| {
@@ -597,14 +658,18 @@ mod tests {
             clear: None,
             nodes: vec![
                 Node {
-                    children: Box::new([NODE_ID_2, NODE_ID_3]),
+                    children: vec![NODE_ID_2, NODE_ID_3],
                     ..Node::new(NODE_ID_1, Role::Window)
                 },
                 Node::new(NODE_ID_2, Role::Button),
                 Node::new(NODE_ID_3, Role::Button),
             ],
-            tree: Some(Tree::new(TreeId(TREE_ID.into()), StringEncoding::Utf8)),
-            root: Some(NODE_ID_1),
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: Some(NODE_ID_2),
         };
         let tree = super::Tree::new(update.clone());
         tree.update_and_process_changes(update, |_| {

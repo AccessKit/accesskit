@@ -7,4 +7,7 @@ mod node;
 mod util;
 
 mod adapter;
-pub use adapter::Adapter;
+pub use adapter::{Adapter, QueuedEvents};
+
+#[cfg(test)]
+mod tests;

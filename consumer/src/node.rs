@@ -6,7 +6,7 @@
 use std::iter::FusedIterator;
 use std::sync::{Arc, Weak};
 
-use accesskit_schema::{NodeId, Rect, Role};
+use accesskit::{NodeId, Rect, Role};
 
 use crate::iterators::{
     FollowingSiblings, FollowingUnignoredSiblings, PrecedingSiblings, PrecedingUnignoredSiblings,
@@ -27,7 +27,13 @@ impl<'a> Node<'a> {
     }
 
     pub fn is_focused(&self) -> bool {
-        self.tree_reader.state.data.focus == Some(self.id())
+        self.tree_reader.state.focus == Some(self.id())
+    }
+
+    pub fn is_focusable(&self) -> bool {
+        // TBD: Is it ever safe to imply this on a node that doesn't explicitly
+        // specify it?
+        self.data().focusable
     }
 
     pub fn is_ignored(&self) -> bool {
@@ -41,7 +47,7 @@ impl<'a> Node<'a> {
     pub fn is_root(&self) -> bool {
         // Don't check for absence of a parent node, in case a non-root node
         // somehow gets detached from the tree.
-        self.id() == self.tree_reader.state.root
+        self.id() == self.tree_reader.state.data.root
     }
 
     pub fn parent(self) -> Option<Node<'a>> {
@@ -203,6 +209,10 @@ impl<'a> Node<'a> {
         self.data().invisible
     }
 
+    pub fn is_disabled(&self) -> bool {
+        self.data().disabled
+    }
+
     pub fn name(&self) -> Option<&str> {
         if let Some(name) = &self.data().name {
             Some(name)
@@ -245,11 +255,11 @@ pub struct WeakNode {
 impl WeakNode {
     pub fn map<F, T>(&self, f: F) -> Option<T>
     where
-        for<'a> F: FnOnce(&Node<'a>) -> T,
+        for<'a> F: FnOnce(Node<'a>) -> T,
     {
         self.tree
             .upgrade()
-            .map(|tree| tree.read().node_by_id(self.id).map(|node| f(&node)))
+            .map(|tree| tree.read().node_by_id(self.id).map(f))
             .flatten()
     }
 }
@@ -265,7 +275,7 @@ impl Node<'_> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit_schema::Rect;
+    use accesskit::Rect;
 
     use crate::tests::*;
 

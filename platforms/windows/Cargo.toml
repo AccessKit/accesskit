@@ -1,0 +1,33 @@
+[package]
+name = "accesskit_windows"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+accesskit = { path = "../../common" }
+accesskit_consumer = { path = "../../consumer" }
+arrayvec = "0.7.1"
+lazy-init = "0.5.0"
+
+[dependencies.windows]
+version = "0.27.0"
+features = [
+    "alloc",
+    "build",
+    "std",
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Com",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Ole",
+    "Win32_System_Threading",
+    "Win32_UI_Accessibility",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+]
+
+[dev-dependencies]
+crossbeam-utils = "0.8.5"
+lazy_static = "1.4.0"
+parking_lot = "0.11.2"
+scopeguard = "1.1.0"
