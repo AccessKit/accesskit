@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit_schema::NodeId;
+use accesskit::NodeId;
 use serde::{Deserialize, Serialize};
 use zvariant::{
     derive::{Type, Value},

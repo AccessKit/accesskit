@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit_schema::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
 use accesskit_linux::Adapter;
 use std::num::NonZeroU64;
 use winit::{
@@ -18,10 +18,9 @@ const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
 const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
 
-fn get_tree(is_window_focused: bool) -> Tree {
+fn get_tree() -> Tree {
     Tree {
-        focus: is_window_focused.then(|| unsafe { FOCUS }),
-        ..Tree::new(TreeId("test".into()), StringEncoding::Utf8)
+        ..Tree::new(TreeId("test".into()), WINDOW_ID, StringEncoding::Utf8)
     }
 }
 
@@ -35,7 +34,7 @@ fn make_button(id: NodeId, name: &str) -> Node {
 
 fn get_initial_state() -> TreeUpdate {
     let root = Node {
-        children: Box::new([BUTTON_1_ID, BUTTON_2_ID]),
+        children: vec![BUTTON_1_ID, BUTTON_2_ID],
         name: Some(WINDOW_TITLE.into()),
         ..Node::new(WINDOW_ID, Role::Window)
     };
@@ -44,8 +43,8 @@ fn get_initial_state() -> TreeUpdate {
     TreeUpdate {
         clear: None,
         nodes: vec![root, button_1, button_2],
-        tree: Some(get_tree(false)),
-        root: Some(WINDOW_ID),
+        tree: Some(get_tree()),
+        focus: Some(unsafe { FOCUS }),
     }
 }
 
@@ -86,11 +85,8 @@ fn main() {
                                     adapter.update(TreeUpdate {
                                         clear: None,
                                         nodes: vec![],
-                                        tree: Some(Tree {
-                                            focus: Some(FOCUS),
-                                            ..Tree::new(TreeId("test".into()), StringEncoding::Utf8)
-                                        }),
-                                        root: Some(WINDOW_ID)
+                                        focus: Some(FOCUS),
+                                        tree: None
                                     });
                                 }
                             },

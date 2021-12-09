@@ -3,8 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use accesskit::Role;
 use accesskit_consumer::{Node, Tree, WeakNode};
-use accesskit_schema::Role;
 use crate::atspi::{
     interfaces::{Accessible, Application, Interface, Interfaces},
     ObjectId, ObjectRef, OwnedObjectAddress, Role as AtspiRole, State, StateSet

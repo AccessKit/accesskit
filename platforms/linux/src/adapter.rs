@@ -5,8 +5,8 @@
 
 use std::sync::Arc;
 
+use accesskit::{NodeId, TreeUpdate};
 use accesskit_consumer::{Node, Tree, TreeChange};
-use accesskit_schema::{NodeId, TreeUpdate};
 
 use crate::atspi::{
     interfaces::{ObjectEvent, WindowEvent},
