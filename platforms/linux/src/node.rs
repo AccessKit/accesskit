@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::Role;
+use accesskit::{AriaCurrent, CheckedState, InvalidState, Orientation, Role};
 use accesskit_consumer::{Node, Tree, WeakNode};
 use crate::atspi::{
     interfaces::{Accessible, Application, Interface, Interfaces},
@@ -261,21 +261,129 @@ impl Accessible for PlatformNode {
     }
 
     fn state(&self) -> StateSet {
+        let platform_role = self.role();
         self.0.map(|node| {
-            if node.role() == Role::Window {
-                (State::Active | State::Sensitive | State::Showing | State::Visible).into()
-            } else {
-                let mut state: StateSet = (State::Enabled | State::Sensitive | State::Showing | State::Visible).into();
-                if node.data().focusable {
-                    state.insert(State::Focusable);
-                    if node.is_focused() {
-                        state.insert(State::Focused);
-                    }
+            let data = node.data();
+            let mut state = StateSet::empty();
+            if let Ok(current_active) = crate::adapter::CURRENT_ACTIVE_WINDOW.lock() {
+                if node.role() == Role::Window && *current_active == Some(data.id) {
+                    state.insert(State::Active);
                 }
-                state
             }
-        }).unwrap()
+            if let Some(expanded) = data.expanded {
+                state.insert(State::Expandable);
+                if expanded {
+                    state.insert(State::Expanded);
+                }
+            }
+            if data.default {
+                state.insert(State::IsDefault);
+            }
+            if data.editable && !data.read_only {
+                state.insert(State::Editable);
+            }
+            // TODO: Focus and selection.
+            if data.focusable {
+                state.insert(State::Focusable);
+            }
+            match data.orientation {
+                Some(Orientation::Horizontal) => state.insert(State::Horizontal),
+                Some(Orientation::Vertical) => state.insert(State::Vertical),
+                _ => {}
+            }
+            if !node.is_invisible_or_ignored() {
+                state.insert(State::Visible);
+                // if (!delegate_->IsOffscreen() && !is_minimized)
+                state.insert(State::Showing);
+            }
+            if data.multiselectable {
+                state.insert(State::Multiselectable);
+            }
+            if data.required {
+                state.insert(State::Required);
+            }
+            if data.visited {
+                state.insert(State::Visited);
+            }
+            if let Some(InvalidState::True | InvalidState::Other(_)) = data.invalid_state {
+                state.insert(State::InvalidEntry);
+            }
+            match data.aria_current {
+                None | Some(AriaCurrent::False) => {},
+                _ => state.insert(State::Active)
+            }
+            if platform_role != AtspiRole::ToggleButton && data.checked_state.is_some() {
+                state.insert(State::Checkable);
+            }
+            if data.has_popup.is_some() {
+                state.insert(State::HasPopup);
+            }
+            if data.busy {
+                state.insert(State::Busy);
+            }
+            if data.modal {
+                state.insert(State::Modal);
+            }
+            if let Some(selected) = data.selected {
+                if !data.disabled {
+                    state.insert(State::Selectable);
+                }
+                if selected {
+                    state.insert(State::Selected);
+                }
+            }
+            // if (IsTextField()) {
+            //     state.insert(State::SelectableText);
+            //     match node.data().multiline {
+            //         true => state.insert(State::MultiLine),
+            //         false => state.insert(State::SingleLine)
+            //     }
+            // }
+    
+            // Special case for indeterminate progressbar.
+            if node.role() == Role::ProgressIndicator && data.value_for_range.is_none() {
+                state.insert(State::Indeterminate);
+            }
+    
+            if data.auto_complete.as_ref().map_or(false, |auto_complete| auto_complete.as_ref().is_empty()) || data.autofill_available {
+                state.insert(State::SupportsAutocompletion);
+            }
+    
+            // Checked state
+            match data.checked_state {
+                Some(CheckedState::Mixed) => state.insert(State::Indeterminate),
+                Some(CheckedState::True) => {
+                    if platform_role == AtspiRole::ToggleButton {
+                        state.insert(State::Pressed);
+                    } else {
+                        state.insert(State::Checked);
+                    }
+                },
+                _ => {}
+            }
+    
+            if data.role.is_read_only_supported() && node.is_read_only_or_disabled() {
+                state.insert(State::ReadOnly);
+            } else {
+                state.insert(State::Enabled);
+                state.insert(State::Sensitive);
+            }
+    
+            if node.is_focused() {
+                state.insert(State::Focused);
+            }
+    
+            // It is insufficient to compare with g_current_activedescendant due to both
+            // timing and event ordering for objects which implement AtkSelection and also
+            // have an active descendant. For instance, if we check the state set of a
+            // selectable child, it will only have ATK_STATE_FOCUSED if we've processed
+            // the activedescendant change.
+            // if (GetActiveDescendantOfCurrentFocused() == atk_object)
+            //     state.insert(State::Focused);
+            state
+        }).unwrap_or(State::Defunct.into())
     }
+    
 
     fn interfaces(&self) -> Interfaces {
         self.0.map(|node| {

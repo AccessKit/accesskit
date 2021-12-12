@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use enumflags2::{bitflags, BitFlags, FromBitsError};
+use enumflags2::{bitflags, BitFlag, BitFlags, FromBitsError};
 use serde::{
     de::{Deserialize, Deserializer, SeqAccess, Visitor, self},
     ser::{Serialize, Serializer, SerializeSeq}
@@ -226,11 +226,11 @@ pub struct StateSet(BitFlags<State>);
 
 impl StateSet {
     pub fn from_bits(bits: u64) -> Result<StateSet, FromBitsError<State>> {
-        Ok(BitFlags::<State, u64>::from_bits(bits)?.into())
+        Ok(StateSet(BitFlags::from_bits(bits)?))
     }
 
     pub fn empty() -> StateSet {
-        BitFlags::<State, u64>::empty().into()
+        StateSet(State::empty())
     }
 
     pub fn bits(&self) -> u64 {
@@ -294,8 +294,8 @@ impl Type for StateSet {
     }
 }
 
-impl From<BitFlags<State, u64>> for StateSet {
-    fn from(value: BitFlags<State, u64>) -> Self {
-        Self(value)
+impl From<State> for StateSet {
+    fn from(value: State) -> Self {
+        Self(value.into())
     }
 }

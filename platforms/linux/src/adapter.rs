@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use accesskit::{NodeId, TreeUpdate};
 use accesskit_consumer::{Node, Tree, TreeChange};
@@ -13,6 +13,10 @@ use crate::atspi::{
     Bus
 };
 use crate::node::{PlatformNode, RootPlatformNode};
+
+lazy_static! {
+    pub(crate) static ref CURRENT_ACTIVE_WINDOW: Arc<Mutex<Option<NodeId>>> = Arc::new(Mutex::new(None));
+}
 
 pub struct Adapter {
     atspi_bus: Bus,
@@ -76,13 +80,21 @@ impl Adapter {
     pub fn window_activated(&self, window_id: NodeId) {
         let reader = self.tree.read();
         let node = PlatformNode::new(&reader.node_by_id(window_id).unwrap());
-        self.atspi_bus.emit_object_event(&node, ObjectEvent::Activated);
+        if let Ok(mut current_active) = CURRENT_ACTIVE_WINDOW.lock() {
+            *current_active = Some(window_id);
+        }
         self.atspi_bus.emit_window_event(&node, WindowEvent::Activated);
+        self.atspi_bus.emit_object_event(&node, ObjectEvent::Activated);
     }
 
     pub fn window_deactivated(&self, window_id: NodeId) {
         let reader = self.tree.read();
         let node = PlatformNode::new(&reader.node_by_id(window_id).unwrap());
+        if let Ok(mut current_active) = CURRENT_ACTIVE_WINDOW.lock() {
+            if *current_active == Some(window_id) {
+                *current_active = None;
+            }
+        }
         self.atspi_bus.emit_object_event(&node, ObjectEvent::Deactivated);
         self.atspi_bus.emit_window_event(&node, WindowEvent::Deactivated);
     }
