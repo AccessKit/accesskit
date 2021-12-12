@@ -7,7 +7,7 @@ use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
 use accesskit_linux::Adapter;
 use std::num::NonZeroU64;
 use winit::{
-    event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent},
+    event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
@@ -44,7 +44,7 @@ fn get_initial_state() -> TreeUpdate {
         clear: None,
         nodes: vec![root, button_1, button_2],
         tree: Some(get_tree()),
-        focus: Some(unsafe { FOCUS }),
+        focus: None,
     }
 }
 
@@ -69,29 +69,37 @@ fn main() {
             } if window_id == window.id() => {
                 match event {
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                    WindowEvent::Focused(true) => adapter.window_activated(WINDOW_ID),
-                    WindowEvent::Focused(false) => adapter.window_deactivated(WINDOW_ID),
-                    WindowEvent::KeyboardInput { input, .. } => {
-                        match input {
-                            KeyboardInput {
-                                virtual_keycode: Some(VirtualKeyCode::Tab), ..
-                            } => {
-                                unsafe {
-                                    FOCUS = if FOCUS == BUTTON_1_ID {
-                                        BUTTON_2_ID
-                                    } else {
-                                        BUTTON_1_ID
-                                    };
-                                    adapter.update(TreeUpdate {
-                                        clear: None,
-                                        nodes: vec![],
-                                        focus: Some(FOCUS),
-                                        tree: None
-                                    });
-                                }
-                            },
-                            _ => { }
-                        }
+                    WindowEvent::Focused(true) => {
+                        adapter.window_activated(WINDOW_ID);
+                        adapter.update(TreeUpdate {
+                            clear: None,
+                            nodes: vec![],
+                            focus: Some(unsafe { FOCUS }),
+                            tree: None
+                        });
+                    },
+                    WindowEvent::Focused(false) => {
+                        adapter.window_deactivated(WINDOW_ID);
+                    },
+                    WindowEvent::KeyboardInput {
+                        input: KeyboardInput {
+                            virtual_keycode: Some(VirtualKeyCode::Tab),
+                            state: ElementState::Pressed,
+                            .. },
+                        .. } => {
+                            unsafe {
+                                FOCUS = if FOCUS == BUTTON_1_ID {
+                                    BUTTON_2_ID
+                                } else {
+                                    BUTTON_1_ID
+                                };
+                                adapter.update(TreeUpdate {
+                                    clear: None,
+                                    nodes: vec![],
+                                    focus: Some(FOCUS),
+                                    tree: None
+                                });
+                            }
                     },
                     _ => (),
                 }
