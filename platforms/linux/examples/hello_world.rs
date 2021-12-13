@@ -97,6 +97,26 @@ fn main() {
                                 });
                             }
                     },
+                    WindowEvent::KeyboardInput {
+                        input: KeyboardInput {
+                            virtual_keycode: Some(VirtualKeyCode::Return),
+                            state: ElementState::Released,
+                            .. },
+                        .. } => {
+                            unsafe {
+                                let updated_node = if FOCUS == BUTTON_1_ID {
+                                    make_button(BUTTON_1_ID, "You pressed button 1")
+                                } else {
+                                    make_button(BUTTON_2_ID, "You pressed button 2")
+                                };
+                                adapter.update(TreeUpdate {
+                                    clear: None,
+                                    nodes: vec![updated_node],
+                                    focus: Some(FOCUS),
+                                    tree: None
+                                });
+                            }
+                    }
                     _ => (),
                 }
             }

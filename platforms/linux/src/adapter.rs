@@ -80,9 +80,11 @@ impl Adapter {
                     }
                 }
                 TreeChange::NodeUpdated { old_node, new_node } => {
-                    //let old_node = ResolvedPlatformNode::new(old_node, self.hwnd);
-                    //let new_node = ResolvedPlatformNode::new(new_node, self.hwnd);
-                    //new_node.raise_property_changes(&old_node);
+                    if let Some(name) = new_node.name() {
+                        if old_node.name() != Some(name) {
+                            self.atspi_bus.emit_object_event(&PlatformNode::new(&new_node), ObjectEvent::NameChanged(name.to_string()));
+                        }
+                    }
                 }
                 // TODO: handle other events
                 _ => (),

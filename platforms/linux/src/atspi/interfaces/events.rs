@@ -34,6 +34,7 @@ pub enum ObjectEvent {
     Deactivated,
     FocusGained,
     FocusLost,
+    NameChanged(String),
 }
 
 pub struct ObjectEventsInterface;
@@ -49,13 +50,25 @@ impl ObjectEventsInterface {
             ObjectEvent::FocusGained =>
                 ObjectEventsInterface::state_changed(ctxt, "focused", 1, 0, 0i32.into(), properties).await,
             ObjectEvent::FocusLost =>
-                ObjectEventsInterface::state_changed(ctxt, "focused", 0, 0, 0i32.into(), properties).await
+                ObjectEventsInterface::state_changed(ctxt, "focused", 0, 0, 0i32.into(), properties).await,
+            ObjectEvent::NameChanged(name) =>
+                ObjectEventsInterface::property_change(ctxt, "accessible-name", 0, 0, name.into(), properties).await
         }
     }
 }
 
 #[dbus_interface(name = "org.a11y.atspi.Event.Object")]
 impl ObjectEventsInterface {
+    #[dbus_interface(signal)]
+    async fn property_change(
+        ctxt: &SignalContext<'_>,
+        minor: &str,
+        detail1: i32,
+        detail2: i32,
+        any_data: Value<'_>,
+        properties: HashMap<String, Value<'_>>
+    ) -> Result<()>;
+
     #[dbus_interface(signal)]
     async fn state_changed(
         ctxt: &SignalContext<'_>,
