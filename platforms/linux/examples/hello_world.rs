@@ -69,17 +69,13 @@ fn main() {
             } if window_id == window.id() => {
                 match event {
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                    WindowEvent::Focused(true) => {
-                        adapter.window_activated(WINDOW_ID);
+                    WindowEvent::Focused(window_has_focus) => {
                         adapter.update(TreeUpdate {
                             clear: None,
                             nodes: vec![],
-                            focus: Some(unsafe { FOCUS }),
+                            focus: window_has_focus.then(|| unsafe { FOCUS }),
                             tree: None
                         });
-                    },
-                    WindowEvent::Focused(false) => {
-                        adapter.window_deactivated(WINDOW_ID);
                     },
                     WindowEvent::KeyboardInput {
                         input: KeyboardInput {

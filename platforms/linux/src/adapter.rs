@@ -5,7 +5,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use accesskit::{NodeId, TreeUpdate};
+use accesskit::{NodeId, Role, TreeUpdate};
 use accesskit_consumer::{Node, Tree, TreeChange};
 
 use crate::atspi::{
@@ -60,10 +60,23 @@ impl Adapter {
                         let old_node = PlatformNode::new(&old_node);
                         self.atspi_bus.emit_object_event(&old_node, ObjectEvent::FocusLost).unwrap();
                     }
-                    if let Some(new_node) = new_node {
-                        let new_node = PlatformNode::new(&new_node);
-                        self.atspi_bus.emit_object_event(&new_node, ObjectEvent::FocusGained).unwrap();
-                        self.atspi_bus.emit_focus_event(&new_node).unwrap();
+                    if let Ok(mut active_window) = CURRENT_ACTIVE_WINDOW.lock() {
+                        let node_window = new_node.map(|node| containing_window(node)).flatten();
+                        let node_window_id = node_window.map(|node| node.id());
+                        if let Some(active_window_id) = *active_window {
+                            if node_window_id != Some(active_window_id) {
+                                self.window_deactivated(active_window_id);
+                            }
+                        }
+                        *active_window = node_window_id;
+                        if let Some(new_node) = new_node {
+                            if let Some(node_window_id) = node_window_id {
+                                self.window_activated(node_window_id);
+                            }
+                            let new_node = PlatformNode::new(&new_node);
+                            self.atspi_bus.emit_object_event(&new_node, ObjectEvent::FocusGained).unwrap();
+                            self.atspi_bus.emit_focus_event(&new_node).unwrap();
+                        }
                     }
                 }
                 TreeChange::NodeUpdated { old_node, new_node } => {
@@ -77,24 +90,16 @@ impl Adapter {
         });
     }
 
-    pub fn window_activated(&self, window_id: NodeId) {
+    fn window_activated(&self, window_id: NodeId) {
         let reader = self.tree.read();
         let node = PlatformNode::new(&reader.node_by_id(window_id).unwrap());
-        if let Ok(mut current_active) = CURRENT_ACTIVE_WINDOW.lock() {
-            *current_active = Some(window_id);
-        }
         self.atspi_bus.emit_window_event(&node, WindowEvent::Activated);
         self.atspi_bus.emit_object_event(&node, ObjectEvent::Activated);
     }
 
-    pub fn window_deactivated(&self, window_id: NodeId) {
+    fn window_deactivated(&self, window_id: NodeId) {
         let reader = self.tree.read();
         let node = PlatformNode::new(&reader.node_by_id(window_id).unwrap());
-        if let Ok(mut current_active) = CURRENT_ACTIVE_WINDOW.lock() {
-            if *current_active == Some(window_id) {
-                *current_active = None;
-            }
-        }
         self.atspi_bus.emit_object_event(&node, ObjectEvent::Deactivated);
         self.atspi_bus.emit_window_event(&node, WindowEvent::Deactivated);
     }
@@ -103,5 +108,19 @@ impl Adapter {
         let reader = self.tree.read();
         let node = reader.root();
         PlatformNode::new(&node)
+    }
+}
+
+fn containing_window(node: Node) -> Option<Node> {
+    const WINDOW_ROLES: &[Role] = &[Role::AlertDialog, Role::Dialog, Role::Window];
+    if WINDOW_ROLES.contains(&node.role()) {
+        Some(node)
+    } else {
+        while let Some(node) = node.parent() {
+            if WINDOW_ROLES.contains(&node.role()) {
+                return Some(node);
+            }
+        }
+        None
     }
 }
