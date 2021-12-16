@@ -10,7 +10,7 @@ use accesskit_consumer::{Node, Tree, TreeChange};
 
 use crate::atspi::{
     interfaces::{ObjectEvent, WindowEvent},
-    Bus
+    Bus, State
 };
 use crate::node::{PlatformNode, RootPlatformNode};
 
@@ -58,7 +58,7 @@ impl Adapter {
                 } => {
                     if let Some(old_node) = old_node {
                         let old_node = PlatformNode::new(&old_node);
-                        self.atspi_bus.emit_object_event(&old_node, ObjectEvent::FocusLost).unwrap();
+                        self.atspi_bus.emit_object_event(&old_node, ObjectEvent::StateChanged(State::Focused, false)).unwrap();
                     }
                     if let Ok(mut active_window) = CURRENT_ACTIVE_WINDOW.lock() {
                         let node_window = new_node.map(|node| containing_window(node)).flatten();
@@ -74,7 +74,7 @@ impl Adapter {
                                 self.window_activated(node_window_id);
                             }
                             let new_node = PlatformNode::new(&new_node);
-                            self.atspi_bus.emit_object_event(&new_node, ObjectEvent::FocusGained).unwrap();
+                            self.atspi_bus.emit_object_event(&new_node, ObjectEvent::StateChanged(State::Focused, true)).unwrap();
                             self.atspi_bus.emit_focus_event(&new_node).unwrap();
                         }
                     }
@@ -96,13 +96,13 @@ impl Adapter {
         let reader = self.tree.read();
         let node = PlatformNode::new(&reader.node_by_id(window_id).unwrap());
         self.atspi_bus.emit_window_event(&node, WindowEvent::Activated);
-        self.atspi_bus.emit_object_event(&node, ObjectEvent::Activated);
+        self.atspi_bus.emit_object_event(&node, ObjectEvent::StateChanged(State::Active, true));
     }
 
     fn window_deactivated(&self, window_id: NodeId) {
         let reader = self.tree.read();
         let node = PlatformNode::new(&reader.node_by_id(window_id).unwrap());
-        self.atspi_bus.emit_object_event(&node, ObjectEvent::Deactivated);
+        self.atspi_bus.emit_object_event(&node, ObjectEvent::StateChanged(State::Active, false));
         self.atspi_bus.emit_window_event(&node, WindowEvent::Deactivated);
     }
 

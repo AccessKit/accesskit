@@ -3,7 +3,10 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::atspi::interfaces::Accessible;
+use crate::atspi::{
+    interfaces::Accessible,
+    State
+};
 use std::collections::HashMap;
 use zbus::{SignalContext, Result, dbus_interface};
 use zvariant::Value;
@@ -30,10 +33,7 @@ impl FocusEventsInterface {
 }
 
 pub enum ObjectEvent {
-    Activated,
-    Deactivated,
-    FocusGained,
-    FocusLost,
+    StateChanged(State, bool),
     NameChanged(String),
 }
 
@@ -43,16 +43,15 @@ impl ObjectEventsInterface {
     pub async fn emit(&self, event: ObjectEvent, ctxt: &SignalContext<'_>) -> Result<()> {
         let properties = HashMap::new();
         match event {
-            ObjectEvent::Activated =>
-                ObjectEventsInterface::state_changed(ctxt, "active", 1, 0, 0i32.into(), properties).await,
-            ObjectEvent::Deactivated =>
-                ObjectEventsInterface::state_changed(ctxt, "active", 0, 0, 0i32.into(), properties).await,
-            ObjectEvent::FocusGained =>
-                ObjectEventsInterface::state_changed(ctxt, "focused", 1, 0, 0i32.into(), properties).await,
-            ObjectEvent::FocusLost =>
-                ObjectEventsInterface::state_changed(ctxt, "focused", 0, 0, 0i32.into(), properties).await,
+            ObjectEvent::StateChanged(State::Active, is_active) => {
+                ObjectEventsInterface::state_changed(ctxt, "active", is_active as i32, 0, 0i32.into(), properties).await
+            },
+            ObjectEvent::StateChanged(State::Focused, is_focused) => {
+                ObjectEventsInterface::state_changed(ctxt, "focused", is_focused as i32, 0, 0i32.into(), properties).await
+            },
             ObjectEvent::NameChanged(name) =>
-                ObjectEventsInterface::property_change(ctxt, "accessible-name", 0, 0, name.into(), properties).await
+                ObjectEventsInterface::property_change(ctxt, "accessible-name", 0, 0, name.into(), properties).await,
+            _ => unimplemented!()
         }
     }
 }
