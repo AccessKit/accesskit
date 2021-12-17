@@ -25,18 +25,26 @@ use zbus::{
     Address, InterfaceDeref, Result
 };
 
-pub struct Bus(Connection);
+pub struct Bus<'a> {
+    conn: Connection,
+    socket_proxy: SocketProxy<'a>
+}
 
-impl Bus {
+impl<'a> Bus<'a> {
     pub fn a11y_bus() -> Option<Self> {
-        Some(Bus(a11y_bus()?))
+        let conn = a11y_bus()?;
+        let socket_proxy = SocketProxy::new(&conn).ok()?;
+        Some(Bus {
+            conn,
+            socket_proxy
+        })
     }
 
     pub fn register_accessible_interface<T>(&mut self, object: T) -> Result<bool>
     where T: Accessible
     {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, object.id().as_str());
-        if self.0.object_server_mut().at(path.clone(), AccessibleInterface::new(self.0.unique_name().unwrap().to_owned(), object.clone()))? {
+        if self.conn.object_server_mut().at(path.clone(), AccessibleInterface::new(self.conn.unique_name().unwrap().to_owned(), object.clone()))? {
             let interfaces = object.interfaces();
             if interfaces.contains(Interface::FocusEvents) {
                 self.register_focus_events_interface(&path)?;
@@ -57,15 +65,14 @@ impl Bus {
     pub fn register_application_interface<T>(&mut self, root: T) -> Result<bool>
     where T: Application
     {
-        println!("Registering on {:?}", self.0.unique_name().unwrap());
+        println!("Registering on {:?}", self.conn.unique_name().unwrap());
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, Accessible::id(&root).as_str());
         let root = Arc::new(RwLock::new(root));
-        let registered = self.0.object_server_mut().at(path, ApplicationInterface(ApplicationInterfaceWrapper(root.clone())))?;
+        let registered = self.conn.object_server_mut().at(path, ApplicationInterface(ApplicationInterfaceWrapper(root.clone())))?;
         if registered && self.register_accessible_interface(ApplicationInterfaceWrapper(root.clone()))? {
-            let desktop_address = SocketProxy::new(&self.0)
-                .unwrap()
+            let desktop_address = self.socket_proxy
                 .embed(ObjectAddress::root(
-                    self.0.unique_name().unwrap().as_ref()))?;
+                    self.conn.unique_name().unwrap().as_ref()))?;
             root.write().set_desktop(desktop_address);
             Ok(true)
         } else {
@@ -74,24 +81,24 @@ impl Bus {
     }
 
     fn register_focus_events_interface(&mut self, path: &str) -> Result<bool> {
-        self.0.object_server_mut().at(path, FocusEventsInterface { })
+        self.conn.object_server_mut().at(path, FocusEventsInterface { })
     }
 
     fn register_object_events_interface(&mut self, path: &str) -> Result<bool> {
-        self.0.object_server_mut().at(path, ObjectEventsInterface { })
+        self.conn.object_server_mut().at(path, ObjectEventsInterface { })
     }
 
     fn register_window_events_interface<T>(&mut self, path: &str, object: T) -> Result<bool>
     where T: Accessible
     {
-        self.0.object_server_mut().at(path, WindowEventsInterface(object))
+        self.conn.object_server_mut().at(path, WindowEventsInterface(object))
     }
 
     pub fn emit_focus_event<T>(&self, target: &T) -> Result<()>
     where T: Accessible
     {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
-        self.0.object_server().with(path, |iface: InterfaceDeref<'_, FocusEventsInterface>, ctxt| {
+        self.conn.object_server().with(path, |iface: InterfaceDeref<'_, FocusEventsInterface>, ctxt| {
             block_on(iface.focused(&ctxt))
         })
     }
@@ -100,7 +107,7 @@ impl Bus {
     where T: Accessible
     {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
-        self.0.object_server().with(path, |iface: InterfaceDeref<'_, ObjectEventsInterface>, ctxt| {
+        self.conn.object_server().with(path, |iface: InterfaceDeref<'_, ObjectEventsInterface>, ctxt| {
             block_on(iface.emit(event, &ctxt))
         })
     }
@@ -109,9 +116,17 @@ impl Bus {
     where T: Accessible
     {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
-        self.0.object_server().with(path, |iface: InterfaceDeref<'_, WindowEventsInterface::<T>>, ctxt| {
+        self.conn.object_server().with(path, |iface: InterfaceDeref<'_, WindowEventsInterface::<T>>, ctxt| {
             block_on(iface.emit(event, &ctxt))
         })
+    }
+}
+
+impl Drop for Bus<'_> {
+    fn drop(&mut self) {
+        let _ = self.socket_proxy
+            .unembed(
+                ObjectAddress::root(self.conn.unique_name().unwrap().as_ref()));
     }
 }
 

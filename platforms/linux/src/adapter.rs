@@ -18,12 +18,12 @@ lazy_static! {
     pub(crate) static ref CURRENT_ACTIVE_WINDOW: Arc<Mutex<Option<NodeId>>> = Arc::new(Mutex::new(None));
 }
 
-pub struct Adapter {
-    atspi_bus: Bus,
+pub struct Adapter<'a> {
+    atspi_bus: Bus<'a>,
     tree: Arc<Tree>,
 }
 
-impl Adapter {
+impl<'a> Adapter<'a> {
     pub fn new(app_name: String, toolkit_name: String, toolkit_version: String, initial_state: TreeUpdate) -> Option<Self> {
         let mut atspi_bus = Bus::a11y_bus()?;
         let tree = Tree::new(initial_state);
