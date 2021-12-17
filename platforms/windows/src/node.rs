@@ -279,7 +279,7 @@ impl ResolvedPlatformNode<'_> {
         }
     }
 
-    fn name(&self) -> Option<&str> {
+    fn name(&self) -> Option<String> {
         self.node.name()
     }
 
