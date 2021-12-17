@@ -286,9 +286,17 @@ impl Node<'_> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::Rect;
+    use accesskit::{Node, NodeId, Rect, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+    use std::num::NonZeroU64;
 
     use crate::tests::*;
+
+    const TREE_ID: &str = "test_tree";
+    const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
+    const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
+    const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
+    const NODE_ID_4: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(4) });
+    const NODE_ID_5: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(5) });
 
     #[test]
     fn parent_and_index() {
@@ -488,6 +496,77 @@ mod tests {
                 height: 20.0f32,
             }),
             tree.read().node_by_id(STATIC_TEXT_1_0_ID).unwrap().bounds()
+        );
+    }
+
+    #[test]
+    fn no_name_or_labelled_by() {
+        let update = TreeUpdate {
+            clear: None,
+            nodes: vec![
+                Node {
+                    children: vec![NODE_ID_2],
+                    ..Node::new(NODE_ID_1, Role::Window)
+                },
+                Node::new(NODE_ID_2, Role::Button),
+            ],
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
+        };
+        let tree = super::Tree::new(update);
+        assert_eq!(None, tree.read().node_by_id(NODE_ID_2).unwrap().name());
+    }
+
+    #[test]
+    fn name_from_labelled_by() {
+        // The following mock UI probably isn't very localization-friendly,
+        // but it's good for this test.
+        const LABEL_1: &str = "Check email every";
+        const LABEL_2: &str = "minutes";
+
+        let update = TreeUpdate {
+            clear: None,
+            nodes: vec![
+                Node {
+                    children: vec![NODE_ID_2, NODE_ID_3, NODE_ID_4, NODE_ID_5],
+                    ..Node::new(NODE_ID_1, Role::Window)
+                },
+                Node {
+                    labelled_by: vec![NODE_ID_3, NODE_ID_5],
+                    ..Node::new(NODE_ID_2, Role::CheckBox)
+                },
+                Node {
+                    name: Some(LABEL_1.into()),
+                    ..Node::new(NODE_ID_3, Role::StaticText)
+                },
+                Node {
+                    labelled_by: vec![NODE_ID_5],
+                    ..Node::new(NODE_ID_4, Role::CheckBox)
+                },
+                Node {
+                    name: Some(LABEL_2.into()),
+                    ..Node::new(NODE_ID_5, Role::StaticText)
+                },
+            ],
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
+        };
+        let tree = super::Tree::new(update);
+        assert_eq!(
+            Some([LABEL_1, LABEL_2].join(" ")),
+            tree.read().node_by_id(NODE_ID_2).unwrap().name()
+        );
+        assert_eq!(
+            Some(LABEL_2.into()),
+            tree.read().node_by_id(NODE_ID_4).unwrap().name()
         );
     }
 }
