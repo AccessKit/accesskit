@@ -224,7 +224,7 @@ impl<'a> Node<'a> {
                 Some(
                     labelled_by
                         .iter()
-                        .map(|id| self.tree_reader.node_by_id(*id).unwrap().name().unwrap())
+                        .filter_map(|id| self.tree_reader.node_by_id(*id).unwrap().name())
                         .collect::<Vec<String>>()
                         .join(" "),
                 )
