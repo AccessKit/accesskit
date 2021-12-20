@@ -483,7 +483,12 @@ mod tests {
     #[test]
     fn bounding_box() {
         let tree = test_tree();
-        assert!(tree.read().node_by_id(ROOT_ID).unwrap().bounding_box().is_none());
+        assert!(tree
+            .read()
+            .node_by_id(ROOT_ID)
+            .unwrap()
+            .bounding_box()
+            .is_none());
         assert_eq!(
             Some(Rect {
                 x0: 10.0,
@@ -503,7 +508,10 @@ mod tests {
                 x1: 100.0,
                 y1: 70.0,
             }),
-            tree.read().node_by_id(STATIC_TEXT_1_0_ID).unwrap().bounding_box()
+            tree.read()
+                .node_by_id(STATIC_TEXT_1_0_ID)
+                .unwrap()
+                .bounding_box()
         );
     }
 
