@@ -676,8 +676,7 @@ pub struct Node {
     /// in their [`transform`] field, implies that the [`bounds`] field
     /// of most nodes should be in the coordinate space of the nearest ancestor
     /// with a non-`None` [`Transform`] field, or if there is no such ancestor,
-    /// the tree's container (e.g. window). This field should be `None`
-    /// if this node is a transparent container.
+    /// the tree's container (e.g. window).
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub bounds: Option<Rect>,
     #[cfg_attr(feature = "serde", serde(default))]
