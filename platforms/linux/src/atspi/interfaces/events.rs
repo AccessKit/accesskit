@@ -7,7 +7,10 @@ use crate::atspi::{
     interfaces::Accessible,
     State
 };
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    convert::AsRef
+};
 use zbus::{SignalContext, Result, dbus_interface};
 use zvariant::Value;
 
@@ -43,15 +46,11 @@ impl ObjectEventsInterface {
     pub async fn emit(&self, event: ObjectEvent, ctxt: &SignalContext<'_>) -> Result<()> {
         let properties = HashMap::new();
         match event {
-            ObjectEvent::StateChanged(State::Active, is_active) => {
-                ObjectEventsInterface::state_changed(ctxt, "active", is_active as i32, 0, 0i32.into(), properties).await
-            },
-            ObjectEvent::StateChanged(State::Focused, is_focused) => {
-                ObjectEventsInterface::state_changed(ctxt, "focused", is_focused as i32, 0, 0i32.into(), properties).await
+            ObjectEvent::StateChanged(state, value) => {
+                ObjectEventsInterface::state_changed(ctxt, state.as_ref(), value as i32, 0, 0i32.into(), properties).await
             },
             ObjectEvent::NameChanged(name) =>
-                ObjectEventsInterface::property_change(ctxt, "accessible-name", 0, 0, name.into(), properties).await,
-            _ => unimplemented!()
+                ObjectEventsInterface::property_change(ctxt, "accessible-name", 0, 0, name.into(), properties).await
         }
     }
 }

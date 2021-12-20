@@ -9,7 +9,7 @@ use accesskit::{NodeId, Role, TreeUpdate};
 use accesskit_consumer::{Node, Tree, TreeChange};
 
 use crate::atspi::{
-    interfaces::{ObjectEvent, WindowEvent},
+    interfaces::{Accessible, ObjectEvent, WindowEvent},
     Bus, State
 };
 use crate::node::{PlatformNode, RootPlatformNode};
@@ -80,11 +80,20 @@ impl<'a> Adapter<'a> {
                     }
                 }
                 TreeChange::NodeUpdated { old_node, new_node } => {
+                    let old_state = PlatformNode::new(&old_node).state();
+                    let new_platform_node = PlatformNode::new(&new_node);
+                    let new_state = new_platform_node.state();
+                    let changed_states = old_state ^ new_state;
+                    let mut events = Vec::new();
+                    for state in changed_states.iter() {
+                        events.push(ObjectEvent::StateChanged(state, new_state.contains(state)));
+                    }
                     if let Some(name) = new_node.name() {
                         if old_node.name() != Some(name) {
-                            self.atspi_bus.emit_object_event(&PlatformNode::new(&new_node), ObjectEvent::NameChanged(name.to_string()));
+                            events.push(ObjectEvent::NameChanged(name.to_string()));
                         }
                     }
+                    self.atspi_bus.emit_object_events(&new_platform_node, events);
                 }
                 // TODO: handle other events
                 _ => (),

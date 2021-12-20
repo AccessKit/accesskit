@@ -112,6 +112,20 @@ impl<'a> Bus<'a> {
         })
     }
 
+    pub fn emit_object_events<T>(&self, target: &T, events: Vec<ObjectEvent>) -> Result<()>
+    where T: Accessible
+    {
+        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
+        self.conn.object_server().with(path, |iface: InterfaceDeref<'_, ObjectEventsInterface>, ctxt| {
+            block_on(async {
+                for event in events {
+                    iface.emit(event, &ctxt).await?;
+                }
+                Ok(())
+            })
+        })
+    }
+
     pub fn emit_window_event<T>(&self, target: &T, event: WindowEvent) -> Result<()>
     where T: Accessible
     {

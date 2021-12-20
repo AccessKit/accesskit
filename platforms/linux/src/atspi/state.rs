@@ -9,13 +9,15 @@ use serde::{
     ser::{Serialize, Serializer, SerializeSeq}
 };
 use std::fmt;
+use strum::AsRefStr;
 use zvariant::{Signature, Type};
 
 /// Enumeration used by various interfaces indicating every possible state 
 /// an #AtspiAccessible object can assume.
 #[bitflags]
 #[repr(u64)]
-#[derive(Clone, Copy, Debug)]
+#[derive(AsRefStr, Clone, Copy, Debug)]
+#[strum(serialize_all = "kebab-case")]
 pub enum State {
     /// Indicates an invalid state - probably an error condition.
     Invalid,
@@ -222,6 +224,7 @@ pub enum State {
     LastDefined,
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct StateSet(BitFlags<State>);
 
 impl StateSet {
@@ -237,8 +240,16 @@ impl StateSet {
         self.0.bits()
     }
 
+    pub fn contains<B: Into<BitFlags<State>>>(self, other: B) -> bool {
+        self.0.contains(other)
+    }
+
     pub fn insert<B: Into<BitFlags<State>>>(&mut self, other: B) {
         self.0.insert(other);
+    }
+
+    pub fn iter(self) -> impl Iterator<Item = State> {
+        self.0.iter()
     }
 }
 
@@ -297,5 +308,13 @@ impl Type for StateSet {
 impl From<State> for StateSet {
     fn from(value: State) -> Self {
         Self(value.into())
+    }
+}
+
+impl std::ops::BitXor for StateSet {
+    type Output = StateSet;
+
+    fn bitxor(self, other: Self) -> Self::Output {
+        StateSet(self.0 ^ other.0)
     }
 }
