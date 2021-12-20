@@ -189,9 +189,9 @@ impl<'a> Node<'a> {
                 .map_or(Affine::IDENTITY, |parent| parent.transform())
     }
 
-    /// Returns the node's transformed bounds relative to the tree's container
-    /// (e.g. window).
-    pub fn bounds(&self) -> Option<Rect> {
+    /// Returns the node's transformed bounding box relative to the tree's
+    /// container (e.g. window).
+    pub fn bounding_box(&self) -> Option<Rect> {
         self.data()
             .bounds
             .as_ref()
@@ -481,9 +481,9 @@ mod tests {
     }
 
     #[test]
-    fn bounds() {
+    fn bounding_box() {
         let tree = test_tree();
-        assert!(tree.read().node_by_id(ROOT_ID).unwrap().bounds().is_none());
+        assert!(tree.read().node_by_id(ROOT_ID).unwrap().bounding_box().is_none());
         assert_eq!(
             Some(Rect {
                 x0: 10.0,
@@ -494,7 +494,7 @@ mod tests {
             tree.read()
                 .node_by_id(PARAGRAPH_1_IGNORED_ID)
                 .unwrap()
-                .bounds()
+                .bounding_box()
         );
         assert_eq!(
             Some(Rect {
@@ -503,7 +503,7 @@ mod tests {
                 x1: 100.0,
                 y1: 70.0,
             }),
-            tree.read().node_by_id(STATIC_TEXT_1_0_ID).unwrap().bounds()
+            tree.read().node_by_id(STATIC_TEXT_1_0_ID).unwrap().bounding_box()
         );
     }
 

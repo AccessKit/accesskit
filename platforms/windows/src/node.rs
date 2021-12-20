@@ -345,7 +345,7 @@ impl ResolvedPlatformNode<'_> {
     }
 
     fn bounding_rectangle(&self) -> UiaRect {
-        self.node.bounds().map_or(UiaRect::default(), |rect| {
+        self.node.bounding_box().map_or(UiaRect::default(), |rect| {
             let mut client_top_left = POINT::default();
             unsafe { ClientToScreen(self.hwnd, &mut client_top_left) }.unwrap();
             UiaRect {
