@@ -10,12 +10,13 @@ use accesskit_consumer::{Node, Tree, TreeChange};
 
 use crate::atspi::{
     interfaces::{Accessible, ObjectEvent, WindowEvent},
-    Bus, State
+    Bus, State,
 };
 use crate::node::{PlatformNode, RootPlatformNode};
 
 lazy_static! {
-    pub(crate) static ref CURRENT_ACTIVE_WINDOW: Arc<Mutex<Option<NodeId>>> = Arc::new(Mutex::new(None));
+    pub(crate) static ref CURRENT_ACTIVE_WINDOW: Arc<Mutex<Option<NodeId>>> =
+        Arc::new(Mutex::new(None));
 }
 
 pub struct Adapter<'a> {
@@ -24,7 +25,12 @@ pub struct Adapter<'a> {
 }
 
 impl<'a> Adapter<'a> {
-    pub fn new(app_name: String, toolkit_name: String, toolkit_version: String, initial_state: TreeUpdate) -> Option<Self> {
+    pub fn new(
+        app_name: String,
+        toolkit_name: String,
+        toolkit_version: String,
+        initial_state: TreeUpdate,
+    ) -> Option<Self> {
         let mut atspi_bus = Bus::a11y_bus()?;
         let tree = Tree::new(initial_state);
         let app_node = RootPlatformNode::new(app_name, toolkit_name, toolkit_version, tree.clone());
@@ -43,22 +49,21 @@ impl<'a> Adapter<'a> {
             atspi_bus.register_accessible_interface(node);
         }
         atspi_bus.register_application_interface(app_node);
-        Some(Self {
-            atspi_bus,
-            tree
-        })
+        Some(Self { atspi_bus, tree })
     }
 
     pub fn update(&self, update: TreeUpdate) {
         self.tree.update_and_process_changes(update, |change| {
             match change {
-                TreeChange::FocusMoved {
-                    old_node,
-                    new_node,
-                } => {
+                TreeChange::FocusMoved { old_node, new_node } => {
                     if let Some(old_node) = old_node {
                         let old_node = PlatformNode::new(&old_node);
-                        self.atspi_bus.emit_object_event(&old_node, ObjectEvent::StateChanged(State::Focused, false)).unwrap();
+                        self.atspi_bus
+                            .emit_object_event(
+                                &old_node,
+                                ObjectEvent::StateChanged(State::Focused, false),
+                            )
+                            .unwrap();
                     }
                     if let Ok(mut active_window) = CURRENT_ACTIVE_WINDOW.lock() {
                         let node_window = new_node.map(|node| containing_window(node)).flatten();
@@ -74,7 +79,12 @@ impl<'a> Adapter<'a> {
                                 self.window_activated(node_window_id);
                             }
                             let new_node = PlatformNode::new(&new_node);
-                            self.atspi_bus.emit_object_event(&new_node, ObjectEvent::StateChanged(State::Focused, true)).unwrap();
+                            self.atspi_bus
+                                .emit_object_event(
+                                    &new_node,
+                                    ObjectEvent::StateChanged(State::Focused, true),
+                                )
+                                .unwrap();
                             self.atspi_bus.emit_focus_event(&new_node).unwrap();
                         }
                     }
@@ -93,7 +103,8 @@ impl<'a> Adapter<'a> {
                             events.push(ObjectEvent::NameChanged(name.to_string()));
                         }
                     }
-                    self.atspi_bus.emit_object_events(&new_platform_node, events);
+                    self.atspi_bus
+                        .emit_object_events(&new_platform_node, events);
                 }
                 // TODO: handle other events
                 _ => (),
@@ -104,15 +115,19 @@ impl<'a> Adapter<'a> {
     fn window_activated(&self, window_id: NodeId) {
         let reader = self.tree.read();
         let node = PlatformNode::new(&reader.node_by_id(window_id).unwrap());
-        self.atspi_bus.emit_window_event(&node, WindowEvent::Activated);
-        self.atspi_bus.emit_object_event(&node, ObjectEvent::StateChanged(State::Active, true));
+        self.atspi_bus
+            .emit_window_event(&node, WindowEvent::Activated);
+        self.atspi_bus
+            .emit_object_event(&node, ObjectEvent::StateChanged(State::Active, true));
     }
 
     fn window_deactivated(&self, window_id: NodeId) {
         let reader = self.tree.read();
         let node = PlatformNode::new(&reader.node_by_id(window_id).unwrap());
-        self.atspi_bus.emit_object_event(&node, ObjectEvent::StateChanged(State::Active, false));
-        self.atspi_bus.emit_window_event(&node, WindowEvent::Deactivated);
+        self.atspi_bus
+            .emit_object_event(&node, ObjectEvent::StateChanged(State::Active, false));
+        self.atspi_bus
+            .emit_window_event(&node, WindowEvent::Deactivated);
     }
 
     fn root_platform_node(&self) -> PlatformNode {

@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use enumflags2::{BitFlags, bitflags};
+use enumflags2::{bitflags, BitFlags};
 mod accessible;
 mod application;
 mod events;

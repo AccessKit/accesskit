@@ -5,7 +5,7 @@
 
 use crate::atspi::{
     interfaces::{Accessible, Interface, Interfaces},
-    ObjectId, ObjectRef, OwnedObjectAddress, Role, StateSet
+    ObjectId, ObjectRef, OwnedObjectAddress, Role, StateSet,
 };
 use parking_lot::RwLock;
 use std::sync::Arc;

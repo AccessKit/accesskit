@@ -5,8 +5,10 @@
 
 #![feature(unix_socket_abstract)]
 
-#[macro_use] extern crate lazy_static;
-#[macro_use] extern crate zbus;
+#[macro_use]
+extern crate lazy_static;
+#[macro_use]
+extern crate zbus;
 
 mod adapter;
 mod atspi;

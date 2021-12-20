@@ -3,8 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::NodeId;
 use crate::atspi::{ObjectId, OwnedObjectAddress};
+use accesskit::NodeId;
 
 pub enum ObjectRef {
     Managed(ObjectId<'static>),

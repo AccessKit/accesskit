@@ -4,9 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use serde::{Deserialize, Serialize};
-use zvariant::{
-    derive::Type
-};
+use zvariant::derive::Type;
 
 mod bus;
 pub mod interfaces;
@@ -149,7 +147,7 @@ pub enum Role {
     /// An object that allows a user to incrementally view
     /// a large amount of information. @SCROLL_PANE objects are usually
     /// accompanied by @SCROLL_BAR controllers, on which the
-    /// @RELATION_CONTROLLER_FOR and @RELATION_CONTROLLED_BY 
+    /// @RELATION_CONTROLLER_FOR and @RELATION_CONTROLLED_BY
     /// reciprocal relations are set. See  #get_relation_set.
     ScrollPane,
     /// An object usually contained in a menu to provide a
@@ -159,7 +157,7 @@ pub enum Role {
     Slider,
     /// An object which allows one of a set of choices to
     /// be selected, and which displays the current choice.  Unlike
-    /// @SCROLL_BAR, @SLIDER objects need not control 
+    /// @SCROLL_BAR, @SLIDER objects need not control
     /// 'viewport'-like objects.
     SpinButton,
     /// A specialized panel that presents two other panels
@@ -171,7 +169,7 @@ pub enum Role {
     /// An object used to repesent information in terms of rows and columns.
     Table,
     /// A 'cell' or discrete child within a Table. Note:
-    /// Table cells need not have @TABLE_CELL, other 
+    /// Table cells need not have @TABLE_CELL, other
     /// #AtspiRoleType values are valid as well.
     TableCell,
     /// An object which labels a particular column
@@ -209,7 +207,7 @@ pub enum Role {
     /// An object that presents both tabular and
     /// hierarchical info to the user.
     TreeTable,
-    /// The object contains some #AtspiAccessible information, 
+    /// The object contains some #AtspiAccessible information,
     /// but its role is not known.
     Unknown,
     /// An object usually used in a scroll pane, or to
@@ -229,7 +227,7 @@ pub enum Role {
     /// text content. See also @TEXT.
     Paragraph,
     /// An object which describes margins and tab stops, etc.    
-    /// for text objects which it controls (should have 
+    /// for text objects which it controls (should have
     /// @RELATION_CONTROLLER_FOR relation to such).
     Ruler,
     /// An object corresponding to the toplevel accessible
@@ -251,14 +249,14 @@ pub enum Role {
     Embedded,
     /// The object is a component whose textual content may be
     /// entered or modified by the user, provided @STATE_EDITABLE is present.
-    /// A readonly @ENTRY object (i.e. where @STATE_EDITABLE is 
-    /// not present) implies a read-only 'text field' in a form, as opposed to a 
+    /// A readonly @ENTRY object (i.e. where @STATE_EDITABLE is
+    /// not present) implies a read-only 'text field' in a form, as opposed to a
     /// title, label, or caption.
     Entry,
     /// The object is a graphical depiction of quantitative data.
     /// It may contain multiple subelements whose attributes and/or description
     /// may be queried to obtain both the  quantitative data and information about
-    /// how the data is being presented. The @LABELLED_BY relation is 
+    /// how the data is being presented. The @LABELLED_BY relation is
     /// particularly important in interpreting objects of this type, as is the
     /// accessible description property. See @CAPTION.
     Chart,
@@ -270,7 +268,7 @@ pub enum Role {
     /// contains a view of document content. #AtspiDocument frames may occur within
     /// another #AtspiDocument instance, in which case the second  document may be
     /// said to be embedded in the containing instance.  HTML frames are often
-    /// DOCUMENT_FRAME:  Either this object, or a singleton descendant, 
+    /// DOCUMENT_FRAME:  Either this object, or a singleton descendant,
     /// should implement the #AtspiDocument interface.
     DocumentFrame,
     /// The object serves as a heading for content which
@@ -300,7 +298,7 @@ pub enum Role {
     /// content, for instance within Web documents, presentations, or text
     /// documents.  Unlike other GUI containers and dialogs which occur inside      
     /// application instances, @FORM containers' components are
-    /// associated with the current document, rather than the current foreground 
+    /// associated with the current document, rather than the current foreground
     /// application or viewer instance.
     Form,
     /// The object is a hypertext anchor, i.e. a "link" in a      

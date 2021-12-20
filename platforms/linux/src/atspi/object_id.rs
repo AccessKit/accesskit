@@ -7,7 +7,7 @@ use accesskit::NodeId;
 use serde::{Deserialize, Serialize};
 use zvariant::{
     derive::{Type, Value},
-    Str
+    Str,
 };
 
 #[derive(Clone, Debug, Deserialize, Serialize, Type, Value)]

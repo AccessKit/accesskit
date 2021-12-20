@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::atspi::{ObjectAddress, OwnedObjectAddress};
-use zbus::{Result, dbus_proxy};
+use zbus::{dbus_proxy, Result};
 
 #[dbus_proxy(
     default_service = "org.a11y.Bus",

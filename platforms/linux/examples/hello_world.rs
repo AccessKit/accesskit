@@ -51,7 +51,13 @@ fn get_initial_state() -> TreeUpdate {
 static mut FOCUS: NodeId = BUTTON_1_ID;
 
 fn main() {
-    let adapter = Adapter::new(String::from("hello_world"), String::from("ExampleUI"), String::from("0.1.0"), get_initial_state()).unwrap();
+    let adapter = Adapter::new(
+        String::from("hello_world"),
+        String::from("ExampleUI"),
+        String::from("0.1.0"),
+        get_initial_state(),
+    )
+    .unwrap();
     let event_loop = EventLoop::new();
 
     let window = WindowBuilder::new()
@@ -63,63 +69,60 @@ fn main() {
         *control_flow = ControlFlow::Wait;
 
         match event {
-            Event::WindowEvent {
-                event,
-                window_id,
-            } if window_id == window.id() => {
-                match event {
-                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                    WindowEvent::Focused(window_has_focus) => {
-                        adapter.update(TreeUpdate {
-                            clear: None,
-                            nodes: vec![],
-                            focus: window_has_focus.then(|| unsafe { FOCUS }),
-                            tree: None
-                        });
-                    },
-                    WindowEvent::KeyboardInput {
-                        input: KeyboardInput {
+            Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
+                WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                WindowEvent::Focused(window_has_focus) => {
+                    adapter.update(TreeUpdate {
+                        clear: None,
+                        nodes: vec![],
+                        focus: window_has_focus.then(|| unsafe { FOCUS }),
+                        tree: None,
+                    });
+                }
+                WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
                             virtual_keycode: Some(VirtualKeyCode::Tab),
                             state: ElementState::Pressed,
-                            .. },
-                        .. } => {
-                            unsafe {
-                                FOCUS = if FOCUS == BUTTON_1_ID {
-                                    BUTTON_2_ID
-                                } else {
-                                    BUTTON_1_ID
-                                };
-                                adapter.update(TreeUpdate {
-                                    clear: None,
-                                    nodes: vec![],
-                                    focus: Some(FOCUS),
-                                    tree: None
-                                });
-                            }
-                    },
-                    WindowEvent::KeyboardInput {
-                        input: KeyboardInput {
+                            ..
+                        },
+                    ..
+                } => unsafe {
+                    FOCUS = if FOCUS == BUTTON_1_ID {
+                        BUTTON_2_ID
+                    } else {
+                        BUTTON_1_ID
+                    };
+                    adapter.update(TreeUpdate {
+                        clear: None,
+                        nodes: vec![],
+                        focus: Some(FOCUS),
+                        tree: None,
+                    });
+                },
+                WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
                             virtual_keycode: Some(VirtualKeyCode::Return),
                             state: ElementState::Released,
-                            .. },
-                        .. } => {
-                            unsafe {
-                                let updated_node = if FOCUS == BUTTON_1_ID {
-                                    make_button(BUTTON_1_ID, "You pressed button 1")
-                                } else {
-                                    make_button(BUTTON_2_ID, "You pressed button 2")
-                                };
-                                adapter.update(TreeUpdate {
-                                    clear: None,
-                                    nodes: vec![updated_node],
-                                    focus: Some(FOCUS),
-                                    tree: None
-                                });
-                            }
-                    }
-                    _ => (),
-                }
-            }
+                            ..
+                        },
+                    ..
+                } => unsafe {
+                    let updated_node = if FOCUS == BUTTON_1_ID {
+                        make_button(BUTTON_1_ID, "You pressed button 1")
+                    } else {
+                        make_button(BUTTON_2_ID, "You pressed button 2")
+                    };
+                    adapter.update(TreeUpdate {
+                        clear: None,
+                        nodes: vec![updated_node],
+                        focus: Some(FOCUS),
+                        tree: None,
+                    });
+                },
+                _ => (),
+            },
             Event::MainEventsCleared => {
                 window.request_redraw();
             }

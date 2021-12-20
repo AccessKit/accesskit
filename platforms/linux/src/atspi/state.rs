@@ -5,14 +5,14 @@
 
 use enumflags2::{bitflags, BitFlag, BitFlags, FromBitsError};
 use serde::{
-    de::{Deserialize, Deserializer, SeqAccess, Visitor, self},
-    ser::{Serialize, Serializer, SerializeSeq}
+    de::{self, Deserialize, Deserializer, SeqAccess, Visitor},
+    ser::{Serialize, SerializeSeq, Serializer},
 };
 use std::fmt;
 use strum::AsRefStr;
 use zvariant::{Signature, Type};
 
-/// Enumeration used by various interfaces indicating every possible state 
+/// Enumeration used by various interfaces indicating every possible state
 /// an #AtspiAccessible object can assume.
 #[bitflags]
 #[repr(u64)]
@@ -48,7 +48,7 @@ pub enum State {
     /// Indicates that this object is enabled, i.e. that it
     /// currently reflects some application state. Objects that are "greyed out"
     /// may lack this state, and may lack the @SENSITIVE if direct
-    /// user interaction cannot cause them to acquire @ENABLED. 
+    /// user interaction cannot cause them to acquire @ENABLED.
     /// See @SENSITIVE.
     Enabled,
     /// Indicates this object allows progressive
@@ -97,10 +97,10 @@ pub enum State {
     Selected,
     /// Indicates this object is sensitive, e.g. to user
     /// interaction. @SENSITIVE usually accompanies.
-    /// @ENABLED for user-actionable controls, but may be found in the 
-    /// absence of @ENABLED if the current visible state of the control 
+    /// @ENABLED for user-actionable controls, but may be found in the
+    /// absence of @ENABLED if the current visible state of the control
     /// is "disconnected" from the application state.  In such cases, direct user
-    /// interaction can often result in the object gaining @SENSITIVE, 
+    /// interaction can often result in the object gaining @SENSITIVE,
     /// for instance if a user makes an explicit selection using an object whose
     /// current state is ambiguous or undefined. See @ENABLED,
     /// @INDETERMINATE.
@@ -115,7 +115,7 @@ pub enum State {
     SingleLine,
     /// Indicates that the information returned for this object
     /// may no longer be synchronized with the application state.  This can occur
-    /// if the object has @TRANSIENT, and can also occur towards the 
+    /// if the object has @TRANSIENT, and can also occur towards the
     /// end of the object peer's lifecycle.
     Stale,
     /// Indicates this object is transient.
@@ -125,12 +125,12 @@ pub enum State {
     /// objects (with vertical text flow), separators, etc.
     Vertical,
     /// Indicates this object is visible, e.g. has been
-    /// explicitly marked for exposure to the user. @VISIBLE is no 
-    /// guarantee that the object is actually unobscured on the screen, only that 
-    /// it is 'potentially' visible, barring obstruction, being scrolled or clipped 
-    /// out of the field of view, or having an ancestor container that has not yet 
-    /// made visible. A widget is potentially onscreen if it has both 
-    /// @VISIBLE and @SHOWING. The absence of 
+    /// explicitly marked for exposure to the user. @VISIBLE is no
+    /// guarantee that the object is actually unobscured on the screen, only that
+    /// it is 'potentially' visible, barring obstruction, being scrolled or clipped
+    /// out of the field of view, or having an ancestor container that has not yet
+    /// made visible. A widget is potentially onscreen if it has both
+    /// @VISIBLE and @SHOWING. The absence of
     /// @VISIBLE and @SHOWING is
     /// semantically equivalent to saying that an object is 'hidden'.
     Visible,
@@ -141,8 +141,8 @@ pub enum State {
     /// @MANAGES_DESCENDANTS is an indication to the client that the
     /// children should not, and need not, be enumerated by the client.
     /// Objects implementing this state are expected to provide relevant state      
-    /// notifications to listening clients, for instance notifications of 
-    /// visibility changes and activation of their contained child objects, without 
+    /// notifications to listening clients, for instance notifications of
+    /// visibility changes and activation of their contained child objects, without
     /// the client having previously requested references to those children.
     ManagesDescendants,
     /// Indicates that a check box or other boolean
@@ -192,7 +192,7 @@ pub enum State {
     /// question supports text selection. It should only be exposed on objects
     /// which implement the #AtspiText interface, in order to distinguish this state
     /// from @SELECTABLE, which infers that the object in question is a
-    /// selectable child of an object which implements #AtspiSelection. While 
+    /// selectable child of an object which implements #AtspiSelection. While
     /// similar, text selection and subelement selection are distinct operations.
     SelectableText,
     /// This state indicates that the object in question is
@@ -255,7 +255,8 @@ impl StateSet {
 
 impl<'de> Deserialize<'de> for StateSet {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where D: Deserializer<'de>
+    where
+        D: Deserializer<'de>,
     {
         struct StateSetVisitor;
 
@@ -263,12 +264,13 @@ impl<'de> Deserialize<'de> for StateSet {
             type Value = StateSet;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a sequence comprised of two u32 that represents a valid StateSet")
+                formatter
+                    .write_str("a sequence comprised of two u32 that represents a valid StateSet")
             }
 
             fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
             where
-                A: SeqAccess<'de>
+                A: SeqAccess<'de>,
             {
                 match SeqAccess::next_element::<Vec<u32>>(&mut seq)? {
                     Some(vec) => {
@@ -277,8 +279,8 @@ impl<'de> Deserialize<'de> for StateSet {
                             return Err(de::Error::invalid_length(len, &"Vec with two elements"));
                         }
                         Ok(StateSet::from_bits(0).unwrap())
-                    },
-                    None => Err(de::Error::custom("Vec with two elements"))
+                    }
+                    None => Err(de::Error::custom("Vec with two elements")),
                 }
             }
         }
@@ -289,7 +291,8 @@ impl<'de> Deserialize<'de> for StateSet {
 
 impl Serialize for StateSet {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where S: Serializer
+    where
+        S: Serializer,
     {
         let mut seq = serializer.serialize_seq(Some(2))?;
         let bits = self.bits();

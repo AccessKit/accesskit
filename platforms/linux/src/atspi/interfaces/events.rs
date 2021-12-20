@@ -3,15 +3,9 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::atspi::{
-    interfaces::Accessible,
-    State
-};
-use std::{
-    collections::HashMap,
-    convert::AsRef
-};
-use zbus::{SignalContext, Result, dbus_interface};
+use crate::atspi::{interfaces::Accessible, State};
+use std::{collections::HashMap, convert::AsRef};
+use zbus::{dbus_interface, Result, SignalContext};
 use zvariant::Value;
 
 pub struct FocusEventsInterface;
@@ -31,7 +25,7 @@ impl FocusEventsInterface {
         detail1: i32,
         detail2: i32,
         any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>
+        properties: HashMap<String, Value<'_>>,
     ) -> Result<()>;
 }
 
@@ -47,10 +41,27 @@ impl ObjectEventsInterface {
         let properties = HashMap::new();
         match event {
             ObjectEvent::StateChanged(state, value) => {
-                ObjectEventsInterface::state_changed(ctxt, state.as_ref(), value as i32, 0, 0i32.into(), properties).await
-            },
-            ObjectEvent::NameChanged(name) =>
-                ObjectEventsInterface::property_change(ctxt, "accessible-name", 0, 0, name.into(), properties).await
+                ObjectEventsInterface::state_changed(
+                    ctxt,
+                    state.as_ref(),
+                    value as i32,
+                    0,
+                    0i32.into(),
+                    properties,
+                )
+                .await
+            }
+            ObjectEvent::NameChanged(name) => {
+                ObjectEventsInterface::property_change(
+                    ctxt,
+                    "accessible-name",
+                    0,
+                    0,
+                    name.into(),
+                    properties,
+                )
+                .await
+            }
         }
     }
 }
@@ -64,7 +75,7 @@ impl ObjectEventsInterface {
         detail1: i32,
         detail2: i32,
         any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>
+        properties: HashMap<String, Value<'_>>,
     ) -> Result<()>;
 
     #[dbus_interface(signal)]
@@ -74,7 +85,7 @@ impl ObjectEventsInterface {
         detail1: i32,
         detail2: i32,
         any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>
+        properties: HashMap<String, Value<'_>>,
     ) -> Result<()>;
 }
 
@@ -83,7 +94,7 @@ pub enum WindowEvent {
     Closed,
     Created,
     Deactivated,
-    Destroyed
+    Destroyed,
 }
 
 pub struct WindowEventsInterface<T>(pub T);
@@ -93,16 +104,21 @@ impl<T: Accessible> WindowEventsInterface<T> {
         let name = self.0.name().into();
         let properties = HashMap::new();
         match event {
-            WindowEvent::Activated =>
-                WindowEventsInterface::<T>::activate(ctxt, "", 0, 0, name, properties).await,
-            WindowEvent::Closed =>
-                WindowEventsInterface::<T>::close(ctxt, "", 0, 0, name, properties).await,
-            WindowEvent::Created =>
-                WindowEventsInterface::<T>::create(ctxt, "", 0, 0, name, properties).await,
-            WindowEvent::Deactivated =>
-                WindowEventsInterface::<T>::deactivate(ctxt, "", 0, 0, name, properties).await,
-            WindowEvent::Destroyed =>
+            WindowEvent::Activated => {
+                WindowEventsInterface::<T>::activate(ctxt, "", 0, 0, name, properties).await
+            }
+            WindowEvent::Closed => {
+                WindowEventsInterface::<T>::close(ctxt, "", 0, 0, name, properties).await
+            }
+            WindowEvent::Created => {
+                WindowEventsInterface::<T>::create(ctxt, "", 0, 0, name, properties).await
+            }
+            WindowEvent::Deactivated => {
+                WindowEventsInterface::<T>::deactivate(ctxt, "", 0, 0, name, properties).await
+            }
+            WindowEvent::Destroyed => {
                 WindowEventsInterface::<T>::destroy(ctxt, "", 0, 0, name, properties).await
+            }
         }
     }
 }
@@ -116,7 +132,7 @@ impl<T: Accessible> WindowEventsInterface<T> {
         detail1: i32,
         detail2: i32,
         any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>
+        properties: HashMap<String, Value<'_>>,
     ) -> Result<()>;
 
     #[dbus_interface(signal)]
@@ -126,7 +142,7 @@ impl<T: Accessible> WindowEventsInterface<T> {
         detail1: i32,
         detail2: i32,
         any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>
+        properties: HashMap<String, Value<'_>>,
     ) -> Result<()>;
 
     #[dbus_interface(signal)]
@@ -136,7 +152,7 @@ impl<T: Accessible> WindowEventsInterface<T> {
         detail1: i32,
         detail2: i32,
         any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>
+        properties: HashMap<String, Value<'_>>,
     ) -> Result<()>;
 
     #[dbus_interface(signal)]
@@ -146,7 +162,7 @@ impl<T: Accessible> WindowEventsInterface<T> {
         detail1: i32,
         detail2: i32,
         any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>
+        properties: HashMap<String, Value<'_>>,
     ) -> Result<()>;
 
     #[dbus_interface(signal)]
@@ -156,6 +172,6 @@ impl<T: Accessible> WindowEventsInterface<T> {
         detail1: i32,
         detail2: i32,
         any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>
+        properties: HashMap<String, Value<'_>>,
     ) -> Result<()>;
 }
