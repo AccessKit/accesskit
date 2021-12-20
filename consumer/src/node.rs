@@ -6,7 +6,8 @@
 use std::iter::FusedIterator;
 use std::sync::{Arc, Weak};
 
-use accesskit::{CheckedState, NodeId, Rect, Role};
+use accesskit::kurbo::{Affine, Rect};
+use accesskit::{CheckedState, NodeId, Role};
 
 use crate::iterators::{
     FollowingSiblings, FollowingUnignoredSiblings, PrecedingSiblings, PrecedingUnignoredSiblings,
@@ -176,23 +177,25 @@ impl<'a> Node<'a> {
         format!("{}:{}", self.tree_reader.id().0, self.id().0)
     }
 
-    /// Returns the node's bounds relative to the root of the tree.
+    /// Returns the combined affine transform of this node and its ancestors,
+    /// up to and including the root of this node's tree.
+    pub fn transform(&self) -> Affine {
+        self.data()
+            .transform
+            .as_ref()
+            .map_or(Affine::IDENTITY, |t| **t)
+            * self
+                .parent()
+                .map_or(Affine::IDENTITY, |parent| parent.transform())
+    }
+
+    /// Returns the node's transformed bounds relative to the tree's container
+    /// (e.g. window).
     pub fn bounds(&self) -> Option<Rect> {
-        self.data().bounds.as_ref().map(|bounds| {
-            let mut rect = bounds.rect;
-
-            if let Some(offset_id) = bounds.offset_container {
-                let offset_node = self.tree_reader.node_by_id(offset_id).unwrap();
-                let offset_rect = offset_node.bounds().unwrap();
-                rect.left += offset_rect.left;
-                rect.top += offset_rect.top;
-            }
-
-            // TODO: handle transform
-            assert!(bounds.transform.is_none());
-
-            rect
-        })
+        self.data()
+            .bounds
+            .as_ref()
+            .map(|rect| self.transform().transform_rect_bbox(*rect))
     }
 
     // Convenience getters
@@ -290,7 +293,8 @@ impl Node<'_> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Rect, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+    use accesskit::kurbo::Rect;
+    use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
     use std::num::NonZeroU64;
 
     use crate::tests::*;
@@ -482,10 +486,10 @@ mod tests {
         assert!(tree.read().node_by_id(ROOT_ID).unwrap().bounds().is_none());
         assert_eq!(
             Some(Rect {
-                left: 10.0f32,
-                top: 40.0f32,
-                width: 800.0f32,
-                height: 40.0f32,
+                x0: 10.0,
+                y0: 40.0,
+                x1: 810.0,
+                y1: 80.0,
             }),
             tree.read()
                 .node_by_id(PARAGRAPH_1_IGNORED_ID)
@@ -494,10 +498,10 @@ mod tests {
         );
         assert_eq!(
             Some(Rect {
-                left: 20.0f32,
-                top: 50.0f32,
-                width: 80.0f32,
-                height: 20.0f32,
+                x0: 20.0,
+                y0: 50.0,
+                x1: 100.0,
+                y1: 70.0,
             }),
             tree.read().node_by_id(STATIC_TEXT_1_0_ID).unwrap().bounds()
         );

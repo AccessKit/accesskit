@@ -70,18 +70,14 @@ fn get_screen_bounds(state: &State, node: &Node) -> Option<NSRect> {
     }
 
     node.bounds().map(|rect| {
-        let root_bounds = node.tree_reader.root().bounds().unwrap();
-        let root_bottom = root_bounds.top + root_bounds.height;
-        let bottom = rect.top + rect.height;
-        let y = root_bottom - bottom;
         let rect = NSRect {
             origin: NSPoint {
-                x: rect.left as f64,
-                y: y as f64,
+                x: rect.x0,
+                y: rect.y0,
             },
             size: NSSize {
-                width: rect.width as f64,
-                height: rect.height as f64,
+                width: rect.width(),
+                height: rect.height(),
             },
         };
         let rect: NSRect = unsafe { msg_send![*view, convertRect:rect toView:nil] };

@@ -5,6 +5,11 @@ authors = ["Matt Campbell <mattcampbell@pobox.com>"]
 edition = "2018"
 
 [dependencies]
-enumset = { version = "1.0.8", features = ["serde"] }
-schemars = { version = "0.8.7", features = ["enumset"], optional = true }
-serde = { version = "1.0", features = ["derive"], optional = true }
+enumset = "1.0.8"
+kurbo = { git = "https://github.com/linebender/kurbo" }
+schemars_lib = { package = "schemars", version = "0.8.7", features = ["enumset"], optional = true }
+serde_lib = { package = "serde", version = "1.0", features = ["derive"], optional = true }
+
+[features]
+schemars = ["schemars_lib", "kurbo/schemars"]
+serde = ["serde_lib", "enumset/serde", "kurbo/serde"]

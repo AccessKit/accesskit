@@ -346,17 +346,14 @@ impl ResolvedPlatformNode<'_> {
 
     fn bounding_rectangle(&self) -> UiaRect {
         self.node.bounds().map_or(UiaRect::default(), |rect| {
-            let mut result = UiaRect {
-                left: rect.left.into(),
-                top: rect.top.into(),
-                width: rect.width.into(),
-                height: rect.height.into(),
-            };
             let mut client_top_left = POINT::default();
             unsafe { ClientToScreen(self.hwnd, &mut client_top_left) }.unwrap();
-            result.left += f64::from(client_top_left.x);
-            result.top += f64::from(client_top_left.y);
-            result
+            UiaRect {
+                left: rect.x0 + f64::from(client_top_left.x),
+                top: rect.y0 + f64::from(client_top_left.y),
+                width: rect.width(),
+                height: rect.height(),
+            }
         })
     }
 
