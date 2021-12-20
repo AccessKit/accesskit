@@ -1,8 +1,11 @@
 // Based on the create_window sample in windows-samples-rs.
 
-use std::{cell::RefCell, mem::drop, num::NonZeroU64, rc::Rc};
+use std::{cell::RefCell, convert::TryInto, mem::drop, num::NonZeroU64, rc::Rc};
 
-use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+use accesskit::{
+    Action, ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeId,
+    TreeUpdate,
+};
 use lazy_static::lazy_static;
 use windows::{
     core::*,
@@ -66,6 +69,8 @@ const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
 const INITIAL_FOCUS: NodeId = BUTTON_1_ID;
 
+const SET_FOCUS_MSG: u32 = WM_USER;
+
 fn make_button(id: NodeId, name: &str) -> Node {
     Node {
         name: Some(name.into()),
@@ -125,6 +130,25 @@ fn update_focus(window: HWND, is_window_focused: bool) {
 
 struct WindowCreateParams(TreeUpdate, NodeId);
 
+pub struct SimpleActionHandler {
+    window: HWND,
+}
+
+impl ActionHandler for SimpleActionHandler {
+    fn action(&self, request: ActionRequest) {
+        if request.action == Action::Focus {
+            unsafe {
+                PostMessageW(
+                    self.window,
+                    SET_FOCUS_MSG,
+                    WPARAM(0),
+                    LPARAM(request.target.0.get().try_into().unwrap()),
+                )
+            };
+        }
+    }
+}
+
 extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     match message as u32 {
         WM_NCCREATE => {
@@ -146,6 +170,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                         result.focus = state.is_window_focused.then(|| state.focus);
                         result
                     }),
+                    Box::new(SimpleActionHandler { window }),
                 ),
                 inner_state,
             });
@@ -230,6 +255,20 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             }
             _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
         },
+        SET_FOCUS_MSG => {
+            if let Some(id) = lparam.0.try_into().ok().map(NonZeroU64::new).flatten() {
+                let id = NodeId(id);
+                if id == BUTTON_1_ID || id == BUTTON_2_ID {
+                    let window_state = unsafe { &*get_window_state(window) };
+                    let mut inner_state = window_state.inner_state.borrow_mut();
+                    inner_state.focus = id;
+                    let is_window_focused = inner_state.is_window_focused;
+                    drop(inner_state);
+                    update_focus(window, is_window_focused);
+                }
+            }
+            LRESULT(0)
+        }
         _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
     }
 }

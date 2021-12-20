@@ -5,7 +5,9 @@
 
 use std::{convert::TryInto, num::NonZeroU64};
 
-use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+use accesskit::{
+    ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate,
+};
 use windows::{core::*, Win32::UI::Accessibility::*};
 
 use super::*;
@@ -44,9 +46,28 @@ fn get_initial_state() -> TreeUpdate {
     }
 }
 
+pub struct NullActionHandler();
+
+impl ActionHandler for NullActionHandler {
+    fn action(&self, _request: ActionRequest) {}
+}
+
+fn scope<F>(f: F) -> Result<()>
+where
+    F: FnOnce(&Scope) -> Result<()>,
+{
+    super::scope(
+        WINDOW_TITLE,
+        get_initial_state(),
+        BUTTON_1_ID,
+        Box::new(NullActionHandler()),
+        f,
+    )
+}
+
 #[test]
 fn has_native_uia() -> Result<()> {
-    scope(WINDOW_TITLE, get_initial_state(), BUTTON_1_ID, |s| {
+    scope(|s| {
         let has_native_uia: bool = unsafe { UiaHasServerSideProvider(s.window) }.into();
         assert!(has_native_uia);
         Ok(())
@@ -70,7 +91,7 @@ fn is_button_2(element: &IUIAutomationElement) -> bool {
 
 #[test]
 fn navigation() -> Result<()> {
-    scope(WINDOW_TITLE, get_initial_state(), BUTTON_1_ID, |s| {
+    scope(|s| {
         let root = unsafe { s.uia.ElementFromHandle(s.window) }?;
         let walker = unsafe { s.uia.ControlViewWalker() }?;
 
@@ -151,7 +172,7 @@ fn navigation() -> Result<()> {
 
 #[test]
 fn focus() -> Result<()> {
-    scope(WINDOW_TITLE, get_initial_state(), BUTTON_1_ID, |s| {
+    scope(|s| {
         let (focus_event_handler, received_focus_event) = FocusEventHandler::new();
         unsafe { s.uia.AddFocusChangedEventHandler(None, focus_event_handler) }?;
 

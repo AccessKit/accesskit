@@ -7,7 +7,7 @@ use std::iter::FusedIterator;
 use std::sync::{Arc, Weak};
 
 use accesskit::kurbo::{Affine, Rect};
-use accesskit::{CheckedState, NodeId, Role};
+use accesskit::{Action, ActionRequest, CheckedState, NodeId, Role};
 
 use crate::iterators::{
     FollowingSiblings, FollowingUnignoredSiblings, PrecedingSiblings, PrecedingUnignoredSiblings,
@@ -201,6 +201,14 @@ impl<'a> Node<'a> {
             .bounds
             .as_ref()
             .map(|rect| self.transform().transform_rect_bbox(*rect))
+    }
+
+    pub fn set_focus(&self) {
+        self.tree_reader.tree.action_handler.action(ActionRequest {
+            action: Action::Focus,
+            target: self.id(),
+            data: None,
+        })
     }
 
     // Convenience getters
@@ -538,7 +546,7 @@ mod tests {
             )),
             focus: None,
         };
-        let tree = super::Tree::new(update);
+        let tree = super::Tree::new(update, Box::new(NullActionHandler()));
         assert_eq!(None, tree.read().node_by_id(NODE_ID_2).unwrap().name());
     }
 
@@ -580,7 +588,7 @@ mod tests {
             )),
             focus: None,
         };
-        let tree = super::Tree::new(update);
+        let tree = super::Tree::new(update, Box::new(NullActionHandler()));
         assert_eq!(
             Some([LABEL_1, LABEL_2].join(" ")),
             tree.read().node_by_id(NODE_ID_2).unwrap().name()

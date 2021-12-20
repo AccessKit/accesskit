@@ -1432,7 +1432,22 @@ pub enum ActionData {
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct ActionRequest {
-    action: Action,
-    target: NodeId,
-    data: Option<ActionData>,
+    pub action: Action,
+    pub target: NodeId,
+    pub data: Option<ActionData>,
+}
+
+/// Handles requests from assistive technologies or other clients.
+pub trait ActionHandler: Send + Sync {
+    /// Perform the requested action. If the requested action is not supported,
+    /// this method must do nothing.
+    ///
+    /// This method may be called on any thread. In particular, on platforms
+    /// with a designated UI thread, this method may or may not be called
+    /// on that thread. Implementations must correctly handle both cases.
+    ///
+    /// This method may queue the request and handle it asynchronously.
+    /// This behavior is preferred over blocking, e.g. when dispatching
+    /// the request to another thread.
+    fn action(&self, request: ActionRequest);
 }

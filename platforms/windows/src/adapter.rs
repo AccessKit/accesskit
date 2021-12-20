@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use accesskit::TreeUpdate;
+use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_consumer::{Tree, TreeChange};
 use lazy_init::LazyTransform;
 use windows::Win32::{
@@ -23,11 +23,11 @@ where
     Source: Into<TreeUpdate>,
 {
     hwnd: HWND,
-    tree: LazyTransform<Source, Arc<Tree>>,
+    tree: LazyTransform<(Source, Box<dyn ActionHandler>), Arc<Tree>>,
 }
 
 impl<Source: Into<TreeUpdate>> Adapter<Source> {
-    pub fn new(hwnd: HWND, source: Source) -> Self {
+    pub fn new(hwnd: HWND, source: Source, action_handler: Box<dyn ActionHandler>) -> Self {
         // It's unfortunate that we have to force UIA to initialize early;
         // it would be more optimal to let UIA lazily initialize itself
         // when we receive the first `WM_GETOBJECT`. But if we don't do this,
@@ -38,12 +38,13 @@ impl<Source: Into<TreeUpdate>> Adapter<Source> {
 
         Self {
             hwnd,
-            tree: LazyTransform::new(source),
+            tree: LazyTransform::new((source, action_handler)),
         }
     }
 
     fn get_or_create_tree(&self) -> &Arc<Tree> {
-        self.tree.get_or_create(|source| Tree::new(source.into()))
+        self.tree
+            .get_or_create(|(source, action_handler)| Tree::new(source.into(), action_handler))
     }
 
     /// Initialize the tree if it hasn't been initialized already, then apply
