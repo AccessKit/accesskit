@@ -652,13 +652,11 @@ pub struct Node {
     pub id: NodeId,
     pub role: Role,
     /// An affine transform to apply to any coordinates within this node
-    /// and its descendants, including the [`bounds`] field. Coordinates
-    /// to which the transforms of this node and its ancestors have not
-    /// been applied, such as the coordinates in the [`bounds`] field,
-    /// are referred to as node-local. This value, if present, is implicitly
-    /// combined with the transforms of the node's ancestors. This field
-    /// should be `None` if it would be set to the identity transform.
-    /// This field should be `None` for most nodes.
+    /// and its descendants, including the [`bounds`] field of this node.
+    /// The combined transforms of this node and its ancestors define
+    /// the coordinate space of this node. This field should be `None`
+    /// if it would be set to the identity transform, which should be
+    /// the case for most nodes.
     ///
     /// AccessKit is not opinionated about the resolution dependence
     /// or y direction of any coordinates; these requirements are
@@ -671,10 +669,15 @@ pub struct Node {
     /// (e.g. window).
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub transform: Option<Box<Affine>>,
-    /// The relative bounding box of this node. The combined transform
-    /// of this node and its ancestors is implicitly applied to the value
-    /// of this field. This field should be omitted if and only if the node is
-    /// a transparent container.
+    /// The bounding box of this node, in the node's coordinate space.
+    /// This field does not affect the coordinate space of either this node
+    /// or its descendants; only the [`transform`] field affects that.
+    /// This, along with the recommendation that most nodes should have `None`
+    /// in their [`transform`] field, implies that the [`bounds`] field
+    /// of most nodes should be in the coordinate space of the nearest ancestor
+    /// with a non-`None` [`Transform`] field, or if there is no such ancestor,
+    /// the tree's container (e.g. window). This field should be `None`
+    /// if this node is a transparent container.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub bounds: Option<Rect>,
     #[cfg_attr(feature = "serde", serde(default))]
@@ -1412,12 +1415,13 @@ pub enum ActionData {
     CustomAction(i32),
     Value(Box<str>),
     /// Optional target rectangle for [`Action::ScrollIntoView`], in
-    /// node-local coordinates.
+    /// the coordinate space of the action's target node.
     ScrollTargetRect(Rect),
     /// Target for [`Action::ScrollToPoint`], in platform-native coordinates
     /// relative to the origin of the tree's container (e.g. window).
     ScrollToPoint(Point),
-    /// Target for [`Action::SetScrollOffset`], in node-local coordinates.
+    /// Target for [`Action::SetScrollOffset`], in the coordinate space
+    /// of the action's target node.
     SetScrollOffset(Point),
     SetTextSelection(TextSelection),
 }
