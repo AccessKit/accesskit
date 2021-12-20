@@ -180,13 +180,13 @@ impl<'a> Node<'a> {
     /// Returns the combined affine transform of this node and its ancestors,
     /// up to and including the root of this node's tree.
     pub fn transform(&self) -> Affine {
-        self.data()
-            .transform
-            .as_ref()
-            .map_or(Affine::IDENTITY, |t| **t)
+        self.parent()
+            .map_or(Affine::IDENTITY, |parent| parent.transform())
             * self
-                .parent()
-                .map_or(Affine::IDENTITY, |parent| parent.transform())
+                .data()
+                .transform
+                .as_ref()
+                .map_or(Affine::IDENTITY, |t| **t)
     }
 
     /// Returns the node's transformed bounding box relative to the tree's
