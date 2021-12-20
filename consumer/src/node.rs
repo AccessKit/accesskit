@@ -6,7 +6,7 @@
 use std::iter::FusedIterator;
 use std::sync::{Arc, Weak};
 
-use accesskit::kurbo::{Affine, Rect};
+use accesskit::kurbo::{Affine, Point, Rect};
 use accesskit::{Action, ActionRequest, CheckedState, NodeId, Role};
 
 use crate::iterators::{
@@ -203,6 +203,31 @@ impl<'a> Node<'a> {
             .map(|rect| self.transform().transform_rect_bbox(*rect))
     }
 
+    /// Returns the deepest visible node, either this node or a descendant,
+    /// at the given point in this node's coordinate space.
+    pub fn node_at_point(self, point: Point) -> Option<Node<'a>> {
+        if self.is_invisible() {
+            return None;
+        }
+
+        for child in self.children().rev() {
+            let point = child.direct_transform().inverse() * point;
+            if let Some(node) = child.node_at_point(point) {
+                return Some(node);
+            }
+        }
+
+        if !self.is_ignored() {
+            if let Some(rect) = &self.data().bounds {
+                if rect.contains(point) {
+                    return Some(self);
+                }
+            }
+        }
+
+        None
+    }
+
     pub fn set_focus(&self) {
         self.tree_reader
             .tree
@@ -393,7 +418,7 @@ impl Node<'_> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::kurbo::Rect;
+    use accesskit::kurbo::{Point, Rect};
     use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
     use std::num::NonZeroU64;
 
@@ -613,6 +638,35 @@ mod tests {
                 .unwrap()
                 .bounding_box()
         );
+    }
+
+    #[test]
+    fn node_at_point() {
+        let tree = test_tree();
+        assert!(tree
+            .read()
+            .root()
+            .node_at_point(Point::new(10.0, 40.0))
+            .is_none());
+        assert_eq!(
+            Some(STATIC_TEXT_1_0_ID),
+            tree.read()
+                .root()
+                .node_at_point(Point::new(20.0, 50.0))
+                .map(|node| node.id())
+        );
+        assert_eq!(
+            Some(STATIC_TEXT_1_0_ID),
+            tree.read()
+                .root()
+                .node_at_point(Point::new(50.0, 60.0))
+                .map(|node| node.id())
+        );
+        assert!(tree
+            .read()
+            .root()
+            .node_at_point(Point::new(100.0, 70.0))
+            .is_none());
     }
 
     #[test]

@@ -5,6 +5,7 @@
 
 #![allow(non_upper_case_globals)]
 
+use accesskit::kurbo::Point;
 use accesskit::{CheckedState, NodeIdContent, Role};
 use accesskit_consumer::{Node, WeakNode};
 use arrayvec::ArrayVec;
@@ -361,9 +362,17 @@ impl ResolvedPlatformNode<'_> {
         self.node.set_focus()
     }
 
-    fn hit_test(&self, _x: f64, _y: f64) -> Option<ResolvedPlatformNode> {
-        // TODO: Either request a hit test from the toolkit, or do our own. (#54)
-        None
+    fn node_at_point(&self, point: Point) -> Option<ResolvedPlatformNode> {
+        let mut client_top_left = POINT::default();
+        unsafe { ClientToScreen(self.hwnd, &mut client_top_left) }.unwrap();
+        let point = self.node.transform().inverse()
+            * Point {
+                x: point.x - f64::from(client_top_left.x),
+                y: point.y - f64::from(client_top_left.y),
+            };
+        self.node
+            .node_at_point(point)
+            .map(|node| self.relative(node))
     }
 
     fn focus(&self) -> Option<ResolvedPlatformNode> {
@@ -492,9 +501,11 @@ impl PlatformNode {
     }
 
     fn ElementProviderFromPoint(&self, x: f64, y: f64) -> Result<IRawElementProviderFragment> {
-        self.resolve(|resolved| match resolved.hit_test(x, y) {
-            Some(result) => Ok(result.downgrade().into()),
-            None => Err(Error::OK),
+        self.resolve(|resolved| {
+            let point = Point::new(x, y);
+            resolved
+                .node_at_point(point)
+                .map_or_else(|| Err(Error::OK), |node| Ok(node.downgrade().into()))
         })
     }
 

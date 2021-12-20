@@ -2,6 +2,7 @@
 
 use std::{cell::RefCell, convert::TryInto, mem::drop, num::NonZeroU64, rc::Rc};
 
+use accesskit::kurbo::Rect;
 use accesskit::{
     Action, ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeId,
     TreeUpdate,
@@ -69,10 +70,31 @@ const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
 const INITIAL_FOCUS: NodeId = BUTTON_1_ID;
 
+const BUTTON_1_RECT: Rect = Rect {
+    x0: 20.0,
+    y0: 20.0,
+    x1: 100.0,
+    y1: 60.0,
+};
+
+const BUTTON_2_RECT: Rect = Rect {
+    x0: 20.0,
+    y0: 60.0,
+    x1: 100.0,
+    y1: 100.0,
+};
+
 const SET_FOCUS_MSG: u32 = WM_USER;
 
 fn make_button(id: NodeId, name: &str) -> Node {
+    let rect = match id {
+        BUTTON_1_ID => BUTTON_1_RECT,
+        BUTTON_2_ID => BUTTON_2_RECT,
+        _ => unreachable!(),
+    };
+
     Node {
+        bounds: Some(rect),
         name: Some(name.into()),
         focusable: true,
         ..Node::new(id, Role::Button)

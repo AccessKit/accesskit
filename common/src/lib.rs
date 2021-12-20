@@ -726,6 +726,8 @@ pub struct Node {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub hovered: bool,
     /// Skip over this node in the accessibility tree, but keep its subtree.
+    /// This flag also indicates that this node, but not its descendants,
+    /// should be skipped when hit testing.
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub ignored: bool,
