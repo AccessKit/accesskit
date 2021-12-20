@@ -177,16 +177,21 @@ impl<'a> Node<'a> {
         format!("{}:{}", self.tree_reader.id().0, self.id().0)
     }
 
+    /// Returns the transform defined directly on this node, or the identity
+    /// transform, without taking into account transforms on ancestors.
+    pub fn direct_transform(&self) -> Affine {
+        self.data()
+            .transform
+            .as_ref()
+            .map_or(Affine::IDENTITY, |t| **t)
+    }
+
     /// Returns the combined affine transform of this node and its ancestors,
     /// up to and including the root of this node's tree.
     pub fn transform(&self) -> Affine {
         self.parent()
             .map_or(Affine::IDENTITY, |parent| parent.transform())
-            * self
-                .data()
-                .transform
-                .as_ref()
-                .map_or(Affine::IDENTITY, |t| **t)
+            * self.direct_transform()
     }
 
     /// Returns the node's transformed bounding box relative to the tree's
