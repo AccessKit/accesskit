@@ -7,6 +7,7 @@ name = "accesskit"
 version = "0.1.0"
 dependencies = [
  "enumset",
+ "kurbo",
  "schemars",
  "serde",
 ]
@@ -334,6 +335,17 @@ name = "jni-sys"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8eaf4bc02d17cbdd7ff4c7438cafcdf7fb9a4613313ad11b4f8fefe7d3fa0130"
+
+[[package]]
+name = "kurbo"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a53776d271cfb873b17c618af0298445c88afc52837f3e948fa3fafd131f449"
+dependencies = [
+ "arrayvec",
+ "schemars",
+ "serde",
+]
 
 [[package]]
 name = "lazy-init"

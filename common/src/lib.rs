@@ -9,10 +9,16 @@
 // found in the LICENSE.chromium file.
 
 use enumset::{EnumSet, EnumSetType};
+pub use kurbo;
+use kurbo::{Affine, Point, Rect};
 #[cfg(feature = "schemars")]
-use schemars::JsonSchema;
+use schemars_lib as schemars;
+#[cfg(feature = "schemars")]
+use schemars_lib::JsonSchema;
 #[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use serde_lib as serde;
+#[cfg(feature = "serde")]
+use serde_lib::{Deserialize, Serialize};
 use std::ops::Range;
 
 /// The type of an accessibility node.
@@ -28,6 +34,7 @@ use std::ops::Range;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum Role {
     Unknown,
@@ -240,6 +247,7 @@ pub enum Role {
 #[derive(EnumSetType, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(feature = "serde", enumset(serialize_as_list))]
 pub enum Action {
@@ -292,8 +300,9 @@ pub enum Action {
     /// [`ActionData::ScrollTargetRect`].
     ScrollIntoView,
 
-    /// Scroll the given object to a specified point on the screen.
-    /// Requires [`ActionRequest::data`] to be set to [`ActionData::ScrollToPoint`].
+    /// Scroll the given object to a specified point in the tree's container
+    /// (e.g. window).  /// Requires [`ActionRequest::data`] to be set to
+    /// [`ActionData::ScrollToPoint`].
     ScrollToPoint,
 
     /// Requires [`ActionRequest::data`] to be set to [`ActionData::ScrollOffset`].
@@ -318,6 +327,7 @@ pub enum Action {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum Orientation {
     /// E.g. most toolbars and separators.
@@ -329,6 +339,7 @@ pub enum Orientation {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum NameFrom {
     /// E.g. `aria-label`.
@@ -350,6 +361,7 @@ pub enum NameFrom {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum DescriptionFrom {
     AriaDescription,
@@ -370,6 +382,7 @@ pub enum DescriptionFrom {
 #[derive(EnumSetType, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(feature = "serde", enumset(serialize_as_list))]
 pub enum DropEffect {
@@ -383,6 +396,7 @@ pub enum DropEffect {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum MarkerType {
     SpellingError,
@@ -395,6 +409,7 @@ pub enum MarkerType {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum TextDirection {
     LeftToRight,
@@ -408,6 +423,7 @@ pub enum TextDirection {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum InvalidState {
     False,
@@ -418,6 +434,7 @@ pub enum InvalidState {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum CheckedState {
     False,
@@ -433,6 +450,7 @@ pub enum CheckedState {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum DefaultActionVerb {
     Activate,
@@ -453,6 +471,7 @@ pub enum DefaultActionVerb {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum SortDirection {
     Unsorted,
@@ -464,6 +483,7 @@ pub enum SortDirection {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum AriaCurrent {
     False,
@@ -478,6 +498,7 @@ pub enum AriaCurrent {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum HasPopup {
     True,
@@ -491,6 +512,7 @@ pub enum HasPopup {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum ListStyle {
     Circle,
@@ -505,6 +527,7 @@ pub enum ListStyle {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum TextAlign {
     Left,
@@ -516,6 +539,7 @@ pub enum TextAlign {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum VerticalOffset {
     Subscript,
@@ -525,6 +549,7 @@ pub enum VerticalOffset {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum TextDecoration {
     Solid,
@@ -537,6 +562,7 @@ pub enum TextDecoration {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum StringEncoding {
     Utf8,
@@ -550,6 +576,7 @@ pub type NodeIdContent = std::num::NonZeroU64;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 pub struct NodeId(pub NodeIdContent);
 
 /// The globally unique ID of a tree. The format of this ID
@@ -557,78 +584,14 @@ pub struct NodeId(pub NodeIdContent);
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 pub struct TreeId(pub Box<str>);
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-pub struct Point {
-    pub x: f32,
-    pub y: f32,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-pub struct Rect {
-    pub left: f32,
-    pub top: f32,
-    pub width: f32,
-    pub height: f32,
-}
-
-/// 4x4 transformation matrix.
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(transparent))]
-pub struct Transform {
-    /// Column major order.
-    pub matrix: [f32; 16],
-}
-
-/// The relative bounding box of a [`Node`].
-///
-/// This is an efficient, compact, serializable representation of a node's
-/// bounding box that requires minimal changes to the tree when layers are
-/// moved or scrolled. Computing the absolute bounding box of a node requires
-/// walking up the tree and applying node offsets and transforms until reaching
-/// the top.
-///
-/// If [`RelativeBounds::offset_container`] is present, the bounds
-/// are relative to the node with that ID.
-///
-/// Otherwise, for a node other than the root, the bounds are relative to
-/// the root of the tree, and for the root of a tree, the bounds are relative
-/// to its immediate containing node.
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-pub struct RelativeBounds {
-    /// The ID of an ancestor node in the same Tree that this object's
-    /// bounding box is relative to.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub offset_container: Option<NodeId>,
-    /// The relative bounding box of this node.
-    pub rect: Rect,
-    /// An additional transform to apply to position this object and its subtree.
-    /// This is rarely used and should be omitted if not needed, i.e. if
-    /// the transform would be the identity matrix. It's rare enough
-    // that we box it to reduce memory usage.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub transform: Option<Box<Transform>>,
-}
 
 /// A marker spanning a range within text.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TextMarker {
@@ -643,6 +606,7 @@ pub struct TextMarker {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct CustomAction {
@@ -667,6 +631,7 @@ fn is_empty<T>(slice: &[T]) -> bool {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TextSelection {
@@ -680,13 +645,40 @@ pub struct TextSelection {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct Node {
     pub id: NodeId,
     pub role: Role,
+    /// An affine transform to apply to any coordinates within this node
+    /// and its descendants, including the [`bounds`] field of this node.
+    /// The combined transforms of this node and its ancestors define
+    /// the coordinate space of this node. This field should be `None`
+    /// if it would be set to the identity transform, which should be
+    /// the case for most nodes.
+    ///
+    /// AccessKit is not opinionated about the resolution dependence
+    /// or y direction of any coordinates; these requirements are
+    /// ultimately determined by the platform accessibility API.
+    /// This implies that for a tree generated by cross-platform code,
+    /// a platform-specific layer between that cross-platform code
+    /// and the AccessKit platform adapter must add an appropriate transform to
+    /// the root node. However, AccessKit expects the final transformed
+    /// coordinates to be relative to the origin of the tree's container
+    /// (e.g. window).
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub bounds: Option<RelativeBounds>,
+    pub transform: Option<Box<Affine>>,
+    /// The bounding box of this node, in the node's coordinate space.
+    /// This field does not affect the coordinate space of either this node
+    /// or its descendants; only the [`transform`] field affects that.
+    /// This, along with the recommendation that most nodes should have `None`
+    /// in their [`transform`] field, implies that the [`bounds`] field
+    /// of most nodes should be in the coordinate space of the nearest ancestor
+    /// with a non-`None` [`Transform`] field, or if there is no such ancestor,
+    /// the tree's container (e.g. window).
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub bounds: Option<Rect>,
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub children: Vec<NodeId>,
@@ -1161,6 +1153,7 @@ impl Node {
         Node {
             id,
             role,
+            transform: None,
             bounds: None,
             children: Default::default(),
             actions: EnumSet::new(),
@@ -1307,6 +1300,7 @@ impl Node {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct Tree {
@@ -1351,6 +1345,7 @@ impl Tree {
 #[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TreeUpdate {
@@ -1413,16 +1408,19 @@ impl<T: FnOnce() -> TreeUpdate> From<T> for TreeUpdate {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum ActionData {
     CustomAction(i32),
     Value(Box<str>),
-    /// Optional target rectangle for [`Action::ScrollIntoView`], in node-local
-    /// coordinates.
+    /// Optional target rectangle for [`Action::ScrollIntoView`], in
+    /// the coordinate space of the action's target node.
     ScrollTargetRect(Rect),
-    /// Target for [`Action::ScrollToPoint`], in screen coordinates.
+    /// Target for [`Action::ScrollToPoint`], in platform-native coordinates
+    /// relative to the origin of the tree's container (e.g. window).
     ScrollToPoint(Point),
-    /// Target for [`Action::SetScrollOffset`], in node-local coordinates.
+    /// Target for [`Action::SetScrollOffset`], in the coordinate space
+    /// of the action's target node.
     SetScrollOffset(Point),
     SetTextSelection(TextSelection),
 }
@@ -1430,6 +1428,7 @@ pub enum ActionData {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct ActionRequest {

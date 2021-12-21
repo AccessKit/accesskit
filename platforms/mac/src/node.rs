@@ -63,25 +63,21 @@ fn get_identifier(_state: &State, node: &Node) -> id {
     make_nsstring(&id)
 }
 
-fn get_screen_bounds(state: &State, node: &Node) -> Option<NSRect> {
+fn get_screen_bounding_box(state: &State, node: &Node) -> Option<NSRect> {
     let view = state.view.load();
     if view.is_null() {
         return None;
     }
 
-    node.bounds().map(|rect| {
-        let root_bounds = node.tree_reader.root().bounds().unwrap();
-        let root_bottom = root_bounds.top + root_bounds.height;
-        let bottom = rect.top + rect.height;
-        let y = root_bottom - bottom;
+    node.bounding_box().map(|rect| {
         let rect = NSRect {
             origin: NSPoint {
-                x: rect.left as f64,
-                y: y as f64,
+                x: rect.x0,
+                y: rect.y0,
             },
             size: NSSize {
-                width: rect.width as f64,
-                height: rect.height as f64,
+                width: rect.width(),
+                height: rect.height(),
             },
         };
         let rect: NSRect = unsafe { msg_send![*view, convertRect:rect toView:nil] };
@@ -91,7 +87,7 @@ fn get_screen_bounds(state: &State, node: &Node) -> Option<NSRect> {
 }
 
 fn get_position(state: &State, node: &Node) -> id {
-    if let Some(rect) = get_screen_bounds(state, node) {
+    if let Some(rect) = get_screen_bounding_box(state, node) {
         unsafe { NSValue::valueWithPoint(nil, rect.origin) }
     } else {
         nil
@@ -99,7 +95,7 @@ fn get_position(state: &State, node: &Node) -> id {
 }
 
 fn get_size(state: &State, node: &Node) -> id {
-    if let Some(rect) = get_screen_bounds(state, node) {
+    if let Some(rect) = get_screen_bounding_box(state, node) {
         unsafe { NSValue::valueWithSize(nil, rect.size) }
     } else {
         nil
