@@ -6,7 +6,8 @@
 use std::iter::FusedIterator;
 use std::sync::{Arc, Weak};
 
-use accesskit::{NodeId, Rect, Role};
+use accesskit::kurbo::{Affine, Rect};
+use accesskit::{Action, ActionRequest, CheckedState, NodeId, Role};
 
 use crate::iterators::{
     FollowingSiblings, FollowingUnignoredSiblings, PrecedingSiblings, PrecedingUnignoredSiblings,
@@ -176,23 +177,41 @@ impl<'a> Node<'a> {
         format!("{}:{}", self.tree_reader.id().0, self.id().0)
     }
 
-    /// Returns the node's bounds relative to the root of the tree.
-    pub fn bounds(&self) -> Option<Rect> {
-        self.data().bounds.as_ref().map(|bounds| {
-            let mut rect = bounds.rect;
+    /// Returns the transform defined directly on this node, or the identity
+    /// transform, without taking into account transforms on ancestors.
+    pub fn direct_transform(&self) -> Affine {
+        self.data()
+            .transform
+            .as_ref()
+            .map_or(Affine::IDENTITY, |t| **t)
+    }
 
-            if let Some(offset_id) = bounds.offset_container {
-                let offset_node = self.tree_reader.node_by_id(offset_id).unwrap();
-                let offset_rect = offset_node.bounds().unwrap();
-                rect.left += offset_rect.left;
-                rect.top += offset_rect.top;
-            }
+    /// Returns the combined affine transform of this node and its ancestors,
+    /// up to and including the root of this node's tree.
+    pub fn transform(&self) -> Affine {
+        self.parent()
+            .map_or(Affine::IDENTITY, |parent| parent.transform())
+            * self.direct_transform()
+    }
 
-            // TODO: handle transform
-            assert!(bounds.transform.is_none());
+    /// Returns the node's transformed bounding box relative to the tree's
+    /// container (e.g. window).
+    pub fn bounding_box(&self) -> Option<Rect> {
+        self.data()
+            .bounds
+            .as_ref()
+            .map(|rect| self.transform().transform_rect_bbox(*rect))
+    }
 
-            rect
-        })
+    pub fn set_focus(&self) {
+        self.tree_reader
+            .tree
+            .action_handler
+            .do_action(ActionRequest {
+                action: Action::Focus,
+                target: self.id(),
+                data: None,
+            })
     }
 
     // Convenience getters
@@ -213,11 +232,26 @@ impl<'a> Node<'a> {
         self.data().disabled
     }
 
-    pub fn name(&self) -> Option<&str> {
+    pub fn checked_state(&self) -> Option<CheckedState> {
+        self.data().checked_state
+    }
+
+    pub fn name(&self) -> Option<String> {
         if let Some(name) = &self.data().name {
-            Some(name)
+            Some(name.to_string())
         } else {
-            None
+            let labelled_by = &self.data().labelled_by;
+            if labelled_by.is_empty() {
+                None
+            } else {
+                Some(
+                    labelled_by
+                        .iter()
+                        .filter_map(|id| self.tree_reader.node_by_id(*id).unwrap().name())
+                        .collect::<Vec<String>>()
+                        .join(" "),
+                )
+            }
         }
     }
 
@@ -275,9 +309,18 @@ impl Node<'_> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::Rect;
+    use accesskit::kurbo::Rect;
+    use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+    use std::num::NonZeroU64;
 
     use crate::tests::*;
+
+    const TREE_ID: &str = "test_tree";
+    const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
+    const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
+    const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
+    const NODE_ID_4: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(4) });
+    const NODE_ID_5: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(5) });
 
     #[test]
     fn parent_and_index() {
@@ -454,29 +497,108 @@ mod tests {
     }
 
     #[test]
-    fn bounds() {
+    fn bounding_box() {
         let tree = test_tree();
-        assert!(tree.read().node_by_id(ROOT_ID).unwrap().bounds().is_none());
+        assert!(tree
+            .read()
+            .node_by_id(ROOT_ID)
+            .unwrap()
+            .bounding_box()
+            .is_none());
         assert_eq!(
             Some(Rect {
-                left: 10.0f32,
-                top: 40.0f32,
-                width: 800.0f32,
-                height: 40.0f32,
+                x0: 10.0,
+                y0: 40.0,
+                x1: 810.0,
+                y1: 80.0,
             }),
             tree.read()
                 .node_by_id(PARAGRAPH_1_IGNORED_ID)
                 .unwrap()
-                .bounds()
+                .bounding_box()
         );
         assert_eq!(
             Some(Rect {
-                left: 20.0f32,
-                top: 50.0f32,
-                width: 80.0f32,
-                height: 20.0f32,
+                x0: 20.0,
+                y0: 50.0,
+                x1: 100.0,
+                y1: 70.0,
             }),
-            tree.read().node_by_id(STATIC_TEXT_1_0_ID).unwrap().bounds()
+            tree.read()
+                .node_by_id(STATIC_TEXT_1_0_ID)
+                .unwrap()
+                .bounding_box()
+        );
+    }
+
+    #[test]
+    fn no_name_or_labelled_by() {
+        let update = TreeUpdate {
+            clear: None,
+            nodes: vec![
+                Node {
+                    children: vec![NODE_ID_2],
+                    ..Node::new(NODE_ID_1, Role::Window)
+                },
+                Node::new(NODE_ID_2, Role::Button),
+            ],
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
+        };
+        let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
+        assert_eq!(None, tree.read().node_by_id(NODE_ID_2).unwrap().name());
+    }
+
+    #[test]
+    fn name_from_labelled_by() {
+        // The following mock UI probably isn't very localization-friendly,
+        // but it's good for this test.
+        const LABEL_1: &str = "Check email every";
+        const LABEL_2: &str = "minutes";
+
+        let update = TreeUpdate {
+            clear: None,
+            nodes: vec![
+                Node {
+                    children: vec![NODE_ID_2, NODE_ID_3, NODE_ID_4, NODE_ID_5],
+                    ..Node::new(NODE_ID_1, Role::Window)
+                },
+                Node {
+                    labelled_by: vec![NODE_ID_3, NODE_ID_5],
+                    ..Node::new(NODE_ID_2, Role::CheckBox)
+                },
+                Node {
+                    name: Some(LABEL_1.into()),
+                    ..Node::new(NODE_ID_3, Role::StaticText)
+                },
+                Node {
+                    labelled_by: vec![NODE_ID_5],
+                    ..Node::new(NODE_ID_4, Role::CheckBox)
+                },
+                Node {
+                    name: Some(LABEL_2.into()),
+                    ..Node::new(NODE_ID_5, Role::StaticText)
+                },
+            ],
+            tree: Some(Tree::new(
+                TreeId(TREE_ID.into()),
+                NODE_ID_1,
+                StringEncoding::Utf8,
+            )),
+            focus: None,
+        };
+        let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
+        assert_eq!(
+            Some([LABEL_1, LABEL_2].join(" ")),
+            tree.read().node_by_id(NODE_ID_2).unwrap().name()
+        );
+        assert_eq!(
+            Some(LABEL_2.into()),
+            tree.read().node_by_id(NODE_ID_4).unwrap().name()
         );
     }
 }

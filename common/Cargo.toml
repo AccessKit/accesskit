@@ -2,9 +2,23 @@
 name = "accesskit"
 version = "0.1.0"
 authors = ["Matt Campbell <mattcampbell@pobox.com>"]
+license = "MIT/Apache-2.0"
+description = "UI accessibility infrastructure across platforms"
+categories = ["gui"]
+keywords = ["gui", "ui", "accessibility"]
+repository = "https://github.com/AccessKit/accesskit"
+readme = "README.md"
 edition = "2018"
 
+[package.metadata.docs.rs]
+features = ["schemars", "serde"]
+
 [dependencies]
-enumset = { version = "1.0.8", features = ["serde"] }
-schemars = { version = "0.8.7", features = ["enumset"], optional = true }
-serde = { version = "1.0", features = ["derive"], optional = true }
+enumset = "1.0.8"
+kurbo = "0.8.3"
+schemars_lib = { package = "schemars", version = "0.8.7", features = ["enumset"], optional = true }
+serde_lib = { package = "serde", version = "1.0", features = ["derive"], optional = true }
+
+[features]
+schemars = ["schemars_lib", "kurbo/schemars"]
+serde = ["serde_lib", "enumset/serde", "kurbo/serde"]

@@ -19,8 +19,9 @@ pub use iterators::{
 
 #[cfg(test)]
 mod tests {
+    use accesskit::kurbo::{Affine, Rect, Vec2};
     use accesskit::{
-        Node, NodeId, Rect, RelativeBounds, Role, StringEncoding, Tree, TreeId, TreeUpdate,
+        ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate,
     };
     use std::num::NonZeroU64;
     use std::sync::Arc;
@@ -40,6 +41,12 @@ mod tests {
     pub const BUTTON_3_2_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(12) });
     pub const EMPTY_CONTAINER_3_3_IGNORED_ID: NodeId =
         NodeId(unsafe { NonZeroU64::new_unchecked(13) });
+
+    pub struct NullActionHandler;
+
+    impl ActionHandler for NullActionHandler {
+        fn do_action(&self, _request: ActionRequest) {}
+    }
 
     pub fn test_tree() -> Arc<crate::tree::Tree> {
         let root = Node {
@@ -61,30 +68,23 @@ mod tests {
             ..Node::new(STATIC_TEXT_0_0_IGNORED_ID, Role::StaticText)
         };
         let paragraph_1_ignored = Node {
-            bounds: Some(RelativeBounds {
-                offset_container: None,
-                rect: Rect {
-                    left: 10.0f32,
-                    top: 40.0f32,
-                    width: 800.0f32,
-                    height: 40.0f32,
-                },
-                transform: None,
+            transform: Some(Box::new(Affine::translate(Vec2::new(10.0, 40.0)))),
+            bounds: Some(Rect {
+                x0: 0.0,
+                y0: 0.0,
+                x1: 800.0,
+                y1: 40.0,
             }),
             children: vec![STATIC_TEXT_1_0_ID],
             ignored: true,
             ..Node::new(PARAGRAPH_1_IGNORED_ID, Role::Paragraph)
         };
         let static_text_1_0 = Node {
-            bounds: Some(RelativeBounds {
-                offset_container: Some(PARAGRAPH_1_IGNORED_ID),
-                rect: Rect {
-                    left: 10.0f32,
-                    top: 10.0f32,
-                    width: 80.0f32,
-                    height: 20.0f32,
-                },
-                transform: None,
+            bounds: Some(Rect {
+                x0: 10.0,
+                y0: 10.0,
+                x1: 90.0,
+                y1: 30.0,
             }),
             name: Some("static_text_1_0".into()),
             ..Node::new(STATIC_TEXT_1_0_ID, Role::StaticText)
@@ -153,6 +153,6 @@ mod tests {
             )),
             focus: None,
         };
-        crate::tree::Tree::new(initial_update)
+        crate::tree::Tree::new(initial_update, Box::new(NullActionHandler {}))
     }
 }

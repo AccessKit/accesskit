@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{NodeId, TreeUpdate};
+use accesskit::{ActionHandler, NodeId, TreeUpdate};
 use lazy_static::lazy_static;
 use parking_lot::{const_mutex, Condvar, Mutex};
 use std::{cell::RefCell, rc::Rc, sync::Arc, time::Duration};
@@ -96,7 +96,7 @@ fn update_focus(window: HWND, is_window_focused: bool) {
     events.raise();
 }
 
-struct WindowCreateParams(TreeUpdate, NodeId);
+struct WindowCreateParams(TreeUpdate, NodeId, Box<dyn ActionHandler>);
 
 extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     match message as u32 {
@@ -104,7 +104,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             let create_struct: &CREATESTRUCTW = unsafe { &mut *(lparam.0 as *mut _) };
             let create_params: Box<WindowCreateParams> =
                 unsafe { Box::from_raw(create_struct.lpCreateParams as _) };
-            let WindowCreateParams(initial_state, initial_focus) = *create_params;
+            let WindowCreateParams(initial_state, initial_focus, action_handler) = *create_params;
             let inner_state = Rc::new(RefCell::new(InnerWindowState {
                 focus: initial_focus,
                 is_window_focused: false,
@@ -119,6 +119,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                         result.focus = state.is_window_focused.then(|| state.focus);
                         result
                     }),
+                    action_handler,
                 ),
                 inner_state,
             });
@@ -164,8 +165,17 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
     }
 }
 
-fn create_window(title: &str, initial_state: TreeUpdate, initial_focus: NodeId) -> Result<HWND> {
-    let create_params = Box::new(WindowCreateParams(initial_state, initial_focus));
+fn create_window(
+    title: &str,
+    initial_state: TreeUpdate,
+    initial_focus: NodeId,
+    action_handler: Box<dyn ActionHandler>,
+) -> Result<HWND> {
+    let create_params = Box::new(WindowCreateParams(
+        initial_state,
+        initial_focus,
+        action_handler,
+    ));
 
     let window = unsafe {
         CreateWindowExW(
@@ -209,6 +219,7 @@ pub(crate) fn scope<F>(
     window_title: &str,
     initial_state: TreeUpdate,
     initial_focus: NodeId,
+    action_handler: Box<dyn ActionHandler>,
     f: F,
 ) -> Result<()>
 where
@@ -228,7 +239,8 @@ where
             // initialized after the window is shown (as is the case,
             // at least on some Windows 10 machines, due to IME support).
 
-            let window = create_window(window_title, initial_state, initial_focus).unwrap();
+            let window =
+                create_window(window_title, initial_state, initial_focus, action_handler).unwrap();
 
             {
                 let mut state = window_mutex.lock();

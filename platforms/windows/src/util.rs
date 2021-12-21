@@ -40,6 +40,19 @@ impl VariantFactory {
 impl From<&str> for VariantFactory {
     fn from(value: &str) -> Self {
         let value: BSTR = value.into();
+        value.into()
+    }
+}
+
+impl From<String> for VariantFactory {
+    fn from(value: String) -> Self {
+        let value: BSTR = value.into();
+        value.into()
+    }
+}
+
+impl From<BSTR> for VariantFactory {
+    fn from(value: BSTR) -> Self {
         Self(
             VT_BSTR,
             VARIANT_0_0_0 {
@@ -52,6 +65,12 @@ impl From<&str> for VariantFactory {
 impl From<i32> for VariantFactory {
     fn from(value: i32) -> Self {
         Self(VT_I4, VARIANT_0_0_0 { lVal: value })
+    }
+}
+
+impl From<ToggleState> for VariantFactory {
+    fn from(value: ToggleState) -> Self {
+        value.0.into()
     }
 }
 
