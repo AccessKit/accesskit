@@ -135,7 +135,7 @@ pub struct SimpleActionHandler {
 }
 
 impl ActionHandler for SimpleActionHandler {
-    fn action(&self, request: ActionRequest) {
+    fn do_action(&self, request: ActionRequest) {
         if request.action == Action::Focus {
             unsafe {
                 PostMessageW(

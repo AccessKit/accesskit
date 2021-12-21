@@ -45,7 +45,7 @@ mod tests {
     pub struct NullActionHandler;
 
     impl ActionHandler for NullActionHandler {
-        fn action(&self, _request: ActionRequest) {}
+        fn do_action(&self, _request: ActionRequest) {}
     }
 
     pub fn test_tree() -> Arc<crate::tree::Tree> {

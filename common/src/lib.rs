@@ -1449,5 +1449,5 @@ pub trait ActionHandler: Send + Sync {
     /// This method may queue the request and handle it asynchronously.
     /// This behavior is preferred over blocking, e.g. when dispatching
     /// the request to another thread.
-    fn action(&self, request: ActionRequest);
+    fn do_action(&self, request: ActionRequest);
 }

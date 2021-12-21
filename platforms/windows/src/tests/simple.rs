@@ -49,7 +49,7 @@ fn get_initial_state() -> TreeUpdate {
 pub struct NullActionHandler;
 
 impl ActionHandler for NullActionHandler {
-    fn action(&self, _request: ActionRequest) {}
+    fn do_action(&self, _request: ActionRequest) {}
 }
 
 fn scope<F>(f: F) -> Result<()>
