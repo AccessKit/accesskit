@@ -546,7 +546,7 @@ mod tests {
             )),
             focus: None,
         };
-        let tree = super::Tree::new(update, Box::new(NullActionHandler()));
+        let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
         assert_eq!(None, tree.read().node_by_id(NODE_ID_2).unwrap().name());
     }
 
@@ -588,7 +588,7 @@ mod tests {
             )),
             focus: None,
         };
-        let tree = super::Tree::new(update, Box::new(NullActionHandler()));
+        let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
         assert_eq!(
             Some([LABEL_1, LABEL_2].join(" ")),
             tree.read().node_by_id(NODE_ID_2).unwrap().name()

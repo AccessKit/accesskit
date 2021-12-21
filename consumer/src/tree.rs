@@ -378,7 +378,7 @@ mod tests {
             )),
             focus: None,
         };
-        let tree = super::Tree::new(update, Box::new(NullActionHandler()));
+        let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
         assert_eq!(&TreeId(TREE_ID.into()), tree.read().id());
         assert_eq!(NODE_ID_1, tree.read().root().id());
         assert_eq!(Role::Window, tree.read().root().role());
@@ -404,7 +404,7 @@ mod tests {
             )),
             focus: None,
         };
-        let tree = super::Tree::new(update, Box::new(NullActionHandler()));
+        let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
         let reader = tree.read();
         assert_eq!(
             NODE_ID_1,
@@ -430,7 +430,7 @@ mod tests {
             )),
             focus: None,
         };
-        let tree = super::Tree::new(first_update, Box::new(NullActionHandler()));
+        let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
         assert_eq!(0, tree.read().root().children().count());
         let second_update = TreeUpdate {
             clear: None,
@@ -494,7 +494,7 @@ mod tests {
             )),
             focus: None,
         };
-        let tree = super::Tree::new(first_update, Box::new(NullActionHandler()));
+        let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
         assert_eq!(1, tree.read().root().children().count());
         let second_update = TreeUpdate {
             clear: None,
@@ -547,7 +547,7 @@ mod tests {
             )),
             focus: Some(NODE_ID_2),
         };
-        let tree = super::Tree::new(first_update, Box::new(NullActionHandler()));
+        let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
         assert!(tree.read().node_by_id(NODE_ID_2).unwrap().is_focused());
         let second_update = TreeUpdate {
             clear: None,
@@ -618,7 +618,7 @@ mod tests {
             )),
             focus: None,
         };
-        let tree = super::Tree::new(first_update, Box::new(NullActionHandler()));
+        let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
         assert_eq!(
             Some("foo".into()),
             tree.read().node_by_id(NODE_ID_2).unwrap().name()
@@ -675,7 +675,7 @@ mod tests {
             )),
             focus: Some(NODE_ID_2),
         };
-        let tree = super::Tree::new(update.clone(), Box::new(NullActionHandler()));
+        let tree = super::Tree::new(update.clone(), Box::new(NullActionHandler {}));
         tree.update_and_process_changes(update, |_| {
             panic!("expected no changes");
         });

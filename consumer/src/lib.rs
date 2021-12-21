@@ -42,7 +42,7 @@ mod tests {
     pub const EMPTY_CONTAINER_3_3_IGNORED_ID: NodeId =
         NodeId(unsafe { NonZeroU64::new_unchecked(13) });
 
-    pub struct NullActionHandler();
+    pub struct NullActionHandler;
 
     impl ActionHandler for NullActionHandler {
         fn action(&self, _request: ActionRequest) {}
@@ -153,6 +153,6 @@ mod tests {
             )),
             focus: None,
         };
-        crate::tree::Tree::new(initial_update, Box::new(NullActionHandler()))
+        crate::tree::Tree::new(initial_update, Box::new(NullActionHandler {}))
     }
 }

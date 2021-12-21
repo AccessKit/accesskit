@@ -46,7 +46,7 @@ fn get_initial_state() -> TreeUpdate {
     }
 }
 
-pub struct NullActionHandler();
+pub struct NullActionHandler;
 
 impl ActionHandler for NullActionHandler {
     fn action(&self, _request: ActionRequest) {}
@@ -60,7 +60,7 @@ where
         WINDOW_TITLE,
         get_initial_state(),
         BUTTON_1_ID,
-        Box::new(NullActionHandler()),
+        Box::new(NullActionHandler {}),
         f,
     )
 }
