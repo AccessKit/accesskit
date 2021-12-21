@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{NodeId, TreeId, TreeUpdate};
+use accesskit::{ActionHandler, NodeId, TreeId, TreeUpdate};
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -247,10 +247,11 @@ pub enum Change<'a> {
 
 pub struct Tree {
     state: RwLock<State>,
+    pub(crate) action_handler: Box<dyn ActionHandler>,
 }
 
 impl Tree {
-    pub fn new(mut initial_state: TreeUpdate) -> Arc<Self> {
+    pub fn new(mut initial_state: TreeUpdate, action_handler: Box<dyn ActionHandler>) -> Arc<Self> {
         assert!(initial_state.clear.is_none());
 
         let mut state = State {
@@ -261,6 +262,7 @@ impl Tree {
         state.update(initial_state, None);
         Arc::new(Self {
             state: RwLock::new(state),
+            action_handler,
         })
     }
 
@@ -357,6 +359,8 @@ mod tests {
     use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
     use std::num::NonZeroU64;
 
+    use crate::tests::NullActionHandler;
+
     const TREE_ID: &str = "test_tree";
     const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
     const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
@@ -374,7 +378,7 @@ mod tests {
             )),
             focus: None,
         };
-        let tree = super::Tree::new(update);
+        let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
         assert_eq!(&TreeId(TREE_ID.into()), tree.read().id());
         assert_eq!(NODE_ID_1, tree.read().root().id());
         assert_eq!(Role::Window, tree.read().root().role());
@@ -400,7 +404,7 @@ mod tests {
             )),
             focus: None,
         };
-        let tree = super::Tree::new(update);
+        let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
         let reader = tree.read();
         assert_eq!(
             NODE_ID_1,
@@ -426,7 +430,7 @@ mod tests {
             )),
             focus: None,
         };
-        let tree = super::Tree::new(first_update);
+        let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
         assert_eq!(0, tree.read().root().children().count());
         let second_update = TreeUpdate {
             clear: None,
@@ -490,7 +494,7 @@ mod tests {
             )),
             focus: None,
         };
-        let tree = super::Tree::new(first_update);
+        let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
         assert_eq!(1, tree.read().root().children().count());
         let second_update = TreeUpdate {
             clear: None,
@@ -543,7 +547,7 @@ mod tests {
             )),
             focus: Some(NODE_ID_2),
         };
-        let tree = super::Tree::new(first_update);
+        let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
         assert!(tree.read().node_by_id(NODE_ID_2).unwrap().is_focused());
         let second_update = TreeUpdate {
             clear: None,
@@ -614,7 +618,7 @@ mod tests {
             )),
             focus: None,
         };
-        let tree = super::Tree::new(first_update);
+        let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
         assert_eq!(
             Some("foo".into()),
             tree.read().node_by_id(NODE_ID_2).unwrap().name()
@@ -671,7 +675,7 @@ mod tests {
             )),
             focus: Some(NODE_ID_2),
         };
-        let tree = super::Tree::new(update.clone());
+        let tree = super::Tree::new(update.clone(), Box::new(NullActionHandler {}));
         tree.update_and_process_changes(update, |_| {
             panic!("expected no changes");
         });

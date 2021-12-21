@@ -20,7 +20,9 @@ pub use iterators::{
 #[cfg(test)]
 mod tests {
     use accesskit::kurbo::{Affine, Rect, Vec2};
-    use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+    use accesskit::{
+        ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate,
+    };
     use std::num::NonZeroU64;
     use std::sync::Arc;
 
@@ -39,6 +41,12 @@ mod tests {
     pub const BUTTON_3_2_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(12) });
     pub const EMPTY_CONTAINER_3_3_IGNORED_ID: NodeId =
         NodeId(unsafe { NonZeroU64::new_unchecked(13) });
+
+    pub struct NullActionHandler;
+
+    impl ActionHandler for NullActionHandler {
+        fn do_action(&self, _request: ActionRequest) {}
+    }
 
     pub fn test_tree() -> Arc<crate::tree::Tree> {
         let root = Node {
@@ -145,6 +153,6 @@ mod tests {
             )),
             focus: None,
         };
-        crate::tree::Tree::new(initial_update)
+        crate::tree::Tree::new(initial_update, Box::new(NullActionHandler {}))
     }
 }

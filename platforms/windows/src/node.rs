@@ -358,7 +358,7 @@ impl ResolvedPlatformNode<'_> {
     }
 
     fn set_focus(&self) {
-        // TODO: request action (#53)
+        self.node.set_focus()
     }
 
     fn hit_test(&self, _x: f64, _y: f64) -> Option<ResolvedPlatformNode> {
