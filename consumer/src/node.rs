@@ -204,11 +204,14 @@ impl<'a> Node<'a> {
     }
 
     pub fn set_focus(&self) {
-        self.tree_reader.tree.action_handler.do_action(ActionRequest {
-            action: Action::Focus,
-            target: self.id(),
-            data: None,
-        })
+        self.tree_reader
+            .tree
+            .action_handler
+            .do_action(ActionRequest {
+                action: Action::Focus,
+                target: self.id(),
+                data: None,
+            })
     }
 
     // Convenience getters
