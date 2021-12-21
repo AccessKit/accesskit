@@ -2,7 +2,16 @@
 name = "accesskit"
 version = "0.1.0"
 authors = ["Matt Campbell <mattcampbell@pobox.com>"]
+license = "MIT/Apache-2.0"
+description = "UI accessibility infrastructure across platforms"
+categories = ["gui"]
+keywords = ["gui", "ui", "accessibility"]
+repository = "https://github.com/AccessKit/accesskit"
+readme = "README.md"
 edition = "2018"
+
+[package.metadata.docs.rs]
+features = ["schemars", "serde"]
 
 [dependencies]
 enumset = "1.0.8"
