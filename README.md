@@ -1,6 +1,10 @@
-# AccessKit: UI accessibility infrastructure across platforms and programming languages
+# AccessKit
+
+## UI accessibility infrastructure across platforms and programming languages
 
 [![Build Status](https://github.com/AccessKit/accesskit/actions/workflows/ci.yml/badge.svg)](https://github.com/AccessKit/accesskit/actions)
+[![crates.io](https://img.shields.io/crates/v/accesskit)](https://crates.io/crates/accesskit)
+[![docs.rs](https://docs.rs/accesskit/badge.svg)](https://docs.rs/accesskit/)
 
 ## Motivation
 
