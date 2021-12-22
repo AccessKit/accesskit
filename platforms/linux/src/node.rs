@@ -376,32 +376,31 @@ impl Accessible for PlatformNode {
                     state.insert(State::Modal);
                 }
                 if let Some(selected) = data.selected {
-                    if !data.disabled {
+                    if !node.is_disabled() {
                         state.insert(State::Selectable);
                     }
                     if selected {
                         state.insert(State::Selected);
                     }
                 }
-                // if (IsTextField()) {
-                //     state.insert(State::SelectableText);
-                //     match node.data().multiline {
-                //         true => state.insert(State::MultiLine),
-                //         false => state.insert(State::SingleLine)
-                //     }
-                // }
+                if node.is_text_field() {
+                    state.insert(State::SelectableText);
+                    match node.data().multiline {
+                        true => state.insert(State::MultiLine),
+                        false => state.insert(State::SingleLine)
+                    }
+                }
 
                 // Special case for indeterminate progressbar.
                 if node.role() == Role::ProgressIndicator && data.value_for_range.is_none() {
                     state.insert(State::Indeterminate);
                 }
 
-                if data
+                let has_suggestion = data
                     .auto_complete
                     .as_ref()
-                    .map_or(false, |auto_complete| auto_complete.as_ref().is_empty())
-                    || data.autofill_available
-                {
+                    .map_or(false, |a| !a.as_ref().is_empty());
+                if has_suggestion || data.autofill_available {
                     state.insert(State::SupportsAutocompletion);
                 }
 
@@ -418,7 +417,7 @@ impl Accessible for PlatformNode {
                     _ => {}
                 }
 
-                if data.role.is_read_only_supported() && node.is_read_only_or_disabled() {
+                if node.is_read_only_supported() && node.is_read_only_or_disabled() {
                     state.insert(State::ReadOnly);
                 } else {
                     state.insert(State::Enabled);
