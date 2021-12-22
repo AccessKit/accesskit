@@ -232,8 +232,40 @@ impl<'a> Node<'a> {
         self.data().disabled
     }
 
+    pub fn is_read_only_or_disabled(&self) -> bool {
+        let data = self.data();
+        if data.read_only || self.is_disabled() {
+            true
+        } else if !data.editable {
+            false
+        } else {
+            self.should_have_read_only_state_by_default() || !self.is_read_only_supported()
+        }
+    }
+
     pub fn checked_state(&self) -> Option<CheckedState> {
         self.data().checked_state
+    }
+
+    pub fn is_text_field(&self) -> bool {
+        self.is_atomic_text_field() || self.data().nonatomic_text_field_root
+    }
+
+    pub fn is_atomic_text_field(&self) -> bool {
+        // The ARIA spec suggests a textbox is a simple text field, like an <input> or
+        // <textarea> depending on aria-multiline. However there is nothing to stop
+        // an author from adding the textbox role to a non-contenteditable element,
+        // or from adding or removing non-plain-text nodes. If we treat the textbox
+        // role as atomic when contenteditable is not set, it can break accessibility
+        // by pruning interactive elements from the accessibility tree. Therefore,
+        // until we have a reliable means to identify truly atomic ARIA textboxes,
+        // treat them as non-atomic.
+        match self.role() {
+            Role::SearchBox | Role::TextField | Role::TextFieldWithComboBox => {
+                !self.data().nonatomic_text_field_root
+            }
+            _ => false,
+        }
     }
 
     pub fn name(&self) -> Option<String> {
@@ -253,6 +285,58 @@ impl<'a> Node<'a> {
                 )
             }
         }
+    }
+
+    pub fn is_read_only_supported(&self) -> bool {
+        matches!(
+            self.role(),
+            Role::CheckBox
+                | Role::ColorWell
+                | Role::ComboBoxGrouping
+                | Role::ComboBoxMenuButton
+                | Role::Date
+                | Role::DateTime
+                | Role::Grid
+                | Role::InputTime
+                | Role::ListBox
+                | Role::MenuItemCheckBox
+                | Role::MenuItemRadio
+                | Role::MenuListPopup
+                | Role::PopupButton
+                | Role::RadioButton
+                | Role::RadioGroup
+                | Role::SearchBox
+                | Role::Slider
+                | Role::SpinButton
+                | Role::Switch
+                | Role::TextField
+                | Role::TextFieldWithComboBox
+                | Role::ToggleButton
+                | Role::TreeGrid
+        )
+    }
+
+    pub fn should_have_read_only_state_by_default(&self) -> bool {
+        matches!(
+            self.role(),
+            Role::Article
+                | Role::Definition
+                | Role::DescriptionList
+                | Role::DescriptionListTerm
+                | Role::Directory
+                | Role::Document
+                | Role::GraphicsDocument
+                | Role::Image
+                | Role::List
+                | Role::ListItem
+                | Role::PdfRoot
+                | Role::ProgressIndicator
+                | Role::RootWebArea
+                | Role::Term
+                | Role::Timer
+                | Role::Toolbar
+                | Role::Tooltip
+        )
     }
 
     pub(crate) fn first_unignored_child(self) -> Option<Node<'a>> {
