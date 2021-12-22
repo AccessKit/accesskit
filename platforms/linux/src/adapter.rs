@@ -5,7 +5,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use accesskit::{NodeId, Role, TreeUpdate};
+use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
 use accesskit_consumer::{Node, Tree, TreeChange};
 
 use crate::atspi::{
@@ -30,9 +30,10 @@ impl<'a> Adapter<'a> {
         toolkit_name: String,
         toolkit_version: String,
         initial_state: TreeUpdate,
+        action_handler: Box<dyn ActionHandler>,
     ) -> Option<Self> {
         let mut atspi_bus = Bus::a11y_bus()?;
-        let tree = Tree::new(initial_state);
+        let tree = Tree::new(initial_state, action_handler);
         let app_node = RootPlatformNode::new(app_name, toolkit_name, toolkit_version, tree.clone());
         let mut objects_to_add = Vec::new();
 
@@ -99,8 +100,8 @@ impl<'a> Adapter<'a> {
                         events.push(ObjectEvent::StateChanged(state, new_state.contains(state)));
                     }
                     if let Some(name) = new_node.name() {
-                        if old_node.name() != Some(name) {
-                            events.push(ObjectEvent::NameChanged(name.to_string()));
+                        if old_node.name().as_ref() != Some(&name) {
+                            events.push(ObjectEvent::NameChanged(name));
                         }
                     }
                     self.atspi_bus

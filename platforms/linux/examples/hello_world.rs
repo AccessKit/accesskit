@@ -3,7 +3,9 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+use accesskit::{
+    ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate
+};
 use accesskit_linux::Adapter;
 use std::num::NonZeroU64;
 use winit::{
@@ -17,6 +19,12 @@ const WINDOW_TITLE: &str = "Hello world";
 const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
 const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
+
+struct NullActionHandler;
+
+impl ActionHandler for NullActionHandler {
+    fn do_action(&self, _request: ActionRequest) {}
+}
 
 fn get_tree() -> Tree {
     Tree {
@@ -56,6 +64,7 @@ fn main() {
         String::from("ExampleUI"),
         String::from("0.1.0"),
         get_initial_state(),
+        Box::new(NullActionHandler {}),
     )
     .unwrap();
     let event_loop = EventLoop::new();
