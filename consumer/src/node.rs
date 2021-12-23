@@ -3,11 +3,16 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+// Derived from Chromium's accessibility abstraction.
+// Copyright 2021 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE.chromium file.
+
 use std::iter::FusedIterator;
 use std::sync::{Arc, Weak};
 
 use accesskit::kurbo::{Affine, Point, Rect};
-use accesskit::{Action, ActionRequest, CheckedState, NodeId, Role};
+use accesskit::{Action, ActionRequest, CheckedState, DefaultActionVerb, NodeId, Role};
 
 use crate::iterators::{
     FollowingSiblings, FollowingUnignoredSiblings, PrecedingSiblings, PrecedingUnignoredSiblings,
@@ -239,6 +244,17 @@ impl<'a> Node<'a> {
             })
     }
 
+    pub fn do_default_action(&self) {
+        self.tree_reader
+            .tree
+            .action_handler
+            .do_action(ActionRequest {
+                action: Action::Default,
+                target: self.id(),
+                data: None,
+            })
+    }
+
     // Convenience getters
 
     pub fn id(&self) -> NodeId {
@@ -291,6 +307,60 @@ impl<'a> Node<'a> {
             }
             _ => false,
         }
+    }
+
+    pub fn default_action_verb(&self) -> Option<DefaultActionVerb> {
+        self.data().default_action_verb
+    }
+
+    // When probing for supported actions as the next several functions do,
+    // it's tempting to check the role. But it's better to not assume anything
+    // beyond what the provider has explicitly told us. Rationale:
+    // if the provider developer forgot to correctly set `default_action_verb`,
+    // an AT (or even AccessKit itself) can fall back to simulating
+    // a mouse click. But if the provider doesn't handle an action request
+    // and we assume that it will based on the role, the attempted action
+    // does nothing. This stance is a departure from Chromium.
+
+    pub fn is_clickable(&self) -> bool {
+        // If it has a custom default action verb except for
+        // `DefaultActionVerb::ClickAncestor`, it's definitely clickable.
+        // `DefaultActionVerb::ClickAncestor` is used when a node with a
+        // click listener is present in its ancestry chain.
+        if let Some(verb) = self.default_action_verb() {
+            if verb != DefaultActionVerb::ClickAncestor {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    pub fn default_action_is_focus(&self) -> bool {
+        self.default_action_verb() == Some(DefaultActionVerb::Focus)
+    }
+
+    pub fn supports_toggle(&self) -> bool {
+        self.checked_state().is_some()
+    }
+
+    pub fn supports_expand_collapse(&self) -> bool {
+        self.data().expanded.is_some()
+    }
+
+    pub fn is_invocable(&self) -> bool {
+        // A control is "invocable" if it initiates an action when activated but
+        // does not maintain any state. A control that maintains state
+        // when activated would be considered a toggle or expand-collapse
+        // control - these controls are "clickable" but not "invocable".
+        // Similarly, if the action only gives the control keyboard focus,
+        // such as when clicking a text field, the control is not considered
+        // "invocable", as the "invoke" action would be a redundant synonym
+        // for the "set focus" action.
+        self.is_clickable()
+            && !self.default_action_is_focus()
+            && !self.supports_toggle()
+            && !self.supports_expand_collapse()
     }
 
     pub fn name(&self) -> Option<String> {

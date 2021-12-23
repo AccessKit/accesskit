@@ -4,8 +4,8 @@ use std::{cell::RefCell, convert::TryInto, mem::drop, num::NonZeroU64, rc::Rc};
 
 use accesskit::kurbo::Rect;
 use accesskit::{
-    Action, ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeId,
-    TreeUpdate,
+    Action, ActionHandler, ActionRequest, DefaultActionVerb, Node, NodeId, Role, StringEncoding,
+    Tree, TreeId, TreeUpdate,
 };
 use lazy_static::lazy_static;
 use windows::{
@@ -85,6 +85,7 @@ const BUTTON_2_RECT: Rect = Rect {
 };
 
 const SET_FOCUS_MSG: u32 = WM_USER;
+const DO_DEFAULT_ACTION_MSG: u32 = WM_USER + 1;
 
 fn make_button(id: NodeId, name: &str) -> Node {
     let rect = match id {
@@ -97,6 +98,7 @@ fn make_button(id: NodeId, name: &str) -> Node {
         bounds: Some(rect),
         name: Some(name.into()),
         focusable: true,
+        default_action_verb: Some(DefaultActionVerb::Click),
         ..Node::new(id, Role::Button)
     }
 }
@@ -131,6 +133,39 @@ struct WindowState {
     inner_state: Rc<RefCell<InnerWindowState>>,
 }
 
+impl WindowState {
+    fn press_button(&self, id: NodeId) {
+        // This is a pretty hacky way of updating a node.
+        // A real GUI framework would have a consistent way
+        // of building a node from underlying data.
+        // Also, this update isn't as lazy as it could be;
+        // we force the AccessKit tree to be initialized.
+        // This is expedient in this case, because that tree
+        // is the only place where the state of the buttons
+        // is stored. It's not a problem because we're really
+        // only concerned with testing lazy updates in the context
+        // of focus changes.
+        let inner_state = self.inner_state.borrow();
+        let is_window_focused = inner_state.is_window_focused;
+        let focus = inner_state.focus;
+        drop(inner_state);
+        let name = if id == BUTTON_1_ID {
+            "You pressed button 1"
+        } else {
+            "You pressed button 2"
+        };
+        let node = make_button(id, name);
+        let update = TreeUpdate {
+            clear: None,
+            nodes: vec![node],
+            tree: None,
+            focus: is_window_focused.then(|| focus),
+        };
+        let events = self.adapter.update(update);
+        events.raise();
+    }
+}
+
 unsafe fn get_window_state(window: HWND) -> *const WindowState {
     GetWindowLongPtrW(window, GWLP_USERDATA) as _
 }
@@ -158,15 +193,28 @@ pub struct SimpleActionHandler {
 
 impl ActionHandler for SimpleActionHandler {
     fn do_action(&self, request: ActionRequest) {
-        if request.action == Action::Focus {
-            unsafe {
-                PostMessageW(
-                    self.window,
-                    SET_FOCUS_MSG,
-                    WPARAM(0),
-                    LPARAM(request.target.0.get().try_into().unwrap()),
-                )
-            };
+        match request.action {
+            Action::Focus => {
+                unsafe {
+                    PostMessageW(
+                        self.window,
+                        SET_FOCUS_MSG,
+                        WPARAM(0),
+                        LPARAM(request.target.0.get().try_into().unwrap()),
+                    )
+                };
+            }
+            Action::Default => {
+                unsafe {
+                    PostMessageW(
+                        self.window,
+                        DO_DEFAULT_ACTION_MSG,
+                        WPARAM(0),
+                        LPARAM(request.target.0.get().try_into().unwrap()),
+                    )
+                };
+            }
+            _ => (),
         }
     }
 }
@@ -249,30 +297,8 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             }
             VK_SPACE => {
                 let window_state = unsafe { &*get_window_state(window) };
-                // This is a pretty hacky way of updating a node.
-                // A real GUI framework would have a consistent way
-                // of building a node from underlying data.
-                // Also, this update isn't as lazy as it could be;
-                // we force the AccessKit tree to be initialized.
-                // This is expedient in this case, because that tree
-                // is the only place where the state of the buttons
-                // is stored. It's not a problem because we're really
-                // only concerned with testing lazy updates in the context
-                // of focus changes.
-                let focus = window_state.inner_state.borrow().focus;
-                let node = if focus == BUTTON_1_ID {
-                    make_button(BUTTON_1_ID, "You pressed button 1")
-                } else {
-                    make_button(BUTTON_2_ID, "You pressed button 2")
-                };
-                let update = TreeUpdate {
-                    clear: None,
-                    nodes: vec![node],
-                    tree: None,
-                    focus: Some(focus),
-                };
-                let events = window_state.adapter.update(update);
-                events.raise();
+                let id = window_state.inner_state.borrow().focus;
+                window_state.press_button(id);
                 LRESULT(0)
             }
             _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
@@ -287,6 +313,16 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                     let is_window_focused = inner_state.is_window_focused;
                     drop(inner_state);
                     update_focus(window, is_window_focused);
+                }
+            }
+            LRESULT(0)
+        }
+        DO_DEFAULT_ACTION_MSG => {
+            if let Some(id) = lparam.0.try_into().ok().map(NonZeroU64::new).flatten() {
+                let id = NodeId(id);
+                if id == BUTTON_1_ID || id == BUTTON_2_ID {
+                    let window_state = unsafe { &*get_window_state(window) };
+                    window_state.press_button(id);
                 }
             }
             LRESULT(0)
