@@ -453,10 +453,10 @@ pub enum CheckedState {
 #[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum DefaultActionVerb {
-    Activate,
+    Click,
+    Focus,
     Check,
     Uncheck,
-    Click,
     /// A click will be performed on one of the node's ancestors.
     /// This happens when the node itself is not clickable, but one of its
     /// ancestors has click handlers attached which are able to capture the click

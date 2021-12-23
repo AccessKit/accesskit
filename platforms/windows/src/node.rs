@@ -286,6 +286,10 @@ impl ResolvedPlatformNode<'_> {
         }
     }
 
+    fn is_invoke_pattern_supported(&self) -> bool {
+        self.node.is_invocable()
+    }
+
     pub(crate) fn enqueue_property_changes(
         &self,
         queue: &mut Vec<Event>,
@@ -385,7 +389,11 @@ impl ResolvedPlatformNode<'_> {
     }
 
     fn toggle(&self) {
-        // TODO: request action (#53)
+        self.node.do_default_action()
+    }
+
+    fn invoke(&self) {
+        self.node.do_default_action()
     }
 }
 
@@ -393,7 +401,8 @@ impl ResolvedPlatformNode<'_> {
     Windows::Win32::UI::Accessibility::IRawElementProviderSimple,
     Windows::Win32::UI::Accessibility::IRawElementProviderFragment,
     Windows::Win32::UI::Accessibility::IRawElementProviderFragmentRoot,
-    Windows::Win32::UI::Accessibility::IToggleProvider
+    Windows::Win32::UI::Accessibility::IToggleProvider,
+    Windows::Win32::UI::Accessibility::IInvokeProvider
 )]
 pub(crate) struct PlatformNode {
     node: WeakNode,
@@ -522,6 +531,13 @@ impl PlatformNode {
             Ok(())
         })
     }
+
+    fn Invoke(&self) -> Result<()> {
+        self.resolve(|resolved| {
+            resolved.invoke();
+            Ok(())
+        })
+    }
 }
 
 macro_rules! properties {
@@ -559,7 +575,7 @@ macro_rules! properties {
 
 macro_rules! patterns {
     ($(($base_pattern_id:ident, $is_supported:ident, (
-        $(($base_property_id:ident, $getter:ident, $com_type:ident)),+
+        $(($base_property_id:ident, $getter:ident, $com_type:ident)),*
     ))),+) => {
         impl ResolvedPlatformNode<'_> {
             fn is_pattern_supported(&self, pattern_id: i32) -> bool {
@@ -613,5 +629,6 @@ properties! {
 patterns! {
     (Toggle, is_toggle_pattern_supported, (
         (ToggleState, toggle_state, ToggleState)
-    ))
+    )),
+    (Invoke, is_invoke_pattern_supported, ())
 }
