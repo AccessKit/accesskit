@@ -386,10 +386,6 @@ impl<'a> Node<'a> {
         false
     }
 
-    pub fn default_action_is_focus(&self) -> bool {
-        self.default_action_verb() == Some(DefaultActionVerb::Focus)
-    }
-
     pub fn supports_toggle(&self) -> bool {
         self.checked_state().is_some()
     }
@@ -406,9 +402,12 @@ impl<'a> Node<'a> {
         // Similarly, if the action only gives the control keyboard focus,
         // such as when clicking a text field, the control is not considered
         // "invocable", as the "invoke" action would be a redundant synonym
-        // for the "set focus" action.
+        // for the "set focus" action. The same logic applies to selection.
         self.is_clickable()
-            && !self.default_action_is_focus()
+            && !matches!(
+                self.default_action_verb(),
+                Some(DefaultActionVerb::Focus | DefaultActionVerb::Select)
+            )
             && !self.supports_toggle()
             && !self.supports_expand_collapse()
     }
