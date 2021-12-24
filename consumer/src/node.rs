@@ -12,7 +12,7 @@ use std::iter::FusedIterator;
 use std::sync::{Arc, Weak};
 
 use accesskit::kurbo::{Affine, Point, Rect};
-use accesskit::{Action, ActionRequest, CheckedState, DefaultActionVerb, NodeId, Role};
+use accesskit::{Action, ActionData, ActionRequest, CheckedState, DefaultActionVerb, NodeId, Role};
 
 use crate::iterators::{
     FollowingSiblings, FollowingUnignoredSiblings, PrecedingSiblings, PrecedingUnignoredSiblings,
@@ -255,6 +255,28 @@ impl<'a> Node<'a> {
             })
     }
 
+    pub fn set_value(&self, value: impl Into<Box<str>>) {
+        self.tree_reader
+            .tree
+            .action_handler
+            .do_action(ActionRequest {
+                action: Action::SetValue,
+                target: self.id(),
+                data: Some(ActionData::Value(value.into())),
+            })
+    }
+
+    pub fn set_numeric_value(&self, value: f64) {
+        self.tree_reader
+            .tree
+            .action_handler
+            .do_action(ActionRequest {
+                action: Action::SetValue,
+                target: self.id(),
+                data: Some(ActionData::NumericValue(value)),
+            })
+    }
+
     // Convenience getters
 
     pub fn id(&self) -> NodeId {
@@ -273,9 +295,9 @@ impl<'a> Node<'a> {
         self.data().disabled
     }
 
-    pub fn is_read_only_or_disabled(&self) -> bool {
+    pub fn is_read_only(&self) -> bool {
         let data = self.data();
-        if data.read_only || self.is_disabled() {
+        if data.read_only {
             true
         } else if !data.editable {
             false
@@ -284,8 +306,36 @@ impl<'a> Node<'a> {
         }
     }
 
+    pub fn is_read_only_or_disabled(&self) -> bool {
+        self.is_read_only() || self.is_disabled()
+    }
+
     pub fn checked_state(&self) -> Option<CheckedState> {
         self.data().checked_state
+    }
+
+    pub fn value(&self) -> Option<&str> {
+        self.data().value.as_deref()
+    }
+
+    pub fn numeric_value(&self) -> Option<f64> {
+        self.data().numeric_value
+    }
+
+    pub fn min_numeric_value(&self) -> Option<f64> {
+        self.data().min_numeric_value
+    }
+
+    pub fn max_numeric_value(&self) -> Option<f64> {
+        self.data().max_numeric_value
+    }
+
+    pub fn numeric_value_step(&self) -> Option<f64> {
+        self.data().numeric_value_step
+    }
+
+    pub fn numeric_value_jump(&self) -> Option<f64> {
+        self.data().numeric_value_jump
     }
 
     pub fn is_text_field(&self) -> bool {
