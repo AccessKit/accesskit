@@ -323,7 +323,9 @@ impl ResolvedPlatformNode<'_> {
     }
 
     fn jump_value_for_range(&self) -> f64 {
-        self.node.jump_value_for_range().unwrap_or_else(|| self.step_value_for_range())
+        self.node
+            .jump_value_for_range()
+            .unwrap_or_else(|| self.step_value_for_range())
     }
 
     pub(crate) fn enqueue_property_changes(
