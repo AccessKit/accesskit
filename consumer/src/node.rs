@@ -266,14 +266,14 @@ impl<'a> Node<'a> {
             })
     }
 
-    pub fn set_value_for_range(&self, value: f64) {
+    pub fn set_numeric_value(&self, value: f64) {
         self.tree_reader
             .tree
             .action_handler
             .do_action(ActionRequest {
                 action: Action::SetValue,
                 target: self.id(),
-                data: Some(ActionData::ValueForRange(value)),
+                data: Some(ActionData::NumericValue(value)),
             })
     }
 
@@ -318,24 +318,24 @@ impl<'a> Node<'a> {
         self.data().value.as_deref()
     }
 
-    pub fn value_for_range(&self) -> Option<f64> {
-        self.data().value_for_range
+    pub fn numeric_value(&self) -> Option<f64> {
+        self.data().numeric_value
     }
 
-    pub fn min_value_for_range(&self) -> Option<f64> {
-        self.data().min_value_for_range
+    pub fn min_numeric_value(&self) -> Option<f64> {
+        self.data().min_numeric_value
     }
 
-    pub fn max_value_for_range(&self) -> Option<f64> {
-        self.data().max_value_for_range
+    pub fn max_numeric_value(&self) -> Option<f64> {
+        self.data().max_numeric_value
     }
 
-    pub fn step_value_for_range(&self) -> Option<f64> {
-        self.data().step_value_for_range
+    pub fn numeric_value_step(&self) -> Option<f64> {
+        self.data().numeric_value_step
     }
 
-    pub fn jump_value_for_range(&self) -> Option<f64> {
-        self.data().jump_value_for_range
+    pub fn numeric_value_jump(&self) -> Option<f64> {
+        self.data().numeric_value_jump
     }
 
     pub fn is_text_field(&self) -> bool {

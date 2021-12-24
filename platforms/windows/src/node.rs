@@ -295,7 +295,7 @@ impl ResolvedPlatformNode<'_> {
     }
 
     fn is_range_value_pattern_supported(&self) -> bool {
-        self.node.value_for_range().is_some()
+        self.node.numeric_value().is_some()
     }
 
     fn value(&self) -> &str {
@@ -306,26 +306,26 @@ impl ResolvedPlatformNode<'_> {
         self.node.is_read_only()
     }
 
-    fn value_for_range(&self) -> f64 {
-        self.node.value_for_range().unwrap()
+    fn numeric_value(&self) -> f64 {
+        self.node.numeric_value().unwrap()
     }
 
-    fn min_value_for_range(&self) -> f64 {
-        self.node.min_value_for_range().unwrap_or(std::f64::MIN)
+    fn min_numeric_value(&self) -> f64 {
+        self.node.min_numeric_value().unwrap_or(std::f64::MIN)
     }
 
-    fn max_value_for_range(&self) -> f64 {
-        self.node.max_value_for_range().unwrap_or(std::f64::MAX)
+    fn max_numeric_value(&self) -> f64 {
+        self.node.max_numeric_value().unwrap_or(std::f64::MAX)
     }
 
-    fn step_value_for_range(&self) -> f64 {
-        self.node.step_value_for_range().unwrap_or(0.0)
+    fn numeric_value_step(&self) -> f64 {
+        self.node.numeric_value_step().unwrap_or(0.0)
     }
 
-    fn jump_value_for_range(&self) -> f64 {
+    fn numeric_value_jump(&self) -> f64 {
         self.node
-            .jump_value_for_range()
-            .unwrap_or_else(|| self.step_value_for_range())
+            .numeric_value_jump()
+            .unwrap_or_else(|| self.numeric_value_step())
     }
 
     pub(crate) fn enqueue_property_changes(
@@ -438,8 +438,8 @@ impl ResolvedPlatformNode<'_> {
         self.node.set_value(value)
     }
 
-    fn set_value_for_range(&self, value: f64) {
-        self.node.set_value_for_range(value)
+    fn set_numeric_value(&self, value: f64) {
+        self.node.set_numeric_value(value)
     }
 }
 
@@ -677,12 +677,12 @@ patterns! {
         (IsReadOnly, is_read_only, BOOL)
     )),
     (RangeValue, is_range_value_pattern_supported, (
-        (Value, value_for_range, f64),
+        (Value, numeric_value, f64),
         (IsReadOnly, is_read_only, BOOL),
-        (Minimum, min_value_for_range, f64),
-        (Maximum, max_value_for_range, f64),
-        (SmallChange, step_value_for_range, f64),
-        (LargeChange, jump_value_for_range, f64)
+        (Minimum, min_numeric_value, f64),
+        (Maximum, max_numeric_value, f64),
+        (SmallChange, numeric_value_step, f64),
+        (LargeChange, numeric_value_jump, f64)
     ))
 }
 
@@ -728,7 +728,7 @@ impl ValueProvider {
 impl RangeValueProvider {
     fn SetValue(&self, value: f64) -> Result<()> {
         self.0.resolve(|resolved| {
-            resolved.set_value_for_range(value);
+            resolved.set_numeric_value(value);
             Ok(())
         })
     }

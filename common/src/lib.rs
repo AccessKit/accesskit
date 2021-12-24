@@ -263,9 +263,9 @@ pub enum Action {
     /// Requires [`ActionRequest::data`] to be set to [`ActionData::CustomAction`].
     CustomAction,
 
-    /// Decrement a slider or range control by one step value.
+    /// Decrement a numeric value by one step.
     Decrement,
-    /// Increment a slider or range control by one step value.
+    /// Increment a numeric value by one step.
     Increment,
 
     HideTooltip,
@@ -318,7 +318,7 @@ pub enum Action {
 
     /// Replace the value of the control with the specified value and
     /// reset the selection, if applicable. Requires [`ActionRequest::data`]
-    /// to be set to [`ActionData::Value`] or [`ActionData::ValueForRange`].
+    /// to be set to [`ActionData::Value`] or [`ActionData::NumericValue`].
     SetValue,
 
     ShowContextMenu,
@@ -1127,17 +1127,17 @@ pub struct Node {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub next_focus: Option<NodeId>,
 
-    // Range attributes.
+    // Numeric value attributes.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub value_for_range: Option<f64>,
+    pub numeric_value: Option<f64>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub min_value_for_range: Option<f64>,
+    pub min_numeric_value: Option<f64>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub max_value_for_range: Option<f64>,
+    pub max_numeric_value: Option<f64>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub step_value_for_range: Option<f64>,
+    pub numeric_value_step: Option<f64>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub jump_value_for_range: Option<f64>,
+    pub numeric_value_jump: Option<f64>,
 
     // Text attributes.
     /// Font size is in pixels.
@@ -1288,11 +1288,11 @@ impl Node {
             underline: None,
             previous_focus: None,
             next_focus: None,
-            value_for_range: None,
-            min_value_for_range: None,
-            max_value_for_range: None,
-            step_value_for_range: None,
-            jump_value_for_range: None,
+            numeric_value: None,
+            min_numeric_value: None,
+            max_numeric_value: None,
+            numeric_value_step: None,
+            numeric_value_jump: None,
             font_size: None,
             font_weight: None,
             text_indent: None,
@@ -1418,7 +1418,7 @@ impl<T: FnOnce() -> TreeUpdate> From<T> for TreeUpdate {
 pub enum ActionData {
     CustomAction(i32),
     Value(Box<str>),
-    ValueForRange(f64),
+    NumericValue(f64),
     /// Optional target rectangle for [`Action::ScrollIntoView`], in
     /// the coordinate space of the action's target node.
     ScrollTargetRect(Rect),
