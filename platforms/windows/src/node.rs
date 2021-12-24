@@ -391,14 +391,16 @@ impl ResolvedPlatformNode<'_> {
         self.enqueue_property_implied_events(queue, old);
     }
 
-    fn enqueue_property_implied_events(
-        &self,
-        queue: &mut Vec<Event>,
-        old: &ResolvedPlatformNode,
-    ) {
-        if self.is_selection_item_pattern_supported() && self.is_selected() && !(old.is_selection_item_pattern_supported() && old.is_selected()) {
+    fn enqueue_property_implied_events(&self, queue: &mut Vec<Event>, old: &ResolvedPlatformNode) {
+        if self.is_selection_item_pattern_supported()
+            && self.is_selected()
+            && !(old.is_selection_item_pattern_supported() && old.is_selected())
+        {
             let element: IRawElementProviderSimple = self.downgrade().into();
-            queue.push(Event::Simple { element, event_id: UIA_SelectionItem_ElementSelectedEventId });
+            queue.push(Event::Simple {
+                element,
+                event_id: UIA_SelectionItem_ElementSelectedEventId,
+            });
         }
     }
 
