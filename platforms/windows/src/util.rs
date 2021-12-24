@@ -68,6 +68,12 @@ impl From<i32> for VariantFactory {
     }
 }
 
+impl From<f64> for VariantFactory {
+    fn from(value: f64) -> Self {
+        Self(VT_R8, VARIANT_0_0_0 { dblVal: value })
+    }
+}
+
 impl From<ToggleState> for VariantFactory {
     fn from(value: ToggleState) -> Self {
         value.0.into()

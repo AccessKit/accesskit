@@ -318,7 +318,7 @@ pub enum Action {
 
     /// Replace the value of the control with the specified value and
     /// reset the selection, if applicable. Requires [`ActionRequest::data`]
-    /// to be set to [`ActionData::Value`].
+    /// to be set to [`ActionData::Value`] or [`ActionData::ValueForRange`].
     SetValue,
 
     ShowContextMenu,
@@ -1129,13 +1129,15 @@ pub struct Node {
 
     // Range attributes.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub value_for_range: Option<f32>,
+    pub value_for_range: Option<f64>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub min_value_for_range: Option<f32>,
+    pub min_value_for_range: Option<f64>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub max_value_for_range: Option<f32>,
+    pub max_value_for_range: Option<f64>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub step_value_for_range: Option<f32>,
+    pub step_value_for_range: Option<f64>,
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub jump_value_for_range: Option<f64>,
 
     // Text attributes.
     /// Font size is in pixels.
@@ -1290,6 +1292,7 @@ impl Node {
             min_value_for_range: None,
             max_value_for_range: None,
             step_value_for_range: None,
+            jump_value_for_range: None,
             font_size: None,
             font_weight: None,
             text_indent: None,
@@ -1415,6 +1418,7 @@ impl<T: FnOnce() -> TreeUpdate> From<T> for TreeUpdate {
 pub enum ActionData {
     CustomAction(i32),
     Value(Box<str>),
+    ValueForRange(f64),
     /// Optional target rectangle for [`Action::ScrollIntoView`], in
     /// the coordinate space of the action's target node.
     ScrollTargetRect(Rect),

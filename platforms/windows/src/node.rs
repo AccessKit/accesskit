@@ -290,6 +290,42 @@ impl ResolvedPlatformNode<'_> {
         self.node.is_invocable()
     }
 
+    fn is_value_pattern_supported(&self) -> bool {
+        self.node.value().is_some()
+    }
+
+    fn is_range_value_pattern_supported(&self) -> bool {
+        self.node.value_for_range().is_some()
+    }
+
+    fn value(&self) -> &str {
+        self.node.value().unwrap()
+    }
+
+    fn is_read_only(&self) -> bool {
+        self.node.is_read_only()
+    }
+
+    fn value_for_range(&self) -> f64 {
+        self.node.value_for_range().unwrap()
+    }
+
+    fn min_value_for_range(&self) -> f64 {
+        self.node.min_value_for_range().unwrap_or(std::f64::MIN)
+    }
+
+    fn max_value_for_range(&self) -> f64 {
+        self.node.max_value_for_range().unwrap_or(std::f64::MAX)
+    }
+
+    fn step_value_for_range(&self) -> f64 {
+        self.node.step_value_for_range().unwrap_or(0.0)
+    }
+
+    fn jump_value_for_range(&self) -> f64 {
+        self.node.jump_value_for_range().unwrap_or_else(|| self.step_value_for_range())
+    }
+
     pub(crate) fn enqueue_property_changes(
         &self,
         queue: &mut Vec<Event>,
@@ -395,14 +431,20 @@ impl ResolvedPlatformNode<'_> {
     fn invoke(&self) {
         self.node.do_default_action()
     }
+
+    fn set_value(&self, value: impl Into<Box<str>>) {
+        self.node.set_value(value)
+    }
+
+    fn set_value_for_range(&self, value: f64) {
+        self.node.set_value_for_range(value)
+    }
 }
 
 #[implement(
     Windows::Win32::UI::Accessibility::IRawElementProviderSimple,
     Windows::Win32::UI::Accessibility::IRawElementProviderFragment,
-    Windows::Win32::UI::Accessibility::IRawElementProviderFragmentRoot,
-    Windows::Win32::UI::Accessibility::IToggleProvider,
-    Windows::Win32::UI::Accessibility::IInvokeProvider
+    Windows::Win32::UI::Accessibility::IRawElementProviderFragmentRoot
 )]
 pub(crate) struct PlatformNode {
     node: WeakNode,
@@ -438,13 +480,8 @@ impl PlatformNode {
     }
 
     fn GetPatternProvider(&mut self, pattern_id: i32) -> Result<IUnknown> {
-        let supported = self.resolve(|resolved| Ok(resolved.is_pattern_supported(pattern_id)))?;
-        if supported {
-            let intermediate: IRawElementProviderSimple = self.into();
-            Ok(intermediate.into())
-        } else {
-            Err(Error::OK)
-        }
+        let provider = self.resolve(|resolved| Ok(resolved.pattern_provider(pattern_id)))?;
+        provider.map_or_else(|| Err(Error::OK), Ok)
     }
 
     fn GetPropertyValue(&self, property_id: i32) -> Result<VARIANT> {
@@ -524,20 +561,6 @@ impl PlatformNode {
             None => Err(Error::OK),
         })
     }
-
-    fn Toggle(&self) -> Result<()> {
-        self.resolve(|resolved| {
-            resolved.toggle();
-            Ok(())
-        })
-    }
-
-    fn Invoke(&self) -> Result<()> {
-        self.resolve(|resolved| {
-            resolved.invoke();
-            Ok(())
-        })
-    }
 }
 
 macro_rules! properties {
@@ -578,12 +601,16 @@ macro_rules! patterns {
         $(($base_property_id:ident, $getter:ident, $com_type:ident)),*
     ))),+) => {
         impl ResolvedPlatformNode<'_> {
-            fn is_pattern_supported(&self, pattern_id: i32) -> bool {
+            fn pattern_provider(&self, pattern_id: i32) -> Option<IUnknown> {
                 match pattern_id {
                     $(paste! { [< UIA_ $base_pattern_id PatternId>] } => {
-                        self.$is_supported()
+                        self.$is_supported().then(|| {
+                            let intermediate: paste! { [< I $base_pattern_id Provider>] } =
+                                (paste! { [< $base_pattern_id Provider>] })(self.downgrade()).into();
+                            intermediate.into()
+                        })
                     })*
-                    _ => false,
+                    _ => None,
                 }
             }
             fn enqueue_pattern_property_changes(
@@ -607,12 +634,12 @@ macro_rules! patterns {
                 })*
             }
         }
-        #[allow(non_snake_case)]
-        impl PlatformNode {
-            $($(fn $base_property_id(&self) -> Result<$com_type> {
-                self.resolve(|resolved| Ok(resolved.$getter().into()))
-            })*)*
-        }
+        $(#[allow(non_snake_case)]
+        impl paste! { [< $base_pattern_id Provider>] } {
+            $(fn $base_property_id(&self) -> Result<$com_type> {
+                self.0.resolve(|resolved| Ok(resolved.$getter().into()))
+            })*
+        })*
     };
 }
 
@@ -626,9 +653,81 @@ properties! {
     (HasKeyboardFocus, is_focused)
 }
 
+#[implement(Windows::Win32::UI::Accessibility::IToggleProvider)]
+struct ToggleProvider(PlatformNode);
+
+#[implement(Windows::Win32::UI::Accessibility::IInvokeProvider)]
+struct InvokeProvider(PlatformNode);
+
+#[implement(Windows::Win32::UI::Accessibility::IValueProvider)]
+struct ValueProvider(PlatformNode);
+
+#[implement(Windows::Win32::UI::Accessibility::IRangeValueProvider)]
+struct RangeValueProvider(PlatformNode);
+
 patterns! {
     (Toggle, is_toggle_pattern_supported, (
         (ToggleState, toggle_state, ToggleState)
     )),
-    (Invoke, is_invoke_pattern_supported, ())
+    (Invoke, is_invoke_pattern_supported, ()),
+    (Value, is_value_pattern_supported, (
+        (Value, value, BSTR),
+        (IsReadOnly, is_read_only, BOOL)
+    )),
+    (RangeValue, is_range_value_pattern_supported, (
+        (Value, value_for_range, f64),
+        (IsReadOnly, is_read_only, BOOL),
+        (Minimum, min_value_for_range, f64),
+        (Maximum, max_value_for_range, f64),
+        (SmallChange, step_value_for_range, f64),
+        (LargeChange, jump_value_for_range, f64)
+    ))
+}
+
+#[allow(non_snake_case)]
+impl ToggleProvider {
+    fn Toggle(&self) -> Result<()> {
+        self.0.resolve(|resolved| {
+            resolved.toggle();
+            Ok(())
+        })
+    }
+}
+
+#[allow(non_snake_case)]
+impl InvokeProvider {
+    fn Invoke(&self) -> Result<()> {
+        self.0.resolve(|resolved| {
+            resolved.invoke();
+            Ok(())
+        })
+    }
+}
+
+#[allow(non_snake_case)]
+impl ValueProvider {
+    fn SetValue(&self, value: PWSTR) -> Result<()> {
+        self.0.resolve(|resolved| {
+            // Based on BSTR::as_wide in windows-rs
+            let value_as_wide = if value.0.is_null() {
+                &[]
+            } else {
+                let len = unsafe { libc::wcslen(value.0) };
+                unsafe { std::slice::from_raw_parts(value.0 as *const _, len) }
+            };
+            let value = String::from_utf16(value_as_wide).unwrap();
+            resolved.set_value(value);
+            Ok(())
+        })
+    }
+}
+
+#[allow(non_snake_case)]
+impl RangeValueProvider {
+    fn SetValue(&self, value: f64) -> Result<()> {
+        self.0.resolve(|resolved| {
+            resolved.set_value_for_range(value);
+            Ok(())
+        })
+    }
 }

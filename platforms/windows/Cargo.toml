@@ -15,6 +15,7 @@ accesskit = { version = "0.1.1", path = "../../common" }
 accesskit_consumer = { version = "0.1.1", path = "../../consumer" }
 arrayvec = "0.7.1"
 lazy-init = "0.5.0"
+libc = "0.2.112"
 paste = "1.0"
 
 [dependencies.windows]
