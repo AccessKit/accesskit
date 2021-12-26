@@ -897,9 +897,11 @@ pub struct Node {
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub labelled_by: Vec<NodeId>,
+    /// On radio buttons this should be set to a list of all of the buttons
+    /// in the same group as this one, including this radio button itself.
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub radio_groups: Vec<NodeId>,
+    pub radio_group: Vec<NodeId>,
 
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
@@ -1213,7 +1215,7 @@ impl Node {
             described_by: Default::default(),
             flow_to: Default::default(),
             labelled_by: Default::default(),
-            radio_groups: Default::default(),
+            radio_group: Default::default(),
             markers: Default::default(),
             text_direction: None,
             character_offsets: Default::default(),

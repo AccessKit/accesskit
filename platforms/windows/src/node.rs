@@ -3,6 +3,11 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+// Derived from Chromium's accessibility abstraction.
+// Copyright 2021 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE.chromium file.
+
 #![allow(non_upper_case_globals)]
 
 use accesskit::kurbo::Point;
@@ -275,7 +280,7 @@ impl ResolvedPlatformNode<'_> {
     }
 
     fn is_toggle_pattern_supported(&self) -> bool {
-        self.node.checked_state().is_some()
+        self.node.checked_state().is_some() && !self.is_selection_item_pattern_supported()
     }
 
     fn toggle_state(&self) -> ToggleState {
@@ -328,6 +333,54 @@ impl ResolvedPlatformNode<'_> {
             .unwrap_or_else(|| self.numeric_value_step())
     }
 
+    fn is_selection_item_pattern_supported(&self) -> bool {
+        match self.node.role() {
+            // TODO: tables (#29)
+            // https://www.w3.org/TR/core-aam-1.1/#mapping_state-property_table
+            // SelectionItem.IsSelected is exposed when aria-checked is True or
+            // False, for 'radio' and 'menuitemradio' roles.
+            Role::RadioButton | Role::MenuItemRadio => matches!(
+                self.node.checked_state(),
+                Some(CheckedState::True | CheckedState::False)
+            ),
+            // https://www.w3.org/TR/wai-aria-1.1/#aria-selected
+            // SelectionItem.IsSelected is exposed when aria-select is True or False.
+            Role::ListBoxOption
+            | Role::ListItem
+            | Role::MenuListOption
+            | Role::Tab
+            | Role::TreeItem => self.node.data().selected.is_some(),
+            _ => false,
+        }
+    }
+
+    fn select(&self) {
+        self.node.do_default_action()
+    }
+
+    fn add_to_selection(&self) {
+        // TODO: implement when we work on list boxes (#23)
+    }
+
+    fn remove_from_selection(&self) {
+        // TODO: implement when we work on list boxes (#23)
+    }
+
+    fn is_selected(&self) -> bool {
+        match self.node.role() {
+            // https://www.w3.org/TR/core-aam-1.1/#mapping_state-property_table
+            // SelectionItem.IsSelected is set according to the True or False
+            // value of aria-checked for 'radio' and 'menuitemradio' roles.
+            Role::RadioButton | Role::MenuItemRadio => {
+                self.node.checked_state() == Some(CheckedState::True)
+            }
+            // https://www.w3.org/TR/wai-aria-1.1/#aria-selected
+            // SelectionItem.IsSelected is set according to the True or False
+            // value of aria-selected.
+            _ => self.node.data().selected.unwrap_or(false),
+        }
+    }
+
     pub(crate) fn enqueue_property_changes(
         &self,
         queue: &mut Vec<Event>,
@@ -335,6 +388,20 @@ impl ResolvedPlatformNode<'_> {
     ) {
         self.enqueue_simple_property_changes(queue, old);
         self.enqueue_pattern_property_changes(queue, old);
+        self.enqueue_property_implied_events(queue, old);
+    }
+
+    fn enqueue_property_implied_events(&self, queue: &mut Vec<Event>, old: &ResolvedPlatformNode) {
+        if self.is_selection_item_pattern_supported()
+            && self.is_selected()
+            && !(old.is_selection_item_pattern_supported() && old.is_selected())
+        {
+            let element: IRawElementProviderSimple = self.downgrade().into();
+            queue.push(Event::Simple {
+                element,
+                event_id: UIA_SelectionItem_ElementSelectedEventId,
+            });
+        }
     }
 
     fn enqueue_property_change(
@@ -620,7 +687,7 @@ macro_rules! patterns {
                 queue: &mut Vec<Event>,
                 old: &ResolvedPlatformNode,
             ) {
-                $(if self.$is_supported() {
+                $(if self.$is_supported() && old.$is_supported() {
                     $({
                         let old_value = old.$getter();
                         let new_value = self.$getter();
@@ -667,6 +734,9 @@ struct ValueProvider(PlatformNode);
 #[implement(Windows::Win32::UI::Accessibility::IRangeValueProvider)]
 struct RangeValueProvider(PlatformNode);
 
+#[implement(Windows::Win32::UI::Accessibility::ISelectionItemProvider)]
+struct SelectionItemProvider(PlatformNode);
+
 patterns! {
     (Toggle, is_toggle_pattern_supported, (
         (ToggleState, toggle_state, ToggleState)
@@ -683,6 +753,9 @@ patterns! {
         (Maximum, max_numeric_value, f64),
         (SmallChange, numeric_value_step, f64),
         (LargeChange, numeric_value_jump, f64)
+    )),
+    (SelectionItem, is_selection_item_pattern_supported, (
+        (IsSelected, is_selected, BOOL)
     ))
 }
 
@@ -730,6 +803,39 @@ impl RangeValueProvider {
         self.0.resolve(|resolved| {
             resolved.set_numeric_value(value);
             Ok(())
+        })
+    }
+}
+
+#[allow(non_snake_case)]
+impl SelectionItemProvider {
+    fn Select(&self) -> Result<()> {
+        self.0.resolve(|resolved| {
+            resolved.select();
+            Ok(())
+        })
+    }
+
+    fn AddToSelection(&self) -> Result<()> {
+        self.0.resolve(|resolved| {
+            resolved.add_to_selection();
+            Ok(())
+        })
+    }
+
+    fn RemoveFromSelection(&self) -> Result<()> {
+        self.0.resolve(|resolved| {
+            resolved.remove_from_selection();
+            Ok(())
+        })
+    }
+
+    fn SelectionContainer(&self) -> Result<IRawElementProviderSimple> {
+        self.0.resolve(|_resolved| {
+            // TODO: implement when we work on list boxes (#23)
+            // We return E_FAIL here because that's what Chromium does
+            // if it can't find a container.
+            Err(Error::new(E_FAIL, "".into()))
         })
     }
 }
