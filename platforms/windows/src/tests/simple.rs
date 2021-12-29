@@ -35,7 +35,6 @@ fn get_initial_state() -> TreeUpdate {
     let button_1 = make_button(BUTTON_1_ID, "Button 1");
     let button_2 = make_button(BUTTON_2_ID, "Button 2");
     TreeUpdate {
-        clear: None,
         nodes: vec![root, button_1, button_2],
         tree: Some(Tree::new(
             TreeId("test".into()),

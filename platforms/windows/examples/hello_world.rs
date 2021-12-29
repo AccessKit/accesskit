@@ -112,7 +112,6 @@ fn get_initial_state() -> TreeUpdate {
     let button_1 = make_button(BUTTON_1_ID, "Button 1");
     let button_2 = make_button(BUTTON_2_ID, "Button 2");
     TreeUpdate {
-        clear: None,
         nodes: vec![root, button_1, button_2],
         tree: Some(Tree::new(
             TreeId("test".into()),
@@ -156,7 +155,6 @@ impl WindowState {
         };
         let node = make_button(id, name);
         let update = TreeUpdate {
-            clear: None,
             nodes: vec![node],
             tree: None,
             focus: is_window_focused.then(|| focus),
@@ -177,7 +175,6 @@ fn update_focus(window: HWND, is_window_focused: bool) {
     let focus = inner_state.focus;
     drop(inner_state);
     let events = window_state.adapter.update_if_active(|| TreeUpdate {
-        clear: None,
         nodes: vec![],
         tree: None,
         focus: is_window_focused.then(|| focus),

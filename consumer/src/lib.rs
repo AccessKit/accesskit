@@ -130,7 +130,6 @@ mod tests {
             ..Node::new(EMPTY_CONTAINER_3_3_IGNORED_ID, Role::GenericContainer)
         };
         let initial_update = TreeUpdate {
-            clear: None,
             nodes: vec![
                 root,
                 paragraph_0,

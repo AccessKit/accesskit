@@ -1356,13 +1356,6 @@ impl Tree {
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TreeUpdate {
-    /// The optional ID of a node to clear, before applying any updates.
-    /// Clearing a node means deleting all of its children and their descendants,
-    /// but leaving that node in the tree. It's an error to clear a node but not
-    /// subsequently update it as part of the same `TreeUpdate`.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub clear: Option<NodeId>,
-
     /// An ordered list of zero or more node updates to apply to the tree.
     ///
     /// Suppose that the next [`Node`] to be applied is `node`. The following
