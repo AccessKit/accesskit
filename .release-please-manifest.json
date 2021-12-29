@@ -1,0 +1,5 @@
+{
+  "common": "0.2.0",
+  "consumer": "0.2.0",
+  "platforms/windows": "0.2.0"
+}
