@@ -791,7 +791,6 @@ mod tests {
     #[test]
     fn no_name_or_labelled_by() {
         let update = TreeUpdate {
-            clear: None,
             nodes: vec![
                 Node {
                     children: vec![NODE_ID_2],
@@ -818,7 +817,6 @@ mod tests {
         const LABEL_2: &str = "minutes";
 
         let update = TreeUpdate {
-            clear: None,
             nodes: vec![
                 Node {
                     children: vec![NODE_ID_2, NODE_ID_3, NODE_ID_4, NODE_ID_5],

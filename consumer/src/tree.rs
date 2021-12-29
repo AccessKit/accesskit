@@ -46,9 +46,6 @@ impl State {
     }
 
     fn update(&mut self, update: TreeUpdate, mut changes: Option<&mut InternalChanges>) {
-        // TODO: handle TreeUpdate::clear
-        assert!(update.clear.is_none());
-
         let mut orphans = HashSet::new();
 
         if let Some(tree) = update.tree {
@@ -198,7 +195,6 @@ impl State {
         assert_eq!(nodes.len(), self.nodes.len());
 
         TreeUpdate {
-            clear: None,
             nodes,
             tree: Some(self.data.clone()),
             focus: self.focus,
@@ -252,8 +248,6 @@ pub struct Tree {
 
 impl Tree {
     pub fn new(mut initial_state: TreeUpdate, action_handler: Box<dyn ActionHandler>) -> Arc<Self> {
-        assert!(initial_state.clear.is_none());
-
         let mut state = State {
             nodes: im::HashMap::new(),
             data: initial_state.tree.take().unwrap(),
@@ -369,7 +363,6 @@ mod tests {
     #[test]
     fn init_tree_with_root_node() {
         let update = TreeUpdate {
-            clear: None,
             nodes: vec![Node::new(NODE_ID_1, Role::Window)],
             tree: Some(Tree::new(
                 TreeId(TREE_ID.into()),
@@ -388,7 +381,6 @@ mod tests {
     #[test]
     fn root_node_has_children() {
         let update = TreeUpdate {
-            clear: None,
             nodes: vec![
                 Node {
                     children: vec![NODE_ID_2, NODE_ID_3],
@@ -421,7 +413,6 @@ mod tests {
     fn add_child_to_root_node() {
         let root_node = Node::new(NODE_ID_1, Role::Window);
         let first_update = TreeUpdate {
-            clear: None,
             nodes: vec![root_node.clone()],
             tree: Some(Tree::new(
                 TreeId(TREE_ID.into()),
@@ -433,7 +424,6 @@ mod tests {
         let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
         assert_eq!(0, tree.read().root().children().count());
         let second_update = TreeUpdate {
-            clear: None,
             nodes: vec![
                 Node {
                     children: vec![NODE_ID_2],
@@ -479,7 +469,6 @@ mod tests {
     fn remove_child_from_root_node() {
         let root_node = Node::new(NODE_ID_1, Role::Window);
         let first_update = TreeUpdate {
-            clear: None,
             nodes: vec![
                 Node {
                     children: vec![NODE_ID_2],
@@ -497,7 +486,6 @@ mod tests {
         let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
         assert_eq!(1, tree.read().root().children().count());
         let second_update = TreeUpdate {
-            clear: None,
             nodes: vec![root_node],
             tree: None,
             focus: None,
@@ -531,7 +519,6 @@ mod tests {
     #[test]
     fn move_focus_between_siblings() {
         let first_update = TreeUpdate {
-            clear: None,
             nodes: vec![
                 Node {
                     children: vec![NODE_ID_2, NODE_ID_3],
@@ -550,7 +537,6 @@ mod tests {
         let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
         assert!(tree.read().node_by_id(NODE_ID_2).unwrap().is_focused());
         let second_update = TreeUpdate {
-            clear: None,
             nodes: vec![],
             tree: None,
             focus: Some(NODE_ID_3),
@@ -600,7 +586,6 @@ mod tests {
     fn update_node() {
         let child_node = Node::new(NODE_ID_2, Role::Button);
         let first_update = TreeUpdate {
-            clear: None,
             nodes: vec![
                 Node {
                     children: vec![NODE_ID_2],
@@ -624,7 +609,6 @@ mod tests {
             tree.read().node_by_id(NODE_ID_2).unwrap().name()
         );
         let second_update = TreeUpdate {
-            clear: None,
             nodes: vec![Node {
                 name: Some("bar".into()),
                 ..child_node
@@ -659,7 +643,6 @@ mod tests {
     #[test]
     fn no_change_update() {
         let update = TreeUpdate {
-            clear: None,
             nodes: vec![
                 Node {
                     children: vec![NODE_ID_2, NODE_ID_3],

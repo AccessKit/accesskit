@@ -88,7 +88,6 @@ fn update_focus(window: HWND, is_window_focused: bool) {
     let focus = inner_state.focus;
     drop(inner_state);
     let events = window_state.adapter.update_if_active(|| TreeUpdate {
-        clear: None,
         nodes: vec![],
         tree: None,
         focus: is_window_focused.then(|| focus),
