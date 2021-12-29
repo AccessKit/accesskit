@@ -2,8 +2,6 @@
 members = [
     "common",
     "consumer",
-    "platforms/mac",
-    "platforms/mac/jni",
     "platforms/windows",
 ]
 default-members = [
