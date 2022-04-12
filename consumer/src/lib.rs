@@ -23,24 +23,24 @@ mod tests {
     use accesskit::{
         ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate,
     };
-    use std::num::NonZeroU64;
+    use std::num::NonZeroU128;
     use std::sync::Arc;
 
-    pub const ROOT_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
-    pub const PARAGRAPH_0_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
-    pub const STATIC_TEXT_0_0_IGNORED_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
-    pub const PARAGRAPH_1_IGNORED_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(4) });
-    pub const STATIC_TEXT_1_0_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(5) });
-    pub const PARAGRAPH_2_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(6) });
-    pub const STATIC_TEXT_2_0_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(7) });
-    pub const PARAGRAPH_3_IGNORED_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(8) });
+    pub const ROOT_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
+    pub const PARAGRAPH_0_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
+    pub const STATIC_TEXT_0_0_IGNORED_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
+    pub const PARAGRAPH_1_IGNORED_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(4) });
+    pub const STATIC_TEXT_1_0_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(5) });
+    pub const PARAGRAPH_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(6) });
+    pub const STATIC_TEXT_2_0_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(7) });
+    pub const PARAGRAPH_3_IGNORED_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(8) });
     pub const EMPTY_CONTAINER_3_0_IGNORED_ID: NodeId =
-        NodeId(unsafe { NonZeroU64::new_unchecked(9) });
-    pub const LINK_3_1_IGNORED_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(10) });
-    pub const STATIC_TEXT_3_1_0_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(11) });
-    pub const BUTTON_3_2_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(12) });
+        NodeId(unsafe { NonZeroU128::new_unchecked(9) });
+    pub const LINK_3_1_IGNORED_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(10) });
+    pub const STATIC_TEXT_3_1_0_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(11) });
+    pub const BUTTON_3_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(12) });
     pub const EMPTY_CONTAINER_3_3_IGNORED_ID: NodeId =
-        NodeId(unsafe { NonZeroU64::new_unchecked(13) });
+        NodeId(unsafe { NonZeroU128::new_unchecked(13) });
 
     pub struct NullActionHandler;
 

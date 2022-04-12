@@ -1,6 +1,6 @@
 // Based on the create_window sample in windows-samples-rs.
 
-use std::{cell::RefCell, convert::TryInto, mem::drop, num::NonZeroU64, rc::Rc};
+use std::{cell::RefCell, convert::TryInto, mem::drop, num::NonZeroU128, rc::Rc};
 
 use accesskit::kurbo::Rect;
 use accesskit::{
@@ -65,9 +65,9 @@ lazy_static! {
 
 const WINDOW_TITLE: &str = "Hello world";
 
-const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
-const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
-const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
+const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
+const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
+const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
 const INITIAL_FOCUS: NodeId = BUTTON_1_ID;
 
 const BUTTON_1_RECT: Rect = Rect {
@@ -301,7 +301,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
         },
         SET_FOCUS_MSG => {
-            if let Some(id) = lparam.0.try_into().ok().and_then(NonZeroU64::new) {
+            if let Some(id) = lparam.0.try_into().ok().and_then(NonZeroU128::new) {
                 let id = NodeId(id);
                 if id == BUTTON_1_ID || id == BUTTON_2_ID {
                     let window_state = unsafe { &*get_window_state(window) };
@@ -315,7 +315,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             LRESULT(0)
         }
         DO_DEFAULT_ACTION_MSG => {
-            if let Some(id) = lparam.0.try_into().ok().and_then(NonZeroU64::new) {
+            if let Some(id) = lparam.0.try_into().ok().and_then(NonZeroU128::new) {
                 let id = NodeId(id);
                 if id == BUTTON_1_ID || id == BUTTON_2_ID {
                     let window_state = unsafe { &*get_window_state(window) };

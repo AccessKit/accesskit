@@ -351,14 +351,14 @@ impl Tree {
 #[cfg(test)]
 mod tests {
     use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
-    use std::num::NonZeroU64;
+    use std::num::NonZeroU128;
 
     use crate::tests::NullActionHandler;
 
     const TREE_ID: &str = "test_tree";
-    const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
-    const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
-    const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
+    const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
+    const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
+    const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
 
     #[test]
     fn init_tree_with_root_node() {

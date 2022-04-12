@@ -569,8 +569,9 @@ pub enum StringEncoding {
     Utf16,
 }
 
-// This is NonZeroU64 because we regularly store Option<NodeId>.
-pub type NodeIdContent = std::num::NonZeroU64;
+// This is NonZeroU128 because we regularly store Option<NodeId>.
+// 128-bit to handle UUIDs.
+pub type NodeIdContent = std::num::NonZeroU128;
 
 /// The stable identity of a node, unique within the node's tree.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
