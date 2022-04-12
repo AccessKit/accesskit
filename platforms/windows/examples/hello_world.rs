@@ -301,7 +301,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
         },
         SET_FOCUS_MSG => {
-            if let Some(id) = lparam.0.try_into().ok().map(NonZeroU64::new).flatten() {
+            if let Some(id) = lparam.0.try_into().ok().and_then(NonZeroU64::new) {
                 let id = NodeId(id);
                 if id == BUTTON_1_ID || id == BUTTON_2_ID {
                     let window_state = unsafe { &*get_window_state(window) };
@@ -315,7 +315,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             LRESULT(0)
         }
         DO_DEFAULT_ACTION_MSG => {
-            if let Some(id) = lparam.0.try_into().ok().map(NonZeroU64::new).flatten() {
+            if let Some(id) = lparam.0.try_into().ok().and_then(NonZeroU64::new) {
                 let id = NodeId(id);
                 if id == BUTTON_1_ID || id == BUTTON_2_ID {
                     let window_state = unsafe { &*get_window_state(window) };
