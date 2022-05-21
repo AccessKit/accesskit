@@ -539,9 +539,16 @@ impl PlatformNode {
     {
         self.node
             .map(|node| f(ResolvedPlatformNode::new(node, self.hwnd)))
-            .unwrap_or_else(|| Err(Error::new(HRESULT(UIA_E_ELEMENTNOTAVAILABLE), "".into())))
+            .unwrap_or_else(|| {
+                Err(Error::new(
+                    HRESULT(UIA_E_ELEMENTNOTAVAILABLE as i32),
+                    "".into(),
+                ))
+            })
     }
+}
 
+impl IRawElementProviderSimple_Impl for PlatformNode {
     fn ProviderOptions(&self) -> Result<ProviderOptions> {
         // We don't currently have to resolve the node to implement this.
         // But we might have to in the future. So to avoid leaking
@@ -552,7 +559,7 @@ impl PlatformNode {
         self.resolve(|resolved| Ok(resolved.provider_options()))
     }
 
-    fn GetPatternProvider(&mut self, pattern_id: i32) -> Result<IUnknown> {
+    fn GetPatternProvider(&self, pattern_id: i32) -> Result<IUnknown> {
         let provider = self.resolve(|resolved| Ok(resolved.pattern_provider(pattern_id)))?;
         provider.map_or_else(|| Err(Error::OK), Ok)
     }
@@ -567,7 +574,9 @@ impl PlatformNode {
     fn HostRawElementProvider(&self) -> Result<IRawElementProviderSimple> {
         self.resolve(|resolved| resolved.host_provider())
     }
+}
 
+impl IRawElementProviderFragment_Impl for PlatformNode {
     fn Navigate(&self, direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
         self.resolve(|resolved| match resolved.navigate(direction) {
             Some(result) => Ok(result.downgrade().into()),
@@ -598,14 +607,14 @@ impl PlatformNode {
         })
     }
 
-    fn FragmentRoot(&mut self) -> Result<IRawElementProviderFragmentRoot> {
+    fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
         enum FragmentRootResult {
-            This,
+            This(PlatformNode),
             Other(PlatformNode),
         }
         let result = self.resolve(|resolved| {
             if resolved.node.is_root() {
-                Ok(FragmentRootResult::This)
+                Ok(FragmentRootResult::This(resolved.downgrade()))
             } else {
                 let root = resolved.node.tree_reader.root();
                 Ok(FragmentRootResult::Other(
@@ -614,11 +623,13 @@ impl PlatformNode {
             }
         })?;
         match result {
-            FragmentRootResult::This => Ok(self.into()),
+            FragmentRootResult::This(node) => Ok(node.into()),
             FragmentRootResult::Other(node) => Ok(node.into()),
         }
     }
+}
 
+impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
     fn ElementProviderFromPoint(&self, x: f64, y: f64) -> Result<IRawElementProviderFragment> {
         self.resolve(|resolved| {
             let point = Point::new(x, y);
@@ -673,7 +684,7 @@ macro_rules! patterns {
     ($(($base_pattern_id:ident, $is_supported:ident, (
         $(($base_property_id:ident, $getter:ident, $com_type:ident)),*
     ), (
-        $($extra_method:item),*
+        $($extra_trait_method:item),*
     ))),+) => {
         impl ResolvedPlatformNode<'_> {
             fn pattern_provider(&self, pattern_id: i32) -> Option<IUnknown> {
@@ -709,13 +720,15 @@ macro_rules! patterns {
                 })*
             }
         }
-        $(#[allow(non_snake_case)]
-        impl paste! { [< $base_pattern_id Provider>] } {
-            $(fn $base_property_id(&self) -> Result<$com_type> {
-                self.0.resolve(|resolved| Ok(resolved.$getter().into()))
+        paste! {
+            $(#[allow(non_snake_case)]
+            impl [< I $base_pattern_id Provider_Impl>] for [< $base_pattern_id Provider>] {
+                $(fn $base_property_id(&self) -> Result<$com_type> {
+                    self.0.resolve(|resolved| Ok(resolved.$getter().into()))
+                })*
+                $($extra_trait_method)*
             })*
-            $($extra_method)*
-        })*
+        }
     };
 }
 
@@ -767,7 +780,7 @@ patterns! {
         (Value, value, BSTR),
         (IsReadOnly, is_read_only, BOOL)
     ), (
-        fn SetValue(&self, value: PWSTR) -> Result<()> {
+        fn SetValue(&self, value: &PCWSTR) -> Result<()> {
             self.0.resolve(|resolved| {
                 // Based on BSTR::as_wide in windows-rs
                 let value_as_wide = if value.0.is_null() {
