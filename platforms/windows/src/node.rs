@@ -383,7 +383,7 @@ impl ResolvedPlatformNode<'_> {
 
     pub(crate) fn enqueue_property_changes(
         &self,
-        queue: &mut Vec<Event>,
+        queue: &mut Vec<QueuedEvent>,
         old: &ResolvedPlatformNode,
     ) {
         self.enqueue_simple_property_changes(queue, old);
@@ -391,13 +391,17 @@ impl ResolvedPlatformNode<'_> {
         self.enqueue_property_implied_events(queue, old);
     }
 
-    fn enqueue_property_implied_events(&self, queue: &mut Vec<Event>, old: &ResolvedPlatformNode) {
+    fn enqueue_property_implied_events(
+        &self,
+        queue: &mut Vec<QueuedEvent>,
+        old: &ResolvedPlatformNode,
+    ) {
         if self.is_selection_item_pattern_supported()
             && self.is_selected()
             && !(old.is_selection_item_pattern_supported() && old.is_selected())
         {
             let element: IRawElementProviderSimple = self.downgrade().into();
-            queue.push(Event::Simple {
+            queue.push(QueuedEvent::Simple {
                 element,
                 event_id: UIA_SelectionItem_ElementSelectedEventId,
             });
@@ -406,7 +410,7 @@ impl ResolvedPlatformNode<'_> {
 
     fn enqueue_property_change(
         &self,
-        queue: &mut Vec<Event>,
+        queue: &mut Vec<QueuedEvent>,
         property_id: i32,
         old_value: VariantFactory,
         new_value: VariantFactory,
@@ -414,7 +418,7 @@ impl ResolvedPlatformNode<'_> {
         let element: IRawElementProviderSimple = self.downgrade().into();
         let old_value: VARIANT = old_value.into();
         let new_value: VARIANT = new_value.into();
-        queue.push(Event::PropertyChanged {
+        queue.push(QueuedEvent::PropertyChanged {
             element,
             property_id,
             old_value,
@@ -645,7 +649,7 @@ macro_rules! properties {
             }
             fn enqueue_simple_property_changes(
                 &self,
-                queue: &mut Vec<Event>,
+                queue: &mut Vec<QueuedEvent>,
                 old: &ResolvedPlatformNode,
             ) {
                 $({
@@ -684,7 +688,7 @@ macro_rules! patterns {
             }
             fn enqueue_pattern_property_changes(
                 &self,
-                queue: &mut Vec<Event>,
+                queue: &mut Vec<QueuedEvent>,
                 old: &ResolvedPlatformNode,
             ) {
                 $(if self.$is_supported() && old.$is_supported() {
