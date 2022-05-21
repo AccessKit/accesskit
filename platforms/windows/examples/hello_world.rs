@@ -355,6 +355,11 @@ fn create_window(title: &str, initial_state: TreeUpdate, initial_focus: NodeId) 
 }
 
 fn main() -> Result<()> {
+    println!("This example has no visible GUI, and a keyboard interface:");
+    println!("- [Tab] switches focus between two logical buttons.");
+    println!("- [Space] 'presses' the button, permanently renaming it.");
+    println!("Enable Narrator with [Win]+[Ctrl]+[Enter] (or [Win]+[Enter] on older versions of Windows).");
+
     let window = create_window(WINDOW_TITLE, get_initial_state(), INITIAL_FOCUS)?;
     unsafe { ShowWindow(window, SW_SHOW) };
 
