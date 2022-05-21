@@ -672,6 +672,8 @@ macro_rules! properties {
 macro_rules! patterns {
     ($(($base_pattern_id:ident, $is_supported:ident, (
         $(($base_property_id:ident, $getter:ident, $com_type:ident)),*
+    ), (
+        $($extra_method:item),*
     ))),+) => {
         impl ResolvedPlatformNode<'_> {
             fn pattern_provider(&self, pattern_id: i32) -> Option<IUnknown> {
@@ -712,6 +714,7 @@ macro_rules! patterns {
             $(fn $base_property_id(&self) -> Result<$com_type> {
                 self.0.resolve(|resolved| Ok(resolved.$getter().into()))
             })*
+            $($extra_method)*
         })*
     };
 }
@@ -744,11 +747,40 @@ struct SelectionItemProvider(PlatformNode);
 patterns! {
     (Toggle, is_toggle_pattern_supported, (
         (ToggleState, toggle_state, ToggleState)
+    ), (
+        fn Toggle(&self) -> Result<()> {
+            self.0.resolve(|resolved| {
+                resolved.toggle();
+                Ok(())
+            })
+        }
     )),
-    (Invoke, is_invoke_pattern_supported, ()),
+    (Invoke, is_invoke_pattern_supported, (), (
+        fn Invoke(&self) -> Result<()> {
+            self.0.resolve(|resolved| {
+                resolved.invoke();
+                Ok(())
+            })
+        }
+    )),
     (Value, is_value_pattern_supported, (
         (Value, value, BSTR),
         (IsReadOnly, is_read_only, BOOL)
+    ), (
+        fn SetValue(&self, value: PWSTR) -> Result<()> {
+            self.0.resolve(|resolved| {
+                // Based on BSTR::as_wide in windows-rs
+                let value_as_wide = if value.0.is_null() {
+                    &[]
+                } else {
+                    let len = unsafe { libc::wcslen(value.0) };
+                    unsafe { std::slice::from_raw_parts(value.0 as *const _, len) }
+                };
+                let value = String::from_utf16(value_as_wide).unwrap();
+                resolved.set_value(value);
+                Ok(())
+            })
+        }
     )),
     (RangeValue, is_range_value_pattern_supported, (
         (Value, numeric_value, f64),
@@ -757,89 +789,45 @@ patterns! {
         (Maximum, max_numeric_value, f64),
         (SmallChange, numeric_value_step, f64),
         (LargeChange, numeric_value_jump, f64)
+    ), (
+        fn SetValue(&self, value: f64) -> Result<()> {
+            self.0.resolve(|resolved| {
+                resolved.set_numeric_value(value);
+                Ok(())
+            })
+        }
     )),
     (SelectionItem, is_selection_item_pattern_supported, (
         (IsSelected, is_selected, BOOL)
+    ), (
+        fn Select(&self) -> Result<()> {
+            self.0.resolve(|resolved| {
+                resolved.select();
+                Ok(())
+            })
+        },
+
+        fn AddToSelection(&self) -> Result<()> {
+            self.0.resolve(|resolved| {
+                resolved.add_to_selection();
+                Ok(())
+            })
+        },
+
+        fn RemoveFromSelection(&self) -> Result<()> {
+            self.0.resolve(|resolved| {
+                resolved.remove_from_selection();
+                Ok(())
+            })
+        },
+
+        fn SelectionContainer(&self) -> Result<IRawElementProviderSimple> {
+            self.0.resolve(|_resolved| {
+                // TODO: implement when we work on list boxes (#23)
+                // We return E_FAIL here because that's what Chromium does
+                // if it can't find a container.
+                Err(Error::new(E_FAIL, "".into()))
+            })
+        }
     ))
-}
-
-#[allow(non_snake_case)]
-impl ToggleProvider {
-    fn Toggle(&self) -> Result<()> {
-        self.0.resolve(|resolved| {
-            resolved.toggle();
-            Ok(())
-        })
-    }
-}
-
-#[allow(non_snake_case)]
-impl InvokeProvider {
-    fn Invoke(&self) -> Result<()> {
-        self.0.resolve(|resolved| {
-            resolved.invoke();
-            Ok(())
-        })
-    }
-}
-
-#[allow(non_snake_case)]
-impl ValueProvider {
-    fn SetValue(&self, value: PWSTR) -> Result<()> {
-        self.0.resolve(|resolved| {
-            // Based on BSTR::as_wide in windows-rs
-            let value_as_wide = if value.0.is_null() {
-                &[]
-            } else {
-                let len = unsafe { libc::wcslen(value.0) };
-                unsafe { std::slice::from_raw_parts(value.0 as *const _, len) }
-            };
-            let value = String::from_utf16(value_as_wide).unwrap();
-            resolved.set_value(value);
-            Ok(())
-        })
-    }
-}
-
-#[allow(non_snake_case)]
-impl RangeValueProvider {
-    fn SetValue(&self, value: f64) -> Result<()> {
-        self.0.resolve(|resolved| {
-            resolved.set_numeric_value(value);
-            Ok(())
-        })
-    }
-}
-
-#[allow(non_snake_case)]
-impl SelectionItemProvider {
-    fn Select(&self) -> Result<()> {
-        self.0.resolve(|resolved| {
-            resolved.select();
-            Ok(())
-        })
-    }
-
-    fn AddToSelection(&self) -> Result<()> {
-        self.0.resolve(|resolved| {
-            resolved.add_to_selection();
-            Ok(())
-        })
-    }
-
-    fn RemoveFromSelection(&self) -> Result<()> {
-        self.0.resolve(|resolved| {
-            resolved.remove_from_selection();
-            Ok(())
-        })
-    }
-
-    fn SelectionContainer(&self) -> Result<IRawElementProviderSimple> {
-        self.0.resolve(|_resolved| {
-            // TODO: implement when we work on list boxes (#23)
-            // We return E_FAIL here because that's what Chromium does
-            // if it can't find a container.
-            Err(Error::new(E_FAIL, "".into()))
-        })
-    }
 }
