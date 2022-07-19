@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, NodeId, TreeId, TreeUpdate};
+use accesskit::{ActionHandler, NodeId, TreeUpdate};
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -49,7 +49,6 @@ impl State {
         let mut orphans = HashSet::new();
 
         if let Some(tree) = update.tree {
-            assert_eq!(tree.id, self.data.id);
             if tree.root != self.data.root {
                 orphans.insert(self.data.root);
             }
@@ -219,10 +218,6 @@ impl Reader<'_> {
         self.node_by_id(self.state.data.root).unwrap()
     }
 
-    pub fn id(&self) -> &TreeId {
-        &self.state.data.id
-    }
-
     pub fn focus(&self) -> Option<Node<'_>> {
         self.state.focus.map(|id| self.node_by_id(id).unwrap())
     }
@@ -350,12 +345,11 @@ impl Tree {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+    use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeUpdate};
     use std::num::NonZeroU128;
 
     use crate::tests::NullActionHandler;
 
-    const TREE_ID: &str = "test_tree";
     const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
     const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
     const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
@@ -365,14 +359,12 @@ mod tests {
         let update = TreeUpdate {
             nodes: vec![Node::new(NODE_ID_1, Role::Window)],
             tree: Some(Tree::new(
-                TreeId(TREE_ID.into()),
                 NODE_ID_1,
                 StringEncoding::Utf8,
             )),
             focus: None,
         };
         let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
-        assert_eq!(&TreeId(TREE_ID.into()), tree.read().id());
         assert_eq!(NODE_ID_1, tree.read().root().id());
         assert_eq!(Role::Window, tree.read().root().role());
         assert!(tree.read().root().parent().is_none());
@@ -390,7 +382,6 @@ mod tests {
                 Node::new(NODE_ID_3, Role::Button),
             ],
             tree: Some(Tree::new(
-                TreeId(TREE_ID.into()),
                 NODE_ID_1,
                 StringEncoding::Utf8,
             )),
@@ -415,7 +406,6 @@ mod tests {
         let first_update = TreeUpdate {
             nodes: vec![root_node.clone()],
             tree: Some(Tree::new(
-                TreeId(TREE_ID.into()),
                 NODE_ID_1,
                 StringEncoding::Utf8,
             )),
@@ -477,7 +467,6 @@ mod tests {
                 Node::new(NODE_ID_2, Role::RootWebArea),
             ],
             tree: Some(Tree::new(
-                TreeId(TREE_ID.into()),
                 NODE_ID_1,
                 StringEncoding::Utf8,
             )),
@@ -528,7 +517,6 @@ mod tests {
                 Node::new(NODE_ID_3, Role::Button),
             ],
             tree: Some(Tree::new(
-                TreeId(TREE_ID.into()),
                 NODE_ID_1,
                 StringEncoding::Utf8,
             )),
@@ -597,7 +585,6 @@ mod tests {
                 },
             ],
             tree: Some(Tree::new(
-                TreeId(TREE_ID.into()),
                 NODE_ID_1,
                 StringEncoding::Utf8,
             )),
@@ -652,7 +639,6 @@ mod tests {
                 Node::new(NODE_ID_3, Role::Button),
             ],
             tree: Some(Tree::new(
-                TreeId(TREE_ID.into()),
                 NODE_ID_1,
                 StringEncoding::Utf8,
             )),

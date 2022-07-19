@@ -598,17 +598,6 @@ impl From<NonZeroU64> for NodeId {
     }
 }
 
-/// The globally unique ID of a [`Tree`].
-///
-/// The format of this ID is up to the implementer. A [v4 UUID] is a safe choice.
-///
-/// [v4 UUID]: https://datatracker.ietf.org/doc/html/rfc4122#section-4.4
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
-pub struct TreeId(pub Box<str>);
-
 /// A marker spanning a range within text.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -983,9 +972,6 @@ pub struct Node {
     pub checked_state_description: Option<Box<str>>,
 
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub child_tree: Option<TreeId>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub class_name: Option<Box<str>>,
 
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
@@ -1265,7 +1251,6 @@ impl Node {
             auto_complete: None,
             checked_state: None,
             checked_state_description: None,
-            child_tree: None,
             class_name: None,
             container_live_relevant: None,
             container_live_status: None,
@@ -1350,7 +1335,6 @@ impl Node {
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct Tree {
-    pub id: TreeId,
     pub root: NodeId,
 
     /// The string encoding used by the tree source. This is required
@@ -1361,10 +1345,6 @@ pub struct Tree {
     /// the platform adapter will do this if needed.
     pub source_string_encoding: StringEncoding,
 
-    /// The ID of the tree that this tree is contained in, if any.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub parent: Option<TreeId>,
-
     /// The node that's used as the root scroller, if any. On some platforms
     /// like Android we need to ignore accessibility scroll offsets for
     /// that node and get them from the viewport instead.
@@ -1373,12 +1353,10 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub fn new(id: TreeId, root: NodeId, source_string_encoding: StringEncoding) -> Tree {
+    pub fn new(root: NodeId, source_string_encoding: StringEncoding) -> Tree {
         Tree {
-            id,
             root,
             source_string_encoding,
-            parent: None,
             root_scroller: None,
         }
     }

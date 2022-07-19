@@ -178,10 +178,6 @@ impl<'a> Node<'a> {
         false
     }
 
-    pub fn global_id(&self) -> String {
-        format!("{}:{}", self.tree_reader.id().0, self.id().0)
-    }
-
     /// Returns the transform defined directly on this node, or the identity
     /// transform, without taking into account transforms on ancestors.
     pub fn direct_transform(&self) -> Affine {
@@ -537,12 +533,11 @@ impl Node<'_> {
 #[cfg(test)]
 mod tests {
     use accesskit::kurbo::{Point, Rect};
-    use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate};
+    use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeUpdate};
     use std::num::NonZeroU128;
 
     use crate::tests::*;
 
-    const TREE_ID: &str = "test_tree";
     const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
     const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
     const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
@@ -798,7 +793,6 @@ mod tests {
                 Node::new(NODE_ID_2, Role::Button),
             ],
             tree: Some(Tree::new(
-                TreeId(TREE_ID.into()),
                 NODE_ID_1,
                 StringEncoding::Utf8,
             )),
@@ -839,7 +833,6 @@ mod tests {
                 },
             ],
             tree: Some(Tree::new(
-                TreeId(TREE_ID.into()),
                 NODE_ID_1,
                 StringEncoding::Utf8,
             )),

@@ -6,7 +6,7 @@
 use std::{convert::TryInto, num::NonZeroU128};
 
 use accesskit::{
-    ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate,
+    ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeUpdate,
 };
 use windows::{core::*, Win32::UI::Accessibility::*};
 
@@ -37,7 +37,6 @@ fn get_initial_state() -> TreeUpdate {
     TreeUpdate {
         nodes: vec![root, button_1, button_2],
         tree: Some(Tree::new(
-            TreeId("test".into()),
             WINDOW_ID,
             StringEncoding::Utf8,
         )),
