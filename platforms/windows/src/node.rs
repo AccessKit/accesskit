@@ -514,6 +514,7 @@ impl ResolvedPlatformNode<'_> {
     }
 }
 
+#[derive(Clone)]
 #[implement(
     Windows::Win32::UI::Accessibility::IRawElementProviderSimple,
     Windows::Win32::UI::Accessibility::IRawElementProviderFragment,
@@ -609,12 +610,12 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
 
     fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
         enum FragmentRootResult {
-            This(PlatformNode),
+            This,
             Other(PlatformNode),
         }
         let result = self.resolve(|resolved| {
             if resolved.node.is_root() {
-                Ok(FragmentRootResult::This(resolved.downgrade()))
+                Ok(FragmentRootResult::This)
             } else {
                 let root = resolved.node.tree_reader.root();
                 Ok(FragmentRootResult::Other(
@@ -623,7 +624,7 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
             }
         })?;
         match result {
-            FragmentRootResult::This(node) => Ok(node.into()),
+            FragmentRootResult::This => Ok(self.clone().into()),
             FragmentRootResult::Other(node) => Ok(node.into()),
         }
     }
