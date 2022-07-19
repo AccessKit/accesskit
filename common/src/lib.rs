@@ -19,7 +19,10 @@ use schemars_lib::JsonSchema;
 use serde_lib as serde;
 #[cfg(feature = "serde")]
 use serde_lib::{Deserialize, Serialize};
-use std::{num::{NonZeroU64, NonZeroU128}, ops::Range};
+use std::{
+    num::{NonZeroU128, NonZeroU64},
+    ops::Range,
+};
 
 /// The type of an accessibility node.
 ///
@@ -589,7 +592,7 @@ pub type NodeIdContent = NonZeroU128;
 #[cfg_attr(feature = "serde", serde(crate = "serde"))]
 pub struct NodeId(pub NodeIdContent);
 
-impl  From<NonZeroU64> for NodeId {
+impl From<NonZeroU64> for NodeId {
     fn from(inner: NonZeroU64) -> Self {
         Self(inner.into())
     }
