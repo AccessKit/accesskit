@@ -21,12 +21,20 @@ use windows::{
 lazy_static! {
     static ref WIN32_INSTANCE: HINSTANCE = {
         let instance = unsafe { GetModuleHandleW(None) };
-        instance.unwrap()
+        if instance.0 == 0 {
+            let result: Result<()> = Err(Error::from_win32());
+            result.unwrap();
+        }
+        instance
     };
 
     static ref DEFAULT_CURSOR: HCURSOR = {
         let cursor = unsafe { LoadCursorW(None, IDC_ARROW) };
-        cursor.unwrap()
+        if cursor.0 == 0 {
+            let result: Result<()> = Err(Error::from_win32());
+            result.unwrap();
+        }
+        cursor
     };
 
     static ref WINDOW_CLASS_ATOM: u16 = {
@@ -40,7 +48,7 @@ lazy_static! {
         let wc = WNDCLASSW {
             hCursor: *DEFAULT_CURSOR,
             hInstance: *WIN32_INSTANCE,
-            lpszClassName: PCWSTR(class_name_wsz.as_ptr() as _),
+            lpszClassName: PWSTR(class_name_wsz.as_ptr() as _),
             style: CS_HREDRAW | CS_VREDRAW,
             lpfnWndProc: Some(wndproc),
             ..Default::default()
@@ -326,7 +334,7 @@ fn create_window(title: &str, initial_state: TreeUpdate, initial_focus: NodeId) 
     let window = unsafe {
         CreateWindowExW(
             Default::default(),
-            PCWSTR(*WINDOW_CLASS_ATOM as usize as _),
+            PWSTR(*WINDOW_CLASS_ATOM as usize as _),
             title,
             WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT,
