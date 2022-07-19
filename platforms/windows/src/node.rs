@@ -383,7 +383,7 @@ impl ResolvedPlatformNode<'_> {
 
     pub(crate) fn enqueue_property_changes(
         &self,
-        queue: &mut Vec<Event>,
+        queue: &mut Vec<QueuedEvent>,
         old: &ResolvedPlatformNode,
     ) {
         self.enqueue_simple_property_changes(queue, old);
@@ -391,13 +391,17 @@ impl ResolvedPlatformNode<'_> {
         self.enqueue_property_implied_events(queue, old);
     }
 
-    fn enqueue_property_implied_events(&self, queue: &mut Vec<Event>, old: &ResolvedPlatformNode) {
+    fn enqueue_property_implied_events(
+        &self,
+        queue: &mut Vec<QueuedEvent>,
+        old: &ResolvedPlatformNode,
+    ) {
         if self.is_selection_item_pattern_supported()
             && self.is_selected()
             && !(old.is_selection_item_pattern_supported() && old.is_selected())
         {
             let element: IRawElementProviderSimple = self.downgrade().into();
-            queue.push(Event::Simple {
+            queue.push(QueuedEvent::Simple {
                 element,
                 event_id: UIA_SelectionItem_ElementSelectedEventId,
             });
@@ -406,7 +410,7 @@ impl ResolvedPlatformNode<'_> {
 
     fn enqueue_property_change(
         &self,
-        queue: &mut Vec<Event>,
+        queue: &mut Vec<QueuedEvent>,
         property_id: i32,
         old_value: VariantFactory,
         new_value: VariantFactory,
@@ -414,7 +418,7 @@ impl ResolvedPlatformNode<'_> {
         let element: IRawElementProviderSimple = self.downgrade().into();
         let old_value: VARIANT = old_value.into();
         let new_value: VARIANT = new_value.into();
-        queue.push(Event::PropertyChanged {
+        queue.push(QueuedEvent::PropertyChanged {
             element,
             property_id,
             old_value,
@@ -535,9 +539,16 @@ impl PlatformNode {
     {
         self.node
             .map(|node| f(ResolvedPlatformNode::new(node, self.hwnd)))
-            .unwrap_or_else(|| Err(Error::new(HRESULT(UIA_E_ELEMENTNOTAVAILABLE), "".into())))
+            .unwrap_or_else(|| {
+                Err(Error::new(
+                    HRESULT(UIA_E_ELEMENTNOTAVAILABLE as i32),
+                    "".into(),
+                ))
+            })
     }
+}
 
+impl IRawElementProviderSimple_Impl for PlatformNode {
     fn ProviderOptions(&self) -> Result<ProviderOptions> {
         // We don't currently have to resolve the node to implement this.
         // But we might have to in the future. So to avoid leaking
@@ -548,7 +559,7 @@ impl PlatformNode {
         self.resolve(|resolved| Ok(resolved.provider_options()))
     }
 
-    fn GetPatternProvider(&mut self, pattern_id: i32) -> Result<IUnknown> {
+    fn GetPatternProvider(&self, pattern_id: i32) -> Result<IUnknown> {
         let provider = self.resolve(|resolved| Ok(resolved.pattern_provider(pattern_id)))?;
         provider.map_or_else(|| Err(Error::OK), Ok)
     }
@@ -563,7 +574,9 @@ impl PlatformNode {
     fn HostRawElementProvider(&self) -> Result<IRawElementProviderSimple> {
         self.resolve(|resolved| resolved.host_provider())
     }
+}
 
+impl IRawElementProviderFragment_Impl for PlatformNode {
     fn Navigate(&self, direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
         self.resolve(|resolved| match resolved.navigate(direction) {
             Some(result) => Ok(result.downgrade().into()),
@@ -594,14 +607,14 @@ impl PlatformNode {
         })
     }
 
-    fn FragmentRoot(&mut self) -> Result<IRawElementProviderFragmentRoot> {
+    fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
         enum FragmentRootResult {
-            This,
+            This(PlatformNode),
             Other(PlatformNode),
         }
         let result = self.resolve(|resolved| {
             if resolved.node.is_root() {
-                Ok(FragmentRootResult::This)
+                Ok(FragmentRootResult::This(resolved.downgrade()))
             } else {
                 let root = resolved.node.tree_reader.root();
                 Ok(FragmentRootResult::Other(
@@ -610,11 +623,13 @@ impl PlatformNode {
             }
         })?;
         match result {
-            FragmentRootResult::This => Ok(self.into()),
+            FragmentRootResult::This(node) => Ok(node.into()),
             FragmentRootResult::Other(node) => Ok(node.into()),
         }
     }
+}
 
+impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
     fn ElementProviderFromPoint(&self, x: f64, y: f64) -> Result<IRawElementProviderFragment> {
         self.resolve(|resolved| {
             let point = Point::new(x, y);
@@ -645,7 +660,7 @@ macro_rules! properties {
             }
             fn enqueue_simple_property_changes(
                 &self,
-                queue: &mut Vec<Event>,
+                queue: &mut Vec<QueuedEvent>,
                 old: &ResolvedPlatformNode,
             ) {
                 $({
@@ -668,6 +683,8 @@ macro_rules! properties {
 macro_rules! patterns {
     ($(($base_pattern_id:ident, $is_supported:ident, (
         $(($base_property_id:ident, $getter:ident, $com_type:ident)),*
+    ), (
+        $($extra_trait_method:item),*
     ))),+) => {
         impl ResolvedPlatformNode<'_> {
             fn pattern_provider(&self, pattern_id: i32) -> Option<IUnknown> {
@@ -684,7 +701,7 @@ macro_rules! patterns {
             }
             fn enqueue_pattern_property_changes(
                 &self,
-                queue: &mut Vec<Event>,
+                queue: &mut Vec<QueuedEvent>,
                 old: &ResolvedPlatformNode,
             ) {
                 $(if self.$is_supported() && old.$is_supported() {
@@ -703,12 +720,15 @@ macro_rules! patterns {
                 })*
             }
         }
-        $(#[allow(non_snake_case)]
-        impl paste! { [< $base_pattern_id Provider>] } {
-            $(fn $base_property_id(&self) -> Result<$com_type> {
-                self.0.resolve(|resolved| Ok(resolved.$getter().into()))
+        paste! {
+            $(#[allow(non_snake_case)]
+            impl [< I $base_pattern_id Provider_Impl>] for [< $base_pattern_id Provider>] {
+                $(fn $base_property_id(&self) -> Result<$com_type> {
+                    self.0.resolve(|resolved| Ok(resolved.$getter().into()))
+                })*
+                $($extra_trait_method)*
             })*
-        })*
+        }
     };
 }
 
@@ -740,11 +760,40 @@ struct SelectionItemProvider(PlatformNode);
 patterns! {
     (Toggle, is_toggle_pattern_supported, (
         (ToggleState, toggle_state, ToggleState)
+    ), (
+        fn Toggle(&self) -> Result<()> {
+            self.0.resolve(|resolved| {
+                resolved.toggle();
+                Ok(())
+            })
+        }
     )),
-    (Invoke, is_invoke_pattern_supported, ()),
+    (Invoke, is_invoke_pattern_supported, (), (
+        fn Invoke(&self) -> Result<()> {
+            self.0.resolve(|resolved| {
+                resolved.invoke();
+                Ok(())
+            })
+        }
+    )),
     (Value, is_value_pattern_supported, (
         (Value, value, BSTR),
         (IsReadOnly, is_read_only, BOOL)
+    ), (
+        fn SetValue(&self, value: &PCWSTR) -> Result<()> {
+            self.0.resolve(|resolved| {
+                // Based on BSTR::as_wide in windows-rs
+                let value_as_wide = if value.0.is_null() {
+                    &[]
+                } else {
+                    let len = unsafe { libc::wcslen(value.0) };
+                    unsafe { std::slice::from_raw_parts(value.0 as *const _, len) }
+                };
+                let value = String::from_utf16(value_as_wide).unwrap();
+                resolved.set_value(value);
+                Ok(())
+            })
+        }
     )),
     (RangeValue, is_range_value_pattern_supported, (
         (Value, numeric_value, f64),
@@ -753,89 +802,45 @@ patterns! {
         (Maximum, max_numeric_value, f64),
         (SmallChange, numeric_value_step, f64),
         (LargeChange, numeric_value_jump, f64)
+    ), (
+        fn SetValue(&self, value: f64) -> Result<()> {
+            self.0.resolve(|resolved| {
+                resolved.set_numeric_value(value);
+                Ok(())
+            })
+        }
     )),
     (SelectionItem, is_selection_item_pattern_supported, (
         (IsSelected, is_selected, BOOL)
+    ), (
+        fn Select(&self) -> Result<()> {
+            self.0.resolve(|resolved| {
+                resolved.select();
+                Ok(())
+            })
+        },
+
+        fn AddToSelection(&self) -> Result<()> {
+            self.0.resolve(|resolved| {
+                resolved.add_to_selection();
+                Ok(())
+            })
+        },
+
+        fn RemoveFromSelection(&self) -> Result<()> {
+            self.0.resolve(|resolved| {
+                resolved.remove_from_selection();
+                Ok(())
+            })
+        },
+
+        fn SelectionContainer(&self) -> Result<IRawElementProviderSimple> {
+            self.0.resolve(|_resolved| {
+                // TODO: implement when we work on list boxes (#23)
+                // We return E_FAIL here because that's what Chromium does
+                // if it can't find a container.
+                Err(Error::new(E_FAIL, "".into()))
+            })
+        }
     ))
-}
-
-#[allow(non_snake_case)]
-impl ToggleProvider {
-    fn Toggle(&self) -> Result<()> {
-        self.0.resolve(|resolved| {
-            resolved.toggle();
-            Ok(())
-        })
-    }
-}
-
-#[allow(non_snake_case)]
-impl InvokeProvider {
-    fn Invoke(&self) -> Result<()> {
-        self.0.resolve(|resolved| {
-            resolved.invoke();
-            Ok(())
-        })
-    }
-}
-
-#[allow(non_snake_case)]
-impl ValueProvider {
-    fn SetValue(&self, value: PWSTR) -> Result<()> {
-        self.0.resolve(|resolved| {
-            // Based on BSTR::as_wide in windows-rs
-            let value_as_wide = if value.0.is_null() {
-                &[]
-            } else {
-                let len = unsafe { libc::wcslen(value.0) };
-                unsafe { std::slice::from_raw_parts(value.0 as *const _, len) }
-            };
-            let value = String::from_utf16(value_as_wide).unwrap();
-            resolved.set_value(value);
-            Ok(())
-        })
-    }
-}
-
-#[allow(non_snake_case)]
-impl RangeValueProvider {
-    fn SetValue(&self, value: f64) -> Result<()> {
-        self.0.resolve(|resolved| {
-            resolved.set_numeric_value(value);
-            Ok(())
-        })
-    }
-}
-
-#[allow(non_snake_case)]
-impl SelectionItemProvider {
-    fn Select(&self) -> Result<()> {
-        self.0.resolve(|resolved| {
-            resolved.select();
-            Ok(())
-        })
-    }
-
-    fn AddToSelection(&self) -> Result<()> {
-        self.0.resolve(|resolved| {
-            resolved.add_to_selection();
-            Ok(())
-        })
-    }
-
-    fn RemoveFromSelection(&self) -> Result<()> {
-        self.0.resolve(|resolved| {
-            resolved.remove_from_selection();
-            Ok(())
-        })
-    }
-
-    fn SelectionContainer(&self) -> Result<IRawElementProviderSimple> {
-        self.0.resolve(|_resolved| {
-            // TODO: implement when we work on list boxes (#23)
-            // We return E_FAIL here because that's what Chromium does
-            // if it can't find a container.
-            Err(Error::new(E_FAIL, "".into()))
-        })
-    }
 }

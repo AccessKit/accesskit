@@ -19,11 +19,10 @@ libc = "0.2.112"
 paste = "1.0"
 
 [dependencies.windows]
-version = "0.27.0"
+version = "0.37.0"
 features = [
     "alloc",
-    "build",
-    "std",
+    "implement",
     "Win32_Foundation",
     "Win32_Graphics_Gdi",
     "Win32_System_Com",
