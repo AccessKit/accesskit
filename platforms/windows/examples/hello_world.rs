@@ -4,8 +4,7 @@ use std::{cell::RefCell, convert::TryInto, mem::drop, num::NonZeroU128, rc::Rc};
 
 use accesskit::kurbo::Rect;
 use accesskit::{
-    Action, ActionHandler, ActionRequest, DefaultActionVerb, Node, NodeId, Role, StringEncoding,
-    Tree, TreeUpdate,
+    Action, ActionHandler, ActionRequest, DefaultActionVerb, Node, NodeId, Role, Tree, TreeUpdate,
 };
 use lazy_static::lazy_static;
 use windows::{
@@ -105,7 +104,7 @@ fn get_initial_state() -> TreeUpdate {
     let button_2 = make_button(BUTTON_2_ID, "Button 2");
     TreeUpdate {
         nodes: vec![root, button_1, button_2],
-        tree: Some(Tree::new(WINDOW_ID, StringEncoding::Utf8)),
+        tree: Some(Tree::new(WINDOW_ID)),
         focus: None,
     }
 }

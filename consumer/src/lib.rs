@@ -20,9 +20,7 @@ pub use iterators::{
 #[cfg(test)]
 mod tests {
     use accesskit::kurbo::{Affine, Rect, Vec2};
-    use accesskit::{
-        ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeUpdate,
-    };
+    use accesskit::{ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
     use std::num::NonZeroU128;
     use std::sync::Arc;
 
@@ -145,7 +143,7 @@ mod tests {
                 button_3_2,
                 empty_container_3_3_ignored,
             ],
-            tree: Some(Tree::new(ROOT_ID, StringEncoding::Utf8)),
+            tree: Some(Tree::new(ROOT_ID)),
             focus: None,
         };
         crate::tree::Tree::new(initial_update, Box::new(NullActionHandler {}))
