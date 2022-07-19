@@ -19,7 +19,10 @@ use schemars_lib::JsonSchema;
 use serde_lib as serde;
 #[cfg(feature = "serde")]
 use serde_lib::{Deserialize, Serialize};
-use std::ops::Range;
+use std::{
+    num::{NonZeroU128, NonZeroU64},
+    ops::Range,
+};
 
 /// The type of an accessibility node.
 ///
@@ -580,7 +583,7 @@ pub enum StringEncoding {
 
 // This is NonZeroU128 because we regularly store Option<NodeId>.
 // 128-bit to handle UUIDs.
-pub type NodeIdContent = std::num::NonZeroU128;
+pub type NodeIdContent = NonZeroU128;
 
 /// The stable identity of a [`Node`], unique within the node's tree.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -588,6 +591,12 @@ pub type NodeIdContent = std::num::NonZeroU128;
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(crate = "serde"))]
 pub struct NodeId(pub NodeIdContent);
+
+impl From<NonZeroU64> for NodeId {
+    fn from(inner: NonZeroU64) -> Self {
+        Self(inner.into())
+    }
+}
 
 /// The globally unique ID of a [`Tree`].
 ///
