@@ -792,10 +792,7 @@ mod tests {
                 },
                 Node::new(NODE_ID_2, Role::Button),
             ],
-            tree: Some(Tree::new(
-                NODE_ID_1,
-                StringEncoding::Utf8,
-            )),
+            tree: Some(Tree::new(NODE_ID_1, StringEncoding::Utf8)),
             focus: None,
         };
         let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
@@ -832,10 +829,7 @@ mod tests {
                     ..Node::new(NODE_ID_5, Role::StaticText)
                 },
             ],
-            tree: Some(Tree::new(
-                NODE_ID_1,
-                StringEncoding::Utf8,
-            )),
+            tree: Some(Tree::new(NODE_ID_1, StringEncoding::Utf8)),
             focus: None,
         };
         let tree = super::Tree::new(update, Box::new(NullActionHandler {}));

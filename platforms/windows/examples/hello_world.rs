@@ -105,10 +105,7 @@ fn get_initial_state() -> TreeUpdate {
     let button_2 = make_button(BUTTON_2_ID, "Button 2");
     TreeUpdate {
         nodes: vec![root, button_1, button_2],
-        tree: Some(Tree::new(
-            WINDOW_ID,
-            StringEncoding::Utf8,
-        )),
+        tree: Some(Tree::new(WINDOW_ID, StringEncoding::Utf8)),
         focus: None,
     }
 }
