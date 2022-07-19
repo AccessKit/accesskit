@@ -116,7 +116,7 @@ pub(crate) fn safe_array_from_i32_slice(slice: &[i32]) -> *mut SAFEARRAY {
     safe_array_from_slice(VT_I4, slice)
 }
 
-pub(crate) enum QueuedEvent {
+pub(crate) enum Event {
     Simple {
         element: IRawElementProviderSimple,
         event_id: i32,
