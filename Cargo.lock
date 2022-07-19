@@ -444,11 +444,22 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "windows"
-version = "0.37.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57b543186b344cc61c85b5aab0d2e3adf4e0f99bc076eff9aa5927bcc0b8a647"
+checksum = "ebbc80318ebf919219a113c41deae34aa90198e4a15e93c810a9ea1aaa4c1a78"
 dependencies = [
- "windows-implement",
+ "windows-sys",
+ "windows_gen",
+ "windows_macros",
+ "windows_reader",
+]
+
+[[package]]
+name = "windows-sys"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39cae116ee11e4bce7c0a0425f2b0c866a91d86d209624b7707a7deea52da786"
+dependencies = [
  "windows_aarch64_msvc",
  "windows_i686_gnu",
  "windows_i686_msvc",
@@ -457,47 +468,65 @@ dependencies = [
 ]
 
 [[package]]
-name = "windows-implement"
-version = "0.37.0"
+name = "windows_aarch64_msvc"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67a1062e555f7d9d66fd1130ed4f7c6ec41a47529ee0850cd0e926d95b26bb14"
+checksum = "ec7d1649bbab232cde71148c6ef7bbe647f214d2154dd66347fada60de40cda7"
+
+[[package]]
+name = "windows_gen"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d91605af4948d99adb80f9a411b94600adc41ee1c2707763893ee61d2fd2aa65"
 dependencies = [
- "syn",
- "windows-tokens",
+ "windows_quote",
+ "windows_reader",
 ]
 
 [[package]]
-name = "windows-tokens"
-version = "0.37.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3263d25f1170419995b78ff10c06b949e8a986c35c208dc24333c64753a87169"
-
-[[package]]
-name = "windows_aarch64_msvc"
-version = "0.37.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2623277cb2d1c216ba3b578c0f3cf9cdebeddb6e66b1b218bb33596ea7769c3a"
-
-[[package]]
 name = "windows_i686_gnu"
-version = "0.37.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3925fd0b0b804730d44d4b6278c50f9699703ec49bcd628020f46f4ba07d9e1"
+checksum = "b4eb20b59b93fc302839f3b0df3e61de7e9606b44cb54cbeb68d71cf137309fa"
 
 [[package]]
 name = "windows_i686_msvc"
-version = "0.37.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce907ac74fe331b524c1298683efbf598bb031bc84d5e274db2083696d07c57c"
+checksum = "40331d8ef3e4dcdc8982eb7de16e1f09b86f5384626a56b3a99c2a51b88ff98e"
+
+[[package]]
+name = "windows_macros"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2598dd651364f57dd3c2b432a8d92485d9ec4022182885372584332acbfe36b"
+dependencies = [
+ "syn",
+ "windows_gen",
+ "windows_quote",
+ "windows_reader",
+]
+
+[[package]]
+name = "windows_quote"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8262c1fbc363bca7cdaac9695f94ed071bdd6a88f5be914a1b6317b87da3a4d"
+
+[[package]]
+name = "windows_reader"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82c36f12f40f56caa42505bcd4950c29c70ccafa74cabd763e188bfe1da53825"
 
 [[package]]
 name = "windows_x86_64_gnu"
-version = "0.37.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2babfba0828f2e6b32457d5341427dcbb577ceef556273229959ac23a10af33d"
+checksum = "5937d290e39c3308147d9b877c5fa741c50f4121ea78d2d20c4a138ad365464a"
 
 [[package]]
 name = "windows_x86_64_msvc"
-version = "0.37.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4dd6dc7df2d84cf7b33822ed5b86318fb1781948e9663bacd047fc9dd52259d"
+checksum = "dee1b76aec4e2bead4758a181b663c37af0de7ec56fe6837c10215b8d6a1635f"
