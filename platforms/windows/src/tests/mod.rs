@@ -349,3 +349,4 @@ impl IUIAutomationFocusChangedEventHandler_Impl for FocusEventHandler {
 }
 
 mod simple;
+mod subclassed;

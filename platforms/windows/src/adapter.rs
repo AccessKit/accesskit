@@ -42,6 +42,10 @@ impl<Source: Into<TreeUpdate>> Adapter<Source> {
         }
     }
 
+    pub fn window_handle(&self) -> HWND {
+        self.hwnd
+    }
+
     fn get_or_create_tree(&self) -> &Arc<Tree> {
         self.tree
             .get_or_create(|(source, action_handler)| Tree::new(source.into(), action_handler))
