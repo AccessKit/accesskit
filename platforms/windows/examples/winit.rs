@@ -1,7 +1,7 @@
 use accesskit::{
     Action, ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeUpdate,
 };
-use accesskit_windows::{Adapter, WindowSubclass};
+use accesskit_windows::{Adapter, SubclassingAdapter};
 use std::{
     num::NonZeroU128,
     sync::{Arc, Mutex},
@@ -94,20 +94,19 @@ fn main() {
     let adapter = {
         let state = Arc::clone(&state);
         let proxy = Mutex::new(event_loop.create_proxy());
-        Arc::new(Adapter::new(
+        Adapter::new(
             HWND(window.hwnd() as _),
             Box::new(move || {
                 let state = state.lock().unwrap();
                 initial_tree_update(&state)
             }),
             Box::new(WinitActionHandler(proxy)),
-        ))
+        )
     };
-    let _subclass = WindowSubclass::new(&*adapter);
+    let adapter = SubclassingAdapter::new(adapter);
 
     window.set_visible(true);
 
-    let adapter = Arc::clone(&adapter); // to move into the event handler
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
 

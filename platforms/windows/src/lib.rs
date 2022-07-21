@@ -10,7 +10,7 @@ mod adapter;
 pub use adapter::{Adapter, QueuedEvents};
 
 mod subclass;
-pub use subclass::WindowSubclass;
+pub use subclass::SubclassingAdapter;
 
 #[cfg(test)]
 mod tests;
