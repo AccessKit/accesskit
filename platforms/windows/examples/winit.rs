@@ -48,7 +48,7 @@ impl State {
             .update_if_active(|| TreeUpdate {
                 nodes: vec![],
                 tree: None,
-                focus: self.is_window_focused.then(|| self.focus),
+                focus: self.is_window_focused.then_some(self.focus),
             })
             .raise();
     }
