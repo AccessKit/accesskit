@@ -34,7 +34,6 @@ dependencies = [
  "libc",
  "parking_lot",
  "paste",
- "raw-window-handle",
  "scopeguard",
  "windows",
  "winit",

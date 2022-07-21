@@ -8,9 +8,12 @@ use std::num::NonZeroU128;
 use accesskit::{
     ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeUpdate,
 };
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle, Win32Handle};
 use windows::Win32::{Foundation::*, UI::Accessibility::*};
-use winit::{event_loop::EventLoop, platform::windows::EventLoopExtWindows, window::WindowBuilder};
+use winit::{
+    event_loop::EventLoop,
+    platform::windows::{EventLoopExtWindows, WindowExtWindows},
+    window::WindowBuilder,
+};
 
 use crate::{Adapter, WindowSubclass};
 
@@ -61,10 +64,7 @@ fn has_native_uia() {
         .with_title(WINDOW_TITLE)
         .build(&event_loop)
         .unwrap();
-    let hwnd = match window.raw_window_handle() {
-        RawWindowHandle::Win32(Win32Handle { hwnd, .. }) => HWND(hwnd as _),
-        _ => unreachable!(),
-    };
+    let hwnd = HWND(window.hwnd() as _);
     assert!(!unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
     let adapter = Adapter::new(hwnd, get_initial_state(), Box::new(NullActionHandler {}));
     let subclass = WindowSubclass::new(&adapter);
