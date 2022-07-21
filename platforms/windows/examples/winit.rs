@@ -91,7 +91,7 @@ fn main() {
         .build(&event_loop)
         .unwrap();
 
-    let adapter: Arc<Adapter> = {
+    let adapter = {
         let state = Arc::clone(&state);
         let proxy = Mutex::new(event_loop.create_proxy());
         Arc::new(Adapter::new(
