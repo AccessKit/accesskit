@@ -68,7 +68,7 @@ fn initial_tree_update(state: &State) -> TreeUpdate {
     TreeUpdate {
         nodes: vec![root, button_1, button_2],
         tree: Some(Tree::new(WINDOW_ID, StringEncoding::Utf8)),
-        focus: state.is_window_focused.then(|| state.focus),
+        focus: state.is_window_focused.then_some(state.focus),
     }
 }
 
