@@ -18,16 +18,22 @@ use crate::{
     util::QueuedEvent,
 };
 
-pub struct Adapter<Source = Box<dyn FnOnce() -> TreeUpdate>>
-where
-    Source: Into<TreeUpdate>,
-{
-    hwnd: HWND,
-    tree: LazyTransform<(Source, Box<dyn ActionHandler>), Arc<Tree>>,
+struct UninitializedTree {
+    source: Box<dyn FnOnce() -> TreeUpdate>,
+    action_handler: Box<dyn ActionHandler>,
 }
 
-impl<Source: Into<TreeUpdate>> Adapter<Source> {
-    pub fn new(hwnd: HWND, source: Source, action_handler: Box<dyn ActionHandler>) -> Self {
+pub struct Adapter {
+    hwnd: HWND,
+    tree: LazyTransform<UninitializedTree, Arc<Tree>>,
+}
+
+impl Adapter {
+    pub fn new(
+        hwnd: HWND,
+        source: Box<dyn FnOnce() -> TreeUpdate>,
+        action_handler: Box<dyn ActionHandler>,
+    ) -> Self {
         // It's unfortunate that we have to force UIA to initialize early;
         // it would be more optimal to let UIA lazily initialize itself
         // when we receive the first `WM_GETOBJECT`. But if we don't do this,
@@ -38,7 +44,10 @@ impl<Source: Into<TreeUpdate>> Adapter<Source> {
 
         Self {
             hwnd,
-            tree: LazyTransform::new((source, action_handler)),
+            tree: LazyTransform::new(UninitializedTree {
+                source,
+                action_handler,
+            }),
         }
     }
 
@@ -47,8 +56,12 @@ impl<Source: Into<TreeUpdate>> Adapter<Source> {
     }
 
     fn get_or_create_tree(&self) -> &Arc<Tree> {
-        self.tree
-            .get_or_create(|(source, action_handler)| Tree::new(source.into(), action_handler))
+        self.tree.get_or_create(
+            |UninitializedTree {
+                 source,
+                 action_handler,
+             }| Tree::new(source.into(), action_handler),
+        )
     }
 
     /// Initialize the tree if it hasn't been initialized already, then apply
