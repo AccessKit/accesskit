@@ -533,7 +533,7 @@ impl Node<'_> {
 #[cfg(test)]
 mod tests {
     use accesskit::kurbo::{Point, Rect};
-    use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeUpdate};
+    use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
     use std::num::NonZeroU128;
 
     use crate::tests::*;
@@ -792,7 +792,7 @@ mod tests {
                 },
                 Node::new(NODE_ID_2, Role::Button),
             ],
-            tree: Some(Tree::new(NODE_ID_1, StringEncoding::Utf8)),
+            tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
         let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
@@ -829,7 +829,7 @@ mod tests {
                     ..Node::new(NODE_ID_5, Role::StaticText)
                 },
             ],
-            tree: Some(Tree::new(NODE_ID_1, StringEncoding::Utf8)),
+            tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
         let tree = super::Tree::new(update, Box::new(NullActionHandler {}));

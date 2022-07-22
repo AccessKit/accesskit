@@ -571,16 +571,6 @@ pub enum TextDecoration {
     Wavy,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-pub enum StringEncoding {
-    Utf8,
-    Utf16,
-}
-
 // This is NonZeroU128 because we regularly store Option<NodeId>.
 // 128-bit to handle UUIDs.
 pub type NodeIdContent = NonZeroU128;
@@ -607,8 +597,7 @@ impl From<NonZeroU64> for NodeId {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TextMarker {
     pub marker_type: MarkerType,
-    /// Indices are in code units for the encoding specified in
-    /// [`Tree::source_string_encoding`].
+    /// Indices are in UTF-8 code units.
     pub range: Range<usize>,
 }
 
@@ -639,8 +628,7 @@ fn is_empty<T>(slice: &[T]) -> bool {
     slice.is_empty()
 }
 
-/// Offsets are in code units for the encoding specified in
-/// [`Tree::source_string_encoding`].
+/// Offsets are in UTF-8 code units.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
@@ -947,8 +935,7 @@ pub struct Node {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub character_offsets: Box<[f32]>,
 
-    /// For inline text. The indices of each word, in code units for
-    /// the encoding specified in [`Tree::source_string_encoding`].
+    /// For inline text. The indices of each word, in UTF-8 code units.
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub words: Box<[Range<usize>]>,
@@ -1337,14 +1324,6 @@ impl Node {
 pub struct Tree {
     pub root: NodeId,
 
-    /// The string encoding used by the tree source. This is required
-    /// to disambiguate string indices, e.g. in [`Node::words`].
-    /// When the tree is serialized, the encoding specified by
-    /// the target serialization format is always used. But this way,
-    /// the tree source doesn't have to convert string indices;
-    /// the platform adapter will do this if needed.
-    pub source_string_encoding: StringEncoding,
-
     /// The node that's used as the root scroller, if any. On some platforms
     /// like Android we need to ignore accessibility scroll offsets for
     /// that node and get them from the viewport instead.
@@ -1353,10 +1332,9 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub fn new(root: NodeId, source_string_encoding: StringEncoding) -> Tree {
+    pub fn new(root: NodeId) -> Tree {
         Tree {
             root,
-            source_string_encoding,
             root_scroller: None,
         }
     }

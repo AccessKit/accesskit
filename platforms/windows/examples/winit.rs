@@ -1,6 +1,4 @@
-use accesskit::{
-    Action, ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeUpdate,
-};
+use accesskit::{Action, ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
 use accesskit_windows::{Adapter, SubclassingAdapter};
 use std::{
     num::NonZeroU128,
@@ -67,7 +65,7 @@ fn initial_tree_update(state: &State) -> TreeUpdate {
     let button_2 = make_button(BUTTON_2_ID, "Button 2");
     TreeUpdate {
         nodes: vec![root, button_1, button_2],
-        tree: Some(Tree::new(WINDOW_ID, StringEncoding::Utf8)),
+        tree: Some(Tree::new(WINDOW_ID)),
         focus: state.is_window_focused.then_some(state.focus),
     }
 }

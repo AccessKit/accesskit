@@ -5,9 +5,7 @@
 
 use std::num::NonZeroU128;
 
-use accesskit::{
-    ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeUpdate,
-};
+use accesskit::{ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
 use windows::Win32::{Foundation::*, UI::Accessibility::*};
 use winit::{
     event_loop::EventLoop,
@@ -41,7 +39,7 @@ fn get_initial_state() -> TreeUpdate {
     let button_2 = make_button(BUTTON_2_ID, "Button 2");
     TreeUpdate {
         nodes: vec![root, button_1, button_2],
-        tree: Some(Tree::new(WINDOW_ID, StringEncoding::Utf8)),
+        tree: Some(Tree::new(WINDOW_ID)),
         focus: None,
     }
 }

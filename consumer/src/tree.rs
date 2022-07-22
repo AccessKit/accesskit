@@ -345,7 +345,7 @@ impl Tree {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Role, StringEncoding, Tree, TreeUpdate};
+    use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
     use std::num::NonZeroU128;
 
     use crate::tests::NullActionHandler;
@@ -358,7 +358,7 @@ mod tests {
     fn init_tree_with_root_node() {
         let update = TreeUpdate {
             nodes: vec![Node::new(NODE_ID_1, Role::Window)],
-            tree: Some(Tree::new(NODE_ID_1, StringEncoding::Utf8)),
+            tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
         let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
@@ -378,7 +378,7 @@ mod tests {
                 Node::new(NODE_ID_2, Role::Button),
                 Node::new(NODE_ID_3, Role::Button),
             ],
-            tree: Some(Tree::new(NODE_ID_1, StringEncoding::Utf8)),
+            tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
         let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
@@ -399,7 +399,7 @@ mod tests {
         let root_node = Node::new(NODE_ID_1, Role::Window);
         let first_update = TreeUpdate {
             nodes: vec![root_node.clone()],
-            tree: Some(Tree::new(NODE_ID_1, StringEncoding::Utf8)),
+            tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
         let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
@@ -457,7 +457,7 @@ mod tests {
                 },
                 Node::new(NODE_ID_2, Role::RootWebArea),
             ],
-            tree: Some(Tree::new(NODE_ID_1, StringEncoding::Utf8)),
+            tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
         let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
@@ -504,7 +504,7 @@ mod tests {
                 Node::new(NODE_ID_2, Role::Button),
                 Node::new(NODE_ID_3, Role::Button),
             ],
-            tree: Some(Tree::new(NODE_ID_1, StringEncoding::Utf8)),
+            tree: Some(Tree::new(NODE_ID_1)),
             focus: Some(NODE_ID_2),
         };
         let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
@@ -569,7 +569,7 @@ mod tests {
                     ..child_node.clone()
                 },
             ],
-            tree: Some(Tree::new(NODE_ID_1, StringEncoding::Utf8)),
+            tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
         let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
@@ -620,7 +620,7 @@ mod tests {
                 Node::new(NODE_ID_2, Role::Button),
                 Node::new(NODE_ID_3, Role::Button),
             ],
-            tree: Some(Tree::new(NODE_ID_1, StringEncoding::Utf8)),
+            tree: Some(Tree::new(NODE_ID_1)),
             focus: Some(NODE_ID_2),
         };
         let tree = super::Tree::new(update.clone(), Box::new(NullActionHandler {}));
