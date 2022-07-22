@@ -3,10 +3,12 @@ members = [
     "common",
     "consumer",
     "platforms/windows",
+    "platforms/winit",
 ]
 default-members = [
     "common",
     "consumer",
+    "platforms/winit",
 ]
 
 [profile.release]

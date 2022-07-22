@@ -6,6 +6,7 @@
   "packages": {
     "common": {},
     "consumer": {},
-    "platforms/windows": {}
+    "platforms/windows": {},
+    "platforms/winit": {}
   }
 }
