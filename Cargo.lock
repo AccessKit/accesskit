@@ -40,6 +40,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "accesskit_winit"
+version = "0.0.0"
+dependencies = [
+ "accesskit",
+ "accesskit_windows",
+ "parking_lot",
+ "windows",
+ "winit",
+]
+
+[[package]]
 name = "arrayvec"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
