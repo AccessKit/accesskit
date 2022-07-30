@@ -512,6 +512,16 @@ pub enum AriaCurrent {
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+pub enum AriaLive {
+    Polite,
+    Assertive,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum HasPopup {
     True,
     Menu,
@@ -964,7 +974,7 @@ pub struct Node {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub container_live_relevant: Option<Box<str>>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub container_live_status: Option<Box<str>>,
+    pub container_live: Option<AriaLive>,
 
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub css_display: Option<Box<str>>,
@@ -994,7 +1004,7 @@ pub struct Node {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub live_relevant: Option<Box<str>>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub live_status: Option<Box<str>>,
+    pub live: Option<AriaLive>,
 
     /// Only if not already exposed in [`Node::name`] ([`NameFrom::Placeholder`]).
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
@@ -1240,7 +1250,7 @@ impl Node {
             checked_state_description: None,
             class_name: None,
             container_live_relevant: None,
-            container_live_status: None,
+            container_live: None,
             css_display: None,
             font_family: None,
             html_tag: None,
@@ -1249,7 +1259,7 @@ impl Node {
             key_shortcuts: None,
             language: None,
             live_relevant: None,
-            live_status: None,
+            live: None,
             placeholder: None,
             aria_role: None,
             role_description: None,
