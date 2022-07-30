@@ -4,7 +4,8 @@ use std::{cell::RefCell, convert::TryInto, mem::drop, num::NonZeroU128, rc::Rc};
 
 use accesskit::kurbo::Rect;
 use accesskit::{
-    Action, ActionHandler, ActionRequest, AriaLive, DefaultActionVerb, Node, NodeId, Role, Tree, TreeUpdate,
+    Action, ActionHandler, ActionRequest, AriaLive, DefaultActionVerb, Node, NodeId, Role, Tree,
+    TreeUpdate,
 };
 use lazy_static::lazy_static;
 use windows::{
