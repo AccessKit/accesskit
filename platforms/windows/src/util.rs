@@ -82,6 +82,12 @@ impl From<ToggleState> for VariantFactory {
     }
 }
 
+impl From<LiveSetting> for VariantFactory {
+    fn from(value: LiveSetting) -> Self {
+        value.0.into()
+    }
+}
+
 const VARIANT_FALSE: i16 = 0i16;
 const VARIANT_TRUE: i16 = -1i16;
 
