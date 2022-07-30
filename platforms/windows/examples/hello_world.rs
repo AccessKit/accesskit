@@ -4,7 +4,7 @@ use std::{cell::RefCell, convert::TryInto, mem::drop, num::NonZeroU128, rc::Rc};
 
 use accesskit::kurbo::Rect;
 use accesskit::{
-    Action, ActionHandler, ActionRequest, DefaultActionVerb, Node, NodeId, Role, Tree, TreeUpdate,
+    Action, ActionHandler, ActionRequest, AriaLive, DefaultActionVerb, Node, NodeId, Role, Tree, TreeUpdate,
 };
 use lazy_static::lazy_static;
 use windows::{
@@ -52,6 +52,7 @@ const WINDOW_TITLE: &str = "Hello world";
 const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
 const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
+const PRESSED_TEXT_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(4) });
 const INITIAL_FOCUS: NodeId = BUTTON_1_ID;
 
 const BUTTON_1_RECT: Rect = Rect {
@@ -120,7 +121,7 @@ impl WindowState {
         // Also, this update isn't as lazy as it could be;
         // we force the AccessKit tree to be initialized.
         // This is expedient in this case, because that tree
-        // is the only place where the state of the buttons
+        // is the only place where the state of the announcement
         // is stored. It's not a problem because we're really
         // only concerned with testing lazy updates in the context
         // of focus changes.
@@ -133,9 +134,18 @@ impl WindowState {
         } else {
             "You pressed button 2"
         };
-        let node = make_button(id, name);
+        let node = Node {
+            name: Some(name.into()),
+            live: Some(AriaLive::Polite),
+            ..Node::new(PRESSED_TEXT_ID, Role::StaticText)
+        };
+        let root = Node {
+            children: vec![BUTTON_1_ID, BUTTON_2_ID, PRESSED_TEXT_ID],
+            name: Some(WINDOW_TITLE.into()),
+            ..Node::new(WINDOW_ID, Role::Window)
+        };
         let update = TreeUpdate {
-            nodes: vec![node],
+            nodes: vec![node, root],
             tree: None,
             focus: is_window_focused.then(|| focus),
         };
@@ -338,7 +348,7 @@ fn create_window(title: &str, initial_state: TreeUpdate, initial_focus: NodeId) 
 fn main() -> Result<()> {
     println!("This example has no visible GUI, and a keyboard interface:");
     println!("- [Tab] switches focus between two logical buttons.");
-    println!("- [Space] 'presses' the button, permanently renaming it.");
+    println!("- [Space] 'presses' the button, adding static text in a live region announcing that it was pressed.");
     println!("Enable Narrator with [Win]+[Ctrl]+[Enter] (or [Win]+[Enter] on older versions of Windows).");
 
     let window = create_window(WINDOW_TITLE, get_initial_state(), INITIAL_FOCUS)?;
