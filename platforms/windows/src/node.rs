@@ -37,7 +37,7 @@ impl ResolvedPlatformNode<'_> {
         ResolvedPlatformNode::new(node, self.hwnd)
     }
 
-    fn downgrade(&self) -> PlatformNode {
+    pub(crate) fn downgrade(&self) -> PlatformNode {
         PlatformNode::new(&self.node, self.hwnd)
     }
 

@@ -110,10 +110,27 @@ impl Adapter {
                         event_id: UIA_AutomationFocusChangedEventId,
                     });
                 }
+                TreeChange::NodeAdded(node) => {
+                    if node.live().is_some() {
+                        let platform_node = PlatformNode::new(&node, self.hwnd);
+                        let element: IRawElementProviderSimple = platform_node.into();
+                        queue.push(QueuedEvent::Simple {
+                            element,
+                            event_id: UIA_LiveRegionChangedEventId,
+                        });
+                    }
+                }
                 TreeChange::NodeUpdated { old_node, new_node } => {
-                    let old_node = ResolvedPlatformNode::new(old_node, self.hwnd);
-                    let new_node = ResolvedPlatformNode::new(new_node, self.hwnd);
-                    new_node.enqueue_property_changes(&mut queue, &old_node);
+                    let old_platform_node = ResolvedPlatformNode::new(old_node, self.hwnd);
+                    let new_platform_node = ResolvedPlatformNode::new(new_node, self.hwnd);
+                    new_platform_node.enqueue_property_changes(&mut queue, &old_platform_node);
+                    if new_node.live().is_some() && new_node.name() != old_node.name() {
+                        let element: IRawElementProviderSimple = new_platform_node.downgrade().into();
+                        queue.push(QueuedEvent::Simple {
+                            element,
+                            event_id: UIA_LiveRegionChangedEventId,
+                        });
+                    }
                 }
                 // TODO: handle other events (#20)
                 _ => (),
