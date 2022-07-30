@@ -125,7 +125,8 @@ impl Adapter {
                     let new_platform_node = ResolvedPlatformNode::new(new_node, self.hwnd);
                     new_platform_node.enqueue_property_changes(&mut queue, &old_platform_node);
                     if new_node.live().is_some() && new_node.name() != old_node.name() {
-                        let element: IRawElementProviderSimple = new_platform_node.downgrade().into();
+                        let element: IRawElementProviderSimple =
+                            new_platform_node.downgrade().into();
                         queue.push(QueuedEvent::Simple {
                             element,
                             event_id: UIA_LiveRegionChangedEventId,
