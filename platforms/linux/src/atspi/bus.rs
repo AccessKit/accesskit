@@ -11,9 +11,8 @@ use crate::atspi::{
 use async_io::block_on;
 use parking_lot::RwLock;
 use std::{
+    convert::TryInto,
     env::var,
-    os::unix::net::{SocketAddr, UnixStream},
-    str::FromStr,
     sync::Arc,
 };
 use x11rb::{
@@ -22,7 +21,7 @@ use x11rb::{
 };
 use zbus::{
     blocking::{Connection, ConnectionBuilder},
-    Address, InterfaceDeref, Result,
+    Address, Result,
 };
 
 pub struct Bus<'a> {
@@ -42,7 +41,7 @@ impl<'a> Bus<'a> {
         T: Accessible,
     {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, object.id().as_str());
-        if self.conn.object_server_mut().at(
+        if self.conn.object_server().at(
             path.clone(),
             AccessibleInterface::new(self.conn.unique_name().unwrap().to_owned(), object.clone()),
         )? {
@@ -74,7 +73,7 @@ impl<'a> Bus<'a> {
             Accessible::id(&root).as_str()
         );
         let root = Arc::new(RwLock::new(root));
-        let registered = self.conn.object_server_mut().at(
+        let registered = self.conn.object_server().at(
             path,
             ApplicationInterface(ApplicationInterfaceWrapper(root.clone())),
         )?;
@@ -93,13 +92,13 @@ impl<'a> Bus<'a> {
 
     fn register_focus_events_interface(&mut self, path: &str) -> Result<bool> {
         self.conn
-            .object_server_mut()
+            .object_server()
             .at(path, FocusEventsInterface {})
     }
 
     fn register_object_events_interface(&mut self, path: &str) -> Result<bool> {
         self.conn
-            .object_server_mut()
+            .object_server()
             .at(path, ObjectEventsInterface {})
     }
 
@@ -108,7 +107,7 @@ impl<'a> Bus<'a> {
         T: Accessible,
     {
         self.conn
-            .object_server_mut()
+            .object_server()
             .at(path, WindowEventsInterface(object))
     }
 
@@ -117,10 +116,11 @@ impl<'a> Bus<'a> {
         T: Accessible,
     {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
-        self.conn.object_server().with(
-            path,
-            |iface: InterfaceDeref<'_, FocusEventsInterface>, ctxt| block_on(iface.focused(&ctxt)),
-        )
+        let iface_ref = self.conn.object_server()
+            .interface::<_, FocusEventsInterface>(path)
+            .unwrap();
+        let iface = iface_ref.get();
+        block_on(iface.focused(iface_ref.signal_context()))
     }
 
     pub fn emit_object_event<T>(&self, target: &T, event: ObjectEvent) -> Result<()>
@@ -128,12 +128,11 @@ impl<'a> Bus<'a> {
         T: Accessible,
     {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
-        self.conn.object_server().with(
-            path,
-            |iface: InterfaceDeref<'_, ObjectEventsInterface>, ctxt| {
-                block_on(iface.emit(event, &ctxt))
-            },
-        )
+        let iface_ref = self.conn.object_server()
+            .interface::<_, ObjectEventsInterface>(path)
+            .unwrap();
+        let iface = iface_ref.get();
+        block_on(iface.emit(event, iface_ref.signal_context()))
     }
 
     pub fn emit_object_events<T>(&self, target: &T, events: Vec<ObjectEvent>) -> Result<()>
@@ -141,17 +140,15 @@ impl<'a> Bus<'a> {
         T: Accessible,
     {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
-        self.conn.object_server().with(
-            path,
-            |iface: InterfaceDeref<'_, ObjectEventsInterface>, ctxt| {
-                block_on(async {
-                    for event in events {
-                        iface.emit(event, &ctxt).await?;
-                    }
-                    Ok(())
-                })
-            },
-        )
+        let iface_ref = self.conn.object_server()
+            .interface::<_, ObjectEventsInterface>(path)
+            .unwrap();
+        block_on(async {
+            for event in events {
+                iface_ref.get().emit(event, iface_ref.signal_context()).await?;
+            }
+            Ok(())
+        })
     }
 
     pub fn emit_window_event<T>(&self, target: &T, event: WindowEvent) -> Result<()>
@@ -159,12 +156,11 @@ impl<'a> Bus<'a> {
         T: Accessible,
     {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
-        self.conn.object_server().with(
-            path,
-            |iface: InterfaceDeref<'_, WindowEventsInterface<T>>, ctxt| {
-                block_on(iface.emit(event, &ctxt))
-            },
-        )
+        let iface_ref = self.conn.object_server()
+            .interface::<_, WindowEventsInterface<T>>(path)
+            .unwrap();
+        let iface = iface_ref.get();
+        block_on(iface.emit(event, iface_ref.signal_context()))
     }
 }
 
@@ -227,21 +223,9 @@ fn a11y_bus() -> Option<Connection> {
     if address.is_none() {
         address = a11y_bus_address_from_dbus();
     }
-    let address = address?;
-    let guid_index = address.find(',').unwrap_or(address.len());
-    if address.starts_with("unix:abstract=") {
-        ConnectionBuilder::unix_stream(
-            UnixStream::connect_addr(
-                &SocketAddr::from_abstract_namespace(address[14..guid_index].as_bytes()).ok()?,
-            )
-            .ok()?,
-        )
+    let address: Address = address?.as_str().try_into().ok()?;
+    ConnectionBuilder::address(address)
+        .ok()?
         .build()
         .ok()
-    } else {
-        ConnectionBuilder::address(Address::from_str(address.get(0..guid_index)?).ok()?)
-            .ok()?
-            .build()
-            .ok()
-    }
 }

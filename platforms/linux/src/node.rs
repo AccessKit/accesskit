@@ -392,7 +392,7 @@ impl Accessible for PlatformNode {
                 }
 
                 // Special case for indeterminate progressbar.
-                if node.role() == Role::ProgressIndicator && data.value_for_range.is_none() {
+                if node.role() == Role::ProgressIndicator && data.numeric_value.is_none() {
                     state.insert(State::Indeterminate);
                 }
 

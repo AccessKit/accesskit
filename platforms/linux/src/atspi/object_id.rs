@@ -5,10 +5,7 @@
 
 use accesskit::NodeId;
 use serde::{Deserialize, Serialize};
-use zvariant::{
-    derive::{Type, Value},
-    Str,
-};
+use zvariant::{Str, Type, Value};
 
 #[derive(Clone, Debug, Deserialize, Serialize, Type, Value)]
 pub struct ObjectId<'a>(#[serde(borrow)] Str<'a>);

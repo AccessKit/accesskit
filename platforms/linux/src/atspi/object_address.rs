@@ -6,10 +6,7 @@
 use crate::atspi::ObjectId;
 use serde::{Deserialize, Serialize};
 use zbus::names::{OwnedUniqueName, UniqueName};
-use zvariant::{
-    derive::{Type, Value},
-    ObjectPath, OwnedObjectPath,
-};
+use zvariant::{ObjectPath, OwnedObjectPath, Type, Value};
 
 pub const ACCESSIBLE_PATH_PREFIX: &'static str = "/org/a11y/atspi/accessible/";
 pub const NULL_PATH: &'static str = "/org/a11y/atspi/null";

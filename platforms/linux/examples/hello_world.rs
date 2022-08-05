@@ -4,10 +4,10 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    ActionHandler, ActionRequest, Node, NodeId, Role, StringEncoding, Tree, TreeId, TreeUpdate
+    ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate
 };
 use accesskit_linux::Adapter;
-use std::num::NonZeroU64;
+use std::num::NonZeroU128;
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -16,9 +16,9 @@ use winit::{
 
 const WINDOW_TITLE: &str = "Hello world";
 
-const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(1) });
-const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(2) });
-const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU64::new_unchecked(3) });
+const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
+const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
+const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
 
 struct NullActionHandler;
 
@@ -28,7 +28,7 @@ impl ActionHandler for NullActionHandler {
 
 fn get_tree() -> Tree {
     Tree {
-        ..Tree::new(TreeId("test".into()), WINDOW_ID, StringEncoding::Utf8)
+        ..Tree::new(WINDOW_ID)
     }
 }
 
@@ -49,7 +49,6 @@ fn get_initial_state() -> TreeUpdate {
     let button_1 = make_button(BUTTON_1_ID, "Button 1");
     let button_2 = make_button(BUTTON_2_ID, "Button 2");
     TreeUpdate {
-        clear: None,
         nodes: vec![root, button_1, button_2],
         tree: Some(get_tree()),
         focus: None,
@@ -82,7 +81,6 @@ fn main() {
                 WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                 WindowEvent::Focused(window_has_focus) => {
                     adapter.update(TreeUpdate {
-                        clear: None,
                         nodes: vec![],
                         focus: window_has_focus.then(|| unsafe { FOCUS }),
                         tree: None,
@@ -103,7 +101,6 @@ fn main() {
                         BUTTON_1_ID
                     };
                     adapter.update(TreeUpdate {
-                        clear: None,
                         nodes: vec![],
                         focus: Some(FOCUS),
                         tree: None,
@@ -124,7 +121,6 @@ fn main() {
                         make_button(BUTTON_2_ID, "You pressed button 2")
                     };
                     adapter.update(TreeUpdate {
-                        clear: None,
                         nodes: vec![updated_node],
                         focus: Some(FOCUS),
                         tree: None,

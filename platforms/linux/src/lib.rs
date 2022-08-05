@@ -3,8 +3,6 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-#![feature(unix_socket_abstract)]
-
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
