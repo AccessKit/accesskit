@@ -3,7 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::atspi::{interfaces::Accessible, State};
+use crate::atspi::State;
+use crate::PlatformNode;
 use std::{collections::HashMap, convert::AsRef};
 use zbus::{dbus_interface, Result, SignalContext};
 use zvariant::Value;
@@ -97,34 +98,34 @@ pub enum WindowEvent {
     Destroyed,
 }
 
-pub struct WindowEventsInterface<T>(pub T);
+pub struct WindowEventsInterface(pub(crate) PlatformNode);
 
-impl<T: Accessible> WindowEventsInterface<T> {
+impl WindowEventsInterface {
     pub async fn emit(&self, event: WindowEvent, ctxt: &SignalContext<'_>) -> Result<()> {
-        let name = self.0.name().into();
+        let name = self.0.resolve(|node| node.name().into())?;
         let properties = HashMap::new();
         match event {
             WindowEvent::Activated => {
-                WindowEventsInterface::<T>::activate(ctxt, "", 0, 0, name, properties).await
+                WindowEventsInterface::activate(ctxt, "", 0, 0, name, properties).await
             }
             WindowEvent::Closed => {
-                WindowEventsInterface::<T>::close(ctxt, "", 0, 0, name, properties).await
+                WindowEventsInterface::close(ctxt, "", 0, 0, name, properties).await
             }
             WindowEvent::Created => {
-                WindowEventsInterface::<T>::create(ctxt, "", 0, 0, name, properties).await
+                WindowEventsInterface::create(ctxt, "", 0, 0, name, properties).await
             }
             WindowEvent::Deactivated => {
-                WindowEventsInterface::<T>::deactivate(ctxt, "", 0, 0, name, properties).await
+                WindowEventsInterface::deactivate(ctxt, "", 0, 0, name, properties).await
             }
             WindowEvent::Destroyed => {
-                WindowEventsInterface::<T>::destroy(ctxt, "", 0, 0, name, properties).await
+                WindowEventsInterface::destroy(ctxt, "", 0, 0, name, properties).await
             }
         }
     }
 }
 
 #[dbus_interface(name = "org.a11y.atspi.Event.Window")]
-impl<T: Accessible> WindowEventsInterface<T> {
+impl WindowEventsInterface {
     #[dbus_interface(signal)]
     async fn activate(
         ctxt: &SignalContext<'_>,

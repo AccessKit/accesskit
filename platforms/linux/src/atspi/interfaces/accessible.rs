@@ -3,67 +3,44 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use crate::{PlatformNode, PlatformRootNode};
 use crate::atspi::{
     interfaces::{Interface, Interfaces},
-    ObjectAddress, ObjectId, ObjectRef, OwnedObjectAddress, Role, StateSet,
+    ObjectAddress, ObjectId, ObjectRef, OwnedObjectAddress, Role, State, StateSet,
 };
 use std::convert::TryInto;
-use zbus::names::OwnedUniqueName;
-
-pub trait Accessible: Clone + Send + Sync + 'static {
-    fn name(&self) -> String;
-
-    fn description(&self) -> String;
-
-    fn parent(&self) -> Option<ObjectRef>;
-
-    fn child_count(&self) -> usize;
-
-    fn locale(&self) -> String;
-
-    fn id(&self) -> ObjectId;
-
-    fn child_at_index(&self, index: usize) -> Option<ObjectRef>;
-
-    fn children(&self) -> Vec<ObjectRef>;
-
-    fn index_in_parent(&self) -> Option<usize>;
-
-    fn role(&self) -> Role;
-
-    fn state(&self) -> StateSet;
-
-    fn interfaces(&self) -> Interfaces;
-}
+use zbus::{fdo, names::OwnedUniqueName};
 
 pub struct AccessibleInterface<T> {
     bus_name: OwnedUniqueName,
-    object: T,
+    node: T,
 }
 
 impl<T> AccessibleInterface<T> {
-    pub fn new(bus_name: OwnedUniqueName, object: T) -> Self {
-        Self { bus_name, object }
+    pub fn new(bus_name: OwnedUniqueName, node: T) -> Self {
+        Self { bus_name, node }
     }
 }
 
 const INTERFACES: &[&'static str] = &["org.a11y.atspi.Accessible", "org.a11y.atspi.Application"];
 
 #[dbus_interface(name = "org.a11y.atspi.Accessible")]
-impl<T: Accessible> AccessibleInterface<T> {
+impl AccessibleInterface<PlatformNode> {
     #[dbus_interface(property)]
     fn name(&self) -> String {
-        self.object.name()
+        self.node.resolve(|node| node.name())
+            .unwrap_or(String::new())
     }
 
     #[dbus_interface(property)]
     fn description(&self) -> String {
-        self.object.description()
+        self.node.resolve(|node| node.description())
+            .unwrap_or(String::new())
     }
 
     #[dbus_interface(property)]
     fn parent(&self) -> OwnedObjectAddress {
-        match self.object.parent() {
+        match self.node.resolve(|node| node.parent()).ok().flatten() {
             Some(ObjectRef::Managed(id)) => {
                 ObjectAddress::accessible(self.bus_name.as_ref(), id).into()
             }
@@ -74,73 +51,139 @@ impl<T: Accessible> AccessibleInterface<T> {
 
     #[dbus_interface(property)]
     fn child_count(&self) -> i32 {
-        self.object.child_count().try_into().unwrap_or(0)
+        self.node.resolve(|node| node.child_count())
+            .map_or(0, |count| count.try_into().unwrap_or(0))
     }
 
     #[dbus_interface(property)]
     fn locale(&self) -> String {
-        self.object.locale()
+        self.node.resolve(|node| node.locale())
+            .unwrap_or(String::new())
     }
 
     #[dbus_interface(property)]
     fn accessible_id(&self) -> ObjectId {
-        self.object.id()
+        self.node.resolve(|node| node.id())
+            .unwrap_or(unsafe { ObjectId::from_str_unchecked("") })
     }
 
-    fn get_child_at_index(&self, index: i32) -> (OwnedObjectAddress,) {
-        (
-            match index
-                .try_into()
-                .ok()
-                .map(|index| self.object.child_at_index(index))
-                .flatten()
-            {
-                Some(ObjectRef::Managed(id)) => {
-                    ObjectAddress::accessible(self.bus_name.as_ref(), id).into()
-                }
-                Some(ObjectRef::Unmanaged(address)) => address,
-                None => ObjectAddress::null(self.bus_name.as_ref()).into(),
-            },
-        )
+    fn get_child_at_index(&self, index: i32) -> fdo::Result<OwnedObjectAddress> {
+        let index = index.try_into().map_err(|_| fdo::Error::InvalidArgs("Index can't be negative.".into()))?;
+        self.node.resolve(|node| match node.child_at_index(index) {
+            Some(ObjectRef::Managed(id)) =>
+                ObjectAddress::accessible(self.bus_name.as_ref(), id).into(),
+            Some(ObjectRef::Unmanaged(address)) => address,
+            _ => ObjectAddress::null(self.bus_name.as_ref()).into()
+        })
     }
 
-    fn get_children(&self) -> Vec<OwnedObjectAddress> {
-        self.object
-            .children()
-            .into_iter()
-            .map(|child| match child {
-                ObjectRef::Managed(id) => {
-                    ObjectAddress::accessible(self.bus_name.as_ref(), id).into()
+    fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
+        self.node.resolve(|node| {
+            node.children()
+                .into_iter()
+                .map(|child| match child {
+                    ObjectRef::Managed(id) =>
+                        ObjectAddress::accessible(self.bus_name.as_ref(), id).into(),
+                    ObjectRef::Unmanaged(address) => address,
+                }).collect()
+        })
+    }
+
+    fn get_index_in_parent(&self) -> fdo::Result<i32> {
+        let index = self.node.resolve(|node| node.index_in_parent())?;
+        if let Some(index) = index {
+            index.try_into().map_err(|_| fdo::Error::Failed("Index is too big.".into()))
+        } else {
+            Ok(-1)
+        }
+    }
+
+    fn get_role(&self) -> fdo::Result<Role> {
+        self.node.resolve(|node| node.role())
+    }
+
+    fn get_state(&self) -> fdo::Result<StateSet> {
+        self.node.resolve(|node| node.state())
+    }
+
+    fn get_interfaces(&self) -> fdo::Result<Vec<&'static str>> {
+        self.node.resolve(|node| {
+            let mut interfaces = Vec::with_capacity(INTERFACES.len());
+            for interface in node.interfaces().iter() {
+                if interface > Interface::Application {
+                    break;
                 }
-                ObjectRef::Unmanaged(address) => address,
-            })
-            .collect()
+                interfaces.push(INTERFACES[(interface as u8).trailing_zeros() as usize]);
+            }
+            interfaces
+        })
+    }
+}
+
+#[dbus_interface(name = "org.a11y.atspi.Accessible")]
+impl AccessibleInterface<PlatformRootNode> {
+    #[dbus_interface(property)]
+    fn name(&self) -> String {
+        self.node.state.upgrade()
+            .map(|state| state.read().name.clone())
+            .unwrap_or(String::new())
+    }
+
+    #[dbus_interface(property)]
+    fn description(&self) -> &str {
+        ""
+    }
+
+    #[dbus_interface(property)]
+    fn parent(&self) -> OwnedObjectAddress {
+        self.node.state.upgrade()
+            .and_then(|state| state.read().desktop_address.clone())
+            .unwrap_or_else(|| ObjectAddress::null(self.bus_name.as_ref()).into())
+    }
+
+    #[dbus_interface(property)]
+    fn child_count(&self) -> i32 {
+        1
+    }
+
+    #[dbus_interface(property)]
+    fn locale(&self) -> String {
+        String::new()
+    }
+
+    #[dbus_interface(property)]
+    fn accessible_id(&self) -> ObjectId {
+        ObjectId::root()
+    }
+
+    fn get_child_at_index(&self, index: i32) -> fdo::Result<OwnedObjectAddress> {
+        if index != 0 {
+            return Ok(ObjectAddress::null(self.bus_name.as_ref()).into());
+        }
+        self.node.tree.upgrade().map(|tree| ObjectAddress::accessible(self.bus_name.as_ref(), tree.read().root().id().into()).into())
+            .ok_or(fdo::Error::UnknownObject("".into()))
+    }
+
+    fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
+        self.node.tree.upgrade().map(|tree| vec![ObjectAddress::accessible(self.bus_name.as_ref(), tree.read().root().id().into()).into()])
+            .ok_or(fdo::Error::UnknownObject("".into()))
     }
 
     fn get_index_in_parent(&self) -> i32 {
-        self.object
-            .index_in_parent()
-            .map(|index| index.try_into().ok())
-            .flatten()
-            .unwrap_or(-1)
+        -1
     }
 
     fn get_role(&self) -> Role {
-        self.object.role()
+        Role::Application
     }
 
     fn get_state(&self) -> StateSet {
-        self.object.state()
+        let mut state = StateSet::empty();
+        state.insert(State::Showing | State::Visible);
+        state
     }
 
     fn get_interfaces(&self) -> Vec<&'static str> {
-        let mut interfaces = Vec::with_capacity(INTERFACES.len());
-        for interface in self.object.interfaces().iter() {
-            if interface > Interface::Application {
-                break;
-            }
-            interfaces.push(INTERFACES[(interface as u8).trailing_zeros() as usize]);
-        }
-        interfaces
+        vec![INTERFACES[0], INTERFACES[1]]
     }
 }

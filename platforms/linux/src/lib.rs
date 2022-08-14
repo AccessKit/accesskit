@@ -13,3 +13,4 @@ mod atspi;
 mod node;
 
 pub use adapter::Adapter;
+pub(crate) use node::{PlatformNode, PlatformRootNode, ResolvedPlatformNode};

@@ -9,10 +9,11 @@ use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
 use accesskit_consumer::{Node, Tree, TreeChange};
 
 use crate::atspi::{
-    interfaces::{Accessible, ObjectEvent, WindowEvent},
+    interfaces::{ObjectEvent, WindowEvent},
     Bus, State,
 };
-use crate::node::{PlatformNode, RootPlatformNode};
+use crate::node::{AppState, PlatformNode, PlatformRootNode, ResolvedPlatformNode};
+use parking_lot::RwLock;
 
 lazy_static! {
     pub(crate) static ref CURRENT_ACTIVE_WINDOW: Arc<Mutex<Option<NodeId>>> =
@@ -21,6 +22,7 @@ lazy_static! {
 
 pub struct Adapter<'a> {
     atspi_bus: Bus<'a>,
+    app_state: Arc<RwLock<AppState>>,
     tree: Arc<Tree>,
 }
 
@@ -34,23 +36,30 @@ impl<'a> Adapter<'a> {
     ) -> Option<Self> {
         let mut atspi_bus = Bus::a11y_bus()?;
         let tree = Tree::new(initial_state, action_handler);
-        let app_node = RootPlatformNode::new(app_name, toolkit_name, toolkit_version, tree.clone());
-        let mut objects_to_add = Vec::new();
+        {
+            let reader = tree.read();
+            let mut objects_to_add = Vec::new();
 
-        fn add_children(node: Node, to_add: &mut Vec<PlatformNode>) {
-            for child in node.unignored_children() {
-                to_add.push(PlatformNode::new(&child));
-                add_children(child, to_add);
+            fn add_children<'b>(node: Node<'b>, to_add: &mut Vec<ResolvedPlatformNode<'b>>) {
+                for child in node.unignored_children() {
+                    to_add.push(ResolvedPlatformNode::new(child));
+                    add_children(child, to_add);
+                }
+            }
+
+            objects_to_add.push(ResolvedPlatformNode::new(reader.root()));
+            add_children(reader.root(), &mut objects_to_add);
+            for node in objects_to_add {
+                atspi_bus.register_node(node);
             }
         }
-
-        objects_to_add.push(PlatformNode::new(&tree.read().root()));
-        add_children(tree.read().root(), &mut objects_to_add);
-        for node in objects_to_add {
-            atspi_bus.register_accessible_interface(node);
-        }
-        atspi_bus.register_application_interface(app_node);
-        Some(Self { atspi_bus, tree })
+        let app_state = Arc::new(RwLock::new(AppState::new(app_name, toolkit_name, toolkit_version)));
+        atspi_bus.register_root_node(PlatformRootNode::new(Arc::downgrade(&app_state), Arc::downgrade(&tree)));
+        Some(Self { 
+            atspi_bus,
+            app_state,
+            tree,
+        })
     }
 
     pub fn update(&self, update: TreeUpdate) {
@@ -58,7 +67,7 @@ impl<'a> Adapter<'a> {
             match change {
                 TreeChange::FocusMoved { old_node, new_node } => {
                     if let Some(old_node) = old_node {
-                        let old_node = PlatformNode::new(&old_node);
+                        let old_node = ResolvedPlatformNode::new(old_node);
                         self.atspi_bus
                             .emit_object_event(
                                 &old_node,
@@ -79,7 +88,7 @@ impl<'a> Adapter<'a> {
                             if let Some(node_window_id) = node_window_id {
                                 self.window_activated(node_window_id);
                             }
-                            let new_node = PlatformNode::new(&new_node);
+                            let new_node = ResolvedPlatformNode::new(new_node);
                             self.atspi_bus
                                 .emit_object_event(
                                     &new_node,
@@ -91,8 +100,8 @@ impl<'a> Adapter<'a> {
                     }
                 }
                 TreeChange::NodeUpdated { old_node, new_node } => {
-                    let old_state = PlatformNode::new(&old_node).state();
-                    let new_platform_node = PlatformNode::new(&new_node);
+                    let old_state = ResolvedPlatformNode::new(old_node).state();
+                    let new_platform_node = ResolvedPlatformNode::new(new_node);
                     let new_state = new_platform_node.state();
                     let changed_states = old_state ^ new_state;
                     let mut events = Vec::new();
@@ -115,7 +124,7 @@ impl<'a> Adapter<'a> {
 
     fn window_activated(&self, window_id: NodeId) {
         let reader = self.tree.read();
-        let node = PlatformNode::new(&reader.node_by_id(window_id).unwrap());
+        let node = ResolvedPlatformNode::new(reader.node_by_id(window_id).unwrap());
         self.atspi_bus
             .emit_window_event(&node, WindowEvent::Activated);
         self.atspi_bus
@@ -124,7 +133,7 @@ impl<'a> Adapter<'a> {
 
     fn window_deactivated(&self, window_id: NodeId) {
         let reader = self.tree.read();
-        let node = PlatformNode::new(&reader.node_by_id(window_id).unwrap());
+        let node = ResolvedPlatformNode::new(reader.node_by_id(window_id).unwrap());
         self.atspi_bus
             .emit_object_event(&node, ObjectEvent::StateChanged(State::Active, false));
         self.atspi_bus

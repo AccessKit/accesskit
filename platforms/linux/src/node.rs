@@ -4,78 +4,68 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::atspi::{
-    interfaces::{Accessible, Application, Interface, Interfaces},
+    interfaces::{Interface, Interfaces},
     ObjectId, ObjectRef, OwnedObjectAddress, Role as AtspiRole, State, StateSet,
 };
 use accesskit::{AriaCurrent, CheckedState, InvalidState, Orientation, Role};
 use accesskit_consumer::{Node, Tree, WeakNode};
-use std::sync::Arc;
+use parking_lot::RwLock;
+use std::sync::Weak;
+use zbus::fdo;
 
-#[derive(Clone)]
-pub struct PlatformNode(WeakNode);
-
-impl PlatformNode {
-    pub(crate) fn new(node: &Node) -> Self {
-        Self(node.downgrade())
-    }
+pub(crate) struct ResolvedPlatformNode<'a> {
+    node: Node<'a>,
 }
 
-impl Accessible for PlatformNode {
-    fn name(&self) -> String {
-        self.0
-            .map(|node| node.name().map(|name| name.to_string()))
-            .flatten()
+impl ResolvedPlatformNode<'_> {
+    pub(crate) fn new(node: Node) -> ResolvedPlatformNode {
+        ResolvedPlatformNode { node }
+    }
+
+    pub(crate) fn downgrade(&self) -> PlatformNode {
+        PlatformNode::new(&self.node)
+    }
+
+    pub(crate) fn name(&self) -> String {
+        self.node.name().map(|name| name.to_string())
             .unwrap_or(String::new())
     }
 
-    fn description(&self) -> String {
+    pub(crate) fn description(&self) -> String {
         String::new()
     }
 
-    fn parent(&self) -> Option<ObjectRef> {
-        Some(
-            self.0
-                .map(|node| node.parent().map(|parent| parent.id().into()))
-                .flatten()
-                .unwrap_or(ObjectId::root().into()),
-        )
+    pub(crate) fn parent(&self) -> Option<ObjectRef> {
+        self.node.parent().map(|parent| parent.id().into())
     }
 
-    fn child_count(&self) -> usize {
-        self.0.map(|node| node.children().count()).unwrap_or(0)
+    pub(crate) fn child_count(&self) -> usize {
+        self.node.children().count()
     }
 
-    fn locale(&self) -> String {
+    pub(crate) fn locale(&self) -> String {
         String::new()
     }
 
-    fn id(&self) -> ObjectId<'static> {
-        self.0.map(|node| node.id().into()).unwrap()
+    pub(crate) fn id(&self) -> ObjectId<'static> {
+        self.node.id().into()
     }
 
-    fn child_at_index(&self, index: usize) -> Option<ObjectRef> {
-        self.0
-            .map(|node| node.children().nth(index).map(|child| child.id().into()))
-            .flatten()
+    pub(crate) fn child_at_index(&self, index: usize) -> Option<ObjectRef> {
+        self.node.children().nth(index).map(|child| child.id().into())
     }
 
-    fn children(&self) -> Vec<ObjectRef> {
-        self.0
-            .map(|node| node.children().map(|child| child.id().into()).collect())
-            .unwrap_or(Vec::new())
+    pub(crate) fn children(&self) -> Vec<ObjectRef> {
+        self.node.children().map(|child| child.id().into()).collect()
     }
 
-    fn index_in_parent(&self) -> Option<usize> {
-        self.0
-            .map(|node| node.parent_and_index().map(|(_, index)| index))
-            .flatten()
+    pub(crate) fn index_in_parent(&self) -> Option<usize> {
+        self.node.parent_and_index().map(|(_, index)| index)
     }
 
-    fn role(&self) -> AtspiRole {
-        self.0
-            .map(|node| {
-                match node.role() {
-                    Role::Alert => AtspiRole::Notification,
+    pub(crate) fn role(&self) -> AtspiRole {
+        match self.node.role() {
+            Role::Alert => AtspiRole::Notification,
                     Role::AlertDialog => AtspiRole::Alert,
                     Role::Comment | Role::Suggestion => AtspiRole::Section,
                     // TODO: See how to represent ARIA role="application"
@@ -165,7 +155,7 @@ impl Accessible for PlatformNode {
                     Role::Heading => AtspiRole::Heading,
                     Role::Iframe | Role::IframePresentational => AtspiRole::InternalFrame,
                     Role::Image => {
-                        if node.unignored_children().next().is_some() {
+                        if self.node.unignored_children().next().is_some() {
                             AtspiRole::ImageMap
                         } else {
                             AtspiRole::Image
@@ -198,7 +188,7 @@ impl Accessible for PlatformNode {
                     // - The list marker itself is ignored but the descendants are not
                     // - Or the list marker contains images
                     Role::ListMarker => {
-                        if node.unignored_children().next().is_none() {
+                        if self.node.unignored_children().next().is_none() {
                             AtspiRole::Static
                         } else {
                             AtspiRole::Panel
@@ -223,7 +213,7 @@ impl Accessible for PlatformNode {
                     Role::PdfRoot => AtspiRole::DocumentFrame,
                     Role::PluginObject => AtspiRole::Embedded,
                     Role::PopupButton => {
-                        if node
+                        if self.node
                             .data()
                             .html_tag
                             .as_ref()
@@ -278,7 +268,7 @@ impl Accessible for PlatformNode {
                     Role::Term => AtspiRole::DescriptionTerm,
                     Role::TitleBar => AtspiRole::TitleBar,
                     Role::TextField | Role::SearchBox => {
-                        if node.data().protected {
+                        if self.node.data().protected {
                             AtspiRole::PasswordText
                         } else {
                             AtspiRole::Entry
@@ -306,234 +296,194 @@ impl Accessible for PlatformNode {
                     Role::Presentation | Role::Unknown => AtspiRole::Unknown,
                     Role::ImeCandidate | Role::Keyboard => AtspiRole::RedundantObject,
                 }
-            })
-            .unwrap_or(AtspiRole::Invalid)
     }
 
-    fn state(&self) -> StateSet {
+    pub(crate) fn state(&self) -> StateSet {
         let platform_role = self.role();
-        self.0
-            .map(|node| {
-                let data = node.data();
-                let mut state = StateSet::empty();
-                if let Ok(current_active) = crate::adapter::CURRENT_ACTIVE_WINDOW.lock() {
-                    if node.role() == Role::Window && *current_active == Some(data.id) {
-                        state.insert(State::Active);
-                    }
-                }
-                if let Some(expanded) = data.expanded {
-                    state.insert(State::Expandable);
-                    if expanded {
-                        state.insert(State::Expanded);
-                    }
-                }
-                if data.default {
-                    state.insert(State::IsDefault);
-                }
-                if data.editable && !data.read_only {
-                    state.insert(State::Editable);
-                }
-                // TODO: Focus and selection.
-                if data.focusable {
-                    state.insert(State::Focusable);
-                }
-                match data.orientation {
-                    Some(Orientation::Horizontal) => state.insert(State::Horizontal),
-                    Some(Orientation::Vertical) => state.insert(State::Vertical),
-                    _ => {}
-                }
-                if !node.is_invisible_or_ignored() {
-                    state.insert(State::Visible);
-                    // if (!delegate_->IsOffscreen() && !is_minimized)
-                    state.insert(State::Showing);
-                }
-                if data.multiselectable {
-                    state.insert(State::Multiselectable);
-                }
-                if data.required {
-                    state.insert(State::Required);
-                }
-                if data.visited {
-                    state.insert(State::Visited);
-                }
-                if let Some(InvalidState::True | InvalidState::Other(_)) = data.invalid_state {
-                    state.insert(State::InvalidEntry);
-                }
-                match data.aria_current {
-                    None | Some(AriaCurrent::False) => {}
-                    _ => state.insert(State::Active),
-                }
-                if platform_role != AtspiRole::ToggleButton && data.checked_state.is_some() {
-                    state.insert(State::Checkable);
-                }
-                if data.has_popup.is_some() {
-                    state.insert(State::HasPopup);
-                }
-                if data.busy {
-                    state.insert(State::Busy);
-                }
-                if data.modal {
-                    state.insert(State::Modal);
-                }
-                if let Some(selected) = data.selected {
-                    if !node.is_disabled() {
-                        state.insert(State::Selectable);
-                    }
-                    if selected {
-                        state.insert(State::Selected);
-                    }
-                }
-                if node.is_text_field() {
-                    state.insert(State::SelectableText);
-                    match node.data().multiline {
-                        true => state.insert(State::MultiLine),
-                        false => state.insert(State::SingleLine)
-                    }
-                }
+        let data = self.node.data();
+        let mut state = StateSet::empty();
+        if let Ok(current_active) = crate::adapter::CURRENT_ACTIVE_WINDOW.lock() {
+            if self.node.role() == Role::Window && *current_active == Some(data.id) {
+                state.insert(State::Active);
+            }
+        }
+        if let Some(expanded) = data.expanded {
+            state.insert(State::Expandable);
+            if expanded {
+                state.insert(State::Expanded);
+            }
+        }
+        if data.default {
+            state.insert(State::IsDefault);
+        }
+        if data.editable && !data.read_only {
+            state.insert(State::Editable);
+        }
+        // TODO: Focus and selection.
+        if data.focusable {
+            state.insert(State::Focusable);
+        }
+        match data.orientation {
+            Some(Orientation::Horizontal) => state.insert(State::Horizontal),
+            Some(Orientation::Vertical) => state.insert(State::Vertical),
+            _ => {}
+        }
+        if !self.node.is_invisible_or_ignored() {
+            state.insert(State::Visible);
+            // if (!delegate_->IsOffscreen() && !is_minimized)
+            state.insert(State::Showing);
+        }
+        if data.multiselectable {
+            state.insert(State::Multiselectable);
+        }
+        if data.required {
+            state.insert(State::Required);
+        }
+        if data.visited {
+            state.insert(State::Visited);
+        }
+        if let Some(InvalidState::True | InvalidState::Other(_)) = data.invalid_state {
+            state.insert(State::InvalidEntry);
+        }
+        match data.aria_current {
+            None | Some(AriaCurrent::False) => {}
+            _ => state.insert(State::Active),
+        }
+        if platform_role != AtspiRole::ToggleButton && data.checked_state.is_some() {
+            state.insert(State::Checkable);
+        }
+        if data.has_popup.is_some() {
+            state.insert(State::HasPopup);
+        }
+        if data.busy {
+            state.insert(State::Busy);
+        }
+        if data.modal {
+            state.insert(State::Modal);
+        }
+        if let Some(selected) = data.selected {
+            if !self.node.is_disabled() {
+                state.insert(State::Selectable);
+            }
+            if selected {
+                state.insert(State::Selected);
+            }
+        }
+        if self.node.is_text_field() {
+            state.insert(State::SelectableText);
+            match self.node.data().multiline {
+                true => state.insert(State::MultiLine),
+                false => state.insert(State::SingleLine)
+            }
+        }
 
-                // Special case for indeterminate progressbar.
-                if node.role() == Role::ProgressIndicator && data.numeric_value.is_none() {
-                    state.insert(State::Indeterminate);
-                }
+        // Special case for indeterminate progressbar.
+        if self.node.role() == Role::ProgressIndicator && data.numeric_value.is_none() {
+            state.insert(State::Indeterminate);
+        }
 
-                let has_suggestion = data
-                    .auto_complete
-                    .as_ref()
-                    .map_or(false, |a| !a.as_ref().is_empty());
-                if has_suggestion || data.autofill_available {
-                    state.insert(State::SupportsAutocompletion);
-                }
+        let has_suggestion = data
+            .auto_complete
+            .as_ref()
+            .map_or(false, |a| !a.as_ref().is_empty());
+        if has_suggestion || data.autofill_available {
+            state.insert(State::SupportsAutocompletion);
+        }
 
-                // Checked state
-                match data.checked_state {
-                    Some(CheckedState::Mixed) => state.insert(State::Indeterminate),
-                    Some(CheckedState::True) => {
-                        if platform_role == AtspiRole::ToggleButton {
-                            state.insert(State::Pressed);
-                        } else {
-                            state.insert(State::Checked);
-                        }
-                    }
-                    _ => {}
-                }
-
-                if node.is_read_only_supported() && node.is_read_only_or_disabled() {
-                    state.insert(State::ReadOnly);
+        // Checked state
+        match data.checked_state {
+            Some(CheckedState::Mixed) => state.insert(State::Indeterminate),
+            Some(CheckedState::True) => {
+                if platform_role == AtspiRole::ToggleButton {
+                    state.insert(State::Pressed);
                 } else {
-                    state.insert(State::Enabled);
-                    state.insert(State::Sensitive);
+                    state.insert(State::Checked);
                 }
+            }
+            _ => {}
+        }
 
-                if node.is_focused() {
-                    state.insert(State::Focused);
-                }
+        if self.node.is_read_only_supported() && self.node.is_read_only_or_disabled() {
+            state.insert(State::ReadOnly);
+        } else {
+            state.insert(State::Enabled);
+            state.insert(State::Sensitive);
+        }
 
-                // It is insufficient to compare with g_current_activedescendant due to both
-                // timing and event ordering for objects which implement AtkSelection and also
-                // have an active descendant. For instance, if we check the state set of a
-                // selectable child, it will only have ATK_STATE_FOCUSED if we've processed
-                // the activedescendant change.
-                // if (GetActiveDescendantOfCurrentFocused() == atk_object)
-                //     state.insert(State::Focused);
-                state
-            })
-            .unwrap_or(State::Defunct.into())
+        if self.node.is_focused() {
+            state.insert(State::Focused);
+        }
+
+        // It is insufficient to compare with g_current_activedescendant due to both
+        // timing and event ordering for objects which implement AtkSelection and also
+        // have an active descendant. For instance, if we check the state set of a
+        // selectable child, it will only have ATK_STATE_FOCUSED if we've processed
+        // the activedescendant change.
+        // if (GetActiveDescendantOfCurrentFocused() == atk_object)
+        //     state.insert(State::Focused);
+        state
     }
 
-    fn interfaces(&self) -> Interfaces {
-        self.0
-            .map(|node| {
-                let mut interfaces: Interfaces = Interface::Accessible | Interface::ObjectEvents;
-                if node.role() == Role::Window {
-                    interfaces.insert(Interface::WindowEvents);
-                }
-                if node.data().focusable {
-                    interfaces.insert(Interface::FocusEvents);
-                }
-                interfaces
-            })
-            .unwrap()
+    pub(crate) fn interfaces(&self) -> Interfaces {
+        let mut interfaces: Interfaces = Interface::Accessible | Interface::ObjectEvents;
+        if self.node.role() == Role::Window {
+            interfaces.insert(Interface::WindowEvents);
+        }
+        if self.node.data().focusable {
+            interfaces.insert(Interface::FocusEvents);
+        }
+        interfaces
     }
 }
 
 #[derive(Clone)]
-pub struct RootPlatformNode {
-    app_name: String,
-    app_id: Option<i32>,
-    desktop_address: Option<OwnedObjectAddress>,
-    tree: Arc<Tree>,
-    toolkit_name: String,
-    toolkit_version: String,
+pub(crate) struct PlatformNode(WeakNode);
+
+impl PlatformNode {
+    pub(crate) fn new(node: &Node) -> Self {
+        Self(node.downgrade())
+    }
+
+    pub(crate) fn resolve<F, T>(&self, f: F) -> fdo::Result<T>
+    where
+        for<'a> F: FnOnce(ResolvedPlatformNode<'a>) -> T,
+    {
+        self.0
+            .map(|node| f(ResolvedPlatformNode::new(node)))
+            .ok_or(fdo::Error::UnknownObject(
+                    "".into(),
+            ))
+    }
 }
 
-impl RootPlatformNode {
-    pub fn new(
-        app_name: String,
-        toolkit_name: String,
-        toolkit_version: String,
-        tree: Arc<Tree>,
-    ) -> Self {
+pub(crate) struct AppState {
+    pub name: String,
+    pub toolkit_name: String,
+    pub toolkit_version: String,
+    pub id: Option<i32>,
+    pub desktop_address: Option<OwnedObjectAddress>,
+}
+
+impl AppState {
+    pub(crate) fn new(name: String, toolkit_name: String, toolkit_version: String) -> Self {
         Self {
-            app_name,
-            app_id: None,
-            desktop_address: None,
-            tree,
+            name,
             toolkit_name,
             toolkit_version,
+            id: None,
+            desktop_address: None,
         }
     }
 }
 
-impl Application for RootPlatformNode {
-    fn name(&self) -> String {
-        self.app_name.clone()
+#[derive(Clone)]
+pub(crate) struct PlatformRootNode {
+    pub state: Weak<RwLock<AppState>>,
+    pub tree: Weak<Tree>
+}
+
+impl PlatformRootNode {
+    pub(crate) fn new(state: Weak<RwLock<AppState>>, tree: Weak<Tree>) -> Self {
+        Self { state, tree }
     }
-
-    fn child_count(&self) -> usize {
-        1
-    }
-
-    fn child_at_index(&self, index: usize) -> Option<ObjectRef> {
-        if index == 0 {
-            Some(self.tree.read().root().id().into())
-        } else {
-            None
-        }
-    }
-
-    fn children(&self) -> Vec<ObjectRef> {
-        vec![self.tree.read().root().id().into()]
-    }
-
-    fn toolkit_name(&self) -> String {
-        self.toolkit_name.clone()
-    }
-
-    fn toolkit_version(&self) -> String {
-        self.toolkit_version.clone()
-    }
-
-    fn id(&self) -> Option<i32> {
-        self.app_id
-    }
-
-    fn set_id(&mut self, id: i32) {
-        self.app_id = Some(id);
-    }
-
-    fn locale(&self, lctype: u32) -> String {
-        String::new()
-    }
-
-    fn desktop(&self) -> Option<OwnedObjectAddress> {
-        self.desktop_address.clone()
-    }
-
-    fn set_desktop(&mut self, address: OwnedObjectAddress) {
-        self.desktop_address = Some(address);
-    }
-
-    fn register_event_listener(&mut self, _: String) {}
-
-    fn deregister_event_listener(&mut self, _: String) {}
 }

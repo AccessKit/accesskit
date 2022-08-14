@@ -7,13 +7,13 @@ use crate::atspi::{
     interfaces::*,
     object_address::*,
     proxies::{BusProxy, SocketProxy},
+    ObjectId
 };
+use crate::{PlatformNode, PlatformRootNode, ResolvedPlatformNode};
 use async_io::block_on;
-use parking_lot::RwLock;
 use std::{
     convert::TryInto,
     env::var,
-    sync::Arc,
 };
 use x11rb::{
     connection::Connection as _,
@@ -36,24 +36,21 @@ impl<'a> Bus<'a> {
         Some(Bus { conn, socket_proxy })
     }
 
-    pub fn register_accessible_interface<T>(&mut self, object: T) -> Result<bool>
-    where
-        T: Accessible,
-    {
-        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, object.id().as_str());
+    pub fn register_node(&mut self, node: ResolvedPlatformNode) -> Result<bool> {
+        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, node.id().as_str());
         if self.conn.object_server().at(
             path.clone(),
-            AccessibleInterface::new(self.conn.unique_name().unwrap().to_owned(), object.clone()),
+            AccessibleInterface::new(self.conn.unique_name().unwrap().to_owned(), node.downgrade()),
         )? {
-            let interfaces = object.interfaces();
+            let interfaces = node.interfaces();
             if interfaces.contains(Interface::FocusEvents) {
-                self.register_focus_events_interface(&path)?;
+                self.register_focus_events(&path)?;
             }
             if interfaces.contains(Interface::ObjectEvents) {
-                self.register_object_events_interface(&path)?;
+                self.register_object_events(&path)?;
             }
             if interfaces.contains(Interface::WindowEvents) {
-                self.register_window_events_interface(&path, object)
+                self.register_window_events(&path, node.downgrade())
             } else {
                 Ok(true)
             }
@@ -62,59 +59,50 @@ impl<'a> Bus<'a> {
         }
     }
 
-    pub fn register_application_interface<T>(&mut self, root: T) -> Result<bool>
-    where
-        T: Application,
-    {
+    pub fn register_root_node(&mut self, node: PlatformRootNode) -> Result<bool> {
         println!("Registering on {:?}", self.conn.unique_name().unwrap());
         let path = format!(
             "{}{}",
             ACCESSIBLE_PATH_PREFIX,
-            Accessible::id(&root).as_str()
+            ObjectId::root().as_str()
         );
-        let root = Arc::new(RwLock::new(root));
         let registered = self.conn.object_server().at(
+            path.clone(),
+            ApplicationInterface(node.clone()),
+        )? && self.conn.object_server().at(
             path,
-            ApplicationInterface(ApplicationInterfaceWrapper(root.clone())),
+            AccessibleInterface::new(self.conn.unique_name().unwrap().to_owned(), node.clone()),
         )?;
-        if registered
-            && self.register_accessible_interface(ApplicationInterfaceWrapper(root.clone()))?
-        {
+        if registered {
             let desktop_address = self.socket_proxy.embed(ObjectAddress::root(
                 self.conn.unique_name().unwrap().as_ref(),
             ))?;
-            root.write().set_desktop(desktop_address);
+            node.state.upgrade().map(|state| state.write().desktop_address = Some(desktop_address));
             Ok(true)
         } else {
             Ok(false)
         }
     }
 
-    fn register_focus_events_interface(&mut self, path: &str) -> Result<bool> {
+    fn register_focus_events(&mut self, path: &str) -> Result<bool> {
         self.conn
             .object_server()
             .at(path, FocusEventsInterface {})
     }
 
-    fn register_object_events_interface(&mut self, path: &str) -> Result<bool> {
+    fn register_object_events(&mut self, path: &str) -> Result<bool> {
         self.conn
             .object_server()
             .at(path, ObjectEventsInterface {})
     }
 
-    fn register_window_events_interface<T>(&mut self, path: &str, object: T) -> Result<bool>
-    where
-        T: Accessible,
-    {
+    fn register_window_events(&mut self, path: &str, node: PlatformNode) -> Result<bool> {
         self.conn
             .object_server()
-            .at(path, WindowEventsInterface(object))
+            .at(path, WindowEventsInterface(node))
     }
 
-    pub fn emit_focus_event<T>(&self, target: &T) -> Result<()>
-    where
-        T: Accessible,
-    {
+    pub fn emit_focus_event(&self, target: &ResolvedPlatformNode) -> Result<()> {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
         let iface_ref = self.conn.object_server()
             .interface::<_, FocusEventsInterface>(path)
@@ -123,10 +111,7 @@ impl<'a> Bus<'a> {
         block_on(iface.focused(iface_ref.signal_context()))
     }
 
-    pub fn emit_object_event<T>(&self, target: &T, event: ObjectEvent) -> Result<()>
-    where
-        T: Accessible,
-    {
+    pub fn emit_object_event(&self, target: &ResolvedPlatformNode, event: ObjectEvent) -> Result<()> {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
         let iface_ref = self.conn.object_server()
             .interface::<_, ObjectEventsInterface>(path)
@@ -135,10 +120,7 @@ impl<'a> Bus<'a> {
         block_on(iface.emit(event, iface_ref.signal_context()))
     }
 
-    pub fn emit_object_events<T>(&self, target: &T, events: Vec<ObjectEvent>) -> Result<()>
-    where
-        T: Accessible,
-    {
+    pub fn emit_object_events(&self, target: &ResolvedPlatformNode, events: Vec<ObjectEvent>) -> Result<()> {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
         let iface_ref = self.conn.object_server()
             .interface::<_, ObjectEventsInterface>(path)
@@ -151,13 +133,10 @@ impl<'a> Bus<'a> {
         })
     }
 
-    pub fn emit_window_event<T>(&self, target: &T, event: WindowEvent) -> Result<()>
-    where
-        T: Accessible,
-    {
+    pub fn emit_window_event(&self, target: &ResolvedPlatformNode, event: WindowEvent) -> Result<()> {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
         let iface_ref = self.conn.object_server()
-            .interface::<_, WindowEventsInterface<T>>(path)
+            .interface::<_, WindowEventsInterface>(path)
             .unwrap();
         let iface = iface_ref.get();
         block_on(iface.emit(event, iface_ref.signal_context()))
