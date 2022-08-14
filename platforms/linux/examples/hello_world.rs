@@ -3,9 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{
-    ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate
-};
+use accesskit::{ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
 use accesskit_linux::Adapter;
 use std::num::NonZeroU128;
 use winit::{

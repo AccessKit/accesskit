@@ -53,9 +53,16 @@ impl<'a> Adapter<'a> {
                 atspi_bus.register_node(node);
             }
         }
-        let app_state = Arc::new(RwLock::new(AppState::new(app_name, toolkit_name, toolkit_version)));
-        atspi_bus.register_root_node(PlatformRootNode::new(Arc::downgrade(&app_state), Arc::downgrade(&tree)));
-        Some(Self { 
+        let app_state = Arc::new(RwLock::new(AppState::new(
+            app_name,
+            toolkit_name,
+            toolkit_version,
+        )));
+        atspi_bus.register_root_node(PlatformRootNode::new(
+            Arc::downgrade(&app_state),
+            Arc::downgrade(&tree),
+        ));
+        Some(Self {
             atspi_bus,
             app_state,
             tree,

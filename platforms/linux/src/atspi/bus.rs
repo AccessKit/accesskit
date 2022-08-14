@@ -7,14 +7,11 @@ use crate::atspi::{
     interfaces::*,
     object_address::*,
     proxies::{BusProxy, SocketProxy},
-    ObjectId
+    ObjectId,
 };
 use crate::{PlatformNode, PlatformRootNode, ResolvedPlatformNode};
 use async_io::block_on;
-use std::{
-    convert::TryInto,
-    env::var,
-};
+use std::{convert::TryInto, env::var};
 use x11rb::{
     connection::Connection as _,
     protocol::xproto::{AtomEnum, ConnectionExt},
@@ -40,7 +37,10 @@ impl<'a> Bus<'a> {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, node.id().as_str());
         if self.conn.object_server().at(
             path.clone(),
-            AccessibleInterface::new(self.conn.unique_name().unwrap().to_owned(), node.downgrade()),
+            AccessibleInterface::new(
+                self.conn.unique_name().unwrap().to_owned(),
+                node.downgrade(),
+            ),
         )? {
             let interfaces = node.interfaces();
             if interfaces.contains(Interface::FocusEvents) {
@@ -61,23 +61,22 @@ impl<'a> Bus<'a> {
 
     pub fn register_root_node(&mut self, node: PlatformRootNode) -> Result<bool> {
         println!("Registering on {:?}", self.conn.unique_name().unwrap());
-        let path = format!(
-            "{}{}",
-            ACCESSIBLE_PATH_PREFIX,
-            ObjectId::root().as_str()
-        );
-        let registered = self.conn.object_server().at(
-            path.clone(),
-            ApplicationInterface(node.clone()),
-        )? && self.conn.object_server().at(
-            path,
-            AccessibleInterface::new(self.conn.unique_name().unwrap().to_owned(), node.clone()),
-        )?;
+        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, ObjectId::root().as_str());
+        let registered = self
+            .conn
+            .object_server()
+            .at(path.clone(), ApplicationInterface(node.clone()))?
+            && self.conn.object_server().at(
+                path,
+                AccessibleInterface::new(self.conn.unique_name().unwrap().to_owned(), node.clone()),
+            )?;
         if registered {
             let desktop_address = self.socket_proxy.embed(ObjectAddress::root(
                 self.conn.unique_name().unwrap().as_ref(),
             ))?;
-            node.state.upgrade().map(|state| state.write().desktop_address = Some(desktop_address));
+            node.state
+                .upgrade()
+                .map(|state| state.write().desktop_address = Some(desktop_address));
             Ok(true)
         } else {
             Ok(false)
@@ -85,15 +84,11 @@ impl<'a> Bus<'a> {
     }
 
     fn register_focus_events(&mut self, path: &str) -> Result<bool> {
-        self.conn
-            .object_server()
-            .at(path, FocusEventsInterface {})
+        self.conn.object_server().at(path, FocusEventsInterface {})
     }
 
     fn register_object_events(&mut self, path: &str) -> Result<bool> {
-        self.conn
-            .object_server()
-            .at(path, ObjectEventsInterface {})
+        self.conn.object_server().at(path, ObjectEventsInterface {})
     }
 
     fn register_window_events(&mut self, path: &str, node: PlatformNode) -> Result<bool> {
@@ -104,38 +99,61 @@ impl<'a> Bus<'a> {
 
     pub fn emit_focus_event(&self, target: &ResolvedPlatformNode) -> Result<()> {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
-        let iface_ref = self.conn.object_server()
+        let iface_ref = self
+            .conn
+            .object_server()
             .interface::<_, FocusEventsInterface>(path)
             .unwrap();
         let iface = iface_ref.get();
         block_on(iface.focused(iface_ref.signal_context()))
     }
 
-    pub fn emit_object_event(&self, target: &ResolvedPlatformNode, event: ObjectEvent) -> Result<()> {
+    pub fn emit_object_event(
+        &self,
+        target: &ResolvedPlatformNode,
+        event: ObjectEvent,
+    ) -> Result<()> {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
-        let iface_ref = self.conn.object_server()
+        let iface_ref = self
+            .conn
+            .object_server()
             .interface::<_, ObjectEventsInterface>(path)
             .unwrap();
         let iface = iface_ref.get();
         block_on(iface.emit(event, iface_ref.signal_context()))
     }
 
-    pub fn emit_object_events(&self, target: &ResolvedPlatformNode, events: Vec<ObjectEvent>) -> Result<()> {
+    pub fn emit_object_events(
+        &self,
+        target: &ResolvedPlatformNode,
+        events: Vec<ObjectEvent>,
+    ) -> Result<()> {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
-        let iface_ref = self.conn.object_server()
+        let iface_ref = self
+            .conn
+            .object_server()
             .interface::<_, ObjectEventsInterface>(path)
             .unwrap();
         block_on(async {
             for event in events {
-                iface_ref.get().emit(event, iface_ref.signal_context()).await?;
+                iface_ref
+                    .get()
+                    .emit(event, iface_ref.signal_context())
+                    .await?;
             }
             Ok(())
         })
     }
 
-    pub fn emit_window_event(&self, target: &ResolvedPlatformNode, event: WindowEvent) -> Result<()> {
+    pub fn emit_window_event(
+        &self,
+        target: &ResolvedPlatformNode,
+        event: WindowEvent,
+    ) -> Result<()> {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
-        let iface_ref = self.conn.object_server()
+        let iface_ref = self
+            .conn
+            .object_server()
             .interface::<_, WindowEventsInterface>(path)
             .unwrap();
         let iface = iface_ref.get();
@@ -203,8 +221,5 @@ fn a11y_bus() -> Option<Connection> {
         address = a11y_bus_address_from_dbus();
     }
     let address: Address = address?.as_str().try_into().ok()?;
-    ConnectionBuilder::address(address)
-        .ok()?
-        .build()
-        .ok()
+    ConnectionBuilder::address(address).ok()?.build().ok()
 }

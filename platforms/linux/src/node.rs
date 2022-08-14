@@ -27,7 +27,9 @@ impl ResolvedPlatformNode<'_> {
     }
 
     pub(crate) fn name(&self) -> String {
-        self.node.name().map(|name| name.to_string())
+        self.node
+            .name()
+            .map(|name| name.to_string())
             .unwrap_or(String::new())
     }
 
@@ -52,11 +54,17 @@ impl ResolvedPlatformNode<'_> {
     }
 
     pub(crate) fn child_at_index(&self, index: usize) -> Option<ObjectRef> {
-        self.node.children().nth(index).map(|child| child.id().into())
+        self.node
+            .children()
+            .nth(index)
+            .map(|child| child.id().into())
     }
 
     pub(crate) fn children(&self) -> Vec<ObjectRef> {
-        self.node.children().map(|child| child.id().into()).collect()
+        self.node
+            .children()
+            .map(|child| child.id().into())
+            .collect()
     }
 
     pub(crate) fn index_in_parent(&self) -> Option<usize> {
@@ -66,236 +74,236 @@ impl ResolvedPlatformNode<'_> {
     pub(crate) fn role(&self) -> AtspiRole {
         match self.node.role() {
             Role::Alert => AtspiRole::Notification,
-                    Role::AlertDialog => AtspiRole::Alert,
-                    Role::Comment | Role::Suggestion => AtspiRole::Section,
-                    // TODO: See how to represent ARIA role="application"
-                    Role::Application => AtspiRole::Embedded,
-                    Role::Article => AtspiRole::Article,
-                    Role::Audio => AtspiRole::Audio,
-                    Role::Banner | Role::Header => AtspiRole::Landmark,
-                    Role::Blockquote => AtspiRole::BlockQuote,
-                    Role::Caret => AtspiRole::Unknown,
-                    Role::Button => AtspiRole::PushButton,
-                    Role::Canvas => AtspiRole::Canvas,
-                    Role::Caption => AtspiRole::Caption,
-                    Role::Cell => AtspiRole::TableCell,
-                    Role::CheckBox => AtspiRole::CheckBox,
-                    Role::Switch => AtspiRole::ToggleButton,
-                    Role::ColorWell => AtspiRole::PushButton,
-                    Role::Column => AtspiRole::Unknown,
-                    Role::ColumnHeader => AtspiRole::ColumnHeader,
-                    Role::ComboBoxGrouping | Role::ComboBoxMenuButton => AtspiRole::ComboBox,
-                    Role::Complementary => AtspiRole::Landmark,
-                    Role::ContentDeletion => AtspiRole::ContentDeletion,
-                    Role::ContentInsertion => AtspiRole::ContentInsertion,
-                    Role::ContentInfo | Role::Footer => AtspiRole::Landmark,
-                    Role::Date | Role::DateTime => AtspiRole::DateEditor,
-                    Role::Definition | Role::DescriptionListDetail => AtspiRole::DescriptionValue,
-                    Role::DescriptionList => AtspiRole::DescriptionList,
-                    Role::DescriptionListTerm => AtspiRole::DescriptionTerm,
-                    Role::Details => AtspiRole::Panel,
-                    Role::Dialog => AtspiRole::Dialog,
-                    Role::Directory => AtspiRole::List,
-                    Role::DisclosureTriangle => AtspiRole::ToggleButton,
-                    Role::DocCover => AtspiRole::Image,
-                    Role::DocBackLink
-                    | Role::DocBiblioRef
-                    | Role::DocGlossRef
-                    | Role::DocNoteRef => AtspiRole::Link,
-                    Role::DocBiblioEntry | Role::DocEndnote => AtspiRole::ListItem,
-                    Role::DocNotice | Role::DocTip => AtspiRole::Comment,
-                    Role::DocFootnote => AtspiRole::Footnote,
-                    Role::DocPageBreak => AtspiRole::Separator,
-                    Role::DocPageFooter => AtspiRole::Footer,
-                    Role::DocPageHeader => AtspiRole::Header,
-                    Role::DocAcknowledgements
-                    | Role::DocAfterword
-                    | Role::DocAppendix
-                    | Role::DocBibliography
-                    | Role::DocChapter
-                    | Role::DocConclusion
-                    | Role::DocCredits
-                    | Role::DocEndnotes
-                    | Role::DocEpilogue
-                    | Role::DocErrata
-                    | Role::DocForeword
-                    | Role::DocGlossary
-                    | Role::DocIndex
-                    | Role::DocIntroduction
-                    | Role::DocPageList
-                    | Role::DocPart
-                    | Role::DocPreface
-                    | Role::DocPrologue
-                    | Role::DocToc => AtspiRole::Landmark,
-                    Role::DocAbstract
-                    | Role::DocColophon
-                    | Role::DocCredit
-                    | Role::DocDedication
-                    | Role::DocEpigraph
-                    | Role::DocExample
-                    | Role::DocPullquote
-                    | Role::DocQna => AtspiRole::Section,
-                    Role::DocSubtitle => AtspiRole::Heading,
-                    Role::Document => AtspiRole::DocumentFrame,
-                    Role::EmbeddedObject => AtspiRole::Embedded,
-                    // TODO: Forms which lack an accessible name are no longer
-                    // exposed as forms. http://crbug.com/874384. Forms which have accessible
-                    // names should be exposed as `AtspiRole::Landmark` according to Core AAM.
-                    Role::Form => AtspiRole::Form,
-                    Role::Figure | Role::Feed => AtspiRole::Panel,
-                    Role::GenericContainer
-                    | Role::FooterAsNonLandmark
-                    | Role::HeaderAsNonLandmark
-                    | Role::Ruby => AtspiRole::Section,
-                    Role::GraphicsDocument => AtspiRole::DocumentFrame,
-                    Role::GraphicsObject => AtspiRole::Panel,
-                    Role::GraphicsSymbol => AtspiRole::Image,
-                    Role::Grid => AtspiRole::Table,
-                    Role::Group => AtspiRole::Panel,
-                    Role::Heading => AtspiRole::Heading,
-                    Role::Iframe | Role::IframePresentational => AtspiRole::InternalFrame,
-                    Role::Image => {
-                        if self.node.unignored_children().next().is_some() {
-                            AtspiRole::ImageMap
-                        } else {
-                            AtspiRole::Image
-                        }
-                    }
-                    Role::InlineTextBox => AtspiRole::Static,
-                    Role::InputTime => AtspiRole::DateEditor,
-                    Role::LabelText | Role::Legend => AtspiRole::Label,
-                    // Layout table objects are treated the same as `Role::GenericContainer`.
-                    Role::LayoutTable => AtspiRole::Section,
-                    Role::LayoutTableCell => AtspiRole::Section,
-                    Role::LayoutTableRow => AtspiRole::Section,
-                    // TODO: Having a separate accessible object for line breaks
-                    // is inconsistent with other implementations. http://crbug.com/873144#c1.
-                    Role::LineBreak => AtspiRole::Static,
-                    Role::Link => AtspiRole::Link,
-                    Role::List => AtspiRole::List,
-                    Role::ListBox => AtspiRole::ListBox,
-                    // TODO: Use `AtspiRole::MenuItem' inside a combo box, see how
-                    // ax_platform_node_win.cc code does this.
-                    Role::ListBoxOption => AtspiRole::ListItem,
-                    Role::ListGrid => AtspiRole::Table,
-                    Role::ListItem => AtspiRole::ListItem,
-                    // Regular list markers only expose their alternative text, but do not
-                    // expose their descendants, and the descendants should be ignored. This
-                    // is because the alternative text depends on the counter style and can
-                    // be different from the actual (visual) marker text, and hence,
-                    // inconsistent with the descendants. We treat a list marker as non-text
-                    // only if it still has non-ignored descendants, which happens only when =>
-                    // - The list marker itself is ignored but the descendants are not
-                    // - Or the list marker contains images
-                    Role::ListMarker => {
-                        if self.node.unignored_children().next().is_none() {
-                            AtspiRole::Static
-                        } else {
-                            AtspiRole::Panel
-                        }
-                    }
-                    Role::Log => AtspiRole::Log,
-                    Role::Main => AtspiRole::Landmark,
-                    Role::Mark => AtspiRole::Static,
-                    Role::Math => AtspiRole::Math,
-                    Role::Marquee => AtspiRole::Marquee,
-                    Role::Menu | Role::MenuListPopup => AtspiRole::Menu,
-                    Role::MenuBar => AtspiRole::MenuBar,
-                    Role::MenuItem | Role::MenuListOption => AtspiRole::MenuItem,
-                    Role::MenuItemCheckBox => AtspiRole::CheckMenuItem,
-                    Role::MenuItemRadio => AtspiRole::RadioMenuItem,
-                    Role::Meter => AtspiRole::LevelBar,
-                    Role::Navigation => AtspiRole::Landmark,
-                    Role::Note => AtspiRole::Comment,
-                    Role::Pane | Role::ScrollView => AtspiRole::Panel,
-                    Role::Paragraph => AtspiRole::Paragraph,
-                    Role::PdfActionableHighlight => AtspiRole::PushButton,
-                    Role::PdfRoot => AtspiRole::DocumentFrame,
-                    Role::PluginObject => AtspiRole::Embedded,
-                    Role::PopupButton => {
-                        if self.node
-                            .data()
-                            .html_tag
-                            .as_ref()
-                            .map_or(false, |tag| tag.as_ref() == "select")
-                        {
-                            AtspiRole::ComboBox
-                        } else {
-                            AtspiRole::PushButton
-                        }
-                    }
-                    Role::Portal => AtspiRole::PushButton,
-                    Role::Pre => AtspiRole::Section,
-                    Role::ProgressIndicator => AtspiRole::ProgressBar,
-                    Role::RadioButton => AtspiRole::RadioButton,
-                    Role::RadioGroup => AtspiRole::Panel,
-                    Role::Region => AtspiRole::Landmark,
-                    Role::RootWebArea => AtspiRole::DocumentWeb,
-                    Role::Row => AtspiRole::TableRow,
-                    Role::RowGroup => AtspiRole::Panel,
-                    Role::RowHeader => AtspiRole::RowHeader,
-                    // TODO: Generally exposed as description on <ruby> (`Role::Ruby`) element, not
-                    // as its own object in the tree.
-                    // However, it's possible to make a `Role::RubyAnnotation` element show up in the
-                    // AX tree, for example by adding tabindex="0" to the source <rp> or <rt>
-                    // element or making the source element the target of an aria-owns.
-                    // Therefore, browser side needs to gracefully handle it if it actually
-                    // shows up in the tree.
-                    Role::RubyAnnotation => AtspiRole::Static,
-                    Role::Section => AtspiRole::Section,
-                    Role::ScrollBar => AtspiRole::ScrollBar,
-                    Role::Search => AtspiRole::Landmark,
-                    Role::Slider => AtspiRole::Slider,
-                    Role::SpinButton => AtspiRole::SpinButton,
-                    Role::Splitter => AtspiRole::Separator,
-                    Role::StaticText => AtspiRole::Static,
-                    Role::Status => AtspiRole::StatusBar,
-                    // ax::mojom::Role::kSubscript =>
-                    // AtspiRole::Subscript,
-                    // ax::mojom::Role::kSuperscript =>
-                    // AtspiRole::Superscript,
-                    Role::SvgRoot => AtspiRole::DocumentFrame,
-                    Role::Tab => AtspiRole::PageTab,
-                    Role::Table => AtspiRole::Table,
-                    // TODO: This mapping is correct, but it doesn't seem to be
-                    // used. We don't necessarily want to always expose these containers, but
-                    // we must do so if they are focusable. http://crbug.com/874043
-                    Role::TableHeaderContainer => AtspiRole::Panel,
-                    Role::TabList => AtspiRole::PageTabList,
-                    Role::TabPanel => AtspiRole::ScrollPane,
-                    // TODO: This mapping should also be applied to the dfn
-                    // element. http://crbug.com/874411
-                    Role::Term => AtspiRole::DescriptionTerm,
-                    Role::TitleBar => AtspiRole::TitleBar,
-                    Role::TextField | Role::SearchBox => {
-                        if self.node.data().protected {
-                            AtspiRole::PasswordText
-                        } else {
-                            AtspiRole::Entry
-                        }
-                    }
-                    Role::TextFieldWithComboBox => AtspiRole::ComboBox,
-                    Role::Abbr | Role::Code | Role::Emphasis | Role::Strong | Role::Time => {
-                        AtspiRole::Static
-                    }
-                    Role::Timer => AtspiRole::Timer,
-                    Role::ToggleButton => AtspiRole::ToggleButton,
-                    Role::Toolbar => AtspiRole::ToolBar,
-                    Role::Tooltip => AtspiRole::ToolTip,
-                    Role::Tree => AtspiRole::Tree,
-                    Role::TreeItem => AtspiRole::TreeItem,
-                    Role::TreeGrid => AtspiRole::TreeTable,
-                    Role::Video => AtspiRole::Video,
-                    // In AT-SPI, elements with `AtspiRole::Frame` are windows with titles and
-                    // buttons, while those with `AtspiRole::Window` are windows without those
-                    // elements.
-                    Role::Window => AtspiRole::Frame,
-                    Role::Client | Role::WebView => AtspiRole::Panel,
-                    Role::FigureCaption => AtspiRole::Caption,
-                    // TODO: Are there special cases to consider?
-                    Role::Presentation | Role::Unknown => AtspiRole::Unknown,
-                    Role::ImeCandidate | Role::Keyboard => AtspiRole::RedundantObject,
+            Role::AlertDialog => AtspiRole::Alert,
+            Role::Comment | Role::Suggestion => AtspiRole::Section,
+            // TODO: See how to represent ARIA role="application"
+            Role::Application => AtspiRole::Embedded,
+            Role::Article => AtspiRole::Article,
+            Role::Audio => AtspiRole::Audio,
+            Role::Banner | Role::Header => AtspiRole::Landmark,
+            Role::Blockquote => AtspiRole::BlockQuote,
+            Role::Caret => AtspiRole::Unknown,
+            Role::Button => AtspiRole::PushButton,
+            Role::Canvas => AtspiRole::Canvas,
+            Role::Caption => AtspiRole::Caption,
+            Role::Cell => AtspiRole::TableCell,
+            Role::CheckBox => AtspiRole::CheckBox,
+            Role::Switch => AtspiRole::ToggleButton,
+            Role::ColorWell => AtspiRole::PushButton,
+            Role::Column => AtspiRole::Unknown,
+            Role::ColumnHeader => AtspiRole::ColumnHeader,
+            Role::ComboBoxGrouping | Role::ComboBoxMenuButton => AtspiRole::ComboBox,
+            Role::Complementary => AtspiRole::Landmark,
+            Role::ContentDeletion => AtspiRole::ContentDeletion,
+            Role::ContentInsertion => AtspiRole::ContentInsertion,
+            Role::ContentInfo | Role::Footer => AtspiRole::Landmark,
+            Role::Date | Role::DateTime => AtspiRole::DateEditor,
+            Role::Definition | Role::DescriptionListDetail => AtspiRole::DescriptionValue,
+            Role::DescriptionList => AtspiRole::DescriptionList,
+            Role::DescriptionListTerm => AtspiRole::DescriptionTerm,
+            Role::Details => AtspiRole::Panel,
+            Role::Dialog => AtspiRole::Dialog,
+            Role::Directory => AtspiRole::List,
+            Role::DisclosureTriangle => AtspiRole::ToggleButton,
+            Role::DocCover => AtspiRole::Image,
+            Role::DocBackLink | Role::DocBiblioRef | Role::DocGlossRef | Role::DocNoteRef => {
+                AtspiRole::Link
+            }
+            Role::DocBiblioEntry | Role::DocEndnote => AtspiRole::ListItem,
+            Role::DocNotice | Role::DocTip => AtspiRole::Comment,
+            Role::DocFootnote => AtspiRole::Footnote,
+            Role::DocPageBreak => AtspiRole::Separator,
+            Role::DocPageFooter => AtspiRole::Footer,
+            Role::DocPageHeader => AtspiRole::Header,
+            Role::DocAcknowledgements
+            | Role::DocAfterword
+            | Role::DocAppendix
+            | Role::DocBibliography
+            | Role::DocChapter
+            | Role::DocConclusion
+            | Role::DocCredits
+            | Role::DocEndnotes
+            | Role::DocEpilogue
+            | Role::DocErrata
+            | Role::DocForeword
+            | Role::DocGlossary
+            | Role::DocIndex
+            | Role::DocIntroduction
+            | Role::DocPageList
+            | Role::DocPart
+            | Role::DocPreface
+            | Role::DocPrologue
+            | Role::DocToc => AtspiRole::Landmark,
+            Role::DocAbstract
+            | Role::DocColophon
+            | Role::DocCredit
+            | Role::DocDedication
+            | Role::DocEpigraph
+            | Role::DocExample
+            | Role::DocPullquote
+            | Role::DocQna => AtspiRole::Section,
+            Role::DocSubtitle => AtspiRole::Heading,
+            Role::Document => AtspiRole::DocumentFrame,
+            Role::EmbeddedObject => AtspiRole::Embedded,
+            // TODO: Forms which lack an accessible name are no longer
+            // exposed as forms. http://crbug.com/874384. Forms which have accessible
+            // names should be exposed as `AtspiRole::Landmark` according to Core AAM.
+            Role::Form => AtspiRole::Form,
+            Role::Figure | Role::Feed => AtspiRole::Panel,
+            Role::GenericContainer
+            | Role::FooterAsNonLandmark
+            | Role::HeaderAsNonLandmark
+            | Role::Ruby => AtspiRole::Section,
+            Role::GraphicsDocument => AtspiRole::DocumentFrame,
+            Role::GraphicsObject => AtspiRole::Panel,
+            Role::GraphicsSymbol => AtspiRole::Image,
+            Role::Grid => AtspiRole::Table,
+            Role::Group => AtspiRole::Panel,
+            Role::Heading => AtspiRole::Heading,
+            Role::Iframe | Role::IframePresentational => AtspiRole::InternalFrame,
+            Role::Image => {
+                if self.node.unignored_children().next().is_some() {
+                    AtspiRole::ImageMap
+                } else {
+                    AtspiRole::Image
                 }
+            }
+            Role::InlineTextBox => AtspiRole::Static,
+            Role::InputTime => AtspiRole::DateEditor,
+            Role::LabelText | Role::Legend => AtspiRole::Label,
+            // Layout table objects are treated the same as `Role::GenericContainer`.
+            Role::LayoutTable => AtspiRole::Section,
+            Role::LayoutTableCell => AtspiRole::Section,
+            Role::LayoutTableRow => AtspiRole::Section,
+            // TODO: Having a separate accessible object for line breaks
+            // is inconsistent with other implementations. http://crbug.com/873144#c1.
+            Role::LineBreak => AtspiRole::Static,
+            Role::Link => AtspiRole::Link,
+            Role::List => AtspiRole::List,
+            Role::ListBox => AtspiRole::ListBox,
+            // TODO: Use `AtspiRole::MenuItem' inside a combo box, see how
+            // ax_platform_node_win.cc code does this.
+            Role::ListBoxOption => AtspiRole::ListItem,
+            Role::ListGrid => AtspiRole::Table,
+            Role::ListItem => AtspiRole::ListItem,
+            // Regular list markers only expose their alternative text, but do not
+            // expose their descendants, and the descendants should be ignored. This
+            // is because the alternative text depends on the counter style and can
+            // be different from the actual (visual) marker text, and hence,
+            // inconsistent with the descendants. We treat a list marker as non-text
+            // only if it still has non-ignored descendants, which happens only when =>
+            // - The list marker itself is ignored but the descendants are not
+            // - Or the list marker contains images
+            Role::ListMarker => {
+                if self.node.unignored_children().next().is_none() {
+                    AtspiRole::Static
+                } else {
+                    AtspiRole::Panel
+                }
+            }
+            Role::Log => AtspiRole::Log,
+            Role::Main => AtspiRole::Landmark,
+            Role::Mark => AtspiRole::Static,
+            Role::Math => AtspiRole::Math,
+            Role::Marquee => AtspiRole::Marquee,
+            Role::Menu | Role::MenuListPopup => AtspiRole::Menu,
+            Role::MenuBar => AtspiRole::MenuBar,
+            Role::MenuItem | Role::MenuListOption => AtspiRole::MenuItem,
+            Role::MenuItemCheckBox => AtspiRole::CheckMenuItem,
+            Role::MenuItemRadio => AtspiRole::RadioMenuItem,
+            Role::Meter => AtspiRole::LevelBar,
+            Role::Navigation => AtspiRole::Landmark,
+            Role::Note => AtspiRole::Comment,
+            Role::Pane | Role::ScrollView => AtspiRole::Panel,
+            Role::Paragraph => AtspiRole::Paragraph,
+            Role::PdfActionableHighlight => AtspiRole::PushButton,
+            Role::PdfRoot => AtspiRole::DocumentFrame,
+            Role::PluginObject => AtspiRole::Embedded,
+            Role::PopupButton => {
+                if self
+                    .node
+                    .data()
+                    .html_tag
+                    .as_ref()
+                    .map_or(false, |tag| tag.as_ref() == "select")
+                {
+                    AtspiRole::ComboBox
+                } else {
+                    AtspiRole::PushButton
+                }
+            }
+            Role::Portal => AtspiRole::PushButton,
+            Role::Pre => AtspiRole::Section,
+            Role::ProgressIndicator => AtspiRole::ProgressBar,
+            Role::RadioButton => AtspiRole::RadioButton,
+            Role::RadioGroup => AtspiRole::Panel,
+            Role::Region => AtspiRole::Landmark,
+            Role::RootWebArea => AtspiRole::DocumentWeb,
+            Role::Row => AtspiRole::TableRow,
+            Role::RowGroup => AtspiRole::Panel,
+            Role::RowHeader => AtspiRole::RowHeader,
+            // TODO: Generally exposed as description on <ruby> (`Role::Ruby`) element, not
+            // as its own object in the tree.
+            // However, it's possible to make a `Role::RubyAnnotation` element show up in the
+            // AX tree, for example by adding tabindex="0" to the source <rp> or <rt>
+            // element or making the source element the target of an aria-owns.
+            // Therefore, browser side needs to gracefully handle it if it actually
+            // shows up in the tree.
+            Role::RubyAnnotation => AtspiRole::Static,
+            Role::Section => AtspiRole::Section,
+            Role::ScrollBar => AtspiRole::ScrollBar,
+            Role::Search => AtspiRole::Landmark,
+            Role::Slider => AtspiRole::Slider,
+            Role::SpinButton => AtspiRole::SpinButton,
+            Role::Splitter => AtspiRole::Separator,
+            Role::StaticText => AtspiRole::Static,
+            Role::Status => AtspiRole::StatusBar,
+            // ax::mojom::Role::kSubscript =>
+            // AtspiRole::Subscript,
+            // ax::mojom::Role::kSuperscript =>
+            // AtspiRole::Superscript,
+            Role::SvgRoot => AtspiRole::DocumentFrame,
+            Role::Tab => AtspiRole::PageTab,
+            Role::Table => AtspiRole::Table,
+            // TODO: This mapping is correct, but it doesn't seem to be
+            // used. We don't necessarily want to always expose these containers, but
+            // we must do so if they are focusable. http://crbug.com/874043
+            Role::TableHeaderContainer => AtspiRole::Panel,
+            Role::TabList => AtspiRole::PageTabList,
+            Role::TabPanel => AtspiRole::ScrollPane,
+            // TODO: This mapping should also be applied to the dfn
+            // element. http://crbug.com/874411
+            Role::Term => AtspiRole::DescriptionTerm,
+            Role::TitleBar => AtspiRole::TitleBar,
+            Role::TextField | Role::SearchBox => {
+                if self.node.data().protected {
+                    AtspiRole::PasswordText
+                } else {
+                    AtspiRole::Entry
+                }
+            }
+            Role::TextFieldWithComboBox => AtspiRole::ComboBox,
+            Role::Abbr | Role::Code | Role::Emphasis | Role::Strong | Role::Time => {
+                AtspiRole::Static
+            }
+            Role::Timer => AtspiRole::Timer,
+            Role::ToggleButton => AtspiRole::ToggleButton,
+            Role::Toolbar => AtspiRole::ToolBar,
+            Role::Tooltip => AtspiRole::ToolTip,
+            Role::Tree => AtspiRole::Tree,
+            Role::TreeItem => AtspiRole::TreeItem,
+            Role::TreeGrid => AtspiRole::TreeTable,
+            Role::Video => AtspiRole::Video,
+            // In AT-SPI, elements with `AtspiRole::Frame` are windows with titles and
+            // buttons, while those with `AtspiRole::Window` are windows without those
+            // elements.
+            Role::Window => AtspiRole::Frame,
+            Role::Client | Role::WebView => AtspiRole::Panel,
+            Role::FigureCaption => AtspiRole::Caption,
+            // TODO: Are there special cases to consider?
+            Role::Presentation | Role::Unknown => AtspiRole::Unknown,
+            Role::ImeCandidate | Role::Keyboard => AtspiRole::RedundantObject,
+        }
     }
 
     pub(crate) fn state(&self) -> StateSet {
@@ -373,7 +381,7 @@ impl ResolvedPlatformNode<'_> {
             state.insert(State::SelectableText);
             match self.node.data().multiline {
                 true => state.insert(State::MultiLine),
-                false => state.insert(State::SingleLine)
+                false => state.insert(State::SingleLine),
             }
         }
 
@@ -450,9 +458,7 @@ impl PlatformNode {
     {
         self.0
             .map(|node| f(ResolvedPlatformNode::new(node)))
-            .ok_or(fdo::Error::UnknownObject(
-                    "".into(),
-            ))
+            .ok_or(fdo::Error::UnknownObject("".into()))
     }
 }
 
@@ -479,7 +485,7 @@ impl AppState {
 #[derive(Clone)]
 pub(crate) struct PlatformRootNode {
     pub state: Weak<RwLock<AppState>>,
-    pub tree: Weak<Tree>
+    pub tree: Weak<Tree>,
 }
 
 impl PlatformRootNode {
