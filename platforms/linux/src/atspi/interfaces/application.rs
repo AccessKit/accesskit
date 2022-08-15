@@ -50,12 +50,4 @@ impl ApplicationInterface {
             .map(|state| state.write().id = Some(id))
             .ok_or(fdo::Error::UnknownObject("".into()))
     }
-
-    fn get_locale(&self, lctype: u32) -> fdo::Result<String> {
-        Ok(String::new())
-    }
-
-    fn register_event_listener(&self, _event: String) {}
-
-    fn deregister_event_listener(&self, _event: String) {}
 }
