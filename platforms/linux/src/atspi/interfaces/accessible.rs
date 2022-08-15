@@ -198,9 +198,7 @@ impl AccessibleInterface<PlatformRootNode> {
     }
 
     fn get_state(&self) -> StateSet {
-        let mut state = StateSet::empty();
-        state.insert(State::Showing | State::Visible);
-        state
+        StateSet::empty()
     }
 
     fn get_interfaces(&self) -> Interfaces {
