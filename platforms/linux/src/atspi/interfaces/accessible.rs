@@ -22,8 +22,6 @@ impl<T> AccessibleInterface<T> {
     }
 }
 
-const INTERFACES: &[&'static str] = &["org.a11y.atspi.Accessible", "org.a11y.atspi.Application"];
-
 #[dbus_interface(name = "org.a11y.atspi.Accessible")]
 impl AccessibleInterface<PlatformNode> {
     #[dbus_interface(property)]
@@ -118,17 +116,8 @@ impl AccessibleInterface<PlatformNode> {
         self.node.resolve(|node| node.state())
     }
 
-    fn get_interfaces(&self) -> fdo::Result<Vec<&'static str>> {
-        self.node.resolve(|node| {
-            let mut interfaces = Vec::with_capacity(INTERFACES.len());
-            for interface in node.interfaces().iter() {
-                if interface > Interface::Application {
-                    break;
-                }
-                interfaces.push(INTERFACES[(interface as u8).trailing_zeros() as usize]);
-            }
-            interfaces
-        })
+    fn get_interfaces(&self) -> fdo::Result<Interfaces> {
+        self.node.resolve(|node| node.interfaces())
     }
 }
 
@@ -214,7 +203,7 @@ impl AccessibleInterface<PlatformRootNode> {
         state
     }
 
-    fn get_interfaces(&self) -> Vec<&'static str> {
-        vec![INTERFACES[0], INTERFACES[1]]
+    fn get_interfaces(&self) -> Interfaces {
+        Interfaces::new(Interface::Accessible | Interface::Application)
     }
 }
