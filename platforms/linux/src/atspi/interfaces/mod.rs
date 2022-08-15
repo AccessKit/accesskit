@@ -6,6 +6,7 @@
 mod accessible;
 mod application;
 mod events;
+mod value;
 
 use enumflags2::{bitflags, BitFlags, FromBitsError};
 use serde::{
@@ -21,6 +22,7 @@ use zvariant::{Signature, Type};
 pub enum Interface {
     Accessible,
     Application,
+    Value,
     FocusEvents,
     ObjectEvents,
     WindowEvents,
@@ -51,7 +53,11 @@ impl Interfaces {
     }
 }
 
-const INTERFACE_NAMES: &[&str] = &["org.a11y.atspi.Accessible", "org.a11y.atspi.Application"];
+const INTERFACE_NAMES: &[&str] = &[
+    "org.a11y.atspi.Accessible",
+    "org.a11y.atspi.Application",
+    "org.a11y.atspi.Value",
+];
 
 impl<'de> Deserialize<'de> for Interfaces {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -97,7 +103,7 @@ impl Serialize for Interfaces {
     {
         let mut interfaces = Vec::with_capacity(INTERFACE_NAMES.len());
         for interface in self.iter() {
-            if interface > Interface::Application {
+            if interface > Interface::Value {
                 break;
             }
             interfaces.push(INTERFACE_NAMES[(interface as u32).trailing_zeros() as usize]);
@@ -133,3 +139,4 @@ impl std::ops::BitXor for Interfaces {
 pub use accessible::*;
 pub use application::*;
 pub use events::*;
+pub use value::*;

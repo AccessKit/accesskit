@@ -43,6 +43,9 @@ impl<'a> Bus<'a> {
             ),
         )? {
             let interfaces = node.interfaces();
+            if interfaces.contains(Interface::Value) {
+                self.register_value(&path, node.downgrade())?;
+            }
             if interfaces.contains(Interface::FocusEvents) {
                 self.register_focus_events(&path)?;
             }
@@ -89,6 +92,12 @@ impl<'a> Bus<'a> {
 
     fn register_object_events(&mut self, path: &str) -> Result<bool> {
         self.conn.object_server().at(path, ObjectEventsInterface {})
+    }
+
+    fn register_value(&mut self, path: &str, node: PlatformNode) -> Result<bool> {
+        self.conn
+            .object_server()
+            .at(path, ValueInterface::new(node))
     }
 
     fn register_window_events(&mut self, path: &str, node: PlatformNode) -> Result<bool> {

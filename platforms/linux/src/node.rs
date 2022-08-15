@@ -434,6 +434,9 @@ impl ResolvedPlatformNode<'_> {
 
     pub(crate) fn interfaces(&self) -> Interfaces {
         let mut interfaces = Interfaces::new(Interface::Accessible | Interface::ObjectEvents);
+        if self.node.numeric_value().is_some() {
+            interfaces.insert(Interface::Value);
+        }
         if self.node.role() == Role::Window {
             interfaces.insert(Interface::WindowEvents);
         }
@@ -441,6 +444,26 @@ impl ResolvedPlatformNode<'_> {
             interfaces.insert(Interface::FocusEvents);
         }
         interfaces
+    }
+
+    pub fn minimum_value(&self) -> f64 {
+        self.node.min_numeric_value().unwrap_or(std::f64::MIN)
+    }
+
+    pub fn maximum_value(&self) -> f64 {
+        self.node.max_numeric_value().unwrap_or(std::f64::MAX)
+    }
+
+    pub fn minimum_increment(&self) -> f64 {
+        self.node.numeric_value_step().unwrap_or(0.0)
+    }
+
+    pub fn current_value(&self) -> f64 {
+        self.node.numeric_value().unwrap_or(0.0)
+    }
+
+    pub fn set_current_value(&self, value: f64) {
+        self.node.set_numeric_value(value)
     }
 }
 
