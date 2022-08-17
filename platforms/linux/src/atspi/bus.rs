@@ -10,17 +10,23 @@ use crate::atspi::{
     ObjectId,
 };
 use crate::{PlatformNode, PlatformRootNode, ResolvedPlatformNode};
-use async_io::block_on;
-use std::{convert::TryInto, env::var};
+use std::{
+    collections::HashMap,
+    convert::{AsRef, TryInto},
+    env::var,
+};
 use x11rb::{
     connection::Connection as _,
     protocol::xproto::{AtomEnum, ConnectionExt},
 };
 use zbus::{
     blocking::{Connection, ConnectionBuilder},
+    names::{BusName, InterfaceName, MemberName},
     Address, Result,
 };
+use zvariant::Value;
 
+#[derive(Clone)]
 pub struct Bus<'a> {
     conn: Connection,
     socket_proxy: SocketProxy<'a>,
@@ -44,18 +50,9 @@ impl<'a> Bus<'a> {
         )? {
             let interfaces = node.interfaces();
             if interfaces.contains(Interface::Value) {
-                self.register_value(&path, node.downgrade())?;
-            }
-            if interfaces.contains(Interface::FocusEvents) {
-                self.register_focus_events(&path)?;
-            }
-            if interfaces.contains(Interface::ObjectEvents) {
-                self.register_object_events(&path)?;
-            }
-            if interfaces.contains(Interface::WindowEvents) {
-                self.register_window_events(&path, node.downgrade())
+                self.register_value(&path, node.downgrade())
             } else {
-                Ok(true)
+                Ok(false)
             }
         } else {
             Ok(false)
@@ -86,87 +83,94 @@ impl<'a> Bus<'a> {
         }
     }
 
-    fn register_focus_events(&mut self, path: &str) -> Result<bool> {
-        self.conn.object_server().at(path, FocusEventsInterface {})
-    }
-
-    fn register_object_events(&mut self, path: &str) -> Result<bool> {
-        self.conn.object_server().at(path, ObjectEventsInterface {})
-    }
-
     fn register_value(&mut self, path: &str, node: PlatformNode) -> Result<bool> {
         self.conn
             .object_server()
             .at(path, ValueInterface::new(node))
     }
 
-    fn register_window_events(&mut self, path: &str, node: PlatformNode) -> Result<bool> {
-        self.conn
-            .object_server()
-            .at(path, WindowEventsInterface(node))
+    pub fn emit_focus_event(&self, target: &ObjectId) -> Result<()> {
+        self.emit_event(
+            target,
+            "org.a11y.atspi.Event.Focus",
+            "Focus",
+            EventData {
+                minor: "",
+                detail1: 0,
+                detail2: 0,
+                any_data: 0i32.into(),
+                properties: HashMap::new(),
+            },
+        )
     }
 
-    pub fn emit_focus_event(&self, target: &ResolvedPlatformNode) -> Result<()> {
-        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
-        let iface_ref = self
-            .conn
-            .object_server()
-            .interface::<_, FocusEventsInterface>(path)
-            .unwrap();
-        let iface = iface_ref.get();
-        block_on(iface.focused(iface_ref.signal_context()))
-    }
-
-    pub fn emit_object_event(
-        &self,
-        target: &ResolvedPlatformNode,
-        event: ObjectEvent,
-    ) -> Result<()> {
-        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
-        let iface_ref = self
-            .conn
-            .object_server()
-            .interface::<_, ObjectEventsInterface>(path)
-            .unwrap();
-        let iface = iface_ref.get();
-        block_on(iface.emit(event, iface_ref.signal_context()))
-    }
-
-    pub fn emit_object_events(
-        &self,
-        target: &ResolvedPlatformNode,
-        events: Vec<ObjectEvent>,
-    ) -> Result<()> {
-        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
-        let iface_ref = self
-            .conn
-            .object_server()
-            .interface::<_, ObjectEventsInterface>(path)
-            .unwrap();
-        block_on(async {
-            for event in events {
-                iface_ref
-                    .get()
-                    .emit(event, iface_ref.signal_context())
-                    .await?;
-            }
-            Ok(())
-        })
+    pub fn emit_object_event(&self, target: &ObjectId, event: &ObjectEvent) -> Result<()> {
+        let interface = "org.a11y.atspi.Event.Object";
+        let signal = event.as_ref();
+        let properties = HashMap::new();
+        match event {
+            ObjectEvent::StateChanged(state, value) => self.emit_event(
+                target,
+                interface,
+                signal,
+                EventData {
+                    minor: state.as_ref(),
+                    detail1: *value as i32,
+                    detail2: 0,
+                    any_data: 0i32.into(),
+                    properties,
+                },
+            ),
+            ObjectEvent::PropertyChanged(property, value) => self.emit_event(
+                target,
+                interface,
+                signal,
+                EventData {
+                    minor: property.as_ref(),
+                    detail1: 0,
+                    detail2: 0,
+                    any_data: value.clone(),
+                    properties,
+                },
+            ),
+        }
     }
 
     pub fn emit_window_event(
         &self,
-        target: &ResolvedPlatformNode,
-        event: WindowEvent,
+        target: &ObjectId,
+        window_name: &str,
+        event: &WindowEvent,
     ) -> Result<()> {
-        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, target.id().as_str());
-        let iface_ref = self
-            .conn
-            .object_server()
-            .interface::<_, WindowEventsInterface>(path)
-            .unwrap();
-        let iface = iface_ref.get();
-        block_on(iface.emit(event, iface_ref.signal_context()))
+        self.emit_event(
+            target,
+            "org.a11y.atspi.Event.Window",
+            event.as_ref(),
+            EventData {
+                minor: "",
+                detail1: 0,
+                detail2: 0,
+                any_data: Value::from(window_name).into(),
+                properties: HashMap::new(),
+            },
+        )
+    }
+
+    fn emit_event(
+        &self,
+        id: &ObjectId,
+        interface: &str,
+        signal_name: &str,
+        body: EventData,
+    ) -> Result<()> {
+        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, id.as_str());
+        self.conn.emit_signal(
+            Option::<BusName>::None,
+            path,
+            InterfaceName::from_str_unchecked(interface),
+            MemberName::from_str_unchecked(signal_name),
+            &body,
+        )
     }
 }
 

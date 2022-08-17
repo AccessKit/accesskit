@@ -23,9 +23,6 @@ pub enum Interface {
     Accessible,
     Application,
     Value,
-    FocusEvents,
-    ObjectEvents,
-    WindowEvents,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -103,9 +100,6 @@ impl Serialize for Interfaces {
     {
         let mut interfaces = Vec::with_capacity(INTERFACE_NAMES.len());
         for interface in self.iter() {
-            if interface > Interface::Value {
-                break;
-            }
             interfaces.push(INTERFACE_NAMES[(interface as u32).trailing_zeros() as usize]);
         }
         let mut seq = serializer.serialize_seq(Some(interfaces.len()))?;

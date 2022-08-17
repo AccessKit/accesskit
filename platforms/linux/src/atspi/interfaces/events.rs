@@ -3,176 +3,61 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::atspi::State;
-use crate::PlatformNode;
-use std::{collections::HashMap, convert::AsRef};
-use zbus::{dbus_interface, Result, SignalContext};
-use zvariant::Value;
+use crate::atspi::{ObjectId, State};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use strum::AsRefStr;
+use zvariant::{OwnedValue, Type, Value};
 
-pub struct FocusEventsInterface;
-
-impl FocusEventsInterface {
-    pub async fn focused(&self, ctxt: &SignalContext<'_>) -> Result<()> {
-        FocusEventsInterface::focus(ctxt, "", 0, 0, 0i32.into(), HashMap::new()).await
-    }
+pub struct QueuedEvent {
+    pub target: ObjectId<'static>,
+    pub kind: EventKind,
 }
 
-#[dbus_interface(name = "org.a11y.atspi.Event.Focus")]
-impl FocusEventsInterface {
-    #[dbus_interface(signal)]
-    async fn focus(
-        ctxt: &SignalContext<'_>,
-        minor: &str,
-        detail1: i32,
-        detail2: i32,
-        any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>,
-    ) -> Result<()>;
+pub enum EventKind {
+    Focus,
+    Object(ObjectEvent),
+    Window {
+        window_name: String,
+        event: WindowEvent,
+    },
 }
 
+#[derive(AsRefStr)]
+#[strum(serialize_all = "kebab-case")]
+pub enum Property {
+    AccessibleName,
+    AccessibleDescription,
+    AccessibleParent,
+    AccessibleRole,
+}
+
+#[derive(AsRefStr)]
 pub enum ObjectEvent {
     StateChanged(State, bool),
-    NameChanged(String),
+    #[strum(serialize = "PropertyChange")]
+    PropertyChanged(Property, OwnedValue),
 }
 
-pub struct ObjectEventsInterface;
-
-impl ObjectEventsInterface {
-    pub async fn emit(&self, event: ObjectEvent, ctxt: &SignalContext<'_>) -> Result<()> {
-        let properties = HashMap::new();
-        match event {
-            ObjectEvent::StateChanged(state, value) => {
-                ObjectEventsInterface::state_changed(
-                    ctxt,
-                    state.as_ref(),
-                    value as i32,
-                    0,
-                    0i32.into(),
-                    properties,
-                )
-                .await
-            }
-            ObjectEvent::NameChanged(name) => {
-                ObjectEventsInterface::property_change(
-                    ctxt,
-                    "accessible-name",
-                    0,
-                    0,
-                    name.into(),
-                    properties,
-                )
-                .await
-            }
-        }
-    }
-}
-
-#[dbus_interface(name = "org.a11y.atspi.Event.Object")]
-impl ObjectEventsInterface {
-    #[dbus_interface(signal)]
-    async fn property_change(
-        ctxt: &SignalContext<'_>,
-        minor: &str,
-        detail1: i32,
-        detail2: i32,
-        any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>,
-    ) -> Result<()>;
-
-    #[dbus_interface(signal)]
-    async fn state_changed(
-        ctxt: &SignalContext<'_>,
-        minor: &str,
-        detail1: i32,
-        detail2: i32,
-        any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>,
-    ) -> Result<()>;
-}
-
+#[derive(AsRefStr)]
 pub enum WindowEvent {
+    #[strum(serialize = "Activate")]
     Activated,
+    #[strum(serialize = "Close")]
     Closed,
+    #[strum(serialize = "Create")]
     Created,
+    #[strum(serialize = "Deactivate")]
     Deactivated,
+    #[strum(serialize = "Destroy")]
     Destroyed,
 }
 
-pub struct WindowEventsInterface(pub(crate) PlatformNode);
-
-impl WindowEventsInterface {
-    pub async fn emit(&self, event: WindowEvent, ctxt: &SignalContext<'_>) -> Result<()> {
-        let name = self.0.resolve(|node| node.name().into())?;
-        let properties = HashMap::new();
-        match event {
-            WindowEvent::Activated => {
-                WindowEventsInterface::activate(ctxt, "", 0, 0, name, properties).await
-            }
-            WindowEvent::Closed => {
-                WindowEventsInterface::close(ctxt, "", 0, 0, name, properties).await
-            }
-            WindowEvent::Created => {
-                WindowEventsInterface::create(ctxt, "", 0, 0, name, properties).await
-            }
-            WindowEvent::Deactivated => {
-                WindowEventsInterface::deactivate(ctxt, "", 0, 0, name, properties).await
-            }
-            WindowEvent::Destroyed => {
-                WindowEventsInterface::destroy(ctxt, "", 0, 0, name, properties).await
-            }
-        }
-    }
-}
-
-#[dbus_interface(name = "org.a11y.atspi.Event.Window")]
-impl WindowEventsInterface {
-    #[dbus_interface(signal)]
-    async fn activate(
-        ctxt: &SignalContext<'_>,
-        minor: &str,
-        detail1: i32,
-        detail2: i32,
-        any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>,
-    ) -> Result<()>;
-
-    #[dbus_interface(signal)]
-    async fn close(
-        ctxt: &SignalContext<'_>,
-        minor: &str,
-        detail1: i32,
-        detail2: i32,
-        any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>,
-    ) -> Result<()>;
-
-    #[dbus_interface(signal)]
-    async fn create(
-        ctxt: &SignalContext<'_>,
-        minor: &str,
-        detail1: i32,
-        detail2: i32,
-        any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>,
-    ) -> Result<()>;
-
-    #[dbus_interface(signal)]
-    async fn deactivate(
-        ctxt: &SignalContext<'_>,
-        minor: &str,
-        detail1: i32,
-        detail2: i32,
-        any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>,
-    ) -> Result<()>;
-
-    #[dbus_interface(signal)]
-    async fn destroy(
-        ctxt: &SignalContext<'_>,
-        minor: &str,
-        detail1: i32,
-        detail2: i32,
-        any_data: Value<'_>,
-        properties: HashMap<String, Value<'_>>,
-    ) -> Result<()>;
+#[derive(Deserialize, Serialize, Type)]
+pub struct EventData<'a> {
+    pub minor: &'a str,
+    pub detail1: i32,
+    pub detail2: i32,
+    pub any_data: OwnedValue,
+    pub properties: HashMap<String, OwnedValue>,
 }

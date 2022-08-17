@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::atspi::{
-    interfaces::{Interface, Interfaces},
+    interfaces::{EventKind, Interface, Interfaces, ObjectEvent, Property, QueuedEvent},
     ObjectId, ObjectRef, OwnedObjectAddress, Role as AtspiRole, State, StateSet,
 };
 use accesskit::{AriaCurrent, CheckedState, InvalidState, Orientation, Role};
@@ -12,6 +12,7 @@ use accesskit_consumer::{Node, Tree, WeakNode};
 use parking_lot::RwLock;
 use std::sync::Weak;
 use zbus::fdo;
+use zvariant::Value;
 
 pub(crate) struct ResolvedPlatformNode<'a> {
     node: Node<'a>,
@@ -310,10 +311,8 @@ impl ResolvedPlatformNode<'_> {
         let platform_role = self.role();
         let data = self.node.data();
         let mut state = StateSet::empty();
-        if let Ok(current_active) = crate::adapter::CURRENT_ACTIVE_WINDOW.lock() {
-            if self.node.role() == Role::Window && *current_active == Some(data.id) {
-                state.insert(State::Active);
-            }
+        if self.node.role() == Role::Window && self.node.parent().is_none() {
+            state.insert(State::Active);
         }
         if let Some(expanded) = data.expanded {
             state.insert(State::Expandable);
@@ -433,15 +432,9 @@ impl ResolvedPlatformNode<'_> {
     }
 
     pub(crate) fn interfaces(&self) -> Interfaces {
-        let mut interfaces = Interfaces::new(Interface::Accessible | Interface::ObjectEvents);
+        let mut interfaces = Interfaces::new(Interface::Accessible);
         if self.node.numeric_value().is_some() {
             interfaces.insert(Interface::Value);
-        }
-        if self.node.role() == Role::Window {
-            interfaces.insert(Interface::WindowEvents);
-        }
-        if self.node.data().focusable {
-            interfaces.insert(Interface::FocusEvents);
         }
         interfaces
     }
@@ -464,6 +457,51 @@ impl ResolvedPlatformNode<'_> {
 
     pub fn set_current_value(&self, value: f64) {
         self.node.set_numeric_value(value)
+    }
+
+    pub(crate) fn enqueue_changes(&self, queue: &mut Vec<QueuedEvent>, old: &ResolvedPlatformNode) {
+        let old_state = old.state();
+        let new_state = self.state();
+        let changed_states = old_state ^ new_state;
+        for state in changed_states.iter() {
+            queue.push(QueuedEvent {
+                target: self.id(),
+                kind: EventKind::Object(ObjectEvent::StateChanged(
+                    state,
+                    new_state.contains(state),
+                )),
+            });
+        }
+        let name = self.name();
+        if name != old.name() {
+            queue.push(QueuedEvent {
+                target: self.id(),
+                kind: EventKind::Object(ObjectEvent::PropertyChanged(
+                    Property::AccessibleName,
+                    Value::from(name).into(),
+                )),
+            });
+        }
+        let description = self.description();
+        if description != old.description() {
+            queue.push(QueuedEvent {
+                target: self.id(),
+                kind: EventKind::Object(ObjectEvent::PropertyChanged(
+                    Property::AccessibleDescription,
+                    Value::from(description).into(),
+                )),
+            });
+        }
+        let role = self.role();
+        if role != old.role() {
+            queue.push(QueuedEvent {
+                target: self.id(),
+                kind: EventKind::Object(ObjectEvent::PropertyChanged(
+                    Property::AccessibleRole,
+                    Value::from(role as u32).into(),
+                )),
+            });
+        }
     }
 }
 

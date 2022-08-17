@@ -3,22 +3,17 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
 use accesskit_consumer::{Node, Tree, TreeChange};
 
 use crate::atspi::{
-    interfaces::{ObjectEvent, WindowEvent},
+    interfaces::{EventKind, ObjectEvent, QueuedEvent, WindowEvent},
     Bus, State,
 };
 use crate::node::{AppState, PlatformNode, PlatformRootNode, ResolvedPlatformNode};
 use parking_lot::RwLock;
-
-lazy_static! {
-    pub(crate) static ref CURRENT_ACTIVE_WINDOW: Arc<Mutex<Option<NodeId>>> =
-        Arc::new(Mutex::new(None));
-}
 
 pub struct Adapter<'a> {
     atspi_bus: Bus<'a>,
@@ -69,82 +64,85 @@ impl<'a> Adapter<'a> {
         })
     }
 
-    pub fn update(&self, update: TreeUpdate) {
+    pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
+        let mut queue = Vec::new();
         self.tree.update_and_process_changes(update, |change| {
             match change {
                 TreeChange::FocusMoved { old_node, new_node } => {
-                    if let Some(old_node) = old_node {
-                        let old_node = ResolvedPlatformNode::new(old_node);
-                        self.atspi_bus
-                            .emit_object_event(
-                                &old_node,
-                                ObjectEvent::StateChanged(State::Focused, false),
-                            )
-                            .unwrap();
+                    let old_window = old_node.and_then(|node| containing_window(node));
+                    let new_window = new_node.and_then(|node| containing_window(node));
+                    if old_window.map(|n| n.id()) != new_window.map(|n| n.id()) {
+                        if let Some(window) = old_window {
+                            self.window_deactivated(&ResolvedPlatformNode::new(window), &mut queue);
+                        }
+                        if let Some(window) = new_window {
+                            self.window_activated(&ResolvedPlatformNode::new(window), &mut queue);
+                        }
                     }
-                    if let Ok(mut active_window) = CURRENT_ACTIVE_WINDOW.lock() {
-                        let node_window = new_node.map(|node| containing_window(node)).flatten();
-                        let node_window_id = node_window.map(|node| node.id());
-                        if let Some(active_window_id) = *active_window {
-                            if node_window_id != Some(active_window_id) {
-                                self.window_deactivated(active_window_id);
-                            }
-                        }
-                        *active_window = node_window_id;
-                        if let Some(new_node) = new_node {
-                            if let Some(node_window_id) = node_window_id {
-                                self.window_activated(node_window_id);
-                            }
-                            let new_node = ResolvedPlatformNode::new(new_node);
-                            self.atspi_bus
-                                .emit_object_event(
-                                    &new_node,
-                                    ObjectEvent::StateChanged(State::Focused, true),
-                                )
-                                .unwrap();
-                            self.atspi_bus.emit_focus_event(&new_node).unwrap();
-                        }
+                    if let Some(node) = new_node.map(|node| ResolvedPlatformNode::new(node)) {
+                        queue.push(QueuedEvent {
+                            target: node.id(),
+                            kind: EventKind::Object(ObjectEvent::StateChanged(
+                                State::Focused,
+                                true,
+                            )),
+                        });
+                        queue.push(QueuedEvent {
+                            target: node.id(),
+                            kind: EventKind::Focus,
+                        });
+                    }
+                    if let Some(node) = old_node.map(|node| ResolvedPlatformNode::new(node)) {
+                        queue.push(QueuedEvent {
+                            target: node.id(),
+                            kind: EventKind::Object(ObjectEvent::StateChanged(
+                                State::Focused,
+                                false,
+                            )),
+                        });
                     }
                 }
                 TreeChange::NodeUpdated { old_node, new_node } => {
-                    let old_state = ResolvedPlatformNode::new(old_node).state();
-                    let new_platform_node = ResolvedPlatformNode::new(new_node);
-                    let new_state = new_platform_node.state();
-                    let changed_states = old_state ^ new_state;
-                    let mut events = Vec::new();
-                    for state in changed_states.iter() {
-                        events.push(ObjectEvent::StateChanged(state, new_state.contains(state)));
-                    }
-                    if let Some(name) = new_node.name() {
-                        if old_node.name().as_ref() != Some(&name) {
-                            events.push(ObjectEvent::NameChanged(name));
-                        }
-                    }
-                    self.atspi_bus
-                        .emit_object_events(&new_platform_node, events);
+                    let old_node = ResolvedPlatformNode::new(old_node);
+                    let new_node = ResolvedPlatformNode::new(new_node);
+                    new_node.enqueue_changes(&mut queue, &old_node);
                 }
                 // TODO: handle other events
                 _ => (),
             };
         });
+        QueuedEvents {
+            bus: self.atspi_bus.clone(),
+            queue,
+        }
     }
 
-    fn window_activated(&self, window_id: NodeId) {
-        let reader = self.tree.read();
-        let node = ResolvedPlatformNode::new(reader.node_by_id(window_id).unwrap());
-        self.atspi_bus
-            .emit_window_event(&node, WindowEvent::Activated);
-        self.atspi_bus
-            .emit_object_event(&node, ObjectEvent::StateChanged(State::Active, true));
+    fn window_activated(&self, window: &ResolvedPlatformNode, queue: &mut Vec<QueuedEvent>) {
+        queue.push(QueuedEvent {
+            target: window.id(),
+            kind: EventKind::Window {
+                window_name: window.name(),
+                event: WindowEvent::Activated,
+            },
+        });
+        queue.push(QueuedEvent {
+            target: window.id(),
+            kind: EventKind::Object(ObjectEvent::StateChanged(State::Active, true)),
+        });
     }
 
-    fn window_deactivated(&self, window_id: NodeId) {
-        let reader = self.tree.read();
-        let node = ResolvedPlatformNode::new(reader.node_by_id(window_id).unwrap());
-        self.atspi_bus
-            .emit_object_event(&node, ObjectEvent::StateChanged(State::Active, false));
-        self.atspi_bus
-            .emit_window_event(&node, WindowEvent::Deactivated);
+    fn window_deactivated(&self, window: &ResolvedPlatformNode, queue: &mut Vec<QueuedEvent>) {
+        queue.push(QueuedEvent {
+            target: window.id(),
+            kind: EventKind::Window {
+                window_name: window.name(),
+                event: WindowEvent::Deactivated,
+            },
+        });
+        queue.push(QueuedEvent {
+            target: window.id(),
+            kind: EventKind::Object(ObjectEvent::StateChanged(State::Active, false)),
+        });
     }
 
     fn root_platform_node(&self) -> PlatformNode {
@@ -165,5 +163,28 @@ fn containing_window(node: Node) -> Option<Node> {
             }
         }
         None
+    }
+}
+
+#[must_use = "events must be explicitly raised"]
+pub struct QueuedEvents<'a> {
+    bus: Bus<'a>,
+    queue: Vec<QueuedEvent>,
+}
+
+impl<'a> QueuedEvents<'a> {
+    pub fn raise(&self) {
+        for event in &self.queue {
+            let _ = match &event.kind {
+                EventKind::Focus => self.bus.emit_focus_event(&event.target),
+                EventKind::Object(data) => self.bus.emit_object_event(&event.target, data),
+                EventKind::Window {
+                    window_name,
+                    event: window_event,
+                } => self
+                    .bus
+                    .emit_window_event(&event.target, &window_name, window_event),
+            };
+        }
     }
 }

@@ -78,11 +78,13 @@ fn main() {
             Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
                 WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                 WindowEvent::Focused(window_has_focus) => {
-                    adapter.update(TreeUpdate {
-                        nodes: vec![],
-                        focus: window_has_focus.then(|| unsafe { FOCUS }),
-                        tree: None,
-                    });
+                    adapter
+                        .update(TreeUpdate {
+                            nodes: vec![],
+                            focus: window_has_focus.then(|| unsafe { FOCUS }),
+                            tree: None,
+                        })
+                        .raise();
                 }
                 WindowEvent::KeyboardInput {
                     input:
@@ -98,11 +100,13 @@ fn main() {
                     } else {
                         BUTTON_1_ID
                     };
-                    adapter.update(TreeUpdate {
-                        nodes: vec![],
-                        focus: Some(FOCUS),
-                        tree: None,
-                    });
+                    adapter
+                        .update(TreeUpdate {
+                            nodes: vec![],
+                            focus: Some(FOCUS),
+                            tree: None,
+                        })
+                        .raise();
                 },
                 WindowEvent::KeyboardInput {
                     input:
@@ -118,11 +122,13 @@ fn main() {
                     } else {
                         make_button(BUTTON_2_ID, "You pressed button 2")
                     };
-                    adapter.update(TreeUpdate {
-                        nodes: vec![updated_node],
-                        focus: Some(FOCUS),
-                        tree: None,
-                    });
+                    adapter
+                        .update(TreeUpdate {
+                            nodes: vec![updated_node],
+                            focus: Some(FOCUS),
+                            tree: None,
+                        })
+                        .raise();
                 },
                 _ => (),
             },
