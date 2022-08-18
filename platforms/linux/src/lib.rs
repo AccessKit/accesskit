@@ -4,8 +4,6 @@
 // the LICENSE-MIT file), at your option.
 
 #[macro_use]
-extern crate lazy_static;
-#[macro_use]
 extern crate zbus;
 
 mod adapter;

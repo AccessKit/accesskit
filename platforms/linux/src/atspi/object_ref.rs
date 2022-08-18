@@ -6,7 +6,7 @@
 use crate::atspi::{ObjectId, OwnedObjectAddress};
 use accesskit::NodeId;
 
-pub enum ObjectRef {
+pub(crate) enum ObjectRef {
     Managed(ObjectId<'static>),
     Unmanaged(OwnedObjectAddress),
 }

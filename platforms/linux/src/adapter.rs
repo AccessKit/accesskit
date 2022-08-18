@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
+use accesskit::{ActionHandler, Role, TreeUpdate};
 use accesskit_consumer::{Node, Tree, TreeChange};
 
 use crate::atspi::{
@@ -17,7 +17,7 @@ use parking_lot::RwLock;
 
 pub struct Adapter<'a> {
     atspi_bus: Bus<'a>,
-    app_state: Arc<RwLock<AppState>>,
+    _app_state: Arc<RwLock<AppState>>,
     tree: Arc<Tree>,
 }
 
@@ -45,7 +45,7 @@ impl<'a> Adapter<'a> {
             objects_to_add.push(ResolvedPlatformNode::new(reader.root()));
             add_children(reader.root(), &mut objects_to_add);
             for node in objects_to_add {
-                atspi_bus.register_node(node);
+                atspi_bus.register_node(node).ok()?;
             }
         }
         let app_state = Arc::new(RwLock::new(AppState::new(
@@ -53,13 +53,15 @@ impl<'a> Adapter<'a> {
             toolkit_name,
             toolkit_version,
         )));
-        atspi_bus.register_root_node(PlatformRootNode::new(
-            Arc::downgrade(&app_state),
-            Arc::downgrade(&tree),
-        ));
+        atspi_bus
+            .register_root_node(PlatformRootNode::new(
+                Arc::downgrade(&app_state),
+                Arc::downgrade(&tree),
+            ))
+            .ok()?;
         Some(Self {
             atspi_bus,
-            app_state,
+            _app_state: app_state,
             tree,
         })
     }

@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 use zbus::names::{OwnedUniqueName, UniqueName};
 use zvariant::{ObjectPath, OwnedObjectPath, Type, Value};
 
-pub const ACCESSIBLE_PATH_PREFIX: &'static str = "/org/a11y/atspi/accessible/";
-pub const NULL_PATH: &'static str = "/org/a11y/atspi/null";
-pub const ROOT_PATH: &'static str = "/org/a11y/atspi/accessible/root";
+pub(crate) const ACCESSIBLE_PATH_PREFIX: &'static str = "/org/a11y/atspi/accessible/";
+pub(crate) const NULL_PATH: &'static str = "/org/a11y/atspi/null";
+pub(crate) const ROOT_PATH: &'static str = "/org/a11y/atspi/accessible/root";
 
 #[derive(Clone, Debug, Deserialize, Serialize, Type, Value)]
 pub struct ObjectAddress<'a> {

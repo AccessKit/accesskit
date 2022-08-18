@@ -19,14 +19,14 @@ use zvariant::{Signature, Type};
 #[bitflags]
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
-pub enum Interface {
+pub(crate) enum Interface {
     Accessible,
     Application,
     Value,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct Interfaces(BitFlags<Interface, u32>);
+pub(crate) struct Interfaces(BitFlags<Interface, u32>);
 
 impl Interfaces {
     pub fn new<B: Into<BitFlags<Interface>>>(value: B) -> Self {
@@ -130,7 +130,7 @@ impl std::ops::BitXor for Interfaces {
     }
 }
 
-pub use accessible::*;
-pub use application::*;
-pub use events::*;
-pub use value::*;
+pub(crate) use accessible::*;
+pub(crate) use application::*;
+pub(crate) use events::*;
+pub(crate) use value::*;

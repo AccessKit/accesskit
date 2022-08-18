@@ -18,7 +18,7 @@ use zvariant::{Signature, Type};
 #[repr(u64)]
 #[derive(AsRefStr, Clone, Copy, Debug)]
 #[strum(serialize_all = "kebab-case")]
-pub enum State {
+pub(crate) enum State {
     /// Indicates an invalid state - probably an error condition.
     Invalid,
     /// Indicates a window is currently the active window, or
@@ -225,7 +225,7 @@ pub enum State {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct StateSet(BitFlags<State>);
+pub(crate) struct StateSet(BitFlags<State>);
 
 impl StateSet {
     pub fn from_bits(bits: u64) -> Result<StateSet, FromBitsError<State>> {

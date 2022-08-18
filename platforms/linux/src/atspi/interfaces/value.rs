@@ -5,12 +5,12 @@
 
 use crate::PlatformNode;
 
-pub struct ValueInterface {
+pub(crate) struct ValueInterface {
     node: PlatformNode,
 }
 
 impl ValueInterface {
-    pub(crate) fn new(node: PlatformNode) -> Self {
+    pub fn new(node: PlatformNode) -> Self {
         Self { node }
     }
 }

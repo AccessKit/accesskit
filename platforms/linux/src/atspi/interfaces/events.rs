@@ -7,14 +7,14 @@ use crate::atspi::{ObjectId, State};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use strum::AsRefStr;
-use zvariant::{OwnedValue, Type, Value};
+use zvariant::{OwnedValue, Type};
 
-pub struct QueuedEvent {
+pub(crate) struct QueuedEvent {
     pub target: ObjectId<'static>,
     pub kind: EventKind,
 }
 
-pub enum EventKind {
+pub(crate) enum EventKind {
     Focus,
     Object(ObjectEvent),
     Window {
@@ -25,7 +25,7 @@ pub enum EventKind {
 
 #[derive(AsRefStr)]
 #[strum(serialize_all = "kebab-case")]
-pub enum Property {
+pub(crate) enum Property {
     AccessibleName,
     AccessibleDescription,
     AccessibleParent,
@@ -33,14 +33,14 @@ pub enum Property {
 }
 
 #[derive(AsRefStr)]
-pub enum ObjectEvent {
+pub(crate) enum ObjectEvent {
     StateChanged(State, bool),
     #[strum(serialize = "PropertyChange")]
     PropertyChanged(Property, OwnedValue),
 }
 
 #[derive(AsRefStr)]
-pub enum WindowEvent {
+pub(crate) enum WindowEvent {
     #[strum(serialize = "Activate")]
     Activated,
     #[strum(serialize = "Close")]
@@ -54,7 +54,7 @@ pub enum WindowEvent {
 }
 
 #[derive(Deserialize, Serialize, Type)]
-pub struct EventData<'a> {
+pub(crate) struct EventData<'a> {
     pub minor: &'a str,
     pub detail1: i32,
     pub detail2: i32,

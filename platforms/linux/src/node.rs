@@ -19,60 +19,60 @@ pub(crate) struct ResolvedPlatformNode<'a> {
 }
 
 impl ResolvedPlatformNode<'_> {
-    pub(crate) fn new(node: Node) -> ResolvedPlatformNode {
+    pub fn new(node: Node) -> ResolvedPlatformNode {
         ResolvedPlatformNode { node }
     }
 
-    pub(crate) fn downgrade(&self) -> PlatformNode {
+    pub fn downgrade(&self) -> PlatformNode {
         PlatformNode::new(&self.node)
     }
 
-    pub(crate) fn name(&self) -> String {
+    pub fn name(&self) -> String {
         self.node
             .name()
             .map(|name| name.to_string())
             .unwrap_or(String::new())
     }
 
-    pub(crate) fn description(&self) -> String {
+    pub fn description(&self) -> String {
         String::new()
     }
 
-    pub(crate) fn parent(&self) -> Option<ObjectRef> {
+    pub fn parent(&self) -> Option<ObjectRef> {
         self.node.parent().map(|parent| parent.id().into())
     }
 
-    pub(crate) fn child_count(&self) -> usize {
+    pub fn child_count(&self) -> usize {
         self.node.children().count()
     }
 
-    pub(crate) fn locale(&self) -> String {
+    pub fn locale(&self) -> String {
         String::new()
     }
 
-    pub(crate) fn id(&self) -> ObjectId<'static> {
+    pub fn id(&self) -> ObjectId<'static> {
         self.node.id().into()
     }
 
-    pub(crate) fn child_at_index(&self, index: usize) -> Option<ObjectRef> {
+    pub fn child_at_index(&self, index: usize) -> Option<ObjectRef> {
         self.node
             .children()
             .nth(index)
             .map(|child| child.id().into())
     }
 
-    pub(crate) fn children(&self) -> Vec<ObjectRef> {
+    pub fn children(&self) -> Vec<ObjectRef> {
         self.node
             .children()
             .map(|child| child.id().into())
             .collect()
     }
 
-    pub(crate) fn index_in_parent(&self) -> Option<usize> {
+    pub fn index_in_parent(&self) -> Option<usize> {
         self.node.parent_and_index().map(|(_, index)| index)
     }
 
-    pub(crate) fn role(&self) -> AtspiRole {
+    pub fn role(&self) -> AtspiRole {
         match self.node.role() {
             Role::Alert => AtspiRole::Notification,
             Role::AlertDialog => AtspiRole::Alert,
@@ -307,7 +307,7 @@ impl ResolvedPlatformNode<'_> {
         }
     }
 
-    pub(crate) fn state(&self) -> StateSet {
+    pub fn state(&self) -> StateSet {
         let platform_role = self.role();
         let data = self.node.data();
         let mut state = StateSet::empty();
@@ -431,7 +431,7 @@ impl ResolvedPlatformNode<'_> {
         state
     }
 
-    pub(crate) fn interfaces(&self) -> Interfaces {
+    pub fn interfaces(&self) -> Interfaces {
         let mut interfaces = Interfaces::new(Interface::Accessible);
         if self.node.numeric_value().is_some() {
             interfaces.insert(Interface::Value);
@@ -459,7 +459,7 @@ impl ResolvedPlatformNode<'_> {
         self.node.set_numeric_value(value)
     }
 
-    pub(crate) fn enqueue_changes(&self, queue: &mut Vec<QueuedEvent>, old: &ResolvedPlatformNode) {
+    pub fn enqueue_changes(&self, queue: &mut Vec<QueuedEvent>, old: &ResolvedPlatformNode) {
         let old_state = old.state();
         let new_state = self.state();
         let changed_states = old_state ^ new_state;
@@ -509,11 +509,11 @@ impl ResolvedPlatformNode<'_> {
 pub(crate) struct PlatformNode(WeakNode);
 
 impl PlatformNode {
-    pub(crate) fn new(node: &Node) -> Self {
+    pub fn new(node: &Node) -> Self {
         Self(node.downgrade())
     }
 
-    pub(crate) fn resolve<F, T>(&self, f: F) -> fdo::Result<T>
+    pub fn resolve<F, T>(&self, f: F) -> fdo::Result<T>
     where
         for<'a> F: FnOnce(ResolvedPlatformNode<'a>) -> T,
     {
@@ -532,7 +532,7 @@ pub(crate) struct AppState {
 }
 
 impl AppState {
-    pub(crate) fn new(name: String, toolkit_name: String, toolkit_version: String) -> Self {
+    pub fn new(name: String, toolkit_name: String, toolkit_version: String) -> Self {
         Self {
             name,
             toolkit_name,
@@ -550,7 +550,7 @@ pub(crate) struct PlatformRootNode {
 }
 
 impl PlatformRootNode {
-    pub(crate) fn new(state: Weak<RwLock<AppState>>, tree: Weak<Tree>) -> Self {
+    pub fn new(state: Weak<RwLock<AppState>>, tree: Weak<Tree>) -> Self {
         Self { state, tree }
     }
 }

@@ -6,7 +6,7 @@
 use crate::PlatformRootNode;
 use zbus::fdo;
 
-pub struct ApplicationInterface(pub(crate) PlatformRootNode);
+pub(crate) struct ApplicationInterface(pub PlatformRootNode);
 
 #[dbus_interface(name = "org.a11y.atspi.Application")]
 impl ApplicationInterface {

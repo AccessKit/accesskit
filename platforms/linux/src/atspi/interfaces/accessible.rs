@@ -5,13 +5,13 @@
 
 use crate::atspi::{
     interfaces::{Interface, Interfaces},
-    ObjectAddress, ObjectId, ObjectRef, OwnedObjectAddress, Role, State, StateSet,
+    ObjectAddress, ObjectId, ObjectRef, OwnedObjectAddress, Role, StateSet,
 };
 use crate::{PlatformNode, PlatformRootNode};
 use std::convert::TryInto;
 use zbus::{fdo, names::OwnedUniqueName};
 
-pub struct AccessibleInterface<T> {
+pub(crate) struct AccessibleInterface<T> {
     bus_name: OwnedUniqueName,
     node: T,
 }

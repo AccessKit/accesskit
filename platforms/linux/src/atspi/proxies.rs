@@ -12,7 +12,7 @@ use zbus::{dbus_proxy, Result};
     interface = "org.a11y.Bus",
     gen_async = false
 )]
-pub trait Bus {
+pub(crate) trait Bus {
     fn get_address(&self) -> Result<String>;
 }
 
@@ -22,7 +22,7 @@ pub trait Bus {
     gen_async = false,
     interface = "org.a11y.atspi.Socket"
 )]
-trait Socket {
+pub(crate) trait Socket {
     fn embed<'a>(&self, plug: ObjectAddress<'a>) -> Result<OwnedObjectAddress>;
 
     fn unembed<'a>(&self, plug: ObjectAddress<'a>) -> Result<()>;
@@ -32,7 +32,7 @@ trait Socket {
 }
 
 #[dbus_proxy(interface = "org.a11y.Status")]
-pub trait Status {
+pub(crate) trait Status {
     #[dbus_proxy(property)]
     fn is_enabled(&self) -> Result<bool>;
 

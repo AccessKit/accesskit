@@ -27,7 +27,7 @@ use zbus::{
 use zvariant::Value;
 
 #[derive(Clone)]
-pub struct Bus<'a> {
+pub(crate) struct Bus<'a> {
     conn: Connection,
     socket_proxy: SocketProxy<'a>,
 }

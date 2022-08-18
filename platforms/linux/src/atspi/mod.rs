@@ -7,17 +7,17 @@ use serde::{Deserialize, Serialize};
 use zvariant::Type;
 
 mod bus;
-pub mod interfaces;
+pub(crate) mod interfaces;
 mod object_address;
 mod object_id;
 mod object_ref;
-pub mod proxies;
+pub(crate) mod proxies;
 mod state;
 
 /// Enumeration used by interface #AtspiAccessible to specify the role
 /// of an #AtspiAccessible object.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, Type)]
-pub enum Role {
+pub(crate) enum Role {
     /// A role indicating an error condition, such as
     /// uninitialized Role data.
     Invalid,
@@ -464,8 +464,8 @@ pub enum Role {
     LastDefined,
 }
 
-pub use bus::Bus;
-pub use object_address::*;
-pub use object_id::*;
-pub use object_ref::*;
-pub use state::*;
+pub(crate) use bus::Bus;
+pub(crate) use object_address::*;
+pub(crate) use object_id::*;
+pub(crate) use object_ref::*;
+pub(crate) use state::*;
