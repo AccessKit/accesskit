@@ -3,40 +3,42 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::atspi::{ObjectId, State};
+use crate::atspi::{ObjectId, ObjectRef, Role, State};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use strum::AsRefStr;
 use zvariant::{OwnedValue, Type};
 
-pub(crate) struct QueuedEvent {
-    pub target: ObjectId<'static>,
-    pub kind: EventKind,
-}
-
-pub(crate) enum EventKind {
-    Focus,
-    Object(ObjectEvent),
+pub(crate) enum QueuedEvent {
+    Focus(ObjectId<'static>),
+    Object {
+        target: ObjectId<'static>,
+        event: ObjectEvent,
+    },
     Window {
-        window_name: String,
+        target: ObjectId<'static>,
+        name: String,
         event: WindowEvent,
     },
 }
 
 #[derive(AsRefStr)]
-#[strum(serialize_all = "kebab-case")]
 pub(crate) enum Property {
-    AccessibleName,
-    AccessibleDescription,
-    AccessibleParent,
-    AccessibleRole,
+    #[strum(serialize = "accessible-name")]
+    Name(String),
+    #[strum(serialize = "accessible-description")]
+    Description(String),
+    #[strum(serialize = "accessible-parent")]
+    Parent(Option<ObjectRef>),
+    #[strum(serialize = "accessible-role")]
+    Role(Role),
 }
 
 #[derive(AsRefStr)]
 pub(crate) enum ObjectEvent {
     StateChanged(State, bool),
     #[strum(serialize = "PropertyChange")]
-    PropertyChanged(Property, OwnedValue),
+    PropertyChanged(Property),
 }
 
 #[derive(AsRefStr)]

@@ -7,7 +7,7 @@ use crate::atspi::{
     interfaces::*,
     object_address::*,
     proxies::{BusProxy, SocketProxy},
-    ObjectId,
+    ObjectId, ObjectRef,
 };
 use crate::{PlatformNode, PlatformRootNode, ResolvedPlatformNode};
 use std::{
@@ -24,7 +24,7 @@ use zbus::{
     names::{BusName, InterfaceName, MemberName},
     Address, Result,
 };
-use zvariant::Value;
+use zvariant::{OwnedValue, Str, Value};
 
 #[derive(Clone)]
 pub(crate) struct Bus<'a> {
@@ -121,7 +121,7 @@ impl<'a> Bus<'a> {
                     properties,
                 },
             ),
-            ObjectEvent::PropertyChanged(property, value) => self.emit_event(
+            ObjectEvent::PropertyChanged(property) => self.emit_event(
                 target,
                 interface,
                 signal,
@@ -129,7 +129,26 @@ impl<'a> Bus<'a> {
                     minor: property.as_ref(),
                     detail1: 0,
                     detail2: 0,
-                    any_data: value.clone(),
+                    any_data: match property {
+                        Property::Name(value) => Str::from(value).into(),
+                        Property::Description(value) => Str::from(value).into(),
+                        Property::Parent(Some(ObjectRef::Managed(parent))) => {
+                            OwnedObjectAddress::from(ObjectAddress::accessible(
+                                self.conn.unique_name().unwrap().into(),
+                                parent,
+                            ))
+                            .into()
+                        }
+                        Property::Parent(Some(ObjectRef::Unmanaged(parent))) => {
+                            parent.clone().into()
+                        }
+                        Property::Parent(None) => OwnedObjectAddress::from(ObjectAddress::root(
+                            self.conn.unique_name().unwrap().into(),
+                        ))
+                        .into(),
+                        Property::Role(value) => OwnedValue::from(*value as u32),
+                    }
+                    .into(),
                     properties,
                 },
             ),

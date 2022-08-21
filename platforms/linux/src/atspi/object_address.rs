@@ -6,7 +6,7 @@
 use crate::atspi::ObjectId;
 use serde::{Deserialize, Serialize};
 use zbus::names::{OwnedUniqueName, UniqueName};
-use zvariant::{ObjectPath, OwnedObjectPath, Type, Value};
+use zvariant::{ObjectPath, OwnedObjectPath, OwnedValue, Type, Value};
 
 pub(crate) const ACCESSIBLE_PATH_PREFIX: &'static str = "/org/a11y/atspi/accessible/";
 pub(crate) const NULL_PATH: &'static str = "/org/a11y/atspi/null";
@@ -25,7 +25,7 @@ impl<'a> ObjectAddress<'a> {
         Self { bus_name, path }
     }
 
-    pub fn accessible(bus_name: UniqueName<'a>, id: ObjectId) -> ObjectAddress<'a> {
+    pub fn accessible(bus_name: UniqueName<'a>, id: &ObjectId) -> ObjectAddress<'a> {
         Self {
             bus_name,
             path: ObjectPath::from_string_unchecked(format!(
@@ -51,7 +51,7 @@ impl<'a> ObjectAddress<'a> {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, Type, Value)]
+#[derive(Clone, Debug, Deserialize, OwnedValue, PartialEq, Serialize, Type, Value)]
 pub struct OwnedObjectAddress {
     bus_name: OwnedUniqueName,
     path: OwnedObjectPath,

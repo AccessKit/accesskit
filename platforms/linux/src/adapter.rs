@@ -9,7 +9,7 @@ use accesskit::{ActionHandler, Role, TreeUpdate};
 use accesskit_consumer::{Node, Tree, TreeChange};
 
 use crate::atspi::{
-    interfaces::{EventKind, ObjectEvent, QueuedEvent, WindowEvent},
+    interfaces::{ObjectEvent, QueuedEvent, WindowEvent},
     Bus, State,
 };
 use crate::node::{AppState, PlatformNode, PlatformRootNode, ResolvedPlatformNode};
@@ -82,25 +82,16 @@ impl<'a> Adapter<'a> {
                         }
                     }
                     if let Some(node) = new_node.map(|node| ResolvedPlatformNode::new(node)) {
-                        queue.push(QueuedEvent {
+                        queue.push(QueuedEvent::Object {
                             target: node.id(),
-                            kind: EventKind::Object(ObjectEvent::StateChanged(
-                                State::Focused,
-                                true,
-                            )),
+                            event: ObjectEvent::StateChanged(State::Focused, true),
                         });
-                        queue.push(QueuedEvent {
-                            target: node.id(),
-                            kind: EventKind::Focus,
-                        });
+                        queue.push(QueuedEvent::Focus(node.id()));
                     }
                     if let Some(node) = old_node.map(|node| ResolvedPlatformNode::new(node)) {
-                        queue.push(QueuedEvent {
+                        queue.push(QueuedEvent::Object {
                             target: node.id(),
-                            kind: EventKind::Object(ObjectEvent::StateChanged(
-                                State::Focused,
-                                false,
-                            )),
+                            event: ObjectEvent::StateChanged(State::Focused, false),
                         });
                     }
                 }
@@ -120,30 +111,26 @@ impl<'a> Adapter<'a> {
     }
 
     fn window_activated(&self, window: &ResolvedPlatformNode, queue: &mut Vec<QueuedEvent>) {
-        queue.push(QueuedEvent {
+        queue.push(QueuedEvent::Window {
             target: window.id(),
-            kind: EventKind::Window {
-                window_name: window.name(),
-                event: WindowEvent::Activated,
-            },
+            name: window.name(),
+            event: WindowEvent::Activated,
         });
-        queue.push(QueuedEvent {
+        queue.push(QueuedEvent::Object {
             target: window.id(),
-            kind: EventKind::Object(ObjectEvent::StateChanged(State::Active, true)),
+            event: ObjectEvent::StateChanged(State::Active, true),
         });
     }
 
     fn window_deactivated(&self, window: &ResolvedPlatformNode, queue: &mut Vec<QueuedEvent>) {
-        queue.push(QueuedEvent {
+        queue.push(QueuedEvent::Window {
             target: window.id(),
-            kind: EventKind::Window {
-                window_name: window.name(),
-                event: WindowEvent::Deactivated,
-            },
+            name: window.name(),
+            event: WindowEvent::Deactivated,
         });
-        queue.push(QueuedEvent {
+        queue.push(QueuedEvent::Object {
             target: window.id(),
-            kind: EventKind::Object(ObjectEvent::StateChanged(State::Active, false)),
+            event: ObjectEvent::StateChanged(State::Active, false),
         });
     }
 
@@ -177,15 +164,14 @@ pub struct QueuedEvents<'a> {
 impl<'a> QueuedEvents<'a> {
     pub fn raise(&self) {
         for event in &self.queue {
-            let _ = match &event.kind {
-                EventKind::Focus => self.bus.emit_focus_event(&event.target),
-                EventKind::Object(data) => self.bus.emit_object_event(&event.target, data),
-                EventKind::Window {
-                    window_name,
-                    event: window_event,
-                } => self
-                    .bus
-                    .emit_window_event(&event.target, &window_name, window_event),
+            let _ = match &event {
+                QueuedEvent::Focus(target) => self.bus.emit_focus_event(target),
+                QueuedEvent::Object { target, event } => self.bus.emit_object_event(target, event),
+                QueuedEvent::Window {
+                    target,
+                    name,
+                    event,
+                } => self.bus.emit_window_event(target, name, event),
             };
         }
     }

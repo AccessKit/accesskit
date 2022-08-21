@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::atspi::{
-    interfaces::{EventKind, Interface, Interfaces, ObjectEvent, Property, QueuedEvent},
+    interfaces::{Interface, Interfaces, ObjectEvent, Property, QueuedEvent},
     ObjectId, ObjectRef, OwnedObjectAddress, Role as AtspiRole, State, StateSet,
 };
 use accesskit::{AriaCurrent, CheckedState, InvalidState, Orientation, Role};
@@ -12,7 +12,6 @@ use accesskit_consumer::{Node, Tree, WeakNode};
 use parking_lot::RwLock;
 use std::sync::Weak;
 use zbus::fdo;
-use zvariant::Value;
 
 pub(crate) struct ResolvedPlatformNode<'a> {
     node: Node<'a>,
@@ -460,46 +459,49 @@ impl ResolvedPlatformNode<'_> {
     }
 
     pub fn enqueue_changes(&self, queue: &mut Vec<QueuedEvent>, old: &ResolvedPlatformNode) {
+        self.enqueue_state_changes(queue, old);
+        self.enqueue_property_changes(queue, old);
+    }
+
+    fn enqueue_state_changes(&self, queue: &mut Vec<QueuedEvent>, old: &ResolvedPlatformNode) {
         let old_state = old.state();
         let new_state = self.state();
         let changed_states = old_state ^ new_state;
         for state in changed_states.iter() {
-            queue.push(QueuedEvent {
+            queue.push(QueuedEvent::Object {
                 target: self.id(),
-                kind: EventKind::Object(ObjectEvent::StateChanged(
-                    state,
-                    new_state.contains(state),
-                )),
+                event: ObjectEvent::StateChanged(state, new_state.contains(state)),
             });
         }
+    }
+
+    fn enqueue_property_changes(&self, queue: &mut Vec<QueuedEvent>, old: &ResolvedPlatformNode) {
         let name = self.name();
         if name != old.name() {
-            queue.push(QueuedEvent {
+            queue.push(QueuedEvent::Object {
                 target: self.id(),
-                kind: EventKind::Object(ObjectEvent::PropertyChanged(
-                    Property::AccessibleName,
-                    Value::from(name).into(),
-                )),
+                event: ObjectEvent::PropertyChanged(Property::Name(name)),
             });
         }
         let description = self.description();
         if description != old.description() {
-            queue.push(QueuedEvent {
+            queue.push(QueuedEvent::Object {
                 target: self.id(),
-                kind: EventKind::Object(ObjectEvent::PropertyChanged(
-                    Property::AccessibleDescription,
-                    Value::from(description).into(),
-                )),
+                event: ObjectEvent::PropertyChanged(Property::Description(description)),
+            });
+        }
+        let parent = self.parent();
+        if parent != old.parent() {
+            queue.push(QueuedEvent::Object {
+                target: self.id(),
+                event: ObjectEvent::PropertyChanged(Property::Parent(parent)),
             });
         }
         let role = self.role();
         if role != old.role() {
-            queue.push(QueuedEvent {
+            queue.push(QueuedEvent::Object {
                 target: self.id(),
-                kind: EventKind::Object(ObjectEvent::PropertyChanged(
-                    Property::AccessibleRole,
-                    Value::from(role as u32).into(),
-                )),
+                event: ObjectEvent::PropertyChanged(Property::Role(role)),
             });
         }
     }

@@ -42,7 +42,7 @@ impl AccessibleInterface<PlatformNode> {
     fn parent(&self) -> OwnedObjectAddress {
         match self.node.resolve(|node| node.parent()).ok().flatten() {
             Some(ObjectRef::Managed(id)) => {
-                ObjectAddress::accessible(self.bus_name.as_ref(), id).into()
+                ObjectAddress::accessible(self.bus_name.as_ref(), &id).into()
             }
             Some(ObjectRef::Unmanaged(address)) => address,
             None => ObjectAddress::null(self.bus_name.as_ref()).into(),
@@ -76,7 +76,7 @@ impl AccessibleInterface<PlatformNode> {
             .map_err(|_| fdo::Error::InvalidArgs("Index can't be negative.".into()))?;
         self.node.resolve(|node| match node.child_at_index(index) {
             Some(ObjectRef::Managed(id)) => {
-                ObjectAddress::accessible(self.bus_name.as_ref(), id).into()
+                ObjectAddress::accessible(self.bus_name.as_ref(), &id).into()
             }
             Some(ObjectRef::Unmanaged(address)) => address,
             _ => ObjectAddress::null(self.bus_name.as_ref()).into(),
@@ -89,7 +89,7 @@ impl AccessibleInterface<PlatformNode> {
                 .into_iter()
                 .map(|child| match child {
                     ObjectRef::Managed(id) => {
-                        ObjectAddress::accessible(self.bus_name.as_ref(), id).into()
+                        ObjectAddress::accessible(self.bus_name.as_ref(), &id).into()
                     }
                     ObjectRef::Unmanaged(address) => address,
                 })
@@ -169,7 +169,7 @@ impl AccessibleInterface<PlatformRootNode> {
             .tree
             .upgrade()
             .map(|tree| {
-                ObjectAddress::accessible(self.bus_name.as_ref(), tree.read().root().id().into())
+                ObjectAddress::accessible(self.bus_name.as_ref(), &tree.read().root().id().into())
                     .into()
             })
             .ok_or(fdo::Error::UnknownObject("".into()))
@@ -182,7 +182,7 @@ impl AccessibleInterface<PlatformRootNode> {
             .map(|tree| {
                 vec![ObjectAddress::accessible(
                     self.bus_name.as_ref(),
-                    tree.read().root().id().into(),
+                    &tree.read().root().id().into(),
                 )
                 .into()]
             })

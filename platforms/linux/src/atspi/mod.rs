@@ -16,6 +16,7 @@ mod state;
 
 /// Enumeration used by interface #AtspiAccessible to specify the role
 /// of an #AtspiAccessible object.
+#[repr(u32)]
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, Type)]
 pub(crate) enum Role {
     /// A role indicating an error condition, such as
