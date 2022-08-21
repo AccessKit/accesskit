@@ -9,8 +9,11 @@ use accesskit::{ActionHandler, Role, TreeUpdate};
 use accesskit_consumer::{Node, Tree, TreeChange};
 
 use crate::atspi::{
-    interfaces::{ObjectEvent, QueuedEvent, WindowEvent},
-    Bus, State,
+    interfaces::{
+        AccessibleInterface, Interface, Interfaces, ObjectEvent, QueuedEvent, ValueInterface,
+        WindowEvent,
+    },
+    Bus, State, ACCESSIBLE_PATH_PREFIX,
 };
 use crate::node::{AppState, PlatformNode, PlatformRootNode, ResolvedPlatformNode};
 use parking_lot::RwLock;
@@ -31,8 +34,24 @@ impl<'a> Adapter<'a> {
     ) -> Option<Self> {
         let mut atspi_bus = Bus::a11y_bus()?;
         let tree = Tree::new(initial_state, action_handler);
+        let app_state = Arc::new(RwLock::new(AppState::new(
+            app_name,
+            toolkit_name,
+            toolkit_version,
+        )));
+        atspi_bus
+            .register_root_node(PlatformRootNode::new(
+                Arc::downgrade(&app_state),
+                Arc::downgrade(&tree),
+            ))
+            .ok()?;
+        let adapter = Adapter {
+            atspi_bus,
+            _app_state: app_state,
+            tree,
+        };
         {
-            let reader = tree.read();
+            let reader = adapter.tree.read();
             let mut objects_to_add = Vec::new();
 
             fn add_children<'b>(node: Node<'b>, to_add: &mut Vec<ResolvedPlatformNode<'b>>) {
@@ -45,25 +64,42 @@ impl<'a> Adapter<'a> {
             objects_to_add.push(ResolvedPlatformNode::new(reader.root()));
             add_children(reader.root(), &mut objects_to_add);
             for node in objects_to_add {
-                atspi_bus.register_node(node).ok()?;
+                adapter.register_interfaces(&node, node.interfaces()).ok()?;
             }
         }
-        let app_state = Arc::new(RwLock::new(AppState::new(
-            app_name,
-            toolkit_name,
-            toolkit_version,
-        )));
-        atspi_bus
-            .register_root_node(PlatformRootNode::new(
-                Arc::downgrade(&app_state),
-                Arc::downgrade(&tree),
-            ))
-            .ok()?;
-        Some(Self {
-            atspi_bus,
-            _app_state: app_state,
-            tree,
-        })
+        Some(adapter)
+    }
+
+    fn register_interfaces(
+        &self,
+        node: &ResolvedPlatformNode,
+        new_interfaces: Interfaces,
+    ) -> zbus::Result<bool> {
+        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, node.id().as_str());
+        if new_interfaces.contains(Interface::Accessible) {
+            self.atspi_bus.register_interface(
+                &path,
+                AccessibleInterface::new(self.atspi_bus.unique_name().to_owned(), node.downgrade()),
+            )?;
+        }
+        if new_interfaces.contains(Interface::Value) {
+            self.atspi_bus
+                .register_interface(&path, ValueInterface::new(node.downgrade()))?;
+        }
+        Ok(true)
+    }
+
+    fn unregister_interfaces(
+        &self,
+        node: &ResolvedPlatformNode,
+        old_interfaces: Interfaces,
+    ) -> zbus::Result<bool> {
+        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, node.id().as_str());
+        if old_interfaces.contains(Interface::Value) {
+            self.atspi_bus
+                .unregister_interface::<ValueInterface>(&path)?;
+        }
+        Ok(true)
     }
 
     pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
@@ -98,6 +134,13 @@ impl<'a> Adapter<'a> {
                 TreeChange::NodeUpdated { old_node, new_node } => {
                     let old_node = ResolvedPlatformNode::new(old_node);
                     let new_node = ResolvedPlatformNode::new(new_node);
+                    let old_interfaces = old_node.interfaces();
+                    let new_interfaces = new_node.interfaces();
+                    let kept_interfaces = old_interfaces & new_interfaces;
+                    self.unregister_interfaces(&new_node, old_interfaces ^ kept_interfaces)
+                        .unwrap();
+                    self.register_interfaces(&new_node, new_interfaces ^ kept_interfaces)
+                        .unwrap();
                     new_node.enqueue_changes(&mut queue, &old_node);
                 }
                 // TODO: handle other events

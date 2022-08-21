@@ -9,7 +9,7 @@ use crate::atspi::{
     proxies::{BusProxy, SocketProxy},
     ObjectId, ObjectRef,
 };
-use crate::{PlatformNode, PlatformRootNode, ResolvedPlatformNode};
+use crate::PlatformRootNode;
 use std::{
     collections::HashMap,
     convert::{AsRef, TryInto},
@@ -21,7 +21,7 @@ use x11rb::{
 };
 use zbus::{
     blocking::{Connection, ConnectionBuilder},
-    names::{BusName, InterfaceName, MemberName},
+    names::{BusName, InterfaceName, MemberName, OwnedUniqueName},
     Address, Result,
 };
 use zvariant::{OwnedValue, Str, Value};
@@ -39,28 +39,26 @@ impl<'a> Bus<'a> {
         Some(Bus { conn, socket_proxy })
     }
 
-    pub fn register_node(&mut self, node: ResolvedPlatformNode) -> Result<bool> {
-        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, node.id().as_str());
-        if self.conn.object_server().at(
-            path.clone(),
-            AccessibleInterface::new(
-                self.conn.unique_name().unwrap().to_owned(),
-                node.downgrade(),
-            ),
-        )? {
-            let interfaces = node.interfaces();
-            if interfaces.contains(Interface::Value) {
-                self.register_value(&path, node.downgrade())
-            } else {
-                Ok(false)
-            }
-        } else {
-            Ok(false)
-        }
+    pub fn unique_name(&self) -> &OwnedUniqueName {
+        self.conn.unique_name().unwrap()
+    }
+
+    pub fn register_interface<T>(&self, path: &str, interface: T) -> Result<bool>
+    where
+        T: zbus::Interface,
+    {
+        self.conn.object_server().at(path, interface)
+    }
+
+    pub fn unregister_interface<T>(&self, path: &str) -> Result<bool>
+    where
+        T: zbus::Interface,
+    {
+        self.conn.object_server().remove::<T, _>(path)
     }
 
     pub fn register_root_node(&mut self, node: PlatformRootNode) -> Result<bool> {
-        println!("Registering on {:?}", self.conn.unique_name().unwrap());
+        println!("Registering on {:?}", self.unique_name());
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, ObjectId::root().as_str());
         let registered = self
             .conn
@@ -68,12 +66,12 @@ impl<'a> Bus<'a> {
             .at(path.clone(), ApplicationInterface(node.clone()))?
             && self.conn.object_server().at(
                 path,
-                AccessibleInterface::new(self.conn.unique_name().unwrap().to_owned(), node.clone()),
+                AccessibleInterface::new(self.unique_name().to_owned(), node.clone()),
             )?;
         if registered {
-            let desktop_address = self.socket_proxy.embed(ObjectAddress::root(
-                self.conn.unique_name().unwrap().as_ref(),
-            ))?;
+            let desktop_address = self
+                .socket_proxy
+                .embed(ObjectAddress::root(self.unique_name().as_ref()))?;
             node.state
                 .upgrade()
                 .map(|state| state.write().desktop_address = Some(desktop_address));
@@ -81,12 +79,6 @@ impl<'a> Bus<'a> {
         } else {
             Ok(false)
         }
-    }
-
-    fn register_value(&mut self, path: &str, node: PlatformNode) -> Result<bool> {
-        self.conn
-            .object_server()
-            .at(path, ValueInterface::new(node))
     }
 
     pub fn emit_focus_event(&self, target: &ObjectId) -> Result<()> {
@@ -134,7 +126,7 @@ impl<'a> Bus<'a> {
                         Property::Description(value) => Str::from(value).into(),
                         Property::Parent(Some(ObjectRef::Managed(parent))) => {
                             OwnedObjectAddress::from(ObjectAddress::accessible(
-                                self.conn.unique_name().unwrap().into(),
+                                self.unique_name().into(),
                                 parent,
                             ))
                             .into()
@@ -142,10 +134,10 @@ impl<'a> Bus<'a> {
                         Property::Parent(Some(ObjectRef::Unmanaged(parent))) => {
                             parent.clone().into()
                         }
-                        Property::Parent(None) => OwnedObjectAddress::from(ObjectAddress::root(
-                            self.conn.unique_name().unwrap().into(),
-                        ))
-                        .into(),
+                        Property::Parent(None) => {
+                            OwnedObjectAddress::from(ObjectAddress::root(self.unique_name().into()))
+                                .into()
+                        }
                         Property::Role(value) => OwnedValue::from(*value as u32),
                     }
                     .into(),

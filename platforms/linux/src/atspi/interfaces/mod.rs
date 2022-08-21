@@ -122,6 +122,14 @@ impl From<Interface> for Interfaces {
     }
 }
 
+impl std::ops::BitAnd for Interfaces {
+    type Output = Interfaces;
+
+    fn bitand(self, other: Self) -> Self::Output {
+        Interfaces(self.0 & other.0)
+    }
+}
+
 impl std::ops::BitXor for Interfaces {
     type Output = Interfaces;
 
