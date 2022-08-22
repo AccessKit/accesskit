@@ -4,6 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 mod accessible;
+mod action;
 mod application;
 mod events;
 mod value;
@@ -22,6 +23,7 @@ use zvariant::{Signature, Type};
 pub(crate) enum Interface {
     Accessible,
     Application,
+    Action,
     Value,
 }
 
@@ -53,6 +55,7 @@ impl Interfaces {
 const INTERFACE_NAMES: &[&str] = &[
     "org.a11y.atspi.Accessible",
     "org.a11y.atspi.Application",
+    "org.a11y.atspi.Action",
     "org.a11y.atspi.Value",
 ];
 
@@ -139,6 +142,7 @@ impl std::ops::BitXor for Interfaces {
 }
 
 pub(crate) use accessible::*;
+pub(crate) use action::*;
 pub(crate) use application::*;
 pub(crate) use events::*;
 pub(crate) use value::*;

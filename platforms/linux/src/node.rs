@@ -4,10 +4,10 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::atspi::{
-    interfaces::{Interface, Interfaces, ObjectEvent, Property, QueuedEvent},
+    interfaces::{Action, Interface, Interfaces, ObjectEvent, Property, QueuedEvent},
     ObjectId, ObjectRef, OwnedObjectAddress, Role as AtspiRole, State, StateSet,
 };
-use accesskit::{AriaCurrent, CheckedState, InvalidState, Orientation, Role};
+use accesskit::{AriaCurrent, CheckedState, DefaultActionVerb, InvalidState, Orientation, Role};
 use accesskit_consumer::{Node, Tree, WeakNode};
 use parking_lot::RwLock;
 use std::sync::Weak;
@@ -432,10 +432,59 @@ impl ResolvedPlatformNode<'_> {
 
     pub fn interfaces(&self) -> Interfaces {
         let mut interfaces = Interfaces::new(Interface::Accessible);
+        if self.node.default_action_verb().is_some() {
+            interfaces.insert(Interface::Action);
+        }
         if self.node.numeric_value().is_some() {
             interfaces.insert(Interface::Value);
         }
         interfaces
+    }
+
+    pub fn n_actions(&self) -> i32 {
+        match self.node.default_action_verb() {
+            Some(_) => 1,
+            None => 0,
+        }
+    }
+
+    pub fn get_action_name(&self, index: i32) -> String {
+        if index != 0 {
+            return String::new();
+        }
+        String::from(match self.node.default_action_verb() {
+            Some(DefaultActionVerb::Click) => "click",
+            Some(DefaultActionVerb::Focus) => "focus",
+            Some(DefaultActionVerb::Check) => "check",
+            Some(DefaultActionVerb::Uncheck) => "uncheck",
+            Some(DefaultActionVerb::ClickAncestor) => "clickAncestor",
+            Some(DefaultActionVerb::Jump) => "jump",
+            Some(DefaultActionVerb::Open) => "open",
+            Some(DefaultActionVerb::Press) => "press",
+            Some(DefaultActionVerb::Select) => "select",
+            None => "",
+        })
+    }
+
+    pub fn get_actions(&self) -> Vec<Action> {
+        let n_actions = self.n_actions() as usize;
+        let mut actions = Vec::with_capacity(n_actions);
+        for i in 0..n_actions {
+            actions.push(Action {
+                localized_name: self.get_action_name(i as i32),
+                description: "".into(),
+                key_binding: "".into(),
+            });
+        }
+        actions
+    }
+
+    pub fn do_action(&self, index: i32) -> bool {
+        if index != 0 {
+            return false;
+        }
+        self.node.do_default_action();
+        true
     }
 
     pub fn minimum_value(&self) -> f64 {

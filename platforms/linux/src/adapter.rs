@@ -10,8 +10,8 @@ use accesskit_consumer::{Node, Tree, TreeChange};
 
 use crate::atspi::{
     interfaces::{
-        AccessibleInterface, Interface, Interfaces, ObjectEvent, QueuedEvent, ValueInterface,
-        WindowEvent,
+        AccessibleInterface, ActionInterface, Interface, Interfaces, ObjectEvent, QueuedEvent,
+        ValueInterface, WindowEvent,
     },
     Bus, State, ACCESSIBLE_PATH_PREFIX,
 };
@@ -82,6 +82,10 @@ impl<'a> Adapter<'a> {
                 AccessibleInterface::new(self.atspi_bus.unique_name().to_owned(), node.downgrade()),
             )?;
         }
+        if new_interfaces.contains(Interface::Action) {
+            self.atspi_bus
+                .register_interface(&path, ActionInterface::new(node.downgrade()))?;
+        }
         if new_interfaces.contains(Interface::Value) {
             self.atspi_bus
                 .register_interface(&path, ValueInterface::new(node.downgrade()))?;
@@ -95,6 +99,10 @@ impl<'a> Adapter<'a> {
         old_interfaces: Interfaces,
     ) -> zbus::Result<bool> {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, node.id().as_str());
+        if old_interfaces.contains(Interface::Action) {
+            self.atspi_bus
+                .unregister_interface::<ActionInterface>(&path)?;
+        }
         if old_interfaces.contains(Interface::Value) {
             self.atspi_bus
                 .unregister_interface::<ValueInterface>(&path)?;

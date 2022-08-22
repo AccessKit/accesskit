@@ -3,7 +3,9 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
+use accesskit::{
+    ActionHandler, ActionRequest, DefaultActionVerb, Node, NodeId, Role, Tree, TreeUpdate,
+};
 use accesskit_linux::Adapter;
 use std::num::NonZeroU128;
 use winit::{
@@ -32,6 +34,7 @@ fn get_tree() -> Tree {
 
 fn make_button(id: NodeId, name: &str) -> Node {
     Node {
+        default_action_verb: Some(DefaultActionVerb::Click),
         name: Some(name.into()),
         focusable: true,
         ..Node::new(id, Role::Button)
