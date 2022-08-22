@@ -27,65 +27,69 @@ impl AccessibleInterface<PlatformNode> {
     #[dbus_interface(property)]
     fn name(&self) -> String {
         self.node
-            .resolve(|node| node.name())
-            .unwrap_or(String::new())
+            .resolve(|resolved| resolved.name())
+            .unwrap_or_else(|_| String::new())
     }
 
     #[dbus_interface(property)]
     fn description(&self) -> String {
         self.node
-            .resolve(|node| node.description())
-            .unwrap_or(String::new())
+            .resolve(|resolved| resolved.description())
+            .unwrap_or_else(|_| String::new())
     }
 
     #[dbus_interface(property)]
     fn parent(&self) -> OwnedObjectAddress {
-        match self.node.resolve(|node| node.parent()).ok().flatten() {
-            Some(ObjectRef::Managed(id)) => {
-                ObjectAddress::accessible(self.bus_name.as_ref(), &id).into()
-            }
-            Some(ObjectRef::Unmanaged(address)) => address,
-            None => ObjectAddress::null(self.bus_name.as_ref()).into(),
-        }
+        self.node
+            .resolve(|resolved| match resolved.parent() {
+                Some(ObjectRef::Managed(id)) => {
+                    ObjectAddress::accessible(self.bus_name.as_ref(), &id).into()
+                }
+                Some(ObjectRef::Unmanaged(address)) => address,
+                _ => ObjectAddress::root(self.bus_name.as_ref()).into(),
+            })
+            .unwrap_or_else(|_| ObjectAddress::null(self.bus_name.as_ref()).into())
     }
 
     #[dbus_interface(property)]
     fn child_count(&self) -> i32 {
         self.node
-            .resolve(|node| node.child_count())
+            .resolve(|resolved| resolved.child_count())
             .map_or(0, |count| count.try_into().unwrap_or(0))
     }
 
     #[dbus_interface(property)]
     fn locale(&self) -> String {
         self.node
-            .resolve(|node| node.locale())
-            .unwrap_or(String::new())
+            .resolve(|resolved| resolved.locale())
+            .unwrap_or_else(|_| String::new())
     }
 
     #[dbus_interface(property)]
     fn accessible_id(&self) -> ObjectId {
         self.node
-            .resolve(|node| node.id())
-            .unwrap_or(unsafe { ObjectId::from_str_unchecked("") })
+            .resolve(|resolved| resolved.id())
+            .unwrap_or_else(|_| unsafe { ObjectId::from_str_unchecked("") })
     }
 
-    fn get_child_at_index(&self, index: i32) -> fdo::Result<OwnedObjectAddress> {
+    fn get_child_at_index(&self, index: i32) -> fdo::Result<(OwnedObjectAddress,)> {
         let index = index
             .try_into()
             .map_err(|_| fdo::Error::InvalidArgs("Index can't be negative.".into()))?;
-        self.node.resolve(|node| match node.child_at_index(index) {
-            Some(ObjectRef::Managed(id)) => {
-                ObjectAddress::accessible(self.bus_name.as_ref(), &id).into()
-            }
-            Some(ObjectRef::Unmanaged(address)) => address,
-            _ => ObjectAddress::null(self.bus_name.as_ref()).into(),
-        })
+        self.node
+            .resolve(|resolved| match resolved.child_at_index(index) {
+                Some(ObjectRef::Managed(id)) => {
+                    (ObjectAddress::accessible(self.bus_name.as_ref(), &id).into(),)
+                }
+                Some(ObjectRef::Unmanaged(address)) => (address,),
+                _ => (ObjectAddress::null(self.bus_name.as_ref()).into(),),
+            })
     }
 
     fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
-        self.node.resolve(|node| {
-            node.children()
+        self.node.resolve(|resolved| {
+            resolved
+                .children()
                 .into_iter()
                 .map(|child| match child {
                     ObjectRef::Managed(id) => {
@@ -98,7 +102,7 @@ impl AccessibleInterface<PlatformNode> {
     }
 
     fn get_index_in_parent(&self) -> fdo::Result<i32> {
-        let index = self.node.resolve(|node| node.index_in_parent())?;
+        let index = self.node.resolve(|resolved| resolved.index_in_parent())?;
         if let Some(index) = index {
             index
                 .try_into()
@@ -109,15 +113,19 @@ impl AccessibleInterface<PlatformNode> {
     }
 
     fn get_role(&self) -> fdo::Result<Role> {
-        self.node.resolve(|node| node.role())
+        self.node.resolve(|resolved| resolved.role())
     }
 
     fn get_state(&self) -> fdo::Result<StateSet> {
-        self.node.resolve(|node| node.state())
+        self.node.resolve(|resolved| resolved.state())
+    }
+
+    fn get_application(&self) -> (OwnedObjectAddress,) {
+        (ObjectAddress::root(self.bus_name.as_ref()).into(),)
     }
 
     fn get_interfaces(&self) -> fdo::Result<Interfaces> {
-        self.node.resolve(|node| node.interfaces())
+        self.node.resolve(|resolved| resolved.interfaces())
     }
 }
 
@@ -129,7 +137,7 @@ impl AccessibleInterface<PlatformRootNode> {
             .state
             .upgrade()
             .map(|state| state.read().name.clone())
-            .unwrap_or(String::new())
+            .unwrap_or_else(|| String::new())
     }
 
     #[dbus_interface(property)]
@@ -152,8 +160,8 @@ impl AccessibleInterface<PlatformRootNode> {
     }
 
     #[dbus_interface(property)]
-    fn locale(&self) -> String {
-        String::new()
+    fn locale(&self) -> &str {
+        ""
     }
 
     #[dbus_interface(property)]
@@ -161,18 +169,23 @@ impl AccessibleInterface<PlatformRootNode> {
         ObjectId::root()
     }
 
-    fn get_child_at_index(&self, index: i32) -> fdo::Result<OwnedObjectAddress> {
+    fn get_child_at_index(&self, index: i32) -> fdo::Result<(OwnedObjectAddress,)> {
         if index != 0 {
-            return Ok(ObjectAddress::null(self.bus_name.as_ref()).into());
+            return Ok((ObjectAddress::null(self.bus_name.as_ref()).into(),));
         }
         self.node
             .tree
             .upgrade()
             .map(|tree| {
-                ObjectAddress::accessible(self.bus_name.as_ref(), &tree.read().root().id().into())
-                    .into()
+                (
+                    ObjectAddress::accessible(
+                        self.bus_name.as_ref(),
+                        &tree.read().root().id().into(),
+                    )
+                    .into(),
+                )
             })
-            .ok_or(fdo::Error::UnknownObject("".into()))
+            .ok_or_else(|| fdo::Error::UnknownObject("".into()))
     }
 
     fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
@@ -186,7 +199,7 @@ impl AccessibleInterface<PlatformRootNode> {
                 )
                 .into()]
             })
-            .ok_or(fdo::Error::UnknownObject("".into()))
+            .ok_or_else(|| fdo::Error::UnknownObject("".into()))
     }
 
     fn get_index_in_parent(&self) -> i32 {
@@ -199,6 +212,10 @@ impl AccessibleInterface<PlatformRootNode> {
 
     fn get_state(&self) -> StateSet {
         StateSet::empty()
+    }
+
+    fn get_application(&self) -> (OwnedObjectAddress,) {
+        (ObjectAddress::root(self.bus_name.as_ref()).into(),)
     }
 
     fn get_interfaces(&self) -> Interfaces {
