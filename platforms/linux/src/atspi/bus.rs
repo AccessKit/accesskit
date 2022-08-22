@@ -185,14 +185,6 @@ impl<'a> Bus<'a> {
     }
 }
 
-impl Drop for Bus<'_> {
-    fn drop(&mut self) {
-        let _ = self.socket_proxy.unembed(ObjectAddress::root(
-            self.conn.unique_name().unwrap().as_ref(),
-        ));
-    }
-}
-
 fn spi_display_name() -> Option<String> {
     var("AT_SPI_DISPLAY").ok().or(match var("DISPLAY") {
         Ok(mut display_env) if display_env.len() > 0 => {
