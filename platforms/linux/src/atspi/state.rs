@@ -5,7 +5,7 @@
 
 use enumflags2::{bitflags, BitFlag, BitFlags, FromBitsError};
 use serde::{
-    de::{self, Deserialize, Deserializer, SeqAccess, Visitor},
+    de::{self, Deserialize, Deserializer, Visitor},
     ser::{Serialize, SerializeSeq, Serializer},
 };
 use std::fmt;
@@ -224,10 +224,14 @@ pub(crate) enum State {
     LastDefined,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct StateSet(BitFlags<State>);
 
 impl StateSet {
+    pub fn new<B: Into<BitFlags<State>>>(value: B) -> Self {
+        Self(value.into())
+    }
+
     pub fn from_bits(bits: u64) -> Result<StateSet, FromBitsError<State>> {
         Ok(StateSet(BitFlags::from_bits(bits)?))
     }
@@ -268,24 +272,23 @@ impl<'de> Deserialize<'de> for StateSet {
                     .write_str("a sequence comprised of two u32 that represents a valid StateSet")
             }
 
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
             where
-                A: SeqAccess<'de>,
+                D: Deserializer<'de>,
             {
-                match SeqAccess::next_element::<Vec<u32>>(&mut seq)? {
-                    Some(vec) => {
-                        let len = vec.len();
-                        if len != 2 {
-                            return Err(de::Error::invalid_length(len, &"Vec with two elements"));
-                        }
-                        Ok(StateSet::from_bits(0).unwrap())
+                match <Vec<u32> as Deserialize>::deserialize(deserializer) {
+                    Ok(states) if states.len() == 2 => {
+                        let mut bits = states[0] as u64;
+                        bits |= (states[1] as u64) << 32;
+                        StateSet::from_bits(bits).map_err(|_| de::Error::custom("invalid state"))
                     }
-                    None => Err(de::Error::custom("Vec with two elements")),
+                    Ok(states) => Err(de::Error::invalid_length(states.len(), &"array of size 2")),
+                    Err(e) => Err(e),
                 }
             }
         }
 
-        deserializer.deserialize_seq(StateSetVisitor)
+        deserializer.deserialize_newtype_struct("StateSet", StateSetVisitor)
     }
 }
 
@@ -304,7 +307,7 @@ impl Serialize for StateSet {
 
 impl Type for StateSet {
     fn signature() -> Signature<'static> {
-        Signature::from_str_unchecked("au")
+        <Vec<u32> as Type>::signature()
     }
 }
 
@@ -319,5 +322,96 @@ impl std::ops::BitXor for StateSet {
 
     fn bitxor(self, other: Self) -> Self::Output {
         StateSet(self.0 ^ other.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use byteorder::LE;
+    use zvariant::{from_slice, to_bytes, EncodingContext as Context};
+
+    #[test]
+    fn serialize_empty_state_set() {
+        let ctxt = Context::<LE>::new_dbus(0);
+        let encoded = to_bytes(ctxt, &StateSet::empty()).unwrap();
+        assert_eq!(encoded, &[8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn deserialize_empty_state_set() {
+        let ctxt = Context::<LE>::new_dbus(0);
+        let decoded: StateSet = from_slice(&[8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], ctxt).unwrap();
+        assert_eq!(decoded, StateSet::empty());
+    }
+
+    #[test]
+    fn serialize_state_set_invalid() {
+        let ctxt = Context::<LE>::new_dbus(0);
+        let encoded = to_bytes(ctxt, &StateSet::new(State::Invalid)).unwrap();
+        assert_eq!(encoded, &[8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn deserialize_state_set_invalid() {
+        let ctxt = Context::<LE>::new_dbus(0);
+        let decoded: StateSet = from_slice(&[8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0], ctxt).unwrap();
+        assert_eq!(decoded, StateSet::new(State::Invalid));
+    }
+
+    #[test]
+    fn serialize_state_set_manages_descendants() {
+        let ctxt = Context::<LE>::new_dbus(0);
+        let encoded = to_bytes(ctxt, &StateSet::new(State::ManagesDescendants)).unwrap();
+        assert_eq!(encoded, &[8, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn deserialize_state_set_manages_descendants() {
+        let ctxt = Context::<LE>::new_dbus(0);
+        let decoded: StateSet = from_slice(&[8, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0], ctxt).unwrap();
+        assert_eq!(decoded, StateSet::new(State::ManagesDescendants));
+    }
+
+    #[test]
+    fn serialize_state_set_indeterminate() {
+        let ctxt = Context::<LE>::new_dbus(0);
+        let encoded = to_bytes(ctxt, &StateSet::new(State::Indeterminate)).unwrap();
+        assert_eq!(encoded, &[8, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]);
+    }
+
+    #[test]
+    fn deserialize_state_set_indeterminate() {
+        let ctxt = Context::<LE>::new_dbus(0);
+        let decoded: StateSet = from_slice(&[8, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], ctxt).unwrap();
+        assert_eq!(decoded, StateSet::new(State::Indeterminate));
+    }
+
+    #[test]
+    fn serialize_state_set_focusable_focused() {
+        let ctxt = Context::<LE>::new_dbus(0);
+        let encoded = to_bytes(ctxt, &StateSet::new(State::Focusable | State::Focused)).unwrap();
+        assert_eq!(encoded, &[8, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn deserialize_state_set_focusable_focused() {
+        let ctxt = Context::<LE>::new_dbus(0);
+        let decoded: StateSet = from_slice(&[8, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0], ctxt).unwrap();
+        assert_eq!(decoded, StateSet::new(State::Focusable | State::Focused));
+    }
+
+    #[test]
+    fn cannot_deserialize_state_set_invalid_length() {
+        let ctxt = Context::<LE>::new_dbus(0);
+        let decoded = from_slice::<_, StateSet>(&[4, 0, 0, 0, 0, 0, 0, 0], ctxt);
+        assert!(decoded.is_err());
+    }
+
+    #[test]
+    fn cannot_deserialize_state_set_invalid_flag() {
+        let ctxt = Context::<LE>::new_dbus(0);
+        let decoded = from_slice::<_, StateSet>(&[8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32], ctxt);
+        assert!(decoded.is_err());
     }
 }

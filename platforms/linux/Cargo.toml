@@ -19,4 +19,5 @@ zbus = "2.3.2"
 zvariant = "3.3.1"
 
 [dev-dependencies]
+byteorder = "1.4.3"
 winit = "0.26.1"
