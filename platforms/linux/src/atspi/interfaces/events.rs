@@ -10,7 +10,6 @@ use strum::AsRefStr;
 use zvariant::{OwnedValue, Type};
 
 pub(crate) enum QueuedEvent {
-    Focus(ObjectId<'static>),
     Object {
         target: ObjectId<'static>,
         event: ObjectEvent,

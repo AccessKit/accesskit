@@ -130,7 +130,6 @@ impl<'a> Adapter<'a> {
                             target: node.id(),
                             event: ObjectEvent::StateChanged(State::Focused, true),
                         });
-                        queue.push(QueuedEvent::Focus(node.id()));
                     }
                     if let Some(node) = old_node.map(|node| ResolvedPlatformNode::new(node)) {
                         queue.push(QueuedEvent::Object {
@@ -216,7 +215,6 @@ impl<'a> QueuedEvents<'a> {
     pub fn raise(&self) {
         for event in &self.queue {
             let _ = match &event {
-                QueuedEvent::Focus(target) => self.bus.emit_focus_event(target),
                 QueuedEvent::Object { target, event } => self.bus.emit_object_event(target, event),
                 QueuedEvent::Window {
                     target,

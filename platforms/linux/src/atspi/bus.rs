@@ -81,21 +81,6 @@ impl<'a> Bus<'a> {
         }
     }
 
-    pub fn emit_focus_event(&self, target: &ObjectId) -> Result<()> {
-        self.emit_event(
-            target,
-            "org.a11y.atspi.Event.Focus",
-            "Focus",
-            EventData {
-                minor: "",
-                detail1: 0,
-                detail2: 0,
-                any_data: 0i32.into(),
-                properties: HashMap::new(),
-            },
-        )
-    }
-
     pub fn emit_object_event(&self, target: &ObjectId, event: &ObjectEvent) -> Result<()> {
         let interface = "org.a11y.atspi.Event.Object";
         let signal = event.as_ref();
