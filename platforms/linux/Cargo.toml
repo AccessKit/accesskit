@@ -14,7 +14,6 @@ lazy_static = "1.4.0"
 parking_lot = "0.11.1"
 serde = "1.0"
 strum = { version = "0.23.0", features = ["derive"] }
-x11rb = "0.8.1"
 zbus = "2.3.2"
 zvariant = "3.3.1"
 

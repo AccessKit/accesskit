@@ -15,10 +15,6 @@ use std::{
     convert::{AsRef, TryInto},
     env::var,
 };
-use x11rb::{
-    connection::Connection as _,
-    protocol::xproto::{AtomEnum, ConnectionExt},
-};
 use zbus::{
     blocking::{Connection, ConnectionBuilder},
     names::{BusName, InterfaceName, MemberName, OwnedUniqueName},
@@ -170,57 +166,14 @@ impl<'a> Bus<'a> {
     }
 }
 
-fn spi_display_name() -> Option<String> {
-    var("AT_SPI_DISPLAY").ok().or(match var("DISPLAY") {
-        Ok(mut display_env) if display_env.len() > 0 => {
-            match (display_env.rfind(':'), display_env.rfind('.')) {
-                (Some(i), Some(j)) if j > i => {
-                    display_env.truncate(j);
-                    Some(display_env)
-                }
-                _ => Some(display_env),
-            }
-        }
-        _ => None,
-    })
-}
-
-fn a11y_bus_address_from_x11() -> Option<String> {
-    let (bridge_display, screen_num) = x11rb::connect(Some(&spi_display_name()?)).ok()?;
-    let root_window = &bridge_display.setup().roots[screen_num].root;
-    let reply = bridge_display.intern_atom(false, b"AT_SPI_BUS").ok()?;
-    let at_spi_bus = reply.reply().ok()?;
-    let address = bridge_display
-        .get_property(
-            false,
-            *root_window,
-            at_spi_bus.atom,
-            AtomEnum::STRING,
-            0,
-            1024,
-        )
-        .ok()?
-        .reply()
-        .map_or(None, |data| String::from_utf8(data.value).ok());
-    address
-}
-
-fn a11y_bus_address_from_dbus() -> Option<String> {
-    let session_bus = Connection::session().ok()?;
-    BusProxy::new(&session_bus).ok()?.get_address().ok()
-}
-
 fn a11y_bus() -> Option<Connection> {
-    let mut address = match var("AT_SPI_BUS_ADDRESS") {
-        Ok(address) if address.len() > 0 => Some(address),
-        _ => None,
+    let address = match var("AT_SPI_BUS_ADDRESS") {
+        Ok(address) if address.len() > 0 => address,
+        _ => {
+            let session_bus = Connection::session().ok()?;
+            BusProxy::new(&session_bus).ok()?.get_address().ok()?
+        }
     };
-    if address.is_none() && var("WAYLAND_DISPLAY").is_err() {
-        address = a11y_bus_address_from_x11();
-    }
-    if address.is_none() {
-        address = a11y_bus_address_from_dbus();
-    }
-    let address: Address = address?.as_str().try_into().ok()?;
+    let address: Address = address.as_str().try_into().ok()?;
     ConnectionBuilder::address(address).ok()?.build().ok()
 }
