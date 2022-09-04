@@ -431,7 +431,7 @@ pub enum TextDirection {
 /// [`aria-invalid`] attribute.
 ///
 /// [`aria-invalid`]: https://www.w3.org/TR/wai-aria-1.1/#aria-invalid
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(crate = "serde"))]
@@ -589,7 +589,7 @@ impl From<NonZeroU64> for NodeId {
 }
 
 /// A marker spanning a range within text.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(crate = "serde"))]
@@ -605,7 +605,7 @@ pub struct TextMarker {
 ///
 /// For example, a list UI can allow a user to reorder items in the list by dragging the
 /// items.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(crate = "serde"))]
@@ -1315,7 +1315,7 @@ impl Node {
 
 /// The data associated with an accessibility tree that's global to the
 /// tree and not associated with any particular node.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(crate = "serde"))]
