@@ -20,5 +20,5 @@ schemars_lib = { package = "schemars", version = "0.8.7", features = ["enumset"]
 serde_lib = { package = "serde", version = "1.0", features = ["derive"], optional = true }
 
 [features]
-schemars = ["schemars_lib", "kurbo/schemars"]
+schemars = ["serde", "schemars_lib", "kurbo/schemars"]
 serde = ["serde_lib", "enumset/serde", "kurbo/serde"]
