@@ -1431,6 +1431,7 @@ pub enum ActionData {
 pub struct ActionRequest {
     pub action: Action,
     pub target: NodeId,
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub data: Option<ActionData>,
 }
 
