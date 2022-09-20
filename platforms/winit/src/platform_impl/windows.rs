@@ -17,7 +17,7 @@ impl Adapter {
         source: Box<dyn FnOnce() -> TreeUpdate>,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
-        let hwnd = HWND(window.hwnd() as _);
+        let hwnd = HWND(window.hwnd());
         let adapter = WindowsAdapter::new(hwnd, source, action_handler);
         let adapter = SubclassingAdapter::new(adapter);
         Self { adapter }

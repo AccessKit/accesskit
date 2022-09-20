@@ -13,7 +13,7 @@ edition = "2021"
 [dependencies]
 accesskit = { version = "0.4.0", path = "../../common" }
 parking_lot = "0.11.2"
-winit = "0.26.1"
+winit = "0.27.3"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 accesskit_windows = { version = "0.4.0", path = "../windows" }
