@@ -11,7 +11,7 @@ use windows::{
 
 use crate::Adapter;
 
-const PROP_NAME: &str = "AccessKitAdapter";
+const PROP_NAME: &HSTRING = w!("AccessKitAdapter");
 
 struct SubclassImpl {
     adapter: Adapter,

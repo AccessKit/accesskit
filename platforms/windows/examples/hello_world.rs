@@ -22,24 +22,17 @@ lazy_static! {
         let instance = unsafe { GetModuleHandleW(None) };
         instance.unwrap()
     };
-
     static ref DEFAULT_CURSOR: HCURSOR = {
         let cursor = unsafe { LoadCursorW(None, IDC_ARROW) };
         cursor.unwrap()
     };
-
     static ref WINDOW_CLASS_ATOM: u16 = {
-        // The following is a combination of the implementation of
-        // IntoParam<PWSTR> and the class registration function from winit.
-        let class_name_wsz: Vec<_> = "AccessKitTest"
-            .encode_utf16()
-            .chain(std::iter::once(0))
-            .collect();
+        let class_name = w!("AccessKitTest");
 
         let wc = WNDCLASSW {
             hCursor: *DEFAULT_CURSOR,
             hInstance: *WIN32_INSTANCE,
-            lpszClassName: PCWSTR(class_name_wsz.as_ptr() as _),
+            lpszClassName: class_name.into(),
             style: CS_HREDRAW | CS_VREDRAW,
             lpfnWndProc: Some(wndproc),
             ..Default::default()
@@ -233,7 +226,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             unsafe { DefWindowProcW(window, message, wparam, lparam) }
         }
         WM_PAINT => {
-            unsafe { ValidateRect(window, std::ptr::null()) }.unwrap();
+            unsafe { ValidateRect(window, None) }.unwrap();
             LRESULT(0)
         }
         WM_DESTROY => {
@@ -323,7 +316,7 @@ fn create_window(title: &str, initial_state: TreeUpdate, initial_focus: NodeId) 
         CreateWindowExW(
             Default::default(),
             PCWSTR(*WINDOW_CLASS_ATOM as usize as _),
-            title,
+            &HSTRING::from(title),
             WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT,
             CW_USEDEFAULT,

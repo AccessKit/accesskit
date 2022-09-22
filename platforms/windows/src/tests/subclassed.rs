@@ -57,9 +57,7 @@ impl ActionHandler for NullActionHandler {
 fn has_native_uia() {
     // This test is simple enough that we know it's fine to run entirely
     // on one thread, so we don't need a full multithreaded test harness.
-    let event_loop = EventLoopBuilder::<()>::new()
-        .with_any_thread(true)
-        .build();
+    let event_loop = EventLoopBuilder::<()>::new().with_any_thread(true).build();
     let window = WindowBuilder::new()
         .with_title(WINDOW_TITLE)
         .build(&event_loop)
