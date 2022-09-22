@@ -6,7 +6,7 @@
 use accesskit::{ActionHandler, NodeId, TreeUpdate};
 use lazy_static::lazy_static;
 use parking_lot::{const_mutex, Condvar, Mutex};
-use std::{cell::RefCell, rc::Rc, sync::Arc, time::Duration};
+use std::{cell::RefCell, rc::Rc, sync::Arc, thread, time::Duration};
 use windows as Windows;
 use windows::{
     core::*,
@@ -214,8 +214,8 @@ where
     let window_mutex: Mutex<Option<HWND>> = Mutex::new(None);
     let window_cv = Condvar::new();
 
-    crossbeam_utils::thread::scope(|thread_scope| {
-        thread_scope.spawn(|_| {
+    thread::scope(|thread_scope| {
+        thread_scope.spawn(|| {
             // We explicitly don't want to initialize COM on the provider thread,
             // because we want to make sure that the provider side of UIA works
             // even if COM is never initialized on the provider thread
@@ -272,7 +272,6 @@ where
         let s = Scope { uia, window };
         f(&s)
     })
-    .unwrap()
 }
 
 pub(crate) struct ReceivedFocusEvent {
