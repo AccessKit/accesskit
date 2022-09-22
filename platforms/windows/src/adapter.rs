@@ -1,4 +1,4 @@
-// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Copyright 2022 The AccessKit Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
@@ -177,7 +177,7 @@ struct WmGetObjectResult {
 
 impl From<WmGetObjectResult> for LRESULT {
     fn from(this: WmGetObjectResult) -> Self {
-        unsafe { UiaReturnRawElementProvider(this.hwnd, this.wparam, this.lparam, this.el) }
+        unsafe { UiaReturnRawElementProvider(this.hwnd, this.wparam, this.lparam, &this.el) }
     }
 }
 
@@ -210,7 +210,7 @@ impl QueuedEvents {
         for event in self.0 {
             match event {
                 QueuedEvent::Simple { element, event_id } => {
-                    unsafe { UiaRaiseAutomationEvent(element, event_id) }.unwrap();
+                    unsafe { UiaRaiseAutomationEvent(&element, event_id) }.unwrap();
                 }
                 QueuedEvent::PropertyChanged {
                     element,
@@ -220,10 +220,10 @@ impl QueuedEvents {
                 } => {
                     unsafe {
                         UiaRaiseAutomationPropertyChangedEvent(
-                            element,
+                            &element,
                             property_id,
-                            old_value,
-                            new_value,
+                            &old_value,
+                            &new_value,
                         )
                     }
                     .unwrap();

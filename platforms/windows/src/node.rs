@@ -1,4 +1,4 @@
-// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Copyright 2022 The AccessKit Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
@@ -783,14 +783,7 @@ patterns! {
     ), (
         fn SetValue(&self, value: &PCWSTR) -> Result<()> {
             self.0.resolve(|resolved| {
-                // Based on BSTR::as_wide in windows-rs
-                let value_as_wide = if value.0.is_null() {
-                    &[]
-                } else {
-                    let len = unsafe { libc::wcslen(value.0) };
-                    unsafe { std::slice::from_raw_parts(value.0 as *const _, len) }
-                };
-                let value = String::from_utf16(value_as_wide).unwrap();
+                let value = unsafe { value.to_string() }.unwrap();
                 resolved.set_value(value);
                 Ok(())
             })

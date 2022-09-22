@@ -8,8 +8,8 @@ use std::num::NonZeroU128;
 use accesskit::{ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
 use windows::Win32::{Foundation::*, UI::Accessibility::*};
 use winit::{
-    event_loop::EventLoop,
-    platform::windows::{EventLoopExtWindows, WindowExtWindows},
+    event_loop::EventLoopBuilder,
+    platform::windows::{EventLoopBuilderExtWindows, WindowExtWindows},
     window::WindowBuilder,
 };
 
@@ -57,12 +57,12 @@ impl ActionHandler for NullActionHandler {
 fn has_native_uia() {
     // This test is simple enough that we know it's fine to run entirely
     // on one thread, so we don't need a full multithreaded test harness.
-    let event_loop = EventLoop::<()>::new_any_thread();
+    let event_loop = EventLoopBuilder::<()>::new().with_any_thread(true).build();
     let window = WindowBuilder::new()
         .with_title(WINDOW_TITLE)
         .build(&event_loop)
         .unwrap();
-    let hwnd = HWND(window.hwnd() as _);
+    let hwnd = HWND(window.hwnd());
     assert!(!unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
     let adapter = Adapter::new(
         hwnd,
