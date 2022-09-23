@@ -116,9 +116,9 @@ struct WindowState {
 
 impl WindowState {
     fn press_button(&self, id: NodeId) {
-        // This is a pretty hacky way of updating a node.
+        // This is a pretty hacky way of adding or updating a node.
         // A real GUI framework would have a consistent way
-        // of building a node from underlying data.
+        // of building nodes from underlying data.
         // Also, this update isn't as lazy as it could be;
         // we force the AccessKit tree to be initialized.
         // This is expedient in this case, because that tree
