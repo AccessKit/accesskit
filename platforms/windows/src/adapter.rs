@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use accesskit::{ActionHandler, TreeUpdate};
+use accesskit::{ActionHandler, Live, TreeUpdate};
 use accesskit_consumer::{Tree, TreeChange};
 use lazy_init::LazyTransform;
 use windows::Win32::{
@@ -111,7 +111,10 @@ impl Adapter {
                     });
                 }
                 TreeChange::NodeAdded(node) => {
-                    if node.live().is_some() && !node.is_invisible_or_ignored() {
+                    if !node.is_invisible_or_ignored()
+                        && node.name().is_some()
+                        && node.live() != Live::Off
+                    {
                         let platform_node = PlatformNode::new(&node, self.hwnd);
                         let element: IRawElementProviderSimple = platform_node.into();
                         queue.push(QueuedEvent::Simple {
@@ -124,8 +127,9 @@ impl Adapter {
                     let old_platform_node = ResolvedPlatformNode::new(old_node, self.hwnd);
                     let new_platform_node = ResolvedPlatformNode::new(new_node, self.hwnd);
                     new_platform_node.enqueue_property_changes(&mut queue, &old_platform_node);
-                    if new_node.live().is_some()
-                        && !new_node.is_invisible_or_ignored()
+                    if !new_node.is_invisible_or_ignored()
+                        && new_node.name().is_some()
+                        && new_node.live() != Live::Off
                         && (new_node.name() != old_node.name()
                             || new_node.live() != old_node.live())
                     {

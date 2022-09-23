@@ -512,7 +512,8 @@ pub enum AriaCurrent {
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-pub enum AriaLive {
+pub enum Live {
+    Off,
     Polite,
     Assertive,
 }
@@ -783,13 +784,6 @@ pub struct Node {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub nonatomic_text_field_root: bool,
 
-    // Live region attributes.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub container_live_atomic: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub container_live_busy: bool,
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     pub live_atomic: bool,
@@ -972,11 +966,6 @@ pub struct Node {
     pub class_name: Option<Box<str>>,
 
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub container_live_relevant: Option<Box<str>>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub container_live: Option<AriaLive>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub css_display: Option<Box<str>>,
 
     /// Only present when different from parent.
@@ -1004,7 +993,7 @@ pub struct Node {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub live_relevant: Option<Box<str>>,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub live: Option<AriaLive>,
+    pub live: Option<Live>,
 
     /// Only if not already exposed in [`Node::name`] ([`NameFrom::Placeholder`]).
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
@@ -1207,8 +1196,6 @@ impl Node {
             visited: false,
             busy: false,
             nonatomic_text_field_root: false,
-            container_live_atomic: false,
-            container_live_busy: false,
             live_atomic: false,
             modal: false,
             canvas_has_fallback: false,
@@ -1249,8 +1236,6 @@ impl Node {
             checked_state: None,
             checked_state_description: None,
             class_name: None,
-            container_live_relevant: None,
-            container_live: None,
             css_display: None,
             font_family: None,
             html_tag: None,

@@ -13,7 +13,7 @@ use std::sync::{Arc, Weak};
 
 use accesskit::kurbo::{Affine, Point, Rect};
 use accesskit::{
-    Action, ActionData, ActionRequest, AriaLive, CheckedState, DefaultActionVerb, NodeId, Role,
+    Action, ActionData, ActionRequest, CheckedState, DefaultActionVerb, Live, NodeId, Role,
 };
 
 use crate::iterators::{
@@ -481,8 +481,10 @@ impl<'a> Node<'a> {
         )
     }
 
-    pub fn live(&self) -> Option<AriaLive> {
-        self.data().live
+    pub fn live(&self) -> Live {
+        self.data()
+            .live
+            .unwrap_or_else(|| self.parent().map_or(Live::Off, |parent| parent.live()))
     }
 
     pub(crate) fn first_unignored_child(self) -> Option<Node<'a>> {

@@ -4,7 +4,7 @@ use std::{cell::RefCell, convert::TryInto, mem::drop, num::NonZeroU128, rc::Rc};
 
 use accesskit::kurbo::Rect;
 use accesskit::{
-    Action, ActionHandler, ActionRequest, AriaLive, DefaultActionVerb, Node, NodeId, Role, Tree,
+    Action, ActionHandler, ActionRequest, DefaultActionVerb, Live, Node, NodeId, Role, Tree,
     TreeUpdate,
 };
 use lazy_static::lazy_static;
@@ -137,7 +137,7 @@ impl WindowState {
         };
         let node = Node {
             name: Some(name.into()),
-            live: Some(AriaLive::Polite),
+            live: Some(Live::Polite),
             ..Node::new(PRESSED_TEXT_ID, Role::StaticText)
         };
         let root = Node {

@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit::kurbo::Point;
-use accesskit::{AriaLive, CheckedState, NodeIdContent, Role};
+use accesskit::{CheckedState, Live, NodeIdContent, Role};
 use accesskit_consumer::{Node, WeakNode};
 use arrayvec::ArrayVec;
 use paste::paste;
@@ -280,10 +280,11 @@ impl ResolvedPlatformNode<'_> {
     }
 
     fn live_setting(&self) -> LiveSetting {
-        self.node.live().map_or(Off, |live| match live {
-            AriaLive::Polite => Polite,
-            AriaLive::Assertive => Assertive,
-        })
+        match self.node.live() {
+            Live::Off => Off,
+            Live::Polite => Polite,
+            Live::Assertive => Assertive,
+        }
     }
 
     fn is_toggle_pattern_supported(&self) -> bool {
