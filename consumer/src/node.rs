@@ -12,7 +12,9 @@ use std::iter::FusedIterator;
 use std::sync::{Arc, Weak};
 
 use accesskit::kurbo::{Affine, Point, Rect};
-use accesskit::{Action, ActionData, ActionRequest, CheckedState, DefaultActionVerb, NodeId, Role};
+use accesskit::{
+    Action, ActionData, ActionRequest, CheckedState, DefaultActionVerb, Live, NodeId, Role,
+};
 
 use crate::iterators::{
     FollowingSiblings, FollowingUnignoredSiblings, PrecedingSiblings, PrecedingUnignoredSiblings,
@@ -477,6 +479,12 @@ impl<'a> Node<'a> {
                 | Role::Toolbar
                 | Role::Tooltip
         )
+    }
+
+    pub fn live(&self) -> Live {
+        self.data()
+            .live
+            .unwrap_or_else(|| self.parent().map_or(Live::Off, |parent| parent.live()))
     }
 
     pub(crate) fn first_unignored_child(self) -> Option<Node<'a>> {

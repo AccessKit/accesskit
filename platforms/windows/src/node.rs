@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit::kurbo::Point;
-use accesskit::{CheckedState, NodeIdContent, Role};
+use accesskit::{CheckedState, Live, NodeIdContent, Role};
 use accesskit_consumer::{Node, WeakNode};
 use arrayvec::ArrayVec;
 use paste::paste;
@@ -37,7 +37,7 @@ impl ResolvedPlatformNode<'_> {
         ResolvedPlatformNode::new(node, self.hwnd)
     }
 
-    fn downgrade(&self) -> PlatformNode {
+    pub(crate) fn downgrade(&self) -> PlatformNode {
         PlatformNode::new(&self.node, self.hwnd)
     }
 
@@ -277,6 +277,14 @@ impl ResolvedPlatformNode<'_> {
 
     fn is_focused(&self) -> bool {
         self.node.is_focused()
+    }
+
+    fn live_setting(&self) -> LiveSetting {
+        match self.node.live() {
+            Live::Off => Off,
+            Live::Polite => Polite,
+            Live::Assertive => Assertive,
+        }
     }
 
     fn is_toggle_pattern_supported(&self) -> bool {
@@ -740,7 +748,8 @@ properties! {
     (IsControlElement, is_content_element),
     (IsEnabled, is_enabled),
     (IsKeyboardFocusable, is_focusable),
-    (HasKeyboardFocus, is_focused)
+    (HasKeyboardFocus, is_focused),
+    (LiveSetting, live_setting)
 }
 
 #[implement(Windows::Win32::UI::Accessibility::IToggleProvider)]

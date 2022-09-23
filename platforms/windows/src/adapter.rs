@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use accesskit::{ActionHandler, TreeUpdate};
+use accesskit::{ActionHandler, Live, TreeUpdate};
 use accesskit_consumer::{Tree, TreeChange};
 use lazy_init::LazyTransform;
 use windows::Win32::{
@@ -110,10 +110,36 @@ impl Adapter {
                         event_id: UIA_AutomationFocusChangedEventId,
                     });
                 }
+                TreeChange::NodeAdded(node) => {
+                    if !node.is_invisible_or_ignored()
+                        && node.name().is_some()
+                        && node.live() != Live::Off
+                    {
+                        let platform_node = PlatformNode::new(&node, self.hwnd);
+                        let element: IRawElementProviderSimple = platform_node.into();
+                        queue.push(QueuedEvent::Simple {
+                            element,
+                            event_id: UIA_LiveRegionChangedEventId,
+                        });
+                    }
+                }
                 TreeChange::NodeUpdated { old_node, new_node } => {
-                    let old_node = ResolvedPlatformNode::new(old_node, self.hwnd);
-                    let new_node = ResolvedPlatformNode::new(new_node, self.hwnd);
-                    new_node.enqueue_property_changes(&mut queue, &old_node);
+                    let old_platform_node = ResolvedPlatformNode::new(old_node, self.hwnd);
+                    let new_platform_node = ResolvedPlatformNode::new(new_node, self.hwnd);
+                    new_platform_node.enqueue_property_changes(&mut queue, &old_platform_node);
+                    if !new_node.is_invisible_or_ignored()
+                        && new_node.name().is_some()
+                        && new_node.live() != Live::Off
+                        && (new_node.name() != old_node.name()
+                            || new_node.live() != old_node.live())
+                    {
+                        let element: IRawElementProviderSimple =
+                            new_platform_node.downgrade().into();
+                        queue.push(QueuedEvent::Simple {
+                            element,
+                            event_id: UIA_LiveRegionChangedEventId,
+                        });
+                    }
                 }
                 // TODO: handle other events (#20)
                 _ => (),
