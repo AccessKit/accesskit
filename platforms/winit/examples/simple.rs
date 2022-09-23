@@ -1,5 +1,7 @@
 use accesskit::kurbo::Rect;
-use accesskit::{Action, ActionRequest, DefaultActionVerb, Node, NodeId, Role, Tree, TreeUpdate};
+use accesskit::{
+    Action, ActionRequest, DefaultActionVerb, Live, Node, NodeId, Role, Tree, TreeUpdate,
+};
 use accesskit_winit::{ActionRequestEvent, Adapter};
 use std::{
     num::NonZeroU128,
@@ -16,6 +18,7 @@ const WINDOW_TITLE: &str = "Hello world";
 const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
 const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
+const PRESSED_TEXT_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(4) });
 const INITIAL_FOCUS: NodeId = BUTTON_1_ID;
 
 const BUTTON_1_RECT: Rect = Rect {
@@ -71,13 +74,13 @@ impl State {
     }
 
     fn press_button(&self, adapter: &Adapter, id: NodeId) {
-        // This is a pretty hacky way of updating a node.
+        // This is a pretty hacky way of adding or updating a node.
         // A real GUI framework would have a consistent way
-        // of building a node from underlying data.
+        // of building nodes from underlying data.
         // Also, this update isn't as lazy as it could be;
         // we force the AccessKit tree to be initialized.
         // This is expedient in this case, because that tree
-        // is the only place where the state of the buttons
+        // is the only place where the state of the announcement
         // is stored. It's not a problem because we're really
         // only concerned with testing lazy updates in the context
         // of focus changes.
@@ -86,9 +89,18 @@ impl State {
         } else {
             "You pressed button 2"
         };
-        let node = make_button(id, name);
+        let node = Node {
+            name: Some(name.into()),
+            live: Some(Live::Polite),
+            ..Node::new(PRESSED_TEXT_ID, Role::StaticText)
+        };
+        let root = Node {
+            children: vec![BUTTON_1_ID, BUTTON_2_ID, PRESSED_TEXT_ID],
+            name: Some(WINDOW_TITLE.into()),
+            ..Node::new(WINDOW_ID, Role::Window)
+        };
         let update = TreeUpdate {
-            nodes: vec![node],
+            nodes: vec![node, root],
             tree: None,
             focus: self.is_window_focused.then_some(self.focus),
         };
@@ -114,7 +126,7 @@ fn initial_tree_update(state: &State) -> TreeUpdate {
 fn main() {
     println!("This example has no visible GUI, and a keyboard interface:");
     println!("- [Tab] switches focus between two logical buttons.");
-    println!("- [Space] 'presses' the button, permanently renaming it.");
+    println!("- [Space] 'presses' the button, adding static text in a live region announcing that it was pressed.");
     #[cfg(target_os = "windows")]
     println!("Enable Narrator with [Win]+[Ctrl]+[Enter] (or [Win]+[Enter] on older versions of Windows).");
 
