@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.5.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_windows-v0.4.0...accesskit_windows-v0.5.0) (2022-09-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* Basic live regions (#128)
+* **platforms/windows:** Bump windows-rs dependency (#126)
+
+### Features
+
+* Basic live regions ([#128](https://www.github.com/AccessKit/accesskit/issues/128)) ([03d745b](https://www.github.com/AccessKit/accesskit/commit/03d745b891147175bde2693cc10b96a2f6e31f39))
+
+
+### Miscellaneous Chores
+
+* **platforms/windows:** Bump windows-rs dependency ([#126](https://www.github.com/AccessKit/accesskit/issues/126)) ([472a75e](https://www.github.com/AccessKit/accesskit/commit/472a75e4214b90396f3282f247df08100ed8362d))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.4.0 to 0.5.0
+    * accesskit_consumer bumped from 0.4.0 to 0.5.0
+
 ## [0.4.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_windows-v0.3.0...accesskit_windows-v0.4.0) (2022-07-22)
 
 
