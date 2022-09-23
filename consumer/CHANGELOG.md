@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.5.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.4.0...accesskit_consumer-v0.5.0) (2022-09-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* Basic live regions (#128)
+
+### Features
+
+* Basic live regions ([#128](https://www.github.com/AccessKit/accesskit/issues/128)) ([03d745b](https://www.github.com/AccessKit/accesskit/commit/03d745b891147175bde2693cc10b96a2f6e31f39))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.4.0 to 0.5.0
+
 ## [0.4.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.3.0...accesskit_consumer-v0.4.0) (2022-07-22)
 
 
