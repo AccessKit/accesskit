@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "accesskit"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "enumset",
  "kurbo",
@@ -14,7 +14,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_consumer"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "accesskit",
  "im",
@@ -23,7 +23,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_windows"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -39,7 +39,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_winit"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "accesskit",
  "accesskit_windows",
