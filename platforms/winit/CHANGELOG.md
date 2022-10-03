@@ -1,5 +1,14 @@
 # Changelog
 
+### [0.2.1](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.2.0...accesskit_winit-v0.2.1) (2022-10-03)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.5.0 to 0.5.1
+
 ## [0.2.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.1.0...accesskit_winit-v0.2.0) (2022-09-23)
 
 
