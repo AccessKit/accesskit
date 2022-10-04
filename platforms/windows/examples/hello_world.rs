@@ -81,24 +81,30 @@ fn make_button(id: NodeId, name: &str) -> Node {
     };
 
     Node {
+        role: Role::Button,
         bounds: Some(rect),
         name: Some(name.into()),
         focusable: true,
         default_action_verb: Some(DefaultActionVerb::Click),
-        ..Node::new(id, Role::Button)
+        ..Default::default()
     }
 }
 
 fn get_initial_state() -> TreeUpdate {
     let root = Node {
+        role: Role::Window,
         children: vec![BUTTON_1_ID, BUTTON_2_ID],
         name: Some(WINDOW_TITLE.into()),
-        ..Node::new(WINDOW_ID, Role::Window)
+        ..Default::default()
     };
     let button_1 = make_button(BUTTON_1_ID, "Button 1");
     let button_2 = make_button(BUTTON_2_ID, "Button 2");
     TreeUpdate {
-        nodes: vec![root, button_1, button_2],
+        nodes: vec![
+            (WINDOW_ID, root),
+            (BUTTON_1_ID, button_1),
+            (BUTTON_2_ID, button_2),
+        ],
         tree: Some(Tree::new(WINDOW_ID)),
         focus: None,
     }
@@ -136,17 +142,19 @@ impl WindowState {
             "You pressed button 2"
         };
         let node = Node {
+            role: Role::StaticText,
             name: Some(name.into()),
             live: Some(Live::Polite),
-            ..Node::new(PRESSED_TEXT_ID, Role::StaticText)
+            ..Default::default()
         };
         let root = Node {
+            role: Role::Window,
             children: vec![BUTTON_1_ID, BUTTON_2_ID, PRESSED_TEXT_ID],
             name: Some(WINDOW_TITLE.into()),
-            ..Node::new(WINDOW_ID, Role::Window)
+            ..Node::default()
         };
         let update = TreeUpdate {
-            nodes: vec![node, root],
+            nodes: vec![(PRESSED_TEXT_ID, node), (WINDOW_ID, root)],
             tree: None,
             focus: is_window_focused.then(|| focus),
         };

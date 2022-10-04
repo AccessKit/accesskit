@@ -48,24 +48,28 @@ mod tests {
 
     pub fn test_tree() -> Arc<crate::tree::Tree> {
         let root = Node {
+            role: Role::RootWebArea,
             children: vec![
                 PARAGRAPH_0_ID,
                 PARAGRAPH_1_IGNORED_ID,
                 PARAGRAPH_2_ID,
                 PARAGRAPH_3_IGNORED_ID,
             ],
-            ..Node::new(ROOT_ID, Role::RootWebArea)
+            ..Default::default()
         };
         let paragraph_0 = Node {
+            role: Role::Paragraph,
             children: vec![STATIC_TEXT_0_0_IGNORED_ID],
-            ..Node::new(PARAGRAPH_0_ID, Role::Paragraph)
+            ..Default::default()
         };
         let static_text_0_0_ignored = Node {
+            role: Role::StaticText,
             ignored: true,
             name: Some("static_text_0_0_ignored".into()),
-            ..Node::new(STATIC_TEXT_0_0_IGNORED_ID, Role::StaticText)
+            ..Default::default()
         };
         let paragraph_1_ignored = Node {
+            role: Role::Paragraph,
             transform: Some(Box::new(Affine::translate(Vec2::new(10.0, 40.0)))),
             bounds: Some(Rect {
                 x0: 0.0,
@@ -75,9 +79,10 @@ mod tests {
             }),
             children: vec![STATIC_TEXT_1_0_ID],
             ignored: true,
-            ..Node::new(PARAGRAPH_1_IGNORED_ID, Role::Paragraph)
+            ..Default::default()
         };
         let static_text_1_0 = Node {
+            role: Role::StaticText,
             bounds: Some(Rect {
                 x0: 10.0,
                 y0: 10.0,
@@ -85,17 +90,20 @@ mod tests {
                 y1: 30.0,
             }),
             name: Some("static_text_1_0".into()),
-            ..Node::new(STATIC_TEXT_1_0_ID, Role::StaticText)
+            ..Default::default()
         };
         let paragraph_2 = Node {
+            role: Role::Paragraph,
             children: vec![STATIC_TEXT_2_0_ID],
-            ..Node::new(PARAGRAPH_2_ID, Role::Paragraph)
+            ..Default::default()
         };
         let static_text_2_0 = Node {
+            role: Role::StaticText,
             name: Some("static_text_2_0".into()),
-            ..Node::new(STATIC_TEXT_2_0_ID, Role::StaticText)
+            ..Default::default()
         };
         let paragraph_3_ignored = Node {
+            role: Role::Paragraph,
             children: vec![
                 EMPTY_CONTAINER_3_0_IGNORED_ID,
                 LINK_3_1_IGNORED_ID,
@@ -103,45 +111,50 @@ mod tests {
                 EMPTY_CONTAINER_3_3_IGNORED_ID,
             ],
             ignored: true,
-            ..Node::new(PARAGRAPH_3_IGNORED_ID, Role::Paragraph)
+            ..Default::default()
         };
         let empty_container_3_0_ignored = Node {
+            role: Role::GenericContainer,
             ignored: true,
-            ..Node::new(EMPTY_CONTAINER_3_0_IGNORED_ID, Role::GenericContainer)
+            ..Default::default()
         };
         let link_3_1_ignored = Node {
+            role: Role::Link,
             children: vec![STATIC_TEXT_3_1_0_ID],
             ignored: true,
             linked: true,
-            ..Node::new(LINK_3_1_IGNORED_ID, Role::Link)
+            ..Default::default()
         };
         let static_text_3_1_0 = Node {
+            role: Role::StaticText,
             name: Some("static_text_3_1_0".into()),
-            ..Node::new(STATIC_TEXT_3_1_0_ID, Role::StaticText)
+            ..Default::default()
         };
         let button_3_2 = Node {
+            role: Role::Button,
             name: Some("button_3_2".into()),
-            ..Node::new(BUTTON_3_2_ID, Role::Button)
+            ..Default::default()
         };
         let empty_container_3_3_ignored = Node {
+            role: Role::GenericContainer,
             ignored: true,
-            ..Node::new(EMPTY_CONTAINER_3_3_IGNORED_ID, Role::GenericContainer)
+            ..Default::default()
         };
         let initial_update = TreeUpdate {
             nodes: vec![
-                root,
-                paragraph_0,
-                static_text_0_0_ignored,
-                paragraph_1_ignored,
-                static_text_1_0,
-                paragraph_2,
-                static_text_2_0,
-                paragraph_3_ignored,
-                empty_container_3_0_ignored,
-                link_3_1_ignored,
-                static_text_3_1_0,
-                button_3_2,
-                empty_container_3_3_ignored,
+                (ROOT_ID, root),
+                (PARAGRAPH_0_ID, paragraph_0),
+                (STATIC_TEXT_0_0_IGNORED_ID, static_text_0_0_ignored),
+                (PARAGRAPH_1_IGNORED_ID, paragraph_1_ignored),
+                (STATIC_TEXT_1_0_ID, static_text_1_0),
+                (PARAGRAPH_2_ID, paragraph_2),
+                (STATIC_TEXT_2_0_ID, static_text_2_0),
+                (PARAGRAPH_3_IGNORED_ID, paragraph_3_ignored),
+                (EMPTY_CONTAINER_3_0_IGNORED_ID, empty_container_3_0_ignored),
+                (LINK_3_1_IGNORED_ID, link_3_1_ignored),
+                (STATIC_TEXT_3_1_0_ID, static_text_3_1_0),
+                (BUTTON_3_2_ID, button_3_2),
+                (EMPTY_CONTAINER_3_3_IGNORED_ID, empty_container_3_3_ignored),
             ],
             tree: Some(Tree::new(ROOT_ID)),
             focus: None,

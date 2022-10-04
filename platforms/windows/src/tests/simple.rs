@@ -16,24 +16,30 @@ const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
 const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
 
-fn make_button(id: NodeId, name: &str) -> Node {
+fn make_button(name: &str) -> Node {
     Node {
+        role: Role::Button,
         name: Some(name.into()),
         focusable: true,
-        ..Node::new(id, Role::Button)
+        ..Default::default()
     }
 }
 
 fn get_initial_state() -> TreeUpdate {
     let root = Node {
+        role: Role::Window,
         children: vec![BUTTON_1_ID, BUTTON_2_ID],
         name: Some(WINDOW_TITLE.into()),
-        ..Node::new(WINDOW_ID, Role::Window)
+        ..Default::default()
     };
-    let button_1 = make_button(BUTTON_1_ID, "Button 1");
-    let button_2 = make_button(BUTTON_2_ID, "Button 2");
+    let button_1 = make_button("Button 1");
+    let button_2 = make_button("Button 2");
     TreeUpdate {
-        nodes: vec![root, button_1, button_2],
+        nodes: vec![
+            (WINDOW_ID, root),
+            (BUTTON_1_ID, button_1),
+            (BUTTON_2_ID, button_2),
+        ],
         tree: Some(Tree::new(WINDOW_ID)),
         focus: None,
     }

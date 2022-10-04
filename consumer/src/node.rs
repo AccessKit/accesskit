@@ -26,6 +26,7 @@ use crate::NodeData;
 #[derive(Copy, Clone)]
 pub struct Node<'a> {
     pub tree_reader: &'a TreeReader<'a>,
+    pub(crate) id: NodeId,
     pub(crate) state: &'a NodeState,
 }
 
@@ -278,7 +279,7 @@ impl<'a> Node<'a> {
     // Convenience getters
 
     pub fn id(&self) -> NodeId {
-        self.data().id
+        self.id
     }
 
     pub fn role(&self) -> Role {
@@ -794,11 +795,21 @@ mod tests {
     fn no_name_or_labelled_by() {
         let update = TreeUpdate {
             nodes: vec![
-                Node {
-                    children: vec![NODE_ID_2],
-                    ..Node::new(NODE_ID_1, Role::Window)
-                },
-                Node::new(NODE_ID_2, Role::Button),
+                (
+                    NODE_ID_1,
+                    Node {
+                        role: Role::Window,
+                        children: vec![NODE_ID_2],
+                        ..Default::default()
+                    },
+                ),
+                (
+                    NODE_ID_2,
+                    Node {
+                        role: Role::Button,
+                        ..Default::default()
+                    },
+                ),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
@@ -816,26 +827,46 @@ mod tests {
 
         let update = TreeUpdate {
             nodes: vec![
-                Node {
-                    children: vec![NODE_ID_2, NODE_ID_3, NODE_ID_4, NODE_ID_5],
-                    ..Node::new(NODE_ID_1, Role::Window)
-                },
-                Node {
-                    labelled_by: vec![NODE_ID_3, NODE_ID_5],
-                    ..Node::new(NODE_ID_2, Role::CheckBox)
-                },
-                Node {
-                    name: Some(LABEL_1.into()),
-                    ..Node::new(NODE_ID_3, Role::StaticText)
-                },
-                Node {
-                    labelled_by: vec![NODE_ID_5],
-                    ..Node::new(NODE_ID_4, Role::CheckBox)
-                },
-                Node {
-                    name: Some(LABEL_2.into()),
-                    ..Node::new(NODE_ID_5, Role::StaticText)
-                },
+                (
+                    NODE_ID_1,
+                    Node {
+                        role: Role::Window,
+                        children: vec![NODE_ID_2, NODE_ID_3, NODE_ID_4, NODE_ID_5],
+                        ..Default::default()
+                    },
+                ),
+                (
+                    NODE_ID_2,
+                    Node {
+                        role: Role::CheckBox,
+                        labelled_by: vec![NODE_ID_3, NODE_ID_5],
+                        ..Default::default()
+                    },
+                ),
+                (
+                    NODE_ID_3,
+                    Node {
+                        role: Role::StaticText,
+                        name: Some(LABEL_1.into()),
+                        ..Default::default()
+                    },
+                ),
+                (
+                    NODE_ID_4,
+                    Node {
+                        role: Role::CheckBox,
+                        labelled_by: vec![NODE_ID_5],
+                        ..Default::default()
+                    },
+                ),
+                (
+                    NODE_ID_5,
+                    Node {
+                        role: Role::StaticText,
+                        name: Some(LABEL_2.into()),
+                        ..Default::default()
+                    },
+                ),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,

@@ -34,12 +34,13 @@ use std::{
 /// is ordered roughly by expected usage frequency (with the notable exception
 /// of [`Role::Unknown`]). This is more efficient in serialization formats
 /// where integers use a variable-length encoding.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum Role {
+    #[default]
     Unknown,
     InlineTextBox,
     Cell,
@@ -654,14 +655,13 @@ pub struct TextSelection {
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct Node {
-    pub id: NodeId,
     pub role: Role,
     /// An affine transform to apply to any coordinates within this node
     /// and its descendants, including the [`bounds`] field of this node.
@@ -1165,149 +1165,6 @@ pub struct Node {
     pub text_indent: Option<f32>,
 }
 
-impl Node {
-    pub fn new(id: NodeId, role: Role) -> Node {
-        Node {
-            id,
-            role,
-            transform: None,
-            bounds: None,
-            children: Default::default(),
-            actions: EnumSet::new(),
-            name: None,
-            name_from: None,
-            description: None,
-            description_from: None,
-            value: None,
-            autofill_available: false,
-            expanded: None,
-            default: false,
-            editable: false,
-            focusable: false,
-            orientation: None,
-            hovered: false,
-            ignored: false,
-            invisible: false,
-            linked: false,
-            multiline: false,
-            multiselectable: false,
-            protected: false,
-            required: false,
-            visited: false,
-            busy: false,
-            nonatomic_text_field_root: false,
-            live_atomic: false,
-            modal: false,
-            canvas_has_fallback: false,
-            scrollable: false,
-            clickable: false,
-            clips_children: false,
-            not_user_selectable_style: false,
-            selected: None,
-            selected_from_focus: false,
-            grabbed: None,
-            drop_effects: EnumSet::new(),
-            is_line_breaking_object: false,
-            is_page_breaking_object: false,
-            has_aria_attribute: false,
-            touch_pass_through: false,
-            indirect_children: Default::default(),
-            active_descendant: None,
-            error_message: None,
-            in_page_link_target: None,
-            member_of: None,
-            next_on_line: None,
-            previous_on_line: None,
-            popup_for: None,
-            controls: Default::default(),
-            details: Default::default(),
-            described_by: Default::default(),
-            flow_to: Default::default(),
-            labelled_by: Default::default(),
-            radio_group: Default::default(),
-            markers: Default::default(),
-            text_direction: None,
-            character_offsets: Default::default(),
-            words: Default::default(),
-            custom_actions: Default::default(),
-            access_key: None,
-            invalid_state: None,
-            auto_complete: None,
-            checked_state: None,
-            checked_state_description: None,
-            class_name: None,
-            css_display: None,
-            font_family: None,
-            html_tag: None,
-            inner_html: None,
-            input_type: None,
-            key_shortcuts: None,
-            language: None,
-            live_relevant: None,
-            live: None,
-            placeholder: None,
-            aria_role: None,
-            role_description: None,
-            tooltip: None,
-            url: None,
-            default_action_verb: None,
-            scroll_x: None,
-            scroll_x_min: None,
-            scroll_x_max: None,
-            scroll_y: None,
-            scroll_y_min: None,
-            scroll_y_max: None,
-            text_selection: None,
-            aria_column_count: None,
-            aria_cell_column_index: None,
-            aria_cell_column_span: None,
-            aria_row_count: None,
-            aria_cell_row_index: None,
-            aria_cell_row_span: None,
-            table_row_count: None,
-            table_column_count: None,
-            table_header: None,
-            table_row_index: None,
-            table_row_header: None,
-            table_column_index: None,
-            table_column_header: None,
-            table_cell_column_index: None,
-            table_cell_column_span: None,
-            table_cell_row_index: None,
-            table_cell_row_span: None,
-            sort_direction: None,
-            hierarchical_level: None,
-            read_only: false,
-            disabled: false,
-            set_size: None,
-            pos_in_set: None,
-            color_value: None,
-            aria_current: None,
-            background_color: None,
-            foreground_color: None,
-            has_popup: None,
-            list_style: None,
-            text_align: None,
-            vertical_offset: None,
-            bold: false,
-            italic: false,
-            overline: None,
-            strikethrough: None,
-            underline: None,
-            previous_focus: None,
-            next_focus: None,
-            numeric_value: None,
-            min_numeric_value: None,
-            max_numeric_value: None,
-            numeric_value_step: None,
-            numeric_value_jump: None,
-            font_size: None,
-            font_weight: None,
-            text_indent: None,
-        }
-    }
-}
-
 /// The data associated with an accessibility tree that's global to the
 /// tree and not associated with any particular node.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1364,7 +1221,7 @@ pub struct TreeUpdate {
     ///   placeholder must be updated within the same `TreeUpdate`, otherwise
     ///   it's a fatal error. This guarantees the tree is always complete
     ///   before or after a `TreeUpdate`.
-    pub nodes: Vec<Node>,
+    pub nodes: Vec<(NodeId, Node)>,
 
     /// Rarely updated information about the tree as a whole. This may be omitted
     /// if it has not changed since the previous update, but providing the same
