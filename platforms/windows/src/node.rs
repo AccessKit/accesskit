@@ -372,10 +372,6 @@ impl<'a> ResolvedPlatformNode<'a> {
         }
     }
 
-    fn select(&self) {
-        self.tree.do_default_action(self.node.id())
-    }
-
     fn add_to_selection(&self) {
         // TODO: implement when we work on list boxes (#23)
     }
@@ -477,10 +473,6 @@ impl<'a> ResolvedPlatformNode<'a> {
         })
     }
 
-    fn set_focus(&self) {
-        self.tree.set_focus(self.node.id())
-    }
-
     fn node_at_point(&self, point: Point) -> Option<ResolvedPlatformNode> {
         let mut client_top_left = POINT::default();
         unsafe { ClientToScreen(self.hwnd, &mut client_top_left) }.unwrap();
@@ -492,22 +484,6 @@ impl<'a> ResolvedPlatformNode<'a> {
         self.node
             .node_at_point(point)
             .map(|node| self.relative(node))
-    }
-
-    fn toggle(&self) {
-        self.tree.do_default_action(self.node.id())
-    }
-
-    fn invoke(&self) {
-        self.tree.do_default_action(self.node.id())
-    }
-
-    fn set_value(&self, value: impl Into<Box<str>>) {
-        self.tree.set_value(self.node.id(), value)
-    }
-
-    fn set_numeric_value(&self, value: f64) {
-        self.tree.set_numeric_value(self.node.id(), value)
     }
 }
 
@@ -548,6 +524,23 @@ impl PlatformNode {
             }
         }
         Err(element_not_available())
+    }
+
+    fn validate_for_action(&self) -> Result<Arc<Tree>> {
+        if let Some(tree) = self.tree.upgrade() {
+            let state = tree.read();
+            if state.has_node(self.node_id) {
+                drop(state);
+                return Ok(tree);
+            }
+        }
+        Err(element_not_available())
+    }
+
+    fn do_default_action(&self) -> Result<()> {
+        let tree = self.validate_for_action()?;
+        tree.do_default_action(self.node_id);
+        Ok(())
     }
 }
 
@@ -595,10 +588,9 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
     }
 
     fn SetFocus(&self) -> Result<()> {
-        self.resolve(|resolved| {
-            resolved.set_focus();
-            Ok(())
-        })
+        let tree = self.validate_for_action()?;
+        tree.set_focus(self.node_id);
+        Ok(())
     }
 
     fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
@@ -758,18 +750,12 @@ patterns! {
         (ToggleState, toggle_state, ToggleState)
     ), (
         fn Toggle(&self) -> Result<()> {
-            self.0.resolve(|resolved| {
-                resolved.toggle();
-                Ok(())
-            })
+            self.0.do_default_action()
         }
     )),
     (Invoke, is_invoke_pattern_supported, (), (
         fn Invoke(&self) -> Result<()> {
-            self.0.resolve(|resolved| {
-                resolved.invoke();
-                Ok(())
-            })
+            self.0.do_default_action()
         }
     )),
     (Value, is_value_pattern_supported, (
@@ -777,11 +763,10 @@ patterns! {
         (IsReadOnly, is_read_only, BOOL)
     ), (
         fn SetValue(&self, value: &PCWSTR) -> Result<()> {
-            self.0.resolve(|resolved| {
-                let value = unsafe { value.to_string() }.unwrap();
-                resolved.set_value(value);
-                Ok(())
-            })
+            let tree = self.0.validate_for_action()?;
+            let value = unsafe { value.to_string() }.unwrap();
+            tree.set_value(self.0.node_id, value);
+            Ok(())
         }
     )),
     (RangeValue, is_range_value_pattern_supported, (
@@ -793,20 +778,16 @@ patterns! {
         (LargeChange, numeric_value_jump, f64)
     ), (
         fn SetValue(&self, value: f64) -> Result<()> {
-            self.0.resolve(|resolved| {
-                resolved.set_numeric_value(value);
-                Ok(())
-            })
+            let tree = self.0.validate_for_action()?;
+            tree.set_numeric_value(self.0.node_id, value);
+            Ok(())
         }
     )),
     (SelectionItem, is_selection_item_pattern_supported, (
         (IsSelected, is_selected, BOOL)
     ), (
         fn Select(&self) -> Result<()> {
-            self.0.resolve(|resolved| {
-                resolved.select();
-                Ok(())
-            })
+            self.0.do_default_action()
         },
 
         fn AddToSelection(&self) -> Result<()> {

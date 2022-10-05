@@ -201,6 +201,10 @@ impl State {
         }
     }
 
+    pub fn has_node(&self, id: NodeId) -> bool {
+        self.nodes.contains_key(&id)
+    }
+
     pub fn node_by_id(&self, id: NodeId) -> Option<Node<'_>> {
         self.nodes.get(&id).map(|node_state| Node {
             tree_state: self,
