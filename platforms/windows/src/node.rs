@@ -46,10 +46,6 @@ impl<'a> ResolvedPlatformNode<'a> {
         Self { node, hwnd }
     }
 
-    fn relative(&self, node: Node<'a>) -> Self {
-        Self::new(node, self.hwnd)
-    }
-
     fn control_type(&self) -> i32 {
         let role = self.node.role();
         // TODO: Handle special cases. (#14)
@@ -444,16 +440,15 @@ impl<'a> ResolvedPlatformNode<'a> {
         }
     }
 
-    fn navigate(&self, direction: NavigateDirection) -> Option<ResolvedPlatformNode> {
-        let result = match direction {
+    fn navigate(&self, direction: NavigateDirection) -> Option<Node> {
+        match direction {
             NavigateDirection_Parent => self.node.parent(),
             NavigateDirection_NextSibling => self.node.following_siblings().next(),
             NavigateDirection_PreviousSibling => self.node.preceding_siblings().next(),
             NavigateDirection_FirstChild => self.node.children().next(),
             NavigateDirection_LastChild => self.node.children().next_back(),
             _ => None,
-        };
-        result.map(|node| self.relative(node))
+        }
     }
 
     fn bounding_rectangle(&self) -> UiaRect {
@@ -469,7 +464,7 @@ impl<'a> ResolvedPlatformNode<'a> {
         })
     }
 
-    fn node_at_point(&self, point: Point) -> Option<ResolvedPlatformNode> {
+    fn node_at_point(&self, point: Point) -> Option<Node> {
         let mut client_top_left = POINT::default();
         unsafe { ClientToScreen(self.hwnd, &mut client_top_left) }.unwrap();
         let point = self.node.transform().inverse()
@@ -477,9 +472,7 @@ impl<'a> ResolvedPlatformNode<'a> {
                 x: point.x - f64::from(client_top_left.x),
                 y: point.y - f64::from(client_top_left.y),
             };
-        self.node
-            .node_at_point(point)
-            .map(|node| self.relative(node))
+        self.node.node_at_point(point)
     }
 }
 
@@ -580,7 +573,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
 impl IRawElementProviderFragment_Impl for PlatformNode {
     fn Navigate(&self, direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
         self.resolve(|resolved| match resolved.navigate(direction) {
-            Some(result) => Ok(self.relative(result.node.id()).into()),
+            Some(result) => Ok(self.relative(result.id()).into()),
             None => Err(Error::OK),
         })
     }
@@ -623,7 +616,7 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
             let point = Point::new(x, y);
             resolved.node_at_point(point).map_or_else(
                 || Err(Error::OK),
-                |resolved| Ok(self.relative(resolved.node.id()).into()),
+                |node| Ok(self.relative(node.id()).into()),
             )
         })
     }
