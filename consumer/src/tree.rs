@@ -15,6 +15,7 @@ pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
 
 #[derive(Clone)]
 pub(crate) struct NodeState {
+    pub(crate) id: NodeId,
     pub(crate) parent_and_index: Option<ParentAndIndex>,
     pub(crate) data: Box<NodeData>,
 }
@@ -67,6 +68,7 @@ impl State {
             data: NodeData,
         ) {
             let state = NodeState {
+                id,
                 parent_and_index,
                 data: Box::new(data),
             };
@@ -211,7 +213,6 @@ impl Reader<'_> {
     pub fn node_by_id(&self, id: NodeId) -> Option<Node<'_>> {
         self.state.nodes.get(&id).map(|node_state| Node {
             tree_reader: self,
-            id,
             state: node_state,
         })
     }

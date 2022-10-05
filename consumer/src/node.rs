@@ -26,7 +26,6 @@ use crate::NodeData;
 #[derive(Copy, Clone)]
 pub struct Node<'a> {
     pub tree_reader: &'a TreeReader<'a>,
-    pub(crate) id: NodeId,
     pub(crate) state: &'a NodeState,
 }
 
@@ -279,7 +278,7 @@ impl<'a> Node<'a> {
     // Convenience getters
 
     pub fn id(&self) -> NodeId {
-        self.id
+        self.state.id
     }
 
     pub fn role(&self) -> Role {
