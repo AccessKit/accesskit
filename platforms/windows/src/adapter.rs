@@ -14,7 +14,7 @@ use windows::Win32::{
 };
 
 use crate::{
-    node::{PlatformNode, ResolvedPlatformNode},
+    node::{NodeWrapper, PlatformNode},
     util::QueuedEvent,
 };
 
@@ -126,13 +126,9 @@ impl Adapter {
                 TreeChange::NodeUpdated { old_node, new_node } => {
                     let platform_node = PlatformNode::new(tree, new_node.id(), self.hwnd);
                     let element: IRawElementProviderSimple = platform_node.into();
-                    let old_resolved_node = ResolvedPlatformNode::new(old_node);
-                    let new_resolved_node = ResolvedPlatformNode::new(new_node);
-                    new_resolved_node.enqueue_property_changes(
-                        &mut queue,
-                        &element,
-                        &old_resolved_node,
-                    );
+                    let old_wrapper = NodeWrapper::new(old_node);
+                    let new_wrapper = NodeWrapper::new(new_node);
+                    new_wrapper.enqueue_property_changes(&mut queue, &element, &old_wrapper);
                     if !new_node.is_invisible_or_ignored()
                         && new_node.name().is_some()
                         && new_node.live() != Live::Off

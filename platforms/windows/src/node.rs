@@ -36,11 +36,11 @@ fn runtime_id_from_node_id(id: NodeId) -> impl std::ops::Deref<Target = [i32]> {
     result
 }
 
-pub(crate) struct ResolvedPlatformNode<'a> {
+pub(crate) struct NodeWrapper<'a> {
     node: Node<'a>,
 }
 
-impl<'a> ResolvedPlatformNode<'a> {
+impl<'a> NodeWrapper<'a> {
     pub(crate) fn new(node: Node<'a>) -> Self {
         Self { node }
     }
@@ -389,7 +389,7 @@ impl<'a> ResolvedPlatformNode<'a> {
         &self,
         queue: &mut Vec<QueuedEvent>,
         element: &IRawElementProviderSimple,
-        old: &ResolvedPlatformNode,
+        old: &NodeWrapper,
     ) {
         self.enqueue_simple_property_changes(queue, element, old);
         self.enqueue_pattern_property_changes(queue, element, old);
@@ -400,7 +400,7 @@ impl<'a> ResolvedPlatformNode<'a> {
         &self,
         queue: &mut Vec<QueuedEvent>,
         element: &IRawElementProviderSimple,
-        old: &ResolvedPlatformNode,
+        old: &NodeWrapper,
     ) {
         if self.is_selection_item_pattern_supported()
             && self.is_selected()
@@ -479,12 +479,12 @@ impl PlatformNode {
 
     fn resolve<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(ResolvedPlatformNode<'a>) -> Result<T>,
+        for<'a> F: FnOnce(NodeWrapper<'a>) -> Result<T>,
     {
         let tree = self.upgrade_tree()?;
         let state = tree.read();
         if let Some(node) = state.node_by_id(self.node_id) {
-            f(ResolvedPlatformNode::new(node))
+            f(NodeWrapper::new(node))
         } else {
             Err(element_not_available())
         }
@@ -526,15 +526,15 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
     }
 
     fn GetPropertyValue(&self, property_id: i32) -> Result<VARIANT> {
-        self.resolve(|resolved| {
-            let result = resolved.get_property_value(property_id);
+        self.resolve(|wrapper| {
+            let result = wrapper.get_property_value(property_id);
             Ok(result.into())
         })
     }
 
     fn HostRawElementProvider(&self) -> Result<IRawElementProviderSimple> {
-        self.resolve(|resolved| {
-            if resolved.node.is_root() {
+        self.resolve(|wrapper| {
+            if wrapper.node.is_root() {
                 unsafe { UiaHostProviderFromHwnd(self.hwnd) }
             } else {
                 Err(Error::OK)
@@ -545,7 +545,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
 
 impl IRawElementProviderFragment_Impl for PlatformNode {
     fn Navigate(&self, direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
-        self.resolve(|resolved| match resolved.navigate(direction) {
+        self.resolve(|wrapper| match wrapper.navigate(direction) {
             Some(result) => Ok(self.relative(result.id()).into()),
             None => Err(Error::OK),
         })
@@ -557,8 +557,8 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
     }
 
     fn BoundingRectangle(&self) -> Result<UiaRect> {
-        self.resolve(|resolved| {
-            let rect = resolved
+        self.resolve(|wrapper| {
+            let rect = wrapper
                 .node
                 .bounding_box()
                 .map_or(UiaRect::default(), |rect| {
@@ -600,16 +600,16 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
 
 impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
     fn ElementProviderFromPoint(&self, x: f64, y: f64) -> Result<IRawElementProviderFragment> {
-        self.resolve(|resolved| {
+        self.resolve(|wrapper| {
             let point = Point::new(x, y);
             let mut client_top_left = POINT::default();
             unsafe { ClientToScreen(self.hwnd, &mut client_top_left) }.unwrap();
-            let point = resolved.node.transform().inverse()
+            let point = wrapper.node.transform().inverse()
                 * Point {
                     x: point.x - f64::from(client_top_left.x),
                     y: point.y - f64::from(client_top_left.y),
                 };
-            resolved.node.node_at_point(point).map_or_else(
+            wrapper.node.node_at_point(point).map_or_else(
                 || Err(Error::OK),
                 |node| Ok(self.relative(node.id()).into()),
             )
@@ -630,7 +630,7 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
 
 macro_rules! properties {
     ($(($base_id:ident, $m:ident)),+) => {
-        impl ResolvedPlatformNode<'_> {
+        impl NodeWrapper<'_> {
             fn get_property_value(&self, property_id: i32) -> VariantFactory {
                 match property_id {
                     $(paste! { [< UIA_ $base_id PropertyId>] } => {
@@ -643,7 +643,7 @@ macro_rules! properties {
                 &self,
                 queue: &mut Vec<QueuedEvent>,
                 element: &IRawElementProviderSimple,
-                old: &ResolvedPlatformNode,
+                old: &NodeWrapper,
             ) {
                 $({
                     let old_value = old.$m();
@@ -671,10 +671,10 @@ macro_rules! patterns {
     ))),+) => {
         impl PlatformNode {
             fn pattern_provider(&self, pattern_id: i32) -> Result<IUnknown> {
-                self.resolve(|resolved| {
+                self.resolve(|wrapper| {
                     match pattern_id {
                         $(paste! { [< UIA_ $base_pattern_id PatternId>] } => {
-                            if resolved.$is_supported() {
+                            if wrapper.$is_supported() {
                                 let intermediate: paste! { [< I $base_pattern_id Provider>] } =
                                     (paste! { [< $base_pattern_id Provider>] })(self.clone()).into();
                                 return Ok(intermediate.into());
@@ -686,12 +686,12 @@ macro_rules! patterns {
                 })
             }
         }
-        impl ResolvedPlatformNode<'_> {
+        impl NodeWrapper<'_> {
             fn enqueue_pattern_property_changes(
                 &self,
                 queue: &mut Vec<QueuedEvent>,
                 element: &IRawElementProviderSimple,
-                old: &ResolvedPlatformNode,
+                old: &NodeWrapper,
             ) {
                 $(if self.$is_supported() && old.$is_supported() {
                     $({
@@ -714,7 +714,7 @@ macro_rules! patterns {
             $(#[allow(non_snake_case)]
             impl [< I $base_pattern_id Provider_Impl>] for [< $base_pattern_id Provider>] {
                 $(fn $base_property_id(&self) -> Result<$com_type> {
-                    self.0.resolve(|resolved| Ok(resolved.$getter().into()))
+                    self.0.resolve(|wrapper| Ok(wrapper.$getter().into()))
                 })*
                 $($extra_trait_method)*
             })*
@@ -794,21 +794,21 @@ patterns! {
         },
 
         fn AddToSelection(&self) -> Result<()> {
-            self.0.resolve(|resolved| {
-                resolved.add_to_selection();
+            self.0.resolve(|wrapper| {
+                wrapper.add_to_selection();
                 Ok(())
             })
         },
 
         fn RemoveFromSelection(&self) -> Result<()> {
-            self.0.resolve(|resolved| {
-                resolved.remove_from_selection();
+            self.0.resolve(|wrapper| {
+                wrapper.remove_from_selection();
                 Ok(())
             })
         },
 
         fn SelectionContainer(&self) -> Result<IRawElementProviderSimple> {
-            self.0.resolve(|_resolved| {
+            self.0.resolve(|_wrapper| {
                 // TODO: implement when we work on list boxes (#23)
                 // We return E_FAIL here because that's what Chromium does
                 // if it can't find a container.
