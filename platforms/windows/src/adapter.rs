@@ -126,8 +126,8 @@ impl Adapter {
                 TreeChange::NodeUpdated { old_node, new_node } => {
                     let platform_node = PlatformNode::new(tree, new_node.id(), self.hwnd);
                     let element: IRawElementProviderSimple = platform_node.into();
-                    let old_resolved_node = ResolvedPlatformNode::new(old_node, self.hwnd);
-                    let new_resolved_node = ResolvedPlatformNode::new(new_node, self.hwnd);
+                    let old_resolved_node = ResolvedPlatformNode::new(old_node);
+                    let new_resolved_node = ResolvedPlatformNode::new(new_node);
                     new_resolved_node.enqueue_property_changes(
                         &mut queue,
                         &element,

@@ -38,12 +38,11 @@ fn runtime_id_from_node_id(id: NodeId) -> impl std::ops::Deref<Target = [i32]> {
 
 pub(crate) struct ResolvedPlatformNode<'a> {
     node: Node<'a>,
-    hwnd: HWND,
 }
 
 impl<'a> ResolvedPlatformNode<'a> {
-    pub(crate) fn new(node: Node<'a>, hwnd: HWND) -> Self {
-        Self { node, hwnd }
+    pub(crate) fn new(node: Node<'a>) -> Self {
+        Self { node }
     }
 
     fn control_type(&self) -> i32 {
@@ -432,14 +431,6 @@ impl<'a> ResolvedPlatformNode<'a> {
         });
     }
 
-    fn host_provider(&self) -> Result<IRawElementProviderSimple> {
-        if self.node.is_root() {
-            unsafe { UiaHostProviderFromHwnd(self.hwnd) }
-        } else {
-            Err(Error::OK)
-        }
-    }
-
     fn navigate(&self, direction: NavigateDirection) -> Option<Node> {
         match direction {
             NavigateDirection_Parent => self.node.parent(),
@@ -449,30 +440,6 @@ impl<'a> ResolvedPlatformNode<'a> {
             NavigateDirection_LastChild => self.node.children().next_back(),
             _ => None,
         }
-    }
-
-    fn bounding_rectangle(&self) -> UiaRect {
-        self.node.bounding_box().map_or(UiaRect::default(), |rect| {
-            let mut client_top_left = POINT::default();
-            unsafe { ClientToScreen(self.hwnd, &mut client_top_left) }.unwrap();
-            UiaRect {
-                left: rect.x0 + f64::from(client_top_left.x),
-                top: rect.y0 + f64::from(client_top_left.y),
-                width: rect.width(),
-                height: rect.height(),
-            }
-        })
-    }
-
-    fn node_at_point(&self, point: Point) -> Option<Node> {
-        let mut client_top_left = POINT::default();
-        unsafe { ClientToScreen(self.hwnd, &mut client_top_left) }.unwrap();
-        let point = self.node.transform().inverse()
-            * Point {
-                x: point.x - f64::from(client_top_left.x),
-                y: point.y - f64::from(client_top_left.y),
-            };
-        self.node.node_at_point(point)
     }
 }
 
@@ -517,7 +484,7 @@ impl PlatformNode {
         let tree = self.upgrade_tree()?;
         let state = tree.read();
         if let Some(node) = state.node_by_id(self.node_id) {
-            f(ResolvedPlatformNode::new(node, self.hwnd))
+            f(ResolvedPlatformNode::new(node))
         } else {
             Err(element_not_available())
         }
@@ -566,7 +533,13 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
     }
 
     fn HostRawElementProvider(&self) -> Result<IRawElementProviderSimple> {
-        self.resolve(|resolved| resolved.host_provider())
+        self.resolve(|resolved| {
+            if resolved.node.is_root() {
+                unsafe { UiaHostProviderFromHwnd(self.hwnd) }
+            } else {
+                Err(Error::OK)
+            }
+        })
     }
 }
 
@@ -584,7 +557,22 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
     }
 
     fn BoundingRectangle(&self) -> Result<UiaRect> {
-        self.resolve(|resolved| Ok(resolved.bounding_rectangle()))
+        self.resolve(|resolved| {
+            let rect = resolved
+                .node
+                .bounding_box()
+                .map_or(UiaRect::default(), |rect| {
+                    let mut client_top_left = POINT::default();
+                    unsafe { ClientToScreen(self.hwnd, &mut client_top_left) }.unwrap();
+                    UiaRect {
+                        left: rect.x0 + f64::from(client_top_left.x),
+                        top: rect.y0 + f64::from(client_top_left.y),
+                        width: rect.width(),
+                        height: rect.height(),
+                    }
+                });
+            Ok(rect)
+        })
     }
 
     fn GetEmbeddedFragmentRoots(&self) -> Result<*mut SAFEARRAY> {
@@ -614,7 +602,14 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
     fn ElementProviderFromPoint(&self, x: f64, y: f64) -> Result<IRawElementProviderFragment> {
         self.resolve(|resolved| {
             let point = Point::new(x, y);
-            resolved.node_at_point(point).map_or_else(
+            let mut client_top_left = POINT::default();
+            unsafe { ClientToScreen(self.hwnd, &mut client_top_left) }.unwrap();
+            let point = resolved.node.transform().inverse()
+                * Point {
+                    x: point.x - f64::from(client_top_left.x),
+                    y: point.y - f64::from(client_top_left.y),
+                };
+            resolved.node.node_at_point(point).map_or_else(
                 || Err(Error::OK),
                 |node| Ok(self.relative(node.id()).into()),
             )
