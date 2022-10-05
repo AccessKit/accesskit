@@ -124,17 +124,21 @@ impl Adapter {
                     }
                 }
                 TreeChange::NodeUpdated { old_node, new_node } => {
-                    let old_platform_node = ResolvedPlatformNode::new(tree, old_node, self.hwnd);
-                    let new_platform_node = ResolvedPlatformNode::new(tree, new_node, self.hwnd);
-                    new_platform_node.enqueue_property_changes(&mut queue, &old_platform_node);
+                    let platform_node = PlatformNode::new(tree, new_node.id(), self.hwnd);
+                    let element: IRawElementProviderSimple = platform_node.into();
+                    let old_resolved_node = ResolvedPlatformNode::new(old_node, self.hwnd);
+                    let new_resolved_node = ResolvedPlatformNode::new(new_node, self.hwnd);
+                    new_resolved_node.enqueue_property_changes(
+                        &mut queue,
+                        &element,
+                        &old_resolved_node,
+                    );
                     if !new_node.is_invisible_or_ignored()
                         && new_node.name().is_some()
                         && new_node.live() != Live::Off
                         && (new_node.name() != old_node.name()
                             || new_node.live() != old_node.live())
                     {
-                        let element: IRawElementProviderSimple =
-                            new_platform_node.downgrade().into();
                         queue.push(QueuedEvent::Simple {
                             element,
                             event_id: UIA_LiveRegionChangedEventId,

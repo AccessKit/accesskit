@@ -37,22 +37,17 @@ fn runtime_id_from_node_id(id: NodeId) -> impl std::ops::Deref<Target = [i32]> {
 }
 
 pub(crate) struct ResolvedPlatformNode<'a> {
-    tree: &'a Arc<Tree>,
     node: Node<'a>,
     hwnd: HWND,
 }
 
 impl<'a> ResolvedPlatformNode<'a> {
-    pub(crate) fn new(tree: &'a Arc<Tree>, node: Node<'a>, hwnd: HWND) -> Self {
-        Self { tree, node, hwnd }
+    pub(crate) fn new(node: Node<'a>, hwnd: HWND) -> Self {
+        Self { node, hwnd }
     }
 
     fn relative(&self, node: Node<'a>) -> Self {
-        Self::new(self.tree, node, self.hwnd)
-    }
-
-    pub(crate) fn downgrade(&self) -> PlatformNode {
-        PlatformNode::new(self.tree, self.node.id(), self.hwnd)
+        Self::new(node, self.hwnd)
     }
 
     fn control_type(&self) -> i32 {
@@ -398,25 +393,26 @@ impl<'a> ResolvedPlatformNode<'a> {
     pub(crate) fn enqueue_property_changes(
         &self,
         queue: &mut Vec<QueuedEvent>,
+        element: &IRawElementProviderSimple,
         old: &ResolvedPlatformNode,
     ) {
-        self.enqueue_simple_property_changes(queue, old);
-        self.enqueue_pattern_property_changes(queue, old);
-        self.enqueue_property_implied_events(queue, old);
+        self.enqueue_simple_property_changes(queue, element, old);
+        self.enqueue_pattern_property_changes(queue, element, old);
+        self.enqueue_property_implied_events(queue, element, old);
     }
 
     fn enqueue_property_implied_events(
         &self,
         queue: &mut Vec<QueuedEvent>,
+        element: &IRawElementProviderSimple,
         old: &ResolvedPlatformNode,
     ) {
         if self.is_selection_item_pattern_supported()
             && self.is_selected()
             && !(old.is_selection_item_pattern_supported() && old.is_selected())
         {
-            let element: IRawElementProviderSimple = self.downgrade().into();
             queue.push(QueuedEvent::Simple {
-                element,
+                element: element.clone(),
                 event_id: UIA_SelectionItem_ElementSelectedEventId,
             });
         }
@@ -425,15 +421,15 @@ impl<'a> ResolvedPlatformNode<'a> {
     fn enqueue_property_change(
         &self,
         queue: &mut Vec<QueuedEvent>,
+        element: &IRawElementProviderSimple,
         property_id: i32,
         old_value: VariantFactory,
         new_value: VariantFactory,
     ) {
-        let element: IRawElementProviderSimple = self.downgrade().into();
         let old_value: VARIANT = old_value.into();
         let new_value: VARIANT = new_value.into();
         queue.push(QueuedEvent::PropertyChanged {
-            element,
+            element: element.clone(),
             property_id,
             old_value,
             new_value,
@@ -528,7 +524,7 @@ impl PlatformNode {
         let tree = self.upgrade_tree()?;
         let state = tree.read();
         if let Some(node) = state.node_by_id(self.node_id) {
-            f(ResolvedPlatformNode::new(&tree, node, self.hwnd))
+            f(ResolvedPlatformNode::new(node, self.hwnd))
         } else {
             Err(element_not_available())
         }
@@ -549,6 +545,14 @@ impl PlatformNode {
         let tree = self.validate_for_action()?;
         tree.do_default_action(self.node_id);
         Ok(())
+    }
+
+    fn relative(&self, node_id: NodeId) -> Self {
+        Self {
+            tree: self.tree.clone(),
+            node_id,
+            hwnd: self.hwnd,
+        }
     }
 }
 
@@ -576,7 +580,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
 impl IRawElementProviderFragment_Impl for PlatformNode {
     fn Navigate(&self, direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
         self.resolve(|resolved| match resolved.navigate(direction) {
-            Some(result) => Ok(result.downgrade().into()),
+            Some(result) => Ok(self.relative(result.node.id()).into()),
             None => Err(Error::OK),
         })
     }
@@ -617,9 +621,10 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
     fn ElementProviderFromPoint(&self, x: f64, y: f64) -> Result<IRawElementProviderFragment> {
         self.resolve(|resolved| {
             let point = Point::new(x, y);
-            resolved
-                .node_at_point(point)
-                .map_or_else(|| Err(Error::OK), |node| Ok(node.downgrade().into()))
+            resolved.node_at_point(point).map_or_else(
+                || Err(Error::OK),
+                |resolved| Ok(self.relative(resolved.node.id()).into()),
+            )
         })
     }
 
@@ -649,6 +654,7 @@ macro_rules! properties {
             fn enqueue_simple_property_changes(
                 &self,
                 queue: &mut Vec<QueuedEvent>,
+                element: &IRawElementProviderSimple,
                 old: &ResolvedPlatformNode,
             ) {
                 $({
@@ -657,6 +663,7 @@ macro_rules! properties {
                     if old_value != new_value {
                         self.enqueue_property_change(
                             queue,
+                            element,
                             paste! { [<UIA_ $base_id PropertyId>] },
                             old_value.into(),
                             new_value.into(),
@@ -695,6 +702,7 @@ macro_rules! patterns {
             fn enqueue_pattern_property_changes(
                 &self,
                 queue: &mut Vec<QueuedEvent>,
+                element: &IRawElementProviderSimple,
                 old: &ResolvedPlatformNode,
             ) {
                 $(if self.$is_supported() && old.$is_supported() {
@@ -704,6 +712,7 @@ macro_rules! patterns {
                         if old_value != new_value {
                             self.enqueue_property_change(
                                 queue,
+                                element,
                                 paste! { [<UIA_ $base_pattern_id $base_property_id PropertyId>] },
                                 old_value.into(),
                                 new_value.into(),
