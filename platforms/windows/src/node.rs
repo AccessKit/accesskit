@@ -513,28 +513,36 @@ impl PlatformNode {
         }
     }
 
+    fn upgrade_tree(&self) -> Result<Arc<Tree>> {
+        if let Some(tree) = self.tree.upgrade() {
+            Ok(tree)
+        } else {
+            Err(element_not_available())
+        }
+    }
+
     fn resolve<F, T>(&self, f: F) -> Result<T>
     where
         for<'a> F: FnOnce(ResolvedPlatformNode<'a>) -> Result<T>,
     {
-        if let Some(tree) = self.tree.upgrade() {
-            let state = tree.read();
-            if let Some(node) = state.node_by_id(self.node_id) {
-                return f(ResolvedPlatformNode::new(&tree, node, self.hwnd));
-            }
+        let tree = self.upgrade_tree()?;
+        let state = tree.read();
+        if let Some(node) = state.node_by_id(self.node_id) {
+            f(ResolvedPlatformNode::new(&tree, node, self.hwnd))
+        } else {
+            Err(element_not_available())
         }
-        Err(element_not_available())
     }
 
     fn validate_for_action(&self) -> Result<Arc<Tree>> {
-        if let Some(tree) = self.tree.upgrade() {
-            let state = tree.read();
-            if state.has_node(self.node_id) {
-                drop(state);
-                return Ok(tree);
-            }
+        let tree = self.upgrade_tree()?;
+        let state = tree.read();
+        if state.has_node(self.node_id) {
+            drop(state);
+            Ok(tree)
+        } else {
+            Err(element_not_available())
         }
-        Err(element_not_available())
     }
 
     fn do_default_action(&self) -> Result<()> {
@@ -594,18 +602,15 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
     }
 
     fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
-        if let Some(tree) = self.tree.upgrade() {
-            let state = tree.read();
-            let root_id = state.root_id();
-            let result = if root_id == self.node_id {
-                self.clone()
-            } else {
-                PlatformNode::new(&tree, root_id, self.hwnd)
-            };
-            Ok(result.into())
+        let tree = self.upgrade_tree()?;
+        let state = tree.read();
+        let root_id = state.root_id();
+        let result = if root_id == self.node_id {
+            self.clone()
         } else {
-            Err(element_not_available())
-        }
+            PlatformNode::new(&tree, root_id, self.hwnd)
+        };
+        Ok(result.into())
     }
 }
 
@@ -620,17 +625,14 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
     }
 
     fn GetFocus(&self) -> Result<IRawElementProviderFragment> {
-        if let Some(tree) = self.tree.upgrade() {
-            let state = tree.read();
-            if let Some(id) = state.focus_id() {
-                if id != self.node_id {
-                    return Ok(PlatformNode::new(&tree, id, self.hwnd).into());
-                }
+        let tree = self.upgrade_tree()?;
+        let state = tree.read();
+        if let Some(id) = state.focus_id() {
+            if id != self.node_id {
+                return Ok(PlatformNode::new(&tree, id, self.hwnd).into());
             }
-            Err(Error::OK)
-        } else {
-            Err(element_not_available())
         }
+        Err(Error::OK)
     }
 }
 
