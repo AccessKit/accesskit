@@ -11,10 +11,11 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit::kurbo::Point;
-use accesskit::{CheckedState, Live, NodeIdContent, Role};
-use accesskit_consumer::{Node, WeakNode};
+use accesskit::{CheckedState, Live, NodeId, NodeIdContent, Role};
+use accesskit_consumer::{Node, Tree};
 use arrayvec::ArrayVec;
 use paste::paste;
+use std::sync::{Arc, Weak};
 use windows as Windows;
 use windows::{
     core::*,
@@ -23,26 +24,35 @@ use windows::{
 
 use crate::util::*;
 
+fn runtime_id_from_node_id(id: NodeId) -> impl std::ops::Deref<Target = [i32]> {
+    let mut result = ArrayVec::<i32, { std::mem::size_of::<NodeIdContent>() + 1 }>::new();
+    result.push(UiaAppendRuntimeId as i32);
+    let id = id.0;
+    let id_bytes = id.get().to_be_bytes();
+    let start_index: usize = (id.leading_zeros() / 8) as usize;
+    for byte in &id_bytes[start_index..] {
+        result.push((*byte).into());
+    }
+    result
+}
+
 pub(crate) struct ResolvedPlatformNode<'a> {
+    tree: &'a Arc<Tree>,
     node: Node<'a>,
     hwnd: HWND,
 }
 
-impl ResolvedPlatformNode<'_> {
-    pub(crate) fn new(node: Node, hwnd: HWND) -> ResolvedPlatformNode {
-        ResolvedPlatformNode { node, hwnd }
+impl<'a> ResolvedPlatformNode<'a> {
+    pub(crate) fn new(tree: &'a Arc<Tree>, node: Node<'a>, hwnd: HWND) -> Self {
+        Self { tree, node, hwnd }
     }
 
-    fn relative<'a>(&self, node: Node<'a>) -> ResolvedPlatformNode<'a> {
-        ResolvedPlatformNode::new(node, self.hwnd)
+    fn relative(&self, node: Node<'a>) -> Self {
+        Self::new(self.tree, node, self.hwnd)
     }
 
     pub(crate) fn downgrade(&self) -> PlatformNode {
-        PlatformNode::new(&self.node, self.hwnd)
-    }
-
-    fn provider_options(&self) -> ProviderOptions {
-        ProviderOptions_ServerSideProvider
+        PlatformNode::new(self.tree, self.node.id(), self.hwnd)
     }
 
     fn control_type(&self) -> i32 {
@@ -363,7 +373,7 @@ impl ResolvedPlatformNode<'_> {
     }
 
     fn select(&self) {
-        self.node.do_default_action()
+        self.tree.do_default_action(self.node.id())
     }
 
     fn add_to_selection(&self) {
@@ -454,18 +464,6 @@ impl ResolvedPlatformNode<'_> {
         result.map(|node| self.relative(node))
     }
 
-    fn runtime_id(&self) -> impl std::ops::Deref<Target = [i32]> {
-        let mut result = ArrayVec::<i32, { std::mem::size_of::<NodeIdContent>() + 1 }>::new();
-        result.push(UiaAppendRuntimeId as i32);
-        let id = self.node.id().0;
-        let id_bytes = id.get().to_be_bytes();
-        let start_index: usize = (id.leading_zeros() / 8) as usize;
-        for byte in &id_bytes[start_index..] {
-            result.push((*byte).into());
-        }
-        result
-    }
-
     fn bounding_rectangle(&self) -> UiaRect {
         self.node.bounding_box().map_or(UiaRect::default(), |rect| {
             let mut client_top_left = POINT::default();
@@ -480,7 +478,7 @@ impl ResolvedPlatformNode<'_> {
     }
 
     fn set_focus(&self) {
-        self.node.set_focus()
+        self.tree.set_focus(self.node.id())
     }
 
     fn node_at_point(&self, point: Point) -> Option<ResolvedPlatformNode> {
@@ -496,30 +494,25 @@ impl ResolvedPlatformNode<'_> {
             .map(|node| self.relative(node))
     }
 
-    fn focus(&self) -> Option<ResolvedPlatformNode> {
-        if let Some(node) = self.node.tree_reader.focus() {
-            if node.id() != self.node.id() {
-                return Some(self.relative(node));
-            }
-        }
-        None
-    }
-
     fn toggle(&self) {
-        self.node.do_default_action()
+        self.tree.do_default_action(self.node.id())
     }
 
     fn invoke(&self) {
-        self.node.do_default_action()
+        self.tree.do_default_action(self.node.id())
     }
 
     fn set_value(&self, value: impl Into<Box<str>>) {
-        self.node.set_value(value)
+        self.tree.set_value(self.node.id(), value)
     }
 
     fn set_numeric_value(&self, value: f64) {
-        self.node.set_numeric_value(value)
+        self.tree.set_numeric_value(self.node.id(), value)
     }
+}
+
+fn element_not_available() -> Error {
+    Error::new(HRESULT(UIA_E_ELEMENTNOTAVAILABLE as i32), "".into())
 }
 
 #[derive(Clone)]
@@ -529,15 +522,17 @@ impl ResolvedPlatformNode<'_> {
     Windows::Win32::UI::Accessibility::IRawElementProviderFragmentRoot
 )]
 pub(crate) struct PlatformNode {
-    node: WeakNode,
+    tree: Weak<Tree>,
+    node_id: NodeId,
     hwnd: HWND,
 }
 
 #[allow(non_snake_case)]
 impl PlatformNode {
-    pub(crate) fn new(node: &Node, hwnd: HWND) -> Self {
+    pub(crate) fn new(tree: &Arc<Tree>, node_id: NodeId, hwnd: HWND) -> Self {
         Self {
-            node: node.downgrade(),
+            tree: Arc::downgrade(tree),
+            node_id,
             hwnd,
         }
     }
@@ -546,26 +541,19 @@ impl PlatformNode {
     where
         for<'a> F: FnOnce(ResolvedPlatformNode<'a>) -> Result<T>,
     {
-        self.node
-            .map(|node| f(ResolvedPlatformNode::new(node, self.hwnd)))
-            .unwrap_or_else(|| {
-                Err(Error::new(
-                    HRESULT(UIA_E_ELEMENTNOTAVAILABLE as i32),
-                    "".into(),
-                ))
-            })
+        if let Some(tree) = self.tree.upgrade() {
+            let state = tree.read();
+            if let Some(node) = state.node_by_id(self.node_id) {
+                return f(ResolvedPlatformNode::new(&tree, node, self.hwnd));
+            }
+        }
+        Err(element_not_available())
     }
 }
 
 impl IRawElementProviderSimple_Impl for PlatformNode {
     fn ProviderOptions(&self) -> Result<ProviderOptions> {
-        // We don't currently have to resolve the node to implement this.
-        // But we might have to in the future. So to avoid leaking
-        // implementation details that might change, we'll resolve
-        // the node and just ignore it. There's precedent for this;
-        // Chromium's implementation of this method validates the node
-        // even though the return value is hard-coded.
-        self.resolve(|resolved| Ok(resolved.provider_options()))
+        Ok(ProviderOptions_ServerSideProvider)
     }
 
     fn GetPatternProvider(&self, pattern_id: i32) -> Result<IUnknown> {
@@ -594,10 +582,8 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
     }
 
     fn GetRuntimeId(&self) -> Result<*mut SAFEARRAY> {
-        self.resolve(|resolved| {
-            let runtime_id = resolved.runtime_id();
-            Ok(safe_array_from_i32_slice(&runtime_id))
-        })
+        let runtime_id = runtime_id_from_node_id(self.node_id);
+        Ok(safe_array_from_i32_slice(&runtime_id))
     }
 
     fn BoundingRectangle(&self) -> Result<UiaRect> {
@@ -605,8 +591,7 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
     }
 
     fn GetEmbeddedFragmentRoots(&self) -> Result<*mut SAFEARRAY> {
-        // As with ProviderOptions above, avoid leaking implementation details.
-        self.resolve(|_resolved| Ok(std::ptr::null_mut()))
+        Ok(std::ptr::null_mut())
     }
 
     fn SetFocus(&self) -> Result<()> {
@@ -617,23 +602,17 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
     }
 
     fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
-        enum FragmentRootResult {
-            This,
-            Other(PlatformNode),
-        }
-        let result = self.resolve(|resolved| {
-            if resolved.node.is_root() {
-                Ok(FragmentRootResult::This)
+        if let Some(tree) = self.tree.upgrade() {
+            let state = tree.read();
+            let root_id = state.root_id();
+            let result = if root_id == self.node_id {
+                self.clone()
             } else {
-                let root = resolved.node.tree_reader.root();
-                Ok(FragmentRootResult::Other(
-                    resolved.relative(root).downgrade(),
-                ))
-            }
-        })?;
-        match result {
-            FragmentRootResult::This => Ok(self.clone().into()),
-            FragmentRootResult::Other(node) => Ok(node.into()),
+                PlatformNode::new(&tree, root_id, self.hwnd)
+            };
+            Ok(result.into())
+        } else {
+            Err(element_not_available())
         }
     }
 }
@@ -649,10 +628,17 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
     }
 
     fn GetFocus(&self) -> Result<IRawElementProviderFragment> {
-        self.resolve(|resolved| match resolved.focus() {
-            Some(result) => Ok(result.downgrade().into()),
-            None => Err(Error::OK),
-        })
+        if let Some(tree) = self.tree.upgrade() {
+            let state = tree.read();
+            if let Some(id) = state.focus_id() {
+                if id != self.node_id {
+                    return Ok(PlatformNode::new(&tree, id, self.hwnd).into());
+                }
+            }
+            Err(Error::OK)
+        } else {
+            Err(element_not_available())
+        }
     }
 }
 

@@ -3,10 +3,16 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, Node as NodeData, NodeId, Tree as TreeData, TreeUpdate};
-use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+use accesskit::{
+    Action, ActionData, ActionHandler, ActionRequest, Node as NodeData, NodeId, Tree as TreeData,
+    TreeUpdate,
+};
+use parking_lot::{RwLock, RwLockWriteGuard};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::Deref,
+    sync::Arc,
+};
 
 use crate::Node;
 
@@ -21,7 +27,7 @@ pub(crate) struct NodeState {
 }
 
 #[derive(Clone)]
-pub(crate) struct State {
+pub struct State {
     pub(crate) nodes: im::HashMap<NodeId, NodeState>,
     pub(crate) data: TreeData,
     pub(crate) focus: Option<NodeId>,
@@ -173,7 +179,7 @@ impl State {
         self.validate_global();
     }
 
-    fn serialize(&self) -> TreeUpdate {
+    pub fn serialize(&self) -> TreeUpdate {
         let mut nodes = Vec::new();
 
         fn traverse(state: &State, nodes: &mut Vec<(NodeId, Arc<NodeData>)>, id: NodeId) {
@@ -194,27 +200,28 @@ impl State {
             focus: self.focus,
         }
     }
-}
 
-pub struct Reader<'a> {
-    pub(crate) tree: &'a Arc<Tree>,
-    pub(crate) state: RwLockReadGuard<'a, State>,
-}
-
-impl Reader<'_> {
     pub fn node_by_id(&self, id: NodeId) -> Option<Node<'_>> {
-        self.state.nodes.get(&id).map(|node_state| Node {
-            tree_reader: self,
+        self.nodes.get(&id).map(|node_state| Node {
+            tree_state: self,
             state: node_state,
         })
     }
 
+    pub fn root_id(&self) -> NodeId {
+        self.data.root
+    }
+
     pub fn root(&self) -> Node<'_> {
-        self.node_by_id(self.state.data.root).unwrap()
+        self.node_by_id(self.root_id()).unwrap()
+    }
+
+    pub fn focus_id(&self) -> Option<NodeId> {
+        self.focus
     }
 
     pub fn focus(&self) -> Option<Node<'_>> {
-        self.state.focus.map(|id| self.node_by_id(id).unwrap())
+        self.focus.map(|id| self.node_by_id(id).unwrap())
     }
 }
 
@@ -237,17 +244,17 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub fn new(mut initial_state: TreeUpdate, action_handler: Box<dyn ActionHandler>) -> Arc<Self> {
+    pub fn new(mut initial_state: TreeUpdate, action_handler: Box<dyn ActionHandler>) -> Self {
         let mut state = State {
             nodes: im::HashMap::new(),
             data: initial_state.tree.take().unwrap(),
             focus: None,
         };
         state.update(initial_state, None);
-        Arc::new(Self {
+        Self {
             state: RwLock::new(state),
             action_handler,
-        })
+        }
     }
 
     pub fn update(&self, update: TreeUpdate) {
@@ -255,7 +262,7 @@ impl Tree {
         state.update(update, None);
     }
 
-    pub fn update_and_process_changes<F>(self: &Arc<Tree>, update: TreeUpdate, mut f: F)
+    pub fn update_and_process_changes<F>(&self, update: TreeUpdate, mut f: F)
     where
         for<'a> F: FnMut(Change<'a>),
     {
@@ -264,36 +271,23 @@ impl Tree {
         let old_state = state.clone();
         state.update(update, Some(&mut changes));
         let state = RwLockWriteGuard::downgrade(state);
-        let reader = Reader { tree: self, state };
-        // Ideally we shouldn't have to wrap the old state in an `RwLock`.
-        // But `Reader` owns an `RwLockGuard`, and that's what we want
-        // in the usual case. Is there a way to make `Reader` more generic,
-        // without having to do something crazy like making the `Node` wrapper
-        // generic, and without hurting performance for normal reads?
-        // Fortunately, `parking_lot::RwLock` is cheap for an uncontended
-        // case like this.
-        let old_state = RwLock::new(old_state);
-        let old_reader = Reader {
-            tree: self,
-            state: old_state.read(),
-        };
         for id in &changes.added_node_ids {
-            let node = reader.node_by_id(*id).unwrap();
+            let node = state.node_by_id(*id).unwrap();
             f(Change::NodeAdded(node));
         }
         for id in &changes.updated_node_ids {
-            let old_node = old_reader.node_by_id(*id).unwrap();
-            let new_node = reader.node_by_id(*id).unwrap();
+            let old_node = old_state.node_by_id(*id).unwrap();
+            let new_node = state.node_by_id(*id).unwrap();
             f(Change::NodeUpdated { old_node, new_node });
         }
         if changes.focus_moved {
-            let old_node = old_reader.focus();
+            let old_node = old_state.focus();
             if let Some(old_node) = old_node {
                 let id = old_node.id();
                 if !changes.updated_node_ids.contains(&id)
                     && !changes.removed_node_ids.contains(&id)
                 {
-                    if let Some(old_node_new_version) = reader.node_by_id(id) {
+                    if let Some(old_node_new_version) = state.node_by_id(id) {
                         f(Change::NodeUpdated {
                             old_node,
                             new_node: old_node_new_version,
@@ -301,12 +295,12 @@ impl Tree {
                     }
                 }
             }
-            let new_node = reader.focus();
+            let new_node = state.focus();
             if let Some(new_node) = new_node {
                 let id = new_node.id();
                 if !changes.added_node_ids.contains(&id) && !changes.updated_node_ids.contains(&id)
                 {
-                    if let Some(new_node_old_version) = old_reader.node_by_id(id) {
+                    if let Some(new_node_old_version) = old_state.node_by_id(id) {
                         f(Change::NodeUpdated {
                             old_node: new_node_old_version,
                             new_node,
@@ -317,24 +311,45 @@ impl Tree {
             f(Change::FocusMoved { old_node, new_node });
         }
         for id in &changes.removed_node_ids {
-            let node = old_reader.node_by_id(*id).unwrap();
+            let node = old_state.node_by_id(*id).unwrap();
             f(Change::NodeRemoved(node));
         }
     }
 
-    // Intended for debugging.
-    pub fn serialize(&self) -> TreeUpdate {
-        let state = self.state.read();
-        state.serialize()
+    pub fn read(&self) -> impl Deref<Target = State> + '_ {
+        self.state.read()
     }
 
-    // https://github.com/rust-lang/rust-clippy/issues/7296
-    #[allow(clippy::needless_lifetimes)]
-    pub fn read<'a>(self: &'a Arc<Tree>) -> Reader<'a> {
-        Reader {
-            tree: self,
-            state: self.state.read(),
-        }
+    pub fn set_focus(&self, target: NodeId) {
+        self.action_handler.do_action(ActionRequest {
+            action: Action::Focus,
+            target,
+            data: None,
+        })
+    }
+
+    pub fn do_default_action(&self, target: NodeId) {
+        self.action_handler.do_action(ActionRequest {
+            action: Action::Default,
+            target,
+            data: None,
+        })
+    }
+
+    pub fn set_value(&self, target: NodeId, value: impl Into<Box<str>>) {
+        self.action_handler.do_action(ActionRequest {
+            action: Action::SetValue,
+            target,
+            data: Some(ActionData::Value(value.into())),
+        })
+    }
+
+    pub fn set_numeric_value(&self, target: NodeId, value: f64) {
+        self.action_handler.do_action(ActionRequest {
+            action: Action::SetValue,
+            target,
+            data: Some(ActionData::NumericValue(value)),
+        })
     }
 }
 
@@ -399,16 +414,16 @@ mod tests {
             focus: None,
         };
         let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
-        let reader = tree.read();
+        let state = tree.read();
         assert_eq!(
             NODE_ID_1,
-            reader.node_by_id(NODE_ID_2).unwrap().parent().unwrap().id()
+            state.node_by_id(NODE_ID_2).unwrap().parent().unwrap().id()
         );
         assert_eq!(
             NODE_ID_1,
-            reader.node_by_id(NODE_ID_3).unwrap().parent().unwrap().id()
+            state.node_by_id(NODE_ID_3).unwrap().parent().unwrap().id()
         );
-        assert_eq!(2, reader.root().children().count());
+        assert_eq!(2, state.root().children().count());
     }
 
     #[test]
@@ -466,12 +481,12 @@ mod tests {
         });
         assert!(got_updated_root_node);
         assert!(got_new_child_node);
-        let reader = tree.read();
-        assert_eq!(1, reader.root().children().count());
-        assert_eq!(NODE_ID_2, reader.root().children().next().unwrap().id());
+        let state = tree.read();
+        assert_eq!(1, state.root().children().count());
+        assert_eq!(NODE_ID_2, state.root().children().next().unwrap().id());
         assert_eq!(
             NODE_ID_1,
-            reader.node_by_id(NODE_ID_2).unwrap().parent().unwrap().id()
+            state.node_by_id(NODE_ID_2).unwrap().parent().unwrap().id()
         );
     }
 

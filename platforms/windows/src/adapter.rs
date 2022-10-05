@@ -60,7 +60,7 @@ impl Adapter {
             |UninitializedTree {
                  source,
                  action_handler,
-             }| Tree::new(source.into(), action_handler),
+             }| Arc::new(Tree::new(source.into(), action_handler)),
         )
     }
 
@@ -103,7 +103,7 @@ impl Adapter {
                     old_node: _,
                     new_node: Some(new_node),
                 } => {
-                    let platform_node = PlatformNode::new(&new_node, self.hwnd);
+                    let platform_node = PlatformNode::new(tree, new_node.id(), self.hwnd);
                     let element: IRawElementProviderSimple = platform_node.into();
                     queue.push(QueuedEvent::Simple {
                         element,
@@ -115,7 +115,7 @@ impl Adapter {
                         && node.name().is_some()
                         && node.live() != Live::Off
                     {
-                        let platform_node = PlatformNode::new(&node, self.hwnd);
+                        let platform_node = PlatformNode::new(tree, node.id(), self.hwnd);
                         let element: IRawElementProviderSimple = platform_node.into();
                         queue.push(QueuedEvent::Simple {
                             element,
@@ -124,8 +124,8 @@ impl Adapter {
                     }
                 }
                 TreeChange::NodeUpdated { old_node, new_node } => {
-                    let old_platform_node = ResolvedPlatformNode::new(old_node, self.hwnd);
-                    let new_platform_node = ResolvedPlatformNode::new(new_node, self.hwnd);
+                    let old_platform_node = ResolvedPlatformNode::new(tree, old_node, self.hwnd);
+                    let new_platform_node = ResolvedPlatformNode::new(tree, new_node, self.hwnd);
                     new_platform_node.enqueue_property_changes(&mut queue, &old_platform_node);
                     if !new_node.is_invisible_or_ignored()
                         && new_node.name().is_some()
@@ -150,9 +150,9 @@ impl Adapter {
 
     fn root_platform_node(&self) -> PlatformNode {
         let tree = self.get_or_create_tree();
-        let reader = tree.read();
-        let node = reader.root();
-        PlatformNode::new(&node, self.hwnd)
+        let state = tree.read();
+        let node_id = state.root_id();
+        PlatformNode::new(tree, node_id, self.hwnd)
     }
 
     /// Handle the `WM_GETOBJECT` window message.
