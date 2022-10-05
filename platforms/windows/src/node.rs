@@ -592,7 +592,7 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
         let result = if root_id == self.node_id {
             self.clone()
         } else {
-            PlatformNode::new(&tree, root_id, self.hwnd)
+            self.relative(root_id)
         };
         Ok(result.into())
     }
@@ -621,7 +621,7 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
         let state = tree.read();
         if let Some(id) = state.focus_id() {
             if id != self.node_id {
-                return Ok(PlatformNode::new(&tree, id, self.hwnd).into());
+                return Ok(self.relative(id).into());
             }
         }
         Err(Error::OK)
