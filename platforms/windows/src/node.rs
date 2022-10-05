@@ -558,8 +558,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
     }
 
     fn GetPatternProvider(&self, pattern_id: i32) -> Result<IUnknown> {
-        let provider = self.resolve(|resolved| Ok(resolved.pattern_provider(pattern_id)))?;
-        provider.map_or_else(|| Err(Error::OK), Ok)
+        self.pattern_provider(pattern_id)
     }
 
     fn GetPropertyValue(&self, property_id: i32) -> Result<VARIANT> {
@@ -675,19 +674,24 @@ macro_rules! patterns {
     ), (
         $($extra_trait_method:item),*
     ))),+) => {
-        impl ResolvedPlatformNode<'_> {
-            fn pattern_provider(&self, pattern_id: i32) -> Option<IUnknown> {
-                match pattern_id {
-                    $(paste! { [< UIA_ $base_pattern_id PatternId>] } => {
-                        self.$is_supported().then(|| {
-                            let intermediate: paste! { [< I $base_pattern_id Provider>] } =
-                                (paste! { [< $base_pattern_id Provider>] })(self.downgrade()).into();
-                            intermediate.into()
-                        })
-                    })*
-                    _ => None,
-                }
+        impl PlatformNode {
+            fn pattern_provider(&self, pattern_id: i32) -> Result<IUnknown> {
+                self.resolve(|resolved| {
+                    match pattern_id {
+                        $(paste! { [< UIA_ $base_pattern_id PatternId>] } => {
+                            if resolved.$is_supported() {
+                                let intermediate: paste! { [< I $base_pattern_id Provider>] } =
+                                    (paste! { [< $base_pattern_id Provider>] })(self.clone()).into();
+                                return Ok(intermediate.into());
+                            }
+                        })*
+                        _ => (),
+                    }
+                    Err(Error::OK)
+                })
             }
+        }
+        impl ResolvedPlatformNode<'_> {
             fn enqueue_pattern_property_changes(
                 &self,
                 queue: &mut Vec<QueuedEvent>,
