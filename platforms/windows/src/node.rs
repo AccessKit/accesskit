@@ -37,11 +37,11 @@ fn runtime_id_from_node_id(id: NodeId) -> impl std::ops::Deref<Target = [i32]> {
 }
 
 pub(crate) struct NodeWrapper<'a> {
-    node: Node<'a>,
+    node: &'a Node<'a>,
 }
 
 impl<'a> NodeWrapper<'a> {
-    pub(crate) fn new(node: Node<'a>) -> Self {
+    pub(crate) fn new(node: &'a Node<'a>) -> Self {
         Self { node }
     }
 
@@ -484,7 +484,7 @@ impl PlatformNode {
         let tree = self.upgrade_tree()?;
         let state = tree.read();
         if let Some(node) = state.node_by_id(self.node_id) {
-            f(NodeWrapper::new(node))
+            f(NodeWrapper::new(&node))
         } else {
             Err(element_not_available())
         }

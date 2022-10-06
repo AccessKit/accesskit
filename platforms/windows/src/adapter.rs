@@ -118,8 +118,8 @@ impl Adapter {
             fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
                 let platform_node = PlatformNode::new(self.tree, new_node.id(), self.hwnd);
                 let element: IRawElementProviderSimple = platform_node.into();
-                let old_wrapper = NodeWrapper::new(*old_node);
-                let new_wrapper = NodeWrapper::new(*new_node);
+                let old_wrapper = NodeWrapper::new(old_node);
+                let new_wrapper = NodeWrapper::new(new_node);
                 new_wrapper.enqueue_property_changes(&mut self.queue, &element, &old_wrapper);
                 if !new_node.is_invisible_or_ignored()
                     && new_node.name().is_some()
