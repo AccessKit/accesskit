@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 pub(crate) mod tree;
-pub use tree::{Change as TreeChange, State as TreeState, Tree};
+pub use tree::{ChangeHandler as TreeChangeHandler, State as TreeState, Tree};
 
 pub(crate) mod node;
 pub use node::Node;
