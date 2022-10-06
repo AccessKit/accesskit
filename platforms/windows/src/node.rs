@@ -16,7 +16,6 @@ use accesskit_consumer::{Node, Tree};
 use arrayvec::ArrayVec;
 use paste::paste;
 use std::sync::{Arc, Weak};
-use windows as Windows;
 use windows::{
     core::*,
     Win32::{Foundation::*, Graphics::Gdi::*, System::Com::*, UI::Accessibility::*},
@@ -447,11 +446,15 @@ fn element_not_available() -> Error {
     Error::new(HRESULT(UIA_E_ELEMENTNOTAVAILABLE as i32), "".into())
 }
 
-#[derive(Clone)]
 #[implement(
-    Windows::Win32::UI::Accessibility::IRawElementProviderSimple,
-    Windows::Win32::UI::Accessibility::IRawElementProviderFragment,
-    Windows::Win32::UI::Accessibility::IRawElementProviderFragmentRoot
+    IRawElementProviderSimple,
+    IRawElementProviderFragment,
+    IRawElementProviderFragmentRoot,
+    IToggleProvider,
+    IInvokeProvider,
+    IValueProvider,
+    IRangeValueProvider,
+    ISelectionItemProvider
 )]
 pub(crate) struct PlatformNode {
     tree: Weak<Tree>,
@@ -459,7 +462,6 @@ pub(crate) struct PlatformNode {
     hwnd: HWND,
 }
 
-#[allow(non_snake_case)]
 impl PlatformNode {
     pub(crate) fn new(tree: &Arc<Tree>, node_id: NodeId, hwnd: HWND) -> Self {
         Self {
@@ -589,12 +591,12 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
         let tree = self.upgrade_tree()?;
         let state = tree.read();
         let root_id = state.root_id();
-        let result = if root_id == self.node_id {
-            self.clone()
+        if root_id == self.node_id {
+            // SAFETY: We know &self is inside a full COM implementation.
+            unsafe { self.cast() }
         } else {
-            self.relative(root_id)
-        };
-        Ok(result.into())
+            Ok(self.relative(root_id).into())
+        }
     }
 }
 
@@ -675,8 +677,9 @@ macro_rules! patterns {
                     match pattern_id {
                         $(paste! { [< UIA_ $base_pattern_id PatternId>] } => {
                             if wrapper.$is_supported() {
+                                // SAFETY: We know we're running inside a full COM implementation.
                                 let intermediate: paste! { [< I $base_pattern_id Provider>] } =
-                                    (paste! { [< $base_pattern_id Provider>] })(self.clone()).into();
+                                    unsafe { self.cast() }?;
                                 return Ok(intermediate.into());
                             }
                         })*
@@ -711,10 +714,9 @@ macro_rules! patterns {
             }
         }
         paste! {
-            $(#[allow(non_snake_case)]
-            impl [< I $base_pattern_id Provider_Impl>] for [< $base_pattern_id Provider>] {
+            $(impl [< I $base_pattern_id Provider_Impl>] for PlatformNode {
                 $(fn $base_property_id(&self) -> Result<$com_type> {
-                    self.0.resolve(|wrapper| Ok(wrapper.$getter().into()))
+                    self.resolve(|wrapper| Ok(wrapper.$getter().into()))
                 })*
                 $($extra_trait_method)*
             })*
@@ -733,32 +735,17 @@ properties! {
     (LiveSetting, live_setting)
 }
 
-#[implement(Windows::Win32::UI::Accessibility::IToggleProvider)]
-struct ToggleProvider(PlatformNode);
-
-#[implement(Windows::Win32::UI::Accessibility::IInvokeProvider)]
-struct InvokeProvider(PlatformNode);
-
-#[implement(Windows::Win32::UI::Accessibility::IValueProvider)]
-struct ValueProvider(PlatformNode);
-
-#[implement(Windows::Win32::UI::Accessibility::IRangeValueProvider)]
-struct RangeValueProvider(PlatformNode);
-
-#[implement(Windows::Win32::UI::Accessibility::ISelectionItemProvider)]
-struct SelectionItemProvider(PlatformNode);
-
 patterns! {
     (Toggle, is_toggle_pattern_supported, (
         (ToggleState, toggle_state, ToggleState)
     ), (
         fn Toggle(&self) -> Result<()> {
-            self.0.do_default_action()
+            self.do_default_action()
         }
     )),
     (Invoke, is_invoke_pattern_supported, (), (
         fn Invoke(&self) -> Result<()> {
-            self.0.do_default_action()
+            self.do_default_action()
         }
     )),
     (Value, is_value_pattern_supported, (
@@ -766,9 +753,9 @@ patterns! {
         (IsReadOnly, is_read_only, BOOL)
     ), (
         fn SetValue(&self, value: &PCWSTR) -> Result<()> {
-            let tree = self.0.validate_for_action()?;
+            let tree = self.validate_for_action()?;
             let value = unsafe { value.to_string() }.unwrap();
-            tree.set_value(self.0.node_id, value);
+            tree.set_value(self.node_id, value);
             Ok(())
         }
     )),
@@ -781,8 +768,8 @@ patterns! {
         (LargeChange, numeric_value_jump, f64)
     ), (
         fn SetValue(&self, value: f64) -> Result<()> {
-            let tree = self.0.validate_for_action()?;
-            tree.set_numeric_value(self.0.node_id, value);
+            let tree = self.validate_for_action()?;
+            tree.set_numeric_value(self.node_id, value);
             Ok(())
         }
     )),
@@ -790,25 +777,25 @@ patterns! {
         (IsSelected, is_selected, BOOL)
     ), (
         fn Select(&self) -> Result<()> {
-            self.0.do_default_action()
+            self.do_default_action()
         },
 
         fn AddToSelection(&self) -> Result<()> {
-            self.0.resolve(|wrapper| {
+            self.resolve(|wrapper| {
                 wrapper.add_to_selection();
                 Ok(())
             })
         },
 
         fn RemoveFromSelection(&self) -> Result<()> {
-            self.0.resolve(|wrapper| {
+            self.resolve(|wrapper| {
                 wrapper.remove_from_selection();
                 Ok(())
             })
         },
 
         fn SelectionContainer(&self) -> Result<IRawElementProviderSimple> {
-            self.0.resolve(|_wrapper| {
+            self.resolve(|_wrapper| {
                 // TODO: implement when we work on list boxes (#23)
                 // We return E_FAIL here because that's what Chromium does
                 // if it can't find a container.
