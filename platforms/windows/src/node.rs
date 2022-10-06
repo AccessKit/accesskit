@@ -516,6 +516,14 @@ impl PlatformNode {
             hwnd: self.hwnd,
         }
     }
+
+    fn client_top_left(&self) -> Point {
+        let mut result = POINT::default();
+        // If ClientToScreen fails, that means the window is gone.
+        // That's an unexpected condition, so we should fail loudly.
+        unsafe { ClientToScreen(self.hwnd, &mut result) }.unwrap();
+        Point::new(result.x.into(), result.y.into())
+    }
 }
 
 impl IRawElementProviderSimple_Impl for PlatformNode {
@@ -564,11 +572,10 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
                 .node
                 .bounding_box()
                 .map_or(UiaRect::default(), |rect| {
-                    let mut client_top_left = POINT::default();
-                    unsafe { ClientToScreen(self.hwnd, &mut client_top_left) }.unwrap();
+                    let client_top_left = self.client_top_left();
                     UiaRect {
-                        left: rect.x0 + f64::from(client_top_left.x),
-                        top: rect.y0 + f64::from(client_top_left.y),
+                        left: rect.x0 + client_top_left.x,
+                        top: rect.y0 + client_top_left.y,
                         width: rect.width(),
                         height: rect.height(),
                     }
@@ -603,14 +610,9 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
 impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
     fn ElementProviderFromPoint(&self, x: f64, y: f64) -> Result<IRawElementProviderFragment> {
         self.resolve(|wrapper| {
-            let point = Point::new(x, y);
-            let mut client_top_left = POINT::default();
-            unsafe { ClientToScreen(self.hwnd, &mut client_top_left) }.unwrap();
-            let point = wrapper.node.transform().inverse()
-                * Point {
-                    x: point.x - f64::from(client_top_left.x),
-                    y: point.y - f64::from(client_top_left.y),
-                };
+            let client_top_left = self.client_top_left();
+            let point = Point::new(x - client_top_left.x, y - client_top_left.y);
+            let point = wrapper.node.transform().inverse() * point;
             wrapper.node.node_at_point(point).map_or_else(
                 || Err(Error::OK),
                 |node| Ok(self.relative(node.id()).into()),
