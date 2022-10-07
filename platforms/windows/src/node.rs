@@ -12,7 +12,7 @@
 
 use accesskit::kurbo::Point;
 use accesskit::{CheckedState, Live, NodeId, NodeIdContent, Role};
-use accesskit_consumer::{Node, Tree};
+use accesskit_consumer::{Node, Tree, TreeState};
 use arrayvec::ArrayVec;
 use paste::paste;
 use std::sync::{Arc, Weak};
@@ -479,17 +479,26 @@ impl PlatformNode {
         }
     }
 
+    fn with_tree_state<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(&TreeState) -> Result<T>,
+    {
+        let tree = self.upgrade_tree()?;
+        let state = tree.read();
+        f(&state)
+    }
+
     fn resolve<F, T>(&self, f: F) -> Result<T>
     where
         for<'a> F: FnOnce(NodeWrapper<'a>) -> Result<T>,
     {
-        let tree = self.upgrade_tree()?;
-        let state = tree.read();
-        if let Some(node) = state.node_by_id(self.node_id) {
-            f(NodeWrapper::new(&node))
-        } else {
-            Err(element_not_available())
-        }
+        self.with_tree_state(|state| {
+            if let Some(node) = state.node_by_id(self.node_id) {
+                f(NodeWrapper::new(&node))
+            } else {
+                Err(element_not_available())
+            }
+        })
     }
 
     fn validate_for_action(&self) -> Result<Arc<Tree>> {
@@ -595,15 +604,15 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
     }
 
     fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
-        let tree = self.upgrade_tree()?;
-        let state = tree.read();
-        let root_id = state.root_id();
-        if root_id == self.node_id {
-            // SAFETY: We know &self is inside a full COM implementation.
-            unsafe { self.cast() }
-        } else {
-            Ok(self.relative(root_id).into())
-        }
+        self.with_tree_state(|state| {
+            let root_id = state.root_id();
+            if root_id == self.node_id {
+                // SAFETY: We know &self is inside a full COM implementation.
+                unsafe { self.cast() }
+            } else {
+                Ok(self.relative(root_id).into())
+            }
+        })
     }
 }
 
@@ -621,14 +630,14 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
     }
 
     fn GetFocus(&self) -> Result<IRawElementProviderFragment> {
-        let tree = self.upgrade_tree()?;
-        let state = tree.read();
-        if let Some(id) = state.focus_id() {
-            if id != self.node_id {
-                return Ok(self.relative(id).into());
+        self.with_tree_state(|state| {
+            if let Some(id) = state.focus_id() {
+                if id != self.node_id {
+                    return Ok(self.relative(id).into());
+                }
             }
-        }
-        Err(Error::OK)
+            Err(Error::OK)
+        })
     }
 }
 
