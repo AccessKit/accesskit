@@ -15,6 +15,7 @@ pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
 
 #[derive(Clone)]
 pub(crate) struct NodeState {
+    pub(crate) id: NodeId,
     pub(crate) parent_and_index: Option<ParentAndIndex>,
     pub(crate) data: Box<NodeData>,
 }
@@ -63,10 +64,11 @@ impl State {
             nodes: &mut im::HashMap<NodeId, NodeState>,
             changes: &mut Option<&mut InternalChanges>,
             parent_and_index: Option<ParentAndIndex>,
+            id: NodeId,
             data: NodeData,
         ) {
-            let id = data.id;
             let state = NodeState {
+                id,
                 parent_and_index,
                 data: Box::new(data),
             };
@@ -76,8 +78,7 @@ impl State {
             }
         }
 
-        for node_data in update.nodes {
-            let node_id = node_data.id;
+        for (node_id, node_data) in update.nodes {
             orphans.remove(&node_id);
 
             let mut seen_child_ids = HashSet::new();
@@ -94,6 +95,7 @@ impl State {
                         &mut self.nodes,
                         &mut changes,
                         Some(parent_and_index),
+                        *child_id,
                         child_data,
                     );
                 } else {
@@ -122,10 +124,11 @@ impl State {
                     &mut self.nodes,
                     &mut changes,
                     Some(parent_and_index),
+                    node_id,
                     node_data,
                 );
             } else if node_id == root {
-                add_node(&mut self.nodes, &mut changes, None, node_data);
+                add_node(&mut self.nodes, &mut changes, None, node_id, node_data);
             } else {
                 pending_nodes.insert(node_id, node_data);
             }
@@ -181,9 +184,9 @@ impl State {
     fn serialize(&self) -> TreeUpdate {
         let mut nodes = Vec::new();
 
-        fn traverse(state: &State, nodes: &mut Vec<NodeData>, id: NodeId) {
+        fn traverse(state: &State, nodes: &mut Vec<(NodeId, NodeData)>, id: NodeId) {
             let node = state.nodes.get(&id).unwrap();
-            nodes.push((*node.data).clone());
+            nodes.push((id, (*node.data).clone()));
 
             for child_id in node.data.children.iter() {
                 traverse(state, nodes, *child_id);
@@ -357,7 +360,13 @@ mod tests {
     #[test]
     fn init_tree_with_root_node() {
         let update = TreeUpdate {
-            nodes: vec![Node::new(NODE_ID_1, Role::Window)],
+            nodes: vec![(
+                NODE_ID_1,
+                Node {
+                    role: Role::Window,
+                    ..Node::default()
+                },
+            )],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
@@ -371,12 +380,28 @@ mod tests {
     fn root_node_has_children() {
         let update = TreeUpdate {
             nodes: vec![
-                Node {
-                    children: vec![NODE_ID_2, NODE_ID_3],
-                    ..Node::new(NODE_ID_1, Role::Window)
-                },
-                Node::new(NODE_ID_2, Role::Button),
-                Node::new(NODE_ID_3, Role::Button),
+                (
+                    NODE_ID_1,
+                    Node {
+                        role: Role::Window,
+                        children: vec![NODE_ID_2, NODE_ID_3],
+                        ..Default::default()
+                    },
+                ),
+                (
+                    NODE_ID_2,
+                    Node {
+                        role: Role::Button,
+                        ..Default::default()
+                    },
+                ),
+                (
+                    NODE_ID_3,
+                    Node {
+                        role: Role::Button,
+                        ..Default::default()
+                    },
+                ),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
@@ -396,9 +421,12 @@ mod tests {
 
     #[test]
     fn add_child_to_root_node() {
-        let root_node = Node::new(NODE_ID_1, Role::Window);
+        let root_node = Node {
+            role: Role::Window,
+            ..Default::default()
+        };
         let first_update = TreeUpdate {
-            nodes: vec![root_node.clone()],
+            nodes: vec![(NODE_ID_1, root_node.clone())],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
@@ -406,11 +434,20 @@ mod tests {
         assert_eq!(0, tree.read().root().children().count());
         let second_update = TreeUpdate {
             nodes: vec![
-                Node {
-                    children: vec![NODE_ID_2],
-                    ..root_node
-                },
-                Node::new(NODE_ID_2, Role::RootWebArea),
+                (
+                    NODE_ID_1,
+                    Node {
+                        children: vec![NODE_ID_2],
+                        ..root_node
+                    },
+                ),
+                (
+                    NODE_ID_2,
+                    Node {
+                        role: Role::RootWebArea,
+                        ..Default::default()
+                    },
+                ),
             ],
             tree: None,
             focus: None,
@@ -448,14 +485,26 @@ mod tests {
 
     #[test]
     fn remove_child_from_root_node() {
-        let root_node = Node::new(NODE_ID_1, Role::Window);
+        let root_node = Node {
+            role: Role::Window,
+            ..Default::default()
+        };
         let first_update = TreeUpdate {
             nodes: vec![
-                Node {
-                    children: vec![NODE_ID_2],
-                    ..root_node.clone()
-                },
-                Node::new(NODE_ID_2, Role::RootWebArea),
+                (
+                    NODE_ID_1,
+                    Node {
+                        children: vec![NODE_ID_2],
+                        ..root_node.clone()
+                    },
+                ),
+                (
+                    NODE_ID_2,
+                    Node {
+                        role: Role::RootWebArea,
+                        ..Default::default()
+                    },
+                ),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
@@ -463,7 +512,7 @@ mod tests {
         let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
         assert_eq!(1, tree.read().root().children().count());
         let second_update = TreeUpdate {
-            nodes: vec![root_node],
+            nodes: vec![(NODE_ID_1, root_node)],
             tree: None,
             focus: None,
         };
@@ -497,12 +546,28 @@ mod tests {
     fn move_focus_between_siblings() {
         let first_update = TreeUpdate {
             nodes: vec![
-                Node {
-                    children: vec![NODE_ID_2, NODE_ID_3],
-                    ..Node::new(NODE_ID_1, Role::Window)
-                },
-                Node::new(NODE_ID_2, Role::Button),
-                Node::new(NODE_ID_3, Role::Button),
+                (
+                    NODE_ID_1,
+                    Node {
+                        role: Role::Window,
+                        children: vec![NODE_ID_2, NODE_ID_3],
+                        ..Default::default()
+                    },
+                ),
+                (
+                    NODE_ID_2,
+                    Node {
+                        role: Role::Button,
+                        ..Default::default()
+                    },
+                ),
+                (
+                    NODE_ID_3,
+                    Node {
+                        role: Role::Button,
+                        ..Default::default()
+                    },
+                ),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: Some(NODE_ID_2),
@@ -557,17 +622,27 @@ mod tests {
 
     #[test]
     fn update_node() {
-        let child_node = Node::new(NODE_ID_2, Role::Button);
+        let child_node = Node {
+            role: Role::Button,
+            ..Default::default()
+        };
         let first_update = TreeUpdate {
             nodes: vec![
-                Node {
-                    children: vec![NODE_ID_2],
-                    ..Node::new(NODE_ID_1, Role::Window)
-                },
-                Node {
-                    name: Some("foo".into()),
-                    ..child_node.clone()
-                },
+                (
+                    NODE_ID_1,
+                    Node {
+                        role: Role::Window,
+                        children: vec![NODE_ID_2],
+                        ..Default::default()
+                    },
+                ),
+                (
+                    NODE_ID_2,
+                    Node {
+                        name: Some("foo".into()),
+                        ..child_node.clone()
+                    },
+                ),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
@@ -578,10 +653,13 @@ mod tests {
             tree.read().node_by_id(NODE_ID_2).unwrap().name()
         );
         let second_update = TreeUpdate {
-            nodes: vec![Node {
-                name: Some("bar".into()),
-                ..child_node
-            }],
+            nodes: vec![(
+                NODE_ID_2,
+                Node {
+                    name: Some("bar".into()),
+                    ..child_node
+                },
+            )],
             tree: None,
             focus: None,
         };
@@ -613,12 +691,28 @@ mod tests {
     fn no_change_update() {
         let update = TreeUpdate {
             nodes: vec![
-                Node {
-                    children: vec![NODE_ID_2, NODE_ID_3],
-                    ..Node::new(NODE_ID_1, Role::Window)
-                },
-                Node::new(NODE_ID_2, Role::Button),
-                Node::new(NODE_ID_3, Role::Button),
+                (
+                    NODE_ID_1,
+                    Node {
+                        role: Role::Window,
+                        children: vec![NODE_ID_2, NODE_ID_3],
+                        ..Default::default()
+                    },
+                ),
+                (
+                    NODE_ID_2,
+                    Node {
+                        role: Role::Button,
+                        ..Default::default()
+                    },
+                ),
+                (
+                    NODE_ID_3,
+                    Node {
+                        role: Role::Button,
+                        ..Default::default()
+                    },
+                ),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: Some(NODE_ID_2),
