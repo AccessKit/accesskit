@@ -552,8 +552,8 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
     }
 
     fn HostRawElementProvider(&self) -> Result<IRawElementProviderSimple> {
-        self.resolve(|wrapper| {
-            if wrapper.node.is_root() {
+        self.with_tree_state(|state| {
+            if self.node_id == state.root_id() {
                 unsafe { UiaHostProviderFromHwnd(self.hwnd) }
             } else {
                 Err(Error::OK)
