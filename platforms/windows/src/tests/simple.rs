@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::{convert::TryInto, num::NonZeroU128};
+use std::{convert::TryInto, num::NonZeroU128, sync::Arc};
 
 use accesskit::{ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
 use windows::{core::*, Win32::UI::Accessibility::*};
@@ -16,22 +16,22 @@ const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
 const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
 
-fn make_button(name: &str) -> Node {
-    Node {
+fn make_button(name: &str) -> Arc<Node> {
+    Arc::new(Node {
         role: Role::Button,
         name: Some(name.into()),
         focusable: true,
         ..Default::default()
-    }
+    })
 }
 
 fn get_initial_state() -> TreeUpdate {
-    let root = Node {
+    let root = Arc::new(Node {
         role: Role::Window,
         children: vec![BUTTON_1_ID, BUTTON_2_ID],
         name: Some(WINDOW_TITLE.into()),
         ..Default::default()
-    };
+    });
     let button_1 = make_button("Button 1");
     let button_2 = make_button("Button 2");
     TreeUpdate {

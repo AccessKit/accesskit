@@ -47,7 +47,7 @@ mod tests {
     }
 
     pub fn test_tree() -> Arc<crate::tree::Tree> {
-        let root = Node {
+        let root = Arc::new(Node {
             role: Role::RootWebArea,
             children: vec![
                 PARAGRAPH_0_ID,
@@ -56,19 +56,19 @@ mod tests {
                 PARAGRAPH_3_IGNORED_ID,
             ],
             ..Default::default()
-        };
-        let paragraph_0 = Node {
+        });
+        let paragraph_0 = Arc::new(Node {
             role: Role::Paragraph,
             children: vec![STATIC_TEXT_0_0_IGNORED_ID],
             ..Default::default()
-        };
-        let static_text_0_0_ignored = Node {
+        });
+        let static_text_0_0_ignored = Arc::new(Node {
             role: Role::StaticText,
             ignored: true,
             name: Some("static_text_0_0_ignored".into()),
             ..Default::default()
-        };
-        let paragraph_1_ignored = Node {
+        });
+        let paragraph_1_ignored = Arc::new(Node {
             role: Role::Paragraph,
             transform: Some(Box::new(Affine::translate(Vec2::new(10.0, 40.0)))),
             bounds: Some(Rect {
@@ -80,8 +80,8 @@ mod tests {
             children: vec![STATIC_TEXT_1_0_ID],
             ignored: true,
             ..Default::default()
-        };
-        let static_text_1_0 = Node {
+        });
+        let static_text_1_0 = Arc::new(Node {
             role: Role::StaticText,
             bounds: Some(Rect {
                 x0: 10.0,
@@ -91,18 +91,18 @@ mod tests {
             }),
             name: Some("static_text_1_0".into()),
             ..Default::default()
-        };
-        let paragraph_2 = Node {
+        });
+        let paragraph_2 = Arc::new(Node {
             role: Role::Paragraph,
             children: vec![STATIC_TEXT_2_0_ID],
             ..Default::default()
-        };
-        let static_text_2_0 = Node {
+        });
+        let static_text_2_0 = Arc::new(Node {
             role: Role::StaticText,
             name: Some("static_text_2_0".into()),
             ..Default::default()
-        };
-        let paragraph_3_ignored = Node {
+        });
+        let paragraph_3_ignored = Arc::new(Node {
             role: Role::Paragraph,
             children: vec![
                 EMPTY_CONTAINER_3_0_IGNORED_ID,
@@ -112,34 +112,34 @@ mod tests {
             ],
             ignored: true,
             ..Default::default()
-        };
-        let empty_container_3_0_ignored = Node {
+        });
+        let empty_container_3_0_ignored = Arc::new(Node {
             role: Role::GenericContainer,
             ignored: true,
             ..Default::default()
-        };
-        let link_3_1_ignored = Node {
+        });
+        let link_3_1_ignored = Arc::new(Node {
             role: Role::Link,
             children: vec![STATIC_TEXT_3_1_0_ID],
             ignored: true,
             linked: true,
             ..Default::default()
-        };
-        let static_text_3_1_0 = Node {
+        });
+        let static_text_3_1_0 = Arc::new(Node {
             role: Role::StaticText,
             name: Some("static_text_3_1_0".into()),
             ..Default::default()
-        };
-        let button_3_2 = Node {
+        });
+        let button_3_2 = Arc::new(Node {
             role: Role::Button,
             name: Some("button_3_2".into()),
             ..Default::default()
-        };
-        let empty_container_3_3_ignored = Node {
+        });
+        let empty_container_3_3_ignored = Arc::new(Node {
             role: Role::GenericContainer,
             ignored: true,
             ..Default::default()
-        };
+        });
         let initial_update = TreeUpdate {
             nodes: vec![
                 (ROOT_ID, root),

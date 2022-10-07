@@ -542,7 +542,7 @@ impl Node<'_> {
 mod tests {
     use accesskit::kurbo::{Point, Rect};
     use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
-    use std::num::NonZeroU128;
+    use std::{num::NonZeroU128, sync::Arc};
 
     use crate::tests::*;
 
@@ -796,18 +796,18 @@ mod tests {
             nodes: vec![
                 (
                     NODE_ID_1,
-                    Node {
+                    Arc::new(Node {
                         role: Role::Window,
                         children: vec![NODE_ID_2],
                         ..Default::default()
-                    },
+                    }),
                 ),
                 (
                     NODE_ID_2,
-                    Node {
+                    Arc::new(Node {
                         role: Role::Button,
                         ..Default::default()
-                    },
+                    }),
                 ),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
@@ -828,43 +828,43 @@ mod tests {
             nodes: vec![
                 (
                     NODE_ID_1,
-                    Node {
+                    Arc::new(Node {
                         role: Role::Window,
                         children: vec![NODE_ID_2, NODE_ID_3, NODE_ID_4, NODE_ID_5],
                         ..Default::default()
-                    },
+                    }),
                 ),
                 (
                     NODE_ID_2,
-                    Node {
+                    Arc::new(Node {
                         role: Role::CheckBox,
                         labelled_by: vec![NODE_ID_3, NODE_ID_5],
                         ..Default::default()
-                    },
+                    }),
                 ),
                 (
                     NODE_ID_3,
-                    Node {
+                    Arc::new(Node {
                         role: Role::StaticText,
                         name: Some(LABEL_1.into()),
                         ..Default::default()
-                    },
+                    }),
                 ),
                 (
                     NODE_ID_4,
-                    Node {
+                    Arc::new(Node {
                         role: Role::CheckBox,
                         labelled_by: vec![NODE_ID_5],
                         ..Default::default()
-                    },
+                    }),
                 ),
                 (
                     NODE_ID_5,
-                    Node {
+                    Arc::new(Node {
                         role: Role::StaticText,
                         name: Some(LABEL_2.into()),
                         ..Default::default()
-                    },
+                    }),
                 ),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
