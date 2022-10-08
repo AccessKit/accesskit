@@ -3,12 +3,12 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, NodeId, TreeUpdate};
+use accesskit::{ActionHandler, Node as NodeData, NodeId, Tree as TreeData, TreeUpdate};
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use crate::{Node, NodeData, TreeData};
+use crate::Node;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
