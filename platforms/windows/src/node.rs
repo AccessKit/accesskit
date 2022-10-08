@@ -357,7 +357,7 @@ impl ResolvedPlatformNode<'_> {
             | Role::ListItem
             | Role::MenuListOption
             | Role::Tab
-            | Role::TreeItem => self.node.data().selected.is_some(),
+            | Role::TreeItem => self.node.is_selected().is_some(),
             _ => false,
         }
     }
@@ -385,7 +385,7 @@ impl ResolvedPlatformNode<'_> {
             // https://www.w3.org/TR/wai-aria-1.1/#aria-selected
             // SelectionItem.IsSelected is set according to the True or False
             // value of aria-selected.
-            _ => self.node.data().selected.unwrap_or(false),
+            _ => self.node.is_selected().unwrap_or(false),
         }
     }
 

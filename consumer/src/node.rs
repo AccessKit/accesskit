@@ -13,7 +13,8 @@ use std::sync::{Arc, Weak};
 
 use accesskit::kurbo::{Affine, Point, Rect};
 use accesskit::{
-    Action, ActionData, ActionRequest, CheckedState, DefaultActionVerb, Live, NodeId, Role,
+    Action, ActionData, ActionRequest, CheckedState, DefaultActionVerb, Live, Node as NodeData,
+    NodeId, Role,
 };
 
 use crate::iterators::{
@@ -21,7 +22,6 @@ use crate::iterators::{
     UnignoredChildren,
 };
 use crate::tree::{NodeState, ParentAndIndex, Reader as TreeReader, Tree};
-use crate::NodeData;
 
 #[derive(Copy, Clone)]
 pub struct Node<'a> {
@@ -30,7 +30,7 @@ pub struct Node<'a> {
 }
 
 impl<'a> Node<'a> {
-    pub fn data(&self) -> &NodeData {
+    pub(crate) fn data(&self) -> &NodeData {
         &self.state.data
     }
 
@@ -275,8 +275,6 @@ impl<'a> Node<'a> {
             })
     }
 
-    // Convenience getters
-
     pub fn id(&self) -> NodeId {
         self.state.id
     }
@@ -485,6 +483,10 @@ impl<'a> Node<'a> {
         self.data()
             .live
             .unwrap_or_else(|| self.parent().map_or(Live::Off, |parent| parent.live()))
+    }
+
+    pub fn is_selected(&self) -> Option<bool> {
+        self.data().selected
     }
 
     pub(crate) fn first_unignored_child(self) -> Option<Node<'a>> {
