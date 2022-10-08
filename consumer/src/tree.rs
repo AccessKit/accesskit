@@ -134,13 +134,7 @@ impl State {
             }
         }
 
-        if !pending_nodes.is_empty() {
-            for (node_id, data) in &pending_nodes {
-                println!("unattached: {:?} {:?}", node_id, data.role);
-            }
-            panic!("unattached nodes");
-        }
-
+        assert_eq!(pending_nodes.len(), 0);
         assert_eq!(pending_children.len(), 0);
 
         if update.focus != self.focus {
