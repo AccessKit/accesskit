@@ -55,11 +55,10 @@ impl<'a> Node<'a> {
     }
 
     pub fn parent_id(&self) -> Option<NodeId> {
-        if let Some(ParentAndIndex(parent, _)) = &self.state.parent_and_index {
-            Some(*parent)
-        } else {
-            None
-        }
+        self.state
+            .parent_and_index
+            .as_ref()
+            .map(|ParentAndIndex(id, _)| *id)
     }
 
     pub fn parent(&self) -> Option<Node<'a>> {
