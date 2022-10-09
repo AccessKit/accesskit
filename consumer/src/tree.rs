@@ -113,11 +113,9 @@ impl State {
                         orphans.insert(*child_id);
                     }
                 }
-                if *node_state.data != *node_data {
-                    node_state.data = node_data;
-                    if let Some(changes) = &mut changes {
-                        changes.updated_node_ids.insert(node_id);
-                    }
+                node_state.data = node_data;
+                if let Some(changes) = &mut changes {
+                    changes.updated_node_ids.insert(node_id);
                 }
             } else if let Some(parent_and_index) = pending_children.remove(&node_id) {
                 add_node(
@@ -675,45 +673,5 @@ mod tests {
             Some("bar".into()),
             tree.read().node_by_id(NODE_ID_2).unwrap().name()
         );
-    }
-
-    // Verify that if an update consists entirely of node data and tree data
-    // that's the same as before, no changes are reported. This would be useful
-    // for a provider that constructs a fresh tree every time, such as
-    // an immediate-mode GUI.
-    #[test]
-    fn no_change_update() {
-        let update = TreeUpdate {
-            nodes: vec![
-                (
-                    NODE_ID_1,
-                    Arc::new(Node {
-                        role: Role::Window,
-                        children: vec![NODE_ID_2, NODE_ID_3],
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_2,
-                    Arc::new(Node {
-                        role: Role::Button,
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_3,
-                    Arc::new(Node {
-                        role: Role::Button,
-                        ..Default::default()
-                    }),
-                ),
-            ],
-            tree: Some(Tree::new(NODE_ID_1)),
-            focus: Some(NODE_ID_2),
-        };
-        let tree = super::Tree::new(update.clone(), Box::new(NullActionHandler {}));
-        tree.update_and_process_changes(update, |_| {
-            panic!("expected no changes");
-        });
     }
 }
