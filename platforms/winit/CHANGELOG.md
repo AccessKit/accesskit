@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.2.1...accesskit_winit-v0.3.0) (2022-10-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* Wrap `TreeUpdate` nodes in `Arc` (#135)
+* Store node ID in `TreeUpdate`, not `accesskit::Node` (#132)
+
+### Code Refactoring
+
+* Store node ID in `TreeUpdate`, not `accesskit::Node` ([#132](https://www.github.com/AccessKit/accesskit/issues/132)) ([0bb86dd](https://www.github.com/AccessKit/accesskit/commit/0bb86ddb298cb5a253a91f07be0bad8b84b2fda3))
+* Wrap `TreeUpdate` nodes in `Arc` ([#135](https://www.github.com/AccessKit/accesskit/issues/135)) ([907bc18](https://www.github.com/AccessKit/accesskit/commit/907bc1820b80d95833b6c5c3acaa2a8a4e93a6c2))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.5.1 to 0.6.0
+
 ### [0.2.1](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.2.0...accesskit_winit-v0.2.1) (2022-10-03)
 
 
