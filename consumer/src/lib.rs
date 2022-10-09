@@ -4,10 +4,10 @@
 // the LICENSE-MIT file), at your option.
 
 pub(crate) mod tree;
-pub use tree::{Change as TreeChange, Reader as TreeReader, Tree};
+pub use tree::{ChangeHandler as TreeChangeHandler, State as TreeState, Tree};
 
 pub(crate) mod node;
-pub use node::{Node, WeakNode};
+pub use node::Node;
 
 pub(crate) mod iterators;
 pub use iterators::{
@@ -44,7 +44,7 @@ mod tests {
         fn do_action(&self, _request: ActionRequest) {}
     }
 
-    pub fn test_tree() -> Arc<crate::tree::Tree> {
+    pub fn test_tree() -> crate::tree::Tree {
         let root = Arc::new(Node {
             role: Role::RootWebArea,
             children: vec![

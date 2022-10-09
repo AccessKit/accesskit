@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use accesskit::{ActionHandler, Live, TreeUpdate};
-use accesskit_consumer::{Tree, TreeChange};
+use accesskit_consumer::{Node, Tree, TreeChangeHandler};
 use lazy_init::LazyTransform;
 use windows::Win32::{
     Foundation::*,
@@ -14,7 +14,7 @@ use windows::Win32::{
 };
 
 use crate::{
-    node::{PlatformNode, ResolvedPlatformNode},
+    node::{NodeWrapper, PlatformNode},
     util::QueuedEvent,
 };
 
@@ -60,7 +60,7 @@ impl Adapter {
             |UninitializedTree {
                  source,
                  action_handler,
-             }| Tree::new(source.into(), action_handler),
+             }| Arc::new(Tree::new(source.into(), action_handler)),
         )
     }
 
@@ -96,63 +96,69 @@ impl Adapter {
     }
 
     fn update_internal(&self, tree: &Arc<Tree>, update: TreeUpdate) -> QueuedEvents {
-        let mut queue = Vec::new();
-        tree.update_and_process_changes(update, |change| {
-            match change {
-                TreeChange::FocusMoved {
-                    old_node: _,
-                    new_node: Some(new_node),
-                } => {
-                    let platform_node = PlatformNode::new(&new_node, self.hwnd);
+        struct Handler<'a> {
+            tree: &'a Arc<Tree>,
+            hwnd: HWND,
+            queue: Vec<QueuedEvent>,
+        }
+        impl TreeChangeHandler for Handler<'_> {
+            fn node_added(&mut self, node: &Node) {
+                if !node.is_invisible_or_ignored()
+                    && node.name().is_some()
+                    && node.live() != Live::Off
+                {
+                    let platform_node = PlatformNode::new(self.tree, node.id(), self.hwnd);
                     let element: IRawElementProviderSimple = platform_node.into();
-                    queue.push(QueuedEvent::Simple {
+                    self.queue.push(QueuedEvent::Simple {
+                        element,
+                        event_id: UIA_LiveRegionChangedEventId,
+                    });
+                }
+            }
+            fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
+                let platform_node = PlatformNode::new(self.tree, new_node.id(), self.hwnd);
+                let element: IRawElementProviderSimple = platform_node.into();
+                let old_wrapper = NodeWrapper::new(old_node);
+                let new_wrapper = NodeWrapper::new(new_node);
+                new_wrapper.enqueue_property_changes(&mut self.queue, &element, &old_wrapper);
+                if !new_node.is_invisible_or_ignored()
+                    && new_node.name().is_some()
+                    && new_node.live() != Live::Off
+                    && (new_node.name() != old_node.name() || new_node.live() != old_node.live())
+                {
+                    self.queue.push(QueuedEvent::Simple {
+                        element,
+                        event_id: UIA_LiveRegionChangedEventId,
+                    });
+                }
+            }
+            fn focus_moved(&mut self, _old_node: Option<&Node>, new_node: Option<&Node>) {
+                if let Some(new_node) = new_node {
+                    let platform_node = PlatformNode::new(self.tree, new_node.id(), self.hwnd);
+                    let element: IRawElementProviderSimple = platform_node.into();
+                    self.queue.push(QueuedEvent::Simple {
                         element,
                         event_id: UIA_AutomationFocusChangedEventId,
                     });
                 }
-                TreeChange::NodeAdded(node) => {
-                    if !node.is_invisible_or_ignored()
-                        && node.name().is_some()
-                        && node.live() != Live::Off
-                    {
-                        let platform_node = PlatformNode::new(&node, self.hwnd);
-                        let element: IRawElementProviderSimple = platform_node.into();
-                        queue.push(QueuedEvent::Simple {
-                            element,
-                            event_id: UIA_LiveRegionChangedEventId,
-                        });
-                    }
-                }
-                TreeChange::NodeUpdated { old_node, new_node } => {
-                    let old_platform_node = ResolvedPlatformNode::new(old_node, self.hwnd);
-                    let new_platform_node = ResolvedPlatformNode::new(new_node, self.hwnd);
-                    new_platform_node.enqueue_property_changes(&mut queue, &old_platform_node);
-                    if !new_node.is_invisible_or_ignored()
-                        && new_node.name().is_some()
-                        && new_node.live() != Live::Off
-                        && (new_node.name() != old_node.name()
-                            || new_node.live() != old_node.live())
-                    {
-                        let element: IRawElementProviderSimple =
-                            new_platform_node.downgrade().into();
-                        queue.push(QueuedEvent::Simple {
-                            element,
-                            event_id: UIA_LiveRegionChangedEventId,
-                        });
-                    }
-                }
-                // TODO: handle other events (#20)
-                _ => (),
-            };
-        });
-        QueuedEvents(queue)
+            }
+            fn node_removed(&mut self, _node: &Node) {}
+            // TODO: handle other events (#20)
+        }
+        let mut handler = Handler {
+            tree,
+            hwnd: self.hwnd,
+            queue: Vec::new(),
+        };
+        tree.update_and_process_changes(update, &mut handler);
+        QueuedEvents(handler.queue)
     }
 
     fn root_platform_node(&self) -> PlatformNode {
         let tree = self.get_or_create_tree();
-        let reader = tree.read();
-        let node = reader.root();
-        PlatformNode::new(&node, self.hwnd)
+        let state = tree.read();
+        let node_id = state.root_id();
+        PlatformNode::new(tree, node_id, self.hwnd)
     }
 
     /// Handle the `WM_GETOBJECT` window message.

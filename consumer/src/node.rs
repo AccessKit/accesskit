@@ -9,23 +9,19 @@
 // found in the LICENSE.chromium file.
 
 use std::iter::FusedIterator;
-use std::sync::{Arc, Weak};
 
 use accesskit::kurbo::{Affine, Point, Rect};
-use accesskit::{
-    Action, ActionData, ActionRequest, CheckedState, DefaultActionVerb, Live, Node as NodeData,
-    NodeId, Role,
-};
+use accesskit::{CheckedState, DefaultActionVerb, Live, Node as NodeData, NodeId, Role};
 
 use crate::iterators::{
     FollowingSiblings, FollowingUnignoredSiblings, PrecedingSiblings, PrecedingUnignoredSiblings,
     UnignoredChildren,
 };
-use crate::tree::{NodeState, ParentAndIndex, Reader as TreeReader, Tree};
+use crate::tree::{NodeState, ParentAndIndex, State as TreeState};
 
 #[derive(Copy, Clone)]
 pub struct Node<'a> {
-    pub tree_reader: &'a TreeReader<'a>,
+    pub tree_state: &'a TreeState,
     pub(crate) state: &'a NodeState,
 }
 
@@ -35,7 +31,7 @@ impl<'a> Node<'a> {
     }
 
     pub fn is_focused(&self) -> bool {
-        self.tree_reader.state.focus == Some(self.id())
+        self.tree_state.focus == Some(self.id())
     }
 
     pub fn is_focusable(&self) -> bool {
@@ -55,15 +51,19 @@ impl<'a> Node<'a> {
     pub fn is_root(&self) -> bool {
         // Don't check for absence of a parent node, in case a non-root node
         // somehow gets detached from the tree.
-        self.id() == self.tree_reader.state.data.root
+        self.id() == self.tree_state.root_id()
     }
 
-    pub fn parent(self) -> Option<Node<'a>> {
-        if let Some(ParentAndIndex(parent, _)) = &self.state.parent_and_index {
-            Some(self.tree_reader.node_by_id(*parent).unwrap())
-        } else {
-            None
-        }
+    pub fn parent_id(&self) -> Option<NodeId> {
+        self.state
+            .parent_and_index
+            .as_ref()
+            .map(|ParentAndIndex(id, _)| *id)
+    }
+
+    pub fn parent(&self) -> Option<Node<'a>> {
+        self.parent_id()
+            .map(|id| self.tree_state.node_by_id(id).unwrap())
     }
 
     pub fn unignored_parent(self) -> Option<Node<'a>> {
@@ -83,21 +83,29 @@ impl<'a> Node<'a> {
             .parent_and_index
             .as_ref()
             .map(|ParentAndIndex(parent, index)| {
-                (self.tree_reader.node_by_id(*parent).unwrap(), *index)
+                (self.tree_state.node_by_id(*parent).unwrap(), *index)
             })
     }
 
+    pub fn child_ids(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = NodeId>
+           + ExactSizeIterator<Item = NodeId>
+           + FusedIterator<Item = NodeId>
+           + 'a {
+        let data = &self.state.data;
+        data.children.iter().copied()
+    }
+
     pub fn children(
-        self,
+        &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>>
            + ExactSizeIterator<Item = Node<'a>>
            + FusedIterator<Item = Node<'a>>
            + 'a {
-        let data = &self.state.data;
-        let reader = self.tree_reader;
-        data.children
-            .iter()
-            .map(move |id| reader.node_by_id(*id).unwrap())
+        let state = self.tree_state;
+        self.child_ids()
+            .map(move |id| state.node_by_id(id).unwrap())
     }
 
     pub fn unignored_children(
@@ -106,14 +114,24 @@ impl<'a> Node<'a> {
         UnignoredChildren::new(self)
     }
 
+    pub fn following_sibling_ids(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = NodeId>
+           + ExactSizeIterator<Item = NodeId>
+           + FusedIterator<Item = NodeId>
+           + 'a {
+        FollowingSiblings::new(*self)
+    }
+
     pub fn following_siblings(
-        self,
+        &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>>
            + ExactSizeIterator<Item = Node<'a>>
            + FusedIterator<Item = Node<'a>>
            + 'a {
-        let reader = self.tree_reader;
-        FollowingSiblings::new(self).map(move |id| reader.node_by_id(id).unwrap())
+        let state = self.tree_state;
+        self.following_sibling_ids()
+            .map(move |id| state.node_by_id(id).unwrap())
     }
 
     pub fn following_unignored_siblings(
@@ -122,14 +140,24 @@ impl<'a> Node<'a> {
         FollowingUnignoredSiblings::new(self)
     }
 
+    pub fn preceding_sibling_ids(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = NodeId>
+           + ExactSizeIterator<Item = NodeId>
+           + FusedIterator<Item = NodeId>
+           + 'a {
+        PrecedingSiblings::new(*self)
+    }
+
     pub fn preceding_siblings(
-        self,
+        &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>>
            + ExactSizeIterator<Item = Node<'a>>
            + FusedIterator<Item = Node<'a>>
            + 'a {
-        let reader = self.tree_reader;
-        PrecedingSiblings::new(self).map(move |id| reader.node_by_id(id).unwrap())
+        let state = self.tree_state;
+        self.preceding_sibling_ids()
+            .map(move |id| state.node_by_id(id).unwrap())
     }
 
     pub fn preceding_unignored_siblings(
@@ -229,50 +257,6 @@ impl<'a> Node<'a> {
         }
 
         None
-    }
-
-    pub fn set_focus(&self) {
-        self.tree_reader
-            .tree
-            .action_handler
-            .do_action(ActionRequest {
-                action: Action::Focus,
-                target: self.id(),
-                data: None,
-            })
-    }
-
-    pub fn do_default_action(&self) {
-        self.tree_reader
-            .tree
-            .action_handler
-            .do_action(ActionRequest {
-                action: Action::Default,
-                target: self.id(),
-                data: None,
-            })
-    }
-
-    pub fn set_value(&self, value: impl Into<Box<str>>) {
-        self.tree_reader
-            .tree
-            .action_handler
-            .do_action(ActionRequest {
-                action: Action::SetValue,
-                target: self.id(),
-                data: Some(ActionData::Value(value.into())),
-            })
-    }
-
-    pub fn set_numeric_value(&self, value: f64) {
-        self.tree_reader
-            .tree
-            .action_handler
-            .do_action(ActionRequest {
-                action: Action::SetValue,
-                target: self.id(),
-                data: Some(ActionData::NumericValue(value)),
-            })
     }
 
     pub fn id(&self) -> NodeId {
@@ -419,7 +403,7 @@ impl<'a> Node<'a> {
                 Some(
                     labelled_by
                         .iter()
-                        .filter_map(|id| self.tree_reader.node_by_id(*id).unwrap().name())
+                        .filter_map(|id| self.tree_state.node_by_id(*id).unwrap().name())
                         .collect::<Vec<String>>()
                         .join(" "),
                 )
@@ -511,32 +495,6 @@ impl<'a> Node<'a> {
             }
         }
         None
-    }
-}
-
-#[derive(Clone)]
-pub struct WeakNode {
-    pub tree: Weak<Tree>,
-    pub id: NodeId,
-}
-
-impl WeakNode {
-    pub fn map<F, T>(&self, f: F) -> Option<T>
-    where
-        for<'a> F: FnOnce(Node<'a>) -> T,
-    {
-        self.tree
-            .upgrade()
-            .and_then(|tree| tree.read().node_by_id(self.id).map(f))
-    }
-}
-
-impl Node<'_> {
-    pub fn downgrade(&self) -> WeakNode {
-        WeakNode {
-            tree: Arc::downgrade(self.tree_reader.tree),
-            id: self.id(),
-        }
     }
 }
 
@@ -815,7 +773,7 @@ mod tests {
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
-        let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
+        let tree = crate::Tree::new(update, Box::new(NullActionHandler {}));
         assert_eq!(None, tree.read().node_by_id(NODE_ID_2).unwrap().name());
     }
 
@@ -872,7 +830,7 @@ mod tests {
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
-        let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
+        let tree = crate::Tree::new(update, Box::new(NullActionHandler {}));
         assert_eq!(
             Some([LABEL_1, LABEL_2].join(" ")),
             tree.read().node_by_id(NODE_ID_2).unwrap().name()

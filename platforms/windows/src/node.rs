@@ -11,11 +11,11 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit::kurbo::Point;
-use accesskit::{CheckedState, Live, NodeIdContent, Role};
-use accesskit_consumer::{Node, WeakNode};
+use accesskit::{CheckedState, Live, NodeId, NodeIdContent, Role};
+use accesskit_consumer::{Node, Tree, TreeState};
 use arrayvec::ArrayVec;
 use paste::paste;
-use windows as Windows;
+use std::sync::{Arc, Weak};
 use windows::{
     core::*,
     Win32::{Foundation::*, Graphics::Gdi::*, System::Com::*, UI::Accessibility::*},
@@ -23,26 +23,25 @@ use windows::{
 
 use crate::util::*;
 
-pub(crate) struct ResolvedPlatformNode<'a> {
-    node: Node<'a>,
-    hwnd: HWND,
+fn runtime_id_from_node_id(id: NodeId) -> impl std::ops::Deref<Target = [i32]> {
+    let mut result = ArrayVec::<i32, { std::mem::size_of::<NodeIdContent>() + 1 }>::new();
+    result.push(UiaAppendRuntimeId as i32);
+    let id = id.0;
+    let id_bytes = id.get().to_be_bytes();
+    let start_index: usize = (id.leading_zeros() / 8) as usize;
+    for byte in &id_bytes[start_index..] {
+        result.push((*byte).into());
+    }
+    result
 }
 
-impl ResolvedPlatformNode<'_> {
-    pub(crate) fn new(node: Node, hwnd: HWND) -> ResolvedPlatformNode {
-        ResolvedPlatformNode { node, hwnd }
-    }
+pub(crate) struct NodeWrapper<'a> {
+    node: &'a Node<'a>,
+}
 
-    fn relative<'a>(&self, node: Node<'a>) -> ResolvedPlatformNode<'a> {
-        ResolvedPlatformNode::new(node, self.hwnd)
-    }
-
-    pub(crate) fn downgrade(&self) -> PlatformNode {
-        PlatformNode::new(&self.node, self.hwnd)
-    }
-
-    fn provider_options(&self) -> ProviderOptions {
-        ProviderOptions_ServerSideProvider
+impl<'a> NodeWrapper<'a> {
+    pub(crate) fn new(node: &'a Node<'a>) -> Self {
+        Self { node }
     }
 
     fn control_type(&self) -> i32 {
@@ -362,10 +361,6 @@ impl ResolvedPlatformNode<'_> {
         }
     }
 
-    fn select(&self) {
-        self.node.do_default_action()
-    }
-
     fn add_to_selection(&self) {
         // TODO: implement when we work on list boxes (#23)
     }
@@ -392,25 +387,26 @@ impl ResolvedPlatformNode<'_> {
     pub(crate) fn enqueue_property_changes(
         &self,
         queue: &mut Vec<QueuedEvent>,
-        old: &ResolvedPlatformNode,
+        element: &IRawElementProviderSimple,
+        old: &NodeWrapper,
     ) {
-        self.enqueue_simple_property_changes(queue, old);
-        self.enqueue_pattern_property_changes(queue, old);
-        self.enqueue_property_implied_events(queue, old);
+        self.enqueue_simple_property_changes(queue, element, old);
+        self.enqueue_pattern_property_changes(queue, element, old);
+        self.enqueue_property_implied_events(queue, element, old);
     }
 
     fn enqueue_property_implied_events(
         &self,
         queue: &mut Vec<QueuedEvent>,
-        old: &ResolvedPlatformNode,
+        element: &IRawElementProviderSimple,
+        old: &NodeWrapper,
     ) {
         if self.is_selection_item_pattern_supported()
             && self.is_selected()
             && !(old.is_selection_item_pattern_supported() && old.is_selected())
         {
-            let element: IRawElementProviderSimple = self.downgrade().into();
             queue.push(QueuedEvent::Simple {
-                element,
+                element: element.clone(),
                 event_id: UIA_SelectionItem_ElementSelectedEventId,
             });
         }
@@ -419,246 +415,235 @@ impl ResolvedPlatformNode<'_> {
     fn enqueue_property_change(
         &self,
         queue: &mut Vec<QueuedEvent>,
+        element: &IRawElementProviderSimple,
         property_id: i32,
         old_value: VariantFactory,
         new_value: VariantFactory,
     ) {
-        let element: IRawElementProviderSimple = self.downgrade().into();
         let old_value: VARIANT = old_value.into();
         let new_value: VARIANT = new_value.into();
         queue.push(QueuedEvent::PropertyChanged {
-            element,
+            element: element.clone(),
             property_id,
             old_value,
             new_value,
         });
     }
 
-    fn host_provider(&self) -> Result<IRawElementProviderSimple> {
-        if self.node.is_root() {
-            unsafe { UiaHostProviderFromHwnd(self.hwnd) }
-        } else {
-            Err(Error::OK)
-        }
-    }
-
-    fn navigate(&self, direction: NavigateDirection) -> Option<ResolvedPlatformNode> {
-        let result = match direction {
-            NavigateDirection_Parent => self.node.parent(),
-            NavigateDirection_NextSibling => self.node.following_siblings().next(),
-            NavigateDirection_PreviousSibling => self.node.preceding_siblings().next(),
-            NavigateDirection_FirstChild => self.node.children().next(),
-            NavigateDirection_LastChild => self.node.children().next_back(),
+    fn navigate(&self, direction: NavigateDirection) -> Option<NodeId> {
+        match direction {
+            NavigateDirection_Parent => self.node.parent_id(),
+            NavigateDirection_NextSibling => self.node.following_sibling_ids().next(),
+            NavigateDirection_PreviousSibling => self.node.preceding_sibling_ids().next(),
+            NavigateDirection_FirstChild => self.node.child_ids().next(),
+            NavigateDirection_LastChild => self.node.child_ids().next_back(),
             _ => None,
-        };
-        result.map(|node| self.relative(node))
-    }
-
-    fn runtime_id(&self) -> impl std::ops::Deref<Target = [i32]> {
-        let mut result = ArrayVec::<i32, { std::mem::size_of::<NodeIdContent>() + 1 }>::new();
-        result.push(UiaAppendRuntimeId as i32);
-        let id = self.node.id().0;
-        let id_bytes = id.get().to_be_bytes();
-        let start_index: usize = (id.leading_zeros() / 8) as usize;
-        for byte in &id_bytes[start_index..] {
-            result.push((*byte).into());
         }
-        result
-    }
-
-    fn bounding_rectangle(&self) -> UiaRect {
-        self.node.bounding_box().map_or(UiaRect::default(), |rect| {
-            let mut client_top_left = POINT::default();
-            unsafe { ClientToScreen(self.hwnd, &mut client_top_left) }.unwrap();
-            UiaRect {
-                left: rect.x0 + f64::from(client_top_left.x),
-                top: rect.y0 + f64::from(client_top_left.y),
-                width: rect.width(),
-                height: rect.height(),
-            }
-        })
-    }
-
-    fn set_focus(&self) {
-        self.node.set_focus()
-    }
-
-    fn node_at_point(&self, point: Point) -> Option<ResolvedPlatformNode> {
-        let mut client_top_left = POINT::default();
-        unsafe { ClientToScreen(self.hwnd, &mut client_top_left) }.unwrap();
-        let point = self.node.transform().inverse()
-            * Point {
-                x: point.x - f64::from(client_top_left.x),
-                y: point.y - f64::from(client_top_left.y),
-            };
-        self.node
-            .node_at_point(point)
-            .map(|node| self.relative(node))
-    }
-
-    fn focus(&self) -> Option<ResolvedPlatformNode> {
-        if let Some(node) = self.node.tree_reader.focus() {
-            if node.id() != self.node.id() {
-                return Some(self.relative(node));
-            }
-        }
-        None
-    }
-
-    fn toggle(&self) {
-        self.node.do_default_action()
-    }
-
-    fn invoke(&self) {
-        self.node.do_default_action()
-    }
-
-    fn set_value(&self, value: impl Into<Box<str>>) {
-        self.node.set_value(value)
-    }
-
-    fn set_numeric_value(&self, value: f64) {
-        self.node.set_numeric_value(value)
     }
 }
 
-#[derive(Clone)]
+fn element_not_available() -> Error {
+    Error::new(HRESULT(UIA_E_ELEMENTNOTAVAILABLE as i32), "".into())
+}
+
 #[implement(
-    Windows::Win32::UI::Accessibility::IRawElementProviderSimple,
-    Windows::Win32::UI::Accessibility::IRawElementProviderFragment,
-    Windows::Win32::UI::Accessibility::IRawElementProviderFragmentRoot
+    IRawElementProviderSimple,
+    IRawElementProviderFragment,
+    IRawElementProviderFragmentRoot,
+    IToggleProvider,
+    IInvokeProvider,
+    IValueProvider,
+    IRangeValueProvider,
+    ISelectionItemProvider
 )]
 pub(crate) struct PlatformNode {
-    node: WeakNode,
+    tree: Weak<Tree>,
+    node_id: NodeId,
     hwnd: HWND,
 }
 
-#[allow(non_snake_case)]
 impl PlatformNode {
-    pub(crate) fn new(node: &Node, hwnd: HWND) -> Self {
+    pub(crate) fn new(tree: &Arc<Tree>, node_id: NodeId, hwnd: HWND) -> Self {
         Self {
-            node: node.downgrade(),
+            tree: Arc::downgrade(tree),
+            node_id,
             hwnd,
         }
     }
 
+    fn upgrade_tree(&self) -> Result<Arc<Tree>> {
+        if let Some(tree) = self.tree.upgrade() {
+            Ok(tree)
+        } else {
+            Err(element_not_available())
+        }
+    }
+
+    fn with_tree_state<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(&TreeState) -> Result<T>,
+    {
+        let tree = self.upgrade_tree()?;
+        let state = tree.read();
+        f(&state)
+    }
+
     fn resolve<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(ResolvedPlatformNode<'a>) -> Result<T>,
+        for<'a> F: FnOnce(NodeWrapper<'a>) -> Result<T>,
     {
-        self.node
-            .map(|node| f(ResolvedPlatformNode::new(node, self.hwnd)))
-            .unwrap_or_else(|| {
-                Err(Error::new(
-                    HRESULT(UIA_E_ELEMENTNOTAVAILABLE as i32),
-                    "".into(),
-                ))
-            })
+        self.with_tree_state(|state| {
+            if let Some(node) = state.node_by_id(self.node_id) {
+                f(NodeWrapper::new(&node))
+            } else {
+                Err(element_not_available())
+            }
+        })
+    }
+
+    fn validate_for_action(&self) -> Result<Arc<Tree>> {
+        let tree = self.upgrade_tree()?;
+        let state = tree.read();
+        if state.has_node(self.node_id) {
+            drop(state);
+            Ok(tree)
+        } else {
+            Err(element_not_available())
+        }
+    }
+
+    fn do_default_action(&self) -> Result<()> {
+        let tree = self.validate_for_action()?;
+        tree.do_default_action(self.node_id);
+        Ok(())
+    }
+
+    fn relative(&self, node_id: NodeId) -> Self {
+        Self {
+            tree: self.tree.clone(),
+            node_id,
+            hwnd: self.hwnd,
+        }
+    }
+
+    fn client_top_left(&self) -> Point {
+        let mut result = POINT::default();
+        // If ClientToScreen fails, that means the window is gone.
+        // That's an unexpected condition, so we should fail loudly.
+        unsafe { ClientToScreen(self.hwnd, &mut result) }.unwrap();
+        Point::new(result.x.into(), result.y.into())
     }
 }
 
 impl IRawElementProviderSimple_Impl for PlatformNode {
     fn ProviderOptions(&self) -> Result<ProviderOptions> {
-        // We don't currently have to resolve the node to implement this.
-        // But we might have to in the future. So to avoid leaking
-        // implementation details that might change, we'll resolve
-        // the node and just ignore it. There's precedent for this;
-        // Chromium's implementation of this method validates the node
-        // even though the return value is hard-coded.
-        self.resolve(|resolved| Ok(resolved.provider_options()))
+        Ok(ProviderOptions_ServerSideProvider)
     }
 
     fn GetPatternProvider(&self, pattern_id: i32) -> Result<IUnknown> {
-        let provider = self.resolve(|resolved| Ok(resolved.pattern_provider(pattern_id)))?;
-        provider.map_or_else(|| Err(Error::OK), Ok)
+        self.pattern_provider(pattern_id)
     }
 
     fn GetPropertyValue(&self, property_id: i32) -> Result<VARIANT> {
-        self.resolve(|resolved| {
-            let result = resolved.get_property_value(property_id);
+        self.resolve(|wrapper| {
+            let result = wrapper.get_property_value(property_id);
             Ok(result.into())
         })
     }
 
     fn HostRawElementProvider(&self) -> Result<IRawElementProviderSimple> {
-        self.resolve(|resolved| resolved.host_provider())
+        self.with_tree_state(|state| {
+            if self.node_id == state.root_id() {
+                unsafe { UiaHostProviderFromHwnd(self.hwnd) }
+            } else {
+                Err(Error::OK)
+            }
+        })
     }
 }
 
 impl IRawElementProviderFragment_Impl for PlatformNode {
     fn Navigate(&self, direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
-        self.resolve(|resolved| match resolved.navigate(direction) {
-            Some(result) => Ok(result.downgrade().into()),
+        self.resolve(|wrapper| match wrapper.navigate(direction) {
+            Some(result) => Ok(self.relative(result).into()),
             None => Err(Error::OK),
         })
     }
 
     fn GetRuntimeId(&self) -> Result<*mut SAFEARRAY> {
-        self.resolve(|resolved| {
-            let runtime_id = resolved.runtime_id();
-            Ok(safe_array_from_i32_slice(&runtime_id))
-        })
+        let runtime_id = runtime_id_from_node_id(self.node_id);
+        Ok(safe_array_from_i32_slice(&runtime_id))
     }
 
     fn BoundingRectangle(&self) -> Result<UiaRect> {
-        self.resolve(|resolved| Ok(resolved.bounding_rectangle()))
-    }
-
-    fn GetEmbeddedFragmentRoots(&self) -> Result<*mut SAFEARRAY> {
-        // As with ProviderOptions above, avoid leaking implementation details.
-        self.resolve(|_resolved| Ok(std::ptr::null_mut()))
-    }
-
-    fn SetFocus(&self) -> Result<()> {
-        self.resolve(|resolved| {
-            resolved.set_focus();
-            Ok(())
+        self.resolve(|wrapper| {
+            let rect = wrapper
+                .node
+                .bounding_box()
+                .map_or(UiaRect::default(), |rect| {
+                    let client_top_left = self.client_top_left();
+                    UiaRect {
+                        left: rect.x0 + client_top_left.x,
+                        top: rect.y0 + client_top_left.y,
+                        width: rect.width(),
+                        height: rect.height(),
+                    }
+                });
+            Ok(rect)
         })
     }
 
+    fn GetEmbeddedFragmentRoots(&self) -> Result<*mut SAFEARRAY> {
+        Ok(std::ptr::null_mut())
+    }
+
+    fn SetFocus(&self) -> Result<()> {
+        let tree = self.validate_for_action()?;
+        tree.set_focus(self.node_id);
+        Ok(())
+    }
+
     fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
-        enum FragmentRootResult {
-            This,
-            Other(PlatformNode),
-        }
-        let result = self.resolve(|resolved| {
-            if resolved.node.is_root() {
-                Ok(FragmentRootResult::This)
+        self.with_tree_state(|state| {
+            let root_id = state.root_id();
+            if root_id == self.node_id {
+                // SAFETY: We know &self is inside a full COM implementation.
+                unsafe { self.cast() }
             } else {
-                let root = resolved.node.tree_reader.root();
-                Ok(FragmentRootResult::Other(
-                    resolved.relative(root).downgrade(),
-                ))
+                Ok(self.relative(root_id).into())
             }
-        })?;
-        match result {
-            FragmentRootResult::This => Ok(self.clone().into()),
-            FragmentRootResult::Other(node) => Ok(node.into()),
-        }
+        })
     }
 }
 
 impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
     fn ElementProviderFromPoint(&self, x: f64, y: f64) -> Result<IRawElementProviderFragment> {
-        self.resolve(|resolved| {
-            let point = Point::new(x, y);
-            resolved
-                .node_at_point(point)
-                .map_or_else(|| Err(Error::OK), |node| Ok(node.downgrade().into()))
+        self.resolve(|wrapper| {
+            let client_top_left = self.client_top_left();
+            let point = Point::new(x - client_top_left.x, y - client_top_left.y);
+            let point = wrapper.node.transform().inverse() * point;
+            wrapper.node.node_at_point(point).map_or_else(
+                || Err(Error::OK),
+                |node| Ok(self.relative(node.id()).into()),
+            )
         })
     }
 
     fn GetFocus(&self) -> Result<IRawElementProviderFragment> {
-        self.resolve(|resolved| match resolved.focus() {
-            Some(result) => Ok(result.downgrade().into()),
-            None => Err(Error::OK),
+        self.with_tree_state(|state| {
+            if let Some(id) = state.focus_id() {
+                if id != self.node_id {
+                    return Ok(self.relative(id).into());
+                }
+            }
+            Err(Error::OK)
         })
     }
 }
 
 macro_rules! properties {
     ($(($base_id:ident, $m:ident)),+) => {
-        impl ResolvedPlatformNode<'_> {
+        impl NodeWrapper<'_> {
             fn get_property_value(&self, property_id: i32) -> VariantFactory {
                 match property_id {
                     $(paste! { [< UIA_ $base_id PropertyId>] } => {
@@ -670,7 +655,8 @@ macro_rules! properties {
             fn enqueue_simple_property_changes(
                 &self,
                 queue: &mut Vec<QueuedEvent>,
-                old: &ResolvedPlatformNode,
+                element: &IRawElementProviderSimple,
+                old: &NodeWrapper,
             ) {
                 $({
                     let old_value = old.$m();
@@ -678,6 +664,7 @@ macro_rules! properties {
                     if old_value != new_value {
                         self.enqueue_property_change(
                             queue,
+                            element,
                             paste! { [<UIA_ $base_id PropertyId>] },
                             old_value.into(),
                             new_value.into(),
@@ -695,23 +682,30 @@ macro_rules! patterns {
     ), (
         $($extra_trait_method:item),*
     ))),+) => {
-        impl ResolvedPlatformNode<'_> {
-            fn pattern_provider(&self, pattern_id: i32) -> Option<IUnknown> {
-                match pattern_id {
-                    $(paste! { [< UIA_ $base_pattern_id PatternId>] } => {
-                        self.$is_supported().then(|| {
-                            let intermediate: paste! { [< I $base_pattern_id Provider>] } =
-                                (paste! { [< $base_pattern_id Provider>] })(self.downgrade()).into();
-                            intermediate.into()
-                        })
-                    })*
-                    _ => None,
-                }
+        impl PlatformNode {
+            fn pattern_provider(&self, pattern_id: i32) -> Result<IUnknown> {
+                self.resolve(|wrapper| {
+                    match pattern_id {
+                        $(paste! { [< UIA_ $base_pattern_id PatternId>] } => {
+                            if wrapper.$is_supported() {
+                                // SAFETY: We know we're running inside a full COM implementation.
+                                let intermediate: paste! { [< I $base_pattern_id Provider>] } =
+                                    unsafe { self.cast() }?;
+                                return Ok(intermediate.into());
+                            }
+                        })*
+                        _ => (),
+                    }
+                    Err(Error::OK)
+                })
             }
+        }
+        impl NodeWrapper<'_> {
             fn enqueue_pattern_property_changes(
                 &self,
                 queue: &mut Vec<QueuedEvent>,
-                old: &ResolvedPlatformNode,
+                element: &IRawElementProviderSimple,
+                old: &NodeWrapper,
             ) {
                 $(if self.$is_supported() && old.$is_supported() {
                     $({
@@ -720,6 +714,7 @@ macro_rules! patterns {
                         if old_value != new_value {
                             self.enqueue_property_change(
                                 queue,
+                                element,
                                 paste! { [<UIA_ $base_pattern_id $base_property_id PropertyId>] },
                                 old_value.into(),
                                 new_value.into(),
@@ -730,10 +725,9 @@ macro_rules! patterns {
             }
         }
         paste! {
-            $(#[allow(non_snake_case)]
-            impl [< I $base_pattern_id Provider_Impl>] for [< $base_pattern_id Provider>] {
+            $(impl [< I $base_pattern_id Provider_Impl>] for PlatformNode {
                 $(fn $base_property_id(&self) -> Result<$com_type> {
-                    self.0.resolve(|resolved| Ok(resolved.$getter().into()))
+                    self.resolve(|wrapper| Ok(wrapper.$getter().into()))
                 })*
                 $($extra_trait_method)*
             })*
@@ -752,38 +746,17 @@ properties! {
     (LiveSetting, live_setting)
 }
 
-#[implement(Windows::Win32::UI::Accessibility::IToggleProvider)]
-struct ToggleProvider(PlatformNode);
-
-#[implement(Windows::Win32::UI::Accessibility::IInvokeProvider)]
-struct InvokeProvider(PlatformNode);
-
-#[implement(Windows::Win32::UI::Accessibility::IValueProvider)]
-struct ValueProvider(PlatformNode);
-
-#[implement(Windows::Win32::UI::Accessibility::IRangeValueProvider)]
-struct RangeValueProvider(PlatformNode);
-
-#[implement(Windows::Win32::UI::Accessibility::ISelectionItemProvider)]
-struct SelectionItemProvider(PlatformNode);
-
 patterns! {
     (Toggle, is_toggle_pattern_supported, (
         (ToggleState, toggle_state, ToggleState)
     ), (
         fn Toggle(&self) -> Result<()> {
-            self.0.resolve(|resolved| {
-                resolved.toggle();
-                Ok(())
-            })
+            self.do_default_action()
         }
     )),
     (Invoke, is_invoke_pattern_supported, (), (
         fn Invoke(&self) -> Result<()> {
-            self.0.resolve(|resolved| {
-                resolved.invoke();
-                Ok(())
-            })
+            self.do_default_action()
         }
     )),
     (Value, is_value_pattern_supported, (
@@ -791,11 +764,10 @@ patterns! {
         (IsReadOnly, is_read_only, BOOL)
     ), (
         fn SetValue(&self, value: &PCWSTR) -> Result<()> {
-            self.0.resolve(|resolved| {
-                let value = unsafe { value.to_string() }.unwrap();
-                resolved.set_value(value);
-                Ok(())
-            })
+            let tree = self.validate_for_action()?;
+            let value = unsafe { value.to_string() }.unwrap();
+            tree.set_value(self.node_id, value);
+            Ok(())
         }
     )),
     (RangeValue, is_range_value_pattern_supported, (
@@ -807,38 +779,34 @@ patterns! {
         (LargeChange, numeric_value_jump, f64)
     ), (
         fn SetValue(&self, value: f64) -> Result<()> {
-            self.0.resolve(|resolved| {
-                resolved.set_numeric_value(value);
-                Ok(())
-            })
+            let tree = self.validate_for_action()?;
+            tree.set_numeric_value(self.node_id, value);
+            Ok(())
         }
     )),
     (SelectionItem, is_selection_item_pattern_supported, (
         (IsSelected, is_selected, BOOL)
     ), (
         fn Select(&self) -> Result<()> {
-            self.0.resolve(|resolved| {
-                resolved.select();
-                Ok(())
-            })
+            self.do_default_action()
         },
 
         fn AddToSelection(&self) -> Result<()> {
-            self.0.resolve(|resolved| {
-                resolved.add_to_selection();
+            self.resolve(|wrapper| {
+                wrapper.add_to_selection();
                 Ok(())
             })
         },
 
         fn RemoveFromSelection(&self) -> Result<()> {
-            self.0.resolve(|resolved| {
-                resolved.remove_from_selection();
+            self.resolve(|wrapper| {
+                wrapper.remove_from_selection();
                 Ok(())
             })
         },
 
         fn SelectionContainer(&self) -> Result<IRawElementProviderSimple> {
-            self.0.resolve(|_resolved| {
+            self.resolve(|_wrapper| {
                 // TODO: implement when we work on list boxes (#23)
                 // We return E_FAIL here because that's what Chromium does
                 // if it can't find a container.
