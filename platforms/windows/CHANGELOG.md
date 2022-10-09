@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.6.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_windows-v0.5.1...accesskit_windows-v0.6.0) (2022-10-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **consumer:** Optimize tree access and change handling (#134)
+* Wrap `TreeUpdate` nodes in `Arc` (#135)
+* **consumer:** Make `Node::data` private to the crate (#137)
+* Store node ID in `TreeUpdate`, not `accesskit::Node` (#132)
+
+### Code Refactoring
+
+* **consumer:** Make `Node::data` private to the crate ([#137](https://www.github.com/AccessKit/accesskit/issues/137)) ([adb372d](https://www.github.com/AccessKit/accesskit/commit/adb372dda78d183c7189966e3bbc2d3780070513))
+* **consumer:** Optimize tree access and change handling ([#134](https://www.github.com/AccessKit/accesskit/issues/134)) ([765ab74](https://www.github.com/AccessKit/accesskit/commit/765ab74efcf10a3b3871dc901d28f3cf1ff6020c))
+* Store node ID in `TreeUpdate`, not `accesskit::Node` ([#132](https://www.github.com/AccessKit/accesskit/issues/132)) ([0bb86dd](https://www.github.com/AccessKit/accesskit/commit/0bb86ddb298cb5a253a91f07be0bad8b84b2fda3))
+* Wrap `TreeUpdate` nodes in `Arc` ([#135](https://www.github.com/AccessKit/accesskit/issues/135)) ([907bc18](https://www.github.com/AccessKit/accesskit/commit/907bc1820b80d95833b6c5c3acaa2a8a4e93a6c2))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.5.1 to 0.6.0
+    * accesskit_consumer bumped from 0.5.1 to 0.6.0
+
 ### [0.5.1](https://www.github.com/AccessKit/accesskit/compare/accesskit_windows-v0.5.0...accesskit_windows-v0.5.1) (2022-10-03)
 
 
