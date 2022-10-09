@@ -54,12 +54,17 @@ impl<'a> Node<'a> {
         self.id() == self.tree_state.root_id()
     }
 
-    pub fn parent(self) -> Option<Node<'a>> {
+    pub fn parent_id(&self) -> Option<NodeId> {
         if let Some(ParentAndIndex(parent, _)) = &self.state.parent_and_index {
-            Some(self.tree_state.node_by_id(*parent).unwrap())
+            Some(*parent)
         } else {
             None
         }
+    }
+
+    pub fn parent(&self) -> Option<Node<'a>> {
+        self.parent_id()
+            .map(|id| self.tree_state.node_by_id(id).unwrap())
     }
 
     pub fn unignored_parent(self) -> Option<Node<'a>> {
@@ -83,17 +88,25 @@ impl<'a> Node<'a> {
             })
     }
 
+    pub fn child_ids(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = NodeId>
+           + ExactSizeIterator<Item = NodeId>
+           + FusedIterator<Item = NodeId>
+           + 'a {
+        let data = &self.state.data;
+        data.children.iter().copied()
+    }
+
     pub fn children(
-        self,
+        &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>>
            + ExactSizeIterator<Item = Node<'a>>
            + FusedIterator<Item = Node<'a>>
            + 'a {
-        let data = &self.state.data;
         let state = self.tree_state;
-        data.children
-            .iter()
-            .map(move |id| state.node_by_id(*id).unwrap())
+        self.child_ids()
+            .map(move |id| state.node_by_id(id).unwrap())
     }
 
     pub fn unignored_children(
@@ -102,14 +115,24 @@ impl<'a> Node<'a> {
         UnignoredChildren::new(self)
     }
 
+    pub fn following_sibling_ids(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = NodeId>
+           + ExactSizeIterator<Item = NodeId>
+           + FusedIterator<Item = NodeId>
+           + 'a {
+        FollowingSiblings::new(*self)
+    }
+
     pub fn following_siblings(
-        self,
+        &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>>
            + ExactSizeIterator<Item = Node<'a>>
            + FusedIterator<Item = Node<'a>>
            + 'a {
         let state = self.tree_state;
-        FollowingSiblings::new(self).map(move |id| state.node_by_id(id).unwrap())
+        self.following_sibling_ids()
+            .map(move |id| state.node_by_id(id).unwrap())
     }
 
     pub fn following_unignored_siblings(
@@ -118,14 +141,24 @@ impl<'a> Node<'a> {
         FollowingUnignoredSiblings::new(self)
     }
 
+    pub fn preceding_sibling_ids(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = NodeId>
+           + ExactSizeIterator<Item = NodeId>
+           + FusedIterator<Item = NodeId>
+           + 'a {
+        PrecedingSiblings::new(*self)
+    }
+
     pub fn preceding_siblings(
-        self,
+        &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>>
            + ExactSizeIterator<Item = Node<'a>>
            + FusedIterator<Item = Node<'a>>
            + 'a {
         let state = self.tree_state;
-        PrecedingSiblings::new(self).map(move |id| state.node_by_id(id).unwrap())
+        self.preceding_sibling_ids()
+            .map(move |id| state.node_by_id(id).unwrap())
     }
 
     pub fn preceding_unignored_siblings(

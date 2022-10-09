@@ -430,13 +430,13 @@ impl<'a> NodeWrapper<'a> {
         });
     }
 
-    fn navigate(&self, direction: NavigateDirection) -> Option<Node> {
+    fn navigate(&self, direction: NavigateDirection) -> Option<NodeId> {
         match direction {
-            NavigateDirection_Parent => self.node.parent(),
-            NavigateDirection_NextSibling => self.node.following_siblings().next(),
-            NavigateDirection_PreviousSibling => self.node.preceding_siblings().next(),
-            NavigateDirection_FirstChild => self.node.children().next(),
-            NavigateDirection_LastChild => self.node.children().next_back(),
+            NavigateDirection_Parent => self.node.parent_id(),
+            NavigateDirection_NextSibling => self.node.following_sibling_ids().next(),
+            NavigateDirection_PreviousSibling => self.node.preceding_sibling_ids().next(),
+            NavigateDirection_FirstChild => self.node.child_ids().next(),
+            NavigateDirection_LastChild => self.node.child_ids().next_back(),
             _ => None,
         }
     }
@@ -565,7 +565,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
 impl IRawElementProviderFragment_Impl for PlatformNode {
     fn Navigate(&self, direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
         self.resolve(|wrapper| match wrapper.navigate(direction) {
-            Some(result) => Ok(self.relative(result.id()).into()),
+            Some(result) => Ok(self.relative(result).into()),
             None => Err(Error::OK),
         })
     }
