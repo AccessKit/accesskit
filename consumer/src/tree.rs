@@ -186,7 +186,7 @@ impl State {
 
         fn traverse(state: &State, nodes: &mut Vec<(NodeId, Arc<NodeData>)>, id: NodeId) {
             let node = state.nodes.get(&id).unwrap();
-            nodes.push((id, node.data.clone()));
+            nodes.push((id, Arc::clone(&node.data)));
 
             for child_id in node.data.children.iter() {
                 traverse(state, nodes, *child_id);
