@@ -1198,6 +1198,12 @@ impl Tree {
 /// The sender and receiver must be in sync; the update is only meant
 /// to bring the tree from a specific previous state into its next state.
 /// Trying to apply it to the wrong tree should immediately panic.
+///
+/// Note that for performance, an update should only include nodes that are
+/// new or changed. AccessKit platform adapters will avoid raising extraneous
+/// events for nodes that have not changed since the previous update,
+/// but there is still a cost in processing these nodes and replacing
+/// the previous instances.
 #[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
