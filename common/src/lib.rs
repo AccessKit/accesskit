@@ -35,13 +35,12 @@ use std::{
 /// is ordered roughly by expected usage frequency (with the notable exception
 /// of [`Role::Unknown`]). This is more efficient in serialization formats
 /// where integers use a variable-length encoding.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum Role {
-    #[default]
     Unknown,
     InlineTextBox,
     Cell,
@@ -244,6 +243,12 @@ pub enum Role {
     /// `TableView` and its subclasses, so they can be exposed correctly
     /// on certain platforms.
     ListGrid,
+}
+
+impl Default for Role {
+    fn default() -> Self {
+        Self::Unknown
+    }
 }
 
 /// An action to be taken on an accessibility node.
