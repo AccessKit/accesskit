@@ -11,6 +11,7 @@ use winit::{
 
 mod platform_impl;
 
+#[derive(Debug)]
 pub struct ActionRequestEvent {
     pub window_id: WindowId,
     pub request: ActionRequest,
