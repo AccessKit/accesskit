@@ -1,5 +1,12 @@
 # Changelog
 
+### [0.6.1](https://www.github.com/AccessKit/accesskit/compare/accesskit-v0.6.0...accesskit-v0.6.1) (2022-10-10)
+
+
+### Bug Fixes
+
+* **common:** Restore compatibility with Rust 1.61 ([#139](https://www.github.com/AccessKit/accesskit/issues/139)) ([d8c6b16](https://www.github.com/AccessKit/accesskit/commit/d8c6b166c83796bfd6d748df60136029a9ec81d2))
+
 ## [0.6.0](https://www.github.com/AccessKit/accesskit/compare/accesskit-v0.5.1...accesskit-v0.6.0) (2022-10-09)
 
 
