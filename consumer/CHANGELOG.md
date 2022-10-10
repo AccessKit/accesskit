@@ -1,5 +1,14 @@
 # Changelog
 
+### [0.6.1](https://www.github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.6.0...accesskit_consumer-v0.6.1) (2022-10-10)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.6.0 to 0.6.1
+
 ## [0.6.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.5.1...accesskit_consumer-v0.6.0) (2022-10-09)
 
 
