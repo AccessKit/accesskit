@@ -1,5 +1,12 @@
 # Changelog
 
+### [0.3.2](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.3.1...accesskit_winit-v0.3.2) (2022-10-11)
+
+
+### Bug Fixes
+
+* **platforms/winit:** Derive `Debug` on `ActionRequestEvent` ([#141](https://www.github.com/AccessKit/accesskit/issues/141)) ([8b84c75](https://www.github.com/AccessKit/accesskit/commit/8b84c7547c6fdb52cd6d5c6d79f812dc614f08dd))
+
 ### [0.3.1](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.3.0...accesskit_winit-v0.3.1) (2022-10-10)
 
 
