@@ -930,20 +930,29 @@ pub struct Node {
 
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub text_direction: Option<TextDirection>,
-    /// For inline text. This is the pixel position of the end of each
-    /// character within the bounding rectangle of this object, in the
-    /// direction given by [`Node::text_direction`]. For example, for left-to-right
-    /// text, the first offset is the right coordinate of the first
-    /// character within the object's bounds, the second offset
-    /// is the right coordinate of the second character, and so on.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub character_offsets: Box<[f32]>,
 
-    /// For inline text. The indices of each word, in UTF-8 code units.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub words: Box<[Range<usize>]>,
+    /// For inline text. The end index (non-inclusive) of each glyph
+    /// in UTF-8 code units (bytes). For example, if the text box
+    /// consists of a 1-byte glyph, a 3-byte glyph, and a 1-byte glyph,
+    /// the indices would be [1, 4, 5].
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub glyph_end_indices: Option<Box<[u16]>>,
+    /// For inline text. This is the pixel position of the end of each
+    /// glyph within the bounding rectangle of this object, in the direction
+    /// given by [`Node::text_direction`]. For example, for left-to-right
+    /// text, the first offset is the right coordinate of the first
+    /// glyph within the object's bounds, the second offset is
+    /// the right coordinate of the second glyph, and so on.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub glyph_end_pixel_offsets: Option<Box<[f32]>>,
+
+    /// For inline text. The end index (non-inclusive) of each word
+    /// in UTF-8 code units (bytes). For example, if the text box
+    /// consists of a 1-byte word (e.g. a leading space), a 3-byte word
+    /// (e.g. two ASCII letters followed by a space), and a 1-byte word
+    /// (e.g. an ASCII letter), the indices would be [1, 4, 5].
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub word_end_indices: Option<Box<[u16]>>,
 
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
