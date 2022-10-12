@@ -661,10 +661,10 @@ fn is_empty<T>(slice: &[T]) -> bool {
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TextSelection {
-    anchor_node: NodeId,
-    anchor_glyph_index: u16,
-    focus_node: NodeId,
-    focus_glyph_index: u16,
+    pub anchor_node: NodeId,
+    pub anchor_glyph_index: u16,
+    pub focus_node: NodeId,
+    pub focus_glyph_index: u16,
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
