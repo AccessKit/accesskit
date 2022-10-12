@@ -646,7 +646,14 @@ fn is_empty<T>(slice: &[T]) -> bool {
     slice.is_empty()
 }
 
-/// Offsets are in UTF-8 code units.
+/// The current text selection for a text field or document.
+///
+/// Glyph indices are the indices of items in [`Node::glyph_end_indices`].
+/// The focus glyph index may be the number of glyphs in the focus node,
+/// to indicate that the focus of the selection is at the end of the line.
+/// This should only be true for the anchor glyph index if the anchor and focus
+/// are the same, i.e. there is no selection, only a caret (also known as
+/// a degenerate selection).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
@@ -655,9 +662,9 @@ fn is_empty<T>(slice: &[T]) -> bool {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TextSelection {
     anchor_node: NodeId,
-    anchor_offset: usize,
+    anchor_glyph_index: u16,
     focus_node: NodeId,
-    focus_offset: usize,
+    focus_glyph_index: u16,
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
