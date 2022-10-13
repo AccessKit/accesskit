@@ -646,14 +646,20 @@ fn is_empty<T>(slice: &[T]) -> bool {
     slice.is_empty()
 }
 
-/// The current text selection for a text field or document.
-///
-/// Glyph indices are the indices of items in [`Node::glyph_end_indices`].
-/// The focus glyph index may be the number of glyphs in the focus node,
-/// to indicate that the focus of the selection is at the end of the line.
-/// This should only be true for the anchor glyph index if the anchor and focus
-/// are the same, i.e. there is no selection, only a caret (also known as
-/// a degenerate selection).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+pub struct TextPosition {
+    /// The node's role must be [`Role::InlineTextBox`].
+    pub node: NodeId,
+    /// The index of an item in [`Node::glyph_end_indices`], or the length
+    /// of that slice if the position is at the end of the line.
+    pub glyph_index: u16,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
@@ -661,10 +667,15 @@ fn is_empty<T>(slice: &[T]) -> bool {
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TextSelection {
-    pub anchor_node: NodeId,
-    pub anchor_glyph_index: u16,
-    pub focus_node: NodeId,
-    pub focus_glyph_index: u16,
+    /// The position where the selection started, and which does not change
+    /// as the selection is expanded or contracted. If there is no selection
+    /// but only a caret, this must be equal to [`focus`]. This is also known
+    /// as a degenerate selection.
+    pub anchor: TextPosition,
+    /// The active end of the selection, which changes as the selection
+    /// is expanded or contracted, or the position of the caret if there is
+    /// no selection.
+    pub focus: TextPosition,
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
