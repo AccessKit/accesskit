@@ -655,9 +655,9 @@ fn is_empty<T>(slice: &[T]) -> bool {
 pub struct TextPosition {
     /// The node's role must be [`Role::InlineTextBox`].
     pub node: NodeId,
-    /// The index of an item in [`Node::glyph_end_indices`], or the length
+    /// The index of an item in [`Node::character_end_indices`], or the length
     /// of that slice if the position is at the end of the line.
-    pub glyph_index: u16,
+    pub character_index: u16,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -949,20 +949,40 @@ pub struct Node {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub text_direction: Option<TextDirection>,
 
-    /// For inline text. The end index (non-inclusive) of each glyph
+    /// For inline text. The end index (non-inclusive) of each character
     /// in UTF-8 code units (bytes). For example, if the text box
-    /// consists of a 1-byte glyph, a 3-byte glyph, and a 1-byte glyph,
-    /// the indices would be [1, 4, 5].
+    /// consists of a 1-byte character, a 3-byte character, and another
+    /// 1-byte character, the indices would be [1, 4, 5].
+    ///
+    /// A character is defined as the smallest unit of text that
+    /// can be selected. This isn't necessarily a single Unicode
+    /// scalar value (code point). This is why AccessKit can't compute
+    /// the indices of the characters from the text itself; this information
+    /// must be provided by the text editing implementation.
+    ///
+    /// If this node is the last text box in a line that ends with a hard
+    /// line break, that line break should be included at the end of this
+    /// node's value as either a CRLF or LF; in both cases, the line break
+    /// should be counted as a single character for the sake of this slice.
+    /// When the caret is at the end of such a line, the focus of the text
+    /// selection should be on the line break, not after it.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub glyph_end_indices: Option<Box<[u16]>>,
+    pub character_end_indices: Option<Box<[u16]>>,
     /// For inline text. This is the pixel position of the end of each
-    /// glyph within the bounding rectangle of this object, in the direction
+    /// character within the bounding rectangle of this object, in the direction
     /// given by [`Node::text_direction`]. For example, for left-to-right
     /// text, the first offset is the right coordinate of the first
-    /// glyph within the object's bounds, the second offset is
-    /// the right coordinate of the second glyph, and so on.
+    /// character within the object's bounds, the second offset is
+    /// the right coordinate of the second character, and so on.
+    ///
+    /// When present, the length of this slice should be the same as the length
+    /// of [`character_end_incides`], including for lines that end
+    /// with a hard line break. The end offset of such a line break should
+    /// be non-zero if selecting the line break by itself results in
+    /// a visible highlight (as in Microsoft Word), or zero if not
+    /// (as in Windows Notepad).
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub glyph_end_pixel_offsets: Option<Box<[f32]>>,
+    pub character_end_pixel_offsets: Option<Box<[f32]>>,
 
     /// For inline text. The end index (non-inclusive) of each word
     /// in UTF-8 code units (bytes). For example, if the text box
