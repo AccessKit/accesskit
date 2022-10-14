@@ -178,36 +178,40 @@ impl<'a> ExactSizeIterator for PrecedingSiblings<'a> {}
 
 impl<'a> FusedIterator for PrecedingSiblings<'a> {}
 
-fn next_unignored_sibling(node: Option<Node>) -> Option<Node> {
-    // Search for the next sibling of this node, skipping over any ignored nodes
-    // encountered.
-    //
-    // In our search:
-    //   If we find an ignored sibling, we consider its children as our siblings.
-    //   If we run out of siblings, we consider an ignored parent's siblings as our
-    //     own siblings.
-    //
-    // Note: this behaviour of 'skipping over' an ignored node makes this subtly
-    // different to finding the next (direct) sibling which is unignored.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FilterResult {
+    Include,
+    ExcludeNode,
+    ExcludeSubtree,
+}
+
+fn next_filtered_sibling<'a>(
+    node: Option<Node<'a>>,
+    filter: &impl Fn(&Node) -> FilterResult,
+) -> Option<Node<'a>> {
     let mut next = node;
     let mut consider_children = false;
     while let Some(current) = next {
         if let Some(Some(child)) = consider_children.then(|| current.children().next()) {
+            let result = filter(&child);
             next = Some(child);
-            if !child.is_ignored() {
+            if result == FilterResult::Include {
                 return next;
             }
         } else if let Some(sibling) = current.following_siblings().next() {
+            let result = filter(&sibling);
             next = Some(sibling);
-            if !sibling.is_ignored() {
+            if result == FilterResult::Include {
                 return next;
             }
-            consider_children = true;
+            if result == FilterResult::ExcludeNode {
+                consider_children = true;
+            }
         } else {
             let parent = current.parent();
             next = parent;
             if let Some(parent) = parent {
-                if !parent.is_ignored() {
+                if filter(&parent) != FilterResult::ExcludeNode {
                     return None;
                 }
                 consider_children = false;
@@ -219,33 +223,33 @@ fn next_unignored_sibling(node: Option<Node>) -> Option<Node> {
     None
 }
 
-fn previous_unignored_sibling(node: Option<Node>) -> Option<Node> {
-    // Search for the previous sibling of this node, skipping over any ignored nodes
-    // encountered.
-    //
-    // In our search for a sibling:
-    //   If we find an ignored sibling, we may consider its children as siblings.
-    //   If we run out of siblings, we may consider an ignored parent's siblings as
-    //     our own.
+fn previous_filtered_sibling<'a>(
+    node: Option<Node<'a>>,
+    filter: &impl Fn(&Node) -> FilterResult,
+) -> Option<Node<'a>> {
     let mut previous = node;
     let mut consider_children = false;
     while let Some(current) = previous {
         if let Some(Some(child)) = consider_children.then(|| current.children().next_back()) {
+            let result = filter(&child);
             previous = Some(child);
-            if !child.is_ignored() {
+            if result == FilterResult::Include {
                 return previous;
             }
         } else if let Some(sibling) = current.preceding_siblings().next() {
+            let result = filter(&sibling);
             previous = Some(sibling);
-            if !sibling.is_ignored() {
+            if result == FilterResult::Include {
                 return previous;
             }
-            consider_children = true;
+            if result == FilterResult::ExcludeNode {
+                consider_children = true;
+            }
         } else {
             let parent = current.parent();
             previous = parent;
             if let Some(parent) = parent {
-                if !parent.is_ignored() {
+                if filter(&parent) != FilterResult::ExcludeNode {
                     return None;
                 }
                 consider_children = false;
@@ -257,20 +261,25 @@ fn previous_unignored_sibling(node: Option<Node>) -> Option<Node> {
     None
 }
 
-/// An iterator that yields following unignored siblings of a node.
+/// An iterator that yields following siblings of a node according to the
+/// specified filter.
 ///
-/// This struct is created by the [following_unignored_siblings](Node::following_unignored_siblings) method on [Node].
-pub struct FollowingUnignoredSiblings<'a> {
+/// This struct is created by the [following_filtered_siblings](Node::following_filtered_siblings) method on [Node].
+pub struct FollowingFilteredSiblings<'a, Filter: Fn(&Node) -> FilterResult> {
+    filter: Filter,
     back: Option<Node<'a>>,
     done: bool,
     front: Option<Node<'a>>,
 }
 
-impl<'a> FollowingUnignoredSiblings<'a> {
-    pub(crate) fn new(node: Node<'a>) -> Self {
-        let front = next_unignored_sibling(Some(node));
-        let back = node.parent().and_then(Node::last_unignored_child);
+impl<'a, Filter: Fn(&Node) -> FilterResult> FollowingFilteredSiblings<'a, Filter> {
+    pub(crate) fn new(node: Node<'a>, filter: Filter) -> Self {
+        let front = next_filtered_sibling(Some(node), &filter);
+        let back = node
+            .parent()
+            .and_then(|parent| parent.last_filtered_child(&filter));
         Self {
+            filter,
             back,
             done: back.is_none() || front.is_none(),
             front,
@@ -278,7 +287,7 @@ impl<'a> FollowingUnignoredSiblings<'a> {
     }
 }
 
-impl<'a> Iterator for FollowingUnignoredSiblings<'a> {
+impl<'a, Filter: Fn(&Node) -> FilterResult> Iterator for FollowingFilteredSiblings<'a, Filter> {
     type Item = Node<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -287,41 +296,51 @@ impl<'a> Iterator for FollowingUnignoredSiblings<'a> {
         } else {
             self.done = self.front.as_ref().unwrap().id() == self.back.as_ref().unwrap().id();
             let current = self.front;
-            self.front = next_unignored_sibling(self.front);
+            self.front = next_filtered_sibling(self.front, &self.filter);
             current
         }
     }
 }
 
-impl<'a> DoubleEndedIterator for FollowingUnignoredSiblings<'a> {
+impl<'a, Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator
+    for FollowingFilteredSiblings<'a, Filter>
+{
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.done {
             None
         } else {
             self.done = self.back.as_ref().unwrap().id() == self.front.as_ref().unwrap().id();
             let current = self.back;
-            self.back = previous_unignored_sibling(self.back);
+            self.back = previous_filtered_sibling(self.back, &self.filter);
             current
         }
     }
 }
 
-impl<'a> FusedIterator for FollowingUnignoredSiblings<'a> {}
+impl<'a, Filter: Fn(&Node) -> FilterResult> FusedIterator
+    for FollowingFilteredSiblings<'a, Filter>
+{
+}
 
-/// An iterator that yields preceding unignored siblings of a node.
+/// An iterator that yields preceding siblings of a node according to the
+/// specified filter.
 ///
-/// This struct is created by the [preceding_unignored_siblings](Node::preceding_unignored_siblings) method on [Node].
-pub struct PrecedingUnignoredSiblings<'a> {
+/// This struct is created by the [preceding_filtered_siblings](Node::preceding_filtered_siblings) method on [Node].
+pub struct PrecedingFilteredSiblings<'a, Filter: Fn(&Node) -> FilterResult> {
+    filter: Filter,
     back: Option<Node<'a>>,
     done: bool,
     front: Option<Node<'a>>,
 }
 
-impl<'a> PrecedingUnignoredSiblings<'a> {
-    pub(crate) fn new(node: Node<'a>) -> Self {
-        let front = previous_unignored_sibling(Some(node));
-        let back = node.parent().and_then(Node::first_unignored_child);
+impl<'a, Filter: Fn(&Node) -> FilterResult> PrecedingFilteredSiblings<'a, Filter> {
+    pub(crate) fn new(node: Node<'a>, filter: Filter) -> Self {
+        let front = previous_filtered_sibling(Some(node), &filter);
+        let back = node
+            .parent()
+            .and_then(|parent| parent.first_filtered_child(&filter));
         Self {
+            filter,
             back,
             done: back.is_none() || front.is_none(),
             front,
@@ -329,7 +348,7 @@ impl<'a> PrecedingUnignoredSiblings<'a> {
     }
 }
 
-impl<'a> Iterator for PrecedingUnignoredSiblings<'a> {
+impl<'a, Filter: Fn(&Node) -> FilterResult> Iterator for PrecedingFilteredSiblings<'a, Filter> {
     type Item = Node<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -338,41 +357,49 @@ impl<'a> Iterator for PrecedingUnignoredSiblings<'a> {
         } else {
             self.done = self.front.as_ref().unwrap().id() == self.back.as_ref().unwrap().id();
             let current = self.front;
-            self.front = previous_unignored_sibling(self.front);
+            self.front = previous_filtered_sibling(self.front, &self.filter);
             current
         }
     }
 }
 
-impl<'a> DoubleEndedIterator for PrecedingUnignoredSiblings<'a> {
+impl<'a, Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator
+    for PrecedingFilteredSiblings<'a, Filter>
+{
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.done {
             None
         } else {
             self.done = self.back.as_ref().unwrap().id() == self.front.as_ref().unwrap().id();
             let current = self.back;
-            self.back = next_unignored_sibling(self.back);
+            self.back = next_filtered_sibling(self.back, &self.filter);
             current
         }
     }
 }
 
-impl<'a> FusedIterator for PrecedingUnignoredSiblings<'a> {}
+impl<'a, Filter: Fn(&Node) -> FilterResult> FusedIterator
+    for PrecedingFilteredSiblings<'a, Filter>
+{
+}
 
-/// An iterator that yields unignored children of a node.
+/// An iterator that yields children of a node according to the specified
+/// filter.
 ///
-/// This struct is created by the [unignored_children](Node::unignored_children) method on [Node].
-pub struct UnignoredChildren<'a> {
+/// This struct is created by the [filtered_children](Node::filtered_children) method on [Node].
+pub struct FilteredChildren<'a, Filter: Fn(&Node) -> FilterResult> {
+    filter: Filter,
     back: Option<Node<'a>>,
     done: bool,
     front: Option<Node<'a>>,
 }
 
-impl<'a> UnignoredChildren<'a> {
-    pub(crate) fn new(node: Node<'a>) -> Self {
-        let front = node.first_unignored_child();
-        let back = node.last_unignored_child();
+impl<'a, Filter: Fn(&Node) -> FilterResult> FilteredChildren<'a, Filter> {
+    pub(crate) fn new(node: Node<'a>, filter: Filter) -> Self {
+        let front = node.first_filtered_child(&filter);
+        let back = node.last_filtered_child(&filter);
         Self {
+            filter,
             back,
             done: back.is_none() || front.is_none(),
             front,
@@ -380,7 +407,7 @@ impl<'a> UnignoredChildren<'a> {
     }
 }
 
-impl<'a> Iterator for UnignoredChildren<'a> {
+impl<'a, Filter: Fn(&Node) -> FilterResult> Iterator for FilteredChildren<'a, Filter> {
     type Item = Node<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -389,26 +416,26 @@ impl<'a> Iterator for UnignoredChildren<'a> {
         } else {
             self.done = self.front.as_ref().unwrap().id() == self.back.as_ref().unwrap().id();
             let current = self.front;
-            self.front = next_unignored_sibling(self.front);
+            self.front = next_filtered_sibling(self.front, &self.filter);
             current
         }
     }
 }
 
-impl<'a> DoubleEndedIterator for UnignoredChildren<'a> {
+impl<'a, Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator for FilteredChildren<'a, Filter> {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.done {
             None
         } else {
             self.done = self.back.as_ref().unwrap().id() == self.front.as_ref().unwrap().id();
             let current = self.back;
-            self.back = previous_unignored_sibling(self.back);
+            self.back = previous_filtered_sibling(self.back, &self.filter);
             current
         }
     }
 }
 
-impl<'a> FusedIterator for UnignoredChildren<'a> {}
+impl<'a, Filter: Fn(&Node) -> FilterResult> FusedIterator for FilteredChildren<'a, Filter> {}
 
 #[cfg(test)]
 mod tests {
@@ -558,12 +585,12 @@ mod tests {
     }
 
     #[test]
-    fn following_unignored_siblings() {
+    fn following_filtered_siblings() {
         let tree = test_tree();
         assert!(tree
             .read()
             .root()
-            .following_unignored_siblings()
+            .following_filtered_siblings(test_tree_filter)
             .next()
             .is_none());
         assert_eq!(
@@ -576,7 +603,7 @@ mod tests {
             tree.read()
                 .node_by_id(PARAGRAPH_0_ID)
                 .unwrap()
-                .following_unignored_siblings()
+                .following_filtered_siblings(test_tree_filter)
                 .map(|node| node.id())
                 .collect::<Vec<NodeId>>()[..]
         );
@@ -584,18 +611,18 @@ mod tests {
             .read()
             .node_by_id(PARAGRAPH_3_IGNORED_ID)
             .unwrap()
-            .following_unignored_siblings()
+            .following_filtered_siblings(test_tree_filter)
             .next()
             .is_none());
     }
 
     #[test]
-    fn following_unignored_siblings_reversed() {
+    fn following_filtered_siblings_reversed() {
         let tree = test_tree();
         assert!(tree
             .read()
             .root()
-            .following_unignored_siblings()
+            .following_filtered_siblings(test_tree_filter)
             .next_back()
             .is_none());
         assert_eq!(
@@ -608,7 +635,7 @@ mod tests {
             tree.read()
                 .node_by_id(PARAGRAPH_0_ID)
                 .unwrap()
-                .following_unignored_siblings()
+                .following_filtered_siblings(test_tree_filter)
                 .rev()
                 .map(|node| node.id())
                 .collect::<Vec<NodeId>>()[..]
@@ -617,18 +644,18 @@ mod tests {
             .read()
             .node_by_id(PARAGRAPH_3_IGNORED_ID)
             .unwrap()
-            .following_unignored_siblings()
+            .following_filtered_siblings(test_tree_filter)
             .next_back()
             .is_none());
     }
 
     #[test]
-    fn preceding_unignored_siblings() {
+    fn preceding_filtered_siblings() {
         let tree = test_tree();
         assert!(tree
             .read()
             .root()
-            .preceding_unignored_siblings()
+            .preceding_filtered_siblings(test_tree_filter)
             .next()
             .is_none());
         assert_eq!(
@@ -636,7 +663,7 @@ mod tests {
             tree.read()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
-                .preceding_unignored_siblings()
+                .preceding_filtered_siblings(test_tree_filter)
                 .map(|node| node.id())
                 .collect::<Vec<NodeId>>()[..]
         );
@@ -644,18 +671,18 @@ mod tests {
             .read()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
-            .preceding_unignored_siblings()
+            .preceding_filtered_siblings(test_tree_filter)
             .next()
             .is_none());
     }
 
     #[test]
-    fn preceding_unignored_siblings_reversed() {
+    fn preceding_filtered_siblings_reversed() {
         let tree = test_tree();
         assert!(tree
             .read()
             .root()
-            .preceding_unignored_siblings()
+            .preceding_filtered_siblings(test_tree_filter)
             .next_back()
             .is_none());
         assert_eq!(
@@ -663,7 +690,7 @@ mod tests {
             tree.read()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
-                .preceding_unignored_siblings()
+                .preceding_filtered_siblings(test_tree_filter)
                 .rev()
                 .map(|node| node.id())
                 .collect::<Vec<NodeId>>()[..]
@@ -672,13 +699,13 @@ mod tests {
             .read()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
-            .preceding_unignored_siblings()
+            .preceding_filtered_siblings(test_tree_filter)
             .next_back()
             .is_none());
     }
 
     #[test]
-    fn unignored_children() {
+    fn filtered_children() {
         let tree = test_tree();
         assert_eq!(
             [
@@ -690,7 +717,7 @@ mod tests {
             ],
             tree.read()
                 .root()
-                .unignored_children()
+                .filtered_children(test_tree_filter)
                 .map(|node| node.id())
                 .collect::<Vec<NodeId>>()[..]
         );
@@ -698,20 +725,20 @@ mod tests {
             .read()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
-            .unignored_children()
+            .filtered_children(test_tree_filter)
             .next()
             .is_none());
         assert!(tree
             .read()
             .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
             .unwrap()
-            .unignored_children()
+            .filtered_children(test_tree_filter)
             .next()
             .is_none());
     }
 
     #[test]
-    fn unignored_children_reversed() {
+    fn filtered_children_reversed() {
         let tree = test_tree();
         assert_eq!(
             [
@@ -723,7 +750,7 @@ mod tests {
             ],
             tree.read()
                 .root()
-                .unignored_children()
+                .filtered_children(test_tree_filter)
                 .rev()
                 .map(|node| node.id())
                 .collect::<Vec<NodeId>>()[..]
@@ -732,14 +759,14 @@ mod tests {
             .read()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
-            .unignored_children()
+            .filtered_children(test_tree_filter)
             .next_back()
             .is_none());
         assert!(tree
             .read()
             .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
             .unwrap()
-            .unignored_children()
+            .filtered_children(test_tree_filter)
             .next_back()
             .is_none());
     }

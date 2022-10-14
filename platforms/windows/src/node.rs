@@ -12,7 +12,7 @@
 
 use accesskit::kurbo::Point;
 use accesskit::{CheckedState, Live, NodeId, NodeIdContent, Role};
-use accesskit_consumer::{Node, Tree, TreeState};
+use accesskit_consumer::{FilterResult, Node, Tree, TreeState};
 use arrayvec::ArrayVec;
 use paste::paste;
 use std::sync::{Arc, Weak};
@@ -33,6 +33,30 @@ fn runtime_id_from_node_id(id: NodeId) -> impl std::ops::Deref<Target = [i32]> {
         result.push((*byte).into());
     }
     result
+}
+
+pub(crate) fn filter(node: &Node) -> FilterResult {
+    if node.is_focused() {
+        return FilterResult::Include;
+    }
+
+    if node.is_hidden() {
+        return FilterResult::ExcludeSubtree;
+    }
+
+    let role = node.role();
+    if role == Role::Presentation || role == Role::GenericContainer || role == Role::InlineTextBox {
+        return FilterResult::ExcludeNode;
+    }
+
+    FilterResult::Include
+}
+
+fn filter_with_root_exception(node: &Node) -> FilterResult {
+    if node.is_root() {
+        return FilterResult::Include;
+    }
+    filter(node)
 }
 
 pub(crate) struct NodeWrapper<'a> {
@@ -263,7 +287,7 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn is_content_element(&self) -> bool {
-        !self.node.is_invisible_or_ignored()
+        filter(self.node) == FilterResult::Include
     }
 
     fn is_enabled(&self) -> bool {
@@ -430,13 +454,15 @@ impl<'a> NodeWrapper<'a> {
         });
     }
 
-    fn navigate(&self, direction: NavigateDirection) -> Option<NodeId> {
+    fn navigate(&self, direction: NavigateDirection) -> Option<Node> {
         match direction {
-            NavigateDirection_Parent => self.node.parent_id(),
-            NavigateDirection_NextSibling => self.node.following_sibling_ids().next(),
-            NavigateDirection_PreviousSibling => self.node.preceding_sibling_ids().next(),
-            NavigateDirection_FirstChild => self.node.child_ids().next(),
-            NavigateDirection_LastChild => self.node.child_ids().next_back(),
+            NavigateDirection_Parent => self.node.filtered_parent(&filter_with_root_exception),
+            NavigateDirection_NextSibling => self.node.following_filtered_siblings(&filter).next(),
+            NavigateDirection_PreviousSibling => {
+                self.node.preceding_filtered_siblings(&filter).next()
+            }
+            NavigateDirection_FirstChild => self.node.filtered_children(&filter).next(),
+            NavigateDirection_LastChild => self.node.filtered_children(&filter).next_back(),
             _ => None,
         }
     }
@@ -565,7 +591,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
 impl IRawElementProviderFragment_Impl for PlatformNode {
     fn Navigate(&self, direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
         self.resolve(|wrapper| match wrapper.navigate(direction) {
-            Some(result) => Ok(self.relative(result).into()),
+            Some(result) => Ok(self.relative(result.id()).into()),
             None => Err(Error::OK),
         })
     }
@@ -622,7 +648,7 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
             let client_top_left = self.client_top_left();
             let point = Point::new(x - client_top_left.x, y - client_top_left.y);
             let point = wrapper.node.transform().inverse() * point;
-            wrapper.node.node_at_point(point).map_or_else(
+            wrapper.node.node_at_point(point, &filter).map_or_else(
                 || Err(Error::OK),
                 |node| Ok(self.relative(node.id()).into()),
             )

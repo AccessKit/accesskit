@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use accesskit::{ActionHandler, Live, TreeUpdate};
-use accesskit_consumer::{Node, Tree, TreeChangeHandler};
+use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler};
 use lazy_init::LazyTransform;
 use windows::Win32::{
     Foundation::*,
@@ -14,7 +14,7 @@ use windows::Win32::{
 };
 
 use crate::{
-    node::{NodeWrapper, PlatformNode},
+    node::{filter, NodeWrapper, PlatformNode},
     util::QueuedEvent,
 };
 
@@ -103,10 +103,10 @@ impl Adapter {
         }
         impl TreeChangeHandler for Handler<'_> {
             fn node_added(&mut self, node: &Node) {
-                if !node.is_invisible_or_ignored()
-                    && node.name().is_some()
-                    && node.live() != Live::Off
-                {
+                if filter(node) != FilterResult::Include {
+                    return;
+                }
+                if node.name().is_some() && node.live() != Live::Off {
                     let platform_node = PlatformNode::new(self.tree, node.id(), self.hwnd);
                     let element: IRawElementProviderSimple = platform_node.into();
                     self.queue.push(QueuedEvent::Simple {
@@ -116,15 +116,19 @@ impl Adapter {
                 }
             }
             fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
+                if filter(new_node) != FilterResult::Include {
+                    return;
+                }
                 let platform_node = PlatformNode::new(self.tree, new_node.id(), self.hwnd);
                 let element: IRawElementProviderSimple = platform_node.into();
                 let old_wrapper = NodeWrapper::new(old_node);
                 let new_wrapper = NodeWrapper::new(new_node);
                 new_wrapper.enqueue_property_changes(&mut self.queue, &element, &old_wrapper);
-                if !new_node.is_invisible_or_ignored()
-                    && new_node.name().is_some()
+                if new_node.name().is_some()
                     && new_node.live() != Live::Off
-                    && (new_node.name() != old_node.name() || new_node.live() != old_node.live())
+                    && (new_node.name() != old_node.name()
+                        || new_node.live() != old_node.live()
+                        || filter(old_node) != FilterResult::Include)
                 {
                     self.queue.push(QueuedEvent::Simple {
                         element,
