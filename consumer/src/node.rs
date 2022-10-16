@@ -14,8 +14,8 @@ use accesskit::kurbo::{Affine, Point, Rect};
 use accesskit::{CheckedState, DefaultActionVerb, Live, Node as NodeData, NodeId, Role};
 
 use crate::iterators::{
-    FollowingSiblings, FollowingUnignoredSiblings, PrecedingSiblings, PrecedingUnignoredSiblings,
-    UnignoredChildren,
+    FilterResult, FilteredChildren, FollowingFilteredSiblings, FollowingSiblings,
+    PrecedingFilteredSiblings, PrecedingSiblings,
 };
 use crate::tree::{NodeState, ParentAndIndex, State as TreeState};
 
@@ -40,14 +40,6 @@ impl<'a> Node<'a> {
         self.data().focusable
     }
 
-    pub fn is_ignored(&self) -> bool {
-        self.data().ignored || (self.role() == Role::Presentation)
-    }
-
-    pub fn is_invisible_or_ignored(&self) -> bool {
-        (self.is_invisible() || self.is_ignored()) && !self.is_focused()
-    }
-
     pub fn is_root(&self) -> bool {
         // Don't check for absence of a parent node, in case a non-root node
         // somehow gets detached from the tree.
@@ -66,10 +58,10 @@ impl<'a> Node<'a> {
             .map(|id| self.tree_state.node_by_id(id).unwrap())
     }
 
-    pub fn unignored_parent(self) -> Option<Node<'a>> {
+    pub fn filtered_parent(&self, filter: &impl Fn(&Node) -> FilterResult) -> Option<Node<'a>> {
         if let Some(parent) = self.parent() {
-            if parent.is_ignored() {
-                parent.unignored_parent()
+            if filter(&parent) != FilterResult::Include {
+                parent.filtered_parent(filter)
             } else {
                 Some(parent)
             }
@@ -108,10 +100,11 @@ impl<'a> Node<'a> {
             .map(move |id| state.node_by_id(id).unwrap())
     }
 
-    pub fn unignored_children(
-        self,
+    pub fn filtered_children(
+        &self,
+        filter: impl Fn(&Node) -> FilterResult + 'a,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
-        UnignoredChildren::new(self)
+        FilteredChildren::new(*self, filter)
     }
 
     pub fn following_sibling_ids(
@@ -134,10 +127,11 @@ impl<'a> Node<'a> {
             .map(move |id| state.node_by_id(id).unwrap())
     }
 
-    pub fn following_unignored_siblings(
-        self,
+    pub fn following_filtered_siblings(
+        &self,
+        filter: impl Fn(&Node) -> FilterResult + 'a,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
-        FollowingUnignoredSiblings::new(self)
+        FollowingFilteredSiblings::new(*self, filter)
     }
 
     pub fn preceding_sibling_ids(
@@ -160,10 +154,11 @@ impl<'a> Node<'a> {
             .map(move |id| state.node_by_id(id).unwrap())
     }
 
-    pub fn preceding_unignored_siblings(
-        self,
+    pub fn preceding_filtered_siblings(
+        &self,
+        filter: impl Fn(&Node) -> FilterResult + 'a,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
-        PrecedingUnignoredSiblings::new(self)
+        PrecedingFilteredSiblings::new(*self, filter)
     }
 
     pub fn deepest_first_child(self) -> Option<Node<'a>> {
@@ -174,9 +169,12 @@ impl<'a> Node<'a> {
         Some(deepest_child)
     }
 
-    pub fn deepest_first_unignored_child(self) -> Option<Node<'a>> {
-        let mut deepest_child = self.first_unignored_child()?;
-        while let Some(first_child) = deepest_child.first_unignored_child() {
+    pub fn deepest_first_filtered_child(
+        &self,
+        filter: &impl Fn(&Node) -> FilterResult,
+    ) -> Option<Node<'a>> {
+        let mut deepest_child = self.first_filtered_child(filter)?;
+        while let Some(first_child) = deepest_child.first_filtered_child(filter) {
             deepest_child = first_child;
         }
         Some(deepest_child)
@@ -190,9 +188,12 @@ impl<'a> Node<'a> {
         Some(deepest_child)
     }
 
-    pub fn deepest_last_unignored_child(self) -> Option<Node<'a>> {
-        let mut deepest_child = self.last_unignored_child()?;
-        while let Some(last_child) = deepest_child.last_unignored_child() {
+    pub fn deepest_last_filtered_child(
+        &self,
+        filter: &impl Fn(&Node) -> FilterResult,
+    ) -> Option<Node<'a>> {
+        let mut deepest_child = self.last_filtered_child(filter)?;
+        while let Some(last_child) = deepest_child.last_filtered_child(filter) {
             deepest_child = last_child;
         }
         Some(deepest_child)
@@ -234,24 +235,30 @@ impl<'a> Node<'a> {
             .map(|rect| self.transform().transform_rect_bbox(*rect))
     }
 
-    /// Returns the deepest visible node, either this node or a descendant,
+    /// Returns the deepest filtered node, either this node or a descendant,
     /// at the given point in this node's coordinate space.
-    pub fn node_at_point(self, point: Point) -> Option<Node<'a>> {
-        if self.is_invisible() {
+    pub fn node_at_point(
+        &self,
+        point: Point,
+        filter: &impl Fn(&Node) -> FilterResult,
+    ) -> Option<Node<'a>> {
+        let filter_result = filter(self);
+
+        if filter_result == FilterResult::ExcludeSubtree {
             return None;
         }
 
         for child in self.children().rev() {
             let point = child.direct_transform().inverse() * point;
-            if let Some(node) = child.node_at_point(point) {
+            if let Some(node) = child.node_at_point(point, filter) {
                 return Some(node);
             }
         }
 
-        if !self.is_ignored() {
+        if filter_result == FilterResult::Include {
             if let Some(rect) = &self.data().bounds {
                 if rect.contains(point) {
-                    return Some(self);
+                    return Some(*self);
                 }
             }
         }
@@ -267,8 +274,8 @@ impl<'a> Node<'a> {
         self.data().role
     }
 
-    pub fn is_invisible(&self) -> bool {
-        self.data().invisible
+    pub fn is_hidden(&self) -> bool {
+        self.data().hidden
     }
 
     pub fn is_disabled(&self) -> bool {
@@ -473,25 +480,37 @@ impl<'a> Node<'a> {
         self.data().selected
     }
 
-    pub(crate) fn first_unignored_child(self) -> Option<Node<'a>> {
+    pub(crate) fn first_filtered_child(
+        &self,
+        filter: &impl Fn(&Node) -> FilterResult,
+    ) -> Option<Node<'a>> {
         for child in self.children() {
-            if !child.is_ignored() {
+            let result = filter(&child);
+            if result == FilterResult::Include {
                 return Some(child);
             }
-            if let Some(descendant) = child.first_unignored_child() {
-                return Some(descendant);
+            if result == FilterResult::ExcludeNode {
+                if let Some(descendant) = child.first_filtered_child(filter) {
+                    return Some(descendant);
+                }
             }
         }
         None
     }
 
-    pub(crate) fn last_unignored_child(self) -> Option<Node<'a>> {
+    pub(crate) fn last_filtered_child(
+        &self,
+        filter: &impl Fn(&Node) -> FilterResult,
+    ) -> Option<Node<'a>> {
         for child in self.children().rev() {
-            if !child.is_ignored() {
+            let result = filter(&child);
+            if result == FilterResult::Include {
                 return Some(child);
             }
-            if let Some(descendant) = child.last_unignored_child() {
-                return Some(descendant);
+            if result == FilterResult::ExcludeNode {
+                if let Some(descendant) = child.last_filtered_child(filter) {
+                    return Some(descendant);
+                }
             }
         }
         None
@@ -567,13 +586,13 @@ mod tests {
     }
 
     #[test]
-    fn deepest_first_unignored_child() {
+    fn deepest_first_filtered_child() {
         let tree = test_tree();
         assert_eq!(
             PARAGRAPH_0_ID,
             tree.read()
                 .root()
-                .deepest_first_unignored_child()
+                .deepest_first_filtered_child(&test_tree_filter)
                 .unwrap()
                 .id()
         );
@@ -581,13 +600,13 @@ mod tests {
             .read()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
-            .deepest_first_unignored_child()
+            .deepest_first_filtered_child(&test_tree_filter)
             .is_none());
         assert!(tree
             .read()
             .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
             .unwrap()
-            .deepest_first_unignored_child()
+            .deepest_first_filtered_child(&test_tree_filter)
             .is_none());
     }
 
@@ -616,13 +635,13 @@ mod tests {
     }
 
     #[test]
-    fn deepest_last_unignored_child() {
+    fn deepest_last_filtered_child() {
         let tree = test_tree();
         assert_eq!(
             BUTTON_3_2_ID,
             tree.read()
                 .root()
-                .deepest_last_unignored_child()
+                .deepest_last_filtered_child(&test_tree_filter)
                 .unwrap()
                 .id()
         );
@@ -631,7 +650,7 @@ mod tests {
             tree.read()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
-                .deepest_last_unignored_child()
+                .deepest_last_filtered_child(&test_tree_filter)
                 .unwrap()
                 .id()
         );
@@ -639,13 +658,13 @@ mod tests {
             .read()
             .node_by_id(BUTTON_3_2_ID)
             .unwrap()
-            .deepest_last_unignored_child()
+            .deepest_last_filtered_child(&test_tree_filter)
             .is_none());
         assert!(tree
             .read()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
-            .deepest_last_unignored_child()
+            .deepest_last_filtered_child(&test_tree_filter)
             .is_none());
     }
 
@@ -727,26 +746,26 @@ mod tests {
         assert!(tree
             .read()
             .root()
-            .node_at_point(Point::new(10.0, 40.0))
+            .node_at_point(Point::new(10.0, 40.0), &test_tree_filter)
             .is_none());
         assert_eq!(
             Some(STATIC_TEXT_1_0_ID),
             tree.read()
                 .root()
-                .node_at_point(Point::new(20.0, 50.0))
+                .node_at_point(Point::new(20.0, 50.0), &test_tree_filter)
                 .map(|node| node.id())
         );
         assert_eq!(
             Some(STATIC_TEXT_1_0_ID),
             tree.read()
                 .root()
-                .node_at_point(Point::new(50.0, 60.0))
+                .node_at_point(Point::new(50.0, 60.0), &test_tree_filter)
                 .map(|node| node.id())
         );
         assert!(tree
             .read()
             .root()
-            .node_at_point(Point::new(100.0, 70.0))
+            .node_at_point(Point::new(100.0, 70.0), &test_tree_filter)
             .is_none());
     }
 

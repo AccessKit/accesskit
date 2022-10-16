@@ -10,10 +10,7 @@ pub(crate) mod node;
 pub use node::Node;
 
 pub(crate) mod iterators;
-pub use iterators::{
-    FollowingSiblings, FollowingUnignoredSiblings, PrecedingSiblings, PrecedingUnignoredSiblings,
-    UnignoredChildren,
-};
+pub use iterators::FilterResult;
 
 #[cfg(test)]
 mod tests {
@@ -21,6 +18,8 @@ mod tests {
     use accesskit::{ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
     use std::num::NonZeroU128;
     use std::sync::Arc;
+
+    use crate::FilterResult;
 
     pub const ROOT_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
     pub const PARAGRAPH_0_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
@@ -62,7 +61,6 @@ mod tests {
         });
         let static_text_0_0_ignored = Arc::new(Node {
             role: Role::StaticText,
-            ignored: true,
             name: Some("static_text_0_0_ignored".into()),
             ..Default::default()
         });
@@ -76,7 +74,6 @@ mod tests {
                 y1: 40.0,
             }),
             children: vec![STATIC_TEXT_1_0_ID],
-            ignored: true,
             ..Default::default()
         });
         let static_text_1_0 = Arc::new(Node {
@@ -108,18 +105,15 @@ mod tests {
                 BUTTON_3_2_ID,
                 EMPTY_CONTAINER_3_3_IGNORED_ID,
             ],
-            ignored: true,
             ..Default::default()
         });
         let empty_container_3_0_ignored = Arc::new(Node {
             role: Role::GenericContainer,
-            ignored: true,
             ..Default::default()
         });
         let link_3_1_ignored = Arc::new(Node {
             role: Role::Link,
             children: vec![STATIC_TEXT_3_1_0_ID],
-            ignored: true,
             linked: true,
             ..Default::default()
         });
@@ -135,7 +129,6 @@ mod tests {
         });
         let empty_container_3_3_ignored = Arc::new(Node {
             role: Role::GenericContainer,
-            ignored: true,
             ..Default::default()
         });
         let initial_update = TreeUpdate {
@@ -158,5 +151,20 @@ mod tests {
             focus: None,
         };
         crate::tree::Tree::new(initial_update, Box::new(NullActionHandler {}))
+    }
+
+    pub fn test_tree_filter(node: &crate::Node) -> FilterResult {
+        let id = node.id();
+        if id == STATIC_TEXT_0_0_IGNORED_ID
+            || id == PARAGRAPH_1_IGNORED_ID
+            || id == PARAGRAPH_3_IGNORED_ID
+            || id == EMPTY_CONTAINER_3_0_IGNORED_ID
+            || id == LINK_3_1_IGNORED_ID
+            || id == EMPTY_CONTAINER_3_3_IGNORED_ID
+        {
+            FilterResult::ExcludeNode
+        } else {
+            FilterResult::Include
+        }
     }
 }
