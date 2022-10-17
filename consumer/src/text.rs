@@ -195,6 +195,10 @@ impl<'a> Node<'a> {
         Range::new(*self, start, end)
     }
 
+    pub fn has_text_selection(&self) -> bool {
+        self.data().text_selection.is_some()
+    }
+
     pub fn text_selection(&self) -> Option<Range> {
         self.data().text_selection.map(|selection| {
             let anchor = InnerPosition::upgrade(self.tree_state, selection.anchor).unwrap();

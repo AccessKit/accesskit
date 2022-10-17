@@ -108,7 +108,7 @@ impl<T: Into<VariantFactory>> From<Option<T>> for VariantFactory {
     }
 }
 
-fn safe_array_from_slice<T>(vt: VARENUM, slice: &[T]) -> *mut SAFEARRAY {
+fn safe_array_from_primitive_slice<T>(vt: VARENUM, slice: &[T]) -> *mut SAFEARRAY {
     let sa =
         unsafe { SafeArrayCreateVector(VARENUM(vt.0 as u16), 0, slice.len().try_into().unwrap()) };
     if sa.is_null() {
@@ -122,7 +122,20 @@ fn safe_array_from_slice<T>(vt: VARENUM, slice: &[T]) -> *mut SAFEARRAY {
 }
 
 pub(crate) fn safe_array_from_i32_slice(slice: &[i32]) -> *mut SAFEARRAY {
-    safe_array_from_slice(VT_I4, slice)
+    safe_array_from_primitive_slice(VT_I4, slice)
+}
+
+pub(crate) fn safe_array_from_com_slice(slice: &[IUnknown]) -> *mut SAFEARRAY {
+    let sa =
+        unsafe { SafeArrayCreateVector(VT_UNKNOWN, 0, slice.len().try_into().unwrap()) };
+    if sa.is_null() {
+        panic!("SAFEARRAY allocation failed");
+    }
+    for (i, item) in slice.iter().enumerate() {
+        let i: i32 = i.try_into().unwrap();
+        unsafe { SafeArrayPutElement(&*sa, &i, std::mem::transmute_copy(item)) }.unwrap();
+    }
+    sa
 }
 
 pub(crate) enum QueuedEvent {
