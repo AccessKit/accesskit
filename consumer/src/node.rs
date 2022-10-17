@@ -480,6 +480,22 @@ impl<'a> Node<'a> {
         self.data().selected
     }
 
+    pub fn index_path(&self) -> Vec<usize> {
+        self.relative_index_path(self.tree_state.root_id())
+    }
+
+    pub fn relative_index_path(&self, ancestor_id: NodeId) -> Vec<usize> {
+        let mut result = Vec::new();
+        let mut current = *self;
+        while current.id() != ancestor_id {
+            let (parent, index) = current.parent_and_index().unwrap();
+            result.push(index);
+            current = parent;
+        }
+        result.reverse();
+        result
+    }
+
     pub(crate) fn first_filtered_child(
         &self,
         filter: &impl Fn(&Node) -> FilterResult,

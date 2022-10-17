@@ -12,6 +12,11 @@ pub use node::Node;
 pub(crate) mod iterators;
 pub use iterators::FilterResult;
 
+pub(crate) mod text;
+pub use text::{
+    Position as TextPosition, Range as TextRange, Unit as TextUnit, WeakRange as WeakTextRange,
+};
+
 #[cfg(test)]
 mod tests {
     use accesskit::kurbo::{Affine, Rect, Vec2};

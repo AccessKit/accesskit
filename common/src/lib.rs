@@ -966,8 +966,9 @@ pub struct Node {
     /// should be counted as a single character for the sake of this slice.
     /// When the caret is at the end of such a line, the focus of the text
     /// selection should be on the line break, not after it.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub character_end_indices: Option<Box<[u16]>>,
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
+    pub character_end_indices: Box<[u16]>,
     /// For inline text. This is the pixel position of the end of each
     /// character within the bounding rectangle of this object, in the direction
     /// given by [`Node::text_direction`]. For example, for left-to-right
