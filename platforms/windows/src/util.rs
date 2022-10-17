@@ -127,8 +127,7 @@ pub(crate) fn safe_array_from_i32_slice(slice: &[i32]) -> *mut SAFEARRAY {
 }
 
 pub(crate) fn safe_array_from_com_slice(slice: &[IUnknown]) -> *mut SAFEARRAY {
-    let sa =
-        unsafe { SafeArrayCreateVector(VT_UNKNOWN, 0, slice.len().try_into().unwrap()) };
+    let sa = unsafe { SafeArrayCreateVector(VT_UNKNOWN, 0, slice.len().try_into().unwrap()) };
     if sa.is_null() {
         panic!("SAFEARRAY allocation failed");
     }
@@ -154,4 +153,16 @@ pub(crate) enum QueuedEvent {
 
 pub(crate) fn not_implemented() -> Error {
     Error::new(E_NOTIMPL, "".into())
+}
+
+pub(crate) fn invalid_arg() -> Error {
+    Error::new(E_INVALIDARG, "".into())
+}
+
+pub(crate) fn required_param<T>(param: &Option<T>) -> Result<&T> {
+    param.as_ref().map_or_else(|| Err(invalid_arg()), Ok)
+}
+
+pub(crate) fn element_not_available() -> Error {
+    Error::new(HRESULT(UIA_E_ELEMENTNOTAVAILABLE as i32), "".into())
 }

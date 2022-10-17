@@ -3,13 +3,25 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit_consumer::{TextRange as Range, Tree, WeakTextRange as WeakRange};
+#![allow(non_upper_case_globals)]
+
+use accesskit_consumer::{TextPosition as Position, TextRange as Range, Tree, TreeState, WeakTextRange as WeakRange};
 use parking_lot::RwLock;
-use std::sync::Weak;
+use std::sync::{Arc, Weak};
 use windows::{
     core::*,
     Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
 };
+
+use crate::util::*;
+
+fn position_from_endpoint<'a>(range: &'a Range, endpoint: TextPatternRangeEndpoint) -> Result<Position<'a>> {
+    match endpoint {
+        TextPatternRangeEndpoint_Start => Ok(range.start()),
+        TextPatternRangeEndpoint_End => Ok(range.end()),
+        _ => Err(invalid_arg()),
+    }
+}
 
 #[implement(ITextRangeProvider)]
 pub(crate) struct PlatformRange {
@@ -24,6 +36,37 @@ impl PlatformRange {
             state: RwLock::new(range.downgrade()),
         }
     }
+
+    fn upgrade_tree(&self) -> Result<Arc<Tree>> {
+        if let Some(tree) = self.tree.upgrade() {
+            Ok(tree)
+        } else {
+            Err(element_not_available())
+        }
+    }
+
+    fn with_tree_state<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(&TreeState) -> Result<T>,
+    {
+        let tree = self.upgrade_tree()?;
+        let state = tree.read();
+        f(&state)
+    }
+
+    fn read<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(&Range) -> Result<T>,
+    {
+        self.with_tree_state(|tree_state| {
+            let state = self.state.read();
+            if let Some(range) = state.upgrade(tree_state) {
+                f(&range)
+            } else {
+                Err(element_not_available())
+            }
+        })
+    }
 }
 
 impl Clone for PlatformRange {
@@ -35,13 +78,19 @@ impl Clone for PlatformRange {
     }
 }
 
+// Some text range methods take another text range interface pointer as a
+// parameter. We need to cast these interface pointers to their underlying
+// implementations. We assume that AccessKit is the only UIA provider
+// within this process. This seems a safe assumption for most AccessKit users.
+
 impl ITextRangeProvider_Impl for PlatformRange {
     fn Clone(&self) -> Result<ITextRangeProvider> {
         Ok(self.clone().into())
     }
 
     fn Compare(&self, other: &Option<ITextRangeProvider>) -> Result<BOOL> {
-        todo!()
+        let other = required_param(other)?.as_impl();
+        Ok((*self.state.read() == *other.state.read()).into())
     }
 
     fn CompareEndpoints(
@@ -50,7 +99,18 @@ impl ITextRangeProvider_Impl for PlatformRange {
         other: &Option<ITextRangeProvider>,
         other_endpoint: TextPatternRangeEndpoint,
     ) -> Result<i32> {
-        todo!()
+        let other = required_param(other)?.as_impl();
+        self.read(|range| {
+            other.read(|other_range| {
+                if range.node().id() != other_range.node().id() {
+                    return Err(invalid_arg());
+                }
+                let pos = position_from_endpoint(range, endpoint)?;
+                let other_pos = position_from_endpoint(other_range, other_endpoint)?;
+                let result = pos.partial_cmp(&other_pos).unwrap();
+                Ok(result as i32)
+            })
+        })
     }
 
     fn ExpandToEnclosingUnit(&self, unit: TextUnit) -> Result<()> {

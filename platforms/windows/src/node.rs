@@ -472,10 +472,6 @@ impl<'a> NodeWrapper<'a> {
     }
 }
 
-fn element_not_available() -> Error {
-    Error::new(HRESULT(UIA_E_ELEMENTNOTAVAILABLE as i32), "".into())
-}
-
 #[implement(
     IRawElementProviderSimple,
     IRawElementProviderFragment,
