@@ -67,6 +67,22 @@ impl PlatformRange {
             }
         })
     }
+
+    fn write<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(&mut Range) -> Result<T>,
+    {
+        self.with_tree_state(|tree_state| {
+            let mut state = self.state.write();
+            if let Some(mut range) = state.upgrade(tree_state) {
+                let result = f(&mut range);
+                *state = range.downgrade();
+                result
+            } else {
+                Err(element_not_available())
+            }
+        })
+    }
 }
 
 impl Clone for PlatformRange {
@@ -114,7 +130,35 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn ExpandToEnclosingUnit(&self, unit: TextUnit) -> Result<()> {
-        todo!()
+        self.write(|range| {
+            match unit {
+                TextUnit_Character => {
+                    range.expand_to_character();
+                }
+                TextUnit_Format => {
+                    range.expand_to_format();
+                }
+                TextUnit_Word => {
+                    range.expand_to_word();
+                }
+                TextUnit_Line => {
+                    range.expand_to_line();
+                }
+                TextUnit_Paragraph => {
+                    range.expand_to_paragraph();
+                }
+                TextUnit_Page => {
+                    range.expand_to_page();
+                }
+                TextUnit_Document => {
+                    range.expand_to_document();
+                }
+                _ => {
+                    return Err(invalid_arg());
+                }
+            }
+            Ok(())
+        })
     }
 
     fn FindAttribute(

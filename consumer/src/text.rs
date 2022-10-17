@@ -4,20 +4,9 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{NodeId, Role, TextPosition as WeakPosition};
-use std::cmp::Ordering;
+use std::{cmp::Ordering, iter::FusedIterator};
 
 use crate::{FilterResult, Node, TreeState};
-
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Unit {
-    Character,
-    Format,
-    Word,
-    Line,
-    Paragraph,
-    Page,
-    Document,
-}
 
 #[derive(Clone, Copy)]
 struct InnerPosition<'a> {
@@ -46,6 +35,28 @@ impl<'a> InnerPosition<'a> {
             self.node.relative_index_path(root_node_id),
             self.character_index,
         )
+    }
+
+    fn line_start(&self) -> Self {
+        let mut node = self.node;
+        while let Some(id) = node.data().previous_on_line {
+            node = node.tree_state.node_by_id(id).unwrap();
+        }
+        Self {
+            node,
+            character_index: 0,
+        }
+    }
+
+    fn line_end(&self) -> Self {
+        let mut node = self.node;
+        while let Some(id) = node.data().next_on_line {
+            node = node.tree_state.node_by_id(id).unwrap();
+        }
+        Self {
+            node,
+            character_index: node.data().character_end_indices.len() as _,
+        }
     }
 
     fn downgrade(&self) -> WeakPosition {
@@ -123,6 +134,37 @@ impl<'a> Range<'a> {
         }
     }
 
+    pub fn expand_to_character(&mut self) {
+        todo!()
+    }
+
+    pub fn expand_to_format(&mut self) {
+        // We don't currently support format runs, so fall back to document.
+        self.expand_to_document();
+    }
+
+    pub fn expand_to_word(&mut self) {
+        todo!()
+    }
+
+    pub fn expand_to_line(&mut self) {
+        self.start = self.start.line_start();
+        self.end = self.start.line_end();
+    }
+
+    pub fn expand_to_paragraph(&mut self) {
+        todo!()
+    }
+
+    pub fn expand_to_page(&mut self) {
+        // We don't currently support pages, so fall back to document.
+        self.expand_to_document();
+    }
+
+    pub fn expand_to_document(&mut self) {
+        (self.start, self.end) = self.node.document_endpoints();
+    }
+
     pub fn downgrade(&self) -> WeakRange {
         WeakRange {
             node_id: self.node.id(),
@@ -156,13 +198,20 @@ impl WeakRange {
     }
 }
 
+fn text_node_filter(root_id: NodeId, node: &Node) -> FilterResult {
+    if node.id() == root_id || (node.role() == Role::InlineTextBox && !node.is_hidden()) {
+        FilterResult::Include
+    } else {
+        FilterResult::ExcludeNode
+    }
+}
+
 impl<'a> Node<'a> {
-    fn text_node_filter(&self, node: &Node) -> FilterResult {
-        if node.id() == self.id() || (node.role() == Role::InlineTextBox && !node.is_hidden()) {
-            FilterResult::Include
-        } else {
-            FilterResult::ExcludeNode
-        }
+    fn inline_text_boxes(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+        let id = self.id();
+        self.filtered_children(move |node| text_node_filter(id, node))
     }
 
     pub fn supports_text_ranges(&self) -> bool {
@@ -170,19 +219,16 @@ impl<'a> Node<'a> {
         if role != Role::StaticText && role != Role::TextField && role != Role::Document {
             return false;
         }
-        self.filtered_children(|node| self.text_node_filter(node))
-            .next()
-            .is_some()
+        self.inline_text_boxes().next().is_some()
     }
 
-    fn document_endpoints(&self) -> (InnerPosition, InnerPosition) {
-        let mut boxes = self.filtered_children(|node| self.text_node_filter(node));
-        let first_box = boxes.next().unwrap();
+    fn document_endpoints(&self) -> (InnerPosition<'a>, InnerPosition<'a>) {
+        let first_box = self.inline_text_boxes().next().unwrap();
         let start = InnerPosition {
             node: first_box,
             character_index: 0,
         };
-        let last_box = boxes.next_back().unwrap();
+        let last_box = self.inline_text_boxes().next_back().unwrap();
         let end = InnerPosition {
             node: last_box,
             character_index: last_box.data().character_end_indices.len() as u16,
