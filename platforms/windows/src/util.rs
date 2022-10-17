@@ -7,6 +7,7 @@ use std::{convert::TryInto, mem::ManuallyDrop};
 use windows::{
     core::*,
     Win32::{
+        Foundation::*,
         System::{Com::*, Ole::*},
         UI::Accessibility::*,
     },
@@ -149,4 +150,8 @@ pub(crate) enum QueuedEvent {
         old_value: VARIANT,
         new_value: VARIANT,
     },
+}
+
+pub(crate) fn not_implemented() -> Error {
+    Error::new(E_NOTIMPL, "".into())
 }

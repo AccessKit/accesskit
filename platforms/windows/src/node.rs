@@ -476,10 +476,6 @@ fn element_not_available() -> Error {
     Error::new(HRESULT(UIA_E_ELEMENTNOTAVAILABLE as i32), "".into())
 }
 
-fn not_implemented() -> Error {
-    Error::new(E_NOTIMPL, "".into())
-}
-
 #[implement(
     IRawElementProviderSimple,
     IRawElementProviderFragment,
