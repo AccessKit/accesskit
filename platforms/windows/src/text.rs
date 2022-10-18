@@ -51,8 +51,77 @@ fn set_endpoint_position<'a>(range: &mut Range<'a>, endpoint: TextPatternRangeEn
     Ok(())
 }
 
-fn move_position<'a>(pos: Position<'a>, unit: TextUnit, count: i32) -> (Position<'a>, i32) {
-    todo!()
+fn move_position_once<'a>(pos: Position<'a>, unit: TextUnit, forward: bool) -> Result<Option<Position<'a>>> {
+    match unit {
+        TextUnit_Character => {
+            if forward {
+                Ok(pos.forward_by_character())
+            } else {
+                Ok(pos.backward_by_character())
+            }
+        }
+        TextUnit_Format => {
+            if forward {
+                Ok(pos.forward_by_format())
+            } else {
+                Ok(pos.backward_by_format())
+            }
+        }
+        TextUnit_Word => {
+            if forward {
+                Ok(pos.forward_by_word())
+            } else {
+                Ok(pos.backward_by_word())
+            }
+        }
+        TextUnit_Line => {
+            if forward {
+                Ok(pos.forward_by_line())
+            } else {
+                Ok(pos.backward_by_line())
+            }
+        }
+        TextUnit_Paragraph => {
+            if forward {
+                Ok(pos.forward_by_paragraph())
+            } else {
+                Ok(pos.backward_by_paragraph())
+            }
+        }
+        TextUnit_Page => {
+            if forward {
+                Ok(pos.forward_by_page())
+            } else {
+                Ok(pos.backward_by_page())
+            }
+        }
+        TextUnit_Document => {
+            if forward {
+                Ok(pos.forward_by_document())
+            } else {
+                Ok(pos.backward_by_document())
+            }
+        }
+        _ => Err(invalid_arg())
+    }
+}
+
+fn move_position<'a>(mut pos: Position<'a>, unit: TextUnit, count: i32) -> Result<(Position<'a>, i32)> {
+    let forward = count > 0;
+    let count = count.abs();
+    let mut moved = 0i32;
+    for _ in 0..count {
+        if let Some(new_pos) = move_position_once(pos, unit, forward)? {
+            pos = new_pos;
+            moved += 1;
+        } else {
+            break;
+        }
+    }
+    if !forward {
+        moved = -moved;
+    }
+    Ok((pos, moved))
 }
 
 #[implement(ITextRangeProvider)]
@@ -246,7 +315,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
     ) -> Result<i32> {
         self.write(|range| {
             let pos = position_from_endpoint(range, endpoint)?;
-            let (pos, moved) = move_position(pos, unit, count);
+            let (pos, moved) = move_position(pos, unit, count)?;
             set_endpoint_position(range, endpoint, pos)?;
             Ok(moved)
         })

@@ -98,6 +98,64 @@ pub struct Position<'a> {
     inner: InnerPosition<'a>,
 }
 
+impl<'a> Position<'a> {
+    pub fn forward_by_character(&self) -> Option<Self> {
+        todo!()
+    }
+
+    pub fn backward_by_character(&self) -> Option<Self> {
+        todo!()
+    }
+
+    pub fn forward_by_format(&self) -> Option<Self> {
+        todo!()
+    }
+
+    pub fn backward_by_format(&self) -> Option<Self> {
+        todo!()
+    }
+
+    pub fn forward_by_word(&self) -> Option<Self> {
+        todo!()
+    }
+
+    pub fn backward_by_word(&self) -> Option<Self> {
+        todo!()
+    }
+
+    pub fn forward_by_line(&self) -> Option<Self> {
+        todo!()
+    }
+
+    pub fn backward_by_line(&self) -> Option<Self> {
+        todo!()
+    }
+
+    pub fn forward_by_paragraph(&self) -> Option<Self> {
+        todo!()
+    }
+
+    pub fn backward_by_paragraph(&self) -> Option<Self> {
+        todo!()
+    }
+
+    pub fn forward_by_page(&self) -> Option<Self> {
+        todo!()
+    }
+
+    pub fn backward_by_page(&self) -> Option<Self> {
+        todo!()
+    }
+
+    pub fn forward_by_document(&self) -> Option<Self> {
+        todo!()
+    }
+
+    pub fn backward_by_document(&self) -> Option<Self> {
+        todo!()
+    }
+}
+
 impl<'a> PartialEq for Position<'a> {
     fn eq(&self, other: &Self) -> bool {
         self.root_node.id() == other.root_node.id() && self.inner == other.inner
