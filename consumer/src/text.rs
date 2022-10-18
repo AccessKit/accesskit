@@ -136,14 +136,14 @@ impl<'a> Range<'a> {
         &self.node
     }
 
-    pub fn start(&self) -> Position {
+    pub fn start(&self) -> Position<'a> {
         Position {
             root_node: self.node,
             inner: self.start,
         }
     }
 
-    pub fn end(&self) -> Position {
+    pub fn end(&self) -> Position<'a> {
         Position {
             root_node: self.node,
             inner: self.end,

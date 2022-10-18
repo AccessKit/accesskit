@@ -26,7 +26,7 @@ fn upgrade_range<'a>(weak: &WeakRange, tree_state: &'a TreeState) -> Result<Rang
 }
 
 fn position_from_endpoint<'a>(
-    range: &'a Range,
+    range: &Range<'a>,
     endpoint: TextPatternRangeEndpoint,
 ) -> Result<Position<'a>> {
     match endpoint {
@@ -49,6 +49,10 @@ fn set_endpoint_position<'a>(range: &mut Range<'a>, endpoint: TextPatternRangeEn
         }
     }
     Ok(())
+}
+
+fn move_position<'a>(pos: Position<'a>, unit: TextUnit, count: i32) -> (Position<'a>, i32) {
+    todo!()
 }
 
 #[implement(ITextRangeProvider)]
@@ -241,8 +245,8 @@ impl ITextRangeProvider_Impl for PlatformRange {
         count: i32,
     ) -> Result<i32> {
         self.write(|range| {
-            let pos = position_from_endpoint(range, endpoint);
-            let (pos, moved) = todo!();
+            let pos = position_from_endpoint(range, endpoint)?;
+            let (pos, moved) = move_position(pos, unit, count);
             set_endpoint_position(range, endpoint, pos)?;
             Ok(moved)
         })
