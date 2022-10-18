@@ -55,11 +55,7 @@ fn set_endpoint_position<'a>(
     Ok(())
 }
 
-fn move_position_once<'a>(
-    pos: Position<'a>,
-    unit: TextUnit,
-    forward: bool,
-) -> Result<Position<'a>> {
+fn move_position_once(pos: Position, unit: TextUnit, forward: bool) -> Result<Position> {
     match unit {
         TextUnit_Character => {
             if forward {
@@ -114,11 +110,7 @@ fn move_position_once<'a>(
     }
 }
 
-fn move_position<'a>(
-    mut pos: Position<'a>,
-    unit: TextUnit,
-    count: i32,
-) -> Result<(Position<'a>, i32)> {
+fn move_position(mut pos: Position, unit: TextUnit, count: i32) -> Result<(Position, i32)> {
     let forward = count > 0;
     let count = count.abs();
     let mut moved = 0i32;
@@ -242,10 +234,10 @@ impl ITextRangeProvider_Impl for PlatformRange {
         other_endpoint: TextPatternRangeEndpoint,
     ) -> Result<i32> {
         let other = required_param(other)?.as_impl();
-        self.require_same_tree(&other)?;
+        self.require_same_tree(other)?;
         self.with_tree_state(|tree_state| {
-            let range = self.upgrade_for_read(&tree_state)?;
-            let other_range = other.upgrade_for_read(&tree_state)?;
+            let range = self.upgrade_for_read(tree_state)?;
+            let other_range = other.upgrade_for_read(tree_state)?;
             if range.node().id() != other_range.node().id() {
                 return Err(invalid_arg());
             }
@@ -355,7 +347,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
         other_endpoint: TextPatternRangeEndpoint,
     ) -> Result<()> {
         let other = required_param(other)?.as_impl();
-        self.require_same_tree(&other)?;
+        self.require_same_tree(other)?;
         // We have to obtain the tree state and ranges manually to avoid
         // lifetime issues, and work with the two locks in a specific order
         // to avoid deadlock.
