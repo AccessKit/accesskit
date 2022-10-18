@@ -15,7 +15,7 @@ use windows::{
     Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
 };
 
-use crate::util::*;
+use crate::{node::PlatformNode, util::*};
 
 fn upgrade_range<'a>(weak: &WeakRange, tree_state: &'a TreeState) -> Result<Range<'a>> {
     if let Some(range) = weak.upgrade(tree_state) {
@@ -36,7 +36,11 @@ fn position_from_endpoint<'a>(
     }
 }
 
-fn set_endpoint_position<'a>(range: &mut Range<'a>, endpoint: TextPatternRangeEndpoint, pos: Position<'a>) -> Result<()> {
+fn set_endpoint_position<'a>(
+    range: &mut Range<'a>,
+    endpoint: TextPatternRangeEndpoint,
+    pos: Position<'a>,
+) -> Result<()> {
     match endpoint {
         TextPatternRangeEndpoint_Start => {
             range.set_start(pos);
@@ -51,7 +55,11 @@ fn set_endpoint_position<'a>(range: &mut Range<'a>, endpoint: TextPatternRangeEn
     Ok(())
 }
 
-fn move_position_once<'a>(pos: Position<'a>, unit: TextUnit, forward: bool) -> Result<Position<'a>> {
+fn move_position_once<'a>(
+    pos: Position<'a>,
+    unit: TextUnit,
+    forward: bool,
+) -> Result<Position<'a>> {
     match unit {
         TextUnit_Character => {
             if forward {
@@ -102,11 +110,15 @@ fn move_position_once<'a>(pos: Position<'a>, unit: TextUnit, forward: bool) -> R
                 Ok(pos.backward_by_document())
             }
         }
-        _ => Err(invalid_arg())
+        _ => Err(invalid_arg()),
     }
 }
 
-fn move_position<'a>(mut pos: Position<'a>, unit: TextUnit, count: i32) -> Result<(Position<'a>, i32)> {
+fn move_position<'a>(
+    mut pos: Position<'a>,
+    unit: TextUnit,
+    count: i32,
+) -> Result<(Position<'a>, i32)> {
     let forward = count > 0;
     let count = count.abs();
     let mut moved = 0i32;
@@ -132,13 +144,15 @@ fn move_position<'a>(mut pos: Position<'a>, unit: TextUnit, count: i32) -> Resul
 pub(crate) struct PlatformRange {
     tree: Weak<Tree>,
     state: RwLock<WeakRange>,
+    hwnd: HWND,
 }
 
 impl PlatformRange {
-    pub(crate) fn new(tree: &Weak<Tree>, range: Range) -> Self {
+    pub(crate) fn new(tree: &Weak<Tree>, range: Range, hwnd: HWND) -> Self {
         Self {
             tree: tree.clone(),
             state: RwLock::new(range.downgrade()),
+            hwnd,
         }
     }
 
@@ -201,6 +215,7 @@ impl Clone for PlatformRange {
         PlatformRange {
             tree: self.tree.clone(),
             state: RwLock::new(*self.state.read()),
+            hwnd: self.hwnd,
         }
     }
 }
@@ -300,7 +315,15 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn GetEnclosingElement(&self) -> Result<IRawElementProviderSimple> {
-        todo!()
+        self.read(|range| {
+            // Revisit this if we eventually support embedded objects.
+            Ok(PlatformNode {
+                tree: self.tree.clone(),
+                node_id: range.node().id(),
+                hwnd: self.hwnd,
+            }
+            .into())
+        })
     }
 
     fn GetText(&self, max_length: i32) -> Result<BSTR> {

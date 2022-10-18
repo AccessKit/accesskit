@@ -484,9 +484,9 @@ impl<'a> NodeWrapper<'a> {
     ITextProvider
 )]
 pub(crate) struct PlatformNode {
-    tree: Weak<Tree>,
-    node_id: NodeId,
-    hwnd: HWND,
+    pub(crate) tree: Weak<Tree>,
+    pub(crate) node_id: NodeId,
+    pub(crate) hwnd: HWND,
 }
 
 impl PlatformNode {
@@ -845,7 +845,7 @@ patterns! {
         fn GetSelection(&self) -> Result<*mut SAFEARRAY> {
             self.resolve(|wrapper| {
                 if let Some(range) = wrapper.node.text_selection() {
-                    let platform_range: ITextRangeProvider = PlatformTextRange::new(&self.tree, range).into();
+                    let platform_range: ITextRangeProvider = PlatformTextRange::new(&self.tree, range, self.hwnd).into();
                     let iunknown: IUnknown = platform_range.into();
                     Ok(safe_array_from_com_slice(&[iunknown]))
                 } else {
@@ -874,7 +874,7 @@ patterns! {
         fn DocumentRange(&self) -> Result<ITextRangeProvider> {
             self.resolve(|wrapper| {
                 let range = wrapper.node.document_range();
-                Ok(PlatformTextRange::new(&self.tree, range).into())
+                Ok(PlatformTextRange::new(&self.tree, range, self.hwnd).into())
             })
         },
 
