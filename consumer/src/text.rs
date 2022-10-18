@@ -68,6 +68,18 @@ impl<'a> InnerPosition<'a> {
         *self
     }
 
+    fn normalize_to_box_end(&self, root_node: &Node) -> Self {
+        if self.is_box_start() {
+            if let Some(node) = self.node.preceding_inline_text_boxes(root_node).next() {
+                return Self {
+                    node,
+                    character_index: node.data().character_end_indices.len() as _,
+                };
+            }
+        }
+        *self
+    }
+
     fn comparable(&self, root_node: &Node) -> (Vec<usize>, u16) {
         let normalized = self.normalize_to_box_start(root_node);
         (
@@ -130,11 +142,25 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_by_character(&self) -> Self {
-        todo!()
+        let normalized = self.inner.normalize_to_box_start(&self.root_node);
+        Self {
+            root_node: self.root_node,
+            inner: InnerPosition {
+                node: normalized.node,
+                character_index: normalized.character_index + 1,
+            },
+        }
     }
 
     pub fn backward_by_character(&self) -> Self {
-        todo!()
+        let normalized = self.inner.normalize_to_box_end(&self.root_node);
+        Self {
+            root_node: self.root_node,
+            inner: InnerPosition {
+                node: normalized.node,
+                character_index: normalized.character_index - 1,
+            },
+        }
     }
 
     pub fn forward_by_format(&self) -> Self {
