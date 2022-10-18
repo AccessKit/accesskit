@@ -360,7 +360,7 @@ impl WeakRange {
 }
 
 fn text_node_filter(root_id: NodeId, node: &Node) -> FilterResult {
-    if node.id() == root_id || (node.role() == Role::InlineTextBox && !node.is_hidden()) {
+    if node.id() == root_id || node.role() == Role::InlineTextBox {
         FilterResult::Include
     } else {
         FilterResult::ExcludeNode
