@@ -5,7 +5,9 @@
 
 #![allow(non_upper_case_globals)]
 
-use accesskit_consumer::{TextPosition as Position, TextRange as Range, Tree, TreeState, WeakTextRange as WeakRange};
+use accesskit_consumer::{
+    TextPosition as Position, TextRange as Range, Tree, TreeState, WeakTextRange as WeakRange,
+};
 use parking_lot::RwLock;
 use std::sync::{Arc, Weak};
 use windows::{
@@ -15,7 +17,18 @@ use windows::{
 
 use crate::util::*;
 
-fn position_from_endpoint<'a>(range: &'a Range, endpoint: TextPatternRangeEndpoint) -> Result<Position<'a>> {
+fn upgrade_range<'a>(weak: &WeakRange, tree_state: &'a TreeState) -> Result<Range<'a>> {
+    if let Some(range) = weak.upgrade(tree_state) {
+        Ok(range)
+    } else {
+        Err(element_not_available())
+    }
+}
+
+fn position_from_endpoint<'a>(
+    range: &'a Range,
+    endpoint: TextPatternRangeEndpoint,
+) -> Result<Position<'a>> {
     match endpoint {
         TextPatternRangeEndpoint_Start => Ok(range.start()),
         TextPatternRangeEndpoint_End => Ok(range.end()),
@@ -54,17 +67,18 @@ impl PlatformRange {
         f(&state)
     }
 
+    fn upgrade_for_read<'a>(&self, tree_state: &'a TreeState) -> Result<Range<'a>> {
+        let state = self.state.read();
+        upgrade_range(&state, tree_state)
+    }
+
     fn read<F, T>(&self, f: F) -> Result<T>
     where
         F: FnOnce(&Range) -> Result<T>,
     {
         self.with_tree_state(|tree_state| {
-            let state = self.state.read();
-            if let Some(range) = state.upgrade(tree_state) {
-                f(&range)
-            } else {
-                Err(element_not_available())
-            }
+            let range = self.upgrade_for_read(tree_state)?;
+            f(&range)
         })
     }
 
@@ -74,14 +88,19 @@ impl PlatformRange {
     {
         self.with_tree_state(|tree_state| {
             let mut state = self.state.write();
-            if let Some(mut range) = state.upgrade(tree_state) {
-                let result = f(&mut range);
-                *state = range.downgrade();
-                result
-            } else {
-                Err(element_not_available())
-            }
+            let mut range = upgrade_range(&state, tree_state)?;
+            let result = f(&mut range);
+            *state = range.downgrade();
+            result
         })
+    }
+
+    fn require_same_tree(&self, other: &PlatformRange) -> Result<()> {
+        if self.tree.ptr_eq(&other.tree) {
+            Ok(())
+        } else {
+            Err(invalid_arg())
+        }
     }
 }
 
@@ -106,7 +125,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
 
     fn Compare(&self, other: &Option<ITextRangeProvider>) -> Result<BOOL> {
         let other = required_param(other)?.as_impl();
-        Ok((*self.state.read() == *other.state.read()).into())
+        Ok((self.tree.ptr_eq(&other.tree) && *self.state.read() == *other.state.read()).into())
     }
 
     fn CompareEndpoints(
@@ -116,16 +135,17 @@ impl ITextRangeProvider_Impl for PlatformRange {
         other_endpoint: TextPatternRangeEndpoint,
     ) -> Result<i32> {
         let other = required_param(other)?.as_impl();
-        self.read(|range| {
-            other.read(|other_range| {
-                if range.node().id() != other_range.node().id() {
-                    return Err(invalid_arg());
-                }
-                let pos = position_from_endpoint(range, endpoint)?;
-                let other_pos = position_from_endpoint(other_range, other_endpoint)?;
-                let result = pos.partial_cmp(&other_pos).unwrap();
-                Ok(result as i32)
-            })
+        self.require_same_tree(&other)?;
+        self.with_tree_state(|tree_state| {
+            let range = self.upgrade_for_read(&tree_state)?;
+            let other_range = other.upgrade_for_read(&tree_state)?;
+            if range.node().id() != other_range.node().id() {
+                return Err(invalid_arg());
+            }
+            let pos = position_from_endpoint(&range, endpoint)?;
+            let other_pos = position_from_endpoint(&other_range, other_endpoint)?;
+            let result = pos.partial_cmp(&other_pos).unwrap();
+            Ok(result as i32)
         })
     }
 
@@ -214,7 +234,33 @@ impl ITextRangeProvider_Impl for PlatformRange {
         other: &Option<ITextRangeProvider>,
         other_endpoint: TextPatternRangeEndpoint,
     ) -> Result<()> {
-        todo!()
+        let other = required_param(other)?.as_impl();
+        self.require_same_tree(&other)?;
+        // We have to obtain the tree state and ranges manually to avoid
+        // lifetime issues, and work with the two locks in a specific order
+        // to avoid deadlock.
+        self.with_tree_state(|tree_state| {
+            let other_range = other.upgrade_for_read(tree_state)?;
+            let mut state = self.state.write();
+            let mut range = upgrade_range(&state, tree_state)?;
+            if range.node().id() != other_range.node().id() {
+                return Err(invalid_arg());
+            }
+            let pos = position_from_endpoint(&other_range, other_endpoint)?;
+            match endpoint {
+                TextPatternRangeEndpoint_Start => {
+                    range.set_start(pos);
+                }
+                TextPatternRangeEndpoint_End => {
+                    range.set_end(pos);
+                }
+                _ => {
+                    return Err(invalid_arg());
+                }
+            }
+            *state = range.downgrade();
+            Ok(())
+        })
     }
 
     fn Select(&self) -> Result<()> {

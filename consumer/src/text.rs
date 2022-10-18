@@ -181,6 +181,22 @@ impl<'a> Range<'a> {
         (self.start, self.end) = self.node.document_endpoints();
     }
 
+    pub fn set_start(&mut self, pos: Position<'a>) {
+        assert_eq!(pos.root_node.id(), self.node.id());
+        self.start = pos.inner;
+        if self.start.comparable(&self.node) > self.end.comparable(&self.node) {
+            self.end = self.start;
+        }
+    }
+
+    pub fn set_end(&mut self, pos: Position<'a>) {
+        assert_eq!(pos.root_node.id(), self.node.id());
+        self.end = pos.inner;
+        if self.start.comparable(&self.node) > self.end.comparable(&self.node) {
+            self.start = self.end;
+        }
+    }
+
     pub fn downgrade(&self) -> WeakRange {
         WeakRange {
             node_id: self.node.id(),
