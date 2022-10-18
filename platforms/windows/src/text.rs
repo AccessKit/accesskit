@@ -36,6 +36,21 @@ fn position_from_endpoint<'a>(
     }
 }
 
+fn set_endpoint_position<'a>(range: &mut Range<'a>, endpoint: TextPatternRangeEndpoint, pos: Position<'a>) -> Result<()> {
+    match endpoint {
+        TextPatternRangeEndpoint_Start => {
+            range.set_start(pos);
+        }
+        TextPatternRangeEndpoint_End => {
+            range.set_end(pos);
+        }
+        _ => {
+            return Err(invalid_arg());
+        }
+    }
+    Ok(())
+}
+
 #[implement(ITextRangeProvider)]
 pub(crate) struct PlatformRange {
     tree: Weak<Tree>,
@@ -74,11 +89,11 @@ impl PlatformRange {
 
     fn read<F, T>(&self, f: F) -> Result<T>
     where
-        F: FnOnce(&Range) -> Result<T>,
+        F: FnOnce(Range) -> Result<T>,
     {
         self.with_tree_state(|tree_state| {
             let range = self.upgrade_for_read(tree_state)?;
-            f(&range)
+            f(range)
         })
     }
 
@@ -247,17 +262,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
                 return Err(invalid_arg());
             }
             let pos = position_from_endpoint(&other_range, other_endpoint)?;
-            match endpoint {
-                TextPatternRangeEndpoint_Start => {
-                    range.set_start(pos);
-                }
-                TextPatternRangeEndpoint_End => {
-                    range.set_end(pos);
-                }
-                _ => {
-                    return Err(invalid_arg());
-                }
-            }
+            set_endpoint_position(&mut range, endpoint, pos)?;
             *state = range.downgrade();
             Ok(())
         })
