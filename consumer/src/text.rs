@@ -180,11 +180,19 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_by_line(&self) -> Self {
-        todo!()
+        let normalized = self.inner.normalize_to_box_start(&self.root_node);
+        Self {
+            root_node: self.root_node,
+            inner: normalized.line_end(),
+        }
     }
 
     pub fn backward_by_line(&self) -> Self {
-        todo!()
+        let normalized = self.inner.normalize_to_box_end(&self.root_node);
+        Self {
+            root_node: self.root_node,
+            inner: normalized.line_start(),
+        }
     }
 
     pub fn forward_by_paragraph(&self) -> Self {
