@@ -204,11 +204,17 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_by_document(&self) -> Self {
-        todo!()
+        Self {
+            root_node: self.root_node,
+            inner: self.root_node.document_end(),
+        }
     }
 
     pub fn backward_by_document(&self) -> Self {
-        todo!()
+        Self {
+            root_node: self.root_node,
+            inner: self.root_node.document_start(),
+        }
     }
 }
 
