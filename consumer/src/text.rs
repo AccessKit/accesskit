@@ -178,7 +178,8 @@ impl<'a> Range<'a> {
     }
 
     pub fn expand_to_document(&mut self) {
-        (self.start, self.end) = self.node.document_endpoints();
+        self.start = self.node.document_start();
+        self.end = self.node.document_end();
     }
 
     pub fn set_start(&mut self, pos: Position<'a>) {
@@ -262,22 +263,25 @@ impl<'a> Node<'a> {
         self.inline_text_boxes().next().is_some()
     }
 
-    fn document_endpoints(&self) -> (InnerPosition<'a>, InnerPosition<'a>) {
-        let first_box = self.inline_text_boxes().next().unwrap();
-        let start = InnerPosition {
-            node: first_box,
+    fn document_start(&self) -> InnerPosition<'a> {
+        let node = self.inline_text_boxes().next().unwrap();
+        InnerPosition {
+            node,
             character_index: 0,
-        };
-        let last_box = self.inline_text_boxes().next_back().unwrap();
-        let end = InnerPosition {
-            node: last_box,
-            character_index: last_box.data().character_end_indices.len() as u16,
-        };
-        (start, end)
+        }
+    }
+
+    fn document_end(&self) -> InnerPosition<'a> {
+        let node = self.inline_text_boxes().next_back().unwrap();
+        InnerPosition {
+            node,
+            character_index: node.data().character_end_indices.len() as u16,
+        }
     }
 
     pub fn document_range(&self) -> Range {
-        let (start, end) = self.document_endpoints();
+        let start = self.document_start();
+        let end = self.document_end();
         Range::new(*self, start, end)
     }
 
