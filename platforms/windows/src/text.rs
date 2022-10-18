@@ -240,7 +240,12 @@ impl ITextRangeProvider_Impl for PlatformRange {
         unit: TextUnit,
         count: i32,
     ) -> Result<i32> {
-        todo!()
+        self.write(|range| {
+            let pos = position_from_endpoint(range, endpoint);
+            let (pos, moved) = todo!();
+            set_endpoint_position(range, endpoint, pos)?;
+            Ok(moved)
+        })
     }
 
     fn MoveEndpointByRange(
