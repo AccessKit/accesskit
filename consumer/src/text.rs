@@ -278,6 +278,40 @@ impl<'a> Range<'a> {
         }
     }
 
+    pub fn is_degenerate(&self) -> bool {
+        self.start.comparable(&self.node) == self.end.comparable(&self.node)
+    }
+
+    fn walk(&self, mut f: impl FnMut(&Node, u16, u16)) {
+        let start = self.start.normalize_to_box_start(&self.node);
+        // For a degenerate range, the following avoids having `end`
+        // come before `start`.
+        let end = if self.is_degenerate() {
+            start
+        } else {
+            self.end.normalize_to_box_end(&self.node)
+        };
+        if start.node.id() == end.node.id() {
+            f(&start.node, start.character_index, end.character_index);
+            return;
+        }
+        todo!()
+    }
+
+    pub fn text(&self) -> String {
+        let mut result = String::new();
+        self.walk(|node, start_index, end_index| {
+            let character_end_indices = &node.data().character_end_indices;
+            if start_index == 0 && (end_index as usize) == character_end_indices.len() {
+                // Fast path
+                result.push_str(node.value().unwrap());
+                return;
+            }
+            todo!()
+        });
+        result
+    }
+
     pub fn expand_to_character(&mut self) {
         todo!()
     }
