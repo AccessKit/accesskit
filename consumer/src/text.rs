@@ -30,8 +30,30 @@ impl<'a> InnerPosition<'a> {
         })
     }
 
+    fn is_box_start(&self) -> bool {
+        self.character_index == 0
+    }
+
     fn is_box_end(&self) -> bool {
         (self.character_index as usize) == self.node.data().character_end_indices.len()
+    }
+
+    fn is_document_start(&self, root_node: &Node) -> bool {
+        self.is_box_start()
+            && self
+                .node
+                .preceding_inline_text_boxes(root_node)
+                .next()
+                .is_none()
+    }
+
+    fn is_document_end(&self, root_node: &Node) -> bool {
+        self.is_box_end()
+            && self
+                .node
+                .following_inline_text_boxes(root_node)
+                .next()
+                .is_none()
     }
 
     fn normalize_to_box_start(&self, root_node: &Node) -> Self {
@@ -99,59 +121,67 @@ pub struct Position<'a> {
 }
 
 impl<'a> Position<'a> {
-    pub fn forward_by_character(&self) -> Option<Self> {
+    pub fn is_document_start(&self) -> bool {
+        self.inner.is_document_start(&self.root_node)
+    }
+
+    pub fn is_document_end(&self) -> bool {
+        self.inner.is_document_end(&self.root_node)
+    }
+
+    pub fn forward_by_character(&self) -> Self {
         todo!()
     }
 
-    pub fn backward_by_character(&self) -> Option<Self> {
+    pub fn backward_by_character(&self) -> Self {
         todo!()
     }
 
-    pub fn forward_by_format(&self) -> Option<Self> {
+    pub fn forward_by_format(&self) -> Self {
         todo!()
     }
 
-    pub fn backward_by_format(&self) -> Option<Self> {
+    pub fn backward_by_format(&self) -> Self {
         todo!()
     }
 
-    pub fn forward_by_word(&self) -> Option<Self> {
+    pub fn forward_by_word(&self) -> Self {
         todo!()
     }
 
-    pub fn backward_by_word(&self) -> Option<Self> {
+    pub fn backward_by_word(&self) -> Self {
         todo!()
     }
 
-    pub fn forward_by_line(&self) -> Option<Self> {
+    pub fn forward_by_line(&self) -> Self {
         todo!()
     }
 
-    pub fn backward_by_line(&self) -> Option<Self> {
+    pub fn backward_by_line(&self) -> Self {
         todo!()
     }
 
-    pub fn forward_by_paragraph(&self) -> Option<Self> {
+    pub fn forward_by_paragraph(&self) -> Self {
         todo!()
     }
 
-    pub fn backward_by_paragraph(&self) -> Option<Self> {
+    pub fn backward_by_paragraph(&self) -> Self {
         todo!()
     }
 
-    pub fn forward_by_page(&self) -> Option<Self> {
+    pub fn forward_by_page(&self) -> Self {
         todo!()
     }
 
-    pub fn backward_by_page(&self) -> Option<Self> {
+    pub fn backward_by_page(&self) -> Self {
         todo!()
     }
 
-    pub fn forward_by_document(&self) -> Option<Self> {
+    pub fn forward_by_document(&self) -> Self {
         todo!()
     }
 
-    pub fn backward_by_document(&self) -> Option<Self> {
+    pub fn backward_by_document(&self) -> Self {
         todo!()
     }
 }
@@ -311,6 +341,14 @@ impl<'a> Node<'a> {
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
         let id = root_node.id();
         self.following_filtered_siblings(move |node| text_node_filter(id, node))
+    }
+
+    fn preceding_inline_text_boxes(
+        &self,
+        root_node: &Node,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+        let id = root_node.id();
+        self.preceding_filtered_siblings(move |node| text_node_filter(id, node))
     }
 
     pub fn supports_text_ranges(&self) -> bool {

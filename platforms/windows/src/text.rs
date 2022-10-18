@@ -51,7 +51,7 @@ fn set_endpoint_position<'a>(range: &mut Range<'a>, endpoint: TextPatternRangeEn
     Ok(())
 }
 
-fn move_position_once<'a>(pos: Position<'a>, unit: TextUnit, forward: bool) -> Result<Option<Position<'a>>> {
+fn move_position_once<'a>(pos: Position<'a>, unit: TextUnit, forward: bool) -> Result<Position<'a>> {
     match unit {
         TextUnit_Character => {
             if forward {
@@ -111,12 +111,16 @@ fn move_position<'a>(mut pos: Position<'a>, unit: TextUnit, count: i32) -> Resul
     let count = count.abs();
     let mut moved = 0i32;
     for _ in 0..count {
-        if let Some(new_pos) = move_position_once(pos, unit, forward)? {
-            pos = new_pos;
-            moved += 1;
+        let at_end = if forward {
+            pos.is_document_end()
         } else {
+            pos.is_document_start()
+        };
+        if at_end {
             break;
         }
+        pos = move_position_once(pos, unit, forward)?;
+        moved += 1;
     }
     if !forward {
         moved = -moved;
