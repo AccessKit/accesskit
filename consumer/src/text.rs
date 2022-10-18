@@ -30,10 +30,27 @@ impl<'a> InnerPosition<'a> {
         })
     }
 
-    fn comparable(&self, root_node_id: NodeId) -> (Vec<usize>, u16) {
+    fn is_box_end(&self) -> bool {
+        (self.character_index as usize) == self.node.data().character_end_indices.len()
+    }
+
+    fn normalize_to_box_start(&self, root_node: &Node) -> Self {
+        if self.is_box_end() {
+            if let Some(node) = self.node.following_inline_text_boxes(root_node).next() {
+                return Self {
+                    node,
+                    character_index: 0,
+                };
+            }
+        }
+        *self
+    }
+
+    fn comparable(&self, root_node: &Node) -> (Vec<usize>, u16) {
+        let normalized = self.normalize_to_box_start(root_node);
         (
-            self.node.relative_index_path(root_node_id),
-            self.character_index,
+            normalized.node.relative_index_path(root_node.id()),
+            normalized.character_index,
         )
     }
 
@@ -91,12 +108,11 @@ impl<'a> Eq for Position<'a> {}
 
 impl<'a> PartialOrd for Position<'a> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        let root_node_id = self.root_node.id();
-        if root_node_id != other.root_node.id() {
+        if self.root_node.id() != other.root_node.id() {
             return None;
         }
-        let self_comparable = self.inner.comparable(root_node_id);
-        let other_comparable = other.inner.comparable(root_node_id);
+        let self_comparable = self.inner.comparable(&self.root_node);
+        let other_comparable = other.inner.comparable(&self.root_node);
         Some(self_comparable.cmp(&other_comparable))
     }
 }
@@ -110,7 +126,7 @@ pub struct Range<'a> {
 
 impl<'a> Range<'a> {
     fn new(node: Node<'a>, mut start: InnerPosition<'a>, mut end: InnerPosition<'a>) -> Self {
-        if start.comparable(node.id()) > end.comparable(node.id()) {
+        if start.comparable(&node) > end.comparable(&node) {
             std::mem::swap(&mut start, &mut end);
         }
         Self { node, start, end }
@@ -212,6 +228,14 @@ impl<'a> Node<'a> {
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
         let id = self.id();
         self.filtered_children(move |node| text_node_filter(id, node))
+    }
+
+    fn following_inline_text_boxes(
+        &self,
+        root_node: &Node,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+        let id = root_node.id();
+        self.following_filtered_siblings(move |node| text_node_filter(id, node))
     }
 
     pub fn supports_text_ranges(&self) -> bool {
