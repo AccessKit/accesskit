@@ -341,11 +341,21 @@ impl<'a> Range<'a> {
     pub fn attribute<F, T>(&self, f: F) -> AttributeValue<T>
     where
         F: Fn(&Node) -> T,
-        T: Default + PartialEq,
+        T: PartialEq,
     {
-        let mut result = None;
-        todo!();
-        AttributeValue::Single(result.unwrap_or_else(Default::default))
+        let mut value = None;
+        self.walk(|node| {
+            let current = f(node);
+            if let Some(value) = &value {
+                if *value != current {
+                    return Some(AttributeValue::Mixed);
+                }
+            } else {
+                value = Some(current);
+            }
+            None
+        })
+        .unwrap_or_else(|| AttributeValue::Single(value.unwrap()))
     }
 
     pub fn expand_to_character(&mut self) {
