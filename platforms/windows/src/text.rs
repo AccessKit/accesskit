@@ -299,7 +299,13 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn GetAttributeValue(&self, id: i32) -> Result<VARIANT> {
-        todo!()
+        self.read(|range| {
+            match id {
+                _ => {
+                    panic!("need attribute {}", id);
+                }
+            }
+        })
     }
 
     fn GetBoundingRectangles(&self) -> Result<*mut SAFEARRAY> {
