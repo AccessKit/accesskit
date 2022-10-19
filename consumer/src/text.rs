@@ -60,7 +60,7 @@ impl<'a> InnerPosition<'a> {
                 .is_none()
     }
 
-    fn normalize_to_box_start(&self, root_node: &Node) -> Self {
+    fn normalize_to_start(&self, root_node: &Node) -> Self {
         if self.is_box_end() {
             if let Some(node) = self.node.following_inline_text_boxes(root_node).next() {
                 return Self {
@@ -72,7 +72,7 @@ impl<'a> InnerPosition<'a> {
         *self
     }
 
-    fn normalize_to_box_end(&self, root_node: &Node) -> Self {
+    fn normalize_to_end(&self, root_node: &Node) -> Self {
         if self.is_box_start() {
             if let Some(node) = self.node.preceding_inline_text_boxes(root_node).next() {
                 return Self {
@@ -85,7 +85,7 @@ impl<'a> InnerPosition<'a> {
     }
 
     fn comparable(&self, root_node: &Node) -> (Vec<usize>, u16) {
-        let normalized = self.normalize_to_box_start(root_node);
+        let normalized = self.normalize_to_start(root_node);
         (
             normalized.node.relative_index_path(root_node.id()),
             normalized.character_index,
@@ -166,7 +166,7 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_by_character(&self) -> Self {
-        let normalized = self.inner.normalize_to_box_start(&self.root_node);
+        let normalized = self.inner.normalize_to_start(&self.root_node);
         Self {
             root_node: self.root_node,
             inner: InnerPosition {
@@ -177,7 +177,7 @@ impl<'a> Position<'a> {
     }
 
     pub fn backward_by_character(&self) -> Self {
-        let normalized = self.inner.normalize_to_box_end(&self.root_node);
+        let normalized = self.inner.normalize_to_end(&self.root_node);
         Self {
             root_node: self.root_node,
             inner: InnerPosition {
@@ -204,7 +204,7 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_by_line(&self) -> Self {
-        let normalized = self.inner.normalize_to_box_start(&self.root_node);
+        let normalized = self.inner.normalize_to_start(&self.root_node);
         Self {
             root_node: self.root_node,
             inner: normalized.line_end(),
@@ -212,7 +212,7 @@ impl<'a> Position<'a> {
     }
 
     pub fn backward_by_line(&self) -> Self {
-        let normalized = self.inner.normalize_to_box_end(&self.root_node);
+        let normalized = self.inner.normalize_to_end(&self.root_node);
         Self {
             root_node: self.root_node,
             inner: normalized.line_start(),
@@ -315,13 +315,13 @@ impl<'a> Range<'a> {
     where
         F: FnMut(&Node) -> Option<T>,
     {
-        let start = self.start.normalize_to_box_start(&self.node);
+        let start = self.start.normalize_to_start(&self.node);
         // For a degenerate range, the following avoids having `end`
         // come before `start`.
         let end = if self.is_degenerate() {
             start
         } else {
-            self.end.normalize_to_box_end(&self.node)
+            self.end.normalize_to_end(&self.node)
         };
         if let Some(result) = f(&start.node) {
             return Some(result);
