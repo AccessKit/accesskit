@@ -65,6 +65,17 @@ impl From<BSTR> for VariantFactory {
     }
 }
 
+impl From<IUnknown> for VariantFactory {
+    fn from(value: IUnknown) -> Self {
+        Self(
+            VT_UNKNOWN,
+            VARIANT_0_0_0 {
+                punkVal: ManuallyDrop::new(Some(value)),
+            },
+        )
+    }
+}
+
 impl From<i32> for VariantFactory {
     fn from(value: i32) -> Self {
         Self(VT_I4, VARIANT_0_0_0 { lVal: value })

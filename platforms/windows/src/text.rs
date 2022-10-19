@@ -302,7 +302,9 @@ impl ITextRangeProvider_Impl for PlatformRange {
         self.read(|range| {
             match id {
                 _ => {
-                    panic!("need attribute {}", id);
+                    println!("want attribute {}", id);
+                    let value = unsafe { UiaGetReservedNotSupportedValue() }.unwrap();
+                    Ok(VariantFactory::from(value).into())
                 }
             }
         })
