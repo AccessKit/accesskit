@@ -21,7 +21,6 @@ use serde_lib as serde;
 use serde_lib::{Deserialize, Serialize};
 use std::{
     num::{NonZeroU128, NonZeroU64},
-    ops::Range,
     sync::Arc,
 };
 
@@ -414,19 +413,6 @@ pub enum DropEffect {
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-pub enum MarkerType {
-    SpellingError,
-    GrammarError,
-    SearchMatch,
-    ActiveSuggestion,
-    Suggestion,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum TextDirection {
     LeftToRight,
     RightToLeft,
@@ -604,19 +590,6 @@ impl From<NonZeroU64> for NodeId {
     fn from(inner: NonZeroU64) -> Self {
         Self(inner.into())
     }
-}
-
-/// A marker spanning a range within text.
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-pub struct TextMarker {
-    pub marker_type: MarkerType,
-    /// Indices are in UTF-8 code units.
-    pub range: Range<usize>,
 }
 
 /// Defines a custom action for a UI element.
@@ -943,8 +916,17 @@ pub struct Node {
     pub radio_group: Vec<NodeId>,
 
     #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub markers: Box<[TextMarker]>,
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
+    pub is_spelling_error: bool,
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
+    pub is_grammar_error: bool,
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
+    pub is_search_match: bool,
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
+    pub is_suggestion: bool,
 
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub text_direction: Option<TextDirection>,
