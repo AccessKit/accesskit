@@ -13,7 +13,10 @@ pub(crate) mod iterators;
 pub use iterators::FilterResult;
 
 pub(crate) mod text;
-pub use text::{Position as TextPosition, Range as TextRange, WeakRange as WeakTextRange};
+pub use text::{
+    AttributeValue as TextAttributeValue, Position as TextPosition, Range as TextRange,
+    WeakRange as WeakTextRange,
+};
 
 #[cfg(test)]
 mod tests {

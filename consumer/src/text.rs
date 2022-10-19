@@ -245,6 +245,11 @@ impl<'a> PartialOrd for Position<'a> {
     }
 }
 
+pub enum AttributeValue<T> {
+    Single(T),
+    Mixed,
+}
+
 #[derive(Clone, Copy)]
 pub struct Range<'a> {
     node: Node<'a>,
@@ -325,6 +330,16 @@ impl<'a> Range<'a> {
             todo!()
         });
         result
+    }
+
+    pub fn attribute<F, T>(&self, f: F) -> AttributeValue<T>
+    where
+        F: Fn(&Node) -> T,
+        T: Default + PartialEq,
+    {
+        let mut result = None;
+        todo!();
+        AttributeValue::Single(result.unwrap_or_else(Default::default))
     }
 
     pub fn expand_to_character(&mut self) {
