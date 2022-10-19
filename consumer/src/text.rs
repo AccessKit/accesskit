@@ -34,6 +34,10 @@ impl<'a> InnerPosition<'a> {
         self.character_index == 0
     }
 
+    fn is_line_start(&self) -> bool {
+        self.is_box_start() && self.node.data().previous_on_line.is_none()
+    }
+
     fn is_box_end(&self) -> bool {
         (self.character_index as usize) == self.node.data().character_end_indices.len()
     }
@@ -133,6 +137,26 @@ pub struct Position<'a> {
 }
 
 impl<'a> Position<'a> {
+    pub fn is_format_start(&self) -> bool {
+        todo!()
+    }
+
+    pub fn is_word_start(&self) -> bool {
+        todo!()
+    }
+
+    pub fn is_line_start(&self) -> bool {
+        self.inner.is_line_start()
+    }
+
+    pub fn is_paragraph_start(&self) -> bool {
+        todo!()
+    }
+
+    pub fn is_page_start(&self) -> bool {
+        todo!()
+    }
+
     pub fn is_document_start(&self) -> bool {
         self.inner.is_document_start(&self.root_node)
     }
@@ -371,44 +395,6 @@ impl<'a> Range<'a> {
             None
         })
         .unwrap_or_else(|| AttributeValue::Single(value.unwrap()))
-    }
-
-    pub fn expand_to_character(&mut self) {
-        if !self.start.is_document_end(&self.node) {
-            self.start = self.start.normalize_to_box_start(&self.node);
-            self.end = InnerPosition {
-                node: self.start.node,
-                character_index: self.start.character_index + 1,
-            };
-        }
-    }
-
-    pub fn expand_to_format(&mut self) {
-        // We don't currently support format runs, so fall back to document.
-        self.expand_to_document();
-    }
-
-    pub fn expand_to_word(&mut self) {
-        todo!()
-    }
-
-    pub fn expand_to_line(&mut self) {
-        self.start = self.start.line_start();
-        self.end = self.start.line_end();
-    }
-
-    pub fn expand_to_paragraph(&mut self) {
-        todo!()
-    }
-
-    pub fn expand_to_page(&mut self) {
-        // We don't currently support pages, so fall back to document.
-        self.expand_to_document();
-    }
-
-    pub fn expand_to_document(&mut self) {
-        self.start = self.node.document_start();
-        self.end = self.node.document_end();
     }
 
     pub fn set_start(&mut self, pos: Position<'a>) {

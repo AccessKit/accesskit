@@ -55,6 +55,62 @@ fn set_endpoint_position<'a>(
     Ok(())
 }
 
+fn back_to_unit_start(start: Position, unit: TextUnit) -> Result<Position> {
+    match unit {
+        TextUnit_Character => {
+            // If we get here, this position is at the start of a non-degenerate
+            // range, so it's always at the start of a character.
+            debug_assert!(!start.is_document_end());
+            Ok(start)
+        }
+        TextUnit_Format => {
+            if start.is_format_start() {
+                Ok(start)
+            } else {
+                Ok(start.backward_by_format())
+            }
+        }
+        TextUnit_Word => {
+            if start.is_word_start() {
+                Ok(start)
+            } else {
+                Ok(start.backward_by_word())
+            }
+        }
+        TextUnit_Line => {
+            if start.is_line_start() {
+                Ok(start)
+            } else {
+                Ok(start.backward_by_line())
+            }
+        }
+        TextUnit_Paragraph => {
+            if start.is_paragraph_start() {
+                Ok(start)
+            } else {
+                Ok(start.backward_by_paragraph())
+            }
+        }
+        TextUnit_Page => {
+            if start.is_page_start() {
+                Ok(start)
+            } else {
+                Ok(start.backward_by_page())
+            }
+        }
+        TextUnit_Document => {
+            if start.is_document_start() {
+                Ok(start)
+            } else {
+                Ok(start.backward_by_document())
+            }
+        }
+        _ => {
+            Err(invalid_arg())
+        }
+    }
+}
+
 fn move_position_once(pos: Position, unit: TextUnit, forward: bool) -> Result<Position> {
     match unit {
         TextUnit_Character => {
@@ -250,31 +306,19 @@ impl ITextRangeProvider_Impl for PlatformRange {
 
     fn ExpandToEnclosingUnit(&self, unit: TextUnit) -> Result<()> {
         self.write(|range| {
-            match unit {
-                TextUnit_Character => {
-                    range.expand_to_character();
-                }
-                TextUnit_Format => {
-                    range.expand_to_format();
-                }
-                TextUnit_Word => {
-                    range.expand_to_word();
-                }
-                TextUnit_Line => {
-                    range.expand_to_line();
-                }
-                TextUnit_Paragraph => {
-                    range.expand_to_paragraph();
-                }
-                TextUnit_Page => {
-                    range.expand_to_page();
-                }
-                TextUnit_Document => {
-                    range.expand_to_document();
-                }
-                _ => {
-                    return Err(invalid_arg());
-                }
+            let start = range.start();
+            if unit == TextUnit_Character && start.is_document_end() {
+                // We know from experimentation that some Windows ATs
+                // expect ExpandToEnclosingUnit(TextUnit_Character)
+                // to do nothing if the range is degenerate at the end
+                // of the document.
+                return Ok(());
+            }
+            let start = back_to_unit_start(start, unit)?;
+            range.set_start(start);
+            if !start.is_document_end() {
+                let end = move_position_once(start, unit, true)?;
+                range.set_end(end);
             }
             Ok(())
         })
