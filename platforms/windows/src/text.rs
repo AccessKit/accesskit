@@ -379,7 +379,26 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn Move(&self, unit: TextUnit, count: i32) -> Result<i32> {
-        todo!()
+        self.write(|range| {
+            let degenerate = range.is_degenerate();
+            let start = range.start();
+            let start = if degenerate {
+                start
+            } else {
+                back_to_unit_start(start, unit)?
+            };
+            let (start, moved) = move_position(start, unit, count)?;
+            if moved != 0 {
+                range.set_start(start);
+                let end = if degenerate || start.is_document_end() {
+                    start
+                } else {
+                    move_position_once(start, unit, true)?
+                };
+                range.set_end(end);
+            }
+            Ok(moved)
+        })
     }
 
     fn MoveEndpointByUnit(
