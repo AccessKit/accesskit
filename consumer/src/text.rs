@@ -282,7 +282,7 @@ impl<'a> Range<'a> {
         self.start.comparable(&self.node) == self.end.comparable(&self.node)
     }
 
-    fn walk(&self, mut f: impl FnMut(&Node, u16, u16)) {
+    fn walk(&self, mut f: impl FnMut(&Node)) {
         let start = self.start.normalize_to_box_start(&self.node);
         // For a degenerate range, the following avoids having `end`
         // come before `start`.
@@ -291,17 +291,32 @@ impl<'a> Range<'a> {
         } else {
             self.end.normalize_to_box_end(&self.node)
         };
+        f(&start.node);
         if start.node.id() == end.node.id() {
-            f(&start.node, start.character_index, end.character_index);
             return;
         }
-        todo!()
+        for node in start.node.following_inline_text_boxes(&self.node) {
+            f(&node);
+            if node.id() == end.node.id() {
+                break;
+            }
+        }
     }
 
     pub fn text(&self) -> String {
         let mut result = String::new();
-        self.walk(|node, start_index, end_index| {
+        self.walk(|node| {
             let character_end_indices = &node.data().character_end_indices;
+            let start_index = if node.id() == self.start.node.id() {
+                self.start.character_index
+            } else {
+                0
+            };
+            let end_index = if node.id() == self.end.node.id() {
+                self.end.character_index
+            } else {
+                character_end_indices.len() as u16
+            };
             if start_index == 0 && (end_index as usize) == character_end_indices.len() {
                 // Fast path
                 result.push_str(node.value().unwrap());
