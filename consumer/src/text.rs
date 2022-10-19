@@ -287,7 +287,10 @@ impl<'a> Range<'a> {
         self.start.comparable(&self.node) == self.end.comparable(&self.node)
     }
 
-    fn walk<T>(&self, mut f: impl FnMut(&Node) -> Option<T>) -> Option<T> {
+    fn walk<F, T>(&self, mut f: F) -> Option<T>
+    where
+        F: FnMut(&Node) -> Option<T>,
+    {
         let start = self.start.normalize_to_box_start(&self.node);
         // For a degenerate range, the following avoids having `end`
         // come before `start`.
@@ -315,7 +318,7 @@ impl<'a> Range<'a> {
 
     pub fn text(&self) -> String {
         let mut result = String::new();
-        self.walk::<()>(|node| {
+        self.walk::<_, ()>(|node| {
             let character_end_indices = &node.data().character_end_indices;
             let start_index = if node.id() == self.start.node.id() {
                 self.start.character_index
