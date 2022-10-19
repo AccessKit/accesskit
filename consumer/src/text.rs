@@ -327,12 +327,14 @@ impl<'a> Range<'a> {
             } else {
                 character_end_indices.len() as u16
             };
-            if start_index == 0 && (end_index as usize) == character_end_indices.len() {
+            let value = node.value().unwrap();
+            let s = if start_index == 0 && (end_index as usize) == character_end_indices.len() {
                 // Fast path
-                result.push_str(node.value().unwrap());
-                return None;
-            }
-            todo!();
+                value
+            } else {
+                todo!()
+            };
+            result.push_str(s);
             None
         });
         result
