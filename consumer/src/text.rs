@@ -335,7 +335,17 @@ impl<'a> Range<'a> {
                 // Fast path
                 value
             } else {
-                todo!()
+                let slice_start = if start_index == 0 {
+                    0
+                } else {
+                    character_end_indices[(start_index - 1) as usize] as usize
+                };
+                let slice_end = if end_index == 0 {
+                    0
+                } else {
+                    character_end_indices[(end_index - 1) as usize] as usize
+                };
+                &value[slice_start..slice_end]
             };
             result.push_str(s);
             None
@@ -364,7 +374,13 @@ impl<'a> Range<'a> {
     }
 
     pub fn expand_to_character(&mut self) {
-        todo!()
+        if !self.start.is_document_end(&self.node) {
+            self.start = self.start.normalize_to_box_start(&self.node);
+            self.end = InnerPosition {
+                node: self.start.node,
+                character_index: self.start.character_index + 1,
+            };
+        }
     }
 
     pub fn expand_to_format(&mut self) {
