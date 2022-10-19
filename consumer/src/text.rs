@@ -399,7 +399,14 @@ impl<'a> Range<'a> {
 
     pub fn set_start(&mut self, pos: Position<'a>) {
         assert_eq!(pos.root_node.id(), self.node.id());
-        self.start = pos.inner;
+        let pos = pos.inner;
+        self.start = if pos == self.end {
+            // Don't normalize when collapsing, as we want to preserve
+            // the start versus end distinction in that special case.
+            pos
+        } else {
+            pos.normalize_to_start(&self.node)
+        };
         if self.start.comparable(&self.node) > self.end.comparable(&self.node) {
             self.end = self.start;
         }
@@ -407,7 +414,14 @@ impl<'a> Range<'a> {
 
     pub fn set_end(&mut self, pos: Position<'a>) {
         assert_eq!(pos.root_node.id(), self.node.id());
-        self.end = pos.inner;
+        let pos = pos.inner;
+        self.end = if pos == self.start {
+            // Don't normalize when collapsing, as we want to preserve
+            // the start versus end distinction in that special case.
+            pos
+        } else {
+            pos.normalize_to_end(&self.node)
+        };
         if self.start.comparable(&self.node) > self.end.comparable(&self.node) {
             self.start = self.end;
         }
