@@ -438,6 +438,15 @@ impl<'a> NodeWrapper<'a> {
                 event_id: UIA_SelectionItem_ElementSelectedEventId,
             });
         }
+        if self.is_text_pattern_supported()
+            && old.is_text_pattern_supported()
+            && self.node.text_selection() != old.node.text_selection()
+        {
+            queue.push(QueuedEvent::Simple {
+                element: element.clone(),
+                event_id: UIA_Text_TextSelectionChangedEventId,
+            });
+        }
     }
 
     fn enqueue_property_change(
