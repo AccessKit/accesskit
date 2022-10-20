@@ -11,7 +11,7 @@ use crate::{FilterResult, Node, TreeState};
 #[derive(Clone, Copy)]
 struct InnerPosition<'a> {
     node: Node<'a>,
-    character_index: u16,
+    character_index: usize,
 }
 
 impl<'a> InnerPosition<'a> {
@@ -21,7 +21,7 @@ impl<'a> InnerPosition<'a> {
             return None;
         }
         let character_index = weak.character_index;
-        if (character_index as usize) > node.data().character_end_indices.len() {
+        if character_index > node.data().character_end_indices.len() {
             return None;
         }
         Some(Self {
@@ -39,7 +39,7 @@ impl<'a> InnerPosition<'a> {
     }
 
     fn is_box_end(&self) -> bool {
-        (self.character_index as usize) == self.node.data().character_end_indices.len()
+        self.character_index == self.node.data().character_end_indices.len()
     }
 
     fn is_document_start(&self, root_node: &Node) -> bool {
@@ -77,14 +77,14 @@ impl<'a> InnerPosition<'a> {
             if let Some(node) = self.node.preceding_inline_text_boxes(root_node).next() {
                 return Self {
                     node,
-                    character_index: node.data().character_end_indices.len() as _,
+                    character_index: node.data().character_end_indices.len(),
                 };
             }
         }
         *self
     }
 
-    fn comparable(&self, root_node: &Node) -> (Vec<usize>, u16) {
+    fn comparable(&self, root_node: &Node) -> (Vec<usize>, usize) {
         let normalized = self.normalize_to_start(root_node);
         (
             normalized.node.relative_index_path(root_node.id()),
@@ -110,7 +110,7 @@ impl<'a> InnerPosition<'a> {
         }
         Self {
             node,
-            character_index: node.data().character_end_indices.len() as _,
+            character_index: node.data().character_end_indices.len(),
         }
     }
 
@@ -352,22 +352,22 @@ impl<'a> Range<'a> {
             let end_index = if node.id() == self.end.node.id() {
                 self.end.character_index
             } else {
-                character_end_indices.len() as u16
+                character_end_indices.len()
             };
             let value = node.value().unwrap();
-            let s = if start_index == 0 && (end_index as usize) == character_end_indices.len() {
+            let s = if start_index == 0 && end_index == character_end_indices.len() {
                 // Fast path
                 value
             } else {
                 let slice_start = if start_index == 0 {
                     0
                 } else {
-                    character_end_indices[(start_index - 1) as usize] as usize
+                    character_end_indices[start_index - 1] as usize
                 };
                 let slice_end = if end_index == 0 {
                     0
                 } else {
-                    character_end_indices[(end_index - 1) as usize] as usize
+                    character_end_indices[end_index - 1] as usize
                 };
                 &value[slice_start..slice_end]
             };
@@ -512,7 +512,7 @@ impl<'a> Node<'a> {
         let node = self.inline_text_boxes().next_back().unwrap();
         InnerPosition {
             node,
-            character_index: node.data().character_end_indices.len() as u16,
+            character_index: node.data().character_end_indices.len(),
         }
     }
 

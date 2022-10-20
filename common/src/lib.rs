@@ -630,7 +630,7 @@ pub struct TextPosition {
     pub node: NodeId,
     /// The index of an item in [`Node::character_end_indices`], or the length
     /// of that slice if the position is at the end of the line.
-    pub character_index: u16,
+    pub character_index: usize,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
