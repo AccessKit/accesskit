@@ -30,6 +30,17 @@ impl<'a> InnerPosition<'a> {
         })
     }
 
+    fn is_word_start(&self) -> bool {
+        let mut total_length = 0usize;
+        for length in self.node.data().word_lengths.iter() {
+            if total_length == self.character_index {
+                return true;
+            }
+            total_length += *length as usize;
+        }
+        false
+    }
+
     fn is_box_start(&self) -> bool {
         self.character_index == 0
     }
@@ -92,6 +103,35 @@ impl<'a> InnerPosition<'a> {
         )
     }
 
+    fn previous_word_start(&self) -> Self {
+        let mut total_length_before = 0usize;
+        for length in self.node.data().word_lengths.iter() {
+            let new_total_length = total_length_before + (*length as usize);
+            if new_total_length >= self.character_index {
+                break;
+            }
+            total_length_before = new_total_length;
+        }
+        Self {
+            node: self.node,
+            character_index: total_length_before,
+        }
+    }
+
+    fn word_end(&self) -> Self {
+        let mut total_length = 0usize;
+        for length in self.node.data().word_lengths.iter() {
+            total_length += *length as usize;
+            if total_length > self.character_index {
+                break;
+            }
+        }
+        Self {
+            node: self.node,
+            character_index: total_length,
+        }
+    }
+
     fn line_start(&self) -> Self {
         let mut node = self.node;
         while let Some(id) = node.data().previous_on_line {
@@ -142,7 +182,7 @@ impl<'a> Position<'a> {
     }
 
     pub fn is_word_start(&self) -> bool {
-        todo!()
+        self.inner.is_word_start()
     }
 
     pub fn is_line_start(&self) -> bool {
@@ -196,11 +236,19 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_by_word(&self) -> Self {
-        todo!()
+        let normalized = self.inner.normalize_to_start(&self.root_node);
+        Self {
+            root_node: self.root_node,
+            inner: normalized.word_end(),
+        }
     }
 
     pub fn backward_by_word(&self) -> Self {
-        todo!()
+        let normalized = self.inner.normalize_to_end(&self.root_node);
+        Self {
+            root_node: self.root_node,
+            inner: normalized.previous_word_start(),
+        }
     }
 
     pub fn forward_by_line(&self) -> Self {
