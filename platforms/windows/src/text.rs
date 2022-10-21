@@ -342,8 +342,8 @@ impl ITextRangeProvider_Impl for PlatformRange {
 
     fn GetAttributeValue(&self, id: i32) -> Result<VARIANT> {
         self.read(|range| match id {
+            // TODO: implement attributes
             _ => {
-                println!("want attribute {}", id);
                 let value = unsafe { UiaGetReservedNotSupportedValue() }.unwrap();
                 Ok(VariantFactory::from(value).into())
             }
