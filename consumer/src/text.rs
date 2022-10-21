@@ -21,7 +21,7 @@ impl<'a> InnerPosition<'a> {
             return None;
         }
         let character_index = weak.character_index;
-        if character_index > node.data().character_end_indices.len() {
+        if character_index > node.data().character_lengths.len() {
             return None;
         }
         Some(Self {
@@ -39,7 +39,7 @@ impl<'a> InnerPosition<'a> {
     }
 
     fn is_box_end(&self) -> bool {
-        self.character_index == self.node.data().character_end_indices.len()
+        self.character_index == self.node.data().character_lengths.len()
     }
 
     fn is_document_start(&self, root_node: &Node) -> bool {
@@ -77,7 +77,7 @@ impl<'a> InnerPosition<'a> {
             if let Some(node) = self.node.preceding_inline_text_boxes(root_node).next() {
                 return Self {
                     node,
-                    character_index: node.data().character_end_indices.len(),
+                    character_index: node.data().character_lengths.len(),
                 };
             }
         }
@@ -110,7 +110,7 @@ impl<'a> InnerPosition<'a> {
         }
         Self {
             node,
-            character_index: node.data().character_end_indices.len(),
+            character_index: node.data().character_lengths.len(),
         }
     }
 
@@ -343,7 +343,7 @@ impl<'a> Range<'a> {
     pub fn text(&self) -> String {
         let mut result = String::new();
         self.walk::<_, ()>(|node| {
-            let character_end_indices = &node.data().character_end_indices;
+            let character_lengths = &node.data().character_lengths;
             let start_index = if node.id() == self.start.node.id() {
                 self.start.character_index
             } else {
@@ -352,23 +352,25 @@ impl<'a> Range<'a> {
             let end_index = if node.id() == self.end.node.id() {
                 self.end.character_index
             } else {
-                character_end_indices.len()
+                character_lengths.len()
             };
             let value = node.value().unwrap();
-            let s = if start_index == 0 && end_index == character_end_indices.len() {
-                // Fast path
+            let s = if start_index == end_index {
+                ""
+            } else if start_index == 0 && end_index == character_lengths.len() {
                 value
             } else {
-                let slice_start = if start_index == 0 {
-                    0
-                } else {
-                    character_end_indices[start_index - 1] as usize
-                };
-                let slice_end = if end_index == 0 {
-                    0
-                } else {
-                    character_end_indices[end_index - 1] as usize
-                };
+                let slice_start = character_lengths[..start_index]
+                    .iter()
+                    .copied()
+                    .map(usize::from)
+                    .sum::<usize>();
+                let slice_end = slice_start
+                    + character_lengths[start_index..end_index]
+                        .iter()
+                        .copied()
+                        .map(usize::from)
+                        .sum::<usize>();
                 &value[slice_start..slice_end]
             };
             result.push_str(s);
@@ -512,7 +514,7 @@ impl<'a> Node<'a> {
         let node = self.inline_text_boxes().next_back().unwrap();
         InnerPosition {
             node,
-            character_index: node.data().character_end_indices.len(),
+            character_index: node.data().character_lengths.len(),
         }
     }
 

@@ -628,7 +628,7 @@ fn is_empty<T>(slice: &[T]) -> bool {
 pub struct TextPosition {
     /// The node's role must be [`Role::InlineTextBox`].
     pub node: NodeId,
-    /// The index of an item in [`Node::character_end_indices`], or the length
+    /// The index of an item in [`Node::character_lengths`], or the length
     /// of that slice if the position is at the end of the line.
     pub character_index: usize,
 }
@@ -931,15 +931,14 @@ pub struct Node {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub text_direction: Option<TextDirection>,
 
-    /// For inline text. The end index (non-inclusive) of each character
-    /// in UTF-8 code units (bytes). For example, if the text box
-    /// consists of a 1-byte character, a 3-byte character, and another
-    /// 1-byte character, the indices would be [1, 4, 5].
+    /// For inline text. The length (non-inclusive) of each character
+    /// in UTF-8 code units (bytes). The sum of these lengths must equal
+    /// the length of [`Node::value`], also in bytes.
     ///
     /// A character is defined as the smallest unit of text that
     /// can be selected. This isn't necessarily a single Unicode
     /// scalar value (code point). This is why AccessKit can't compute
-    /// the indices of the characters from the text itself; this information
+    /// the lengths of the characters from the text itself; this information
     /// must be provided by the text editing implementation.
     ///
     /// If this node is the last text box in a line that ends with a hard
@@ -950,30 +949,43 @@ pub struct Node {
     /// selection should be on the line break, not after it.
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub character_end_indices: Box<[u16]>,
-    /// For inline text. This is the pixel position of the end of each
-    /// character within the bounding rectangle of this object, in the direction
-    /// given by [`Node::text_direction`]. For example, for left-to-right
-    /// text, the first offset is the right coordinate of the first
-    /// character within the object's bounds, the second offset is
-    /// the right coordinate of the second character, and so on.
+    pub character_lengths: Box<[u8]>,
+    /// For inline text. This is the length of each character in pixels
+    /// within the bounding rectangle of this object, in the direction
+    /// given by [`Node::text_direction`].
     ///
     /// When present, the length of this slice should be the same as the length
-    /// of [`character_end_incides`], including for lines that end
-    /// with a hard line break. The end offset of such a line break should
+    /// of [`Node::character_lengths`], including for lines that end
+    /// with a hard line break. The pixel length of such a line break should
     /// be non-zero if selecting the line break by itself results in
     /// a visible highlight (as in Microsoft Word), or zero if not
     /// (as in Windows Notepad).
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub character_end_pixel_offsets: Option<Box<[f32]>>,
+    pub character_pixel_lengths: Option<Box<[f32]>>,
 
-    /// For inline text. The end index (non-inclusive) of each word
-    /// in UTF-8 code units (bytes). For example, if the text box
-    /// consists of a 1-byte word (e.g. a leading space), a 3-byte word
-    /// (e.g. two ASCII letters followed by a space), and a 1-byte word
-    /// (e.g. an ASCII letter), the indices would be [1, 4, 5].
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub word_end_indices: Option<Box<[u16]>>,
+    /// For inline text. The length of each word in characters, as defined
+    /// in [`Node::character_lengths`]. The sum of these lengths must equal
+    /// the length of [`Node::character_lengths`].
+    ///
+    /// The end of each word is the beginning of the next word; there are no
+    /// characters that are not considered part of a word. Trailing whitespace
+    /// is typically considered part of the word that precedes it, while
+    /// a line's leading whitepsace is considered its own word. Whether
+    /// punctuation is considered a separate word or part of the preceding
+    /// word depends on the particular text editing implementation.
+    /// Some editors may have their own definition of a word; for example,
+    /// in an IDE, words may correspond to programming language tokens.
+    ///
+    /// Not all assistive technologies require information about word
+    /// boundaries, and not all platform accessibility APIs even expose
+    /// this information, but for assistive technologies that do use
+    /// this information, users will get unpredictable results if the word
+    /// boundaries exposed by the accessibility tree don't match
+    /// the editor's behavior. This is why AccessKit does not determine
+    /// word boundaries itself.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
+    pub word_lengths: Box<[u8]>,
 
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
