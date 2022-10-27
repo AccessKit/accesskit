@@ -194,7 +194,7 @@ impl<'a> Position<'a> {
     }
 
     pub fn is_page_start(&self) -> bool {
-        todo!()
+        self.is_document_start()
     }
 
     pub fn is_document_start(&self) -> bool {
@@ -276,11 +276,11 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_by_page(&self) -> Self {
-        todo!()
+        self.forward_by_document()
     }
 
     pub fn backward_by_page(&self) -> Self {
-        todo!()
+        self.backward_by_document()
     }
 
     pub fn forward_by_document(&self) -> Self {
