@@ -154,7 +154,7 @@ impl<'a> InnerPosition<'a> {
         }
     }
 
-    fn downgrade(&self) -> WeakPosition {
+    pub(crate) fn downgrade(&self) -> WeakPosition {
         WeakPosition {
             node: self.node.id(),
             character_index: self.character_index,
@@ -324,9 +324,9 @@ pub enum AttributeValue<T> {
 
 #[derive(Clone, Copy)]
 pub struct Range<'a> {
-    node: Node<'a>,
-    start: InnerPosition<'a>,
-    end: InnerPosition<'a>,
+    pub(crate) node: Node<'a>,
+    pub(crate) start: InnerPosition<'a>,
+    pub(crate) end: InnerPosition<'a>,
 }
 
 impl<'a> Range<'a> {

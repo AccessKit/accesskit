@@ -445,7 +445,10 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn Select(&self) -> Result<()> {
-        todo!()
+        self.action(|tree, range| {
+            tree.select_text_range(&range);
+            Ok(())
+        })
     }
 
     fn AddToSelection(&self) -> Result<()> {

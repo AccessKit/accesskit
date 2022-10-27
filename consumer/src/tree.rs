@@ -4,8 +4,8 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    Action, ActionData, ActionHandler, ActionRequest, Node as NodeData, NodeId, Tree as TreeData,
-    TreeUpdate,
+    Action, ActionData, ActionHandler, ActionRequest, Node as NodeData, NodeId, TextSelection,
+    Tree as TreeData, TreeUpdate,
 };
 use parking_lot::{RwLock, RwLockWriteGuard};
 use std::{
@@ -14,7 +14,10 @@ use std::{
     sync::Arc,
 };
 
-use crate::{text::Position as TextPosition, Node};
+use crate::{
+    text::{Position as TextPosition, Range as TextRange},
+    Node,
+};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
@@ -354,6 +357,18 @@ impl Tree {
             action: Action::ScrollIntoView,
             target: target.inner.node.id(),
             data: None,
+        })
+    }
+
+    pub fn select_text_range(&self, range: &TextRange) {
+        let selection = TextSelection {
+            anchor: range.start.downgrade(),
+            focus: range.end.downgrade(),
+        };
+        self.action_handler.do_action(ActionRequest {
+            action: Action::SetTextSelection,
+            target: range.node.id(),
+            data: Some(ActionData::SetTextSelection(selection)),
         })
     }
 }
