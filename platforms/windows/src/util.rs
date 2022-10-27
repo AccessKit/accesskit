@@ -177,3 +177,7 @@ pub(crate) fn required_param<T>(param: &Option<T>) -> Result<&T> {
 pub(crate) fn element_not_available() -> Error {
     Error::new(HRESULT(UIA_E_ELEMENTNOTAVAILABLE as i32), "".into())
 }
+
+pub(crate) fn invalid_operation() -> Error {
+    Error::new(HRESULT(UIA_E_INVALIDOPERATION as i32), "".into())
+}

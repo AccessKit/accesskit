@@ -439,11 +439,13 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn AddToSelection(&self) -> Result<()> {
-        todo!()
+        // AccessKit doesn't support multiple text selections.
+        Err(invalid_operation())
     }
 
     fn RemoveFromSelection(&self) -> Result<()> {
-        todo!()
+        // AccessKit doesn't support multiple text selections.
+        Err(invalid_operation())
     }
 
     fn ScrollIntoView(&self, align_to_top: BOOL) -> Result<()> {
