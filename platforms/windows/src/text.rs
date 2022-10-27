@@ -247,6 +247,16 @@ impl PlatformRange {
         })
     }
 
+    fn action<F>(&self, f: F) -> Result<()>
+    where
+        for<'a> F: FnOnce(&'a Tree, Range<'a>) -> Result<()>,
+    {
+        let tree = self.upgrade_tree()?;
+        let tree_state = tree.read();
+        let range = self.upgrade_for_read(&tree_state)?;
+        f(&tree, range)
+    }
+
     fn require_same_tree(&self, other: &PlatformRange) -> Result<()> {
         if self.tree.ptr_eq(&other.tree) {
             Ok(())
@@ -449,7 +459,15 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn ScrollIntoView(&self, align_to_top: BOOL) -> Result<()> {
-        todo!()
+        self.action(|tree, range| {
+            let position = if align_to_top.into() {
+                range.start()
+            } else {
+                range.end()
+            };
+            tree.scroll_text_position_into_view(&position);
+            Ok(())
+        })
     }
 
     fn GetChildren(&self) -> Result<*mut SAFEARRAY> {

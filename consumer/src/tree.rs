@@ -14,7 +14,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::Node;
+use crate::{text::Position as TextPosition, Node};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
@@ -338,6 +338,22 @@ impl Tree {
             action: Action::SetValue,
             target,
             data: Some(ActionData::NumericValue(value)),
+        })
+    }
+
+    pub fn scroll_into_view(&self, target: NodeId) {
+        self.action_handler.do_action(ActionRequest {
+            action: Action::ScrollIntoView,
+            target,
+            data: None,
+        })
+    }
+
+    pub fn scroll_text_position_into_view(&self, target: &TextPosition) {
+        self.action_handler.do_action(ActionRequest {
+            action: Action::ScrollIntoView,
+            target: target.inner.node.id(),
+            data: None,
         })
     }
 }

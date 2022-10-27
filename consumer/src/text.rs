@@ -9,9 +9,9 @@ use std::{cmp::Ordering, iter::FusedIterator};
 use crate::{FilterResult, Node, TreeState};
 
 #[derive(Clone, Copy)]
-struct InnerPosition<'a> {
-    node: Node<'a>,
-    character_index: usize,
+pub(crate) struct InnerPosition<'a> {
+    pub(crate) node: Node<'a>,
+    pub(crate) character_index: usize,
 }
 
 impl<'a> InnerPosition<'a> {
@@ -173,7 +173,7 @@ impl<'a> Eq for InnerPosition<'a> {}
 #[derive(Clone, Copy)]
 pub struct Position<'a> {
     root_node: Node<'a>,
-    inner: InnerPosition<'a>,
+    pub(crate) inner: InnerPosition<'a>,
 }
 
 impl<'a> Position<'a> {
