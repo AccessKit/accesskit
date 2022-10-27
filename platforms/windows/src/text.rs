@@ -357,7 +357,12 @@ impl ITextRangeProvider_Impl for PlatformRange {
 
     fn GetAttributeValue(&self, id: i32) -> Result<VARIANT> {
         self.read(|range| match id {
-            // TODO: implement attributes
+            UIA_IsReadOnlyAttributeId => {
+                // TBD: do we ever want to support mixed read-only/editable text?
+                let value = range.node().is_read_only();
+                Ok(VariantFactory::from(value).into())
+            }
+            // TODO: implement more attributes
             _ => {
                 let value = unsafe { UiaGetReservedNotSupportedValue() }.unwrap();
                 Ok(VariantFactory::from(value).into())
