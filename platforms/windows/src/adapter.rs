@@ -3,9 +3,9 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
-use accesskit::{ActionHandler, Live, TreeUpdate};
+use accesskit::{ActionHandler, Live, NodeId, Role, TreeUpdate};
 use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler};
 use lazy_init::LazyTransform;
 use windows::Win32::{
@@ -100,9 +100,34 @@ impl Adapter {
             tree: &'a Arc<Tree>,
             hwnd: HWND,
             queue: Vec<QueuedEvent>,
+            text_changed: HashSet<NodeId>,
+        }
+        impl Handler<'_> {
+            fn enqueue_text_change_if_needed(&mut self, node: &Node) {
+                if node.role() != Role::InlineTextBox {
+                    return;
+                }
+                if let Some(node) = node.filtered_parent(&filter) {
+                    if !node.supports_text_ranges() {
+                        return;
+                    }
+                    let id = node.id();
+                    if self.text_changed.contains(&id) {
+                        return;
+                    }
+                    let platform_node = PlatformNode::new(self.tree, node.id(), self.hwnd);
+                    let element: IRawElementProviderSimple = platform_node.into();
+                    self.queue.push(QueuedEvent::Simple {
+                        element,
+                        event_id: UIA_Text_TextChangedEventId,
+                    });
+                    self.text_changed.insert(id);
+                }
+            }
         }
         impl TreeChangeHandler for Handler<'_> {
             fn node_added(&mut self, node: &Node) {
+                self.enqueue_text_change_if_needed(node);
                 if filter(node) != FilterResult::Include {
                     return;
                 }
@@ -116,6 +141,9 @@ impl Adapter {
                 }
             }
             fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
+                if old_node.value() != new_node.value() {
+                    self.enqueue_text_change_if_needed(new_node);
+                }
                 if filter(new_node) != FilterResult::Include {
                     return;
                 }
@@ -146,13 +174,16 @@ impl Adapter {
                     });
                 }
             }
-            fn node_removed(&mut self, _node: &Node) {}
+            fn node_removed(&mut self, node: &Node) {
+                self.enqueue_text_change_if_needed(node);
+            }
             // TODO: handle other events (#20)
         }
         let mut handler = Handler {
             tree,
             hwnd: self.hwnd,
             queue: Vec::new(),
+            text_changed: HashSet::new(),
         };
         tree.update_and_process_changes(update, &mut handler);
         QueuedEvents(handler.queue)
