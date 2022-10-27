@@ -334,20 +334,25 @@ impl ITextRangeProvider_Impl for PlatformRange {
 
     fn FindAttribute(
         &self,
-        id: i32,
-        value: &VARIANT,
-        backward: BOOL,
+        _id: i32,
+        _value: &VARIANT,
+        _backward: BOOL,
     ) -> Result<ITextRangeProvider> {
-        todo!()
+        // TODO: implement when we support variable formatting (part of rich text)
+        // Justification: JUCE doesn't implement this.
+        Err(Error::OK)
     }
 
     fn FindText(
         &self,
-        text: &BSTR,
-        backward: BOOL,
-        ignore_case: BOOL,
+        _text: &BSTR,
+        _backward: BOOL,
+        _ignore_case: BOOL,
     ) -> Result<ITextRangeProvider> {
-        todo!()
+        // TODO: implement when there's a real-world use case that requires it
+        // Justification: Quorum doesn't implement this and is being used
+        // by blind students.
+        Err(Error::OK)
     }
 
     fn GetAttributeValue(&self, id: i32) -> Result<VARIANT> {
