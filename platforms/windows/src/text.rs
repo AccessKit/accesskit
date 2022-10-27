@@ -371,7 +371,9 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn GetBoundingRectangles(&self) -> Result<*mut SAFEARRAY> {
-        todo!()
+        // TODO: necessary for screen magnifiers and other visual aids
+        // (e.g. Narrator highlight cursor)
+        Err(not_implemented())
     }
 
     fn GetEnclosingElement(&self) -> Result<IRawElementProviderSimple> {
