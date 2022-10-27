@@ -178,7 +178,8 @@ pub struct Position<'a> {
 
 impl<'a> Position<'a> {
     pub fn is_format_start(&self) -> bool {
-        todo!()
+        // TODO: support variable text formatting (part of rich text)
+        self.is_document_start()
     }
 
     pub fn is_word_start(&self) -> bool {
@@ -228,11 +229,13 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_by_format(&self) -> Self {
-        todo!()
+        // TODO: support variable text formatting (part of rich text)
+        self.forward_by_document()
     }
 
     pub fn backward_by_format(&self) -> Self {
-        todo!()
+        // TODO: support variable text formatting (part of rich text)
+        self.backward_by_document()
     }
 
     pub fn forward_by_word(&self) -> Self {
