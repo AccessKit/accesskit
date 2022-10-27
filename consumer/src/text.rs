@@ -53,6 +53,14 @@ impl<'a> InnerPosition<'a> {
         self.character_index == self.node.data().character_lengths.len()
     }
 
+    fn is_line_end(&self) -> bool {
+        self.is_box_end() && self.node.data().next_on_line.is_none()
+    }
+
+    fn is_paragraph_end(&self) -> bool {
+        self.is_line_end() && self.node.value().unwrap().ends_with('\n')
+    }
+
     fn is_document_start(&self, root_node: &Node) -> bool {
         self.is_box_start()
             && self
@@ -191,7 +199,12 @@ impl<'a> Position<'a> {
     }
 
     pub fn is_paragraph_start(&self) -> bool {
-        todo!()
+        self.is_document_start()
+            || (self.is_line_start()
+                && self
+                    .inner
+                    .normalize_to_end(&self.root_node)
+                    .is_paragraph_end())
     }
 
     pub fn is_page_start(&self) -> bool {
@@ -271,11 +284,25 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_by_paragraph(&self) -> Self {
-        todo!()
+        let mut current = *self;
+        loop {
+            current = current.forward_by_line();
+            if current.is_document_end() || current.inner.is_paragraph_end() {
+                break;
+            }
+        }
+        current
     }
 
     pub fn backward_by_paragraph(&self) -> Self {
-        todo!()
+        let mut current = *self;
+        loop {
+            current = current.backward_by_line();
+            if current.is_paragraph_start() {
+                break;
+            }
+        }
+        current
     }
 
     pub fn forward_by_page(&self) -> Self {
