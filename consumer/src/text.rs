@@ -3,7 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{NodeId, Role, TextPosition as WeakPosition};
+use accesskit::kurbo::Rect;
+use accesskit::{NodeId, Role, TextDirection, TextPosition as WeakPosition};
 use std::{cmp::Ordering, iter::FusedIterator};
 
 use crate::{FilterResult, Node, TreeState};
@@ -455,6 +456,89 @@ impl<'a> Range<'a> {
             None
         });
         result
+    }
+
+    /// Returns the range's transformed bounding boxes relative to the tree's
+    /// container (e.g. window).
+    ///
+    /// If the return value is empty, it means that the source tree doesn't
+    /// provide enough information to calculate bounding boxes. Otherwise,
+    /// there will always be at least one box, even if it's zero-width,
+    /// as it is for a degenerate range.
+    pub fn bounding_boxes(&self) -> Vec<Rect> {
+        let mut result = Vec::new();
+        self.walk(|node| {
+            let mut rect = match &node.data().bounds {
+                Some(rect) => *rect,
+                None => {
+                    return Some(Vec::new());
+                }
+            };
+            let pixel_lengths = match &node.data().character_pixel_lengths {
+                Some(lengths) => lengths,
+                None => {
+                    return Some(Vec::new());
+                }
+            };
+            let direction = match node.data().text_direction {
+                Some(direction) => direction,
+                None => {
+                    return Some(Vec::new());
+                }
+            };
+            let character_lengths = &node.data().character_lengths;
+            let start_index = if node.id() == self.start.node.id() {
+                self.start.character_index
+            } else {
+                0
+            };
+            let end_index = if node.id() == self.end.node.id() {
+                self.end.character_index
+            } else {
+                character_lengths.len()
+            };
+            if start_index != 0 || end_index != character_lengths.len() {
+                let pixel_start = pixel_lengths[..start_index]
+                    .iter()
+                    .copied()
+                    .map(f64::from)
+                    .sum::<f64>();
+                let pixel_end = pixel_start
+                    + pixel_lengths[start_index..end_index]
+                        .iter()
+                        .copied()
+                        .map(f64::from)
+                        .sum::<f64>();
+                match direction {
+                    TextDirection::LeftToRight => {
+                        let orig_left = rect.x0;
+                        rect.x0 = orig_left + pixel_start;
+                        rect.x1 = orig_left + pixel_end;
+                    }
+                    TextDirection::RightToLeft => {
+                        let orig_right = rect.x1;
+                        rect.x1 = orig_right - pixel_start;
+                        rect.x0 = orig_right - pixel_end;
+                    }
+                    // Note: The following directions that the rectangle,
+                    // before being transformed, is y-down. TBD: Will we
+                    // ever encounter a case where this isn't true?
+                    TextDirection::TopToBottom => {
+                        let orig_top = rect.y0;
+                        rect.y0 = orig_top + pixel_start;
+                        rect.y1 = orig_top + pixel_end;
+                    }
+                    TextDirection::BottomToTop => {
+                        let orig_bottom = rect.y1;
+                        rect.y1 = orig_bottom - pixel_start;
+                        rect.y0 = orig_bottom - pixel_end;
+                    }
+                }
+            }
+            result.push(node.transform().transform_rect_bbox(rect));
+            None
+        })
+        .unwrap_or(result)
     }
 
     pub fn attribute<F, T>(&self, f: F) -> AttributeValue<T>

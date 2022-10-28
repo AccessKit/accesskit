@@ -3,11 +3,13 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use accesskit::kurbo::Point;
 use std::{convert::TryInto, mem::ManuallyDrop};
 use windows::{
     core::*,
     Win32::{
         Foundation::*,
+        Graphics::Gdi::*,
         System::{Com::*, Ole::*},
         UI::Accessibility::*,
     },
@@ -137,6 +139,10 @@ pub(crate) fn safe_array_from_i32_slice(slice: &[i32]) -> *mut SAFEARRAY {
     safe_array_from_primitive_slice(VT_I4, slice)
 }
 
+pub(crate) fn safe_array_from_f64_slice(slice: &[f64]) -> *mut SAFEARRAY {
+    safe_array_from_primitive_slice(VT_R8, slice)
+}
+
 pub(crate) fn safe_array_from_com_slice(slice: &[IUnknown]) -> *mut SAFEARRAY {
     let sa = unsafe { SafeArrayCreateVector(VT_UNKNOWN, 0, slice.len().try_into().unwrap()) };
     if sa.is_null() {
@@ -180,4 +186,12 @@ pub(crate) fn element_not_available() -> Error {
 
 pub(crate) fn invalid_operation() -> Error {
     Error::new(HRESULT(UIA_E_INVALIDOPERATION as i32), "".into())
+}
+
+pub(crate) fn client_top_left(hwnd: HWND) -> Point {
+    let mut result = POINT::default();
+    // If ClientToScreen fails, that means the window is gone.
+    // That's an unexpected condition, so we should fail loudly.
+    unsafe { ClientToScreen(hwnd, &mut result) }.unwrap();
+    Point::new(result.x.into(), result.y.into())
 }

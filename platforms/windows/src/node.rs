@@ -18,7 +18,7 @@ use paste::paste;
 use std::sync::{Arc, Weak};
 use windows::{
     core::*,
-    Win32::{Foundation::*, Graphics::Gdi::*, System::Com::*, UI::Accessibility::*},
+    Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
 };
 
 use crate::{text::PlatformRange as PlatformTextRange, util::*};
@@ -563,11 +563,7 @@ impl PlatformNode {
     }
 
     fn client_top_left(&self) -> Point {
-        let mut result = POINT::default();
-        // If ClientToScreen fails, that means the window is gone.
-        // That's an unexpected condition, so we should fail loudly.
-        unsafe { ClientToScreen(self.hwnd, &mut result) }.unwrap();
-        Point::new(result.x.into(), result.y.into())
+        client_top_left(self.hwnd)
     }
 }
 

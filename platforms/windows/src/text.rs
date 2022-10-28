@@ -407,9 +407,22 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn GetBoundingRectangles(&self) -> Result<*mut SAFEARRAY> {
-        // TODO: necessary for screen magnifiers and other visual aids
-        // (e.g. Narrator highlight cursor)
-        Err(not_implemented())
+        self.read(|range| {
+            let rects = range.bounding_boxes();
+            if rects.is_empty() {
+                return Ok(std::ptr::null_mut());
+            }
+            let client_top_left = client_top_left(self.hwnd);
+            let mut result = Vec::<f64>::new();
+            result.reserve(rects.len() * 4);
+            for rect in rects {
+                result.push(rect.x0 + client_top_left.x);
+                result.push(rect.y0 + client_top_left.y);
+                result.push(rect.width());
+                result.push(rect.height());
+            }
+            Ok(safe_array_from_f64_slice(&result))
+        })
     }
 
     fn GetEnclosingElement(&self) -> Result<IRawElementProviderSimple> {
