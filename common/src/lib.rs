@@ -970,6 +970,11 @@ pub struct Node {
     /// be non-zero if selecting the line break by itself results in
     /// a visible highlight (as in Microsoft Word), or zero if not
     /// (as in Windows Notepad).
+    ///
+    /// This field is optional. Without it, AccessKit can't support some
+    /// use cases, such as screen magnifiers that track the caret position
+    /// or screen readers that display a highlight cursor. However,
+    /// most text functionality still works without this information.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub character_pixel_lengths: Option<Box<[f32]>>,
 
