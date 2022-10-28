@@ -532,8 +532,12 @@ pub struct WeakRange {
 }
 
 impl WeakRange {
+    pub fn upgrade_node<'a>(&self, tree_state: &'a TreeState) -> Option<Node<'a>> {
+        tree_state.node_by_id(self.node_id)
+    }
+
     pub fn upgrade<'a>(&self, tree_state: &'a TreeState) -> Option<Range<'a>> {
-        let node = tree_state.node_by_id(self.node_id)?;
+        let node = self.upgrade_node(tree_state)?;
         let start = InnerPosition::upgrade(tree_state, self.start)?;
         let end = InnerPosition::upgrade(tree_state, self.end)?;
         Some(Range { node, start, end })

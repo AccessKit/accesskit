@@ -6,7 +6,7 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit_consumer::{
-    TextPosition as Position, TextRange as Range, Tree, TreeState, WeakTextRange as WeakRange,
+    Node, TextPosition as Position, TextRange as Range, Tree, TreeState, WeakTextRange as WeakRange,
 };
 use parking_lot::RwLock;
 use std::sync::{Arc, Weak};
@@ -20,6 +20,14 @@ use crate::{node::PlatformNode, util::*};
 fn upgrade_range<'a>(weak: &WeakRange, tree_state: &'a TreeState) -> Result<Range<'a>> {
     if let Some(range) = weak.upgrade(tree_state) {
         Ok(range)
+    } else {
+        Err(element_not_available())
+    }
+}
+
+fn upgrade_range_node<'a>(weak: &WeakRange, tree_state: &'a TreeState) -> Result<Node<'a>> {
+    if let Some(node) = weak.upgrade_node(tree_state) {
+        Ok(node)
     } else {
         Err(element_not_available())
     }
@@ -219,6 +227,21 @@ impl PlatformRange {
         f(&state)
     }
 
+    fn upgrade_node<'a>(&self, tree_state: &'a TreeState) -> Result<Node<'a>> {
+        let state = self.state.read();
+        upgrade_range_node(&state, tree_state)
+    }
+
+    fn with_node<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(Node) -> Result<T>,
+    {
+        self.with_tree_state(|tree_state| {
+            let node = self.upgrade_node(tree_state)?;
+            f(node)
+        })
+    }
+
     fn upgrade_for_read<'a>(&self, tree_state: &'a TreeState) -> Result<Range<'a>> {
         let state = self.state.read();
         upgrade_range(&state, tree_state)
@@ -356,18 +379,20 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn GetAttributeValue(&self, id: i32) -> Result<VARIANT> {
-        self.read(|range| match id {
+        match id {
             UIA_IsReadOnlyAttributeId => {
                 // TBD: do we ever want to support mixed read-only/editable text?
-                let value = range.node().is_read_only();
-                Ok(VariantFactory::from(value).into())
+                self.with_node(|node| {
+                    let value = node.is_read_only();
+                    Ok(VariantFactory::from(value).into())
+                })
             }
             // TODO: implement more attributes
             _ => {
                 let value = unsafe { UiaGetReservedNotSupportedValue() }.unwrap();
                 Ok(VariantFactory::from(value).into())
             }
-        })
+        }
     }
 
     fn GetBoundingRectangles(&self) -> Result<*mut SAFEARRAY> {
@@ -377,11 +402,11 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn GetEnclosingElement(&self) -> Result<IRawElementProviderSimple> {
-        self.read(|range| {
+        self.with_node(|node| {
             // Revisit this if we eventually support embedded objects.
             Ok(PlatformNode {
                 tree: self.tree.clone(),
-                node_id: range.node().id(),
+                node_id: node.id(),
                 hwnd: self.hwnd,
             }
             .into())
