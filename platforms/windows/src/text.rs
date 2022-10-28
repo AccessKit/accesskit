@@ -336,6 +336,17 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn ExpandToEnclosingUnit(&self, unit: TextUnit) -> Result<()> {
+        if unit == TextUnit_Document {
+            // Handle document as a special case so we can get to a document
+            // range even if the current endpoints are now invalid.
+            // Based on observed behavior, Narrator needs this ability.
+            return self.with_tree_state(|tree_state| {
+                let mut state = self.state.write();
+                let node = upgrade_range_node(&state, tree_state)?;
+                *state = node.document_range().downgrade();
+                Ok(())
+            });
+        }
         self.write(|range| {
             let start = range.start();
             if unit == TextUnit_Character && start.is_document_end() {
