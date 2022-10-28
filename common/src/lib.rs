@@ -947,6 +947,16 @@ pub struct Node {
     /// should be counted as a single character for the sake of this slice.
     /// When the caret is at the end of such a line, the focus of the text
     /// selection should be on the line break, not after it.
+    ///
+    /// The last inline text box in a text field or document must end
+    /// with a hard line break as described above. If the last line
+    /// is blank, the text box for that line must consist of only
+    /// a hard line break. If the text field is empty, it must consist
+    /// of a single inline text box containing only a hard line break.
+    /// This requirement applies even to text fields that only ever contain
+    /// one line of text. This consistency eliminates special cases
+    /// in text navigation which can lead to bugs with some assistive
+    /// technologies.
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub character_lengths: Box<[u8]>,
