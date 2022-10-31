@@ -975,7 +975,7 @@ pub struct Node {
     /// The end of each word is the beginning of the next word; there are no
     /// characters that are not considered part of a word. Trailing whitespace
     /// is typically considered part of the word that precedes it, while
-    /// a line's leading whitepsace is considered its own word. Whether
+    /// a line's leading whitespace is considered its own word. Whether
     /// punctuation is considered a separate word or part of the preceding
     /// word depends on the particular text editing implementation.
     /// Some editors may have their own definition of a word; for example,
