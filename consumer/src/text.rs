@@ -80,7 +80,7 @@ impl<'a> InnerPosition<'a> {
                 .is_none()
     }
 
-    fn normalize_to_start(&self, root_node: &Node) -> Self {
+    fn biased_to_start(&self, root_node: &Node) -> Self {
         if self.is_box_end() {
             if let Some(node) = self.node.following_inline_text_boxes(root_node).next() {
                 return Self {
@@ -92,7 +92,7 @@ impl<'a> InnerPosition<'a> {
         *self
     }
 
-    fn normalize_to_end(&self, root_node: &Node) -> Self {
+    fn biased_to_end(&self, root_node: &Node) -> Self {
         if self.is_box_start() {
             if let Some(node) = self.node.preceding_inline_text_boxes(root_node).next() {
                 return Self {
@@ -104,8 +104,16 @@ impl<'a> InnerPosition<'a> {
         *self
     }
 
+    fn normalized(&self, root_node: &Node) -> Self {
+        if self.is_line_end() && !self.is_paragraph_end() {
+            *self
+        } else {
+            self.biased_to_start(root_node)
+        }
+    }
+
     fn comparable(&self, root_node: &Node) -> (Vec<usize>, usize) {
-        let normalized = self.normalize_to_start(root_node);
+        let normalized = self.biased_to_start(root_node);
         (
             normalized.node.relative_index_path(root_node.id()),
             normalized.character_index,
@@ -202,10 +210,7 @@ impl<'a> Position<'a> {
     pub fn is_paragraph_start(&self) -> bool {
         self.is_document_start()
             || (self.is_line_start()
-                && self
-                    .inner
-                    .normalize_to_end(&self.root_node)
-                    .is_paragraph_end())
+                && self.inner.biased_to_end(&self.root_node).is_paragraph_end())
     }
 
     pub fn is_page_start(&self) -> bool {
@@ -221,24 +226,26 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_by_character(&self) -> Self {
-        let normalized = self.inner.normalize_to_start(&self.root_node);
+        let pos = self.inner.biased_to_start(&self.root_node);
         Self {
             root_node: self.root_node,
             inner: InnerPosition {
-                node: normalized.node,
-                character_index: normalized.character_index + 1,
-            },
+                node: pos.node,
+                character_index: pos.character_index + 1,
+            }
+            .normalized(&self.root_node),
         }
     }
 
     pub fn backward_by_character(&self) -> Self {
-        let normalized = self.inner.normalize_to_end(&self.root_node);
+        let pos = self.inner.biased_to_end(&self.root_node);
         Self {
             root_node: self.root_node,
             inner: InnerPosition {
-                node: normalized.node,
-                character_index: normalized.character_index - 1,
-            },
+                node: pos.node,
+                character_index: pos.character_index - 1,
+            }
+            .normalized(&self.root_node),
         }
     }
 
@@ -253,34 +260,34 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_by_word(&self) -> Self {
-        let normalized = self.inner.normalize_to_start(&self.root_node);
+        let pos = self.inner.biased_to_start(&self.root_node);
         Self {
             root_node: self.root_node,
-            inner: normalized.word_end(),
+            inner: pos.word_end().normalized(&self.root_node),
         }
     }
 
     pub fn backward_by_word(&self) -> Self {
-        let normalized = self.inner.normalize_to_end(&self.root_node);
+        let pos = self.inner.biased_to_end(&self.root_node);
         Self {
             root_node: self.root_node,
-            inner: normalized.previous_word_start(),
+            inner: pos.previous_word_start().normalized(&self.root_node),
         }
     }
 
     pub fn forward_by_line(&self) -> Self {
-        let normalized = self.inner.normalize_to_start(&self.root_node);
+        let pos = self.inner.biased_to_start(&self.root_node);
         Self {
             root_node: self.root_node,
-            inner: normalized.line_end(),
+            inner: pos.line_end().normalized(&self.root_node),
         }
     }
 
     pub fn backward_by_line(&self) -> Self {
-        let normalized = self.inner.normalize_to_end(&self.root_node);
+        let pos = self.inner.biased_to_end(&self.root_node);
         Self {
             root_node: self.root_node,
-            inner: normalized.line_start(),
+            inner: pos.line_start().normalized(&self.root_node),
         }
     }
 
@@ -394,13 +401,13 @@ impl<'a> Range<'a> {
     where
         F: FnMut(&Node) -> Option<T>,
     {
-        let start = self.start.normalize_to_start(&self.node);
+        let start = self.start.biased_to_start(&self.node);
         // For a degenerate range, the following avoids having `end`
         // come before `start`.
         let end = if self.is_degenerate() {
             start
         } else {
-            self.end.normalize_to_end(&self.node)
+            self.end.biased_to_end(&self.node)
         };
         if let Some(result) = f(&start.node) {
             return Some(result);
@@ -563,30 +570,20 @@ impl<'a> Range<'a> {
 
     pub fn set_start(&mut self, pos: Position<'a>) {
         assert_eq!(pos.root_node.id(), self.node.id());
-        let pos = pos.inner;
-        self.start = if pos == self.end {
-            // Don't normalize when collapsing, as we want to preserve
-            // the start versus end distinction in that special case.
-            pos
-        } else {
-            pos.normalize_to_start(&self.node)
-        };
-        if self.start.comparable(&self.node) > self.end.comparable(&self.node) {
+        self.start = pos.inner;
+        // We use `>=` here because if the two endpoints are equivalent
+        // but with a different bias, we want to normalize the bias.
+        if self.start.comparable(&self.node) >= self.end.comparable(&self.node) {
             self.end = self.start;
         }
     }
 
     pub fn set_end(&mut self, pos: Position<'a>) {
         assert_eq!(pos.root_node.id(), self.node.id());
-        let pos = pos.inner;
-        self.end = if pos == self.start {
-            // Don't normalize when collapsing, as we want to preserve
-            // the start versus end distinction in that special case.
-            pos
-        } else {
-            pos.normalize_to_end(&self.node)
-        };
-        if self.start.comparable(&self.node) > self.end.comparable(&self.node) {
+        self.end = pos.inner;
+        // We use `>=` here because if the two endpoints are equivalent
+        // but with a different bias, we want to normalize the bias.
+        if self.start.comparable(&self.node) >= self.end.comparable(&self.node) {
             self.start = self.end;
         }
     }
