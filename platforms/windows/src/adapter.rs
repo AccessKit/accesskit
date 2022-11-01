@@ -103,7 +103,7 @@ impl Adapter {
             text_changed: HashSet<NodeId>,
         }
         impl Handler<'_> {
-            fn enqueue_text_change_if_needed(&mut self, node: &Node) {
+            fn insert_text_change_if_needed(&mut self, node: &Node) {
                 if node.role() != Role::InlineTextBox {
                     return;
                 }
@@ -117,17 +117,23 @@ impl Adapter {
                     }
                     let platform_node = PlatformNode::new(self.tree, node.id(), self.hwnd);
                     let element: IRawElementProviderSimple = platform_node.into();
-                    self.queue.push(QueuedEvent::Simple {
-                        element,
-                        event_id: UIA_Text_TextChangedEventId,
-                    });
+                    // Text change events must come before selection change
+                    // events. It doesn't matter if text change events come
+                    // before other events.
+                    self.queue.insert(
+                        0,
+                        QueuedEvent::Simple {
+                            element,
+                            event_id: UIA_Text_TextChangedEventId,
+                        },
+                    );
                     self.text_changed.insert(id);
                 }
             }
         }
         impl TreeChangeHandler for Handler<'_> {
             fn node_added(&mut self, node: &Node) {
-                self.enqueue_text_change_if_needed(node);
+                self.insert_text_change_if_needed(node);
                 if filter(node) != FilterResult::Include {
                     return;
                 }
@@ -142,7 +148,7 @@ impl Adapter {
             }
             fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
                 if old_node.value() != new_node.value() {
-                    self.enqueue_text_change_if_needed(new_node);
+                    self.insert_text_change_if_needed(new_node);
                 }
                 if filter(new_node) != FilterResult::Include {
                     return;
@@ -175,7 +181,7 @@ impl Adapter {
                 }
             }
             fn node_removed(&mut self, node: &Node) {
-                self.enqueue_text_change_if_needed(node);
+                self.insert_text_change_if_needed(node);
             }
             // TODO: handle other events (#20)
         }
