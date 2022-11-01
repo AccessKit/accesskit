@@ -593,6 +593,8 @@ impl<'a> Range<'a> {
             node_id: self.node.id(),
             start: self.start.downgrade(),
             end: self.end.downgrade(),
+            start_comparable: self.start.comparable(&self.node),
+            end_comparable: self.end.comparable(&self.node),
         }
     }
 }
@@ -605,14 +607,28 @@ impl<'a> PartialEq for Range<'a> {
 
 impl<'a> Eq for Range<'a> {}
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WeakRange {
     node_id: NodeId,
     start: WeakPosition,
     end: WeakPosition,
+    start_comparable: (Vec<usize>, usize),
+    end_comparable: (Vec<usize>, usize),
 }
 
 impl WeakRange {
+    pub fn node_id(&self) -> NodeId {
+        self.node_id
+    }
+
+    pub fn start_comparable(&self) -> &(Vec<usize>, usize) {
+        &self.start_comparable
+    }
+
+    pub fn end_comparable(&self) -> &(Vec<usize>, usize) {
+        &self.end_comparable
+    }
+
     pub fn upgrade_node<'a>(&self, tree_state: &'a TreeState) -> Option<Node<'a>> {
         tree_state.node_by_id(self.node_id)
     }

@@ -33,6 +33,17 @@ fn upgrade_range_node<'a>(weak: &WeakRange, tree_state: &'a TreeState) -> Result
     }
 }
 
+fn weak_comparable_position_from_endpoint(
+    range: &WeakRange,
+    endpoint: TextPatternRangeEndpoint,
+) -> Result<&(Vec<usize>, usize)> {
+    match endpoint {
+        TextPatternRangeEndpoint_Start => Ok(range.start_comparable()),
+        TextPatternRangeEndpoint_End => Ok(range.end_comparable()),
+        _ => Err(invalid_arg()),
+    }
+}
+
 fn position_from_endpoint<'a>(
     range: &Range<'a>,
     endpoint: TextPatternRangeEndpoint,
@@ -293,7 +304,7 @@ impl Clone for PlatformRange {
     fn clone(&self) -> Self {
         PlatformRange {
             tree: self.tree.clone(),
-            state: RwLock::new(*self.state.read()),
+            state: RwLock::new(self.state.read().clone()),
             hwnd: self.hwnd,
         }
     }
@@ -321,6 +332,18 @@ impl ITextRangeProvider_Impl for PlatformRange {
         other_endpoint: TextPatternRangeEndpoint,
     ) -> Result<i32> {
         let other = required_param(other)?.as_impl();
+        if std::ptr::eq(other as *const _, self as *const _) {
+            // Comparing endpoints within the same range can be done
+            // safely without upgrading the range. This allows ATs
+            // to determine whether an old range is degenerate even if
+            // that range is no longer valid.
+            let state = self.state.read();
+            let other_state = other.state.read();
+            let pos = weak_comparable_position_from_endpoint(&*state, endpoint)?;
+            let other_pos = weak_comparable_position_from_endpoint(&*other_state, other_endpoint)?;
+            let result = pos.cmp(other_pos);
+            return Ok(result as i32);
+        }
         self.require_same_tree(other)?;
         self.with_tree_state(|tree_state| {
             let range = self.upgrade_for_read(tree_state)?;
