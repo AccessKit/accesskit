@@ -339,8 +339,8 @@ impl ITextRangeProvider_Impl for PlatformRange {
             // that range is no longer valid.
             let state = self.state.read();
             let other_state = other.state.read();
-            let pos = weak_comparable_position_from_endpoint(&*state, endpoint)?;
-            let other_pos = weak_comparable_position_from_endpoint(&*other_state, other_endpoint)?;
+            let pos = weak_comparable_position_from_endpoint(&state, endpoint)?;
+            let other_pos = weak_comparable_position_from_endpoint(&other_state, other_endpoint)?;
             let result = pos.cmp(other_pos);
             return Ok(result as i32);
         }
