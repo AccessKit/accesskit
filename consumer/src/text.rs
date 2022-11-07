@@ -482,7 +482,7 @@ impl<'a> Range<'a> {
                 }
             };
             let widths = match &node.data().character_widths {
-                Some(lengths) => lengths,
+                Some(widths) => widths,
                 None => {
                     return Some(Vec::new());
                 }
