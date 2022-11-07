@@ -102,6 +102,12 @@ impl From<LiveSetting> for VariantFactory {
     }
 }
 
+impl From<CaretPosition> for VariantFactory {
+    fn from(value: CaretPosition) -> Self {
+        value.0.into()
+    }
+}
+
 const VARIANT_FALSE: i16 = 0i16;
 const VARIANT_TRUE: i16 = -1i16;
 

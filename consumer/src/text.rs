@@ -207,6 +207,10 @@ impl<'a> Position<'a> {
         self.inner.is_line_start()
     }
 
+    pub fn is_line_end(&self) -> bool {
+        self.inner.is_line_end()
+    }
+
     pub fn is_paragraph_start(&self) -> bool {
         self.is_document_start()
             || (self.is_line_start()

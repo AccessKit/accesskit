@@ -421,6 +421,18 @@ impl ITextRangeProvider_Impl for PlatformRange {
                     Ok(VariantFactory::from(value).into())
                 })
             }
+            UIA_CaretPositionAttributeId => self.read(|range| {
+                let mut value = CaretPosition_Unknown;
+                if range.is_degenerate() {
+                    let pos = range.start();
+                    if pos.is_line_start() {
+                        value = CaretPosition_BeginningOfLine;
+                    } else if pos.is_line_end() {
+                        value = CaretPosition_EndOfLine;
+                    }
+                }
+                Ok(VariantFactory::from(value).into())
+            }),
             // TODO: implement more attributes
             _ => {
                 let value = unsafe { UiaGetReservedNotSupportedValue() }.unwrap();
