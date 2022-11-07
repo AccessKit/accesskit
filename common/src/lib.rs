@@ -950,13 +950,13 @@ pub struct Node {
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub character_lengths: Box<[u8]>,
-    /// For inline text. This is the length of each character in pixels
-    /// within the bounding rectangle of this object, in the direction
-    /// given by [`Node::text_direction`].
+    /// For inline text. This is the advance width of each character,
+    /// in the direction given by [`Node::text_direction`], in the coordinate
+    /// space of this node.
     ///
     /// When present, the length of this slice should be the same as the length
     /// of [`Node::character_lengths`], including for lines that end
-    /// with a hard line break. The pixel length of such a line break should
+    /// with a hard line break. The width of such a line break should
     /// be non-zero if selecting the line break by itself results in
     /// a visible highlight (as in Microsoft Word), or zero if not
     /// (as in Windows Notepad).
@@ -966,7 +966,7 @@ pub struct Node {
     /// or screen readers that display a highlight cursor. However,
     /// most text functionality still works without this information.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub character_pixel_lengths: Option<Box<[f32]>>,
+    pub character_widths: Option<Box<[f32]>>,
 
     /// For inline text. The length of each word in characters, as defined
     /// in [`Node::character_lengths`]. The sum of these lengths must equal

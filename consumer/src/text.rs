@@ -481,7 +481,7 @@ impl<'a> Range<'a> {
                     return Some(Vec::new());
                 }
             };
-            let pixel_lengths = match &node.data().character_pixel_lengths {
+            let widths = match &node.data().character_widths {
                 Some(lengths) => lengths,
                 None => {
                     return Some(Vec::new());
@@ -505,13 +505,13 @@ impl<'a> Range<'a> {
                 character_lengths.len()
             };
             if start_index != 0 || end_index != character_lengths.len() {
-                let pixel_start = pixel_lengths[..start_index]
+                let pixel_start = widths[..start_index]
                     .iter()
                     .copied()
                     .map(f64::from)
                     .sum::<f64>();
                 let pixel_end = pixel_start
-                    + pixel_lengths[start_index..end_index]
+                    + widths[start_index..end_index]
                         .iter()
                         .copied()
                         .map(f64::from)
