@@ -481,6 +481,12 @@ impl<'a> Range<'a> {
                     return Some(Vec::new());
                 }
             };
+            let positions = match &node.data().character_positions {
+                Some(positions) => positions,
+                None => {
+                    return Some(Vec::new());
+                }
+            };
             let widths = match &node.data().character_widths {
                 Some(widths) => widths,
                 None => {
@@ -505,17 +511,18 @@ impl<'a> Range<'a> {
                 character_lengths.len()
             };
             if start_index != 0 || end_index != character_lengths.len() {
-                let pixel_start = widths[..start_index]
-                    .iter()
-                    .copied()
-                    .map(f64::from)
-                    .sum::<f64>();
-                let pixel_end = pixel_start
-                    + widths[start_index..end_index]
-                        .iter()
-                        .copied()
-                        .map(f64::from)
-                        .sum::<f64>();
+                let pixel_start = if start_index < character_lengths.len() {
+                    positions[start_index]
+                } else {
+                    positions[start_index - 1] + widths[start_index - 1]
+                };
+                let pixel_end = if end_index == start_index {
+                    pixel_start
+                } else {
+                    positions[end_index - 1] + widths[end_index - 1]
+                };
+                let pixel_start = f64::from(pixel_start);
+                let pixel_end = f64::from(pixel_end);
                 match direction {
                     TextDirection::LeftToRight => {
                         let orig_left = rect.x0;

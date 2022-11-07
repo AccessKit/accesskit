@@ -950,6 +950,21 @@ pub struct Node {
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
     pub character_lengths: Box<[u8]>,
+    /// For inline text. This is the position of each character within
+    /// the node's bounding box, in the direction given by
+    /// [`Node::text_direction`], in the coordinate space of this node.
+    ///
+    /// When present, the length of this slice should be the same as the length
+    /// of [`Node::character_lengths`], including for lines that end
+    /// with a hard line break. The position of such a line break should
+    /// be the position where an end-of-paragraph marker would be rendered.
+    ///
+    /// This field is optional. Without it, AccessKit can't support some
+    /// use cases, such as screen magnifiers that track the caret position
+    /// or screen readers that display a highlight cursor. However,
+    /// most text functionality still works without this information.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub character_positions: Option<Box<[f32]>>,
     /// For inline text. This is the advance width of each character,
     /// in the direction given by [`Node::text_direction`], in the coordinate
     /// space of this node.
