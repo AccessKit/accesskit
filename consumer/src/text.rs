@@ -728,3 +728,267 @@ impl<'a> Node<'a> {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use accesskit::{NodeId, TextSelection};
+    use std::{num::NonZeroU128, sync::Arc};
+
+    use crate::tests::NullActionHandler;
+
+    const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
+    const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
+    const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
+    const NODE_ID_4: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(4) });
+    const NODE_ID_5: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(5) });
+    const NODE_ID_6: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(6) });
+    const NODE_ID_7: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(7) });
+    const NODE_ID_8: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(8) });
+
+    // This is based on an actual tree produced by egui.
+    fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {
+        use accesskit::kurbo::{Affine, Rect};
+        use accesskit::{Node, Role, TextDirection, Tree, TreeUpdate};
+
+        let update = TreeUpdate {
+            nodes: vec![
+                (
+                    NODE_ID_1,
+                    Arc::new(Node {
+                        role: Role::Window,
+                        transform: Some(Box::new(Affine::scale(1.5))),
+                        children: vec![NODE_ID_2],
+                        ..Default::default()
+                    }),
+                ),
+                (
+                    NODE_ID_2,
+                    Arc::new(Node {
+                        role: Role::TextField,
+                        bounds: Some(Rect {
+                            x0: 8.0,
+                            y0: 31.666664123535156,
+                            x1: 296.0,
+                            y1: 123.66666412353516,
+                        }),
+                        children: vec![
+                            NODE_ID_3, NODE_ID_4, NODE_ID_5, NODE_ID_6, NODE_ID_7, NODE_ID_8,
+                        ],
+                        focusable: true,
+                        text_selection: selection,
+                        ..Default::default()
+                    }),
+                ),
+                (
+                    NODE_ID_3,
+                    Arc::new(Node {
+                        role: Role::InlineTextBox,
+                        bounds: Some(Rect {
+                            x0: 12.0,
+                            y0: 33.666664123535156,
+                            x1: 290.9189147949219,
+                            y1: 48.33333206176758,
+                        }),
+                        value: Some("This paragraph is long enough to wrap ".into()),
+                        text_direction: Some(TextDirection::LeftToRight),
+                        character_lengths: vec![
+                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                        ]
+                        .into(),
+                        character_positions: Some(
+                            vec![
+                                0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0,
+                                51.333332, 58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336,
+                                102.666664, 110.0, 117.333336, 124.666664, 132.0, 139.33333,
+                                146.66667, 154.0, 161.33333, 168.66667, 176.0, 183.33333,
+                                190.66667, 198.0, 205.33333, 212.66667, 220.0, 227.33333,
+                                234.66667, 242.0, 249.33333, 256.66666, 264.0, 271.33334,
+                            ]
+                            .into(),
+                        ),
+                        character_widths: Some(
+                            vec![
+                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                                7.58557, 7.58557, 7.58557,
+                            ]
+                            .into(),
+                        ),
+                        word_lengths: vec![5, 10, 3, 5, 7, 3, 5].into(),
+                        ..Default::default()
+                    }),
+                ),
+                (
+                    NODE_ID_4,
+                    Arc::new(Node {
+                        role: Role::InlineTextBox,
+                        bounds: Some(Rect {
+                            x0: 12.0,
+                            y0: 48.33333206176758,
+                            x1: 129.5855712890625,
+                            y1: 63.0,
+                        }),
+                        value: Some("to another line.\n".into()),
+                        text_direction: Some(TextDirection::LeftToRight),
+                        character_lengths: vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+                            .into(),
+                        character_positions: Some(
+                            vec![
+                                0.0, 7.3333435, 14.666687, 22.0, 29.333344, 36.666687, 44.0,
+                                51.333344, 58.666687, 66.0, 73.33334, 80.66669, 88.0, 95.33334,
+                                102.66669, 110.0, 117.58557,
+                            ]
+                            .into(),
+                        ),
+                        character_widths: Some(
+                            vec![
+                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                                7.58557, 7.58557, 0.0,
+                            ]
+                            .into(),
+                        ),
+                        word_lengths: vec![3, 8, 6].into(),
+                        ..Default::default()
+                    }),
+                ),
+                (
+                    NODE_ID_5,
+                    Arc::new(Node {
+                        role: Role::InlineTextBox,
+                        bounds: Some(Rect {
+                            x0: 12.0,
+                            y0: 63.0,
+                            x1: 144.25222778320313,
+                            y1: 77.66666412353516,
+                        }),
+                        value: Some("Another paragraph.\n".into()),
+                        text_direction: Some(TextDirection::LeftToRight),
+                        character_lengths: vec![
+                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                        ]
+                        .into(),
+                        character_positions: Some(
+                            vec![
+                                0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0,
+                                51.333332, 58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336,
+                                102.666664, 110.0, 117.333336, 124.666664, 132.25223,
+                            ]
+                            .into(),
+                        ),
+                        character_widths: Some(
+                            vec![
+                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                                7.58557, 7.58557, 7.58557, 7.58557, 0.0,
+                            ]
+                            .into(),
+                        ),
+                        word_lengths: vec![8, 11].into(),
+                        ..Default::default()
+                    }),
+                ),
+                (
+                    NODE_ID_6,
+                    Arc::new(Node {
+                        role: Role::InlineTextBox,
+                        bounds: Some(Rect {
+                            x0: 12.0,
+                            y0: 77.66666412353516,
+                            x1: 12.0,
+                            y1: 92.33332824707031,
+                        }),
+                        value: Some("\n".into()),
+                        text_direction: Some(TextDirection::LeftToRight),
+                        character_lengths: vec![1].into(),
+                        character_positions: Some(vec![0.0].into()),
+                        character_widths: Some(vec![0.0].into()),
+                        word_lengths: vec![1].into(),
+                        ..Default::default()
+                    }),
+                ),
+                (
+                    NODE_ID_7,
+                    Arc::new(Node {
+                        role: Role::InlineTextBox,
+                        bounds: Some(Rect {
+                            x0: 12.0,
+                            y0: 92.33332824707031,
+                            x1: 158.9188995361328,
+                            y1: 107.0,
+                        }),
+                        value: Some("Last non-blank line.\n".into()),
+                        text_direction: Some(TextDirection::LeftToRight),
+                        character_lengths: vec![
+                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                        ]
+                        .into(),
+                        character_positions: Some(
+                            vec![
+                                0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0,
+                                51.333332, 58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336,
+                                102.666664, 110.0, 117.333336, 124.666664, 132.0, 139.33333,
+                                146.9189,
+                            ]
+                            .into(),
+                        ),
+                        character_widths: Some(
+                            vec![
+                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 0.0,
+                            ]
+                            .into(),
+                        ),
+                        word_lengths: vec![5, 4, 6, 6].into(),
+                        ..Default::default()
+                    }),
+                ),
+                (
+                    NODE_ID_8,
+                    Arc::new(Node {
+                        role: Role::InlineTextBox,
+                        bounds: Some(Rect {
+                            x0: 12.0,
+                            y0: 107.0,
+                            x1: 12.0,
+                            y1: 121.66666412353516,
+                        }),
+                        value: Some("".into()),
+                        text_direction: Some(TextDirection::LeftToRight),
+                        character_lengths: vec![].into(),
+                        character_positions: Some(vec![].into()),
+                        character_widths: Some(vec![].into()),
+                        word_lengths: vec![0].into(),
+                        ..Default::default()
+                    }),
+                ),
+            ],
+            tree: Some(Tree::new(NODE_ID_1)),
+            focus: Some(NODE_ID_2),
+        };
+
+        crate::Tree::new(update, Box::new(NullActionHandler {}))
+    }
+
+    #[test]
+    fn supports_text_ranges() {
+        let tree = main_multiline_tree(None);
+        let state = tree.read();
+        assert!(!state.node_by_id(NODE_ID_1).unwrap().supports_text_ranges());
+        assert!(state.node_by_id(NODE_ID_2).unwrap().supports_text_ranges());
+    }
+
+    #[test]
+    fn multiline_document_range_text() {
+        let tree = main_multiline_tree(None);
+        let state = tree.read();
+        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let range = node.document_range();
+        assert_eq!(range.text(), "This paragraph is long enough to wrap to another line.\nAnother paragraph.\n\nLast non-blank line.\n");
+    }
+}
