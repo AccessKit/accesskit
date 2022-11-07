@@ -405,13 +405,15 @@ impl<'a> Range<'a> {
     where
         F: FnMut(&Node) -> Option<T>,
     {
-        let start = self.start.biased_to_start(&self.node);
-        // For a degenerate range, the following avoids having `end`
-        // come before `start`.
-        let end = if self.is_degenerate() {
-            start
+        // If the range is degenerate, we don't want to normalize it.
+        // This is important e.g. when getting the bounding rectangle
+        // of the caret range when the caret is at the end of a wrapped line.
+        let (start, end) = if self.is_degenerate() {
+            (self.start, self.start)
         } else {
-            self.end.biased_to_end(&self.node)
+            let start = self.start.biased_to_start(&self.node);
+            let end = self.end.biased_to_end(&self.node);
+            (start, end)
         };
         if let Some(result) = f(&start.node) {
             return Some(result);
