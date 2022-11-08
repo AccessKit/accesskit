@@ -299,7 +299,12 @@ impl<'a> Position<'a> {
         let mut current = *self;
         loop {
             current = current.forward_by_line();
-            if current.is_document_end() || current.inner.is_paragraph_end() {
+            if current.is_document_end()
+                || current
+                    .inner
+                    .biased_to_end(&self.root_node)
+                    .is_paragraph_end()
+            {
                 break;
             }
         }
@@ -731,6 +736,7 @@ impl<'a> Node<'a> {
 
 #[cfg(test)]
 mod tests {
+    use accesskit::kurbo::Rect;
     use accesskit::{NodeId, TextSelection};
     use std::{num::NonZeroU128, sync::Arc};
 
@@ -747,7 +753,7 @@ mod tests {
 
     // This is based on an actual tree produced by egui.
     fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {
-        use accesskit::kurbo::{Affine, Rect};
+        use accesskit::kurbo::Affine;
         use accesskit::{Node, Role, TextDirection, Tree, TreeUpdate};
 
         let update = TreeUpdate {
@@ -975,6 +981,51 @@ mod tests {
         crate::Tree::new(update, Box::new(NullActionHandler {}))
     }
 
+    fn multiline_end_selection() -> TextSelection {
+        use accesskit::TextPosition;
+
+        TextSelection {
+            anchor: TextPosition {
+                node: NODE_ID_8,
+                character_index: 0,
+            },
+            focus: TextPosition {
+                node: NODE_ID_8,
+                character_index: 0,
+            },
+        }
+    }
+
+    fn multiline_wrapped_line_end_selection() -> TextSelection {
+        use accesskit::TextPosition;
+
+        TextSelection {
+            anchor: TextPosition {
+                node: NODE_ID_3,
+                character_index: 38,
+            },
+            focus: TextPosition {
+                node: NODE_ID_3,
+                character_index: 38,
+            },
+        }
+    }
+
+    fn multiline_second_line_middle_selection() -> TextSelection {
+        use accesskit::TextPosition;
+
+        TextSelection {
+            anchor: TextPosition {
+                node: NODE_ID_4,
+                character_index: 5,
+            },
+            focus: TextPosition {
+                node: NODE_ID_4,
+                character_index: 5,
+            },
+        }
+    }
+
     #[test]
     fn supports_text_ranges() {
         let tree = main_multiline_tree(None);
@@ -984,11 +1035,237 @@ mod tests {
     }
 
     #[test]
-    fn multiline_document_range_text() {
+    fn multiline_document_range() {
         let tree = main_multiline_tree(None);
         let state = tree.read();
         let node = state.node_by_id(NODE_ID_2).unwrap();
         let range = node.document_range();
+        let start = range.start();
+        assert!(start.is_word_start());
+        assert!(start.is_line_start());
+        assert!(!start.is_line_end());
+        assert!(start.is_paragraph_start());
+        assert!(start.is_document_start());
+        assert!(!start.is_document_end());
+        let end = range.end();
+        assert!(start < end);
+        assert!(end.is_word_start());
+        assert!(end.is_line_start());
+        assert!(end.is_line_end());
+        assert!(end.is_paragraph_start());
+        assert!(!end.is_document_start());
+        assert!(end.is_document_end());
         assert_eq!(range.text(), "This paragraph is long enough to wrap to another line.\nAnother paragraph.\n\nLast non-blank line.\n");
+        assert_eq!(
+            range.bounding_boxes(),
+            vec![
+                Rect {
+                    x0: 18.0,
+                    y0: 50.499996185302734,
+                    x1: 436.3783721923828,
+                    y1: 72.49999809265137
+                },
+                Rect {
+                    x0: 18.0,
+                    y0: 72.49999809265137,
+                    x1: 194.37835693359375,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 18.0,
+                    y0: 94.5,
+                    x1: 216.3783416748047,
+                    y1: 116.49999618530273
+                },
+                Rect {
+                    x0: 18.0,
+                    y0: 116.49999618530273,
+                    x1: 18.0,
+                    y1: 138.49999237060547
+                },
+                Rect {
+                    x0: 18.0,
+                    y0: 138.49999237060547,
+                    x1: 238.37834930419922,
+                    y1: 160.5
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn multiline_end_degenerate_range() {
+        let tree = main_multiline_tree(Some(multiline_end_selection()));
+        let state = tree.read();
+        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let range = node.text_selection().unwrap();
+        assert!(range.is_degenerate());
+        let pos = range.start();
+        assert!(pos.is_word_start());
+        assert!(pos.is_line_start());
+        assert!(pos.is_line_end());
+        assert!(pos.is_paragraph_start());
+        assert!(!pos.is_document_start());
+        assert!(pos.is_document_end());
+        assert_eq!(range.text(), "");
+        assert_eq!(
+            range.bounding_boxes(),
+            vec![Rect {
+                x0: 18.0,
+                y0: 160.5,
+                x1: 18.0,
+                y1: 182.49999618530273,
+            }]
+        );
+    }
+
+    #[test]
+    fn multiline_wrapped_line_end_range() {
+        let tree = main_multiline_tree(Some(multiline_wrapped_line_end_selection()));
+        let state = tree.read();
+        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let range = node.text_selection().unwrap();
+        assert!(range.is_degenerate());
+        let pos = range.start();
+        assert!(!pos.is_word_start());
+        assert!(!pos.is_line_start());
+        assert!(pos.is_line_end());
+        assert!(!pos.is_paragraph_start());
+        assert!(!pos.is_document_start());
+        assert!(!pos.is_document_end());
+        assert_eq!(range.text(), "");
+        assert_eq!(
+            range.bounding_boxes(),
+            vec![Rect {
+                x0: 436.3783721923828,
+                y0: 50.499996185302734,
+                x1: 436.3783721923828,
+                y1: 72.49999809265137
+            }]
+        );
+        let next_char_pos = pos.forward_by_character();
+        let mut line_start_range = range;
+        line_start_range.set_end(next_char_pos);
+        assert!(!line_start_range.is_degenerate());
+        assert_eq!(line_start_range.text(), "t");
+        assert_eq!(
+            line_start_range.bounding_boxes(),
+            vec![Rect {
+                x0: 18.0,
+                y0: 72.49999809265137,
+                x1: 29.378354787826538,
+                y1: 94.5
+            }]
+        );
+        let prev_char_pos = pos.backward_by_character();
+        let mut prev_char_range = range;
+        prev_char_range.set_start(prev_char_pos);
+        assert!(!prev_char_range.is_degenerate());
+        assert_eq!(prev_char_range.text(), " ");
+        assert_eq!(
+            prev_char_range.bounding_boxes(),
+            vec![Rect {
+                x0: 425.00001525878906,
+                y0: 50.499996185302734,
+                x1: 436.3783721923828,
+                y1: 72.49999809265137
+            }]
+        );
+    }
+
+    #[test]
+    fn multiline_find_line_ends_from_middle() {
+        let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
+        let state = tree.read();
+        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let mut range = node.text_selection().unwrap();
+        assert!(range.is_degenerate());
+        let pos = range.start();
+        assert!(!pos.is_line_start());
+        assert!(!pos.is_line_end());
+        assert!(!pos.is_document_start());
+        assert!(!pos.is_document_end());
+        let line_start = pos.backward_by_line();
+        range.set_start(line_start);
+        let line_end = line_start.forward_by_line();
+        range.set_end(line_end);
+        assert!(!range.is_degenerate());
+        assert_eq!(range.text(), "to another line.\n");
+        assert_eq!(
+            range.bounding_boxes(),
+            vec![Rect {
+                x0: 18.0,
+                y0: 72.49999809265137,
+                x1: 194.37835693359375,
+                y1: 94.5
+            },]
+        );
+    }
+
+    #[test]
+    fn multiline_find_paragraph_ends_from_middle() {
+        let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
+        let state = tree.read();
+        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let mut range = node.text_selection().unwrap();
+        assert!(range.is_degenerate());
+        let pos = range.start();
+        assert!(!pos.is_paragraph_start());
+        assert!(!pos.is_document_start());
+        assert!(!pos.is_document_end());
+        let paragraph_start = pos.backward_by_paragraph();
+        range.set_start(paragraph_start);
+        let paragraph_end = paragraph_start.forward_by_paragraph();
+        range.set_end(paragraph_end);
+        assert!(!range.is_degenerate());
+        assert_eq!(
+            range.text(),
+            "This paragraph is long enough to wrap to another line.\n"
+        );
+        assert_eq!(
+            range.bounding_boxes(),
+            vec![
+                Rect {
+                    x0: 18.0,
+                    y0: 50.499996185302734,
+                    x1: 436.3783721923828,
+                    y1: 72.49999809265137
+                },
+                Rect {
+                    x0: 18.0,
+                    y0: 72.49999809265137,
+                    x1: 194.37835693359375,
+                    y1: 94.5
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn multiline_find_word_ends_from_middle() {
+        let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
+        let state = tree.read();
+        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let mut range = node.text_selection().unwrap();
+        assert!(range.is_degenerate());
+        let pos = range.start();
+        assert!(!pos.is_word_start());
+        assert!(!pos.is_document_start());
+        assert!(!pos.is_document_end());
+        let word_start = pos.backward_by_word();
+        range.set_start(word_start);
+        let word_end = word_start.forward_by_word();
+        range.set_end(word_end);
+        assert!(!range.is_degenerate());
+        assert_eq!(range.text(), "another ");
+        assert_eq!(
+            range.bounding_boxes(),
+            vec![Rect {
+                x0: 51.0,
+                y0: 72.49999809265137,
+                x1: 139.3783721923828,
+                y1: 94.5
+            }]
+        );
     }
 }
