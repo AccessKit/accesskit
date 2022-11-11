@@ -226,6 +226,19 @@ impl<'a> Node<'a> {
             * self.direct_transform()
     }
 
+    pub(crate) fn relative_transform(&self, stop_at: &Node) -> Affine {
+        let parent_transform = if let Some(parent) = self.parent() {
+            if parent.id() == stop_at.id() {
+                Affine::IDENTITY
+            } else {
+                parent.relative_transform(stop_at)
+            }
+        } else {
+            Affine::IDENTITY
+        };
+        parent_transform * self.direct_transform()
+    }
+
     /// Returns the node's transformed bounding box relative to the tree's
     /// container (e.g. window).
     pub fn bounding_box(&self) -> Option<Rect> {
@@ -235,13 +248,18 @@ impl<'a> Node<'a> {
             .map(|rect| self.transform().transform_rect_bbox(*rect))
     }
 
-    /// Returns the deepest filtered node, either this node or a descendant,
-    /// at the given point in this node's coordinate space.
-    pub fn node_at_point(
+    pub(crate) fn bounding_box_in_coordinate_space(&self, other: &Node) -> Option<Rect> {
+        self.data()
+            .bounds
+            .as_ref()
+            .map(|rect| self.relative_transform(other).transform_rect_bbox(*rect))
+    }
+
+    pub(crate) fn hit_test(
         &self,
         point: Point,
         filter: &impl Fn(&Node) -> FilterResult,
-    ) -> Option<Node<'a>> {
+    ) -> Option<(Node<'a>, Point)> {
         let filter_result = filter(self);
 
         if filter_result == FilterResult::ExcludeSubtree {
@@ -250,20 +268,30 @@ impl<'a> Node<'a> {
 
         for child in self.children().rev() {
             let point = child.direct_transform().inverse() * point;
-            if let Some(node) = child.node_at_point(point, filter) {
-                return Some(node);
+            if let Some(result) = child.hit_test(point, filter) {
+                return Some(result);
             }
         }
 
         if filter_result == FilterResult::Include {
             if let Some(rect) = &self.data().bounds {
                 if rect.contains(point) {
-                    return Some(*self);
+                    return Some((*self, point));
                 }
             }
         }
 
         None
+    }
+
+    /// Returns the deepest filtered node, either this node or a descendant,
+    /// at the given point in this node's coordinate space.
+    pub fn node_at_point(
+        &self,
+        point: Point,
+        filter: &impl Fn(&Node) -> FilterResult,
+    ) -> Option<Node<'a>> {
+        self.hit_test(point, filter).map(|(node, _)| node)
     }
 
     pub fn id(&self) -> NodeId {
@@ -478,6 +506,22 @@ impl<'a> Node<'a> {
 
     pub fn is_selected(&self) -> Option<bool> {
         self.data().selected
+    }
+
+    pub fn index_path(&self) -> Vec<usize> {
+        self.relative_index_path(self.tree_state.root_id())
+    }
+
+    pub fn relative_index_path(&self, ancestor_id: NodeId) -> Vec<usize> {
+        let mut result = Vec::new();
+        let mut current = *self;
+        while current.id() != ancestor_id {
+            let (parent, index) = current.parent_and_index().unwrap();
+            result.push(index);
+            current = parent;
+        }
+        result.reverse();
+        result
     }
 
     pub(crate) fn first_filtered_child(

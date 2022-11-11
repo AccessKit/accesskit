@@ -18,10 +18,10 @@ use paste::paste;
 use std::sync::{Arc, Weak};
 use windows::{
     core::*,
-    Win32::{Foundation::*, Graphics::Gdi::*, System::Com::*, UI::Accessibility::*},
+    Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
 };
 
-use crate::util::*;
+use crate::{text::PlatformRange as PlatformTextRange, util::*};
 
 fn runtime_id_from_node_id(id: NodeId) -> impl std::ops::Deref<Target = [i32]> {
     let mut result = ArrayVec::<i32, { std::mem::size_of::<NodeIdContent>() + 1 }>::new();
@@ -408,6 +408,10 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
+    fn is_text_pattern_supported(&self) -> bool {
+        self.node.supports_text_ranges()
+    }
+
     pub(crate) fn enqueue_property_changes(
         &self,
         queue: &mut Vec<QueuedEvent>,
@@ -432,6 +436,15 @@ impl<'a> NodeWrapper<'a> {
             queue.push(QueuedEvent::Simple {
                 element: element.clone(),
                 event_id: UIA_SelectionItem_ElementSelectedEventId,
+            });
+        }
+        if self.is_text_pattern_supported()
+            && old.is_text_pattern_supported()
+            && self.node.text_selection() != old.node.text_selection()
+        {
+            queue.push(QueuedEvent::Simple {
+                element: element.clone(),
+                event_id: UIA_Text_TextSelectionChangedEventId,
             });
         }
     }
@@ -468,10 +481,6 @@ impl<'a> NodeWrapper<'a> {
     }
 }
 
-fn element_not_available() -> Error {
-    Error::new(HRESULT(UIA_E_ELEMENTNOTAVAILABLE as i32), "".into())
-}
-
 #[implement(
     IRawElementProviderSimple,
     IRawElementProviderFragment,
@@ -480,12 +489,13 @@ fn element_not_available() -> Error {
     IInvokeProvider,
     IValueProvider,
     IRangeValueProvider,
-    ISelectionItemProvider
+    ISelectionItemProvider,
+    ITextProvider
 )]
 pub(crate) struct PlatformNode {
-    tree: Weak<Tree>,
-    node_id: NodeId,
-    hwnd: HWND,
+    pub(crate) tree: Weak<Tree>,
+    pub(crate) node_id: NodeId,
+    pub(crate) hwnd: HWND,
 }
 
 impl PlatformNode {
@@ -553,11 +563,7 @@ impl PlatformNode {
     }
 
     fn client_top_left(&self) -> Point {
-        let mut result = POINT::default();
-        // If ClientToScreen fails, that means the window is gone.
-        // That's an unexpected condition, so we should fail loudly.
-        unsafe { ClientToScreen(self.hwnd, &mut result) }.unwrap();
-        Point::new(result.x.into(), result.y.into())
+        client_top_left(self.hwnd)
     }
 }
 
@@ -837,6 +843,59 @@ patterns! {
                 // We return E_FAIL here because that's what Chromium does
                 // if it can't find a container.
                 Err(Error::new(E_FAIL, "".into()))
+            })
+        }
+    )),
+    (Text, is_text_pattern_supported, (), (
+        fn GetSelection(&self) -> Result<*mut SAFEARRAY> {
+            self.resolve(|wrapper| {
+                if let Some(range) = wrapper.node.text_selection() {
+                    let platform_range: ITextRangeProvider = PlatformTextRange::new(&self.tree, range, self.hwnd).into();
+                    let iunknown: IUnknown = platform_range.into();
+                    Ok(safe_array_from_com_slice(&[iunknown]))
+                } else {
+                    Ok(std::ptr::null_mut())
+                }
+            })
+        },
+
+        fn GetVisibleRanges(&self) -> Result<*mut SAFEARRAY> {
+            // TBD: Do we need this? The Quorum GUI toolkit, which is our
+            // current point of comparison for text functionality,
+            // doesn't implement it.
+            Ok(std::ptr::null_mut())
+        },
+
+        fn RangeFromChild(&self, _child: &Option<IRawElementProviderSimple>) -> Result<ITextRangeProvider> {
+            // We don't support embedded objects in text.
+            Err(not_implemented())
+        },
+
+        fn RangeFromPoint(&self, point: &UiaPoint) -> Result<ITextRangeProvider> {
+            self.resolve(|wrapper| {
+                let client_top_left = self.client_top_left();
+                let point = Point::new(point.x - client_top_left.x, point.y - client_top_left.y);
+                let point = wrapper.node.transform().inverse() * point;
+                let pos = wrapper.node.text_position_at_point(point);
+                let range = pos.to_degenerate_range();
+                Ok(PlatformTextRange::new(&self.tree, range, self.hwnd).into())
+            })
+        },
+
+        fn DocumentRange(&self) -> Result<ITextRangeProvider> {
+            self.resolve(|wrapper| {
+                let range = wrapper.node.document_range();
+                Ok(PlatformTextRange::new(&self.tree, range, self.hwnd).into())
+            })
+        },
+
+        fn SupportedTextSelection(&self) -> Result<SupportedTextSelection> {
+            self.resolve(|wrapper| {
+                if wrapper.node.has_text_selection() {
+                    Ok(SupportedTextSelection_Single)
+                } else {
+                    Ok(SupportedTextSelection_None)
+                }
             })
         }
     ))

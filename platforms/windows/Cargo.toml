@@ -15,6 +15,7 @@ accesskit = { version = "0.6.1", path = "../../common" }
 accesskit_consumer = { version = "0.6.1", path = "../../consumer" }
 arrayvec = "0.7.1"
 lazy-init = "0.5.0"
+parking_lot = "0.11.2"
 paste = "1.0"
 
 [dependencies.windows]
@@ -34,6 +35,5 @@ features = [
 
 [dev-dependencies]
 lazy_static = "1.4.0"
-parking_lot = "0.11.2"
 scopeguard = "1.1.0"
 winit = "0.27.3"

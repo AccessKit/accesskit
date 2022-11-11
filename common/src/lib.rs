@@ -21,7 +21,6 @@ use serde_lib as serde;
 use serde_lib::{Deserialize, Serialize};
 use std::{
     num::{NonZeroU128, NonZeroU64},
-    ops::Range,
     sync::Arc,
 };
 
@@ -414,19 +413,6 @@ pub enum DropEffect {
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-pub enum MarkerType {
-    SpellingError,
-    GrammarError,
-    SearchMatch,
-    ActiveSuggestion,
-    Suggestion,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum TextDirection {
     LeftToRight,
     RightToLeft,
@@ -606,19 +592,6 @@ impl From<NonZeroU64> for NodeId {
     }
 }
 
-/// A marker spanning a range within text.
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-pub struct TextMarker {
-    pub marker_type: MarkerType,
-    /// Indices are in UTF-8 code units.
-    pub range: Range<usize>,
-}
-
 /// Defines a custom action for a UI element.
 ///
 /// For example, a list UI can allow a user to reorder items in the list by dragging the
@@ -646,7 +619,20 @@ fn is_empty<T>(slice: &[T]) -> bool {
     slice.is_empty()
 }
 
-/// Offsets are in UTF-8 code units.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(crate = "serde"))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+pub struct TextPosition {
+    /// The node's role must be [`Role::InlineTextBox`].
+    pub node: NodeId,
+    /// The index of an item in [`Node::character_lengths`], or the length
+    /// of that slice if the position is at the end of the line.
+    pub character_index: usize,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
@@ -654,10 +640,15 @@ fn is_empty<T>(slice: &[T]) -> bool {
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TextSelection {
-    anchor_node: NodeId,
-    anchor_offset: usize,
-    focus_node: NodeId,
-    focus_offset: usize,
+    /// The position where the selection started, and which does not change
+    /// as the selection is expanded or contracted. If there is no selection
+    /// but only a caret, this must be equal to [`focus`]. This is also known
+    /// as a degenerate selection.
+    pub anchor: TextPosition,
+    /// The active end of the selection, which changes as the selection
+    /// is expanded or contracted, or the position of the caret if there is
+    /// no selection.
+    pub focus: TextPosition,
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
@@ -925,25 +916,96 @@ pub struct Node {
     pub radio_group: Vec<NodeId>,
 
     #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub markers: Box<[TextMarker]>,
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
+    pub is_spelling_error: bool,
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
+    pub is_grammar_error: bool,
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
+    pub is_search_match: bool,
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
+    pub is_suggestion: bool,
 
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub text_direction: Option<TextDirection>,
-    /// For inline text. This is the pixel position of the end of each
-    /// character within the bounding rectangle of this object, in the
-    /// direction given by [`Node::text_direction`]. For example, for left-to-right
-    /// text, the first offset is the right coordinate of the first
-    /// character within the object's bounds, the second offset
-    /// is the right coordinate of the second character, and so on.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub character_offsets: Box<[f32]>,
 
-    /// For inline text. The indices of each word, in UTF-8 code units.
+    /// For inline text. The length (non-inclusive) of each character
+    /// in UTF-8 code units (bytes). The sum of these lengths must equal
+    /// the length of [`Node::value`], also in bytes.
+    ///
+    /// A character is defined as the smallest unit of text that
+    /// can be selected. This isn't necessarily a single Unicode
+    /// scalar value (code point). This is why AccessKit can't compute
+    /// the lengths of the characters from the text itself; this information
+    /// must be provided by the text editing implementation.
+    ///
+    /// If this node is the last text box in a line that ends with a hard
+    /// line break, that line break should be included at the end of this
+    /// node's value as either a CRLF or LF; in both cases, the line break
+    /// should be counted as a single character for the sake of this slice.
+    /// When the caret is at the end of such a line, the focus of the text
+    /// selection should be on the line break, not after it.
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub words: Box<[Range<usize>]>,
+    pub character_lengths: Box<[u8]>,
+    /// For inline text. This is the position of each character within
+    /// the node's bounding box, in the direction given by
+    /// [`Node::text_direction`], in the coordinate space of this node.
+    ///
+    /// When present, the length of this slice should be the same as the length
+    /// of [`Node::character_lengths`], including for lines that end
+    /// with a hard line break. The position of such a line break should
+    /// be the position where an end-of-paragraph marker would be rendered.
+    ///
+    /// This field is optional. Without it, AccessKit can't support some
+    /// use cases, such as screen magnifiers that track the caret position
+    /// or screen readers that display a highlight cursor. However,
+    /// most text functionality still works without this information.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub character_positions: Option<Box<[f32]>>,
+    /// For inline text. This is the advance width of each character,
+    /// in the direction given by [`Node::text_direction`], in the coordinate
+    /// space of this node.
+    ///
+    /// When present, the length of this slice should be the same as the length
+    /// of [`Node::character_lengths`], including for lines that end
+    /// with a hard line break. The width of such a line break should
+    /// be non-zero if selecting the line break by itself results in
+    /// a visible highlight (as in Microsoft Word), or zero if not
+    /// (as in Windows Notepad).
+    ///
+    /// This field is optional. Without it, AccessKit can't support some
+    /// use cases, such as screen magnifiers that track the caret position
+    /// or screen readers that display a highlight cursor. However,
+    /// most text functionality still works without this information.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub character_widths: Option<Box<[f32]>>,
+
+    /// For inline text. The length of each word in characters, as defined
+    /// in [`Node::character_lengths`]. The sum of these lengths must equal
+    /// the length of [`Node::character_lengths`].
+    ///
+    /// The end of each word is the beginning of the next word; there are no
+    /// characters that are not considered part of a word. Trailing whitespace
+    /// is typically considered part of the word that precedes it, while
+    /// a line's leading whitespace is considered its own word. Whether
+    /// punctuation is considered a separate word or part of the preceding
+    /// word depends on the particular text editing implementation.
+    /// Some editors may have their own definition of a word; for example,
+    /// in an IDE, words may correspond to programming language tokens.
+    ///
+    /// Not all assistive technologies require information about word
+    /// boundaries, and not all platform accessibility APIs even expose
+    /// this information, but for assistive technologies that do use
+    /// this information, users will get unpredictable results if the word
+    /// boundaries exposed by the accessibility tree don't match
+    /// the editor's behavior. This is why AccessKit does not determine
+    /// word boundaries itself.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
+    pub word_lengths: Box<[u8]>,
 
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
