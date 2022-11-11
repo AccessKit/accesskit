@@ -871,9 +871,15 @@ patterns! {
             Err(not_implemented())
         },
 
-        fn RangeFromPoint(&self, _point: &UiaPoint) -> Result<ITextRangeProvider> {
-            // TODO: hit testing for text
-            Err(not_implemented())
+        fn RangeFromPoint(&self, point: &UiaPoint) -> Result<ITextRangeProvider> {
+            self.resolve(|wrapper| {
+                let client_top_left = self.client_top_left();
+                let point = Point::new(point.x - client_top_left.x, point.y - client_top_left.y);
+                let point = wrapper.node.transform().inverse() * point;
+                let pos = wrapper.node.text_position_at_point(point);
+                let range = pos.to_degenerate_range();
+                Ok(PlatformTextRange::new(&self.tree, range, self.hwnd).into())
+            })
         },
 
         fn DocumentRange(&self) -> Result<ITextRangeProvider> {

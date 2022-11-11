@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::kurbo::Rect;
+use accesskit::kurbo::{Point, Rect};
 use accesskit::{NodeId, Role, TextDirection, TextPosition as WeakPosition};
 use std::{cmp::Ordering, iter::FusedIterator};
 
@@ -227,6 +227,10 @@ impl<'a> Position<'a> {
 
     pub fn is_document_end(&self) -> bool {
         self.inner.is_document_end(&self.root_node)
+    }
+
+    pub fn to_degenerate_range(&self) -> Range {
+        Range::new(self.root_node, self.inner, self.inner)
     }
 
     pub fn forward_by_character(&self) -> Self {
@@ -545,8 +549,8 @@ impl<'a> Range<'a> {
                         rect.x1 = orig_right - pixel_start;
                         rect.x0 = orig_right - pixel_end;
                     }
-                    // Note: The following directions that the rectangle,
-                    // before being transformed, is y-down. TBD: Will we
+                    // Note: The following directions assume that the rectangle,
+                    // in the node's coordinate space, is y-down. TBD: Will we
                     // ever encounter a case where this isn't true?
                     TextDirection::TopToBottom => {
                         let orig_top = rect.y0;
@@ -667,6 +671,46 @@ fn text_node_filter(root_id: NodeId, node: &Node) -> FilterResult {
     }
 }
 
+fn character_index_at_point(node: &Node, point: Point) -> usize {
+    // We know the node has a bounding rectangle because it was returned
+    // by a hit test.
+    let rect = node.data().bounds.as_ref().unwrap();
+    let character_lengths = &node.data().character_lengths;
+    let positions = match &node.data().character_positions {
+        Some(positions) => positions,
+        None => {
+            return 0;
+        }
+    };
+    let widths = match &node.data().character_widths {
+        Some(widths) => widths,
+        None => {
+            return 0;
+        }
+    };
+    let direction = match node.data().text_direction {
+        Some(direction) => direction,
+        None => {
+            return 0;
+        }
+    };
+    for (i, (position, width)) in positions.iter().zip(widths.iter()).enumerate().rev() {
+        let relative_pos = match direction {
+            TextDirection::LeftToRight => point.x - rect.x0,
+            TextDirection::RightToLeft => rect.x1 - point.x,
+            // Note: The following directions assume that the rectangle,
+            // in the node's coordinate space, is y-down. TBD: Will we
+            // ever encounter a case where this isn't true?
+            TextDirection::TopToBottom => point.y - rect.y0,
+            TextDirection::BottomToTop => rect.y1 - point.y,
+        };
+        if relative_pos >= f64::from(*position) && relative_pos < f64::from(*position + *width) {
+            return i;
+        }
+    }
+    character_lengths.len()
+}
+
 impl<'a> Node<'a> {
     fn inline_text_boxes(
         &self,
@@ -732,11 +776,82 @@ impl<'a> Node<'a> {
             Range::new(*self, anchor, focus)
         })
     }
+
+    /// Returns the nearest text position to the given point
+    /// in this node's coordinate space.
+    pub fn text_position_at_point(&self, point: Point) -> Position {
+        let id = self.id();
+        if let Some((node, point)) = self.hit_test(point, &move |node| text_node_filter(id, node)) {
+            if node.role() == Role::InlineTextBox {
+                let pos = InnerPosition {
+                    node,
+                    character_index: character_index_at_point(&node, point),
+                };
+                return Position {
+                    root_node: *self,
+                    inner: pos,
+                };
+            }
+        }
+
+        // The following tests can assume that the point is not within
+        // any inline text box.
+
+        if let Some(node) = self.inline_text_boxes().next() {
+            if let Some(rect) = node.bounding_box_in_coordinate_space(self) {
+                let origin = rect.origin();
+                if point.x < origin.x || point.y < origin.y {
+                    return Position {
+                        root_node: *self,
+                        inner: self.document_start(),
+                    };
+                }
+            }
+        }
+
+        for node in self.inline_text_boxes() {
+            if let Some(rect) = node.bounding_box_in_coordinate_space(self) {
+                if let Some(direction) = node.data().text_direction {
+                    let is_past_end = match direction {
+                        TextDirection::LeftToRight => {
+                            point.y >= rect.y0 && point.y < rect.y1 && point.x >= rect.x1
+                        }
+                        TextDirection::RightToLeft => {
+                            point.y >= rect.y0 && point.y < rect.y1 && point.x < rect.x0
+                        }
+                        // Note: The following directions assume that the rectangle,
+                        // in the root node's coordinate space, is y-down. TBD: Will we
+                        // ever encounter a case where this isn't true?
+                        TextDirection::TopToBottom => {
+                            point.x >= rect.x0 && point.x < rect.x1 && point.y >= rect.y1
+                        }
+                        TextDirection::BottomToTop => {
+                            point.x >= rect.x0 && point.x < rect.x1 && point.y < rect.y0
+                        }
+                    };
+                    if is_past_end {
+                        return Position {
+                            root_node: *self,
+                            inner: InnerPosition {
+                                node,
+                                character_index: node.data().character_lengths.len(),
+                            },
+                        };
+                    }
+                }
+            }
+        }
+
+        Position {
+            root_node: *self,
+            inner: self.document_end(),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use accesskit::kurbo::Rect;
+    use accesskit::kurbo::{Point, Rect};
     use accesskit::{NodeId, TextSelection};
     use std::{num::NonZeroU128, sync::Arc};
 
@@ -1267,5 +1382,97 @@ mod tests {
                 y1: 94.5
             }]
         );
+    }
+
+    #[test]
+    fn text_position_at_point() {
+        let tree = main_multiline_tree(None);
+        let state = tree.read();
+        let node = state.node_by_id(NODE_ID_2).unwrap();
+
+        {
+            let pos = node.text_position_at_point(Point::new(8.0, 31.666664123535156));
+            assert!(pos.is_document_start());
+        }
+
+        {
+            let pos = node.text_position_at_point(Point::new(12.0, 33.666664123535156));
+            assert!(pos.is_document_start());
+        }
+
+        {
+            let pos = node.text_position_at_point(Point::new(16.0, 40.0));
+            assert!(pos.is_document_start());
+        }
+
+        {
+            let pos = node.text_position_at_point(Point::new(144.0, 40.0));
+            assert!(!pos.is_document_start());
+            assert!(!pos.is_document_end());
+            assert!(!pos.is_line_end());
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_by_character());
+            assert_eq!(range.text(), "l");
+        }
+
+        {
+            let pos = node.text_position_at_point(Point::new(150.0, 40.0));
+            assert!(!pos.is_document_start());
+            assert!(!pos.is_document_end());
+            assert!(!pos.is_line_end());
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_by_character());
+            assert_eq!(range.text(), "l");
+        }
+
+        {
+            let pos = node.text_position_at_point(Point::new(291.0, 40.0));
+            assert!(!pos.is_document_start());
+            assert!(!pos.is_document_end());
+            assert!(pos.is_line_end());
+            let mut range = pos.to_degenerate_range();
+            range.set_start(pos.backward_by_word());
+            assert_eq!(range.text(), "wrap ");
+        }
+
+        {
+            let pos = node.text_position_at_point(Point::new(12.0, 50.0));
+            assert!(!pos.is_document_start());
+            assert!(pos.is_line_start());
+            assert!(!pos.is_paragraph_start());
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_by_word());
+            assert_eq!(range.text(), "to ");
+        }
+
+        {
+            let pos = node.text_position_at_point(Point::new(130.0, 50.0));
+            assert!(!pos.is_document_start());
+            assert!(!pos.is_document_end());
+            assert!(pos.is_line_end());
+            let mut range = pos.to_degenerate_range();
+            range.set_start(pos.backward_by_word());
+            assert_eq!(range.text(), "line.\n");
+        }
+
+        {
+            let pos = node.text_position_at_point(Point::new(12.0, 80.0));
+            assert!(!pos.is_document_start());
+            assert!(!pos.is_document_end());
+            assert!(pos.is_line_end());
+            let mut range = pos.to_degenerate_range();
+            range.set_start(pos.backward_by_line());
+            assert_eq!(range.text(), "\n");
+        }
+
+        {
+            let pos = node.text_position_at_point(Point::new(12.0, 120.0));
+            assert!(pos.is_document_end());
+        }
+
+        {
+            let pos = node.text_position_at_point(Point::new(250.0, 122.0));
+            assert!(pos.is_document_end());
+        }
     }
 }
