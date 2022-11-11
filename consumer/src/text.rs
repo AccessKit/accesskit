@@ -809,7 +809,7 @@ impl<'a> Node<'a> {
             }
         }
 
-        for node in self.inline_text_boxes() {
+        for node in self.inline_text_boxes().rev() {
             if let Some(rect) = node.bounding_box_in_coordinate_space(self) {
                 if let Some(direction) = node.data().text_direction {
                     let is_past_end = match direction {
