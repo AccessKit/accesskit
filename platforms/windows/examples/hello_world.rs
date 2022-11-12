@@ -344,7 +344,7 @@ fn create_window(title: &str, initial_state: TreeUpdate, initial_focus: NodeId) 
             None,
             None,
             *WIN32_INSTANCE,
-            Box::into_raw(create_params) as _,
+            Some(Box::into_raw(create_params) as _),
         )
     };
     if window.0 == 0 {

@@ -108,6 +108,12 @@ impl From<CaretPosition> for VariantFactory {
     }
 }
 
+impl From<UIA_CONTROLTYPE_ID> for VariantFactory {
+    fn from(value: UIA_CONTROLTYPE_ID) -> Self {
+        (value.0 as i32).into()
+    }
+}
+
 const VARIANT_FALSE: i16 = 0i16;
 const VARIANT_TRUE: i16 = -1i16;
 
@@ -164,11 +170,11 @@ pub(crate) fn safe_array_from_com_slice(slice: &[IUnknown]) -> *mut SAFEARRAY {
 pub(crate) enum QueuedEvent {
     Simple {
         element: IRawElementProviderSimple,
-        event_id: i32,
+        event_id: UIA_EVENT_ID,
     },
     PropertyChanged {
         element: IRawElementProviderSimple,
-        property_id: i32,
+        property_id: UIA_PROPERTY_ID,
         old_value: VARIANT,
         new_value: VARIANT,
     },

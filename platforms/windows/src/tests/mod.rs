@@ -174,7 +174,7 @@ fn create_window(
             None,
             None,
             *WIN32_INSTANCE,
-            Box::into_raw(create_params) as _,
+            Some(Box::into_raw(create_params) as _),
         )
     };
     if window.0 == 0 {
@@ -263,7 +263,7 @@ where
         // of UIA works even if it is set up in an environment where COM
         // has not been initialized, and that this sequence of events
         // doesn't prevent the UIA client from working.
-        unsafe { CoInitializeEx(std::ptr::null_mut(), COINIT_MULTITHREADED) }.unwrap();
+        unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) }.unwrap();
         let _com_guard = scopeguard::guard((), |_| unsafe { CoUninitialize() });
 
         let uia: IUIAutomation =

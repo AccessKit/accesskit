@@ -68,7 +68,7 @@ impl<'a> NodeWrapper<'a> {
         Self { node }
     }
 
-    fn control_type(&self) -> i32 {
+    fn control_type(&self) -> UIA_CONTROLTYPE_ID {
         let role = self.node.role();
         // TODO: Handle special cases. (#14)
         match role {
@@ -453,7 +453,7 @@ impl<'a> NodeWrapper<'a> {
         &self,
         queue: &mut Vec<QueuedEvent>,
         element: &IRawElementProviderSimple,
-        property_id: i32,
+        property_id: UIA_PROPERTY_ID,
         old_value: VariantFactory,
         new_value: VariantFactory,
     ) {
@@ -572,11 +572,11 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
         Ok(ProviderOptions_ServerSideProvider)
     }
 
-    fn GetPatternProvider(&self, pattern_id: i32) -> Result<IUnknown> {
+    fn GetPatternProvider(&self, pattern_id: UIA_PATTERN_ID) -> Result<IUnknown> {
         self.pattern_provider(pattern_id)
     }
 
-    fn GetPropertyValue(&self, property_id: i32) -> Result<VARIANT> {
+    fn GetPropertyValue(&self, property_id: UIA_PROPERTY_ID) -> Result<VARIANT> {
         self.resolve(|wrapper| {
             let result = wrapper.get_property_value(property_id);
             Ok(result.into())
@@ -676,7 +676,7 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
 macro_rules! properties {
     ($(($base_id:ident, $m:ident)),+) => {
         impl NodeWrapper<'_> {
-            fn get_property_value(&self, property_id: i32) -> VariantFactory {
+            fn get_property_value(&self, property_id: UIA_PROPERTY_ID) -> VariantFactory {
                 match property_id {
                     $(paste! { [< UIA_ $base_id PropertyId>] } => {
                         self.$m().into()
@@ -715,7 +715,7 @@ macro_rules! patterns {
         $($extra_trait_method:item),*
     ))),+) => {
         impl PlatformNode {
-            fn pattern_provider(&self, pattern_id: i32) -> Result<IUnknown> {
+            fn pattern_provider(&self, pattern_id: UIA_PATTERN_ID) -> Result<IUnknown> {
                 self.resolve(|wrapper| {
                     match pattern_id {
                         $(paste! { [< UIA_ $base_pattern_id PatternId>] } => {
