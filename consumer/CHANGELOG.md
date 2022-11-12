@@ -1,5 +1,12 @@
 # Changelog
 
+### [0.7.1](https://www.github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.7.0...accesskit_consumer-v0.7.1) (2022-11-12)
+
+
+### Bug Fixes
+
+* **consumer, platforms/windows, platforms/winit:** Update to parking_lot 0.12.1 ([#146](https://www.github.com/AccessKit/accesskit/issues/146)) ([6772855](https://www.github.com/AccessKit/accesskit/commit/6772855a7b540fd728faad15d8d208b05c1bbd8a))
+
 ## [0.7.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.6.1...accesskit_consumer-v0.7.0) (2022-11-11)
 
 
