@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.3.3...accesskit_winit-v0.4.0) (2022-11-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **platforms/windows:** Update to windows-rs 0.42.0 (#148)
+
+### Bug Fixes
+
+* **consumer, platforms/windows, platforms/winit:** Update to parking_lot 0.12.1 ([#146](https://www.github.com/AccessKit/accesskit/issues/146)) ([6772855](https://www.github.com/AccessKit/accesskit/commit/6772855a7b540fd728faad15d8d208b05c1bbd8a))
+* **platforms/windows:** Update to windows-rs 0.42.0 ([#148](https://www.github.com/AccessKit/accesskit/issues/148)) ([70d1a89](https://www.github.com/AccessKit/accesskit/commit/70d1a89f51fd6c3a32b7192d9d7f3937db09d196))
+
 ### [0.3.3](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.3.2...accesskit_winit-v0.3.3) (2022-11-11)
 
 
