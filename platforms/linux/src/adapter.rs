@@ -18,34 +18,35 @@ use crate::atspi::{
 use crate::node::{filter, AppState, NodeWrapper, PlatformNode, PlatformRootNode};
 use parking_lot::RwLock;
 
-pub struct Adapter<'a> {
-    atspi_bus: Bus<'a>,
+pub struct Adapter {
+    atspi_bus: Option<Bus>,
     _app_state: Arc<RwLock<AppState>>,
     tree: Arc<Tree>,
 }
 
-impl<'a> Adapter<'a> {
+impl Adapter {
     pub fn new(
         app_name: String,
         toolkit_name: String,
         toolkit_version: String,
-        initial_state: TreeUpdate,
+        initial_state: Box<dyn FnOnce() -> TreeUpdate>,
         action_handler: Box<dyn ActionHandler>,
-    ) -> Option<Self> {
-        let mut atspi_bus = Bus::a11y_bus()?;
-        let tree = Arc::new(Tree::new(initial_state, action_handler));
+    ) -> Self {
+        let mut atspi_bus = Bus::a11y_bus();
+        let tree = Arc::new(Tree::new(initial_state(), action_handler));
         let app_state = Arc::new(RwLock::new(AppState::new(
             app_name,
             toolkit_name,
             toolkit_version,
         )));
-        atspi_bus
-            .register_root_node(PlatformRootNode::new(
+        atspi_bus.as_mut().and_then(|bus| {
+            bus.register_root_node(PlatformRootNode::new(
                 Arc::downgrade(&app_state),
                 Arc::downgrade(&tree),
             ))
-            .ok()?;
-        let adapter = Adapter {
+            .ok()
+        });
+        let mut adapter = Adapter {
             atspi_bus,
             _app_state: app_state,
             tree,
@@ -67,10 +68,10 @@ impl<'a> Adapter<'a> {
                 let interfaces = NodeWrapper::new(&reader.node_by_id(id).unwrap()).interfaces();
                 adapter
                     .register_interfaces(&adapter.tree, id, interfaces)
-                    .ok()?;
+                    .unwrap();
             }
         }
-        Some(adapter)
+        adapter
     }
 
     fn register_interfaces(
@@ -79,26 +80,26 @@ impl<'a> Adapter<'a> {
         id: NodeId,
         new_interfaces: Interfaces,
     ) -> zbus::Result<bool> {
-        let atspi_id = ObjectId::from(id);
-        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, atspi_id.as_str());
-        if new_interfaces.contains(Interface::Accessible) {
-            self.atspi_bus.register_interface(
-                &path,
-                AccessibleInterface::new(
-                    self.atspi_bus.unique_name().to_owned(),
-                    PlatformNode::new(tree, id),
-                ),
-            )?;
-        }
-        if new_interfaces.contains(Interface::Action) {
-            self.atspi_bus
-                .register_interface(&path, ActionInterface::new(PlatformNode::new(tree, id)))?;
-        }
-        if new_interfaces.contains(Interface::Value) {
-            self.atspi_bus
-                .register_interface(&path, ValueInterface::new(PlatformNode::new(tree, id)))?;
-        }
-        Ok(true)
+        self.atspi_bus.as_ref().map_or(Ok(false), |bus| {
+            let atspi_id = ObjectId::from(id);
+            let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, atspi_id.as_str());
+            if new_interfaces.contains(Interface::Accessible) {
+                bus.register_interface(
+                    &path,
+                    AccessibleInterface::new(
+                        bus.unique_name().to_owned(),
+                        PlatformNode::new(tree, id),
+                    ),
+                )?;
+            }
+            if new_interfaces.contains(Interface::Action) {
+                bus.register_interface(&path, ActionInterface::new(PlatformNode::new(tree, id)))?;
+            }
+            if new_interfaces.contains(Interface::Value) {
+                bus.register_interface(&path, ValueInterface::new(PlatformNode::new(tree, id)))?;
+            }
+            Ok(true)
+        })
     }
 
     fn unregister_interfaces(
@@ -106,25 +107,24 @@ impl<'a> Adapter<'a> {
         id: &ObjectId,
         old_interfaces: Interfaces,
     ) -> zbus::Result<bool> {
-        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, id.as_str());
-        if old_interfaces.contains(Interface::Accessible) {
-            self.atspi_bus
-                .unregister_interface::<AccessibleInterface<PlatformNode>>(&path)?;
-        }
-        if old_interfaces.contains(Interface::Action) {
-            self.atspi_bus
-                .unregister_interface::<ActionInterface>(&path)?;
-        }
-        if old_interfaces.contains(Interface::Value) {
-            self.atspi_bus
-                .unregister_interface::<ValueInterface>(&path)?;
-        }
-        Ok(true)
+        self.atspi_bus.as_ref().map_or(Ok(false), |bus| {
+            let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, id.as_str());
+            if old_interfaces.contains(Interface::Accessible) {
+                bus.unregister_interface::<AccessibleInterface<PlatformNode>>(&path)?;
+            }
+            if old_interfaces.contains(Interface::Action) {
+                bus.unregister_interface::<ActionInterface>(&path)?;
+            }
+            if old_interfaces.contains(Interface::Value) {
+                bus.unregister_interface::<ValueInterface>(&path)?;
+            }
+            Ok(true)
+        })
     }
 
     pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
         struct Handler<'a> {
-            adapter: &'a Adapter<'a>,
+            adapter: &'a Adapter,
             tree: &'a Arc<Tree>,
             queue: Vec<QueuedEvent>,
         }
@@ -234,22 +234,24 @@ fn containing_window(node: Node) -> Option<Node> {
 }
 
 #[must_use = "events must be explicitly raised"]
-pub struct QueuedEvents<'a> {
-    bus: Bus<'a>,
+pub struct QueuedEvents {
+    bus: Option<Bus>,
     queue: Vec<QueuedEvent>,
 }
 
-impl<'a> QueuedEvents<'a> {
+impl QueuedEvents {
     pub fn raise(&self) {
-        for event in &self.queue {
-            let _ = match &event {
-                QueuedEvent::Object { target, event } => self.bus.emit_object_event(target, event),
-                QueuedEvent::Window {
-                    target,
-                    name,
-                    event,
-                } => self.bus.emit_window_event(target, name, event),
-            };
+        if let Some(bus) = &self.bus {
+            for event in &self.queue {
+                let _ = match &event {
+                    QueuedEvent::Object { target, event } => bus.emit_object_event(target, event),
+                    QueuedEvent::Window {
+                        target,
+                        name,
+                        event,
+                    } => bus.emit_window_event(target, name, event),
+                };
+            }
         }
     }
 }

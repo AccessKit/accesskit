@@ -135,6 +135,8 @@ fn main() {
     println!("This example has no visible GUI, and a keyboard interface:");
     println!("- [Tab] switches focus between two logical buttons.");
     println!("- [Space] 'presses' the button, adding static text in a live region announcing that it was pressed.");
+    #[cfg(target_os = "linux")]
+    println!("Enable Orca with [Super]+[Alt]+[S].");
     #[cfg(target_os = "windows")]
     println!("Enable Narrator with [Win]+[Ctrl]+[Enter] (or [Win]+[Enter] on older versions of Windows).");
 

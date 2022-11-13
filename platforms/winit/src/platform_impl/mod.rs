@@ -14,6 +14,11 @@ mod platform;
 #[path = "macos.rs"]
 mod platform;
 
-#[cfg(all(not(target_os = "windows"), not(target_os = "macos"),))]
+#[cfg(target_os = "linux")]
+#[path = "linux.rs"]
+mod platform;
+
+#[cfg(all(not(target_os = "windows"), not(target_os = "macos"), not(target_os = "linux)))]
+#[cfg(all(not(target_os = "windows"), not(target_os = "linux"),))]
 #[path = "null.rs"]
 mod platform;

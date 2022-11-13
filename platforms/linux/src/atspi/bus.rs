@@ -23,12 +23,12 @@ use zbus::{
 use zvariant::{OwnedValue, Str, Value};
 
 #[derive(Clone)]
-pub(crate) struct Bus<'a> {
+pub(crate) struct Bus {
     conn: Connection,
-    socket_proxy: SocketProxy<'a>,
+    socket_proxy: SocketProxy<'static>,
 }
 
-impl<'a> Bus<'a> {
+impl Bus {
     pub fn a11y_bus() -> Option<Self> {
         let conn = a11y_bus()?;
         let socket_proxy = SocketProxy::new(&conn).ok()?;
