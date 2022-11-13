@@ -25,7 +25,7 @@ impl ActionInterface {
         self.0.n_actions().unwrap_or(0)
     }
 
-    fn get_description(&self, index: i32) -> &str {
+    fn get_description(&self, _index: i32) -> &str {
         ""
     }
 
@@ -37,7 +37,7 @@ impl ActionInterface {
         self.0.get_action_name(index)
     }
 
-    fn get_key_binding(&self, index: i32) -> &str {
+    fn get_key_binding(&self, _index: i32) -> &str {
         ""
     }
 

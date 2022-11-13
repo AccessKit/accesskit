@@ -1,4 +1,4 @@
-// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Copyright 2022 The AccessKit Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
@@ -16,7 +16,7 @@ impl ApplicationInterface {
             .state
             .upgrade()
             .map(|state| state.read().toolkit_name.clone())
-            .unwrap_or(String::new())
+            .unwrap_or_default()
     }
 
     #[dbus_interface(property)]
@@ -25,7 +25,7 @@ impl ApplicationInterface {
             .state
             .upgrade()
             .map(|state| state.read().toolkit_version.clone())
-            .unwrap_or(String::new())
+            .unwrap_or_default()
     }
 
     #[dbus_interface(property)]
@@ -48,6 +48,6 @@ impl ApplicationInterface {
             .state
             .upgrade()
             .map(|state| state.write().id = Some(id))
-            .ok_or(fdo::Error::UnknownObject("".into()))
+            .ok_or_else(|| fdo::Error::UnknownObject("".into()))
     }
 }

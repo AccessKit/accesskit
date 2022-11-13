@@ -1,4 +1,4 @@
-// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Copyright 2022 The AccessKit Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
@@ -68,9 +68,9 @@ impl Bus {
             let desktop_address = self
                 .socket_proxy
                 .embed(ObjectAddress::root(self.unique_name().as_ref()))?;
-            node.state
-                .upgrade()
-                .map(|state| state.write().desktop_address = Some(desktop_address));
+            if let Some(state) = node.state.upgrade() {
+                state.write().desktop_address = Some(desktop_address);
+            }
             Ok(true)
         } else {
             Ok(false)
@@ -120,8 +120,7 @@ impl Bus {
                                 .into()
                         }
                         Property::Role(value) => OwnedValue::from(*value as u32),
-                    }
-                    .into(),
+                    },
                     properties,
                 },
             ),
@@ -168,7 +167,7 @@ impl Bus {
 
 fn a11y_bus() -> Option<Connection> {
     let address = match var("AT_SPI_BUS_ADDRESS") {
-        Ok(address) if address.len() > 0 => address,
+        Ok(address) if !address.is_empty() => address,
         _ => {
             let session_bus = Connection::session().ok()?;
             BusProxy::new(&session_bus).ok()?.get_address().ok()?

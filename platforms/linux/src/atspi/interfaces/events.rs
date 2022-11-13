@@ -44,14 +44,8 @@ pub(crate) enum ObjectEvent {
 pub(crate) enum WindowEvent {
     #[strum(serialize = "Activate")]
     Activated,
-    #[strum(serialize = "Close")]
-    Closed,
-    #[strum(serialize = "Create")]
-    Created,
     #[strum(serialize = "Deactivate")]
     Deactivated,
-    #[strum(serialize = "Destroy")]
-    Destroyed,
 }
 
 #[derive(Deserialize, Serialize, Type)]

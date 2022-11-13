@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file).
 
-use accesskit::kurbo::Rect;
 use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_linux::Adapter as LinuxAdapter;
 use winit::window::Window;
@@ -13,7 +12,7 @@ pub struct Adapter {
 
 impl Adapter {
     pub fn new(
-        window: &Window,
+        _: &Window,
         source: Box<dyn FnOnce() -> TreeUpdate>,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {

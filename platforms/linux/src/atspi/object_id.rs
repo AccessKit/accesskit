@@ -1,4 +1,4 @@
-// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Copyright 2022 The AccessKit Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
@@ -7,7 +7,7 @@ use accesskit::NodeId;
 use serde::{Deserialize, Serialize};
 use zvariant::{Str, Type, Value};
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, Type, Value)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Type, Value)]
 pub struct ObjectId<'a>(#[serde(borrow)] Str<'a>);
 
 impl<'a> ObjectId<'a> {

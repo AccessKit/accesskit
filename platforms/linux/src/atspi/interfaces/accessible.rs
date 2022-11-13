@@ -26,12 +26,12 @@ impl<T> AccessibleInterface<T> {
 impl AccessibleInterface<PlatformNode> {
     #[dbus_interface(property)]
     fn name(&self) -> String {
-        self.node.name().unwrap_or_else(|_| String::new())
+        self.node.name().unwrap_or_default()
     }
 
     #[dbus_interface(property)]
     fn description(&self) -> String {
-        self.node.description().unwrap_or_else(|_| String::new())
+        self.node.description().unwrap_or_default()
     }
 
     #[dbus_interface(property)]
@@ -52,7 +52,7 @@ impl AccessibleInterface<PlatformNode> {
 
     #[dbus_interface(property)]
     fn locale(&self) -> String {
-        self.node.locale().unwrap_or_else(|_| String::new())
+        self.node.locale().unwrap_or_default()
     }
 
     #[dbus_interface(property)]
@@ -117,7 +117,7 @@ impl AccessibleInterface<PlatformRootNode> {
             .state
             .upgrade()
             .map(|state| state.read().name.clone())
-            .unwrap_or_else(|| String::new())
+            .unwrap_or_default()
     }
 
     #[dbus_interface(property)]

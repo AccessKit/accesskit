@@ -33,13 +33,6 @@ pub(crate) fn filter(node: &Node) -> FilterResult {
     FilterResult::Include
 }
 
-fn filter_with_root_exception(node: &Node) -> FilterResult {
-    if node.is_root() {
-        return FilterResult::Include;
-    }
-    filter(node)
-}
-
 pub(crate) struct NodeWrapper<'a> {
     node: &'a Node<'a>,
 }
@@ -50,10 +43,7 @@ impl<'a> NodeWrapper<'a> {
     }
 
     pub fn name(&self) -> String {
-        self.node
-            .name()
-            .map(|name| name.to_string())
-            .unwrap_or(String::new())
+        self.node.name().unwrap_or_default()
     }
 
     pub fn description(&self) -> String {

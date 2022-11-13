@@ -46,7 +46,7 @@ impl Adapter {
             ))
             .ok()
         });
-        let mut adapter = Adapter {
+        let adapter = Adapter {
             atspi_bus,
             _app_state: app_state,
             tree,
@@ -55,7 +55,7 @@ impl Adapter {
             let reader = adapter.tree.read();
             let mut objects_to_add = Vec::new();
 
-            fn add_children<'b>(node: Node<'b>, to_add: &mut Vec<NodeId>) {
+            fn add_children(node: Node<'_>, to_add: &mut Vec<NodeId>) {
                 for child in node.filtered_children(&filter) {
                     to_add.push(child.id());
                     add_children(child, to_add);
@@ -162,13 +162,13 @@ impl Adapter {
                             .window_activated(&NodeWrapper::new(&window), &mut self.queue);
                     }
                 }
-                if let Some(node) = new_node.map(|node| NodeWrapper::new(node)) {
+                if let Some(node) = new_node.map(NodeWrapper::new) {
                     self.queue.push(QueuedEvent::Object {
                         target: node.id(),
                         event: ObjectEvent::StateChanged(State::Focused, true),
                     });
                 }
-                if let Some(node) = old_node.map(|node| NodeWrapper::new(node)) {
+                if let Some(node) = old_node.map(NodeWrapper::new) {
                     self.queue.push(QueuedEvent::Object {
                         target: node.id(),
                         event: ObjectEvent::StateChanged(State::Focused, false),

@@ -228,10 +228,6 @@ pub(crate) enum State {
 pub(crate) struct StateSet(BitFlags<State>);
 
 impl StateSet {
-    pub fn new<B: Into<BitFlags<State>>>(value: B) -> Self {
-        Self(value.into())
-    }
-
     pub fn from_bits(bits: u64) -> Result<StateSet, FromBitsError<State>> {
         Ok(StateSet(BitFlags::from_bits(bits)?))
     }
@@ -348,7 +344,7 @@ mod tests {
     #[test]
     fn serialize_state_set_invalid() {
         let ctxt = Context::<LE>::new_dbus(0);
-        let encoded = to_bytes(ctxt, &StateSet::new(State::Invalid)).unwrap();
+        let encoded = to_bytes(ctxt, &StateSet(State::Invalid.into())).unwrap();
         assert_eq!(encoded, &[8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
     }
 
@@ -356,13 +352,13 @@ mod tests {
     fn deserialize_state_set_invalid() {
         let ctxt = Context::<LE>::new_dbus(0);
         let decoded: StateSet = from_slice(&[8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0], ctxt).unwrap();
-        assert_eq!(decoded, StateSet::new(State::Invalid));
+        assert_eq!(decoded, StateSet(State::Invalid.into()));
     }
 
     #[test]
     fn serialize_state_set_manages_descendants() {
         let ctxt = Context::<LE>::new_dbus(0);
-        let encoded = to_bytes(ctxt, &StateSet::new(State::ManagesDescendants)).unwrap();
+        let encoded = to_bytes(ctxt, &StateSet(State::ManagesDescendants.into())).unwrap();
         assert_eq!(encoded, &[8, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0]);
     }
 
@@ -370,13 +366,13 @@ mod tests {
     fn deserialize_state_set_manages_descendants() {
         let ctxt = Context::<LE>::new_dbus(0);
         let decoded: StateSet = from_slice(&[8, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0], ctxt).unwrap();
-        assert_eq!(decoded, StateSet::new(State::ManagesDescendants));
+        assert_eq!(decoded, StateSet(State::ManagesDescendants.into()));
     }
 
     #[test]
     fn serialize_state_set_indeterminate() {
         let ctxt = Context::<LE>::new_dbus(0);
-        let encoded = to_bytes(ctxt, &StateSet::new(State::Indeterminate)).unwrap();
+        let encoded = to_bytes(ctxt, &StateSet(State::Indeterminate.into())).unwrap();
         assert_eq!(encoded, &[8, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]);
     }
 
@@ -384,13 +380,13 @@ mod tests {
     fn deserialize_state_set_indeterminate() {
         let ctxt = Context::<LE>::new_dbus(0);
         let decoded: StateSet = from_slice(&[8, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], ctxt).unwrap();
-        assert_eq!(decoded, StateSet::new(State::Indeterminate));
+        assert_eq!(decoded, StateSet(State::Indeterminate.into()));
     }
 
     #[test]
     fn serialize_state_set_focusable_focused() {
         let ctxt = Context::<LE>::new_dbus(0);
-        let encoded = to_bytes(ctxt, &StateSet::new(State::Focusable | State::Focused)).unwrap();
+        let encoded = to_bytes(ctxt, &StateSet(State::Focusable | State::Focused)).unwrap();
         assert_eq!(encoded, &[8, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0]);
     }
 
@@ -398,7 +394,7 @@ mod tests {
     fn deserialize_state_set_focusable_focused() {
         let ctxt = Context::<LE>::new_dbus(0);
         let decoded: StateSet = from_slice(&[8, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0], ctxt).unwrap();
-        assert_eq!(decoded, StateSet::new(State::Focusable | State::Focused));
+        assert_eq!(decoded, StateSet(State::Focusable | State::Focused));
     }
 
     #[test]

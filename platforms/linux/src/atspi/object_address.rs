@@ -1,4 +1,4 @@
-// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Copyright 2022 The AccessKit Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
@@ -8,11 +8,11 @@ use serde::{Deserialize, Serialize};
 use zbus::names::{OwnedUniqueName, UniqueName};
 use zvariant::{ObjectPath, OwnedObjectPath, OwnedValue, Type, Value};
 
-pub(crate) const ACCESSIBLE_PATH_PREFIX: &'static str = "/org/a11y/atspi/accessible/";
-pub(crate) const NULL_PATH: &'static str = "/org/a11y/atspi/null";
-pub(crate) const ROOT_PATH: &'static str = "/org/a11y/atspi/accessible/root";
+pub(crate) const ACCESSIBLE_PATH_PREFIX: &str = "/org/a11y/atspi/accessible/";
+pub(crate) const NULL_PATH: &str = "/org/a11y/atspi/null";
+pub(crate) const ROOT_PATH: &str = "/org/a11y/atspi/accessible/root";
 
-#[derive(Clone, Debug, Deserialize, Serialize, Type, Value)]
+#[derive(Clone, Debug, Serialize, Deserialize, Type, Value)]
 pub struct ObjectAddress<'a> {
     #[serde(borrow)]
     bus_name: UniqueName<'a>,
@@ -51,7 +51,7 @@ impl<'a> ObjectAddress<'a> {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, OwnedValue, PartialEq, Serialize, Type, Value)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, OwnedValue, Type, Value)]
 pub struct OwnedObjectAddress {
     bus_name: OwnedUniqueName,
     path: OwnedObjectPath,
