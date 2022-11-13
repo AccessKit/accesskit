@@ -65,3 +65,12 @@ impl From<ObjectAddress<'_>> for OwnedObjectAddress {
         }
     }
 }
+
+impl From<(String, OwnedObjectPath)> for OwnedObjectAddress {
+    fn from(value: (String, OwnedObjectPath)) -> Self {
+        Self {
+            bus_name: OwnedUniqueName::from(UniqueName::from_string_unchecked(value.0)),
+            path: value.1,
+        }
+    }
+}

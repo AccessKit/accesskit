@@ -3,11 +3,9 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::atspi::{
-    interfaces::{Interface, Interfaces},
-    ObjectAddress, ObjectId, ObjectRef, OwnedObjectAddress, Role, StateSet,
-};
+use crate::atspi::{ObjectAddress, ObjectId, ObjectRef, OwnedObjectAddress};
 use crate::{PlatformNode, PlatformRootNode};
+use atspi::{accessible::Role, Interface, InterfaceSet, StateSet};
 use std::convert::TryInto;
 use zbus::{fdo, names::OwnedUniqueName};
 
@@ -104,7 +102,7 @@ impl AccessibleInterface<PlatformNode> {
         (ObjectAddress::root(self.bus_name.as_ref()).into(),)
     }
 
-    fn get_interfaces(&self) -> fdo::Result<Interfaces> {
+    fn get_interfaces(&self) -> fdo::Result<InterfaceSet> {
         self.node.interfaces()
     }
 }
@@ -198,7 +196,7 @@ impl AccessibleInterface<PlatformRootNode> {
         (ObjectAddress::root(self.bus_name.as_ref()).into(),)
     }
 
-    fn get_interfaces(&self) -> Interfaces {
-        Interfaces::new(Interface::Accessible | Interface::Application)
+    fn get_interfaces(&self) -> InterfaceSet {
+        InterfaceSet::new(Interface::Accessible | Interface::Application)
     }
 }

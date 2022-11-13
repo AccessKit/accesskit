@@ -4,11 +4,12 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::atspi::{
-    interfaces::{Action, Interface, Interfaces, ObjectEvent, Property, QueuedEvent},
-    ObjectId, ObjectRef, OwnedObjectAddress, Role as AtspiRole, State, StateSet,
+    interfaces::{Action, ObjectEvent, Property, QueuedEvent},
+    ObjectId, ObjectRef, OwnedObjectAddress,
 };
 use accesskit::{CheckedState, DefaultActionVerb, NodeId, Role};
 use accesskit_consumer::{FilterResult, Node, Tree, TreeState};
+use atspi::{accessible::Role as AtspiRole, Interface, InterfaceSet, State, StateSet};
 use parking_lot::RwLock;
 use std::{
     convert::TryFrom,
@@ -427,8 +428,8 @@ impl<'a> NodeWrapper<'a> {
         state
     }
 
-    pub fn interfaces(&self) -> Interfaces {
-        let mut interfaces = Interfaces::new(Interface::Accessible);
+    pub fn interfaces(&self) -> InterfaceSet {
+        let mut interfaces = InterfaceSet::new(Interface::Accessible);
         if self.node.default_action_verb().is_some() {
             interfaces.insert(Interface::Action);
         }
@@ -633,7 +634,7 @@ impl PlatformNode {
         self.resolve(|resolved| Ok(resolved.state()))
     }
 
-    pub fn interfaces(&self) -> fdo::Result<Interfaces> {
+    pub fn interfaces(&self) -> fdo::Result<InterfaceSet> {
         self.resolve(|resolved| Ok(resolved.interfaces()))
     }
 

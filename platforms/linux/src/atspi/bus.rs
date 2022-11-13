@@ -3,13 +3,10 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::atspi::{
-    interfaces::*,
-    object_address::*,
-    proxies::{BusProxy, SocketProxy},
-    ObjectId, ObjectRef,
-};
+use crate::atspi::{interfaces::*, object_address::*, ObjectId, ObjectRef};
 use crate::PlatformRootNode;
+use atspi::{bus::BusProxyBlocking, socket::SocketProxyBlocking, EventBody};
+use serde::Serialize;
 use std::{
     collections::HashMap,
     convert::{AsRef, TryInto},
@@ -20,18 +17,18 @@ use zbus::{
     names::{BusName, InterfaceName, MemberName, OwnedUniqueName},
     Address, Result,
 };
-use zvariant::{OwnedValue, Str, Value};
+use zvariant::{ObjectPath, Str, Value};
 
 #[derive(Clone)]
 pub(crate) struct Bus {
     conn: Connection,
-    socket_proxy: SocketProxy<'static>,
+    socket_proxy: SocketProxyBlocking<'static>,
 }
 
 impl Bus {
     pub fn a11y_bus() -> Option<Self> {
         let conn = a11y_bus()?;
-        let socket_proxy = SocketProxy::new(&conn).ok()?;
+        let socket_proxy = SocketProxyBlocking::new(&conn).ok()?;
         Some(Bus { conn, socket_proxy })
     }
 
@@ -65,11 +62,12 @@ impl Bus {
                 AccessibleInterface::new(self.unique_name().to_owned(), node.clone()),
             )?;
         if registered {
-            let desktop_address = self
-                .socket_proxy
-                .embed(ObjectAddress::root(self.unique_name().as_ref()))?;
+            let desktop = self.socket_proxy.embed(&(
+                self.unique_name().as_str(),
+                ObjectPath::from_str_unchecked(ROOT_PATH),
+            ))?;
             if let Some(state) = node.state.upgrade() {
-                state.write().desktop_address = Some(desktop_address);
+                state.write().desktop_address = Some(desktop.into());
             }
             Ok(true)
         } else {
@@ -86,8 +84,8 @@ impl Bus {
                 target,
                 interface,
                 signal,
-                EventData {
-                    minor: state.as_ref(),
+                EventBody {
+                    kind: state,
                     detail1: *value as i32,
                     detail2: 0,
                     any_data: 0i32.into(),
@@ -98,8 +96,13 @@ impl Bus {
                 target,
                 interface,
                 signal,
-                EventData {
-                    minor: property.as_ref(),
+                EventBody {
+                    kind: match property {
+                        Property::Name(_) => "accessible-name",
+                        Property::Description(_) => "accessible-description",
+                        Property::Parent(_) => "accessible-parent",
+                        Property::Role(_) => "accessible-role",
+                    },
                     detail1: 0,
                     detail2: 0,
                     any_data: match property {
@@ -119,7 +122,7 @@ impl Bus {
                             OwnedObjectAddress::from(ObjectAddress::root(self.unique_name().into()))
                                 .into()
                         }
-                        Property::Role(value) => OwnedValue::from(*value as u32),
+                        Property::Role(value) => Value::U32(*value as u32),
                     },
                     properties,
                 },
@@ -137,22 +140,22 @@ impl Bus {
             target,
             "org.a11y.atspi.Event.Window",
             event.as_ref(),
-            EventData {
-                minor: "",
+            EventBody {
+                kind: "",
                 detail1: 0,
                 detail2: 0,
-                any_data: Value::from(window_name).into(),
+                any_data: window_name.into(),
                 properties: HashMap::new(),
             },
         )
     }
 
-    fn emit_event(
+    fn emit_event<T: Serialize>(
         &self,
         id: &ObjectId,
         interface: &str,
         signal_name: &str,
-        body: EventData,
+        body: EventBody<T>,
     ) -> Result<()> {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, id.as_str());
         self.conn.emit_signal(
@@ -170,7 +173,10 @@ fn a11y_bus() -> Option<Connection> {
         Ok(address) if !address.is_empty() => address,
         _ => {
             let session_bus = Connection::session().ok()?;
-            BusProxy::new(&session_bus).ok()?.get_address().ok()?
+            BusProxyBlocking::new(&session_bus)
+                .ok()?
+                .get_address()
+                .ok()?
         }
     };
     let address: Address = address.as_str().try_into().ok()?;

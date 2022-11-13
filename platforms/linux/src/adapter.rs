@@ -1,22 +1,20 @@
-// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Copyright 2022 The AccessKit Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::sync::Arc;
-
-use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
-use accesskit_consumer::{Node, Tree, TreeChangeHandler};
-
 use crate::atspi::{
     interfaces::{
-        AccessibleInterface, ActionInterface, Interface, Interfaces, ObjectEvent, QueuedEvent,
-        ValueInterface, WindowEvent,
+        AccessibleInterface, ActionInterface, ObjectEvent, QueuedEvent, ValueInterface, WindowEvent,
     },
-    Bus, ObjectId, State, ACCESSIBLE_PATH_PREFIX,
+    Bus, ObjectId, ACCESSIBLE_PATH_PREFIX,
 };
 use crate::node::{filter, AppState, NodeWrapper, PlatformNode, PlatformRootNode};
+use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
+use accesskit_consumer::{Node, Tree, TreeChangeHandler};
+use atspi::{Interface, InterfaceSet, State};
 use parking_lot::RwLock;
+use std::sync::Arc;
 
 pub struct Adapter {
     atspi_bus: Option<Bus>,
@@ -78,7 +76,7 @@ impl Adapter {
         &self,
         tree: &Arc<Tree>,
         id: NodeId,
-        new_interfaces: Interfaces,
+        new_interfaces: InterfaceSet,
     ) -> zbus::Result<bool> {
         self.atspi_bus.as_ref().map_or(Ok(false), |bus| {
             let atspi_id = ObjectId::from(id);
@@ -105,7 +103,7 @@ impl Adapter {
     fn unregister_interfaces(
         &self,
         id: &ObjectId,
-        old_interfaces: Interfaces,
+        old_interfaces: InterfaceSet,
     ) -> zbus::Result<bool> {
         self.atspi_bus.as_ref().map_or(Ok(false), |bus| {
             let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, id.as_str());

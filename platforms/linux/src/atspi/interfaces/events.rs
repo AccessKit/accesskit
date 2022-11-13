@@ -1,13 +1,11 @@
-// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Copyright 2022 The AccessKit Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::atspi::{ObjectId, ObjectRef, Role, State};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use crate::atspi::{ObjectId, ObjectRef};
+use atspi::{accessible::Role, State};
 use strum::AsRefStr;
-use zvariant::{OwnedValue, Type};
 
 pub(crate) enum QueuedEvent {
     Object {
@@ -46,13 +44,4 @@ pub(crate) enum WindowEvent {
     Activated,
     #[strum(serialize = "Deactivate")]
     Deactivated,
-}
-
-#[derive(Deserialize, Serialize, Type)]
-pub(crate) struct EventData<'a> {
-    pub minor: &'a str,
-    pub detail1: i32,
-    pub detail2: i32,
-    pub any_data: OwnedValue,
-    pub properties: HashMap<String, OwnedValue>,
 }
