@@ -250,39 +250,6 @@ impl Default for Role {
     }
 }
 
-impl Role {
-    pub fn is_read_only_supported(&self) -> bool {
-        // https://www.w3.org/TR/wai-aria-1.1/#aria-readonly
-        // Roles that support aria-readonly
-        match self {
-            Role::CheckBox | Role::ColorWell | Role::ComboBoxGrouping | Role::ComboBoxMenuButton | Role::Date | Role::DateTime | Role::Grid | Role::InputTime | Role::ListBox | Role::MenuItemCheckBox | Role::MenuItemRadio | Role::MenuListPopup | Role::PopupButton | Role::RadioButton | Role::RadioGroup | Role::SearchBox | Role::Slider | Role::SpinButton | Role::Switch | Role::TextField | Role::TextFieldWithComboBox | Role::ToggleButton | Role::TreeGrid => true,
-            // https://www.w3.org/TR/wai-aria-1.1/#aria-readonly
-            // ARIA-1.1+ 'gridcell', supports aria-readonly, but 'cell' does not.
-            //
-            // https://www.w3.org/TR/wai-aria-1.1/#columnheader
-            // https://www.w3.org/TR/wai-aria-1.1/#rowheader
-            // While the [columnheader|rowheader] role can be used in both interactive
-            // grids and non-interactive tables, the use of aria-readonly and
-            // aria-required is only applicable to interactive elements.
-            // Therefore, [...] user agents SHOULD NOT expose either property to
-            // assistive technologies unless the columnheader descends from a grid.
-            Role::Cell | Role::RowHeader | Role::ColumnHeader => false,
-            _ => false
-        }
-    }
-    
-    pub fn should_have_read_only_state_by_default(&self) -> bool {
-        match self {
-            Role::Article | Role::Definition | Role::DescriptionList | Role::DescriptionListTerm | Role::Directory | Role::Document | Role::GraphicsDocument | Role::Image | Role::List | Role::ListItem | Role::PdfRoot | Role::ProgressIndicator | Role::RootWebArea | Role::Term | Role::Timer | Role::Toolbar | Role::Tooltip => true,
-            // TODO(aleventhal) this changed between ARIA 1.0 and 1.1.
-            // We need to determine whether grids/treegrids should really be readonly
-            // or editable by default.
-            Role::Grid => false,
-            _ => false
-        }
-    }
-}
-
 /// An action to be taken on an accessibility node.
 ///
 /// In contrast to [`DefaultActionVerb`], these describe what happens to the

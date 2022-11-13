@@ -7,7 +7,7 @@ use accesskit::{
     ActionHandler, ActionRequest, DefaultActionVerb, Node, NodeId, Role, Tree, TreeUpdate,
 };
 use accesskit_linux::Adapter;
-use std::num::NonZeroU128;
+use std::{num::NonZeroU128, sync::Arc};
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -32,25 +32,31 @@ fn get_tree() -> Tree {
     }
 }
 
-fn make_button(id: NodeId, name: &str) -> Node {
-    Node {
-        default_action_verb: Some(DefaultActionVerb::Click),
+fn make_button(name: &str) -> Arc<Node> {
+    Arc::new(Node {
+        role: Role::Button,
         name: Some(name.into()),
         focusable: true,
-        ..Node::new(id, Role::Button)
-    }
+        default_action_verb: Some(DefaultActionVerb::Click),
+        ..Default::default()
+    })
 }
 
 fn get_initial_state() -> TreeUpdate {
-    let root = Node {
+    let root = Arc::new(Node {
+        role: Role::Window,
         children: vec![BUTTON_1_ID, BUTTON_2_ID],
         name: Some(WINDOW_TITLE.into()),
-        ..Node::new(WINDOW_ID, Role::Window)
-    };
-    let button_1 = make_button(BUTTON_1_ID, "Button 1");
-    let button_2 = make_button(BUTTON_2_ID, "Button 2");
+        ..Default::default()
+    });
+    let button_1 = make_button("Button 1");
+    let button_2 = make_button("Button 2");
     TreeUpdate {
-        nodes: vec![root, button_1, button_2],
+        nodes: vec![
+            (WINDOW_ID, root),
+            (BUTTON_1_ID, button_1),
+            (BUTTON_2_ID, button_2),
+        ],
         tree: Some(get_tree()),
         focus: None,
     }
@@ -114,16 +120,16 @@ fn main() {
                 WindowEvent::KeyboardInput {
                     input:
                         KeyboardInput {
-                            virtual_keycode: Some(VirtualKeyCode::Return),
+                            virtual_keycode: Some(VirtualKeyCode::Space),
                             state: ElementState::Released,
                             ..
                         },
                     ..
                 } => unsafe {
                     let updated_node = if FOCUS == BUTTON_1_ID {
-                        make_button(BUTTON_1_ID, "You pressed button 1")
+                        (BUTTON_1_ID, make_button("You pressed button 1"))
                     } else {
-                        make_button(BUTTON_2_ID, "You pressed button 2")
+                        (BUTTON_2_ID, make_button("You pressed button 2"))
                     };
                     adapter
                         .update(TreeUpdate {

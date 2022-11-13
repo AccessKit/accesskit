@@ -1,4 +1,4 @@
-// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Copyright 2022 The AccessKit Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
@@ -7,23 +7,46 @@ use crate::atspi::{
     interfaces::{Action, Interface, Interfaces, ObjectEvent, Property, QueuedEvent},
     ObjectId, ObjectRef, OwnedObjectAddress, Role as AtspiRole, State, StateSet,
 };
-use accesskit::{AriaCurrent, CheckedState, DefaultActionVerb, InvalidState, Orientation, Role};
-use accesskit_consumer::{Node, Tree, WeakNode};
+use accesskit::{CheckedState, DefaultActionVerb, NodeId, Role};
+use accesskit_consumer::{FilterResult, Node, Tree, TreeState};
 use parking_lot::RwLock;
-use std::sync::Weak;
+use std::{
+    convert::TryFrom,
+    sync::{Arc, Weak},
+};
 use zbus::fdo;
 
-pub(crate) struct ResolvedPlatformNode<'a> {
-    node: Node<'a>,
-}
-
-impl ResolvedPlatformNode<'_> {
-    pub fn new(node: Node) -> ResolvedPlatformNode {
-        ResolvedPlatformNode { node }
+pub(crate) fn filter(node: &Node) -> FilterResult {
+    if node.is_focused() {
+        return FilterResult::Include;
     }
 
-    pub fn downgrade(&self) -> PlatformNode {
-        PlatformNode::new(&self.node)
+    if node.is_hidden() {
+        return FilterResult::ExcludeSubtree;
+    }
+
+    let role = node.role();
+    if role == Role::Presentation || role == Role::GenericContainer || role == Role::InlineTextBox {
+        return FilterResult::ExcludeNode;
+    }
+
+    FilterResult::Include
+}
+
+fn filter_with_root_exception(node: &Node) -> FilterResult {
+    if node.is_root() {
+        return FilterResult::Include;
+    }
+    filter(node)
+}
+
+pub(crate) struct NodeWrapper<'a> {
+    node: &'a Node<'a>,
+}
+
+impl<'a> NodeWrapper<'a> {
+    pub(crate) fn new(node: &'a Node<'a>) -> Self {
+        NodeWrapper { node }
     }
 
     pub fn name(&self) -> String {
@@ -42,7 +65,7 @@ impl ResolvedPlatformNode<'_> {
     }
 
     pub fn child_count(&self) -> usize {
-        self.node.children().count()
+        self.node.child_ids().count()
     }
 
     pub fn locale(&self) -> String {
@@ -51,24 +74,6 @@ impl ResolvedPlatformNode<'_> {
 
     pub fn id(&self) -> ObjectId<'static> {
         self.node.id().into()
-    }
-
-    pub fn child_at_index(&self, index: usize) -> Option<ObjectRef> {
-        self.node
-            .children()
-            .nth(index)
-            .map(|child| child.id().into())
-    }
-
-    pub fn children(&self) -> Vec<ObjectRef> {
-        self.node
-            .children()
-            .map(|child| child.id().into())
-            .collect()
-    }
-
-    pub fn index_in_parent(&self) -> Option<usize> {
-        self.node.parent_and_index().map(|(_, index)| index)
     }
 
     pub fn role(&self) -> AtspiRole {
@@ -162,7 +167,7 @@ impl ResolvedPlatformNode<'_> {
             Role::Heading => AtspiRole::Heading,
             Role::Iframe | Role::IframePresentational => AtspiRole::InternalFrame,
             Role::Image => {
-                if self.node.unignored_children().next().is_some() {
+                if self.node.filtered_children(&filter).next().is_some() {
                     AtspiRole::ImageMap
                 } else {
                     AtspiRole::Image
@@ -195,7 +200,7 @@ impl ResolvedPlatformNode<'_> {
             // - The list marker itself is ignored but the descendants are not
             // - Or the list marker contains images
             Role::ListMarker => {
-                if self.node.unignored_children().next().is_none() {
+                if self.node.filtered_children(&filter).next().is_none() {
                     AtspiRole::Static
                 } else {
                     AtspiRole::Panel
@@ -220,17 +225,18 @@ impl ResolvedPlatformNode<'_> {
             Role::PdfRoot => AtspiRole::DocumentFrame,
             Role::PluginObject => AtspiRole::Embedded,
             Role::PopupButton => {
-                if self
-                    .node
-                    .data()
-                    .html_tag
-                    .as_ref()
-                    .map_or(false, |tag| tag.as_ref() == "select")
-                {
-                    AtspiRole::ComboBox
-                } else {
-                    AtspiRole::PushButton
-                }
+                // TODO: Add a getter for html_tag
+                //if self
+                //    .node
+                //    .data()
+                //    .html_tag
+                //    .as_ref()
+                //    .map_or(false, |tag| tag.as_ref() == "select")
+                //{
+                //    AtspiRole::ComboBox
+                //} else {
+                AtspiRole::PushButton
+                //}
             }
             Role::Portal => AtspiRole::PushButton,
             Role::Pre => AtspiRole::Section,
@@ -276,11 +282,12 @@ impl ResolvedPlatformNode<'_> {
             Role::Term => AtspiRole::DescriptionTerm,
             Role::TitleBar => AtspiRole::TitleBar,
             Role::TextField | Role::SearchBox => {
-                if self.node.data().protected {
-                    AtspiRole::PasswordText
-                } else {
-                    AtspiRole::Entry
-                }
+                // TODO: Add a getter for protected
+                //if self.node.data().protected {
+                //    AtspiRole::PasswordText
+                //} else {
+                AtspiRole::Entry
+                //}
             }
             Role::TextFieldWithComboBox => AtspiRole::ComboBox,
             Role::Abbr | Role::Code | Role::Emphasis | Role::Strong | Role::Time => {
@@ -308,66 +315,66 @@ impl ResolvedPlatformNode<'_> {
 
     pub fn state(&self) -> StateSet {
         let platform_role = self.role();
-        let data = self.node.data();
+        //let data = self.node.data();
         let mut state = StateSet::empty();
         if self.node.role() == Role::Window && self.node.parent().is_none() {
             state.insert(State::Active);
         }
-        if let Some(expanded) = data.expanded {
-            state.insert(State::Expandable);
-            if expanded {
-                state.insert(State::Expanded);
-            }
-        }
-        if data.default {
-            state.insert(State::IsDefault);
-        }
-        if data.editable && !data.read_only {
-            state.insert(State::Editable);
-        }
+        //if let Some(expanded) = data.expanded {
+        //    state.insert(State::Expandable);
+        //    if expanded {
+        //        state.insert(State::Expanded);
+        //    }
+        //}
+        //if data.default {
+        //    state.insert(State::IsDefault);
+        //}
+        //if data.editable && !data.read_only {
+        //    state.insert(State::Editable);
+        //}
         // TODO: Focus and selection.
-        if data.focusable {
+        if self.node.is_focusable() {
             state.insert(State::Focusable);
         }
-        match data.orientation {
-            Some(Orientation::Horizontal) => state.insert(State::Horizontal),
-            Some(Orientation::Vertical) => state.insert(State::Vertical),
-            _ => {}
-        }
-        if !self.node.is_invisible_or_ignored() {
+        //match data.orientation {
+        //    Some(Orientation::Horizontal) => state.insert(State::Horizontal),
+        //    Some(Orientation::Vertical) => state.insert(State::Vertical),
+        //    _ => {}
+        //}
+        if filter(self.node) == FilterResult::Include {
             state.insert(State::Visible);
             // if (!delegate_->IsOffscreen() && !is_minimized)
             state.insert(State::Showing);
         }
-        if data.multiselectable {
-            state.insert(State::Multiselectable);
-        }
-        if data.required {
-            state.insert(State::Required);
-        }
-        if data.visited {
-            state.insert(State::Visited);
-        }
-        if let Some(InvalidState::True | InvalidState::Other(_)) = data.invalid_state {
-            state.insert(State::InvalidEntry);
-        }
-        match data.aria_current {
-            None | Some(AriaCurrent::False) => {}
-            _ => state.insert(State::Active),
-        }
-        if platform_role != AtspiRole::ToggleButton && data.checked_state.is_some() {
+        //if data.multiselectable {
+        //    state.insert(State::Multiselectable);
+        //}
+        //if data.required {
+        //    state.insert(State::Required);
+        //}
+        //if data.visited {
+        //    state.insert(State::Visited);
+        //}
+        //if let Some(InvalidState::True | InvalidState::Other(_)) = data.invalid_state {
+        //    state.insert(State::InvalidEntry);
+        //}
+        //match data.aria_current {
+        //    None | Some(AriaCurrent::False) => {}
+        //    _ => state.insert(State::Active),
+        //}
+        if platform_role != AtspiRole::ToggleButton && self.node.checked_state().is_some() {
             state.insert(State::Checkable);
         }
-        if data.has_popup.is_some() {
-            state.insert(State::HasPopup);
-        }
-        if data.busy {
-            state.insert(State::Busy);
-        }
-        if data.modal {
-            state.insert(State::Modal);
-        }
-        if let Some(selected) = data.selected {
+        //if data.has_popup.is_some() {
+        //    state.insert(State::HasPopup);
+        //}
+        //if data.busy {
+        //    state.insert(State::Busy);
+        //}
+        //if data.modal {
+        //    state.insert(State::Modal);
+        //}
+        if let Some(selected) = self.node.is_selected() {
             if !self.node.is_disabled() {
                 state.insert(State::Selectable);
             }
@@ -377,27 +384,27 @@ impl ResolvedPlatformNode<'_> {
         }
         if self.node.is_text_field() {
             state.insert(State::SelectableText);
-            match self.node.data().multiline {
-                true => state.insert(State::MultiLine),
-                false => state.insert(State::SingleLine),
-            }
+            //match self.node.data().multiline {
+            //    true => state.insert(State::MultiLine),
+            //    false => state.insert(State::SingleLine),
+            //}
         }
 
         // Special case for indeterminate progressbar.
-        if self.node.role() == Role::ProgressIndicator && data.numeric_value.is_none() {
+        if self.node.role() == Role::ProgressIndicator && self.node.numeric_value().is_none() {
             state.insert(State::Indeterminate);
         }
 
-        let has_suggestion = data
-            .auto_complete
-            .as_ref()
-            .map_or(false, |a| !a.as_ref().is_empty());
-        if has_suggestion || data.autofill_available {
-            state.insert(State::SupportsAutocompletion);
-        }
+        //let has_suggestion = data
+        //    .auto_complete
+        //    .as_ref()
+        //    .map_or(false, |a| !a.as_ref().is_empty());
+        //if has_suggestion || data.autofill_available {
+        //    state.insert(State::SupportsAutocompletion);
+        //}
 
         // Checked state
-        match data.checked_state {
+        match self.node.checked_state() {
             Some(CheckedState::Mixed) => state.insert(State::Indeterminate),
             Some(CheckedState::True) => {
                 if platform_role == AtspiRole::ToggleButton {
@@ -442,10 +449,7 @@ impl ResolvedPlatformNode<'_> {
     }
 
     pub fn n_actions(&self) -> i32 {
-        match self.node.default_action_verb() {
-            Some(_) => 1,
-            None => 0,
-        }
+        self.node.default_action_verb().map_or(0, |_| 1)
     }
 
     pub fn get_action_name(&self, index: i32) -> String {
@@ -466,53 +470,12 @@ impl ResolvedPlatformNode<'_> {
         })
     }
 
-    pub fn get_actions(&self) -> Vec<Action> {
-        let n_actions = self.n_actions() as usize;
-        let mut actions = Vec::with_capacity(n_actions);
-        for i in 0..n_actions {
-            actions.push(Action {
-                localized_name: self.get_action_name(i as i32),
-                description: "".into(),
-                key_binding: "".into(),
-            });
-        }
-        actions
-    }
-
-    pub fn do_action(&self, index: i32) -> bool {
-        if index != 0 {
-            return false;
-        }
-        self.node.do_default_action();
-        true
-    }
-
-    pub fn minimum_value(&self) -> f64 {
-        self.node.min_numeric_value().unwrap_or(std::f64::MIN)
-    }
-
-    pub fn maximum_value(&self) -> f64 {
-        self.node.max_numeric_value().unwrap_or(std::f64::MAX)
-    }
-
-    pub fn minimum_increment(&self) -> f64 {
-        self.node.numeric_value_step().unwrap_or(0.0)
-    }
-
-    pub fn current_value(&self) -> f64 {
-        self.node.numeric_value().unwrap_or(0.0)
-    }
-
-    pub fn set_current_value(&self, value: f64) {
-        self.node.set_numeric_value(value)
-    }
-
-    pub fn enqueue_changes(&self, queue: &mut Vec<QueuedEvent>, old: &ResolvedPlatformNode) {
+    pub fn enqueue_changes(&self, queue: &mut Vec<QueuedEvent>, old: &NodeWrapper) {
         self.enqueue_state_changes(queue, old);
         self.enqueue_property_changes(queue, old);
     }
 
-    fn enqueue_state_changes(&self, queue: &mut Vec<QueuedEvent>, old: &ResolvedPlatformNode) {
+    fn enqueue_state_changes(&self, queue: &mut Vec<QueuedEvent>, old: &NodeWrapper) {
         let old_state = old.state();
         let new_state = self.state();
         let changed_states = old_state ^ new_state;
@@ -524,7 +487,7 @@ impl ResolvedPlatformNode<'_> {
         }
     }
 
-    fn enqueue_property_changes(&self, queue: &mut Vec<QueuedEvent>, old: &ResolvedPlatformNode) {
+    fn enqueue_property_changes(&self, queue: &mut Vec<QueuedEvent>, old: &NodeWrapper) {
         let name = self.name();
         if name != old.name() {
             queue.push(QueuedEvent::Object {
@@ -556,21 +519,186 @@ impl ResolvedPlatformNode<'_> {
     }
 }
 
+fn unknown_object() -> fdo::Error {
+    fdo::Error::UnknownObject("".into())
+}
+
 #[derive(Clone)]
-pub(crate) struct PlatformNode(WeakNode);
+pub(crate) struct PlatformNode {
+    tree: Weak<Tree>,
+    node_id: NodeId,
+}
 
 impl PlatformNode {
-    pub fn new(node: &Node) -> Self {
-        Self(node.downgrade())
+    pub(crate) fn new(tree: &Arc<Tree>, node_id: NodeId) -> Self {
+        Self {
+            tree: Arc::downgrade(tree),
+            node_id,
+        }
     }
 
-    pub fn resolve<F, T>(&self, f: F) -> fdo::Result<T>
+    fn upgrade_tree(&self) -> fdo::Result<Arc<Tree>> {
+        if let Some(tree) = self.tree.upgrade() {
+            Ok(tree)
+        } else {
+            Err(unknown_object())
+        }
+    }
+
+    fn with_tree_state<F, T>(&self, f: F) -> fdo::Result<T>
     where
-        for<'a> F: FnOnce(ResolvedPlatformNode<'a>) -> T,
+        F: FnOnce(&TreeState) -> fdo::Result<T>,
     {
-        self.0
-            .map(|node| f(ResolvedPlatformNode::new(node)))
-            .ok_or(fdo::Error::UnknownObject("".into()))
+        let tree = self.upgrade_tree()?;
+        let state = tree.read();
+        f(&state)
+    }
+
+    fn resolve<F, T>(&self, f: F) -> fdo::Result<T>
+    where
+        for<'a> F: FnOnce(NodeWrapper<'a>) -> fdo::Result<T>,
+    {
+        self.with_tree_state(|state| {
+            if let Some(node) = state.node_by_id(self.node_id) {
+                f(NodeWrapper::new(&node))
+            } else {
+                Err(unknown_object())
+            }
+        })
+    }
+
+    fn validate_for_action(&self) -> fdo::Result<Arc<Tree>> {
+        let tree = self.upgrade_tree()?;
+        let state = tree.read();
+        if state.has_node(self.node_id) {
+            drop(state);
+            Ok(tree)
+        } else {
+            Err(unknown_object())
+        }
+    }
+
+    pub fn name(&self) -> fdo::Result<String> {
+        self.resolve(|resolved| Ok(resolved.name()))
+    }
+
+    pub fn description(&self) -> fdo::Result<String> {
+        self.resolve(|resolved| Ok(resolved.description()))
+    }
+
+    pub fn parent(&self) -> fdo::Result<ObjectRef> {
+        self.resolve(|resolved| {
+            Ok(resolved
+                .parent()
+                .unwrap_or_else(|| ObjectRef::Managed(ObjectId::root())))
+        })
+    }
+
+    pub fn child_count(&self) -> fdo::Result<i32> {
+        self.resolve(|resolved| {
+            i32::try_from(resolved.child_count())
+                .map_err(|_| fdo::Error::Failed("Too many children.".into()))
+        })
+    }
+
+    pub fn locale(&self) -> fdo::Result<String> {
+        self.resolve(|resolved| Ok(resolved.locale()))
+    }
+
+    pub fn accessible_id(&self) -> fdo::Result<ObjectId> {
+        self.resolve(|resolved| Ok(resolved.id()))
+    }
+
+    pub fn child_at_index(&self, index: usize) -> fdo::Result<ObjectRef> {
+        self.resolve(|resolved| {
+            resolved
+                .node
+                .child_ids()
+                .nth(index)
+                .map(ObjectRef::from)
+                .ok_or_else(unknown_object)
+        })
+    }
+
+    pub fn children(&self) -> fdo::Result<Vec<ObjectRef>> {
+        self.resolve(|resolved| Ok(resolved.node.child_ids().map(ObjectRef::from).collect()))
+    }
+
+    pub fn index_in_parent(&self) -> fdo::Result<i32> {
+        self.resolve(|resolved| {
+            resolved
+                .node
+                .parent_and_index()
+                .map_or(Ok(-1), |(_, index)| {
+                    i32::try_from(index).map_err(|_| fdo::Error::Failed("Index is too big.".into()))
+                })
+        })
+    }
+
+    pub fn role(&self) -> fdo::Result<AtspiRole> {
+        self.resolve(|resolved| Ok(resolved.role()))
+    }
+
+    pub fn state(&self) -> fdo::Result<StateSet> {
+        self.resolve(|resolved| Ok(resolved.state()))
+    }
+
+    pub fn interfaces(&self) -> fdo::Result<Interfaces> {
+        self.resolve(|resolved| Ok(resolved.interfaces()))
+    }
+
+    pub fn n_actions(&self) -> fdo::Result<i32> {
+        self.resolve(|resolved| Ok(resolved.n_actions()))
+    }
+
+    pub fn get_action_name(&self, index: i32) -> fdo::Result<String> {
+        self.resolve(|resolved| Ok(resolved.get_action_name(index)))
+    }
+
+    pub fn get_actions(&self) -> fdo::Result<Vec<Action>> {
+        self.resolve(|resolved| {
+            let n_actions = resolved.n_actions() as usize;
+            let mut actions = Vec::with_capacity(n_actions);
+            for i in 0..n_actions {
+                actions.push(Action {
+                    localized_name: resolved.get_action_name(i as i32),
+                    description: "".into(),
+                    key_binding: "".into(),
+                });
+            }
+            Ok(actions)
+        })
+    }
+
+    pub fn do_action(&self, index: i32) -> fdo::Result<bool> {
+        if index != 0 {
+            return Ok(false);
+        }
+        let tree = self.validate_for_action()?;
+        tree.do_default_action(self.node_id);
+        Ok(true)
+    }
+
+    pub fn minimum_value(&self) -> fdo::Result<f64> {
+        self.resolve(|resolved| Ok(resolved.node.min_numeric_value().unwrap_or(std::f64::MIN)))
+    }
+
+    pub fn maximum_value(&self) -> fdo::Result<f64> {
+        self.resolve(|resolved| Ok(resolved.node.max_numeric_value().unwrap_or(std::f64::MAX)))
+    }
+
+    pub fn minimum_increment(&self) -> fdo::Result<f64> {
+        self.resolve(|resolved| Ok(resolved.node.numeric_value_step().unwrap_or(0.0)))
+    }
+
+    pub fn current_value(&self) -> fdo::Result<f64> {
+        self.resolve(|resolved| Ok(resolved.node.numeric_value().unwrap_or(0.0)))
+    }
+
+    pub fn set_current_value(&self, value: f64) -> fdo::Result<()> {
+        let tree = self.validate_for_action()?;
+        tree.set_numeric_value(self.node_id, value);
+        Ok(())
     }
 }
 

@@ -5,17 +5,17 @@
 
 use std::sync::Arc;
 
-use accesskit::{ActionHandler, Role, TreeUpdate};
-use accesskit_consumer::{Node, Tree, TreeChange};
+use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
+use accesskit_consumer::{Node, Tree, TreeChangeHandler};
 
 use crate::atspi::{
     interfaces::{
         AccessibleInterface, ActionInterface, Interface, Interfaces, ObjectEvent, QueuedEvent,
         ValueInterface, WindowEvent,
     },
-    Bus, State, ACCESSIBLE_PATH_PREFIX,
+    Bus, ObjectId, State, ACCESSIBLE_PATH_PREFIX,
 };
-use crate::node::{AppState, PlatformNode, PlatformRootNode, ResolvedPlatformNode};
+use crate::node::{filter, AppState, NodeWrapper, PlatformNode, PlatformRootNode};
 use parking_lot::RwLock;
 
 pub struct Adapter<'a> {
@@ -33,7 +33,7 @@ impl<'a> Adapter<'a> {
         action_handler: Box<dyn ActionHandler>,
     ) -> Option<Self> {
         let mut atspi_bus = Bus::a11y_bus()?;
-        let tree = Tree::new(initial_state, action_handler);
+        let tree = Arc::new(Tree::new(initial_state, action_handler));
         let app_state = Arc::new(RwLock::new(AppState::new(
             app_name,
             toolkit_name,
@@ -54,17 +54,20 @@ impl<'a> Adapter<'a> {
             let reader = adapter.tree.read();
             let mut objects_to_add = Vec::new();
 
-            fn add_children<'b>(node: Node<'b>, to_add: &mut Vec<ResolvedPlatformNode<'b>>) {
-                for child in node.unignored_children() {
-                    to_add.push(ResolvedPlatformNode::new(child));
+            fn add_children<'b>(node: Node<'b>, to_add: &mut Vec<NodeId>) {
+                for child in node.filtered_children(&filter) {
+                    to_add.push(child.id());
                     add_children(child, to_add);
                 }
             }
 
-            objects_to_add.push(ResolvedPlatformNode::new(reader.root()));
+            objects_to_add.push(reader.root().id());
             add_children(reader.root(), &mut objects_to_add);
-            for node in objects_to_add {
-                adapter.register_interfaces(&node, node.interfaces()).ok()?;
+            for id in objects_to_add {
+                let interfaces = NodeWrapper::new(&reader.node_by_id(id).unwrap()).interfaces();
+                adapter
+                    .register_interfaces(&adapter.tree, id, interfaces)
+                    .ok()?;
             }
         }
         Some(adapter)
@@ -72,33 +75,42 @@ impl<'a> Adapter<'a> {
 
     fn register_interfaces(
         &self,
-        node: &ResolvedPlatformNode,
+        tree: &Arc<Tree>,
+        id: NodeId,
         new_interfaces: Interfaces,
     ) -> zbus::Result<bool> {
-        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, node.id().as_str());
+        let atspi_id = ObjectId::from(id);
+        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, atspi_id.as_str());
         if new_interfaces.contains(Interface::Accessible) {
             self.atspi_bus.register_interface(
                 &path,
-                AccessibleInterface::new(self.atspi_bus.unique_name().to_owned(), node.downgrade()),
+                AccessibleInterface::new(
+                    self.atspi_bus.unique_name().to_owned(),
+                    PlatformNode::new(tree, id),
+                ),
             )?;
         }
         if new_interfaces.contains(Interface::Action) {
             self.atspi_bus
-                .register_interface(&path, ActionInterface::new(node.downgrade()))?;
+                .register_interface(&path, ActionInterface::new(PlatformNode::new(tree, id)))?;
         }
         if new_interfaces.contains(Interface::Value) {
             self.atspi_bus
-                .register_interface(&path, ValueInterface::new(node.downgrade()))?;
+                .register_interface(&path, ValueInterface::new(PlatformNode::new(tree, id)))?;
         }
         Ok(true)
     }
 
     fn unregister_interfaces(
         &self,
-        node: &ResolvedPlatformNode,
+        id: &ObjectId,
         old_interfaces: Interfaces,
     ) -> zbus::Result<bool> {
-        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, node.id().as_str());
+        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, id.as_str());
+        if old_interfaces.contains(Interface::Accessible) {
+            self.atspi_bus
+                .unregister_interface::<AccessibleInterface<PlatformNode>>(&path)?;
+        }
         if old_interfaces.contains(Interface::Action) {
             self.atspi_bus
                 .unregister_interface::<ActionInterface>(&path)?;
@@ -111,56 +123,78 @@ impl<'a> Adapter<'a> {
     }
 
     pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
-        let mut queue = Vec::new();
-        self.tree.update_and_process_changes(update, |change| {
-            match change {
-                TreeChange::FocusMoved { old_node, new_node } => {
-                    let old_window = old_node.and_then(|node| containing_window(node));
-                    let new_window = new_node.and_then(|node| containing_window(node));
-                    if old_window.map(|n| n.id()) != new_window.map(|n| n.id()) {
-                        if let Some(window) = old_window {
-                            self.window_deactivated(&ResolvedPlatformNode::new(window), &mut queue);
-                        }
-                        if let Some(window) = new_window {
-                            self.window_activated(&ResolvedPlatformNode::new(window), &mut queue);
-                        }
+        struct Handler<'a> {
+            adapter: &'a Adapter<'a>,
+            tree: &'a Arc<Tree>,
+            queue: Vec<QueuedEvent>,
+        }
+        impl TreeChangeHandler for Handler<'_> {
+            fn node_added(&mut self, node: &Node) {
+                let interfaces = NodeWrapper::new(node).interfaces();
+                self.adapter
+                    .register_interfaces(self.tree, node.id(), interfaces)
+                    .unwrap();
+            }
+            fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
+                let old_wrapper = NodeWrapper::new(old_node);
+                let new_wrapper = NodeWrapper::new(new_node);
+                let old_interfaces = old_wrapper.interfaces();
+                let new_interfaces = new_wrapper.interfaces();
+                let kept_interfaces = old_interfaces & new_interfaces;
+                self.adapter
+                    .unregister_interfaces(&new_wrapper.id(), old_interfaces ^ kept_interfaces)
+                    .unwrap();
+                self.adapter
+                    .register_interfaces(self.tree, new_node.id(), new_interfaces ^ kept_interfaces)
+                    .unwrap();
+                new_wrapper.enqueue_changes(&mut self.queue, &old_wrapper);
+            }
+            fn focus_moved(&mut self, old_node: Option<&Node>, new_node: Option<&Node>) {
+                let old_window = old_node.and_then(|node| containing_window(*node));
+                let new_window = new_node.and_then(|node| containing_window(*node));
+                if old_window.map(|n| n.id()) != new_window.map(|n| n.id()) {
+                    if let Some(window) = old_window {
+                        self.adapter
+                            .window_deactivated(&NodeWrapper::new(&window), &mut self.queue);
                     }
-                    if let Some(node) = new_node.map(|node| ResolvedPlatformNode::new(node)) {
-                        queue.push(QueuedEvent::Object {
-                            target: node.id(),
-                            event: ObjectEvent::StateChanged(State::Focused, true),
-                        });
-                    }
-                    if let Some(node) = old_node.map(|node| ResolvedPlatformNode::new(node)) {
-                        queue.push(QueuedEvent::Object {
-                            target: node.id(),
-                            event: ObjectEvent::StateChanged(State::Focused, false),
-                        });
+                    if let Some(window) = new_window {
+                        self.adapter
+                            .window_activated(&NodeWrapper::new(&window), &mut self.queue);
                     }
                 }
-                TreeChange::NodeUpdated { old_node, new_node } => {
-                    let old_node = ResolvedPlatformNode::new(old_node);
-                    let new_node = ResolvedPlatformNode::new(new_node);
-                    let old_interfaces = old_node.interfaces();
-                    let new_interfaces = new_node.interfaces();
-                    let kept_interfaces = old_interfaces & new_interfaces;
-                    self.unregister_interfaces(&new_node, old_interfaces ^ kept_interfaces)
-                        .unwrap();
-                    self.register_interfaces(&new_node, new_interfaces ^ kept_interfaces)
-                        .unwrap();
-                    new_node.enqueue_changes(&mut queue, &old_node);
+                if let Some(node) = new_node.map(|node| NodeWrapper::new(node)) {
+                    self.queue.push(QueuedEvent::Object {
+                        target: node.id(),
+                        event: ObjectEvent::StateChanged(State::Focused, true),
+                    });
                 }
-                // TODO: handle other events
-                _ => (),
-            };
-        });
+                if let Some(node) = old_node.map(|node| NodeWrapper::new(node)) {
+                    self.queue.push(QueuedEvent::Object {
+                        target: node.id(),
+                        event: ObjectEvent::StateChanged(State::Focused, false),
+                    });
+                }
+            }
+            fn node_removed(&mut self, node: &Node) {
+                let node = NodeWrapper::new(node);
+                self.adapter
+                    .unregister_interfaces(&node.id(), node.interfaces())
+                    .unwrap();
+            }
+        }
+        let mut handler = Handler {
+            adapter: self,
+            tree: &self.tree,
+            queue: Vec::new(),
+        };
+        self.tree.update_and_process_changes(update, &mut handler);
         QueuedEvents {
             bus: self.atspi_bus.clone(),
-            queue,
+            queue: handler.queue,
         }
     }
 
-    fn window_activated(&self, window: &ResolvedPlatformNode, queue: &mut Vec<QueuedEvent>) {
+    fn window_activated(&self, window: &NodeWrapper, queue: &mut Vec<QueuedEvent>) {
         queue.push(QueuedEvent::Window {
             target: window.id(),
             name: window.name(),
@@ -172,7 +206,7 @@ impl<'a> Adapter<'a> {
         });
     }
 
-    fn window_deactivated(&self, window: &ResolvedPlatformNode, queue: &mut Vec<QueuedEvent>) {
+    fn window_deactivated(&self, window: &NodeWrapper, queue: &mut Vec<QueuedEvent>) {
         queue.push(QueuedEvent::Window {
             target: window.id(),
             name: window.name(),
@@ -182,12 +216,6 @@ impl<'a> Adapter<'a> {
             target: window.id(),
             event: ObjectEvent::StateChanged(State::Active, false),
         });
-    }
-
-    fn root_platform_node(&self) -> PlatformNode {
-        let reader = self.tree.read();
-        let node = reader.root();
-        PlatformNode::new(&node)
     }
 }
 

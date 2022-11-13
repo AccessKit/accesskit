@@ -22,7 +22,7 @@ impl ActionInterface {
 impl ActionInterface {
     #[dbus_interface(property)]
     fn n_actions(&self) -> i32 {
-        self.0.resolve(|resolved| resolved.n_actions()).unwrap_or(0)
+        self.0.n_actions().unwrap_or(0)
     }
 
     fn get_description(&self, index: i32) -> &str {
@@ -30,11 +30,11 @@ impl ActionInterface {
     }
 
     fn get_name(&self, index: i32) -> fdo::Result<String> {
-        self.0.resolve(|resolved| resolved.get_action_name(index))
+        self.0.get_action_name(index)
     }
 
     fn get_localized_name(&self, index: i32) -> fdo::Result<String> {
-        self.0.resolve(|resolved| resolved.get_action_name(index))
+        self.0.get_action_name(index)
     }
 
     fn get_key_binding(&self, index: i32) -> &str {
@@ -42,10 +42,10 @@ impl ActionInterface {
     }
 
     fn get_actions(&self) -> fdo::Result<Vec<Action>> {
-        self.0.resolve(|resolved| resolved.get_actions())
+        self.0.get_actions()
     }
 
     fn do_action(&self, index: i32) -> fdo::Result<bool> {
-        self.0.resolve(|resolved| resolved.do_action(index))
+        self.0.do_action(index)
     }
 }

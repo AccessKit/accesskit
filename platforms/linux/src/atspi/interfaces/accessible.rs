@@ -1,4 +1,4 @@
-// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Copyright 2022 The AccessKit Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
@@ -26,49 +26,39 @@ impl<T> AccessibleInterface<T> {
 impl AccessibleInterface<PlatformNode> {
     #[dbus_interface(property)]
     fn name(&self) -> String {
-        self.node
-            .resolve(|resolved| resolved.name())
-            .unwrap_or_else(|_| String::new())
+        self.node.name().unwrap_or_else(|_| String::new())
     }
 
     #[dbus_interface(property)]
     fn description(&self) -> String {
-        self.node
-            .resolve(|resolved| resolved.description())
-            .unwrap_or_else(|_| String::new())
+        self.node.description().unwrap_or_else(|_| String::new())
     }
 
     #[dbus_interface(property)]
     fn parent(&self) -> OwnedObjectAddress {
-        self.node
-            .resolve(|resolved| match resolved.parent() {
-                Some(ObjectRef::Managed(id)) => {
-                    ObjectAddress::accessible(self.bus_name.as_ref(), &id).into()
-                }
-                Some(ObjectRef::Unmanaged(address)) => address,
-                _ => ObjectAddress::root(self.bus_name.as_ref()).into(),
-            })
-            .unwrap_or_else(|_| ObjectAddress::null(self.bus_name.as_ref()).into())
+        match self.node.parent() {
+            Ok(ObjectRef::Managed(id)) => {
+                ObjectAddress::accessible(self.bus_name.as_ref(), &id).into()
+            }
+            Ok(ObjectRef::Unmanaged(address)) => address,
+            _ => ObjectAddress::null(self.bus_name.as_ref()).into(),
+        }
     }
 
     #[dbus_interface(property)]
     fn child_count(&self) -> i32 {
-        self.node
-            .resolve(|resolved| resolved.child_count())
-            .map_or(0, |count| count.try_into().unwrap_or(0))
+        self.node.child_count().unwrap_or(0)
     }
 
     #[dbus_interface(property)]
     fn locale(&self) -> String {
-        self.node
-            .resolve(|resolved| resolved.locale())
-            .unwrap_or_else(|_| String::new())
+        self.node.locale().unwrap_or_else(|_| String::new())
     }
 
     #[dbus_interface(property)]
     fn accessible_id(&self) -> ObjectId {
         self.node
-            .resolve(|resolved| resolved.id())
+            .accessible_id()
             .unwrap_or_else(|_| unsafe { ObjectId::from_str_unchecked("") })
     }
 
@@ -76,48 +66,38 @@ impl AccessibleInterface<PlatformNode> {
         let index = index
             .try_into()
             .map_err(|_| fdo::Error::InvalidArgs("Index can't be negative.".into()))?;
-        self.node
-            .resolve(|resolved| match resolved.child_at_index(index) {
-                Some(ObjectRef::Managed(id)) => {
-                    (ObjectAddress::accessible(self.bus_name.as_ref(), &id).into(),)
-                }
-                Some(ObjectRef::Unmanaged(address)) => (address,),
-                _ => (ObjectAddress::null(self.bus_name.as_ref()).into(),),
-            })
-    }
-
-    fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
-        self.node.resolve(|resolved| {
-            resolved
-                .children()
-                .into_iter()
-                .map(|child| match child {
-                    ObjectRef::Managed(id) => {
-                        ObjectAddress::accessible(self.bus_name.as_ref(), &id).into()
-                    }
-                    ObjectRef::Unmanaged(address) => address,
-                })
-                .collect()
+        Ok(match self.node.child_at_index(index)? {
+            ObjectRef::Managed(id) => {
+                (ObjectAddress::accessible(self.bus_name.as_ref(), &id).into(),)
+            }
+            ObjectRef::Unmanaged(address) => (address,),
         })
     }
 
+    fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
+        Ok(self
+            .node
+            .children()?
+            .into_iter()
+            .map(|child| match child {
+                ObjectRef::Managed(id) => {
+                    ObjectAddress::accessible(self.bus_name.as_ref(), &id).into()
+                }
+                ObjectRef::Unmanaged(address) => address,
+            })
+            .collect())
+    }
+
     fn get_index_in_parent(&self) -> fdo::Result<i32> {
-        let index = self.node.resolve(|resolved| resolved.index_in_parent())?;
-        if let Some(index) = index {
-            index
-                .try_into()
-                .map_err(|_| fdo::Error::Failed("Index is too big.".into()))
-        } else {
-            Ok(-1)
-        }
+        self.node.index_in_parent()
     }
 
     fn get_role(&self) -> fdo::Result<Role> {
-        self.node.resolve(|resolved| resolved.role())
+        self.node.role()
     }
 
     fn get_state(&self) -> fdo::Result<StateSet> {
-        self.node.resolve(|resolved| resolved.state())
+        self.node.state()
     }
 
     fn get_application(&self) -> (OwnedObjectAddress,) {
@@ -125,7 +105,7 @@ impl AccessibleInterface<PlatformNode> {
     }
 
     fn get_interfaces(&self) -> fdo::Result<Interfaces> {
-        self.node.resolve(|resolved| resolved.interfaces())
+        self.node.interfaces()
     }
 }
 

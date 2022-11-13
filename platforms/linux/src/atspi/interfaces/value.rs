@@ -19,36 +19,26 @@ impl ValueInterface {
 impl ValueInterface {
     #[dbus_interface(property)]
     fn minimum_value(&self) -> f64 {
-        self.node
-            .resolve(|resolved| resolved.minimum_value())
-            .unwrap()
+        self.node.minimum_value().unwrap()
     }
 
     #[dbus_interface(property)]
     fn maximum_value(&self) -> f64 {
-        self.node
-            .resolve(|resolved| resolved.maximum_value())
-            .unwrap()
+        self.node.maximum_value().unwrap()
     }
 
     #[dbus_interface(property)]
     fn minimum_increment(&self) -> f64 {
-        self.node
-            .resolve(|resolved| resolved.minimum_increment())
-            .unwrap()
+        self.node.minimum_increment().unwrap()
     }
 
     #[dbus_interface(property)]
     fn current_value(&self) -> f64 {
-        self.node
-            .resolve(|resolved| resolved.current_value())
-            .unwrap()
+        self.node.current_value().unwrap()
     }
 
     #[dbus_interface(property)]
     fn set_current_value(&self, value: f64) {
-        self.node
-            .resolve(|resolved| resolved.set_current_value(value))
-            .unwrap();
+        self.node.set_current_value(value).unwrap();
     }
 }
