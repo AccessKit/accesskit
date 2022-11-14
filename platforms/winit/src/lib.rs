@@ -47,7 +47,19 @@ impl Adapter {
             window_id: window.id(),
             proxy: Mutex::new(event_loop_proxy),
         };
-        let adapter = platform_impl::Adapter::new(window, source, Box::new(action_handler));
+        Self::with_action_handler(window, source, Box::new(action_handler))
+    }
+
+    /// Use this if you need to provide your own AccessKit action handler
+    /// rather than dispatching action requests through the winit event loop.
+    /// Remember that an AccessKit action handler can be called on any thread,
+    /// depending on the underlying AccessKit platform adapter.
+    pub fn with_action_handler(
+        window: &Window,
+        source: Box<dyn FnOnce() -> TreeUpdate + Send>,
+        action_handler: Box<dyn ActionHandler>,
+    ) -> Self {
+        let adapter = platform_impl::Adapter::new(window, source, action_handler);
         Self { adapter }
     }
 
