@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.4.0...accesskit_winit-v0.5.0) (2022-11-14)
+
+
+### Features
+
+* **platforms/winit:** Allow a custom action handler ([#149](https://www.github.com/AccessKit/accesskit/issues/149)) ([cdb1a16](https://www.github.com/AccessKit/accesskit/commit/cdb1a164de06f18cad497409a514f270a8336b4c))
+
 ## [0.4.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.3.3...accesskit_winit-v0.4.0) (2022-11-12)
 
 
