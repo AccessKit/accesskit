@@ -21,6 +21,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "accesskit_macos"
+version = "0.0.0"
+dependencies = [
+ "accesskit",
+ "accesskit_consumer",
+ "cocoa",
+ "lazy_static",
+ "objc",
+]
+
+[[package]]
 name = "accesskit_windows"
 version = "0.9.0"
 dependencies = [

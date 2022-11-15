@@ -1,0 +1,18 @@
+[package]
+name = "accesskit_macos"
+version = "0.0.0"
+authors = ["Matt Campbell <mattcampbell@pobox.com>"]
+license = "MIT/Apache-2.0"
+description = "AccessKit UI accessibility infrastructure: macOS adapter"
+categories = ["gui"]
+keywords = ["gui", "ui", "accessibility"]
+repository = "https://github.com/AccessKit/accesskit"
+readme = "README.md"
+edition = "2021"
+
+[dependencies]
+accesskit = { version = "0.7.0", path = "../../common" }
+accesskit_consumer = { version = "0.7.1", path = "../../consumer" }
+cocoa = "0.24.0"
+lazy_static = "1.4.0"
+objc = "0.2.7"
