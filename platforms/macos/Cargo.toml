@@ -14,6 +14,6 @@ edition = "2021"
 accesskit = { version = "0.7.0", path = "../../common" }
 accesskit_consumer = { version = "0.7.1", path = "../../consumer" }
 cocoa = "0.24.0"
-lazy_static = "1.4.0"
 objc = "0.2.7"
+once_cell = "1.16.0"
 parking_lot = "0.12.1"
