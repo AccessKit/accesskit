@@ -16,3 +16,4 @@ accesskit_consumer = { version = "0.7.1", path = "../../consumer" }
 cocoa = "0.24.0"
 lazy_static = "1.4.0"
 objc = "0.2.7"
+parking_lot = "0.12.1"

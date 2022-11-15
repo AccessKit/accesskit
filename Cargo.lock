@@ -29,6 +29,7 @@ dependencies = [
  "cocoa",
  "lazy_static",
  "objc",
+ "parking_lot",
 ]
 
 [[package]]

@@ -12,7 +12,7 @@
 
 use std::collections::HashMap;
 use std::ffi::c_void;
-use std::sync::{Mutex, Weak};
+use std::sync::Weak;
 
 use accesskit::{NodeId, Role};
 use accesskit_consumer::{FilterResult, Node, Tree};
@@ -24,6 +24,7 @@ use objc::declare::ClassDecl;
 use objc::rc::{StrongPtr, WeakPtr};
 use objc::runtime::{Class, Object, Sel};
 use objc::{class, msg_send, sel, sel_impl};
+use parking_lot::Mutex;
 
 use crate::util::{from_nsstring, make_nsstring, nsstrings_equal};
 
@@ -397,7 +398,7 @@ pub(crate) struct PlatformNode;
 
 impl PlatformNode {
     pub(crate) fn get_or_create(node: &Node, tree: Weak<Tree>, view: &StrongPtr) -> StrongPtr {
-        let mut platform_nodes = PLATFORM_NODES.lock().unwrap();
+        let mut platform_nodes = PLATFORM_NODES.lock();
         let key = PlatformNodeKey((**view, node.id()));
         if let Some(result) = platform_nodes.get(&key) {
             return result.0.clone();
