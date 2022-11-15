@@ -39,6 +39,11 @@ pub(crate) fn filter(node: &Node) -> FilterResult {
         return FilterResult::ExcludeSubtree;
     }
 
+    if node.is_root() && node.role() == Role::Window {
+        // If the root element is a window, ignore it.
+        return FilterResult::ExcludeNode;
+    }
+
     let ns_role = ns_role(node);
     if nsstrings_equal(ns_role, unsafe { NSAccessibilityUnknownRole }) {
         return FilterResult::ExcludeNode;
