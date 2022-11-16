@@ -12,5 +12,4 @@ edition = "2021"
 
 [dependencies]
 accesskit = { version = "0.7.0", path = "../common" }
-im = "15.0.0"
 parking_lot = "0.12.1"

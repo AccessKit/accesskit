@@ -8,16 +8,28 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use std::iter::FusedIterator;
+use std::{iter::FusedIterator, ops::Deref, sync::Arc};
 
 use accesskit::kurbo::{Affine, Point, Rect};
-use accesskit::{CheckedState, DefaultActionVerb, Live, Node as NodeData, NodeId, Role};
+use accesskit::{
+    CheckedState, DefaultActionVerb, Live, Node as NodeData, NodeId, Role, TextSelection,
+};
 
 use crate::iterators::{
     FilterResult, FilteredChildren, FollowingFilteredSiblings, FollowingSiblings,
     PrecedingFilteredSiblings, PrecedingSiblings,
 };
-use crate::tree::{NodeState, ParentAndIndex, State as TreeState};
+use crate::tree::State as TreeState;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
+
+#[derive(Clone)]
+pub struct NodeState {
+    pub(crate) id: NodeId,
+    pub(crate) parent_and_index: Option<ParentAndIndex>,
+    pub(crate) data: Arc<NodeData>,
+}
 
 #[derive(Copy, Clone)]
 pub struct Node<'a> {
@@ -25,34 +37,54 @@ pub struct Node<'a> {
     pub(crate) state: &'a NodeState,
 }
 
-impl<'a> Node<'a> {
+impl NodeState {
     pub(crate) fn data(&self) -> &NodeData {
-        &self.state.data
+        &self.data
+    }
+}
+
+impl<'a> Node<'a> {
+    pub fn detached(&self) -> DetachedNode {
+        DetachedNode {
+            state: self.state.clone(),
+            is_focused: self.is_focused(),
+            is_root: self.is_root(),
+            name: self.name(),
+            live: self.live(),
+            supports_text_ranges: self.supports_text_ranges(),
+        }
     }
 
     pub fn is_focused(&self) -> bool {
         self.tree_state.focus == Some(self.id())
     }
+}
 
+impl NodeState {
     pub fn is_focusable(&self) -> bool {
         // TBD: Is it ever safe to imply this on a node that doesn't explicitly
         // specify it?
         self.data().focusable
     }
+}
 
+impl<'a> Node<'a> {
     pub fn is_root(&self) -> bool {
         // Don't check for absence of a parent node, in case a non-root node
         // somehow gets detached from the tree.
         self.id() == self.tree_state.root_id()
     }
+}
 
+impl NodeState {
     pub fn parent_id(&self) -> Option<NodeId> {
-        self.state
-            .parent_and_index
+        self.parent_and_index
             .as_ref()
             .map(|ParentAndIndex(id, _)| *id)
     }
+}
 
+impl<'a> Node<'a> {
     pub fn parent(&self) -> Option<Node<'a>> {
         self.parent_id()
             .map(|id| self.tree_state.node_by_id(id).unwrap())
@@ -208,7 +240,9 @@ impl<'a> Node<'a> {
         }
         false
     }
+}
 
+impl NodeState {
     /// Returns the transform defined directly on this node, or the identity
     /// transform, without taking into account transforms on ancestors.
     pub fn direct_transform(&self) -> Affine {
@@ -217,7 +251,9 @@ impl<'a> Node<'a> {
             .as_ref()
             .map_or(Affine::IDENTITY, |t| **t)
     }
+}
 
+impl<'a> Node<'a> {
     /// Returns the combined affine transform of this node and its ancestors,
     /// up to and including the root of this node's tree.
     pub fn transform(&self) -> Affine {
@@ -293,9 +329,11 @@ impl<'a> Node<'a> {
     ) -> Option<Node<'a>> {
         self.hit_test(point, filter).map(|(node, _)| node)
     }
+}
 
+impl NodeState {
     pub fn id(&self) -> NodeId {
-        self.state.id
+        self.id
     }
 
     pub fn role(&self) -> Role {
@@ -426,7 +464,9 @@ impl<'a> Node<'a> {
             && !self.supports_toggle()
             && !self.supports_expand_collapse()
     }
+}
 
+impl<'a> Node<'a> {
     pub fn name(&self) -> Option<String> {
         if let Some(name) = &self.data().name {
             Some(name.to_string())
@@ -445,7 +485,9 @@ impl<'a> Node<'a> {
             }
         }
     }
+}
 
+impl NodeState {
     pub fn is_read_only_supported(&self) -> bool {
         matches!(
             self.role(),
@@ -497,17 +539,27 @@ impl<'a> Node<'a> {
                 | Role::Tooltip
         )
     }
+}
 
+impl<'a> Node<'a> {
     pub fn live(&self) -> Live {
         self.data()
             .live
             .unwrap_or_else(|| self.parent().map_or(Live::Off, |parent| parent.live()))
     }
+}
 
+impl NodeState {
     pub fn is_selected(&self) -> Option<bool> {
         self.data().selected
     }
 
+    pub fn raw_text_selection(&self) -> Option<&TextSelection> {
+        self.data().text_selection.as_ref()
+    }
+}
+
+impl<'a> Node<'a> {
     pub fn index_path(&self) -> Vec<usize> {
         self.relative_index_path(self.tree_state.root_id())
     }
@@ -558,6 +610,62 @@ impl<'a> Node<'a> {
             }
         }
         None
+    }
+
+    pub fn state(&self) -> &'a NodeState {
+        self.state
+    }
+}
+
+impl<'a> Deref for Node<'a> {
+    type Target = NodeState;
+
+    fn deref(&self) -> &NodeState {
+        self.state
+    }
+}
+
+#[derive(Clone)]
+pub struct DetachedNode {
+    pub(crate) state: NodeState,
+    pub(crate) is_focused: bool,
+    pub(crate) is_root: bool,
+    pub(crate) name: Option<String>,
+    pub(crate) live: Live,
+    pub(crate) supports_text_ranges: bool,
+}
+
+impl DetachedNode {
+    pub fn is_focused(&self) -> bool {
+        self.is_focused
+    }
+
+    pub fn is_root(&self) -> bool {
+        self.is_root
+    }
+
+    pub fn name(&self) -> Option<String> {
+        self.name.clone()
+    }
+
+    pub fn live(&self) -> Live {
+        self.live
+    }
+
+    pub fn supports_text_ranges(&self) -> bool {
+        self.supports_text_ranges
+    }
+
+    pub fn state(&self) -> &NodeState {
+        &self.state
+    }
+}
+
+impl Deref for DetachedNode {
+    type Target = NodeState;
+
+    fn deref(&self) -> &NodeState {
+        &self.state
     }
 }
 

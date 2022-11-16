@@ -6,7 +6,7 @@
 use std::{collections::HashSet, sync::Arc};
 
 use accesskit::{ActionHandler, Live, NodeId, Role, TreeUpdate};
-use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler};
+use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use lazy_init::LazyTransform;
 use windows::Win32::{
     Foundation::*,
@@ -14,7 +14,7 @@ use windows::Win32::{
 };
 
 use crate::{
-    node::{filter, NodeWrapper, PlatformNode},
+    node::{filter, filter_detached, NodeWrapper, PlatformNode},
     util::QueuedEvent,
 };
 
@@ -103,31 +103,48 @@ impl Adapter {
             text_changed: HashSet<NodeId>,
         }
         impl Handler<'_> {
+            fn insert_text_change_if_needed_parent(&mut self, node: Node) {
+                if !node.supports_text_ranges() {
+                    return;
+                }
+                let id = node.id();
+                if self.text_changed.contains(&id) {
+                    return;
+                }
+                let platform_node = PlatformNode::new(self.tree, node.id(), self.hwnd);
+                let element: IRawElementProviderSimple = platform_node.into();
+                // Text change events must come before selection change
+                // events. It doesn't matter if text change events come
+                // before other events.
+                self.queue.insert(
+                    0,
+                    QueuedEvent::Simple {
+                        element,
+                        event_id: UIA_Text_TextChangedEventId,
+                    },
+                );
+                self.text_changed.insert(id);
+            }
             fn insert_text_change_if_needed(&mut self, node: &Node) {
                 if node.role() != Role::InlineTextBox {
                     return;
                 }
                 if let Some(node) = node.filtered_parent(&filter) {
-                    if !node.supports_text_ranges() {
-                        return;
+                    self.insert_text_change_if_needed_parent(node);
+                }
+            }
+            fn insert_text_change_if_needed_for_removed_node(
+                &mut self,
+                node: &DetachedNode,
+                current_state: &TreeState,
+            ) {
+                if node.role() != Role::InlineTextBox {
+                    return;
+                }
+                if let Some(id) = node.parent_id() {
+                    if let Some(node) = current_state.node_by_id(id) {
+                        self.insert_text_change_if_needed_parent(node);
                     }
-                    let id = node.id();
-                    if self.text_changed.contains(&id) {
-                        return;
-                    }
-                    let platform_node = PlatformNode::new(self.tree, node.id(), self.hwnd);
-                    let element: IRawElementProviderSimple = platform_node.into();
-                    // Text change events must come before selection change
-                    // events. It doesn't matter if text change events come
-                    // before other events.
-                    self.queue.insert(
-                        0,
-                        QueuedEvent::Simple {
-                            element,
-                            event_id: UIA_Text_TextChangedEventId,
-                        },
-                    );
-                    self.text_changed.insert(id);
                 }
             }
         }
@@ -146,7 +163,7 @@ impl Adapter {
                     });
                 }
             }
-            fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
+            fn node_updated(&mut self, old_node: &DetachedNode, new_node: &Node) {
                 if old_node.value() != new_node.value() {
                     self.insert_text_change_if_needed(new_node);
                 }
@@ -155,14 +172,14 @@ impl Adapter {
                 }
                 let platform_node = PlatformNode::new(self.tree, new_node.id(), self.hwnd);
                 let element: IRawElementProviderSimple = platform_node.into();
-                let old_wrapper = NodeWrapper::new(old_node);
-                let new_wrapper = NodeWrapper::new(new_node);
+                let old_wrapper = NodeWrapper::DetachedNode(old_node);
+                let new_wrapper = NodeWrapper::Node(new_node);
                 new_wrapper.enqueue_property_changes(&mut self.queue, &element, &old_wrapper);
                 if new_node.name().is_some()
                     && new_node.live() != Live::Off
                     && (new_node.name() != old_node.name()
                         || new_node.live() != old_node.live()
-                        || filter(old_node) != FilterResult::Include)
+                        || filter_detached(old_node) != FilterResult::Include)
                 {
                     self.queue.push(QueuedEvent::Simple {
                         element,
@@ -170,7 +187,7 @@ impl Adapter {
                     });
                 }
             }
-            fn focus_moved(&mut self, _old_node: Option<&Node>, new_node: Option<&Node>) {
+            fn focus_moved(&mut self, _old_node: Option<&DetachedNode>, new_node: Option<&Node>) {
                 if let Some(new_node) = new_node {
                     let platform_node = PlatformNode::new(self.tree, new_node.id(), self.hwnd);
                     let element: IRawElementProviderSimple = platform_node.into();
@@ -180,8 +197,8 @@ impl Adapter {
                     });
                 }
             }
-            fn node_removed(&mut self, node: &Node) {
-                self.insert_text_change_if_needed(node);
+            fn node_removed(&mut self, node: &DetachedNode, current_state: &TreeState) {
+                self.insert_text_change_if_needed_for_removed_node(node, current_state);
             }
             // TODO: handle other events (#20)
         }
