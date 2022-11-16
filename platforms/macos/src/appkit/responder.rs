@@ -3,10 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use objc2::{
-    foundation::NSObject,
-    ClassType, extern_class,
-};
+use objc2::{extern_class, foundation::NSObject, ClassType};
 
 extern_class!(
     #[derive(Debug)]

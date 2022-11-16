@@ -17,110 +17,18 @@ use std::sync::Weak;
 use accesskit::{NodeId, Role};
 use accesskit_consumer::{FilterResult, Node, Tree};
 use objc2::{
-    foundation::{NSArray, NSCopying, NSObject, NSPoint, NSRect, NSSize, NSString, NSValue},
     declare::{Ivar, IvarDrop},
+    declare_class,
+    foundation::{NSArray, NSCopying, NSObject, NSPoint, NSRect, NSSize, NSString, NSValue},
+    msg_send_id, ns_string,
     rc::{Id, Owned, Shared, WeakId},
     runtime::Bool,
-    ClassType, declare_class, msg_send_id, ns_string,
+    ClassType,
 };
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 use crate::appkit::*;
-
-pub(crate) fn filter(node: &Node) -> FilterResult {
-    if node.is_focused() {
-        return FilterResult::Include;
-    }
-
-    if node.is_hidden() {
-        return FilterResult::ExcludeSubtree;
-    }
-
-    if node.is_root() && node.role() == Role::Window {
-        // If the root element is a window, ignore it.
-        return FilterResult::ExcludeNode;
-    }
-
-    let ns_role = ns_role(node);
-    if ns_role == unsafe { NSAccessibilityUnknownRole } {
-        return FilterResult::ExcludeNode;
-    }
-
-    FilterResult::Include
-}
-
-fn get_parent(state: &State, node: &Node) -> *mut NSObject {
-    let view = match state.view.load() {
-        Some(view) => view,
-        None => {
-            return null_mut();
-        }
-    };
-
-    if let Some(parent) = node.filtered_parent(&filter) {
-        Id::autorelease_return(PlatformNode::get_or_create(&parent, state.tree.clone(), &view)) as *mut _
-    } else {
-        Id::autorelease_return(view) as *mut _
-    }
-}
-
-fn get_children(state: &State, node: &Node) -> *mut NSObject {
-    let view = match state.view.load() {
-        Some(view) => view,
-        None => {
-            return null_mut();
-        }
-    };
-
-    let platform_nodes = node
-        .filtered_children(filter)
-        .map(|child| PlatformNode::get_or_create(&child, state.tree.clone(), &view))
-        .collect::<Vec<Id<PlatformNode, Shared>>>();
-    Id::autorelease_return(NSArray::from_vec(platform_nodes)) as *mut _
-}
-
-fn get_screen_bounding_box(state: &State, node: &Node) -> Option<NSRect> {
-    let view = match state.view.load() {
-        Some(view) => view,
-        None => {
-            return None;
-        }
-    };
-
-    node.bounding_box().map(|rect| {
-        let view_bounds = view.bounds();
-        let rect = NSRect {
-            origin: NSPoint {
-                x: rect.x0,
-                y: view_bounds.size.height - rect.y1,
-            },
-            size: NSSize {
-                width: rect.width(),
-                height: rect.height(),
-            },
-        };
-        let rect = view.convert_rect_to_view(rect, None);
-        let window = view.window().unwrap();
-        window.convert_rect_to_screen(rect)
-    })
-}
-
-fn get_position(state: &State, node: &Node) -> *mut NSObject {
-    if let Some(rect) = get_screen_bounding_box(state, node) {
-        Id::autorelease_return(NSValue::new(rect.origin)) as *mut _
-    } else {
-        null_mut()
-    }
-}
-
-fn get_size(state: &State, node: &Node) -> *mut NSObject {
-    if let Some(rect) = get_screen_bounding_box(state, node) {
-        Id::autorelease_return(NSValue::new(rect.size)) as *mut _
-    } else {
-        null_mut()
-    }
-}
 
 fn ns_role(node: &Node) -> &'static NSString {
     let role = node.role();
@@ -317,6 +225,104 @@ fn ns_role(node: &Node) -> &'static NSString {
     }
 }
 
+pub(crate) fn filter(node: &Node) -> FilterResult {
+    if node.is_focused() {
+        return FilterResult::Include;
+    }
+
+    if node.is_hidden() {
+        return FilterResult::ExcludeSubtree;
+    }
+
+    if node.is_root() && node.role() == Role::Window {
+        // If the root element is a window, ignore it.
+        return FilterResult::ExcludeNode;
+    }
+
+    let ns_role = ns_role(node);
+    if ns_role == unsafe { NSAccessibilityUnknownRole } {
+        return FilterResult::ExcludeNode;
+    }
+
+    FilterResult::Include
+}
+
+fn get_parent(state: &State, node: &Node) -> *mut NSObject {
+    let view = match state.view.load() {
+        Some(view) => view,
+        None => {
+            return null_mut();
+        }
+    };
+
+    if let Some(parent) = node.filtered_parent(&filter) {
+        Id::autorelease_return(PlatformNode::get_or_create(
+            &parent,
+            state.tree.clone(),
+            &view,
+        )) as *mut _
+    } else {
+        Id::autorelease_return(view) as *mut _
+    }
+}
+
+fn get_children(state: &State, node: &Node) -> *mut NSObject {
+    let view = match state.view.load() {
+        Some(view) => view,
+        None => {
+            return null_mut();
+        }
+    };
+
+    let platform_nodes = node
+        .filtered_children(filter)
+        .map(|child| PlatformNode::get_or_create(&child, state.tree.clone(), &view))
+        .collect::<Vec<Id<PlatformNode, Shared>>>();
+    Id::autorelease_return(NSArray::from_vec(platform_nodes)) as *mut _
+}
+
+fn get_screen_bounding_box(state: &State, node: &Node) -> Option<NSRect> {
+    let view = match state.view.load() {
+        Some(view) => view,
+        None => {
+            return None;
+        }
+    };
+
+    node.bounding_box().map(|rect| {
+        let view_bounds = view.bounds();
+        let rect = NSRect {
+            origin: NSPoint {
+                x: rect.x0,
+                y: view_bounds.size.height - rect.y1,
+            },
+            size: NSSize {
+                width: rect.width(),
+                height: rect.height(),
+            },
+        };
+        let rect = view.convert_rect_to_view(rect, None);
+        let window = view.window().unwrap();
+        window.convert_rect_to_screen(rect)
+    })
+}
+
+fn get_position(state: &State, node: &Node) -> *mut NSObject {
+    if let Some(rect) = get_screen_bounding_box(state, node) {
+        Id::autorelease_return(NSValue::new(rect.origin)) as *mut _
+    } else {
+        null_mut()
+    }
+}
+
+fn get_size(state: &State, node: &Node) -> *mut NSObject {
+    if let Some(rect) = get_screen_bounding_box(state, node) {
+        Id::autorelease_return(NSValue::new(rect.size)) as *mut _
+    } else {
+        null_mut()
+    }
+}
+
 fn get_role(_state: &State, node: &Node) -> *mut NSObject {
     Id::autorelease_return(ns_role(node).copy()) as *mut _
 }
@@ -376,11 +382,7 @@ impl State {
 
     fn attribute_value(&self, attribute_name: &NSString) -> *mut NSObject {
         self.resolve(|node| {
-            println!(
-                "get attribute value {} on {:?}",
-                attribute_name,
-                node.id()
-            );
+            println!("get attribute value {} on {:?}", attribute_name, node.id());
 
             for Attribute(test_name, f) in ATTRIBUTE_MAP.iter() {
                 if attribute_name == *test_name {
@@ -394,8 +396,14 @@ impl State {
     }
 
     fn is_ignored(&self) -> Bool {
-        self.resolve(|node| if is_ignored(self, node) { Bool::YES } else { Bool::NO })
-            .unwrap_or(Bool::YES)
+        self.resolve(|node| {
+            if is_ignored(self, node) {
+                Bool::YES
+            } else {
+                Bool::NO
+            }
+        })
+        .unwrap_or(Bool::YES)
     }
 }
 
@@ -439,7 +447,11 @@ static PLATFORM_NODES: Lazy<Mutex<HashMap<PlatformNodeKey, PlatformNodePtr>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
 impl PlatformNode {
-    pub(crate) fn get_or_create(node: &Node, tree: Weak<Tree>, view: &Id<NSView, Shared>) -> Id<Self, Shared> {
+    pub(crate) fn get_or_create(
+        node: &Node,
+        tree: Weak<Tree>,
+        view: &Id<NSView, Shared>,
+    ) -> Id<Self, Shared> {
         let mut platform_nodes = PLATFORM_NODES.lock();
         let key = PlatformNodeKey((Id::as_ptr(view), node.id()));
         if let Some(result) = platform_nodes.get(&key) {

@@ -4,9 +4,11 @@
 // the LICENSE-MIT file), at your option.
 
 use objc2::{
+    extern_class, extern_methods,
     foundation::{NSObject, NSRect},
+    msg_send_id,
     rc::{Id, Shared},
-    ClassType, extern_class, extern_methods, msg_send_id,
+    ClassType,
 };
 
 use super::{NSResponder, NSWindow};
@@ -31,10 +33,6 @@ extern_methods!(
         pub(crate) fn bounds(&self) -> NSRect;
 
         #[sel(convertRect:toView:)]
-        pub(crate) fn convert_rect_to_view(
-            &self,
-            rect: NSRect,
-            view: Option<&NSView>,
-        ) -> NSRect;
+        pub(crate) fn convert_rect_to_view(&self, rect: NSRect, view: Option<&NSView>) -> NSRect;
     }
 );

@@ -10,8 +10,8 @@ use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_consumer::Tree;
 use objc2::{
     foundation::{NSArray, NSObject},
-    rc::{Id, Shared},
     msg_send,
+    rc::{Id, Shared},
 };
 
 use crate::{appkit::NSView, node::PlatformNode};
@@ -47,7 +47,11 @@ impl Adapter {
     pub fn root_platform_node(&self) -> Id<NSObject, Shared> {
         let state = self.tree.read();
         let node = state.root();
-        Id::into_super(PlatformNode::get_or_create(&node, Arc::downgrade(&self.tree), &self.view))
+        Id::into_super(PlatformNode::get_or_create(
+            &node,
+            Arc::downgrade(&self.tree),
+            &self.view,
+        ))
     }
 
     /// Inject accessibility into the view specified at initialization time.

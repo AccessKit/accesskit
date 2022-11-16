@@ -4,8 +4,9 @@
 // the LICENSE-MIT file), at your option.
 
 use objc2::{
+    extern_class, extern_methods,
     foundation::{NSObject, NSRect},
-    ClassType, extern_class, extern_methods,
+    ClassType,
 };
 
 use super::NSResponder;
