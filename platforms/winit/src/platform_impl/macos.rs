@@ -18,7 +18,7 @@ impl Adapter {
     ) -> Self {
         // TODO: fix when the macOS adapter supports laziness
         let adapter =
-            unsafe { MacOSAdapter::new(window.ns_view() as *mut _, source(), action_handler) };
+            unsafe { MacOSAdapter::new(window.ns_view(), source(), action_handler) };
         adapter.inject();
         Self { adapter }
     }

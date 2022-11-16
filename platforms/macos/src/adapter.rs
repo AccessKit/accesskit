@@ -1,21 +1,23 @@
-// Copyright 2021 The AccessKit Authors. All rights reserved.
+// Copyright 2022 The AccessKit Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use std::ffi::c_void;
 use std::sync::Arc;
 
 use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_consumer::Tree;
-use cocoa::base::{id, nil};
-use cocoa::foundation::NSArray;
-use objc::rc::StrongPtr;
-use objc::{msg_send, sel, sel_impl};
+use objc2::{
+    foundation::NSArray,
+    rc::{Id, Shared},
+    msg_send,
+};
 
-use crate::node::PlatformNode;
+use crate::{appkit::NSView, node::PlatformNode};
 
 pub struct Adapter {
-    view: StrongPtr,
+    view: Id<NSView, Shared>,
     tree: Arc<Tree>,
 }
 
@@ -24,15 +26,15 @@ impl Adapter {
     ///
     /// # Safety
     ///
-    /// Assumes that `view` is non-null.
+    /// `view` must be a valid, unreleased pointer to an `NSView`.
+    /// This method will retain an additional reference to `view`.
     pub unsafe fn new(
-        view: id,
+        view: *mut c_void,
         initial_state: TreeUpdate,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
-        assert!(!view.is_null());
         Self {
-            view: StrongPtr::retain(view),
+            view: Id::retain(view as *mut _).unwrap(),
             tree: Arc::new(Tree::new(initial_state, action_handler)),
         }
     }
@@ -42,9 +44,9 @@ impl Adapter {
         // TODO: events
     }
 
-    pub fn root_platform_node(&self) -> StrongPtr {
-        let reader = self.tree.read();
-        let node = reader.root();
+    fn root_platform_node(&self) -> Id<PlatformNode, Shared> {
+        let state = self.tree.read();
+        let node = state.root();
         PlatformNode::get_or_create(&node, Arc::downgrade(&self.tree), &self.view)
     }
 
@@ -60,12 +62,10 @@ impl Adapter {
     // Maybe we can patch the accessibilityChildren method on the view?
     pub fn inject(&self) {
         let platform_node = self.root_platform_node();
-        let ids = [*platform_node];
+        let ids = vec![platform_node];
+        let array = NSArray::from_vec(ids);
         unsafe {
-            let array = NSArray::arrayWithObjects(nil, &ids);
-            let () = msg_send![*self.view, setAccessibilityChildren: array];
-            let description: id = msg_send![*self.view, debugDescription];
-            println!("injected into {}", crate::util::from_nsstring(description));
+            let () = msg_send![&self.view, setAccessibilityChildren: &*array];
         }
     }
 }

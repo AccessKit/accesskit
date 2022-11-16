@@ -3,8 +3,16 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-mod appkit;
-mod node;
+use objc2::{
+    foundation::NSObject,
+    ClassType, extern_class,
+};
 
-mod adapter;
-pub use adapter::Adapter;
+extern_class!(
+    #[derive(Debug)]
+    pub struct NSResponder;
+
+    unsafe impl ClassType for NSResponder {
+        type Super = NSObject;
+    }
+);
