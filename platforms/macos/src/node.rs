@@ -89,10 +89,11 @@ fn get_screen_bounding_box(state: &State, node: &Node) -> Option<NSRect> {
     };
 
     node.bounding_box().map(|rect| {
+        let view_bounds = view.bounds();
         let rect = NSRect {
             origin: NSPoint {
                 x: rect.x0,
-                y: rect.y0,
+                y: view_bounds.size.height - rect.y1,
             },
             size: NSSize {
                 width: rect.width(),

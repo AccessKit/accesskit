@@ -27,6 +27,9 @@ extern_methods!(
             unsafe { msg_send_id![self, window] }
         }
 
+        #[sel(bounds)]
+        pub(crate) fn bounds(&self) -> NSRect;
+
         #[sel(convertRect:toView:)]
         pub(crate) fn convert_rect_to_view(
             &self,
