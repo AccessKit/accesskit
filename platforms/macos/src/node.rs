@@ -357,26 +357,16 @@ declare_class!(
 
         #[sel(isAccessibilityElement)]
         fn is_accessibility_element(&self) -> Bool {
-            self.resolve(|node| {
-                if filter(node) == FilterResult::Include {
-                    Bool::YES
-                } else {
-                    Bool::NO
-                }
-            })
-            .unwrap_or(Bool::NO)
+            self.resolve(|node| filter(node) == FilterResult::Include)
+                .unwrap_or(false)
+                .into()
         }
 
         #[sel(isAccessibilityFocused)]
         fn is_focused(&self) -> Bool {
-            self.resolve(|node| {
-                if node.is_focused() {
-                    Bool::YES
-                } else {
-                    Bool::NO
-                }
-            })
-            .unwrap_or(Bool::NO)
+            self.resolve(|node| node.is_focused())
+                .unwrap_or(false)
+                .into()
         }
 
         #[sel(setAccessibilityFocused:)]
