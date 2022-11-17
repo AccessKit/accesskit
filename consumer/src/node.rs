@@ -275,6 +275,10 @@ impl<'a> Node<'a> {
         parent_transform * self.direct_transform()
     }
 
+    pub fn has_bounds(&self) -> bool {
+        self.data().bounds.is_some()
+    }
+
     /// Returns the node's transformed bounding box relative to the tree's
     /// container (e.g. window).
     pub fn bounding_box(&self) -> Option<Rect> {

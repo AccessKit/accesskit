@@ -226,12 +226,8 @@ fn ns_role(node: &Node) -> &'static NSString {
 }
 
 pub(crate) fn filter(node: &Node) -> FilterResult {
-    if node.is_focused() {
-        return FilterResult::Include;
-    }
-
-    if node.is_hidden() {
-        return FilterResult::ExcludeSubtree;
+    if !node.has_bounds() {
+        return FilterResult::ExcludeNode;
     }
 
     if node.is_root() && node.role() == Role::Window {
@@ -242,6 +238,10 @@ pub(crate) fn filter(node: &Node) -> FilterResult {
     let ns_role = ns_role(node);
     if ns_role == unsafe { NSAccessibilityUnknownRole } {
         return FilterResult::ExcludeNode;
+    }
+
+    if node.is_hidden() && !node.is_focused() {
+        return FilterResult::ExcludeSubtree;
     }
 
     FilterResult::Include
