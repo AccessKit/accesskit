@@ -1,5 +1,19 @@
 # Changelog
 
+### [0.5.1](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.5.0...accesskit_winit-v0.5.1) (2022-11-17)
+
+
+### Bug Fixes
+
+* **platforms/winit:** Eliminate some problematic indirect dependencies ([#154](https://www.github.com/AccessKit/accesskit/issues/154)) ([58048ae](https://www.github.com/AccessKit/accesskit/commit/58048aebedc293eda5c5819ea66db9b40b8926b0))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.7.0 to 0.8.0
+
 ## [0.5.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.4.0...accesskit_winit-v0.5.0) (2022-11-14)
 
 

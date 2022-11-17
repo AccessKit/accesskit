@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.8.0](https://www.github.com/AccessKit/accesskit/compare/accesskit-v0.7.0...accesskit-v0.8.0) (2022-11-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* Be opinionated about coordinates after all (#151)
+
+### Code Refactoring
+
+* Be opinionated about coordinates after all ([#151](https://www.github.com/AccessKit/accesskit/issues/151)) ([91a29a1](https://www.github.com/AccessKit/accesskit/commit/91a29a1bf99bca39e9a00a744025533924e45190))
+
 ## [0.7.0](https://www.github.com/AccessKit/accesskit/compare/accesskit-v0.6.1...accesskit-v0.7.0) (2022-11-11)
 
 
