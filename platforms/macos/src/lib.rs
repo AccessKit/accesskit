@@ -8,3 +8,6 @@ mod node;
 
 mod adapter;
 pub use adapter::Adapter;
+
+mod subclass;
+pub use subclass::SubclassingAdapter;
