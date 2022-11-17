@@ -378,6 +378,22 @@ declare_class!(
             })
             .unwrap_or(Bool::NO)
         }
+
+        #[sel(setAccessibilityFocused:)]
+        fn set_focused(&self, focused: Bool) {
+            self.resolve_with_tree(|node, tree| {
+                if focused.into() {
+                    if node.is_focusable() {
+                        tree.set_focus(node.id());
+                    }
+                } else {
+                    let root = node.tree_state.root();
+                    if root.is_focusable() {
+                        tree.set_focus(root.id());
+                    }
+                }
+            });
+        }
     }
 );
 
@@ -429,6 +445,19 @@ impl PlatformNode {
             let state = tree.read();
             if let Some(node) = state.node_by_id(self.boxed.node_id) {
                 return Some(f(&node));
+            }
+        }
+        None
+    }
+
+    fn resolve_with_tree<F, T>(&self, f: F) -> Option<T>
+    where
+        F: FnOnce(&Node, &Tree) -> T,
+    {
+        if let Some(tree) = self.boxed.tree.upgrade() {
+            let state = tree.read();
+            if let Some(node) = state.node_by_id(self.boxed.node_id) {
+                return Some(f(&node, &tree));
             }
         }
         None
