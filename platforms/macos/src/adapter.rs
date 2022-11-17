@@ -7,13 +7,16 @@ use std::ffi::c_void;
 use std::sync::Arc;
 
 use accesskit::{ActionHandler, TreeUpdate};
-use accesskit_consumer::Tree;
+use accesskit_consumer::{FilterResult, Tree};
 use objc2::{
     foundation::{NSArray, NSObject},
     rc::{Id, Shared},
 };
 
-use crate::{appkit::NSView, node::PlatformNode};
+use crate::{
+    appkit::NSView,
+    node::{filter, PlatformNode},
+};
 
 pub struct Adapter {
     pub(crate) view: Id<NSView, Shared>,
@@ -43,21 +46,28 @@ impl Adapter {
         // TODO: events
     }
 
-    pub fn root_platform_node(&self) -> Id<NSObject, Shared> {
-        let state = self.tree.read();
-        let node = state.root();
-        Id::into_super(PlatformNode::get_or_create(
-            &node,
-            Arc::downgrade(&self.tree),
-            &self.view,
-        ))
-    }
-
     pub fn view_children(&self) -> *mut NSArray<NSObject> {
         // TODO: return unignored children
-        let platform_node = self.root_platform_node();
-        let ids = vec![platform_node];
-        let array = NSArray::from_vec(ids);
+        let state = self.tree.read();
+        let node = state.root();
+        let platform_nodes = if filter(&node) == FilterResult::Include {
+            vec![Id::into_super(PlatformNode::get_or_create(
+                &node,
+                Arc::downgrade(&self.tree),
+                &self.view,
+            ))]
+        } else {
+            node.filtered_children(filter)
+                .map(|node| {
+                    Id::into_super(PlatformNode::get_or_create(
+                        &node,
+                        Arc::downgrade(&self.tree),
+                        &self.view,
+                    ))
+                })
+                .collect::<Vec<Id<NSObject, Shared>>>()
+        };
+        let array = NSArray::from_vec(platform_nodes);
         Id::autorelease_return(array)
     }
 }
