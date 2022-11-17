@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.9.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_windows-v0.8.0...accesskit_windows-v0.9.0) (2022-11-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* **consumer:** Eliminate the dependency on `im` due to licensing (#153)
+
+### Code Refactoring
+
+* **consumer:** Eliminate the dependency on `im` due to licensing ([#153](https://www.github.com/AccessKit/accesskit/issues/153)) ([b4c4cb5](https://www.github.com/AccessKit/accesskit/commit/b4c4cb5713d4833d8ee7979e4f4e39c7e96a3ed4))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.7.0 to 0.8.0
+    * accesskit_consumer bumped from 0.7.1 to 0.8.0
+
 ## [0.8.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_windows-v0.7.0...accesskit_windows-v0.8.0) (2022-11-12)
 
 
