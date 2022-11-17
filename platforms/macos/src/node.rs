@@ -19,7 +19,7 @@ use accesskit_consumer::{FilterResult, Node, Tree};
 use objc2::{
     declare::{Ivar, IvarDrop},
     declare_class,
-    foundation::{NSArray, NSCopying, NSObject, NSPoint, NSRect, NSSize, NSString},
+    foundation::{NSArray, NSCopying, NSNumber, NSObject, NSPoint, NSRect, NSSize, NSString},
     msg_send_id, ns_string,
     rc::{Id, Owned, Shared, WeakId},
     runtime::Bool,
@@ -339,6 +339,20 @@ declare_class!(
             result.map_or_else(null_mut, |result| {
                 Id::autorelease_return(NSString::from_str(&result))
             })
+        }
+
+        #[sel(accessibilityValue)]
+        fn value(&self) -> *mut NSObject {
+            self.resolve(|node| {
+                if let Some(value) = node.value() {
+                    return Id::autorelease_return(NSString::from_str(value)) as *mut _;
+                }
+                if let Some(value) = node.numeric_value() {
+                    return Id::autorelease_return(NSNumber::new_f64(value)) as *mut _;
+                }
+                null_mut()
+            })
+            .unwrap_or_else(null_mut)
         }
 
         #[sel(isAccessibilityElement)]
