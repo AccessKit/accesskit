@@ -384,6 +384,19 @@ declare_class!(
                 }
             });
         }
+
+        #[sel(accessibilityPerformPress)]
+        fn press(&self) -> Bool {
+            self.resolve_with_tree(|node, tree| {
+                let clickable = node.is_clickable();
+                if clickable {
+                    tree.do_default_action(node.id());
+                }
+                clickable
+            })
+            .unwrap_or(false)
+            .into()
+        }
     }
 );
 
