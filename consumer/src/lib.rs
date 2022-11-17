@@ -7,7 +7,7 @@ pub(crate) mod tree;
 pub use tree::{ChangeHandler as TreeChangeHandler, State as TreeState, Tree};
 
 pub(crate) mod node;
-pub use node::Node;
+pub use node::{DetachedNode, Node, NodeState};
 
 pub(crate) mod iterators;
 pub use iterators::FilterResult;

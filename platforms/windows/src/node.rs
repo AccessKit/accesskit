@@ -12,7 +12,7 @@
 
 use accesskit::kurbo::Point;
 use accesskit::{CheckedState, Live, NodeId, NodeIdContent, Role};
-use accesskit_consumer::{FilterResult, Node, Tree, TreeState};
+use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, Tree, TreeState};
 use arrayvec::ArrayVec;
 use paste::paste;
 use std::sync::{Arc, Weak};
@@ -35,11 +35,7 @@ fn runtime_id_from_node_id(id: NodeId) -> impl std::ops::Deref<Target = [i32]> {
     result
 }
 
-pub(crate) fn filter(node: &Node) -> FilterResult {
-    if node.is_focused() {
-        return FilterResult::Include;
-    }
-
+fn filter_common(node: &NodeState) -> FilterResult {
     if node.is_hidden() {
         return FilterResult::ExcludeSubtree;
     }
@@ -52,6 +48,22 @@ pub(crate) fn filter(node: &Node) -> FilterResult {
     FilterResult::Include
 }
 
+pub(crate) fn filter(node: &Node) -> FilterResult {
+    if node.is_focused() {
+        return FilterResult::Include;
+    }
+
+    filter_common(node.state())
+}
+
+pub(crate) fn filter_detached(node: &DetachedNode) -> FilterResult {
+    if node.is_focused() {
+        return FilterResult::Include;
+    }
+
+    filter_common(node.state())
+}
+
 fn filter_with_root_exception(node: &Node) -> FilterResult {
     if node.is_root() {
         return FilterResult::Include;
@@ -59,17 +71,21 @@ fn filter_with_root_exception(node: &Node) -> FilterResult {
     filter(node)
 }
 
-pub(crate) struct NodeWrapper<'a> {
-    node: &'a Node<'a>,
+pub(crate) enum NodeWrapper<'a> {
+    Node(&'a Node<'a>),
+    DetachedNode(&'a DetachedNode),
 }
 
 impl<'a> NodeWrapper<'a> {
-    pub(crate) fn new(node: &'a Node<'a>) -> Self {
-        Self { node }
+    fn node_state(&self) -> &'a NodeState {
+        match self {
+            Self::Node(node) => node.state(),
+            Self::DetachedNode(node) => node.state(),
+        }
     }
 
     fn control_type(&self) -> UIA_CONTROLTYPE_ID {
-        let role = self.node.role();
+        let role = self.node_state().role();
         // TODO: Handle special cases. (#14)
         match role {
             Role::Unknown => UIA_CustomControlTypeId,
@@ -283,27 +299,41 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn name(&self) -> Option<String> {
-        self.node.name()
+        match self {
+            Self::Node(node) => node.name(),
+            Self::DetachedNode(node) => node.name(),
+        }
     }
 
     fn is_content_element(&self) -> bool {
-        filter(self.node) == FilterResult::Include
+        let result = match self {
+            Self::Node(node) => filter(node),
+            Self::DetachedNode(node) => filter_detached(node),
+        };
+        result == FilterResult::Include
     }
 
     fn is_enabled(&self) -> bool {
-        !self.node.is_disabled()
+        !self.node_state().is_disabled()
     }
 
     fn is_focusable(&self) -> bool {
-        self.node.is_focusable()
+        self.node_state().is_focusable()
     }
 
     fn is_focused(&self) -> bool {
-        self.node.is_focused()
+        match self {
+            Self::Node(node) => node.is_focused(),
+            Self::DetachedNode(node) => node.is_focused(),
+        }
     }
 
     fn live_setting(&self) -> LiveSetting {
-        match self.node.live() {
+        let live = match self {
+            Self::Node(node) => node.live(),
+            Self::DetachedNode(node) => node.live(),
+        };
+        match live {
             Live::Off => Off,
             Live::Polite => Polite,
             Live::Assertive => Assertive,
@@ -311,11 +341,11 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn is_toggle_pattern_supported(&self) -> bool {
-        self.node.checked_state().is_some() && !self.is_selection_item_pattern_supported()
+        self.node_state().checked_state().is_some() && !self.is_selection_item_pattern_supported()
     }
 
     fn toggle_state(&self) -> ToggleState {
-        match self.node.checked_state().unwrap() {
+        match self.node_state().checked_state().unwrap() {
             CheckedState::False => ToggleState_Off,
             CheckedState::True => ToggleState_On,
             CheckedState::Mixed => ToggleState_Indeterminate,
@@ -323,55 +353,59 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn is_invoke_pattern_supported(&self) -> bool {
-        self.node.is_invocable()
+        self.node_state().is_invocable()
     }
 
     fn is_value_pattern_supported(&self) -> bool {
-        self.node.value().is_some()
+        self.node_state().value().is_some()
     }
 
     fn is_range_value_pattern_supported(&self) -> bool {
-        self.node.numeric_value().is_some()
+        self.node_state().numeric_value().is_some()
     }
 
     fn value(&self) -> &str {
-        self.node.value().unwrap()
+        self.node_state().value().unwrap()
     }
 
     fn is_read_only(&self) -> bool {
-        self.node.is_read_only()
+        self.node_state().is_read_only()
     }
 
     fn numeric_value(&self) -> f64 {
-        self.node.numeric_value().unwrap()
+        self.node_state().numeric_value().unwrap()
     }
 
     fn min_numeric_value(&self) -> f64 {
-        self.node.min_numeric_value().unwrap_or(std::f64::MIN)
+        self.node_state()
+            .min_numeric_value()
+            .unwrap_or(std::f64::MIN)
     }
 
     fn max_numeric_value(&self) -> f64 {
-        self.node.max_numeric_value().unwrap_or(std::f64::MAX)
+        self.node_state()
+            .max_numeric_value()
+            .unwrap_or(std::f64::MAX)
     }
 
     fn numeric_value_step(&self) -> f64 {
-        self.node.numeric_value_step().unwrap_or(0.0)
+        self.node_state().numeric_value_step().unwrap_or(0.0)
     }
 
     fn numeric_value_jump(&self) -> f64 {
-        self.node
+        self.node_state()
             .numeric_value_jump()
             .unwrap_or_else(|| self.numeric_value_step())
     }
 
     fn is_selection_item_pattern_supported(&self) -> bool {
-        match self.node.role() {
+        match self.node_state().role() {
             // TODO: tables (#29)
             // https://www.w3.org/TR/core-aam-1.1/#mapping_state-property_table
             // SelectionItem.IsSelected is exposed when aria-checked is True or
             // False, for 'radio' and 'menuitemradio' roles.
             Role::RadioButton | Role::MenuItemRadio => matches!(
-                self.node.checked_state(),
+                self.node_state().checked_state(),
                 Some(CheckedState::True | CheckedState::False)
             ),
             // https://www.w3.org/TR/wai-aria-1.1/#aria-selected
@@ -380,36 +414,31 @@ impl<'a> NodeWrapper<'a> {
             | Role::ListItem
             | Role::MenuListOption
             | Role::Tab
-            | Role::TreeItem => self.node.is_selected().is_some(),
+            | Role::TreeItem => self.node_state().is_selected().is_some(),
             _ => false,
         }
     }
 
-    fn add_to_selection(&self) {
-        // TODO: implement when we work on list boxes (#23)
-    }
-
-    fn remove_from_selection(&self) {
-        // TODO: implement when we work on list boxes (#23)
-    }
-
     fn is_selected(&self) -> bool {
-        match self.node.role() {
+        match self.node_state().role() {
             // https://www.w3.org/TR/core-aam-1.1/#mapping_state-property_table
             // SelectionItem.IsSelected is set according to the True or False
             // value of aria-checked for 'radio' and 'menuitemradio' roles.
             Role::RadioButton | Role::MenuItemRadio => {
-                self.node.checked_state() == Some(CheckedState::True)
+                self.node_state().checked_state() == Some(CheckedState::True)
             }
             // https://www.w3.org/TR/wai-aria-1.1/#aria-selected
             // SelectionItem.IsSelected is set according to the True or False
             // value of aria-selected.
-            _ => self.node.is_selected().unwrap_or(false),
+            _ => self.node_state().is_selected().unwrap_or(false),
         }
     }
 
     fn is_text_pattern_supported(&self) -> bool {
-        self.node.supports_text_ranges()
+        match self {
+            Self::Node(node) => node.supports_text_ranges(),
+            Self::DetachedNode(node) => node.supports_text_ranges(),
+        }
     }
 
     pub(crate) fn enqueue_property_changes(
@@ -440,7 +469,7 @@ impl<'a> NodeWrapper<'a> {
         }
         if self.is_text_pattern_supported()
             && old.is_text_pattern_supported()
-            && self.node.text_selection() != old.node.text_selection()
+            && self.node_state().raw_text_selection() != old.node_state().raw_text_selection()
         {
             queue.push(QueuedEvent::Simple {
                 element: element.clone(),
@@ -465,19 +494,6 @@ impl<'a> NodeWrapper<'a> {
             old_value,
             new_value,
         });
-    }
-
-    fn navigate(&self, direction: NavigateDirection) -> Option<Node> {
-        match direction {
-            NavigateDirection_Parent => self.node.filtered_parent(&filter_with_root_exception),
-            NavigateDirection_NextSibling => self.node.following_filtered_siblings(&filter).next(),
-            NavigateDirection_PreviousSibling => {
-                self.node.preceding_filtered_siblings(&filter).next()
-            }
-            NavigateDirection_FirstChild => self.node.filtered_children(&filter).next(),
-            NavigateDirection_LastChild => self.node.filtered_children(&filter).next_back(),
-            _ => None,
-        }
     }
 }
 
@@ -526,11 +542,11 @@ impl PlatformNode {
 
     fn resolve<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(NodeWrapper<'a>) -> Result<T>,
+        for<'a> F: FnOnce(Node<'a>) -> Result<T>,
     {
         self.with_tree_state(|state| {
             if let Some(node) = state.node_by_id(self.node_id) {
-                f(NodeWrapper::new(&node))
+                f(node)
             } else {
                 Err(element_not_available())
             }
@@ -577,7 +593,8 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
     }
 
     fn GetPropertyValue(&self, property_id: UIA_PROPERTY_ID) -> Result<VARIANT> {
-        self.resolve(|wrapper| {
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
             let result = wrapper.get_property_value(property_id);
             Ok(result.into())
         })
@@ -596,9 +613,21 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
 
 impl IRawElementProviderFragment_Impl for PlatformNode {
     fn Navigate(&self, direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
-        self.resolve(|wrapper| match wrapper.navigate(direction) {
-            Some(result) => Ok(self.relative(result.id()).into()),
-            None => Err(Error::OK),
+        self.resolve(|node| {
+            let result = match direction {
+                NavigateDirection_Parent => node.filtered_parent(&filter_with_root_exception),
+                NavigateDirection_NextSibling => node.following_filtered_siblings(&filter).next(),
+                NavigateDirection_PreviousSibling => {
+                    node.preceding_filtered_siblings(&filter).next()
+                }
+                NavigateDirection_FirstChild => node.filtered_children(&filter).next(),
+                NavigateDirection_LastChild => node.filtered_children(&filter).next_back(),
+                _ => None,
+            };
+            match result {
+                Some(result) => Ok(self.relative(result.id()).into()),
+                None => Err(Error::OK),
+            }
         })
     }
 
@@ -608,19 +637,16 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
     }
 
     fn BoundingRectangle(&self) -> Result<UiaRect> {
-        self.resolve(|wrapper| {
-            let rect = wrapper
-                .node
-                .bounding_box()
-                .map_or(UiaRect::default(), |rect| {
-                    let client_top_left = self.client_top_left();
-                    UiaRect {
-                        left: rect.x0 + client_top_left.x,
-                        top: rect.y0 + client_top_left.y,
-                        width: rect.width(),
-                        height: rect.height(),
-                    }
-                });
+        self.resolve(|node| {
+            let rect = node.bounding_box().map_or(UiaRect::default(), |rect| {
+                let client_top_left = self.client_top_left();
+                UiaRect {
+                    left: rect.x0 + client_top_left.x,
+                    top: rect.y0 + client_top_left.y,
+                    width: rect.width(),
+                    height: rect.height(),
+                }
+            });
             Ok(rect)
         })
     }
@@ -650,11 +676,11 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
 
 impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
     fn ElementProviderFromPoint(&self, x: f64, y: f64) -> Result<IRawElementProviderFragment> {
-        self.resolve(|wrapper| {
+        self.resolve(|node| {
             let client_top_left = self.client_top_left();
             let point = Point::new(x - client_top_left.x, y - client_top_left.y);
-            let point = wrapper.node.transform().inverse() * point;
-            wrapper.node.node_at_point(point, &filter).map_or_else(
+            let point = node.transform().inverse() * point;
+            node.node_at_point(point, &filter).map_or_else(
                 || Err(Error::OK),
                 |node| Ok(self.relative(node.id()).into()),
             )
@@ -716,7 +742,8 @@ macro_rules! patterns {
     ))),+) => {
         impl PlatformNode {
             fn pattern_provider(&self, pattern_id: UIA_PATTERN_ID) -> Result<IUnknown> {
-                self.resolve(|wrapper| {
+                self.resolve(|node| {
+                    let wrapper = NodeWrapper::Node(&node);
                     match pattern_id {
                         $(paste! { [< UIA_ $base_pattern_id PatternId>] } => {
                             if wrapper.$is_supported() {
@@ -759,7 +786,10 @@ macro_rules! patterns {
         paste! {
             $(impl [< I $base_pattern_id Provider_Impl>] for PlatformNode {
                 $(fn $base_property_id(&self) -> Result<$com_type> {
-                    self.resolve(|wrapper| Ok(wrapper.$getter().into()))
+                    self.resolve(|node| {
+                        let wrapper = NodeWrapper::Node(&node);
+                        Ok(wrapper.$getter().into())
+                    })
                 })*
                 $($extra_trait_method)*
             })*
@@ -824,32 +854,26 @@ patterns! {
         },
 
         fn AddToSelection(&self) -> Result<()> {
-            self.resolve(|wrapper| {
-                wrapper.add_to_selection();
-                Ok(())
-            })
+            // TODO: implement when we work on list boxes (#23)
+            Err(not_implemented())
         },
 
         fn RemoveFromSelection(&self) -> Result<()> {
-            self.resolve(|wrapper| {
-                wrapper.remove_from_selection();
-                Ok(())
-            })
+            // TODO: implement when we work on list boxes (#23)
+            Err(not_implemented())
         },
 
         fn SelectionContainer(&self) -> Result<IRawElementProviderSimple> {
-            self.resolve(|_wrapper| {
-                // TODO: implement when we work on list boxes (#23)
-                // We return E_FAIL here because that's what Chromium does
-                // if it can't find a container.
-                Err(Error::new(E_FAIL, "".into()))
-            })
+            // TODO: implement when we work on list boxes (#23)
+            // We return E_FAIL here because that's what Chromium does
+            // if it can't find a container.
+            Err(Error::new(E_FAIL, "".into()))
         }
     )),
     (Text, is_text_pattern_supported, (), (
         fn GetSelection(&self) -> Result<*mut SAFEARRAY> {
-            self.resolve(|wrapper| {
-                if let Some(range) = wrapper.node.text_selection() {
+            self.resolve(|node| {
+                if let Some(range) = node.text_selection() {
                     let platform_range: ITextRangeProvider = PlatformTextRange::new(&self.tree, range, self.hwnd).into();
                     let iunknown: IUnknown = platform_range.into();
                     Ok(safe_array_from_com_slice(&[iunknown]))
@@ -872,26 +896,26 @@ patterns! {
         },
 
         fn RangeFromPoint(&self, point: &UiaPoint) -> Result<ITextRangeProvider> {
-            self.resolve(|wrapper| {
+            self.resolve(|node| {
                 let client_top_left = self.client_top_left();
                 let point = Point::new(point.x - client_top_left.x, point.y - client_top_left.y);
-                let point = wrapper.node.transform().inverse() * point;
-                let pos = wrapper.node.text_position_at_point(point);
+                let point = node.transform().inverse() * point;
+                let pos = node.text_position_at_point(point);
                 let range = pos.to_degenerate_range();
                 Ok(PlatformTextRange::new(&self.tree, range, self.hwnd).into())
             })
         },
 
         fn DocumentRange(&self) -> Result<ITextRangeProvider> {
-            self.resolve(|wrapper| {
-                let range = wrapper.node.document_range();
+            self.resolve(|node| {
+                let range = node.document_range();
                 Ok(PlatformTextRange::new(&self.tree, range, self.hwnd).into())
             })
         },
 
         fn SupportedTextSelection(&self) -> Result<SupportedTextSelection> {
-            self.resolve(|wrapper| {
-                if wrapper.node.has_text_selection() {
+            self.resolve(|node| {
+                if node.has_text_selection() {
                     Ok(SupportedTextSelection_Single)
                 } else {
                     Ok(SupportedTextSelection_None)
