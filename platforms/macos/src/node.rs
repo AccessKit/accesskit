@@ -19,7 +19,7 @@ use accesskit_consumer::{FilterResult, Node, Tree};
 use objc2::{
     declare::{Ivar, IvarDrop},
     declare_class,
-    foundation::{NSArray, NSCopying, NSObject, NSPoint, NSRect, NSSize, NSString, NSValue},
+    foundation::{NSArray, NSCopying, NSObject, NSPoint, NSRect, NSSize, NSString},
     msg_send_id, ns_string,
     rc::{Id, Owned, Shared, WeakId},
     runtime::Bool,
@@ -247,190 +247,110 @@ pub(crate) fn filter(node: &Node) -> FilterResult {
     FilterResult::Include
 }
 
-fn get_parent(state: &State, node: &Node) -> *mut NSObject {
-    let view = match state.view.load() {
-        Some(view) => view,
-        None => {
-            return null_mut();
-        }
-    };
-
-    if let Some(parent) = node.filtered_parent(&filter) {
-        Id::autorelease_return(PlatformNode::get_or_create(
-            &parent,
-            state.tree.clone(),
-            &view,
-        )) as *mut _
-    } else {
-        Id::autorelease_return(view) as *mut _
-    }
-}
-
-fn get_children(state: &State, node: &Node) -> *mut NSObject {
-    let view = match state.view.load() {
-        Some(view) => view,
-        None => {
-            return null_mut();
-        }
-    };
-
-    let platform_nodes = node
-        .filtered_children(filter)
-        .map(|child| PlatformNode::get_or_create(&child, state.tree.clone(), &view))
-        .collect::<Vec<Id<PlatformNode, Shared>>>();
-    Id::autorelease_return(NSArray::from_vec(platform_nodes)) as *mut _
-}
-
-fn get_screen_bounding_box(state: &State, node: &Node) -> Option<NSRect> {
-    let view = match state.view.load() {
-        Some(view) => view,
-        None => {
-            return None;
-        }
-    };
-
-    node.bounding_box().map(|rect| {
-        let view_bounds = view.bounds();
-        let rect = NSRect {
-            origin: NSPoint {
-                x: rect.x0,
-                y: view_bounds.size.height - rect.y1,
-            },
-            size: NSSize {
-                width: rect.width(),
-                height: rect.height(),
-            },
-        };
-        let rect = view.convert_rect_to_view(rect, None);
-        let window = view.window().unwrap();
-        window.convert_rect_to_screen(rect)
-    })
-}
-
-fn get_position(state: &State, node: &Node) -> *mut NSObject {
-    if let Some(rect) = get_screen_bounding_box(state, node) {
-        Id::autorelease_return(NSValue::new(rect.origin)) as *mut _
-    } else {
-        null_mut()
-    }
-}
-
-fn get_size(state: &State, node: &Node) -> *mut NSObject {
-    if let Some(rect) = get_screen_bounding_box(state, node) {
-        Id::autorelease_return(NSValue::new(rect.size)) as *mut _
-    } else {
-        null_mut()
-    }
-}
-
-fn get_role(_state: &State, node: &Node) -> *mut NSObject {
-    Id::autorelease_return(ns_role(node).copy()) as *mut _
-}
-
-fn get_title(_state: &State, node: &Node) -> *mut NSObject {
-    // TODO: implement proper logic for title, description, and value;
-    // see Chromium's content/browser/accessibility/browser_accessibility_cocoa.mm
-    let name = node.name().unwrap_or_else(|| "".into());
-    Id::autorelease_return(NSString::from_str(&name)) as *mut _
-}
-
-struct Attribute(&'static NSString, fn(&State, &Node) -> *mut NSObject);
-
-static ATTRIBUTE_MAP: Lazy<Vec<Attribute>> = Lazy::new(|| unsafe {
-    vec![
-        Attribute(NSAccessibilityParentAttribute, get_parent),
-        Attribute(NSAccessibilityChildrenAttribute, get_children),
-        Attribute(NSAccessibilityPositionAttribute, get_position),
-        Attribute(NSAccessibilitySizeAttribute, get_size),
-        Attribute(NSAccessibilityRoleAttribute, get_role),
-        Attribute(NSAccessibilityTitleAttribute, get_title),
-    ]
-});
-
-struct State {
+struct BoxedData {
     tree: Weak<Tree>,
     node_id: NodeId,
     view: WeakId<NSView>,
 }
 
-fn is_ignored(_state: &State, node: &Node) -> bool {
-    filter(node) != FilterResult::Include
-}
-
-impl State {
-    fn resolve<F, T>(&self, f: F) -> Option<T>
-    where
-        F: FnOnce(&Node) -> T,
-    {
-        if let Some(tree) = self.tree.upgrade() {
-            let state = tree.read();
-            if let Some(node) = state.node_by_id(self.node_id) {
-                return Some(f(&node));
-            }
-        }
-        None
-    }
-
-    fn attribute_names(&self) -> *mut NSArray<NSString> {
-        let names = ATTRIBUTE_MAP
-            .iter()
-            .map(|Attribute(name, _)| name.copy())
-            .collect::<Vec<Id<NSString, Shared>>>();
-        // TODO: role-specific attributes
-        Id::autorelease_return(NSArray::from_vec(names))
-    }
-
-    fn attribute_value(&self, attribute_name: &NSString) -> *mut NSObject {
-        self.resolve(|node| {
-            println!("get attribute value {} on {:?}", attribute_name, node.id());
-
-            for Attribute(test_name, f) in ATTRIBUTE_MAP.iter() {
-                if attribute_name == *test_name {
-                    return f(self, node);
-                }
-            }
-
-            null_mut()
-        })
-        .unwrap_or_else(null_mut)
-    }
-
-    fn is_ignored(&self) -> Bool {
-        self.resolve(|node| {
-            if is_ignored(self, node) {
-                Bool::YES
-            } else {
-                Bool::NO
-            }
-        })
-        .unwrap_or(Bool::YES)
-    }
-}
-
 declare_class!(
     pub(crate) struct PlatformNode {
-        state: IvarDrop<Box<State>>,
+        boxed: IvarDrop<Box<BoxedData>>,
     }
 
     unsafe impl ClassType for PlatformNode {
-        type Super = NSObject;
+        #[inherits(NSObject)]
+        type Super = NSAccessibilityElement;
         const NAME: &'static str = "AccessKitNode";
     }
 
     unsafe impl PlatformNode {
-        #[sel(accessibilityAttributeNames)]
-        fn attribute_names(&self) -> *mut NSArray<NSString> {
-            self.state.attribute_names()
+        #[sel(accessibilityParent)]
+        fn parent(&self) -> *mut NSObject {
+            self.resolve_with_view(|node, view| {
+                if let Some(parent) = node.filtered_parent(&filter) {
+                    Id::autorelease_return(PlatformNode::get_or_create(
+                        &parent,
+                        self.boxed.tree.clone(),
+                        &view,
+                    )) as *mut _
+                } else {
+                    Id::autorelease_return(view) as *mut _
+                }
+            })
+            .unwrap_or_else(null_mut)
         }
 
-        #[sel(accessibilityAttributeValue:)]
-        fn attribute_value(&self, attribute_name: &NSString) -> *mut NSObject {
-            self.state.attribute_value(attribute_name)
+        #[sel(accessibilityChildren)]
+        fn children(&self) -> *mut NSArray<PlatformNode> {
+            self.resolve_with_view(|node, view| {
+                let platform_nodes = node
+                    .filtered_children(filter)
+                    .map(|child| {
+                        PlatformNode::get_or_create(&child, self.boxed.tree.clone(), &view)
+                    })
+                    .collect::<Vec<Id<PlatformNode, Shared>>>();
+                Id::autorelease_return(NSArray::from_vec(platform_nodes))
+            })
+            .unwrap_or_else(null_mut)
         }
 
-        #[sel(accessibilityIsIgnored)]
-        fn is_ignored(&self) -> Bool {
-            self.state.is_ignored()
+        #[sel(accessibilityFrame)]
+        fn frame(&self) -> NSRect {
+            self.resolve_with_view(|node, view| {
+                node.bounding_box().map_or(NSRect::ZERO, |rect| {
+                    let view_bounds = view.bounds();
+                    let rect = NSRect {
+                        origin: NSPoint {
+                            x: rect.x0,
+                            y: view_bounds.size.height - rect.y1,
+                        },
+                        size: NSSize {
+                            width: rect.width(),
+                            height: rect.height(),
+                        },
+                    };
+                    let rect = view.convert_rect_to_view(rect, None);
+                    let window = view.window().unwrap();
+                    window.convert_rect_to_screen(rect)
+                })
+            })
+            .unwrap_or(NSRect::ZERO)
+        }
+
+        #[sel(accessibilityRole)]
+        fn role(&self) -> *mut NSString {
+            let role = self
+                .resolve(ns_role)
+                .unwrap_or(unsafe { NSAccessibilityUnknownRole });
+            Id::autorelease_return(role.copy())
+        }
+
+        #[sel(accessibilityTitle)]
+        fn title(&self) -> *mut NSString {
+            let result = self
+                .resolve(|node| {
+                    // TODO: implement proper logic for title, description, and value;
+                    // see Chromium's content/browser/accessibility/browser_accessibility_cocoa.mm
+                    // and figure out how this is different in the macOS 10.10+ protocol
+                    node.name()
+                })
+                .flatten();
+            result.map_or_else(null_mut, |result| {
+                Id::autorelease_return(NSString::from_str(&result))
+            })
+        }
+
+        #[sel(isAccessibilityElement)]
+        fn is_accessibility_element(&self) -> Bool {
+            self.resolve(|node| {
+                if filter(node) == FilterResult::Include {
+                    Bool::YES
+                } else {
+                    Bool::NO
+                }
+            })
+            .unwrap_or(Bool::NO)
         }
     }
 );
@@ -458,14 +378,14 @@ impl PlatformNode {
             return result.0.clone();
         }
 
-        let state = Box::new(State {
+        let boxed = Box::new(BoxedData {
             tree,
             node_id: node.id(),
             view: WeakId::new(view),
         });
         let result: Id<Self, Shared> = unsafe {
             let mut object: Id<Self, Owned> = msg_send_id![Self::class(), new];
-            Ivar::write(&mut object.state, state);
+            Ivar::write(&mut object.boxed, boxed);
             object.into()
         };
 
@@ -474,4 +394,25 @@ impl PlatformNode {
     }
 
     // TODO: clean up platform nodes when underlying nodes are deleted
+
+    fn resolve<F, T>(&self, f: F) -> Option<T>
+    where
+        F: FnOnce(&Node) -> T,
+    {
+        if let Some(tree) = self.boxed.tree.upgrade() {
+            let state = tree.read();
+            if let Some(node) = state.node_by_id(self.boxed.node_id) {
+                return Some(f(&node));
+            }
+        }
+        None
+    }
+
+    fn resolve_with_view<F, T>(&self, f: F) -> Option<T>
+    where
+        F: FnOnce(&Node, Id<NSView, Shared>) -> T,
+    {
+        let view = self.boxed.view.load()?;
+        self.resolve(|node| f(node, view))
+    }
 }

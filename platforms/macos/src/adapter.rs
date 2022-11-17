@@ -51,19 +51,19 @@ impl Adapter {
         let state = self.tree.read();
         let node = state.root();
         let platform_nodes = if filter(&node) == FilterResult::Include {
-            vec![Id::into_super(PlatformNode::get_or_create(
+            vec![Id::into_super(Id::into_super(PlatformNode::get_or_create(
                 &node,
                 Arc::downgrade(&self.tree),
                 &self.view,
-            ))]
+            )))]
         } else {
             node.filtered_children(filter)
                 .map(|node| {
-                    Id::into_super(PlatformNode::get_or_create(
+                    Id::into_super(Id::into_super(PlatformNode::get_or_create(
                         &node,
                         Arc::downgrade(&self.tree),
                         &self.view,
-                    ))
+                    )))
                 })
                 .collect::<Vec<Id<NSObject, Shared>>>()
         };

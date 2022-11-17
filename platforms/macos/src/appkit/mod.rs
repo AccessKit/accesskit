@@ -17,3 +17,6 @@ pub(crate) use window::NSWindow;
 
 mod accessibility_constants;
 pub(crate) use accessibility_constants::*;
+
+mod accessibility_element;
+pub(crate) use accessibility_element::NSAccessibilityElement;

@@ -7,14 +7,6 @@ use objc2::foundation::NSString;
 
 #[link(name = "AppKit", kind = "framework")]
 extern "C" {
-    // Attributes
-    pub(crate) static NSAccessibilityChildrenAttribute: &'static NSString;
-    pub(crate) static NSAccessibilityParentAttribute: &'static NSString;
-    pub(crate) static NSAccessibilityPositionAttribute: &'static NSString;
-    pub(crate) static NSAccessibilityRoleAttribute: &'static NSString;
-    pub(crate) static NSAccessibilitySizeAttribute: &'static NSString;
-    pub(crate) static NSAccessibilityTitleAttribute: &'static NSString;
-
     // Roles
     pub(crate) static NSAccessibilityButtonRole: &'static NSString;
     pub(crate) static NSAccessibilityCheckBoxRole: &'static NSString;
