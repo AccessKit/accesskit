@@ -4,6 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use std::ffi::c_void;
+use std::ptr::null_mut;
 use std::sync::Arc;
 
 use accesskit::{ActionHandler, TreeUpdate};
@@ -69,5 +70,19 @@ impl Adapter {
         };
         let array = NSArray::from_vec(platform_nodes);
         Id::autorelease_return(array)
+    }
+
+    pub fn focus(&self) -> *mut NSObject {
+        let state = self.tree.read();
+        if let Some(node) = state.focus() {
+            if filter(&node) == FilterResult::Include {
+                return Id::autorelease_return(PlatformNode::get_or_create(
+                    &node,
+                    Arc::downgrade(&self.tree),
+                    &self.view,
+                )) as *mut _;
+            }
+        }
+        null_mut()
     }
 }

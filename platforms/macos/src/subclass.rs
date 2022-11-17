@@ -47,11 +47,18 @@ unsafe extern "C" fn get_superclass(this: &NSView, _cmd: Sel) -> Option<&Class> 
     (*instance.0).prev_class.as_ref().unwrap().superclass()
 }
 
-unsafe extern "C" fn accessibility_children(this: &NSView, _cmd: Sel) -> *mut NSArray<NSObject> {
+unsafe extern "C" fn children(this: &NSView, _cmd: Sel) -> *mut NSArray<NSObject> {
     let key = ViewKey(this as *const _);
     let instances = INSTANCES.lock();
     let instance = instances.get(&key).unwrap();
     (*instance.0).adapter.view_children()
+}
+
+unsafe extern "C" fn focus(this: &NSView, _cmd: Sel) -> *mut NSObject {
+    let key = ViewKey(this as *const _);
+    let instances = INSTANCES.lock();
+    let instance = instances.get(&key).unwrap();
+    (*instance.0).adapter.focus()
 }
 
 impl Instance {
@@ -83,7 +90,11 @@ impl Instance {
                 );
                 builder.add_method(
                     sel!(accessibilityChildren),
-                    accessibility_children as unsafe extern "C" fn(_, _) -> _,
+                    children as unsafe extern "C" fn(_, _) -> _,
+                );
+                builder.add_method(
+                    sel!(accessibilityFocusedUIElement),
+                    focus as unsafe extern "C" fn(_, _) -> _,
                 );
             }
             builder.register()

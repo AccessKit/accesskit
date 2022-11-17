@@ -366,6 +366,18 @@ declare_class!(
             })
             .unwrap_or(Bool::NO)
         }
+
+        #[sel(isAccessibilityFocused)]
+        fn is_focused(&self) -> Bool {
+            self.resolve(|node| {
+                if node.is_focused() {
+                    Bool::YES
+                } else {
+                    Bool::NO
+                }
+            })
+            .unwrap_or(Bool::NO)
+        }
     }
 );
 
