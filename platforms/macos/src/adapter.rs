@@ -48,7 +48,6 @@ impl Adapter {
     }
 
     pub fn view_children(&self) -> *mut NSArray<NSObject> {
-        // TODO: return unignored children
         let state = self.tree.read();
         let node = state.root();
         let platform_nodes = if filter(&node) == FilterResult::Include {
