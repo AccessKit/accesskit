@@ -11,8 +11,8 @@ readme = "README.md"
 edition = "2021"
 
 [dependencies]
-accesskit = { version = "0.7.0", path = "../../common" }
-accesskit_consumer = { version = "0.7.1", path = "../../consumer" }
+accesskit = { version = "0.8.0", path = "../../common" }
+accesskit_consumer = { version = "0.8.0", path = "../../consumer" }
 objc2 = "0.3.0-beta.3"
 objc-sys = "0.2.0-beta.2"
 once_cell = "1.16.0"
