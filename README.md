@@ -10,9 +10,7 @@
 
 There are numerous UI toolkits, and new ones continue to proliferate. So far, only the largest UI toolkit projects, with corporate backing, implement accessibility for users who require assistive technologies, such as blind people using screen readers. If the long tail of UI toolkits are ever going to be made fully accessible, then we must pool as much of the required effort as possible across these toolkits. Many of these toolkits are cross-platform, but each platform has its own accessibility API. These toolkits are also written in many different programming languages, so the shared infrastructure must be usable across languages.
 
-## Project plan
-
-AccessKit is currently in the design phase. The plan is to break the project down into the following components:
+## Project components
 
 ### Data schema
 
@@ -20,44 +18,53 @@ It has often been said that data structures are more important than code. This i
 
 The canonical definition of the schema is in the Rust programming language. Rust was chosen for its combination of efficiency and an expressive type system. Representations of the schema in other programming languages and schema definition languages (such as JSON Schema or Protocol Buffers) can be generated from the Rust code.
 
-When both the toolkit and the platform adapter (see below) are written in Rust or another language that can efficiently access Rust data structures (such as C++), the data defined in the schema can be passed back and forth with no serialization overhead. In other cases, serialization will be required to minimize the overhead of language interoperability. The plan is to use JSON serialization for now, and possibly add other serialization options later, for better performance or to please toolkit developers who would rather not use JSON.
+When both the toolkit and the platform adapter (see below) are written in Rust or another language that can efficiently access Rust data structures (such as C++), the data defined in the schema can be passed back and forth with no serialization overhead. In other cases, serialization will be required to minimize the overhead of language interoperability. Because the schema supports [serde](https://serde.rs/), each language binding can choose its own serialization format.
 
-A draft of the schema is defined in [the `common` directory](https://github.com/AccessKit/accesskit/tree/main/common).
+The schema is defined in [the `accesskit` crate](https://crates.io/crates/accesskit), in [the `common` directory](https://github.com/AccessKit/accesskit/tree/main/common). It has not yet been stabilized, but it is reasonably complete. The following known issues remain:
 
-* While a list of action types is defined, the `ActionRequest` struct that will represent a request from an assistive technology to perform an action, with parameters for some types of actions, has not yet been defined.
-* The schema doesn't yet define any events. While some events in platform accessibility APIs, such as focus change and property changes, can be implied from tree updates, others cannot.
+* The schema doesn't yet define any events. While some events in platform accessibility APIs, such as focus change and property changes, can be implied from tree updates, other events, such as ad-hoc announcements meant for screen reader users, cannot.
 * The in-memory representation of a node has not yet been optimized.
 
 ### Platform adapters
 
-These are the libraries that implement platform accessibility APIs. The following platform adapters are planned:
+These are the libraries that implement platform accessibility APIs.
 
-* Windows (UI Automation API)
-* macOS
-* iOS/tvOS
-* Unix desktop environments (e.g. GNOME) based on AT-SPI
+So far, the Windows adapter, which implements the UI Automation API, is available in [the `accesskit_windows` crate](https://crates.io/crates/accesskit_windows), in [the `platforms/windows` directory](https://github.com/AccessKit/accesskit/tree/main/platforms/windows). It doesn't yet support all possible widget types, but it can now be used to make real, non-trivial applications accessible. In particular, it supports both single-line and multi-line text edit controls, but not yet rich text.
+
+The following adapters are under development in their respective Git branches:
+
+* [macOS](https://github.com/AccessKit/accesskit/tree/macos-basics)
+* [Unix desktop environments (e.g. GNOME) based on AT-SPI](https://github.com/DataTriny/accesskit/tree/atspi_basics)
+
+The following adapters are planned:
+
 * Android
+* iOS/tvOS
 * Web (creating a hidden HTML DOM)
 
-Most of these libraries will certainly be written in Rust. The best course of action for the Android and web libraries isn't yet clear. The original plan was to write these in Kotlin and TypeScript, respectively. However, that would prevent us from reusing the consumer library (described below) for these platform adapters. So it may be best to write these in Rust as well.
-
-The interaction between the provider (toolkit or application) and the platform adapter is also inspired by Chromium. Because Chromium has a multi-process architecture and does not allow synchronous IPC from the browser process to the sandboxed renderer processes, the browser process cannot pull accessibility information from the renderer on demand. Instead, the renderer process pushes data to the browser process. The renderer process initially pushes a complete accessibility tree, then it pushes incremental updates. The browser process only needs to send a request to the renderer process when an assistive technology requests one of the actions mentioned above. In AccessKit, the platform adapter will be like the Chromium browser process, and the UI toolkit will be like the Chromium renderer process, except that both components will run in the same process and will communicate through normal function calls rather than IPC.
+The interaction between the provider (toolkit or application) and the platform adapter is also inspired by Chromium. Because Chromium has a multi-process architecture and does not allow synchronous IPC from the browser process to the sandboxed renderer processes, the browser process cannot pull accessibility information from the renderer on demand. Instead, the renderer process pushes data to the browser process. The renderer process initially pushes a complete accessibility tree, then it pushes incremental updates. The browser process only needs to send a request to the renderer process when an assistive technology requests one of the actions mentioned above. In AccessKit, the platform adapter is like the Chromium browser process, and the UI toolkit is like the Chromium renderer process, except that both components run in the same process and communicate through normal function calls rather than IPC.
 
 One notable consequence of this design is that only the platform adapter needs to retain a complete accessibility tree in memory. That means that this design is suitable for immediate-mode GUI toolkits, as long as they can provide a stable ID for each UI element.
 
-As mentioned above, many (if not all) of the platform adapters will be written in Rust. We've chosen Rust for its combination of reliability and efficiency, including safe concurrency, which is especially important in modern software.
-
-A prototype platform adapter for macOS is in [the `platforms/mac` directory](https://github.com/AccessKit/accesskit/tree/main/platforms/mac). So far, it only implements a small subset of the translation from the AccessKit schema to the macOS accessibility API -- just enough to traverse the nodes of a simple tree and get their names and roles. One especially glaring limitation of the current implementation is that the Cocoa object for a node is not cleaned up if the node is removed from the AccessKit tree. It would probably be simplest to take care of this while implementing events, since one of those events will be the removal of a node.
+The platform adapters are written primarily in Rust. We've chosen Rust for its combination of reliability and efficiency, including safe concurrency, which is especially important in modern software. Some future adapters may need to be partially written in another language, such as Java or Kotlin for the Android adapter.
 
 ### Consumer library
 
-Some of the code required by the platform adapters is platform-independent. This code is in what we currently call the consumer library, in [the `consumer` directory](https://github.com/AccessKit/accesskit/tree/main/consumer).
+Some of the code required by the platform adapters is platform-independent. This code is in [the `accesskit_consumer` crate](https://crates.io/crates/accesskit_consumer), in [the `consumer` directory](https://github.com/AccessKit/accesskit/tree/main/consumer). In addition to platform adapters, this library may also be useful for implementing embedded assistive technologies, such as a screen reader running directly inside an application, for platforms that don't yet have an AccessKit platform adapter, or for devices that don't have platform support for accessibility at all, such as game consoles and appliances.
+
+### Adapters for cross-platform windowing layers
+
+In the Rust ecosystem, [the `winit` crate](https://crates.io/crates/winit) is a popular cross-platform abstraction for windowing and user input. [The `accesskit_winit` crate](https://crates.io/crates/accesskit_winit), in [the `platforms/winit` directory](https://github.com/AccessKit/accesskit/tree/main/platforms/winit), provides a cross-platform way of integrating AccessKit into `winit`-based toolkits and applications. We may later implement similar adapters for other cross-platform abstractions such as GLFW and SDL.
+
+### GUI toolkit integrations
+
+While we expect GUI toolkit developers to eventually integrate AccessKit into their own projects, we are directly working on integration with some GUI toolkits at this stage in the project, so we can test our work on AccessKit in realistic environments. So far, we are most actively working on integration into [the `egui` toolkit for Rust](https://github.com/emilk/egui). This integration is now in a [pull request](https://github.com/emilk/egui/pull/2294). We also have a [proof-of-concept integration with the Unity game engine](https://github.com/AccessKit/the-intercept), which demonstrates the ability to expose AccessKit to a language other than Rust.
 
 ### Language bindings
 
-UI toolkit developers who merely want to use AccessKit should not be required to use Rust directly. In addition to a direct Rust API, the Rust-based platform adapters will also provide a C API, which can be used from a variety of languages. The AccessKit project will provide pre-built binaries, including both dynamic and static libraries, for these platform adapters using the C API, so toolkit developers won't need to deal with Rust at all.
+UI toolkit developers who merely want to use AccessKit should not be required to use Rust directly. In addition to a direct Rust API, the platform adapters will also provide C APIs, which can be used from a variety of languages. The AccessKit project will provide pre-built binaries, including both dynamic and static libraries, for these platform adapters using the C APIs, so toolkit developers won't need to deal with Rust at all.
 
-While many languages can use a C API, we also plan to provide libraries that make it easier to use AccessKit from languages other than Rust and C. In particular, we're planning to provide such a library for Java and other JVM-based languages. A prototype of such a library for the macOS platform adapter is in [the `platforms/mac/jni` directory](https://github.com/AccessKit/accesskit/tree/main/platforms/mac/jni). This library should probably be refactored into platform-independent and platform-specific parts.
+While many languages can use a C API, we also plan to provide libraries that make it easier to use AccessKit from languages other than Rust and C. In particular, we're planning to provide such a library for Java and other JVM-based languages.
 
 ### Documentation
 
