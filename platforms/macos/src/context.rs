@@ -5,11 +5,14 @@
 
 use accesskit::NodeId;
 use accesskit_consumer::Tree;
-use objc2::rc::{Id, Shared};
+use objc2::{
+    foundation::is_main_thread,
+    rc::{Id, Shared},
+};
 use parking_lot::Mutex;
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{appkit::NSView, node::PlatformNode};
+use crate::{appkit::*, node::PlatformNode};
 
 struct PlatformNodePtr(Id<PlatformNode, Shared>);
 unsafe impl Send for PlatformNodePtr {}
@@ -46,5 +49,23 @@ impl Context {
     pub(crate) fn remove_platform_node(&self, id: NodeId) -> Option<Id<PlatformNode, Shared>> {
         let mut platform_nodes = self.platform_nodes.lock();
         platform_nodes.remove(&id).map(|ptr| ptr.0)
+    }
+}
+
+impl Drop for Context {
+    fn drop(&mut self) {
+        // If this isn't called on the main thread, it's better to leak
+        // resources than to crash.
+        if is_main_thread() {
+            let platform_nodes = self.platform_nodes.lock();
+            for platform_node_ptr in platform_nodes.values() {
+                unsafe {
+                    NSAccessibilityPostNotification(
+                        &platform_node_ptr.0,
+                        NSAccessibilityUIElementDestroyedNotification,
+                    )
+                };
+            }
+        }
     }
 }
