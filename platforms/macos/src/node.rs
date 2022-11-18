@@ -318,7 +318,10 @@ declare_class!(
                     Id::autorelease_return(context.get_or_create_platform_node(parent.id()))
                         as *mut _
                 } else {
-                    Id::autorelease_return(context.view.clone()) as *mut _
+                    context
+                        .view
+                        .load()
+                        .map_or_else(null_mut, |view| Id::autorelease_return(view) as *mut _)
                 }
             })
             .unwrap_or_else(null_mut)
@@ -338,7 +341,14 @@ declare_class!(
 
         #[sel(accessibilityFrame)]
         fn frame(&self) -> NSRect {
-            self.resolve_with_view(|node, view| {
+            self.resolve_with_context(|node, context| {
+                let view = match context.view.load() {
+                    Some(view) => view,
+                    None => {
+                        return NSRect::ZERO;
+                    }
+                };
+
                 node.bounding_box().map_or(NSRect::ZERO, |rect| {
                     let view_bounds = view.bounds();
                     let rect = NSRect {
@@ -481,12 +491,5 @@ impl PlatformNode {
         F: FnOnce(&Node, &Tree) -> T,
     {
         self.resolve_with_context(|node, context| f(node, &context.tree))
-    }
-
-    fn resolve_with_view<F, T>(&self, f: F) -> Option<T>
-    where
-        F: FnOnce(&Node, &Id<NSView, Shared>) -> T,
-    {
-        self.resolve_with_context(|node, context| f(node, &context.view))
     }
 }

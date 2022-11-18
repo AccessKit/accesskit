@@ -7,7 +7,7 @@ use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_consumer::{FilterResult, Tree};
 use objc2::{
     foundation::{NSArray, NSObject},
-    rc::{Id, Shared},
+    rc::{Id, Shared, WeakId},
 };
 use std::{ffi::c_void, ptr::null_mut, sync::Arc};
 
@@ -35,6 +35,7 @@ impl Adapter {
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let view = Id::retain(view as *mut NSView).unwrap();
+        let view = WeakId::new(&view);
         let tree = Tree::new(initial_state, action_handler);
         Self {
             context: Context::new(view, tree),

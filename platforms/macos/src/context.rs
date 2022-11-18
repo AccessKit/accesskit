@@ -7,7 +7,7 @@ use accesskit::NodeId;
 use accesskit_consumer::Tree;
 use objc2::{
     foundation::is_main_thread,
-    rc::{Id, Shared},
+    rc::{Id, Shared, WeakId},
 };
 use parking_lot::Mutex;
 use std::{collections::HashMap, sync::Arc};
@@ -18,13 +18,13 @@ struct PlatformNodePtr(Id<PlatformNode, Shared>);
 unsafe impl Send for PlatformNodePtr {}
 
 pub(crate) struct Context {
-    pub(crate) view: Id<NSView, Shared>,
+    pub(crate) view: WeakId<NSView>,
     pub(crate) tree: Tree,
     platform_nodes: Mutex<HashMap<NodeId, PlatformNodePtr>>,
 }
 
 impl Context {
-    pub(crate) fn new(view: Id<NSView, Shared>, tree: Tree) -> Arc<Self> {
+    pub(crate) fn new(view: WeakId<NSView>, tree: Tree) -> Arc<Self> {
         Arc::new(Self {
             view,
             tree,
