@@ -16,6 +16,7 @@ use objc2::{
 
 use crate::{
     appkit::NSView,
+    event::{EventGenerator, QueuedEvents},
     node::{filter, PlatformNode},
 };
 
@@ -42,26 +43,30 @@ impl Adapter {
         }
     }
 
-    pub fn update(&self, update: TreeUpdate) {
-        self.tree.update(update);
-        // TODO: events
+    pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
+        let mut event_generator =
+            EventGenerator::new(Arc::downgrade(&self.tree), self.view.clone());
+        self.tree
+            .update_and_process_changes(update, &mut event_generator);
+        event_generator.into_result()
     }
 
     pub fn view_children(&self) -> *mut NSArray<NSObject> {
         let state = self.tree.read();
         let node = state.root();
+        let tree = Arc::downgrade(&self.tree);
         let platform_nodes = if filter(&node) == FilterResult::Include {
             vec![Id::into_super(Id::into_super(PlatformNode::get_or_create(
-                &node,
-                Arc::downgrade(&self.tree),
+                node.id(),
+                &tree,
                 &self.view,
             )))]
         } else {
             node.filtered_children(filter)
                 .map(|node| {
                     Id::into_super(Id::into_super(PlatformNode::get_or_create(
-                        &node,
-                        Arc::downgrade(&self.tree),
+                        node.id(),
+                        &tree,
                         &self.view,
                     )))
                 })
@@ -75,9 +80,10 @@ impl Adapter {
         let state = self.tree.read();
         if let Some(node) = state.focus() {
             if filter(&node) == FilterResult::Include {
+                let tree = Arc::downgrade(&self.tree);
                 return Id::autorelease_return(PlatformNode::get_or_create(
-                    &node,
-                    Arc::downgrade(&self.tree),
+                    node.id(),
+                    &tree,
                     &self.view,
                 )) as *mut _;
             }

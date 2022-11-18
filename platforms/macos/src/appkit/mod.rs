@@ -20,3 +20,6 @@ pub(crate) use accessibility_constants::*;
 
 mod accessibility_element;
 pub(crate) use accessibility_element::NSAccessibilityElement;
+
+mod accessibility_functions;
+pub(crate) use accessibility_functions::*;

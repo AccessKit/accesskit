@@ -3,14 +3,9 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-mod appkit;
-mod node;
+use objc2::foundation::{NSObject, NSString};
 
-mod adapter;
-pub use adapter::Adapter;
-
-mod event;
-pub use event::QueuedEvents;
-
-mod subclass;
-pub use subclass::SubclassingAdapter;
+#[link(name = "AppKit", kind = "framework")]
+extern "C" {
+    pub(crate) fn NSAccessibilityPostNotification(element: &NSObject, notification: &NSString);
+}

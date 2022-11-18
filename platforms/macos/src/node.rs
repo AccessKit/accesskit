@@ -14,8 +14,8 @@ use std::collections::HashMap;
 use std::ptr::null_mut;
 use std::sync::Weak;
 
-use accesskit::{NodeId, Role};
-use accesskit_consumer::{FilterResult, Node, Tree};
+use accesskit::{CheckedState, NodeId, Role};
+use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, Tree};
 use objc2::{
     declare::{Ivar, IvarDrop},
     declare_class,
@@ -247,6 +247,55 @@ pub(crate) fn filter(node: &Node) -> FilterResult {
     FilterResult::Include
 }
 
+#[derive(PartialEq)]
+pub(crate) enum Value {
+    Bool(bool),
+    Number(f64),
+    String(String),
+}
+
+pub(crate) enum NodeWrapper<'a> {
+    Node(&'a Node<'a>),
+    DetachedNode(&'a DetachedNode),
+}
+
+impl<'a> NodeWrapper<'a> {
+    fn node_state(&self) -> &'a NodeState {
+        match self {
+            Self::Node(node) => node.state(),
+            Self::DetachedNode(node) => node.state(),
+        }
+    }
+
+    fn name(&self) -> Option<String> {
+        match self {
+            Self::Node(node) => node.name(),
+            Self::DetachedNode(node) => node.name(),
+        }
+    }
+
+    // TODO: implement proper logic for title, description, and value;
+    // see Chromium's content/browser/accessibility/browser_accessibility_cocoa.mm
+    // and figure out how this is different in the macOS 10.10+ protocol
+
+    pub(crate) fn title(&self) -> Option<String> {
+        self.name()
+    }
+
+    pub(crate) fn value(&self) -> Option<Value> {
+        if let Some(state) = self.node_state().checked_state() {
+            return Some(Value::Bool(state != CheckedState::False));
+        }
+        if let Some(value) = self.node_state().value() {
+            return Some(Value::String(value.into()));
+        }
+        if let Some(value) = self.node_state().numeric_value() {
+            return Some(Value::Number(value));
+        }
+        None
+    }
+}
+
 struct BoxedData {
     tree: Weak<Tree>,
     node_id: NodeId,
@@ -270,8 +319,8 @@ declare_class!(
             self.resolve_with_view(|node, view| {
                 if let Some(parent) = node.filtered_parent(&filter) {
                     Id::autorelease_return(PlatformNode::get_or_create(
-                        &parent,
-                        self.boxed.tree.clone(),
+                        parent.id(),
+                        &self.boxed.tree,
                         &view,
                     )) as *mut _
                 } else {
@@ -286,9 +335,7 @@ declare_class!(
             self.resolve_with_view(|node, view| {
                 let platform_nodes = node
                     .filtered_children(filter)
-                    .map(|child| {
-                        PlatformNode::get_or_create(&child, self.boxed.tree.clone(), &view)
-                    })
+                    .map(|child| PlatformNode::get_or_create(child.id(), &self.boxed.tree, &view))
                     .collect::<Vec<Id<PlatformNode, Shared>>>();
                 Id::autorelease_return(NSArray::from_vec(platform_nodes))
             })
@@ -330,10 +377,8 @@ declare_class!(
         fn title(&self) -> *mut NSString {
             let result = self
                 .resolve(|node| {
-                    // TODO: implement proper logic for title, description, and value;
-                    // see Chromium's content/browser/accessibility/browser_accessibility_cocoa.mm
-                    // and figure out how this is different in the macOS 10.10+ protocol
-                    node.name()
+                    let wrapper = NodeWrapper::Node(node);
+                    wrapper.title()
                 })
                 .flatten();
             result.map_or_else(null_mut, |result| {
@@ -344,13 +389,18 @@ declare_class!(
         #[sel(accessibilityValue)]
         fn value(&self) -> *mut NSObject {
             self.resolve(|node| {
-                if let Some(value) = node.value() {
-                    return Id::autorelease_return(NSString::from_str(value)) as *mut _;
-                }
-                if let Some(value) = node.numeric_value() {
-                    return Id::autorelease_return(NSNumber::new_f64(value)) as *mut _;
-                }
-                null_mut()
+                let wrapper = NodeWrapper::Node(node);
+                wrapper.value().map_or_else(null_mut, |value| match value {
+                    Value::Bool(value) => {
+                        Id::autorelease_return(NSNumber::new_bool(value)) as *mut _
+                    }
+                    Value::Number(value) => {
+                        Id::autorelease_return(NSNumber::new_f64(value)) as *mut _
+                    }
+                    Value::String(value) => {
+                        Id::autorelease_return(NSString::from_str(&value)) as *mut _
+                    }
+                })
             })
             .unwrap_or_else(null_mut)
         }
@@ -397,6 +447,11 @@ declare_class!(
             .unwrap_or(false)
             .into()
         }
+
+        #[sel(accessibilityNotifiesWhenDestroyed)]
+        fn notifies_when_destroyed(&self) -> Bool {
+            Bool::YES
+        }
     }
 );
 
@@ -413,19 +468,19 @@ static PLATFORM_NODES: Lazy<Mutex<HashMap<PlatformNodeKey, PlatformNodePtr>>> =
 
 impl PlatformNode {
     pub(crate) fn get_or_create(
-        node: &Node,
-        tree: Weak<Tree>,
+        node_id: NodeId,
+        tree: &Weak<Tree>,
         view: &Id<NSView, Shared>,
     ) -> Id<Self, Shared> {
         let mut platform_nodes = PLATFORM_NODES.lock();
-        let key = PlatformNodeKey((Id::as_ptr(view), node.id()));
+        let key = PlatformNodeKey((Id::as_ptr(view), node_id));
         if let Some(result) = platform_nodes.get(&key) {
             return result.0.clone();
         }
 
         let boxed = Box::new(BoxedData {
-            tree,
-            node_id: node.id(),
+            tree: tree.clone(),
+            node_id,
             view: WeakId::new(view),
         });
         let result: Id<Self, Shared> = unsafe {
@@ -438,7 +493,14 @@ impl PlatformNode {
         result
     }
 
-    // TODO: clean up platform nodes when underlying nodes are deleted
+    pub(crate) fn remove(
+        node_id: NodeId,
+        view: &Id<NSView, Shared>,
+    ) -> Option<Id<PlatformNode, Shared>> {
+        let mut platform_nodes = PLATFORM_NODES.lock();
+        let key = PlatformNodeKey((Id::as_ptr(view), node_id));
+        platform_nodes.remove(&key).map(|ptr| ptr.0)
+    }
 
     fn resolve<F, T>(&self, f: F) -> Option<T>
     where

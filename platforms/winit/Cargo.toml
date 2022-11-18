@@ -26,6 +26,7 @@ features = [
 
 [target.'cfg(target_os = "macos")'.dependencies]
 accesskit_macos = { version = "0.0.0", path = "../macos" }
+objc2 = "0.3.0-beta.3"
 
 [dev-dependencies]
 winit = "0.27.3"

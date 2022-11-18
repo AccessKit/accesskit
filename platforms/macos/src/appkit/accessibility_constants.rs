@@ -7,6 +7,12 @@ use objc2::foundation::NSString;
 
 #[link(name = "AppKit", kind = "framework")]
 extern "C" {
+    // Notifications
+    pub(crate) static NSAccessibilityUIElementDestroyedNotification: &'static NSString;
+    pub(crate) static NSAccessibilityFocusedUIElementChangedNotification: &'static NSString;
+    pub(crate) static NSAccessibilityTitleChangedNotification: &'static NSString;
+    pub(crate) static NSAccessibilityValueChangedNotification: &'static NSString;
+
     // Roles
     pub(crate) static NSAccessibilityButtonRole: &'static NSString;
     pub(crate) static NSAccessibilityCheckBoxRole: &'static NSString;
