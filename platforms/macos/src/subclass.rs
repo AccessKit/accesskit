@@ -6,14 +6,14 @@
 use objc2::{
     declare::ClassBuilder,
     foundation::{NSArray, NSObject},
-    rc::Id,
+    rc::{Id, Shared},
     runtime::{Class, Sel},
     sel,
 };
 use objc_sys::object_setClass;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
-use std::{collections::HashMap, ops::Deref};
+use std::{collections::HashMap, ffi::c_void, ops::Deref};
 
 use crate::{appkit::NSView, Adapter};
 
@@ -21,6 +21,7 @@ static SUBCLASSES: Lazy<Mutex<HashMap<&'static Class, &'static Class>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
 struct Instance {
+    view: Id<NSView, Shared>,
     adapter: Adapter,
     prev_class: Option<&'static Class>,
 }
@@ -62,21 +63,22 @@ unsafe extern "C" fn focus(this: &NSView, _cmd: Sel) -> *mut NSObject {
 }
 
 impl Instance {
-    fn new(adapter: Adapter) -> Box<Self> {
+    fn new(view: Id<NSView, Shared>, adapter: Adapter) -> Box<Self> {
         Box::new(Self {
+            view,
             adapter,
             prev_class: None,
         })
     }
 
     fn install(&mut self) {
-        let view_ptr = Id::as_ptr(&self.adapter.context.view);
+        let view_ptr = Id::as_ptr(&self.view);
         let key = ViewKey(view_ptr);
         INSTANCES.lock().insert(key, InstancePtr(self as *const _));
         // Cast to a pointer and back to force the lifetime to 'static
         // SAFETY: We know the class will live as long as the instance,
         // and we own a reference to the instance.
-        let superclass = unsafe { &*(self.adapter.context.view.class() as *const Class) };
+        let superclass = unsafe { &*(self.view.class() as *const Class) };
         self.prev_class = Some(superclass);
         let mut subclasses = SUBCLASSES.lock();
         let entry = subclasses.entry(superclass);
@@ -103,7 +105,7 @@ impl Instance {
     }
 
     fn uninstall(&self) {
-        let view_ptr = Id::as_ptr(&self.adapter.context.view);
+        let view_ptr = Id::as_ptr(&self.view);
         unsafe {
             object_setClass(
                 view_ptr as *mut _,
@@ -123,8 +125,15 @@ unsafe impl Send for SubclassingAdapter {}
 unsafe impl Sync for SubclassingAdapter {}
 
 impl SubclassingAdapter {
-    pub fn new(adapter: Adapter) -> Self {
-        let mut instance = Instance::new(adapter);
+    /// Dynamically subclass the specified view to use the specified adapter.
+    ///
+    /// # Safety
+    ///
+    /// `view` must be a valid, unreleased pointer to an `NSView`.
+    /// This method will retain an additional reference to `view`.
+    pub unsafe fn new(view: *mut c_void, adapter: Adapter) -> Self {
+        let view = Id::retain(view as *mut NSView).unwrap();
+        let mut instance = Instance::new(view, adapter);
         instance.install();
         Self(Some(instance))
     }

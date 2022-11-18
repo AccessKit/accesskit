@@ -17,9 +17,10 @@ impl Adapter {
         source: Box<dyn FnOnce() -> TreeUpdate>,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
+        let view = window.ns_view();
         // TODO: fix when the macOS adapter supports laziness
-        let adapter = unsafe { MacOSAdapter::new(window.ns_view(), source(), action_handler) };
-        let adapter = SubclassingAdapter::new(adapter);
+        let adapter = unsafe { MacOSAdapter::new(view, source(), action_handler) };
+        let adapter = unsafe { SubclassingAdapter::new(view, adapter) };
         Self { adapter }
     }
 

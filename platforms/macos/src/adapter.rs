@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub struct Adapter {
-    pub(crate) context: Arc<Context>,
+    context: Arc<Context>,
 }
 
 impl Adapter {
