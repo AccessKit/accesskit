@@ -10,10 +10,6 @@
 
 #![allow(non_upper_case_globals)]
 
-use std::collections::HashMap;
-use std::ptr::null_mut;
-use std::sync::Weak;
-
 use accesskit::{CheckedState, NodeId, Role};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, Tree};
 use objc2::{
@@ -21,14 +17,16 @@ use objc2::{
     declare_class,
     foundation::{NSArray, NSCopying, NSNumber, NSObject, NSPoint, NSRect, NSSize, NSString},
     msg_send_id, ns_string,
-    rc::{Id, Owned, Shared, WeakId},
+    rc::{Id, Owned, Shared},
     runtime::Bool,
     ClassType,
 };
-use once_cell::sync::Lazy;
-use parking_lot::Mutex;
+use std::{
+    ptr::null_mut,
+    sync::{Arc, Weak},
+};
 
-use crate::appkit::*;
+use crate::{appkit::*, context::Context};
 
 fn ns_role(node: &Node) -> &'static NSString {
     let role = node.role();
@@ -297,9 +295,8 @@ impl<'a> NodeWrapper<'a> {
 }
 
 struct BoxedData {
-    tree: Weak<Tree>,
+    context: Weak<Context>,
     node_id: NodeId,
-    view: WeakId<NSView>,
 }
 
 declare_class!(
@@ -316,15 +313,12 @@ declare_class!(
     unsafe impl PlatformNode {
         #[sel(accessibilityParent)]
         fn parent(&self) -> *mut NSObject {
-            self.resolve_with_view(|node, view| {
+            self.resolve_with_context(|node, context| {
                 if let Some(parent) = node.filtered_parent(&filter) {
-                    Id::autorelease_return(PlatformNode::get_or_create(
-                        parent.id(),
-                        &self.boxed.tree,
-                        &view,
-                    )) as *mut _
+                    Id::autorelease_return(context.get_or_create_platform_node(parent.id()))
+                        as *mut _
                 } else {
-                    Id::autorelease_return(view) as *mut _
+                    Id::autorelease_return(context.view.clone()) as *mut _
                 }
             })
             .unwrap_or_else(null_mut)
@@ -332,10 +326,10 @@ declare_class!(
 
         #[sel(accessibilityChildren)]
         fn children(&self) -> *mut NSArray<PlatformNode> {
-            self.resolve_with_view(|node, view| {
+            self.resolve_with_context(|node, context| {
                 let platform_nodes = node
                     .filtered_children(filter)
-                    .map(|child| PlatformNode::get_or_create(child.id(), &self.boxed.tree, &view))
+                    .map(|child| context.get_or_create_platform_node(child.id()))
                     .collect::<Vec<Id<PlatformNode, Shared>>>();
                 Id::autorelease_return(NSArray::from_vec(platform_nodes))
             })
@@ -455,84 +449,44 @@ declare_class!(
     }
 );
 
-#[derive(PartialEq, Eq, Hash)]
-struct PlatformNodeKey((*const NSView, NodeId));
-unsafe impl Send for PlatformNodeKey {}
-unsafe impl Sync for PlatformNodeKey {}
-
-struct PlatformNodePtr(Id<PlatformNode, Shared>);
-unsafe impl Send for PlatformNodePtr {}
-
-static PLATFORM_NODES: Lazy<Mutex<HashMap<PlatformNodeKey, PlatformNodePtr>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
-
 impl PlatformNode {
-    pub(crate) fn get_or_create(
-        node_id: NodeId,
-        tree: &Weak<Tree>,
-        view: &Id<NSView, Shared>,
-    ) -> Id<Self, Shared> {
-        let mut platform_nodes = PLATFORM_NODES.lock();
-        let key = PlatformNodeKey((Id::as_ptr(view), node_id));
-        if let Some(result) = platform_nodes.get(&key) {
-            return result.0.clone();
-        }
-
-        let boxed = Box::new(BoxedData {
-            tree: tree.clone(),
-            node_id,
-            view: WeakId::new(view),
-        });
-        let result: Id<Self, Shared> = unsafe {
+    pub(crate) fn new(context: Weak<Context>, node_id: NodeId) -> Id<Self, Shared> {
+        let boxed = Box::new(BoxedData { context, node_id });
+        unsafe {
             let mut object: Id<Self, Owned> = msg_send_id![Self::class(), new];
             Ivar::write(&mut object.boxed, boxed);
             object.into()
-        };
-
-        platform_nodes.insert(key, PlatformNodePtr(result.clone()));
-        result
+        }
     }
 
-    pub(crate) fn remove(
-        node_id: NodeId,
-        view: &Id<NSView, Shared>,
-    ) -> Option<Id<PlatformNode, Shared>> {
-        let mut platform_nodes = PLATFORM_NODES.lock();
-        let key = PlatformNodeKey((Id::as_ptr(view), node_id));
-        platform_nodes.remove(&key).map(|ptr| ptr.0)
+    fn resolve_with_context<F, T>(&self, f: F) -> Option<T>
+    where
+        F: FnOnce(&Node, &Arc<Context>) -> T,
+    {
+        let context = self.boxed.context.upgrade()?;
+        let state = context.tree.read();
+        let node = state.node_by_id(self.boxed.node_id)?;
+        Some(f(&node, &context))
     }
 
     fn resolve<F, T>(&self, f: F) -> Option<T>
     where
         F: FnOnce(&Node) -> T,
     {
-        if let Some(tree) = self.boxed.tree.upgrade() {
-            let state = tree.read();
-            if let Some(node) = state.node_by_id(self.boxed.node_id) {
-                return Some(f(&node));
-            }
-        }
-        None
+        self.resolve_with_context(|node, _| f(node))
     }
 
     fn resolve_with_tree<F, T>(&self, f: F) -> Option<T>
     where
         F: FnOnce(&Node, &Tree) -> T,
     {
-        if let Some(tree) = self.boxed.tree.upgrade() {
-            let state = tree.read();
-            if let Some(node) = state.node_by_id(self.boxed.node_id) {
-                return Some(f(&node, &tree));
-            }
-        }
-        None
+        self.resolve_with_context(|node, context| f(node, &context.tree))
     }
 
     fn resolve_with_view<F, T>(&self, f: F) -> Option<T>
     where
-        F: FnOnce(&Node, Id<NSView, Shared>) -> T,
+        F: FnOnce(&Node, &Id<NSView, Shared>) -> T,
     {
-        let view = self.boxed.view.load()?;
-        self.resolve(|node| f(node, view))
+        self.resolve_with_context(|node, context| f(node, &context.view))
     }
 }

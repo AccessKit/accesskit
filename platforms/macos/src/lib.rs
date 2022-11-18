@@ -4,6 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 mod appkit;
+mod context;
 mod node;
 
 mod adapter;

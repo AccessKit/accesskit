@@ -3,26 +3,23 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::ffi::c_void;
-use std::ptr::null_mut;
-use std::sync::Arc;
-
 use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_consumer::{FilterResult, Tree};
 use objc2::{
     foundation::{NSArray, NSObject},
     rc::{Id, Shared},
 };
+use std::{ffi::c_void, ptr::null_mut, sync::Arc};
 
 use crate::{
     appkit::NSView,
+    context::Context,
     event::{EventGenerator, QueuedEvents},
-    node::{filter, PlatformNode},
+    node::filter,
 };
 
 pub struct Adapter {
-    pub(crate) view: Id<NSView, Shared>,
-    tree: Arc<Tree>,
+    pub(crate) context: Arc<Context>,
 }
 
 impl Adapter {
@@ -37,38 +34,34 @@ impl Adapter {
         initial_state: TreeUpdate,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
+        let view = Id::retain(view as *mut NSView).unwrap();
+        let tree = Tree::new(initial_state, action_handler);
         Self {
-            view: Id::retain(view as *mut _).unwrap(),
-            tree: Arc::new(Tree::new(initial_state, action_handler)),
+            context: Context::new(view, tree),
         }
     }
 
     pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
-        let mut event_generator =
-            EventGenerator::new(Arc::downgrade(&self.tree), self.view.clone());
-        self.tree
+        let mut event_generator = EventGenerator::new(self.context.clone());
+        self.context
+            .tree
             .update_and_process_changes(update, &mut event_generator);
         event_generator.into_result()
     }
 
     pub fn view_children(&self) -> *mut NSArray<NSObject> {
-        let state = self.tree.read();
+        let state = self.context.tree.read();
         let node = state.root();
-        let tree = Arc::downgrade(&self.tree);
         let platform_nodes = if filter(&node) == FilterResult::Include {
-            vec![Id::into_super(Id::into_super(PlatformNode::get_or_create(
-                node.id(),
-                &tree,
-                &self.view,
-            )))]
+            vec![Id::into_super(Id::into_super(
+                self.context.get_or_create_platform_node(node.id()),
+            ))]
         } else {
             node.filtered_children(filter)
                 .map(|node| {
-                    Id::into_super(Id::into_super(PlatformNode::get_or_create(
-                        node.id(),
-                        &tree,
-                        &self.view,
-                    )))
+                    Id::into_super(Id::into_super(
+                        self.context.get_or_create_platform_node(node.id()),
+                    ))
                 })
                 .collect::<Vec<Id<NSObject, Shared>>>()
         };
@@ -77,15 +70,11 @@ impl Adapter {
     }
 
     pub fn focus(&self) -> *mut NSObject {
-        let state = self.tree.read();
+        let state = self.context.tree.read();
         if let Some(node) = state.focus() {
             if filter(&node) == FilterResult::Include {
-                let tree = Arc::downgrade(&self.tree);
-                return Id::autorelease_return(PlatformNode::get_or_create(
-                    node.id(),
-                    &tree,
-                    &self.view,
-                )) as *mut _;
+                return Id::autorelease_return(self.context.get_or_create_platform_node(node.id()))
+                    as *mut _;
             }
         }
         null_mut()
