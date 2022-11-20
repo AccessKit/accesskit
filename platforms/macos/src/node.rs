@@ -409,6 +409,26 @@ declare_class!(
             .unwrap_or_else(null_mut)
         }
 
+        #[sel(accessibilityMinValue)]
+        fn min_value(&self) -> *mut NSNumber {
+            self.resolve(|node| {
+                node.min_numeric_value().map_or_else(null_mut, |value| {
+                    Id::autorelease_return(NSNumber::new_f64(value))
+                })
+            })
+            .unwrap_or_else(null_mut)
+        }
+
+        #[sel(accessibilityMaxValue)]
+        fn max_value(&self) -> *mut NSNumber {
+            self.resolve(|node| {
+                node.max_numeric_value().map_or_else(null_mut, |value| {
+                    Id::autorelease_return(NSNumber::new_f64(value))
+                })
+            })
+            .unwrap_or_else(null_mut)
+        }
+
         #[sel(isAccessibilityElement)]
         fn is_accessibility_element(&self) -> Bool {
             self.resolve(|node| filter(node) == FilterResult::Include)
