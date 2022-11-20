@@ -18,8 +18,7 @@ impl Adapter {
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let view = window.ns_view();
-        // TODO: fix when the macOS adapter supports laziness
-        let adapter = unsafe { MacOSAdapter::new(view, source(), action_handler) };
+        let adapter = unsafe { MacOSAdapter::new(view, source, action_handler) };
         let adapter = unsafe { SubclassingAdapter::new(view, adapter) };
         Self { adapter }
     }
@@ -31,9 +30,9 @@ impl Adapter {
     }
 
     pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
-        // TODO: fix when the macOS adapter supports laziness
-        let events = self.adapter.update(updater());
-        let mtm = MainThreadMarker::new().unwrap();
-        events.raise(mtm);
+        if let Some(events) = self.adapter.update_if_active(updater) {
+            let mtm = MainThreadMarker::new().unwrap();
+            events.raise(mtm);
+        }
     }
 }

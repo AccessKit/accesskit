@@ -9,17 +9,13 @@ use objc2::{
     foundation::{NSArray, NSObject},
     rc::{Id, Shared, WeakId},
 };
+use once_cell::sync::Lazy;
 use std::{ffi::c_void, ptr::null_mut, sync::Arc};
 
-use crate::{
-    appkit::NSView,
-    context::Context,
-    event::{EventGenerator, QueuedEvents},
-    node::filter,
-};
+use crate::{appkit::NSView, context::Context, event::QueuedEvents, node::filter};
 
 pub struct Adapter {
-    context: Arc<Context>,
+    context: Lazy<Arc<Context>, Box<dyn FnOnce() -> Arc<Context>>>,
 }
 
 impl Adapter {
@@ -31,23 +27,42 @@ impl Adapter {
     /// This method will retain an additional reference to `view`.
     pub unsafe fn new(
         view: *mut c_void,
-        initial_state: TreeUpdate,
+        source: Box<dyn FnOnce() -> TreeUpdate>,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let view = Id::retain(view as *mut NSView).unwrap();
         let view = WeakId::new(&view);
-        let tree = Tree::new(initial_state, action_handler);
         Self {
-            context: Context::new(view, tree),
+            context: Lazy::new(Box::new(move || {
+                let tree = Tree::new(source(), action_handler);
+                Context::new(view, tree)
+            })),
         }
     }
 
+    /// Initialize the tree if it hasn't been initialized already, then apply
+    /// the provided update.
+    ///
+    /// The caller must call [`QueuedEvents::raise`] on the return value.
+    ///
+    /// This method may be safely called on any thread, but refer to
+    /// [`QueuedEvents::raise`] for restrictions on the context in which
+    /// it should be called.
     pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
-        let mut event_generator = EventGenerator::new(self.context.clone());
-        self.context
-            .tree
-            .update_and_process_changes(update, &mut event_generator);
-        event_generator.into_result()
+        self.context.update(update)
+    }
+
+    /// If and only if the tree has been initialized, call the provided function
+    /// and apply the resulting update.
+    ///
+    /// If a [`QueuedEvents`] instance is returned, the caller must call
+    /// [`QueuedEvents::raise`] on it.
+    ///
+    /// This method may be safely called on any thread, but refer to
+    /// [`QueuedEvents::raise`] for restrictions on the context in which
+    /// it should be called.
+    pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) -> Option<QueuedEvents> {
+        Lazy::get(&self.context).map(|context| context.update(updater()))
     }
 
     pub fn view_children(&self) -> *mut NSArray<NSObject> {

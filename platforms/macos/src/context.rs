@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::NodeId;
+use accesskit::{NodeId, TreeUpdate};
 use accesskit_consumer::Tree;
 use objc2::{
     foundation::is_main_thread,
@@ -12,7 +12,11 @@ use objc2::{
 use parking_lot::Mutex;
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{appkit::*, node::PlatformNode};
+use crate::{
+    appkit::*,
+    event::{EventGenerator, QueuedEvents},
+    node::PlatformNode,
+};
 
 struct PlatformNodePtr(Id<PlatformNode, Shared>);
 unsafe impl Send for PlatformNodePtr {}
@@ -49,6 +53,13 @@ impl Context {
     pub(crate) fn remove_platform_node(&self, id: NodeId) -> Option<Id<PlatformNode, Shared>> {
         let mut platform_nodes = self.platform_nodes.lock();
         platform_nodes.remove(&id).map(|ptr| ptr.0)
+    }
+
+    pub(crate) fn update(self: &Arc<Self>, update: TreeUpdate) -> QueuedEvents {
+        let mut event_generator = EventGenerator::new(self.clone());
+        self.tree
+            .update_and_process_changes(update, &mut event_generator);
+        event_generator.into_result()
     }
 }
 
