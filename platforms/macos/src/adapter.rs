@@ -3,10 +3,10 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, TreeUpdate};
+use accesskit::{kurbo::Point, ActionHandler, TreeUpdate};
 use accesskit_consumer::{FilterResult, Tree};
 use objc2::{
-    foundation::{NSArray, NSObject},
+    foundation::{NSArray, NSObject, NSPoint},
     rc::{Id, Shared, WeakId},
 };
 use once_cell::sync::Lazy;
@@ -95,6 +95,31 @@ impl Adapter {
                 return Id::autorelease_return(context.get_or_create_platform_node(node.id()))
                     as *mut _;
             }
+        }
+        null_mut()
+    }
+
+    pub fn hit_test(&self, point: NSPoint) -> *mut NSObject {
+        let context = Lazy::force(&self.context);
+        let view = match context.view.load() {
+            Some(view) => view,
+            None => {
+                return null_mut();
+            }
+        };
+
+        let window = view.window().unwrap();
+        let point = window.convert_point_from_screen(point);
+        let point = view.convert_point_from_view(point, None);
+        let view_bounds = view.bounds();
+        let point = Point::new(point.x, view_bounds.size.height - point.y);
+
+        let state = context.tree.read();
+        let root = state.root();
+        let point = root.transform().inverse() * point;
+        if let Some(node) = root.node_at_point(point, &filter) {
+            return Id::autorelease_return(context.get_or_create_platform_node(node.id()))
+                as *mut _;
         }
         null_mut()
     }

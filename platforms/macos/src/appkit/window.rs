@@ -5,7 +5,7 @@
 
 use objc2::{
     extern_class, extern_methods,
-    foundation::{NSObject, NSRect},
+    foundation::{NSObject, NSPoint, NSRect},
     ClassType,
 };
 
@@ -25,5 +25,8 @@ extern_methods!(
     unsafe impl NSWindow {
         #[sel(convertRectToScreen:)]
         pub(crate) fn convert_rect_to_screen(&self, rect: NSRect) -> NSRect;
+
+        #[sel(convertPointFromScreen:)]
+        pub(crate) fn convert_point_from_screen(&self, point: NSPoint) -> NSPoint;
     }
 );

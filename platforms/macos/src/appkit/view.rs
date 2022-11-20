@@ -5,7 +5,7 @@
 
 use objc2::{
     extern_class, extern_methods,
-    foundation::{NSObject, NSRect},
+    foundation::{NSObject, NSPoint, NSRect},
     msg_send_id,
     rc::{Id, Shared},
     ClassType,
@@ -34,5 +34,12 @@ extern_methods!(
 
         #[sel(convertRect:toView:)]
         pub(crate) fn convert_rect_to_view(&self, rect: NSRect, view: Option<&NSView>) -> NSRect;
+
+        #[sel(convertPoint:fromView:)]
+        pub(crate) fn convert_point_from_view(
+            &self,
+            point: NSPoint,
+            view: Option<&NSView>,
+        ) -> NSPoint;
     }
 );

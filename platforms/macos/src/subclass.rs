@@ -5,7 +5,7 @@
 
 use objc2::{
     declare::ClassBuilder,
-    foundation::{NSArray, NSObject},
+    foundation::{NSArray, NSObject, NSPoint},
     rc::{Id, Shared},
     runtime::{Class, Sel},
     sel,
@@ -62,6 +62,13 @@ unsafe extern "C" fn focus(this: &NSView, _cmd: Sel) -> *mut NSObject {
     (*instance.0).adapter.focus()
 }
 
+unsafe extern "C" fn hit_test(this: &NSView, _cmd: Sel, point: NSPoint) -> *mut NSObject {
+    let key = ViewKey(this as *const _);
+    let instances = INSTANCES.lock();
+    let instance = instances.get(&key).unwrap();
+    (*instance.0).adapter.hit_test(point)
+}
+
 impl Instance {
     fn new(view: Id<NSView, Shared>, adapter: Adapter) -> Box<Self> {
         Box::new(Self {
@@ -97,6 +104,10 @@ impl Instance {
                 builder.add_method(
                     sel!(accessibilityFocusedUIElement),
                     focus as unsafe extern "C" fn(_, _) -> _,
+                );
+                builder.add_method(
+                    sel!(accessibilityHitTest:),
+                    hit_test as unsafe extern "C" fn(_, _, _) -> _,
                 );
             }
             builder.register()
