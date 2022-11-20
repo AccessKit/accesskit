@@ -452,6 +452,32 @@ declare_class!(
             .into()
         }
 
+        #[sel(accessibilityPerformIncrement)]
+        fn increment(&self) -> Bool {
+            self.resolve_with_tree(|node, tree| {
+                let supports_increment = node.supports_increment();
+                if supports_increment {
+                    tree.increment(node.id());
+                }
+                supports_increment
+            })
+            .unwrap_or(false)
+            .into()
+        }
+
+        #[sel(accessibilityPerformDecrement)]
+        fn decrement(&self) -> Bool {
+            self.resolve_with_tree(|node, tree| {
+                let supports_decrement = node.supports_decrement();
+                if supports_decrement {
+                    tree.decrement(node.id());
+                }
+                supports_decrement
+            })
+            .unwrap_or(false)
+            .into()
+        }
+
         #[sel(accessibilityNotifiesWhenDestroyed)]
         fn notifies_when_destroyed(&self) -> Bool {
             Bool::YES

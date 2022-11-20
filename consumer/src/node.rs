@@ -12,7 +12,7 @@ use std::{iter::FusedIterator, ops::Deref, sync::Arc};
 
 use accesskit::kurbo::{Affine, Point, Rect};
 use accesskit::{
-    CheckedState, DefaultActionVerb, Live, Node as NodeData, NodeId, Role, TextSelection,
+    Action, CheckedState, DefaultActionVerb, Live, Node as NodeData, NodeId, Role, TextSelection,
 };
 
 use crate::iterators::{
@@ -467,6 +467,20 @@ impl NodeState {
             )
             && !self.supports_toggle()
             && !self.supports_expand_collapse()
+    }
+
+    // The future of the `Action` enum is undecided, so keep the following
+    // function private for now.
+    fn supports_action(&self, action: Action) -> bool {
+        self.data().actions.contains(action)
+    }
+
+    pub fn supports_increment(&self) -> bool {
+        self.supports_action(Action::Increment)
+    }
+
+    pub fn supports_decrement(&self) -> bool {
+        self.supports_action(Action::Decrement)
     }
 }
 
