@@ -49,7 +49,8 @@ impl Adapter {
     /// [`QueuedEvents::raise`] for restrictions on the context in which
     /// it should be called.
     pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
-        self.context.update(update)
+        let context = Lazy::force(&self.context);
+        context.update(update)
     }
 
     /// If and only if the tree has been initialized, call the provided function
@@ -66,17 +67,18 @@ impl Adapter {
     }
 
     pub fn view_children(&self) -> *mut NSArray<NSObject> {
-        let state = self.context.tree.read();
+        let context = Lazy::force(&self.context);
+        let state = context.tree.read();
         let node = state.root();
         let platform_nodes = if filter(&node) == FilterResult::Include {
             vec![Id::into_super(Id::into_super(
-                self.context.get_or_create_platform_node(node.id()),
+                context.get_or_create_platform_node(node.id()),
             ))]
         } else {
             node.filtered_children(filter)
                 .map(|node| {
                     Id::into_super(Id::into_super(
-                        self.context.get_or_create_platform_node(node.id()),
+                        context.get_or_create_platform_node(node.id()),
                     ))
                 })
                 .collect::<Vec<Id<NSObject, Shared>>>()
@@ -86,10 +88,11 @@ impl Adapter {
     }
 
     pub fn focus(&self) -> *mut NSObject {
-        let state = self.context.tree.read();
+        let context = Lazy::force(&self.context);
+        let state = context.tree.read();
         if let Some(node) = state.focus() {
             if filter(&node) == FilterResult::Include {
-                return Id::autorelease_return(self.context.get_or_create_platform_node(node.id()))
+                return Id::autorelease_return(context.get_or_create_platform_node(node.id()))
                     as *mut _;
             }
         }
