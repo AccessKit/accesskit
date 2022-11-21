@@ -1,14 +1,20 @@
 [package]
 name = "accesskit_linux"
 version = "0.1.0"
-edition = "2018"
+authors = ["Arnold Loubriat <datatriny@gmail.com>"]
+license = "Apache-2.0"
+description = "AccessKit UI accessibility infrastructure: Linux adapter"
+categories = ["gui"]
+keywords = ["gui", "ui", "accessibility"]
+repository = "https://github.com/AccessKit/accesskit"
+readme = "README.md"
+edition = "2021"
 
 [dependencies]
 accesskit = { version = "0.7.0", path = "../../common" }
 accesskit_consumer = { version = "0.7.1", path = "../../consumer" }
 atspi = { git = "https://github.com/odilia-app/odilia" }
-parking_lot = "0.11.1"
+parking_lot = "0.12.1"
 serde = "1.0"
 strum = { version = "0.23.0", features = ["derive"] }
-zbus = "3.0.0"
-zvariant = "3.6.0"
+zbus = "3.0"

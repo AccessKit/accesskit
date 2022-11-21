@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use serde::{Deserialize, Serialize};
-use zvariant::Type;
+use zbus::zvariant::Type;
 
 mod bus;
 pub(crate) mod interfaces;

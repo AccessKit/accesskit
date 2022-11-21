@@ -15,9 +15,9 @@ use std::{
 use zbus::{
     blocking::{Connection, ConnectionBuilder},
     names::{BusName, InterfaceName, MemberName, OwnedUniqueName},
+    zvariant::{ObjectPath, Str, Value},
     Address, Result,
 };
-use zvariant::{ObjectPath, Str, Value};
 
 #[derive(Clone)]
 pub(crate) struct Bus {

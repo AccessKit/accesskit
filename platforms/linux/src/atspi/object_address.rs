@@ -5,8 +5,10 @@
 
 use crate::atspi::ObjectId;
 use serde::{Deserialize, Serialize};
-use zbus::names::{OwnedUniqueName, UniqueName};
-use zvariant::{ObjectPath, OwnedObjectPath, OwnedValue, Type, Value};
+use zbus::{
+    names::{OwnedUniqueName, UniqueName},
+    zvariant::{ObjectPath, OwnedObjectPath, OwnedValue, Type, Value},
+};
 
 pub(crate) const ACCESSIBLE_PATH_PREFIX: &str = "/org/a11y/atspi/accessible/";
 pub(crate) const NULL_PATH: &str = "/org/a11y/atspi/null";

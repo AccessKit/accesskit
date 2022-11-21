@@ -1,7 +1,6 @@
 use crate::PlatformNode;
 use serde::{Deserialize, Serialize};
-use zbus::{dbus_interface, fdo};
-use zvariant::Type;
+use zbus::{dbus_interface, fdo, zvariant::Type};
 
 #[derive(Deserialize, Serialize, Type)]
 pub(crate) struct Action {
