@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file).
 
-use accesskit::{ActionHandler, TreeUpdate};
+use accesskit::{kurbo::Rect, ActionHandler, TreeUpdate};
 use accesskit_linux::Adapter as LinuxAdapter;
 use winit::window::Window;
 
@@ -24,6 +24,10 @@ impl Adapter {
             action_handler,
         );
         Self { adapter }
+    }
+
+    pub fn set_root_window_bounds(&self, outer: Rect, inner: Rect) {
+        self.adapter.set_root_window_bounds(outer, inner);
     }
 
     pub fn update(&self, update: TreeUpdate) {

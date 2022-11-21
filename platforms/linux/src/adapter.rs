@@ -5,12 +5,13 @@
 
 use crate::atspi::{
     interfaces::{
-        AccessibleInterface, ActionInterface, ObjectEvent, QueuedEvent, ValueInterface, WindowEvent,
+        AccessibleInterface, ActionInterface, ComponentInterface, ObjectEvent, QueuedEvent,
+        ValueInterface, WindowEvent,
     },
     Bus, ObjectId, ACCESSIBLE_PATH_PREFIX,
 };
 use crate::node::{filter, AppState, NodeWrapper, PlatformNode, PlatformRootNode};
-use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
+use accesskit::{kurbo::Rect, ActionHandler, NodeId, Role, TreeUpdate};
 use accesskit_consumer::{Node, Tree, TreeChangeHandler};
 use atspi::{Interface, InterfaceSet, State};
 use parking_lot::RwLock;
@@ -18,7 +19,7 @@ use std::sync::Arc;
 
 pub struct Adapter {
     atspi_bus: Option<Bus>,
-    _app_state: Arc<RwLock<AppState>>,
+    app_state: Arc<RwLock<AppState>>,
     tree: Arc<Tree>,
 }
 
@@ -36,6 +37,7 @@ impl Adapter {
             app_name,
             toolkit_name,
             toolkit_version,
+            atspi_bus.as_ref().map(|bus| bus.unique_name().clone()),
         )));
         atspi_bus.as_mut().and_then(|bus| {
             bus.register_root_node(PlatformRootNode::new(
@@ -46,7 +48,7 @@ impl Adapter {
         });
         let adapter = Adapter {
             atspi_bus,
-            _app_state: app_state,
+            app_state,
             tree,
         };
         {
@@ -63,7 +65,9 @@ impl Adapter {
             objects_to_add.push(reader.root().id());
             add_children(reader.root(), &mut objects_to_add);
             for id in objects_to_add {
-                let interfaces = NodeWrapper::new(&reader.node_by_id(id).unwrap()).interfaces();
+                let interfaces =
+                    NodeWrapper::new(&reader.node_by_id(id).unwrap(), &adapter.app_state)
+                        .interfaces();
                 adapter
                     .register_interfaces(&adapter.tree, id, interfaces)
                     .unwrap();
@@ -86,15 +90,27 @@ impl Adapter {
                     &path,
                     AccessibleInterface::new(
                         bus.unique_name().to_owned(),
-                        PlatformNode::new(tree, id),
+                        PlatformNode::new(tree, id, &self.app_state),
                     ),
                 )?;
             }
             if new_interfaces.contains(Interface::Action) {
-                bus.register_interface(&path, ActionInterface::new(PlatformNode::new(tree, id)))?;
+                bus.register_interface(
+                    &path,
+                    ActionInterface::new(PlatformNode::new(tree, id, &self.app_state)),
+                )?;
+            }
+            if new_interfaces.contains(Interface::Component) {
+                bus.register_interface(
+                    &path,
+                    ComponentInterface::new(PlatformNode::new(tree, id, &self.app_state)),
+                )?;
             }
             if new_interfaces.contains(Interface::Value) {
-                bus.register_interface(&path, ValueInterface::new(PlatformNode::new(tree, id)))?;
+                bus.register_interface(
+                    &path,
+                    ValueInterface::new(PlatformNode::new(tree, id, &self.app_state)),
+                )?;
             }
             Ok(true)
         })
@@ -113,11 +129,20 @@ impl Adapter {
             if old_interfaces.contains(Interface::Action) {
                 bus.unregister_interface::<ActionInterface>(&path)?;
             }
+            if old_interfaces.contains(Interface::Component) {
+                bus.unregister_interface::<ComponentInterface>(&path)?;
+            }
             if old_interfaces.contains(Interface::Value) {
                 bus.unregister_interface::<ValueInterface>(&path)?;
             }
             Ok(true)
         })
+    }
+
+    pub fn set_root_window_bounds(&self, outer: Rect, inner: Rect) {
+        let mut app_state = self.app_state.write();
+        app_state.outer_bounds = outer;
+        app_state.inner_bounds = inner;
     }
 
     pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
@@ -128,14 +153,14 @@ impl Adapter {
         }
         impl TreeChangeHandler for Handler<'_> {
             fn node_added(&mut self, node: &Node) {
-                let interfaces = NodeWrapper::new(node).interfaces();
+                let interfaces = NodeWrapper::new(node, &self.adapter.app_state).interfaces();
                 self.adapter
                     .register_interfaces(self.tree, node.id(), interfaces)
                     .unwrap();
             }
             fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
-                let old_wrapper = NodeWrapper::new(old_node);
-                let new_wrapper = NodeWrapper::new(new_node);
+                let old_wrapper = NodeWrapper::new(old_node, &self.adapter.app_state);
+                let new_wrapper = NodeWrapper::new(new_node, &self.adapter.app_state);
                 let old_interfaces = old_wrapper.interfaces();
                 let new_interfaces = new_wrapper.interfaces();
                 let kept_interfaces = old_interfaces & new_interfaces;
@@ -152,21 +177,29 @@ impl Adapter {
                 let new_window = new_node.and_then(|node| containing_window(*node));
                 if old_window.map(|n| n.id()) != new_window.map(|n| n.id()) {
                     if let Some(window) = old_window {
-                        self.adapter
-                            .window_deactivated(&NodeWrapper::new(&window), &mut self.queue);
+                        self.adapter.window_deactivated(
+                            &NodeWrapper::new(&window, &self.adapter.app_state),
+                            &mut self.queue,
+                        );
                     }
                     if let Some(window) = new_window {
-                        self.adapter
-                            .window_activated(&NodeWrapper::new(&window), &mut self.queue);
+                        self.adapter.window_activated(
+                            &NodeWrapper::new(&window, &self.adapter.app_state),
+                            &mut self.queue,
+                        );
                     }
                 }
-                if let Some(node) = new_node.map(NodeWrapper::new) {
+                if let Some(node) =
+                    new_node.map(|node| NodeWrapper::new(node, &self.adapter.app_state))
+                {
                     self.queue.push(QueuedEvent::Object {
                         target: node.id(),
                         event: ObjectEvent::StateChanged(State::Focused, true),
                     });
                 }
-                if let Some(node) = old_node.map(NodeWrapper::new) {
+                if let Some(node) =
+                    old_node.map(|node| NodeWrapper::new(node, &self.adapter.app_state))
+                {
                     self.queue.push(QueuedEvent::Object {
                         target: node.id(),
                         event: ObjectEvent::StateChanged(State::Focused, false),
@@ -174,7 +207,7 @@ impl Adapter {
                 }
             }
             fn node_removed(&mut self, node: &Node) {
-                let node = NodeWrapper::new(node);
+                let node = NodeWrapper::new(node, &self.adapter.app_state);
                 self.adapter
                     .unregister_interfaces(&node.id(), node.interfaces())
                     .unwrap();

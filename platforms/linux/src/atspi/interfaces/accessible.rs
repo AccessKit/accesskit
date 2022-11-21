@@ -39,7 +39,7 @@ impl AccessibleInterface<PlatformNode> {
                 ObjectAddress::accessible(self.bus_name.as_ref(), &id).into()
             }
             Ok(ObjectRef::Unmanaged(address)) => address,
-            _ => ObjectAddress::null(self.bus_name.as_ref()).into(),
+            _ => OwnedObjectAddress::null(self.bus_name.clone()),
         }
     }
 
@@ -129,7 +129,7 @@ impl AccessibleInterface<PlatformRootNode> {
             .state
             .upgrade()
             .and_then(|state| state.read().desktop_address.clone())
-            .unwrap_or_else(|| ObjectAddress::null(self.bus_name.as_ref()).into())
+            .unwrap_or_else(|| OwnedObjectAddress::null(self.bus_name.clone()))
     }
 
     #[dbus_interface(property)]
@@ -149,7 +149,7 @@ impl AccessibleInterface<PlatformRootNode> {
 
     fn get_child_at_index(&self, index: i32) -> fdo::Result<(OwnedObjectAddress,)> {
         if index != 0 {
-            return Ok((ObjectAddress::null(self.bus_name.as_ref()).into(),));
+            return Ok((OwnedObjectAddress::null(self.bus_name.clone()),));
         }
         self.node
             .tree

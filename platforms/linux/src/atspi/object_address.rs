@@ -36,13 +36,6 @@ impl<'a> ObjectAddress<'a> {
         }
     }
 
-    pub fn null(bus_name: UniqueName<'a>) -> ObjectAddress<'a> {
-        Self {
-            bus_name,
-            path: ObjectPath::from_str_unchecked(NULL_PATH),
-        }
-    }
-
     pub fn root(bus_name: UniqueName<'a>) -> ObjectAddress<'a> {
         Self {
             bus_name,
@@ -55,6 +48,15 @@ impl<'a> ObjectAddress<'a> {
 pub struct OwnedObjectAddress {
     bus_name: OwnedUniqueName,
     path: OwnedObjectPath,
+}
+
+impl OwnedObjectAddress {
+    pub fn null(bus_name: OwnedUniqueName) -> Self {
+        Self {
+            bus_name,
+            path: ObjectPath::from_str_unchecked(NULL_PATH).into(),
+        }
+    }
 }
 
 impl From<ObjectAddress<'_>> for OwnedObjectAddress {

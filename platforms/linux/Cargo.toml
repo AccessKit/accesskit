@@ -6,7 +6,7 @@ edition = "2018"
 [dependencies]
 accesskit = { version = "0.7.0", path = "../../common" }
 accesskit_consumer = { version = "0.7.1", path = "../../consumer" }
-atspi = { git = "https://github.com/DataTriny/odilia", branch = "atspi_events" }
+atspi = { git = "https://github.com/odilia-app/odilia" }
 parking_lot = "0.11.1"
 serde = "1.0"
 strum = { version = "0.23.0", features = ["derive"] }
