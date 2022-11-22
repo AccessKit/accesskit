@@ -18,7 +18,6 @@ use objc2::{
     foundation::{NSArray, NSCopying, NSNumber, NSObject, NSPoint, NSRect, NSSize, NSString},
     msg_send_id, ns_string,
     rc::{Id, Owned, Shared},
-    runtime::Bool,
     ClassType,
 };
 use std::{
@@ -430,23 +429,20 @@ declare_class!(
         }
 
         #[sel(isAccessibilityElement)]
-        fn is_accessibility_element(&self) -> Bool {
+        fn is_accessibility_element(&self) -> bool {
             self.resolve(|node| filter(node) == FilterResult::Include)
                 .unwrap_or(false)
-                .into()
         }
 
         #[sel(isAccessibilityFocused)]
-        fn is_focused(&self) -> Bool {
-            self.resolve(|node| node.is_focused())
-                .unwrap_or(false)
-                .into()
+        fn is_focused(&self) -> bool {
+            self.resolve(|node| node.is_focused()).unwrap_or(false)
         }
 
         #[sel(setAccessibilityFocused:)]
-        fn set_focused(&self, focused: Bool) {
+        fn set_focused(&self, focused: bool) {
             self.resolve_with_tree(|node, tree| {
-                if focused.into() {
+                if focused {
                     if node.is_focusable() {
                         tree.set_focus(node.id());
                     }
@@ -460,7 +456,7 @@ declare_class!(
         }
 
         #[sel(accessibilityPerformPress)]
-        fn press(&self) -> Bool {
+        fn press(&self) -> bool {
             self.resolve_with_tree(|node, tree| {
                 let clickable = node.is_clickable();
                 if clickable {
@@ -469,11 +465,10 @@ declare_class!(
                 clickable
             })
             .unwrap_or(false)
-            .into()
         }
 
         #[sel(accessibilityPerformIncrement)]
-        fn increment(&self) -> Bool {
+        fn increment(&self) -> bool {
             self.resolve_with_tree(|node, tree| {
                 let supports_increment = node.supports_increment();
                 if supports_increment {
@@ -482,11 +477,10 @@ declare_class!(
                 supports_increment
             })
             .unwrap_or(false)
-            .into()
         }
 
         #[sel(accessibilityPerformDecrement)]
-        fn decrement(&self) -> Bool {
+        fn decrement(&self) -> bool {
             self.resolve_with_tree(|node, tree| {
                 let supports_decrement = node.supports_decrement();
                 if supports_decrement {
@@ -495,7 +489,6 @@ declare_class!(
                 supports_decrement
             })
             .unwrap_or(false)
-            .into()
         }
 
         #[sel(accessibilityNotifiesWhenDestroyed)]
