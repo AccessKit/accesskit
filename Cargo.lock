@@ -54,7 +54,6 @@ dependencies = [
  "accesskit",
  "accesskit_macos",
  "accesskit_windows",
- "objc2",
  "parking_lot",
  "windows",
  "winit",

@@ -6,20 +6,21 @@
 use accesskit::{kurbo::Point, ActionHandler, TreeUpdate};
 use accesskit_consumer::{FilterResult, Tree};
 use objc2::{
-    foundation::{NSArray, NSObject, NSPoint},
+    foundation::{MainThreadMarker, NSArray, NSObject, NSPoint},
     rc::{Id, Shared, WeakId},
 };
-use once_cell::sync::Lazy;
-use std::{ffi::c_void, ptr::null_mut, sync::Arc};
+use once_cell::unsync::Lazy;
+use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
 use crate::{appkit::NSView, context::Context, event::QueuedEvents, node::filter};
 
 pub struct Adapter {
-    context: Lazy<Arc<Context>, Box<dyn FnOnce() -> Arc<Context>>>,
+    context: Lazy<Rc<Context>, Box<dyn FnOnce() -> Rc<Context>>>,
 }
 
 impl Adapter {
-    /// Create a new macOS adapter.
+    /// Create a new macOS adapter. This function must be called on
+    /// the main thread.
     ///
     /// # Safety
     ///
@@ -31,10 +32,11 @@ impl Adapter {
     ) -> Self {
         let view = Id::retain(view as *mut NSView).unwrap();
         let view = WeakId::new(&view);
+        let mtm = MainThreadMarker::new().unwrap();
         Self {
             context: Lazy::new(Box::new(move || {
                 let tree = Tree::new(source(), action_handler);
-                Context::new(view, tree)
+                Context::new(view, tree, mtm)
             })),
         }
     }

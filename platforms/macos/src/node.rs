@@ -22,7 +22,7 @@ use objc2::{
 };
 use std::{
     ptr::null_mut,
-    sync::{Arc, Weak},
+    rc::{Rc, Weak},
 };
 
 use crate::{appkit::*, context::Context};
@@ -510,7 +510,7 @@ impl PlatformNode {
 
     fn resolve_with_context<F, T>(&self, f: F) -> Option<T>
     where
-        F: FnOnce(&Node, &Arc<Context>) -> T,
+        F: FnOnce(&Node, &Rc<Context>) -> T,
     {
         let context = self.boxed.context.upgrade()?;
         let state = context.tree.read();

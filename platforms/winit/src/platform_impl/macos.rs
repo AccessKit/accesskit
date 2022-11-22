@@ -4,7 +4,6 @@
 
 use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_macos::{Adapter as MacOSAdapter, SubclassingAdapter};
-use objc2::foundation::MainThreadMarker;
 use winit::{platform::macos::WindowExtMacOS, window::Window};
 
 pub struct Adapter {
@@ -25,14 +24,12 @@ impl Adapter {
 
     pub fn update(&self, update: TreeUpdate) {
         let events = self.adapter.update(update);
-        let mtm = MainThreadMarker::new().unwrap();
-        events.raise(mtm);
+        events.raise();
     }
 
     pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
         if let Some(events) = self.adapter.update_if_active(updater) {
-            let mtm = MainThreadMarker::new().unwrap();
-            events.raise(mtm);
+            events.raise();
         }
     }
 }

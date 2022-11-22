@@ -6,11 +6,10 @@
 use accesskit::{NodeId, TreeUpdate};
 use accesskit_consumer::Tree;
 use objc2::{
-    foundation::is_main_thread,
+    foundation::MainThreadMarker,
     rc::{Id, Shared, WeakId},
 };
-use parking_lot::Mutex;
-use std::{collections::HashMap, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
     appkit::*,
@@ -21,38 +20,40 @@ use crate::{
 pub(crate) struct Context {
     pub(crate) view: WeakId<NSView>,
     pub(crate) tree: Tree,
-    platform_nodes: Mutex<HashMap<NodeId, Id<PlatformNode, Shared>>>,
+    platform_nodes: RefCell<HashMap<NodeId, Id<PlatformNode, Shared>>>,
+    _mtm: MainThreadMarker,
 }
 
 impl Context {
-    pub(crate) fn new(view: WeakId<NSView>, tree: Tree) -> Arc<Self> {
-        Arc::new(Self {
+    pub(crate) fn new(view: WeakId<NSView>, tree: Tree, mtm: MainThreadMarker) -> Rc<Self> {
+        Rc::new(Self {
             view,
             tree,
-            platform_nodes: Mutex::new(HashMap::new()),
+            platform_nodes: RefCell::new(HashMap::new()),
+            _mtm: mtm,
         })
     }
 
     pub(crate) fn get_or_create_platform_node(
-        self: &Arc<Self>,
+        self: &Rc<Self>,
         id: NodeId,
     ) -> Id<PlatformNode, Shared> {
-        let mut platform_nodes = self.platform_nodes.lock();
+        let mut platform_nodes = self.platform_nodes.borrow_mut();
         if let Some(result) = platform_nodes.get(&id) {
             return result.clone();
         }
 
-        let result = PlatformNode::new(Arc::downgrade(self), id);
+        let result = PlatformNode::new(Rc::downgrade(self), id);
         platform_nodes.insert(id, result.clone());
         result
     }
 
     pub(crate) fn remove_platform_node(&self, id: NodeId) -> Option<Id<PlatformNode, Shared>> {
-        let mut platform_nodes = self.platform_nodes.lock();
+        let mut platform_nodes = self.platform_nodes.borrow_mut();
         platform_nodes.remove(&id)
     }
 
-    pub(crate) fn update(self: &Arc<Self>, update: TreeUpdate) -> QueuedEvents {
+    pub(crate) fn update(self: &Rc<Self>, update: TreeUpdate) -> QueuedEvents {
         let mut event_generator = EventGenerator::new(self.clone());
         self.tree
             .update_and_process_changes(update, &mut event_generator);
@@ -62,18 +63,14 @@ impl Context {
 
 impl Drop for Context {
     fn drop(&mut self) {
-        // If this isn't called on the main thread, it's better to leak
-        // resources than to crash.
-        if is_main_thread() {
-            let platform_nodes = self.platform_nodes.lock();
-            for platform_node in platform_nodes.values() {
-                unsafe {
-                    NSAccessibilityPostNotification(
-                        platform_node,
-                        NSAccessibilityUIElementDestroyedNotification,
-                    )
-                };
-            }
+        let platform_nodes = self.platform_nodes.borrow();
+        for platform_node in platform_nodes.values() {
+            unsafe {
+                NSAccessibilityPostNotification(
+                    platform_node,
+                    NSAccessibilityUIElementDestroyedNotification,
+                )
+            };
         }
     }
 }
