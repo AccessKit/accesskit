@@ -499,8 +499,8 @@ declare_class!(
         }
 
         #[sel(accessibilityNotifiesWhenDestroyed)]
-        fn notifies_when_destroyed(&self) -> Bool {
-            Bool::YES
+        fn notifies_when_destroyed(&self) -> bool {
+            true
         }
     }
 );
