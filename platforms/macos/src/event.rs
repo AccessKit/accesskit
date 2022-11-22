@@ -72,8 +72,6 @@ impl QueuedEvents {
     }
 }
 
-unsafe impl Send for QueuedEvents {}
-
 pub(crate) struct EventGenerator {
     context: Arc<Context>,
     events: Vec<QueuedEvent>,
