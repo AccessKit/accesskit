@@ -164,71 +164,67 @@ fn main() {
 
     window.set_visible(true);
 
-    adapter.run(
-        window,
-        event_loop,
-        move |adapter, event, _, control_flow| {
-            *control_flow = ControlFlow::Wait;
+    event_loop.run(move |event, _, control_flow| {
+        *control_flow = ControlFlow::Wait;
 
-            match event {
-                Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::CloseRequested => {
-                        *control_flow = ControlFlow::ExitWithCode(0);
-                    }
-                    WindowEvent::Focused(is_window_focused) => {
-                        let mut state = state.lock().unwrap();
-                        state.is_window_focused = is_window_focused;
-                        state.update_focus(&adapter);
-                    }
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                virtual_keycode: Some(virtual_code),
-                                state: ElementState::Pressed,
-                                ..
-                            },
-                        ..
-                    } => match virtual_code {
-                        VirtualKeyCode::Tab => {
-                            let mut state = state.lock().unwrap();
-                            state.focus = if state.focus == BUTTON_1_ID {
-                                BUTTON_2_ID
-                            } else {
-                                BUTTON_1_ID
-                            };
-                            state.update_focus(&adapter);
-                        }
-                        VirtualKeyCode::Space => {
-                            let state = state.lock().unwrap();
-                            state.press_button(&adapter, state.focus);
-                        }
-                        _ => (),
-                    },
-                    _ => (),
-                },
-                Event::UserEvent(ActionRequestEvent {
-                    request:
-                        ActionRequest {
-                            action,
-                            target,
-                            data: None,
+        match event {
+            Event::WindowEvent { event, .. } if adapter.on_event(&window, &event) => match event {
+                WindowEvent::CloseRequested => {
+                    *control_flow = ControlFlow::ExitWithCode(0);
+                }
+                WindowEvent::Focused(is_window_focused) => {
+                    let mut state = state.lock().unwrap();
+                    state.is_window_focused = is_window_focused;
+                    state.update_focus(&adapter);
+                }
+                WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
+                            virtual_keycode: Some(virtual_code),
+                            state: ElementState::Pressed,
+                            ..
                         },
                     ..
-                }) if target == BUTTON_1_ID || target == BUTTON_2_ID => {
-                    let mut state = state.lock().unwrap();
-                    match action {
-                        Action::Focus => {
-                            state.focus = target;
-                            state.update_focus(&adapter);
-                        }
-                        Action::Default => {
-                            state.press_button(&adapter, target);
-                        }
-                        _ => (),
+                } => match virtual_code {
+                    VirtualKeyCode::Tab => {
+                        let mut state = state.lock().unwrap();
+                        state.focus = if state.focus == BUTTON_1_ID {
+                            BUTTON_2_ID
+                        } else {
+                            BUTTON_1_ID
+                        };
+                        state.update_focus(&adapter);
                     }
-                }
+                    VirtualKeyCode::Space => {
+                        let state = state.lock().unwrap();
+                        state.press_button(&adapter, state.focus);
+                    }
+                    _ => (),
+                },
                 _ => (),
+            },
+            Event::UserEvent(ActionRequestEvent {
+                request:
+                    ActionRequest {
+                        action,
+                        target,
+                        data: None,
+                    },
+                ..
+            }) if target == BUTTON_1_ID || target == BUTTON_2_ID => {
+                let mut state = state.lock().unwrap();
+                match action {
+                    Action::Focus => {
+                        state.focus = target;
+                        state.update_focus(&adapter);
+                    }
+                    Action::Default => {
+                        state.press_button(&adapter, target);
+                    }
+                    _ => (),
+                }
             }
-        },
-    );
+            _ => (),
+        }
+    });
 }
