@@ -26,7 +26,6 @@ version = "0.0.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
- "objc-sys",
  "objc2",
  "once_cell",
  "parking_lot",

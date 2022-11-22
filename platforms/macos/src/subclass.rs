@@ -5,12 +5,12 @@
 
 use objc2::{
     declare::ClassBuilder,
+    ffi::object_setClass,
     foundation::{NSArray, NSObject, NSPoint},
     rc::{Id, Shared},
     runtime::{Class, Sel},
     sel,
 };
-use objc_sys::object_setClass;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use std::{collections::HashMap, ffi::c_void, ops::Deref};
