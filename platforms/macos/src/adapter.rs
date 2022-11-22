@@ -24,7 +24,6 @@ impl Adapter {
     /// # Safety
     ///
     /// `view` must be a valid, unreleased pointer to an `NSView`.
-    /// This method will retain an additional reference to `view`.
     pub unsafe fn new(
         view: *mut c_void,
         source: Box<dyn FnOnce() -> TreeUpdate>,
