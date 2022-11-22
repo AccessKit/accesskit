@@ -18,13 +18,10 @@ use crate::{
     node::PlatformNode,
 };
 
-struct PlatformNodePtr(Id<PlatformNode, Shared>);
-unsafe impl Send for PlatformNodePtr {}
-
 pub(crate) struct Context {
     pub(crate) view: WeakId<NSView>,
     pub(crate) tree: Tree,
-    platform_nodes: Mutex<HashMap<NodeId, PlatformNodePtr>>,
+    platform_nodes: Mutex<HashMap<NodeId, Id<PlatformNode, Shared>>>,
 }
 
 impl Context {
@@ -42,17 +39,17 @@ impl Context {
     ) -> Id<PlatformNode, Shared> {
         let mut platform_nodes = self.platform_nodes.lock();
         if let Some(result) = platform_nodes.get(&id) {
-            return result.0.clone();
+            return result.clone();
         }
 
         let result = PlatformNode::new(Arc::downgrade(self), id);
-        platform_nodes.insert(id, PlatformNodePtr(result.clone()));
+        platform_nodes.insert(id, result.clone());
         result
     }
 
     pub(crate) fn remove_platform_node(&self, id: NodeId) -> Option<Id<PlatformNode, Shared>> {
         let mut platform_nodes = self.platform_nodes.lock();
-        platform_nodes.remove(&id).map(|ptr| ptr.0)
+        platform_nodes.remove(&id)
     }
 
     pub(crate) fn update(self: &Arc<Self>, update: TreeUpdate) -> QueuedEvents {
@@ -69,10 +66,10 @@ impl Drop for Context {
         // resources than to crash.
         if is_main_thread() {
             let platform_nodes = self.platform_nodes.lock();
-            for platform_node_ptr in platform_nodes.values() {
+            for platform_node in platform_nodes.values() {
                 unsafe {
                     NSAccessibilityPostNotification(
-                        &platform_node_ptr.0,
+                        platform_node,
                         NSAccessibilityUIElementDestroyedNotification,
                     )
                 };
