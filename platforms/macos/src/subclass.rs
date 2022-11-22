@@ -29,11 +29,9 @@ struct Instance {
 #[derive(PartialEq, Eq, Hash)]
 struct ViewKey(*const NSView);
 unsafe impl Send for ViewKey {}
-unsafe impl Sync for ViewKey {}
 
 struct InstancePtr(*const Instance);
 unsafe impl Send for InstancePtr {}
-unsafe impl Sync for InstancePtr {}
 
 static INSTANCES: Lazy<Mutex<HashMap<ViewKey, InstancePtr>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
@@ -132,8 +130,6 @@ impl Instance {
 /// accessibility methods when normal subclassing isn't an option.
 #[repr(transparent)]
 pub struct SubclassingAdapter(Option<Box<Instance>>);
-unsafe impl Send for SubclassingAdapter {}
-unsafe impl Sync for SubclassingAdapter {}
 
 impl SubclassingAdapter {
     /// Dynamically subclass the specified view to use the specified adapter.
