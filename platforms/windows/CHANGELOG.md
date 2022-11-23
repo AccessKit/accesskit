@@ -1,5 +1,19 @@
 # Changelog
 
+### [0.9.1](https://www.github.com/AccessKit/accesskit/compare/accesskit_windows-v0.9.0...accesskit_windows-v0.9.1) (2022-11-23)
+
+
+### Bug Fixes
+
+* **platforms/windows:** Re-export the windows-rs HWND type ([#159](https://www.github.com/AccessKit/accesskit/issues/159)) ([389187a](https://www.github.com/AccessKit/accesskit/commit/389187ac5e96895ed1763d14d315d2f8f4256460))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.8.0 to 0.9.0
+
 ## [0.9.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_windows-v0.8.0...accesskit_windows-v0.9.0) (2022-11-17)
 
 

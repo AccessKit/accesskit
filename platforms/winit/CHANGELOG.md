@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.5.1...accesskit_winit-v0.6.0) (2022-11-23)
+
+
+### Features
+
+* **platforms/macos:** Basic macOS platform adapter ([#158](https://www.github.com/AccessKit/accesskit/issues/158)) ([a06725e](https://www.github.com/AccessKit/accesskit/commit/a06725e952e6041dbd366944fa793b746c9f195e))
+
+
+### Bug Fixes
+
+* **platforms/macos:** Fix macOS crate version number ([#161](https://www.github.com/AccessKit/accesskit/issues/161)) ([e0a6a40](https://www.github.com/AccessKit/accesskit/commit/e0a6a401050cdcaea4efa870ed77ae94388f1ce0))
+* **platforms/windows:** Re-export the windows-rs HWND type ([#159](https://www.github.com/AccessKit/accesskit/issues/159)) ([389187a](https://www.github.com/AccessKit/accesskit/commit/389187ac5e96895ed1763d14d315d2f8f4256460))
+
 ### [0.5.1](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.5.0...accesskit_winit-v0.5.1) (2022-11-17)
 
 
