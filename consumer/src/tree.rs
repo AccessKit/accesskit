@@ -397,6 +397,22 @@ impl Tree {
             data: Some(ActionData::SetTextSelection(selection)),
         })
     }
+
+    pub fn increment(&self, target: NodeId) {
+        self.action_handler.do_action(ActionRequest {
+            action: Action::Increment,
+            target,
+            data: None,
+        })
+    }
+
+    pub fn decrement(&self, target: NodeId) {
+        self.action_handler.do_action(ActionRequest {
+            action: Action::Decrement,
+            target,
+            data: None,
+        })
+    }
 }
 
 #[cfg(test)]

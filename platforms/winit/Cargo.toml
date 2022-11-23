@@ -24,5 +24,8 @@ features = [
     "Win32_Foundation",
 ]
 
+[target.'cfg(target_os = "macos")'.dependencies]
+accesskit_macos = { version = "0.0.0", path = "../macos" }
+
 [dev-dependencies]
 winit = "0.27.3"

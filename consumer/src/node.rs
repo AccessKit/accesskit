@@ -12,7 +12,7 @@ use std::{iter::FusedIterator, ops::Deref, sync::Arc};
 
 use accesskit::kurbo::{Affine, Point, Rect};
 use accesskit::{
-    CheckedState, DefaultActionVerb, Live, Node as NodeData, NodeId, Role, TextSelection,
+    Action, CheckedState, DefaultActionVerb, Live, Node as NodeData, NodeId, Role, TextSelection,
 };
 
 use crate::iterators::{
@@ -275,6 +275,10 @@ impl<'a> Node<'a> {
         parent_transform * self.direct_transform()
     }
 
+    pub fn has_bounds(&self) -> bool {
+        self.data().bounds.is_some()
+    }
+
     /// Returns the node's transformed bounding box relative to the tree's
     /// container (e.g. window).
     pub fn bounding_box(&self) -> Option<Rect> {
@@ -463,6 +467,20 @@ impl NodeState {
             )
             && !self.supports_toggle()
             && !self.supports_expand_collapse()
+    }
+
+    // The future of the `Action` enum is undecided, so keep the following
+    // function private for now.
+    fn supports_action(&self, action: Action) -> bool {
+        self.data().actions.contains(action)
+    }
+
+    pub fn supports_increment(&self) -> bool {
+        self.supports_action(Action::Increment)
+    }
+
+    pub fn supports_decrement(&self) -> bool {
+        self.supports_action(Action::Decrement)
     }
 }
 

@@ -10,6 +10,10 @@ pub use self::platform::*;
 #[path = "windows.rs"]
 mod platform;
 
-#[cfg(all(not(target_os = "windows"),))]
+#[cfg(target_os = "macos")]
+#[path = "macos.rs"]
+mod platform;
+
+#[cfg(all(not(target_os = "windows"), not(target_os = "macos"),))]
 #[path = "null.rs"]
 mod platform;
