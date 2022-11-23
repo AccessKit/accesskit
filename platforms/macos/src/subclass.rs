@@ -129,7 +129,7 @@ impl Instance {
 /// Uses dynamic Objective-C subclassing to implement the NSView
 /// accessibility methods when normal subclassing isn't an option.
 #[repr(transparent)]
-pub struct SubclassingAdapter(Option<Box<Instance>>);
+pub struct SubclassingAdapter(Box<Instance>);
 
 impl SubclassingAdapter {
     /// Dynamically subclass the specified view to use the specified adapter.
@@ -142,17 +142,11 @@ impl SubclassingAdapter {
         let view = Id::retain(view as *mut NSView).unwrap();
         let mut instance = Instance::new(view, adapter);
         instance.install();
-        Self(Some(instance))
+        Self(instance)
     }
 
     pub fn inner(&self) -> &Adapter {
-        &self.0.as_ref().unwrap().adapter
-    }
-
-    pub fn into_inner(mut self) -> Adapter {
-        let instance = self.0.take().unwrap();
-        instance.uninstall();
-        instance.adapter
+        &self.0.adapter
     }
 }
 
@@ -166,8 +160,6 @@ impl Deref for SubclassingAdapter {
 
 impl Drop for SubclassingAdapter {
     fn drop(&mut self) {
-        if let Some(instance) = self.0.as_ref() {
-            instance.uninstall();
-        }
+        self.0.uninstall();
     }
 }
