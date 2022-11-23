@@ -104,7 +104,7 @@ impl SubclassingAdapter {
     /// `view` must be a valid, unreleased pointer to an `NSView`.
     pub unsafe fn new(view: *mut c_void, adapter: Adapter) -> Self {
         let view = view as *mut NSView;
-        let retained_view = Id::retain(view).unwrap();
+        let retained_view = unsafe { Id::retain(view) }.unwrap();
         let weak_view = WeakId::new(&retained_view);
         // Cast to a pointer and back to force the lifetime to 'static
         // SAFETY: We know the class will live as long as the instance,

@@ -30,7 +30,7 @@ impl Adapter {
         source: Box<dyn FnOnce() -> TreeUpdate>,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
-        let view = Id::retain(view as *mut NSView).unwrap();
+        let view = unsafe { Id::retain(view as *mut NSView) }.unwrap();
         let view = WeakId::new(&view);
         let mtm = MainThreadMarker::new().unwrap();
         Self {

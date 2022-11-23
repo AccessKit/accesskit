@@ -3,6 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
 mod appkit;
 mod context;
 mod node;
