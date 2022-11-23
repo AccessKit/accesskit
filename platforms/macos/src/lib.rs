@@ -17,3 +17,4 @@ pub use event::QueuedEvents;
 
 mod subclass;
 pub use subclass::SubclassingAdapter;
+
