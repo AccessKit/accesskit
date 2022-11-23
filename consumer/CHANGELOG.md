@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.8.0...accesskit_consumer-v0.9.0) (2022-11-23)
+
+
+### Features
+
+* **platforms/macos:** Basic macOS platform adapter ([#158](https://www.github.com/AccessKit/accesskit/issues/158)) ([a06725e](https://www.github.com/AccessKit/accesskit/commit/a06725e952e6041dbd366944fa793b746c9f195e))
+
 ## [0.8.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.7.1...accesskit_consumer-v0.8.0) (2022-11-17)
 
 
