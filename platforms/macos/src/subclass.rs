@@ -23,7 +23,7 @@ static SUBCLASSES: Lazy<Mutex<HashMap<&'static Class, &'static Class>>> =
 struct Instance {
     view: Id<NSView, Shared>,
     adapter: Adapter,
-    prev_class: Option<&'static Class>,
+    prev_class: &'static Class,
 }
 
 #[derive(PartialEq, Eq, Hash)]
@@ -39,11 +39,11 @@ static INSTANCES: Lazy<Mutex<HashMap<ViewKey, InstancePtr>>> =
 // Some view classes, like the one in winit 0.27, assume that they are the
 // lowest subclass, and call [self superclass] to get their superclass.
 // Give them the answer they need.
-unsafe extern "C" fn get_superclass(this: &NSView, _cmd: Sel) -> Option<&Class> {
+unsafe extern "C" fn superclass(this: &NSView, _cmd: Sel) -> Option<&Class> {
     let key = ViewKey(this as *const _);
     let instances = INSTANCES.lock();
     let instance = instances.get(&key).unwrap();
-    (*instance.0).prev_class.as_ref().unwrap().superclass()
+    (*instance.0).prev_class.superclass()
 }
 
 unsafe extern "C" fn children(this: &NSView, _cmd: Sel) -> *mut NSArray<NSObject> {
@@ -69,10 +69,14 @@ unsafe extern "C" fn hit_test(this: &NSView, _cmd: Sel, point: NSPoint) -> *mut 
 
 impl Instance {
     fn new(view: Id<NSView, Shared>, adapter: Adapter) -> Box<Self> {
+        // Cast to a pointer and back to force the lifetime to 'static
+        // SAFETY: We know the class will live as long as the instance,
+        // and we own a reference to the instance.
+        let prev_class = unsafe { &*(view.class() as *const Class) };
         Box::new(Self {
             view,
             adapter,
-            prev_class: None,
+            prev_class,
         })
     }
 
@@ -80,20 +84,15 @@ impl Instance {
         let view_ptr = Id::as_ptr(&self.view);
         let key = ViewKey(view_ptr);
         INSTANCES.lock().insert(key, InstancePtr(self as *const _));
-        // Cast to a pointer and back to force the lifetime to 'static
-        // SAFETY: We know the class will live as long as the instance,
-        // and we own a reference to the instance.
-        let superclass = unsafe { &*(self.view.class() as *const Class) };
-        self.prev_class = Some(superclass);
         let mut subclasses = SUBCLASSES.lock();
-        let entry = subclasses.entry(superclass);
+        let entry = subclasses.entry(self.prev_class);
         let subclass = entry.or_insert_with(|| {
-            let name = format!("AccessKitSubclassOf{}", superclass.name());
-            let mut builder = ClassBuilder::new(&name, superclass).unwrap();
+            let name = format!("AccessKitSubclassOf{}", self.prev_class.name());
+            let mut builder = ClassBuilder::new(&name, self.prev_class).unwrap();
             unsafe {
                 builder.add_method(
                     sel!(superclass),
-                    get_superclass as unsafe extern "C" fn(_, _) -> _,
+                    superclass as unsafe extern "C" fn(_, _) -> _,
                 );
                 builder.add_method(
                     sel!(accessibilityChildren),
@@ -115,12 +114,7 @@ impl Instance {
 
     fn uninstall(&self) {
         let view_ptr = Id::as_ptr(&self.view);
-        unsafe {
-            object_setClass(
-                view_ptr as *mut _,
-                (self.prev_class.unwrap() as *const Class).cast(),
-            )
-        };
+        unsafe { object_setClass(view_ptr as *mut _, (self.prev_class as *const Class).cast()) };
         let key = ViewKey(view_ptr);
         INSTANCES.lock().remove(&key);
     }
