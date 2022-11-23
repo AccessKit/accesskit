@@ -18,12 +18,6 @@ winit = { version = "0.27.3", default-features = false, features = ["x11", "wayl
 [target.'cfg(target_os = "windows")'.dependencies]
 accesskit_windows = { version = "0.9.0", path = "../windows" }
 
-[target.'cfg(target_os = "windows")'.dependencies.windows]
-version = "0.42.0"
-features = [
-    "Win32_Foundation",
-]
-
 [target.'cfg(target_os = "macos")'.dependencies]
 accesskit_macos = { version = "0.0.0", path = "../macos" }
 

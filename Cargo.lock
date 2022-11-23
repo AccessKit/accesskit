@@ -55,7 +55,6 @@ dependencies = [
  "accesskit_macos",
  "accesskit_windows",
  "parking_lot",
- "windows",
  "winit",
 ]
 

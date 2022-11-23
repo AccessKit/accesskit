@@ -3,8 +3,7 @@
 // the LICENSE-APACHE file).
 
 use accesskit::{ActionHandler, TreeUpdate};
-use accesskit_windows::{Adapter as WindowsAdapter, SubclassingAdapter};
-use windows::Win32::Foundation::HWND;
+use accesskit_windows::{Adapter as WindowsAdapter, SubclassingAdapter, HWND};
 use winit::{platform::windows::WindowExtWindows, window::Window};
 
 pub struct Adapter {
