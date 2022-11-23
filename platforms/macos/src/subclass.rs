@@ -21,7 +21,6 @@ static SUBCLASSES: Lazy<Mutex<HashMap<&'static Class, &'static Class>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
 struct Instance {
-    view: Id<NSView, Shared>,
     adapter: Adapter,
     prev_class: &'static Class,
 }
@@ -67,28 +66,39 @@ unsafe extern "C" fn hit_test(this: &NSView, _cmd: Sel, point: NSPoint) -> *mut 
     (*instance.0).adapter.hit_test(point)
 }
 
-impl Instance {
-    fn new(view: Id<NSView, Shared>, adapter: Adapter) -> Box<Self> {
+/// Uses dynamic Objective-C subclassing to implement the NSView
+/// accessibility methods when normal subclassing isn't an option.
+pub struct SubclassingAdapter {
+    view: Id<NSView, Shared>,
+    instance: Box<Instance>,
+}
+
+impl SubclassingAdapter {
+    /// Dynamically subclass the specified view to use the specified adapter.
+    ///
+    /// # Safety
+    ///
+    /// `view` must be a valid, unreleased pointer to an `NSView`.
+    /// This method will retain an additional reference to `view`.
+    pub unsafe fn new(view: *mut c_void, adapter: Adapter) -> Self {
+        let view = view as *mut NSView;
         // Cast to a pointer and back to force the lifetime to 'static
         // SAFETY: We know the class will live as long as the instance,
         // and we own a reference to the instance.
-        let prev_class = unsafe { &*(view.class() as *const Class) };
-        Box::new(Self {
-            view,
+        let prev_class = unsafe { &*((*view).class() as *const Class) };
+        let instance = Box::new(Instance {
             adapter,
             prev_class,
-        })
-    }
-
-    fn install(&mut self) {
-        let view_ptr = Id::as_ptr(&self.view);
-        let key = ViewKey(view_ptr);
-        INSTANCES.lock().insert(key, InstancePtr(self as *const _));
+        });
+        let key = ViewKey(view as *const _);
+        INSTANCES
+            .lock()
+            .insert(key, InstancePtr(&*instance as *const _));
         let mut subclasses = SUBCLASSES.lock();
-        let entry = subclasses.entry(self.prev_class);
+        let entry = subclasses.entry(prev_class);
         let subclass = entry.or_insert_with(|| {
-            let name = format!("AccessKitSubclassOf{}", self.prev_class.name());
-            let mut builder = ClassBuilder::new(&name, self.prev_class).unwrap();
+            let name = format!("AccessKitSubclassOf{}", prev_class.name());
+            let mut builder = ClassBuilder::new(&name, prev_class).unwrap();
             unsafe {
                 builder.add_method(
                     sel!(superclass),
@@ -109,38 +119,13 @@ impl Instance {
             }
             builder.register()
         });
-        unsafe { object_setClass(view_ptr as *mut _, (*subclass as *const Class).cast()) };
-    }
-
-    fn uninstall(&self) {
-        let view_ptr = Id::as_ptr(&self.view);
-        unsafe { object_setClass(view_ptr as *mut _, (self.prev_class as *const Class).cast()) };
-        let key = ViewKey(view_ptr);
-        INSTANCES.lock().remove(&key);
-    }
-}
-
-/// Uses dynamic Objective-C subclassing to implement the NSView
-/// accessibility methods when normal subclassing isn't an option.
-#[repr(transparent)]
-pub struct SubclassingAdapter(Box<Instance>);
-
-impl SubclassingAdapter {
-    /// Dynamically subclass the specified view to use the specified adapter.
-    ///
-    /// # Safety
-    ///
-    /// `view` must be a valid, unreleased pointer to an `NSView`.
-    /// This method will retain an additional reference to `view`.
-    pub unsafe fn new(view: *mut c_void, adapter: Adapter) -> Self {
-        let view = Id::retain(view as *mut NSView).unwrap();
-        let mut instance = Instance::new(view, adapter);
-        instance.install();
-        Self(instance)
+        unsafe { object_setClass(view as *mut _, (*subclass as *const Class).cast()) };
+        let view = Id::retain(view).unwrap();
+        Self { view, instance }
     }
 
     pub fn inner(&self) -> &Adapter {
-        &self.0.adapter
+        &self.instance.adapter
     }
 }
 
@@ -154,6 +139,14 @@ impl Deref for SubclassingAdapter {
 
 impl Drop for SubclassingAdapter {
     fn drop(&mut self) {
-        self.0.uninstall();
+        let view_ptr = Id::as_ptr(&self.view);
+        unsafe {
+            object_setClass(
+                view_ptr as *mut _,
+                (self.instance.prev_class as *const Class).cast(),
+            )
+        };
+        let key = ViewKey(view_ptr);
+        INSTANCES.lock().remove(&key);
     }
 }
