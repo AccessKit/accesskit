@@ -4,12 +4,17 @@
 // the LICENSE-MIT file), at your option.
 
 use objc2::{
-    declare::ClassBuilder,
-    ffi::object_setClass,
+    declare::{ClassBuilder, Ivar, IvarDrop},
+    declare_class,
+    ffi::{
+        objc_getAssociatedObject, objc_setAssociatedObject, object_setClass,
+        OBJC_ASSOCIATION_ASSIGN,
+    },
     foundation::{NSArray, NSObject, NSPoint},
-    rc::{Id, Shared},
+    msg_send_id,
+    rc::{Id, Owned, WeakId},
     runtime::{Class, Sel},
-    sel,
+    sel, ClassType,
 };
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
@@ -20,57 +25,75 @@ use crate::{appkit::NSView, Adapter};
 static SUBCLASSES: Lazy<Mutex<HashMap<&'static Class, &'static Class>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
-struct Instance {
-    adapter: Adapter,
-    prev_class: &'static Class,
+// Declare as mutable to ensure the address is unique.
+static mut ASSOCIATED_OBJECT_KEY: u8 = 0;
+
+fn associated_object_key() -> *const c_void {
+    unsafe { &ASSOCIATED_OBJECT_KEY as *const u8 as *const _ }
 }
 
-#[derive(PartialEq, Eq, Hash)]
-struct ViewKey(*const NSView);
-unsafe impl Send for ViewKey {}
+declare_class!(
+    struct AssociatedObject {
+        // Safety: These are set in AssociatedObject::new, immediately after
+        // the object is created.
+        adapter: IvarDrop<Box<Adapter>>,
+        prev_class: &'static Class,
+    }
 
-struct InstancePtr(*const Instance);
-unsafe impl Send for InstancePtr {}
+    unsafe impl ClassType for AssociatedObject {
+        type Super = NSObject;
+        const NAME: &'static str = "AccessKitSubclassAssociatedObject";
+    }
+);
 
-static INSTANCES: Lazy<Mutex<HashMap<ViewKey, InstancePtr>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
+impl AssociatedObject {
+    fn new(adapter: Adapter, prev_class: &'static Class) -> Id<Self, Owned> {
+        unsafe {
+            let mut object: Id<Self, Owned> = msg_send_id![Self::class(), new];
+            Ivar::write(&mut object.adapter, Box::new(adapter));
+            Ivar::write(&mut object.prev_class, prev_class);
+            object
+        }
+    }
+}
+
+fn associated_object(view: &NSView) -> &AssociatedObject {
+    unsafe {
+        (objc_getAssociatedObject(view as *const NSView as *const _, associated_object_key())
+            as *const AssociatedObject)
+            .as_ref()
+    }
+    .unwrap()
+}
 
 // Some view classes, like the one in winit 0.27, assume that they are the
 // lowest subclass, and call [self superclass] to get their superclass.
 // Give them the answer they need.
 unsafe extern "C" fn superclass(this: &NSView, _cmd: Sel) -> Option<&Class> {
-    let key = ViewKey(this as *const _);
-    let instances = INSTANCES.lock();
-    let instance = instances.get(&key).unwrap();
-    (*instance.0).prev_class.superclass()
+    let associated = associated_object(this);
+    associated.prev_class.superclass()
 }
 
 unsafe extern "C" fn children(this: &NSView, _cmd: Sel) -> *mut NSArray<NSObject> {
-    let key = ViewKey(this as *const _);
-    let instances = INSTANCES.lock();
-    let instance = instances.get(&key).unwrap();
-    (*instance.0).adapter.view_children()
+    let associated = associated_object(this);
+    associated.adapter.view_children()
 }
 
 unsafe extern "C" fn focus(this: &NSView, _cmd: Sel) -> *mut NSObject {
-    let key = ViewKey(this as *const _);
-    let instances = INSTANCES.lock();
-    let instance = instances.get(&key).unwrap();
-    (*instance.0).adapter.focus()
+    let associated = associated_object(this);
+    associated.adapter.focus()
 }
 
 unsafe extern "C" fn hit_test(this: &NSView, _cmd: Sel, point: NSPoint) -> *mut NSObject {
-    let key = ViewKey(this as *const _);
-    let instances = INSTANCES.lock();
-    let instance = instances.get(&key).unwrap();
-    (*instance.0).adapter.hit_test(point)
+    let associated = associated_object(this);
+    associated.adapter.hit_test(point)
 }
 
 /// Uses dynamic Objective-C subclassing to implement the NSView
 /// accessibility methods when normal subclassing isn't an option.
 pub struct SubclassingAdapter {
-    view: Id<NSView, Shared>,
-    instance: Box<Instance>,
+    view: WeakId<NSView>,
+    associated: Id<AssociatedObject, Owned>,
 }
 
 impl SubclassingAdapter {
@@ -79,21 +102,21 @@ impl SubclassingAdapter {
     /// # Safety
     ///
     /// `view` must be a valid, unreleased pointer to an `NSView`.
-    /// This method will retain an additional reference to `view`.
     pub unsafe fn new(view: *mut c_void, adapter: Adapter) -> Self {
         let view = view as *mut NSView;
         // Cast to a pointer and back to force the lifetime to 'static
         // SAFETY: We know the class will live as long as the instance,
-        // and we own a reference to the instance.
+        // and we only use this reference while the instance is alive.
         let prev_class = unsafe { &*((*view).class() as *const Class) };
-        let instance = Box::new(Instance {
-            adapter,
-            prev_class,
-        });
-        let key = ViewKey(view as *const _);
-        INSTANCES
-            .lock()
-            .insert(key, InstancePtr(&*instance as *const _));
+        let mut associated = AssociatedObject::new(adapter, prev_class);
+        unsafe {
+            objc_setAssociatedObject(
+                view as *mut _,
+                associated_object_key(),
+                Id::as_mut_ptr(&mut associated) as *mut _,
+                OBJC_ASSOCIATION_ASSIGN,
+            )
+        };
         let mut subclasses = SUBCLASSES.lock();
         let entry = subclasses.entry(prev_class);
         let subclass = entry.or_insert_with(|| {
@@ -121,11 +144,12 @@ impl SubclassingAdapter {
         });
         unsafe { object_setClass(view as *mut _, (*subclass as *const Class).cast()) };
         let view = Id::retain(view).unwrap();
-        Self { view, instance }
+        let view = WeakId::new(&view);
+        Self { view, associated }
     }
 
     pub fn inner(&self) -> &Adapter {
-        &self.instance.adapter
+        &self.associated.adapter
     }
 }
 
@@ -139,14 +163,18 @@ impl Deref for SubclassingAdapter {
 
 impl Drop for SubclassingAdapter {
     fn drop(&mut self) {
-        let view_ptr = Id::as_ptr(&self.view);
-        unsafe {
-            object_setClass(
-                view_ptr as *mut _,
-                (self.instance.prev_class as *const Class).cast(),
-            )
-        };
-        let key = ViewKey(view_ptr);
-        INSTANCES.lock().remove(&key);
+        if let Some(view) = self.view.load() {
+            let prev_class = *self.associated.prev_class;
+            let view = Id::as_ptr(&view) as *mut NSView;
+            unsafe { object_setClass(view as *mut _, (prev_class as *const Class).cast()) };
+            unsafe {
+                objc_setAssociatedObject(
+                    view as *mut _,
+                    associated_object_key(),
+                    std::ptr::null_mut(),
+                    OBJC_ASSOCIATION_ASSIGN,
+                )
+            };
+        }
     }
 }
