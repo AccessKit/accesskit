@@ -13,5 +13,7 @@ pub use adapter::{Adapter, QueuedEvents};
 mod subclass;
 pub use subclass::SubclassingAdapter;
 
+pub use windows::Win32::Foundation::HWND;
+
 #[cfg(test)]
 mod tests;
