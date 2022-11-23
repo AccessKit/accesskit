@@ -300,6 +300,8 @@ struct BoxedData {
 
 declare_class!(
     pub(crate) struct PlatformNode {
+        // Safety: This is set in `PlatformNode::new` immediately after
+        // the object is created.
         boxed: IvarDrop<Box<BoxedData>>,
     }
 
