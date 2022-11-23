@@ -8,11 +8,11 @@ use objc2::{
     declare_class,
     ffi::{
         objc_getAssociatedObject, objc_setAssociatedObject, object_setClass,
-        OBJC_ASSOCIATION_ASSIGN,
+        OBJC_ASSOCIATION_RETAIN_NONATOMIC,
     },
     foundation::{NSArray, NSObject, NSPoint},
     msg_send_id,
-    rc::{Id, Owned, WeakId},
+    rc::{Id, Owned, Shared, WeakId},
     runtime::{Class, Sel},
     sel, ClassType,
 };
@@ -47,12 +47,12 @@ declare_class!(
 );
 
 impl AssociatedObject {
-    fn new(adapter: Adapter, prev_class: &'static Class) -> Id<Self, Owned> {
+    fn new(adapter: Adapter, prev_class: &'static Class) -> Id<Self, Shared> {
         unsafe {
             let mut object: Id<Self, Owned> = msg_send_id![Self::class(), new];
             Ivar::write(&mut object.adapter, Box::new(adapter));
             Ivar::write(&mut object.prev_class, prev_class);
-            object
+            object.into()
         }
     }
 }
@@ -93,7 +93,7 @@ unsafe extern "C" fn hit_test(this: &NSView, _cmd: Sel, point: NSPoint) -> *mut 
 /// accessibility methods when normal subclassing isn't an option.
 pub struct SubclassingAdapter {
     view: WeakId<NSView>,
-    associated: Id<AssociatedObject, Owned>,
+    associated: Id<AssociatedObject, Shared>,
 }
 
 impl SubclassingAdapter {
@@ -104,17 +104,19 @@ impl SubclassingAdapter {
     /// `view` must be a valid, unreleased pointer to an `NSView`.
     pub unsafe fn new(view: *mut c_void, adapter: Adapter) -> Self {
         let view = view as *mut NSView;
+        let retained_view = Id::retain(view).unwrap();
+        let weak_view = WeakId::new(&retained_view);
         // Cast to a pointer and back to force the lifetime to 'static
         // SAFETY: We know the class will live as long as the instance,
         // and we only use this reference while the instance is alive.
         let prev_class = unsafe { &*((*view).class() as *const Class) };
-        let mut associated = AssociatedObject::new(adapter, prev_class);
+        let associated = AssociatedObject::new(adapter, prev_class);
         unsafe {
             objc_setAssociatedObject(
                 view as *mut _,
                 associated_object_key(),
-                Id::as_mut_ptr(&mut associated) as *mut _,
-                OBJC_ASSOCIATION_ASSIGN,
+                Id::as_ptr(&associated) as *mut _,
+                OBJC_ASSOCIATION_RETAIN_NONATOMIC,
             )
         };
         let mut subclasses = SUBCLASSES.lock();
@@ -146,9 +148,10 @@ impl SubclassingAdapter {
         // the subclass doesn't add any instance variables;
         // it uses an associated object instead.
         unsafe { object_setClass(view as *mut _, (*subclass as *const Class).cast()) };
-        let view = Id::retain(view).unwrap();
-        let view = WeakId::new(&view);
-        Self { view, associated }
+        Self {
+            view: weak_view,
+            associated,
+        }
     }
 
     pub fn inner(&self) -> &Adapter {
@@ -175,7 +178,7 @@ impl Drop for SubclassingAdapter {
                     view as *mut _,
                     associated_object_key(),
                     std::ptr::null_mut(),
-                    OBJC_ASSOCIATION_ASSIGN,
+                    OBJC_ASSOCIATION_RETAIN_NONATOMIC,
                 )
             };
         }
