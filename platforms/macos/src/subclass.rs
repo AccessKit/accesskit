@@ -34,7 +34,7 @@ fn associated_object_key() -> *const c_void {
 
 declare_class!(
     struct AssociatedObject {
-        // Safety: These are set in AssociatedObject::new, immediately after
+        // SAFETY: These are set in AssociatedObject::new, immediately after
         // the object is created.
         adapter: IvarDrop<Box<Adapter>>,
         prev_class: &'static Class,
@@ -142,6 +142,9 @@ impl SubclassingAdapter {
             }
             builder.register()
         });
+        // SAFETY: Changing the view's class is only safe because
+        // the subclass doesn't add any instance variables;
+        // it uses an associated object instead.
         unsafe { object_setClass(view as *mut _, (*subclass as *const Class).cast()) };
         let view = Id::retain(view).unwrap();
         let view = WeakId::new(&view);
