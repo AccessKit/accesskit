@@ -737,7 +737,10 @@ impl<'a> Node<'a> {
 
     pub fn supports_text_ranges(&self) -> bool {
         let role = self.role();
-        if role != Role::StaticText && role != Role::TextField && role != Role::Document {
+        if !matches!(
+            role,
+            Role::StaticText | Role::TextField | Role::Document | Role::SpinButton
+        ) {
             return false;
         }
         self.inline_text_boxes().next().is_some()
