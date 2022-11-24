@@ -1,5 +1,12 @@
 # Changelog
 
+### [0.9.2](https://www.github.com/AccessKit/accesskit/compare/accesskit_windows-v0.9.1...accesskit_windows-v0.9.2) (2022-11-24)
+
+
+### Bug Fixes
+
+* **platforms/windows:** Re-export more types from windows-rs ([#162](https://www.github.com/AccessKit/accesskit/issues/162)) ([eed692b](https://www.github.com/AccessKit/accesskit/commit/eed692b27407e1ddd5f200464f0e2d52a272b958))
+
 ### [0.9.1](https://www.github.com/AccessKit/accesskit/compare/accesskit_windows-v0.9.0...accesskit_windows-v0.9.1) (2022-11-23)
 
 
