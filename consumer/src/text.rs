@@ -652,7 +652,9 @@ impl WeakRange {
     }
 
     pub fn upgrade_node<'a>(&self, tree_state: &'a TreeState) -> Option<Node<'a>> {
-        tree_state.node_by_id(self.node_id)
+        tree_state
+            .node_by_id(self.node_id)
+            .filter(Node::supports_text_ranges)
     }
 
     pub fn upgrade<'a>(&self, tree_state: &'a TreeState) -> Option<Range<'a>> {
