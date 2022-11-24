@@ -736,11 +736,10 @@ impl<'a> Node<'a> {
     }
 
     pub fn supports_text_ranges(&self) -> bool {
-        let role = self.role();
-        if role != Role::StaticText && role != Role::TextField && role != Role::Document {
-            return false;
-        }
-        self.inline_text_boxes().next().is_some()
+        matches!(
+            self.role(),
+            Role::StaticText | Role::TextField | Role::Document | Role::SpinButton
+        ) && self.inline_text_boxes().next().is_some()
     }
 
     fn document_start(&self) -> InnerPosition<'a> {
