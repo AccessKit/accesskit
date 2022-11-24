@@ -379,13 +379,13 @@ impl<'a> NodeWrapper<'a> {
     fn min_numeric_value(&self) -> f64 {
         self.node_state()
             .min_numeric_value()
-            .unwrap_or(std::f64::MIN)
+            .unwrap_or(0.0)
     }
 
     fn max_numeric_value(&self) -> f64 {
         self.node_state()
             .max_numeric_value()
-            .unwrap_or(std::f64::MAX)
+            .unwrap_or(0.0)
     }
 
     fn numeric_value_step(&self) -> f64 {
