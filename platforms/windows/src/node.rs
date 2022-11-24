@@ -554,7 +554,10 @@ impl PlatformNode {
         for<'a> F: FnOnce(Node<'a>) -> Result<T>,
     {
         self.with_tree_state(|state| {
-            if let Some(node) = state.node_by_id(self.node_id).filter(Node::supports_text_ranges) {
+            if let Some(node) = state
+                .node_by_id(self.node_id)
+                .filter(Node::supports_text_ranges)
+            {
                 f(node)
             } else {
                 Err(element_not_available())
