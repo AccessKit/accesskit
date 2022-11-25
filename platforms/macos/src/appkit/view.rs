@@ -41,5 +41,8 @@ extern_methods!(
             point: NSPoint,
             view: Option<&NSView>,
         ) -> NSPoint;
+
+        #[sel(isFlipped)]
+        pub(crate) fn is_flipped(&self) -> bool;
     }
 );

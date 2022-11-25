@@ -351,11 +351,15 @@ declare_class!(
                 };
 
                 node.bounding_box().map_or(NSRect::ZERO, |rect| {
-                    let view_bounds = view.bounds();
                     let rect = NSRect {
                         origin: NSPoint {
                             x: rect.x0,
-                            y: view_bounds.size.height - rect.y1,
+                            y: if view.is_flipped() {
+                                rect.y0
+                            } else {
+                                let view_bounds = view.bounds();
+                                view_bounds.size.height - rect.y1
+                            },
                         },
                         size: NSSize {
                             width: rect.width(),
