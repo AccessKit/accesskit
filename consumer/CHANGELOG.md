@@ -1,5 +1,13 @@
 # Changelog
 
+### [0.9.1](https://www.github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.9.0...accesskit_consumer-v0.9.1) (2022-11-25)
+
+
+### Bug Fixes
+
+* **consumer:** Allow editable spin buttons ([#167](https://www.github.com/AccessKit/accesskit/issues/167)) ([65a7aa0](https://www.github.com/AccessKit/accesskit/commit/65a7aa0114bfc6e17189e834578e256945b84a98))
+* Gracefully handle nodes that only support text ranges some of the time ([#169](https://www.github.com/AccessKit/accesskit/issues/169)) ([1f50df6](https://www.github.com/AccessKit/accesskit/commit/1f50df6820b9d23fe2e579f043f4981acf285de2))
+
 ## [0.9.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.8.0...accesskit_consumer-v0.9.0) (2022-11-23)
 
 
