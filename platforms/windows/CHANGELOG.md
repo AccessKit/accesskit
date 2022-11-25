@@ -1,5 +1,20 @@
 # Changelog
 
+### [0.9.3](https://www.github.com/AccessKit/accesskit/compare/accesskit_windows-v0.9.2...accesskit_windows-v0.9.3) (2022-11-25)
+
+
+### Bug Fixes
+
+* Gracefully handle nodes that only support text ranges some of the time ([#169](https://www.github.com/AccessKit/accesskit/issues/169)) ([1f50df6](https://www.github.com/AccessKit/accesskit/commit/1f50df6820b9d23fe2e579f043f4981acf285de2))
+* **platforms/windows:** Change default minimum and maximum for range value pattern ([#166](https://www.github.com/AccessKit/accesskit/issues/166)) ([176ec58](https://www.github.com/AccessKit/accesskit/commit/176ec5853ca127b1e12f9a992b75478177a4acce))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.9.0 to 0.9.1
+
 ### [0.9.2](https://www.github.com/AccessKit/accesskit/compare/accesskit_windows-v0.9.1...accesskit_windows-v0.9.2) (2022-11-24)
 
 
