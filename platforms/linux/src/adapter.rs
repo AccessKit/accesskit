@@ -37,7 +37,6 @@ impl Adapter {
             app_name,
             toolkit_name,
             toolkit_version,
-            atspi_bus.as_ref().map(|bus| bus.unique_name().clone()),
         )));
         atspi_bus.as_mut().and_then(|bus| {
             bus.register_root_node(PlatformRootNode::new(

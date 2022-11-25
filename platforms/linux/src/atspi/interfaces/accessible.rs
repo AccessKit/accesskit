@@ -7,7 +7,7 @@ use crate::atspi::{ObjectAddress, ObjectId, ObjectRef, OwnedObjectAddress};
 use crate::{PlatformNode, PlatformRootNode};
 use atspi::{accessible::Role, Interface, InterfaceSet, StateSet};
 use std::convert::TryInto;
-use zbus::{fdo, names::OwnedUniqueName};
+use zbus::{fdo, names::OwnedUniqueName, MessageHeader};
 
 pub(crate) struct AccessibleInterface<T> {
     bus_name: OwnedUniqueName,
@@ -35,9 +35,7 @@ impl AccessibleInterface<PlatformNode> {
     #[dbus_interface(property)]
     fn parent(&self) -> OwnedObjectAddress {
         match self.node.parent() {
-            Ok(ObjectRef::Managed(id)) => {
-                ObjectAddress::accessible(self.bus_name.as_ref(), &id).into()
-            }
+            Ok(ObjectRef::Managed(id)) => OwnedObjectAddress::accessible(self.bus_name.clone(), id),
             Ok(ObjectRef::Unmanaged(address)) => address,
             _ => OwnedObjectAddress::null(self.bus_name.clone()),
         }
@@ -60,16 +58,15 @@ impl AccessibleInterface<PlatformNode> {
             .unwrap_or_else(|_| unsafe { ObjectId::from_str_unchecked("") })
     }
 
-    fn get_child_at_index(&self, index: i32) -> fdo::Result<(OwnedObjectAddress,)> {
+    fn get_child_at_index(
+        &self,
+        #[zbus(header)] hdr: MessageHeader<'_>,
+        index: i32,
+    ) -> fdo::Result<(OwnedObjectAddress,)> {
         let index = index
             .try_into()
             .map_err(|_| fdo::Error::InvalidArgs("Index can't be negative.".into()))?;
-        Ok(match self.node.child_at_index(index)? {
-            ObjectRef::Managed(id) => {
-                (ObjectAddress::accessible(self.bus_name.as_ref(), &id).into(),)
-            }
-            ObjectRef::Unmanaged(address) => (address,),
-        })
+        super::object_address(hdr.destination()?, self.node.child_at_index(index)?)
     }
 
     fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
@@ -98,8 +95,14 @@ impl AccessibleInterface<PlatformNode> {
         self.node.state()
     }
 
-    fn get_application(&self) -> (OwnedObjectAddress,) {
-        (ObjectAddress::root(self.bus_name.as_ref()).into(),)
+    fn get_application(
+        &self,
+        #[zbus(header)] hdr: MessageHeader<'_>,
+    ) -> fdo::Result<(OwnedObjectAddress,)> {
+        super::object_address(
+            hdr.destination()?,
+            Some(ObjectRef::Managed(ObjectId::root())),
+        )
     }
 
     fn get_interfaces(&self) -> fdo::Result<InterfaceSet> {
@@ -147,23 +150,20 @@ impl AccessibleInterface<PlatformRootNode> {
         ObjectId::root()
     }
 
-    fn get_child_at_index(&self, index: i32) -> fdo::Result<(OwnedObjectAddress,)> {
+    fn get_child_at_index(
+        &self,
+        #[zbus(header)] hdr: MessageHeader<'_>,
+        index: i32,
+    ) -> fdo::Result<(OwnedObjectAddress,)> {
         if index != 0 {
-            return Ok((OwnedObjectAddress::null(self.bus_name.clone()),));
+            return super::object_address(hdr.destination()?, None);
         }
-        self.node
+        let child = self
+            .node
             .tree
             .upgrade()
-            .map(|tree| {
-                (
-                    ObjectAddress::accessible(
-                        self.bus_name.as_ref(),
-                        &tree.read().root().id().into(),
-                    )
-                    .into(),
-                )
-            })
-            .ok_or_else(|| fdo::Error::UnknownObject("".into()))
+            .map(|tree| ObjectRef::Managed(tree.read().root().id().into()));
+        super::object_address(hdr.destination()?, child)
     }
 
     fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
@@ -192,8 +192,14 @@ impl AccessibleInterface<PlatformRootNode> {
         StateSet::empty()
     }
 
-    fn get_application(&self) -> (OwnedObjectAddress,) {
-        (ObjectAddress::root(self.bus_name.as_ref()).into(),)
+    fn get_application(
+        &self,
+        #[zbus(header)] hdr: MessageHeader<'_>,
+    ) -> fdo::Result<(OwnedObjectAddress,)> {
+        super::object_address(
+            hdr.destination()?,
+            Some(ObjectRef::Managed(ObjectId::root())),
+        )
     }
 
     fn get_interfaces(&self) -> InterfaceSet {

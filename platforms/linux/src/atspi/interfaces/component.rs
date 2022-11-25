@@ -8,7 +8,7 @@ use crate::{
     PlatformNode,
 };
 use atspi::CoordType;
-use zbus::fdo;
+use zbus::{fdo, MessageHeader};
 
 pub(crate) struct ComponentInterface {
     node: PlatformNode,
@@ -28,11 +28,15 @@ impl ComponentInterface {
 
     fn get_accessible_at_point(
         &self,
+        #[zbus(header)] hdr: MessageHeader<'_>,
         x: i32,
         y: i32,
         coord_type: CoordType,
     ) -> fdo::Result<(OwnedObjectAddress,)> {
-        self.node.get_accessible_at_point(x, y, coord_type)
+        super::object_address(
+            hdr.destination()?,
+            self.node.get_accessible_at_point(x, y, coord_type)?,
+        )
     }
 
     fn get_extents(&self, coord_type: CoordType) -> fdo::Result<(Rect,)> {

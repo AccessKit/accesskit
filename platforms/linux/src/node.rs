@@ -5,7 +5,7 @@
 
 use crate::atspi::{
     interfaces::{Action, ObjectEvent, Property, QueuedEvent},
-    ObjectAddress, ObjectId, ObjectRef, OwnedObjectAddress, Rect as AtspiRect,
+    ObjectId, ObjectRef, OwnedObjectAddress, Rect as AtspiRect,
 };
 use accesskit::{
     kurbo::{Point, Rect},
@@ -18,7 +18,7 @@ use std::{
     convert::TryFrom,
     sync::{Arc, Weak},
 };
-use zbus::{fdo, names::OwnedUniqueName};
+use zbus::fdo;
 
 pub(crate) fn filter(node: &Node) -> FilterResult {
     if node.is_focused() {
@@ -625,15 +625,8 @@ impl PlatformNode {
         self.resolve(|resolved| Ok(resolved.id()))
     }
 
-    pub fn child_at_index(&self, index: usize) -> fdo::Result<ObjectRef> {
-        self.resolve(|resolved| {
-            resolved
-                .node
-                .child_ids()
-                .nth(index)
-                .map(ObjectRef::from)
-                .ok_or_else(unknown_object)
-        })
+    pub fn child_at_index(&self, index: usize) -> fdo::Result<Option<ObjectRef>> {
+        self.resolve(|resolved| Ok(resolved.node.child_ids().nth(index).map(ObjectRef::from)))
     }
 
     pub fn children(&self) -> fdo::Result<Vec<ObjectRef>> {
@@ -735,7 +728,7 @@ impl PlatformNode {
         x: i32,
         y: i32,
         coord_type: CoordType,
-    ) -> fdo::Result<(OwnedObjectAddress,)> {
+    ) -> fdo::Result<Option<ObjectRef>> {
         self.resolve(|wrapper| {
             let app_state = wrapper.app_state.read();
             let is_root = wrapper.node.is_root();
@@ -747,20 +740,10 @@ impl PlatformNode {
                 _ => unimplemented!(),
             };
             let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
-            Ok(wrapper.node.node_at_point(point, &filter).map_or_else(
-                || {
-                    (OwnedObjectAddress::null(
-                        app_state.bus_name.clone().unwrap(),
-                    ),)
-                },
-                |node| {
-                    (ObjectAddress::accessible(
-                        app_state.bus_name.as_ref().unwrap().as_ref(),
-                        &node.id().into(),
-                    )
-                    .into(),)
-                },
-            ))
+            Ok(wrapper
+                .node
+                .node_at_point(point, &filter)
+                .map(|node| ObjectRef::Managed(node.id().into())))
         })
     }
 
@@ -831,7 +814,6 @@ pub(crate) struct AppState {
     pub name: String,
     pub toolkit_name: String,
     pub toolkit_version: String,
-    pub bus_name: Option<OwnedUniqueName>,
     pub id: Option<i32>,
     pub desktop_address: Option<OwnedObjectAddress>,
     pub outer_bounds: Rect,
@@ -839,17 +821,11 @@ pub(crate) struct AppState {
 }
 
 impl AppState {
-    pub fn new(
-        name: String,
-        toolkit_name: String,
-        toolkit_version: String,
-        bus_name: Option<OwnedUniqueName>,
-    ) -> Self {
+    pub fn new(name: String, toolkit_name: String, toolkit_version: String) -> Self {
         Self {
             name,
             toolkit_name,
             toolkit_version,
-            bus_name,
             id: None,
             desktop_address: None,
             outer_bounds: Rect::default(),

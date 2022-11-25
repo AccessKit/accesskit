@@ -53,6 +53,22 @@ pub struct OwnedObjectAddress {
 }
 
 impl OwnedObjectAddress {
+    pub fn new(bus_name: OwnedUniqueName, path: OwnedObjectPath) -> Self {
+        Self { bus_name, path }
+    }
+
+    pub fn accessible(bus_name: OwnedUniqueName, id: ObjectId) -> Self {
+        Self {
+            bus_name,
+            path: ObjectPath::from_string_unchecked(format!(
+                "{}{}",
+                ACCESSIBLE_PATH_PREFIX,
+                id.as_str()
+            ))
+            .into(),
+        }
+    }
+
     pub fn null(bus_name: OwnedUniqueName) -> Self {
         Self {
             bus_name,
