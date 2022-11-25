@@ -13,7 +13,7 @@ edition = "2021"
 [dependencies]
 accesskit = { version = "0.8.0", path = "../../common" }
 parking_lot = "0.12.1"
-winit = { version = "0.27.3", default-features = false, features = ["x11", "wayland", "wayland-dlopen"] }
+winit = { version = "0.27.2", default-features = false, features = ["x11", "wayland", "wayland-dlopen"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 accesskit_windows = { version = "0.9.3", path = "../windows" }
@@ -22,4 +22,4 @@ accesskit_windows = { version = "0.9.3", path = "../windows" }
 accesskit_macos = { version = "0.1.3", path = "../macos" }
 
 [dev-dependencies]
-winit = "0.27.3"
+winit = "0.27.2"
