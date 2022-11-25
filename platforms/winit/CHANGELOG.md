@@ -1,5 +1,12 @@
 # Changelog
 
+### [0.6.4](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.6.3...accesskit_winit-v0.6.4) (2022-11-25)
+
+
+### Bug Fixes
+
+* Reduce the winit version requirement to match egui ([#170](https://www.github.com/AccessKit/accesskit/issues/170)) ([1d27482](https://www.github.com/AccessKit/accesskit/commit/1d27482221140c1f3b3e3eaf93e7feaf8105611d))
+
 ## [0.6.0](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.5.1...accesskit_winit-v0.6.0) (2022-11-23)
 
 
