@@ -549,6 +549,22 @@ impl PlatformNode {
         })
     }
 
+    fn resolve_for_text_pattern<F, T>(&self, f: F) -> Result<T>
+    where
+        for<'a> F: FnOnce(Node<'a>) -> Result<T>,
+    {
+        self.with_tree_state(|state| {
+            if let Some(node) = state
+                .node_by_id(self.node_id)
+                .filter(Node::supports_text_ranges)
+            {
+                f(node)
+            } else {
+                Err(element_not_available())
+            }
+        })
+    }
+
     fn validate_for_action(&self) -> Result<Arc<Tree>> {
         let tree = self.upgrade_tree()?;
         let state = tree.read();
@@ -868,7 +884,7 @@ patterns! {
     )),
     (Text, is_text_pattern_supported, (), (
         fn GetSelection(&self) -> Result<*mut SAFEARRAY> {
-            self.resolve(|node| {
+            self.resolve_for_text_pattern(|node| {
                 if let Some(range) = node.text_selection() {
                     let platform_range: ITextRangeProvider = PlatformTextRange::new(&self.tree, range, self.hwnd).into();
                     let iunknown: IUnknown = platform_range.into();
@@ -892,7 +908,7 @@ patterns! {
         },
 
         fn RangeFromPoint(&self, point: &UiaPoint) -> Result<ITextRangeProvider> {
-            self.resolve(|node| {
+            self.resolve_for_text_pattern(|node| {
                 let client_top_left = self.client_top_left();
                 let point = Point::new(point.x - client_top_left.x, point.y - client_top_left.y);
                 let point = node.transform().inverse() * point;
@@ -903,14 +919,14 @@ patterns! {
         },
 
         fn DocumentRange(&self) -> Result<ITextRangeProvider> {
-            self.resolve(|node| {
+            self.resolve_for_text_pattern(|node| {
                 let range = node.document_range();
                 Ok(PlatformTextRange::new(&self.tree, range, self.hwnd).into())
             })
         },
 
         fn SupportedTextSelection(&self) -> Result<SupportedTextSelection> {
-            self.resolve(|node| {
+            self.resolve_for_text_pattern(|node| {
                 if node.has_text_selection() {
                     Ok(SupportedTextSelection_Single)
                 } else {
