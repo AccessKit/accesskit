@@ -112,8 +112,15 @@ impl Adapter {
         let window = view.window().unwrap();
         let point = window.convert_point_from_screen(point);
         let point = view.convert_point_from_view(point, None);
-        let view_bounds = view.bounds();
-        let point = Point::new(point.x, view_bounds.size.height - point.y);
+        let point = Point::new(
+            point.x,
+            if view.is_flipped() {
+                point.y
+            } else {
+                let view_bounds = view.bounds();
+                view_bounds.size.height - point.y
+            },
+        );
 
         let state = context.tree.read();
         let root = state.root();
