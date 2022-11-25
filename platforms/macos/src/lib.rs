@@ -17,3 +17,5 @@ pub use event::QueuedEvents;
 
 mod subclass;
 pub use subclass::SubclassingAdapter;
+
+pub use objc2::foundation::{NSArray, NSObject, NSPoint};
