@@ -1,5 +1,13 @@
 # Changelog
 
+### [0.1.5](https://www.github.com/AccessKit/accesskit/compare/accesskit_macos-v0.1.4...accesskit_macos-v0.1.5) (2022-11-26)
+
+
+### Bug Fixes
+
+* Handle views with flipped coordinates ([#174](https://www.github.com/AccessKit/accesskit/issues/174)) ([d14484c](https://www.github.com/AccessKit/accesskit/commit/d14484cdcfdd99a497354aa3e012a0e130cc3d64))
+* Make VoiceOver move through nodes in logical order ([#176](https://www.github.com/AccessKit/accesskit/issues/176)) ([f060be4](https://www.github.com/AccessKit/accesskit/commit/f060be409945296ed100cd63ecb3d2bb6bbad89e))
+
 ### [0.1.4](https://www.github.com/AccessKit/accesskit/compare/accesskit_macos-v0.1.3...accesskit_macos-v0.1.4) (2022-11-25)
 
 
