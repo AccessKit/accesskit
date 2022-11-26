@@ -12,7 +12,12 @@ use objc2::{
 use once_cell::unsync::Lazy;
 use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
-use crate::{appkit::NSView, context::Context, event::QueuedEvents, node::filter};
+use crate::{
+    appkit::NSView,
+    context::Context,
+    event::QueuedEvents,
+    node::{can_be_focused, filter},
+};
 
 pub struct Adapter {
     context: Lazy<Rc<Context>, Box<dyn FnOnce() -> Rc<Context>>>,
@@ -92,7 +97,7 @@ impl Adapter {
         let context = Lazy::force(&self.context);
         let state = context.tree.read();
         if let Some(node) = state.focus() {
-            if filter(&node) == FilterResult::Include {
+            if can_be_focused(&node) {
                 return Id::autorelease_return(context.get_or_create_platform_node(node.id()))
                     as *mut _;
             }

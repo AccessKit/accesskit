@@ -223,15 +223,6 @@ fn ns_role(node: &Node) -> &'static NSString {
 }
 
 pub(crate) fn filter(node: &Node) -> FilterResult {
-    if !node.has_bounds() {
-        return FilterResult::ExcludeNode;
-    }
-
-    if node.is_root() && node.role() == Role::Window {
-        // If the root element is a window, ignore it.
-        return FilterResult::ExcludeNode;
-    }
-
     let ns_role = ns_role(node);
     if ns_role == unsafe { NSAccessibilityUnknownRole } {
         return FilterResult::ExcludeNode;
@@ -242,6 +233,10 @@ pub(crate) fn filter(node: &Node) -> FilterResult {
     }
 
     FilterResult::Include
+}
+
+pub(crate) fn can_be_focused(node: &Node) -> bool {
+    filter(node) == FilterResult::Include && node.role() != Role::Window
 }
 
 #[derive(PartialEq)]
@@ -330,14 +325,13 @@ declare_class!(
 
         #[sel(accessibilityChildren)]
         fn children(&self) -> *mut NSArray<PlatformNode> {
-            self.resolve_with_context(|node, context| {
-                let platform_nodes = node
-                    .filtered_children(filter)
-                    .map(|child| context.get_or_create_platform_node(child.id()))
-                    .collect::<Vec<Id<PlatformNode, Shared>>>();
-                Id::autorelease_return(NSArray::from_vec(platform_nodes))
-            })
-            .unwrap_or_else(null_mut)
+            self.children_internal()
+        }
+
+        #[sel(accessibilityChildrenInNavigationOrder)]
+        fn children_in_navigation_order(&self) -> *mut NSArray<PlatformNode> {
+            // For now, we assume the children are in navigation order.
+            self.children_internal()
         }
 
         #[sel(accessibilityFrame)]
@@ -442,7 +436,8 @@ declare_class!(
 
         #[sel(isAccessibilityFocused)]
         fn is_focused(&self) -> bool {
-            self.resolve(|node| node.is_focused()).unwrap_or(false)
+            self.resolve(|node| node.is_focused() && can_be_focused(node))
+                .unwrap_or(false)
         }
 
         #[sel(setAccessibilityFocused:)]
@@ -536,5 +531,16 @@ impl PlatformNode {
         F: FnOnce(&Node, &Tree) -> T,
     {
         self.resolve_with_context(|node, context| f(node, &context.tree))
+    }
+
+    fn children_internal(&self) -> *mut NSArray<PlatformNode> {
+        self.resolve_with_context(|node, context| {
+            let platform_nodes = node
+                .filtered_children(filter)
+                .map(|child| context.get_or_create_platform_node(child.id()))
+                .collect::<Vec<Id<PlatformNode, Shared>>>();
+            Id::autorelease_return(NSArray::from_vec(platform_nodes))
+        })
+        .unwrap_or_else(null_mut)
     }
 }
