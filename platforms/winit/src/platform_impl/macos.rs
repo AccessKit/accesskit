@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file).
 
 use accesskit::{ActionHandler, TreeUpdate};
-use accesskit_macos::{Adapter as MacOSAdapter, SubclassingAdapter};
+use accesskit_macos::SubclassingAdapter;
 use winit::{platform::macos::WindowExtMacOS, window::Window};
 
 pub struct Adapter {
@@ -17,8 +17,7 @@ impl Adapter {
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let view = window.ns_view();
-        let adapter = unsafe { MacOSAdapter::new(view, source, action_handler) };
-        let adapter = unsafe { SubclassingAdapter::new(view, adapter) };
+        let adapter = unsafe { SubclassingAdapter::new(view, source, action_handler) };
         Self { adapter }
     }
 

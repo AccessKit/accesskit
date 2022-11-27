@@ -3,6 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use accesskit::{ActionHandler, TreeUpdate};
 use objc2::{
     declare::{ClassBuilder, Ivar, IvarDrop},
     declare_class,
@@ -12,18 +13,18 @@ use objc2::{
     },
     foundation::{NSArray, NSObject, NSPoint},
     msg_send_id,
-    rc::{Id, Owned, Shared, WeakId},
+    rc::{Id, Owned, Shared},
     runtime::{Class, Sel},
     sel, ClassType,
 };
-use once_cell::sync::Lazy;
+use once_cell::{sync::Lazy as SyncLazy, unsync::Lazy};
 use parking_lot::Mutex;
-use std::{collections::HashMap, ffi::c_void, ops::Deref};
+use std::{collections::HashMap, ffi::c_void};
 
-use crate::{appkit::NSView, Adapter};
+use crate::{appkit::NSView, event::QueuedEvents, Adapter};
 
-static SUBCLASSES: Lazy<Mutex<HashMap<&'static Class, &'static Class>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
+static SUBCLASSES: SyncLazy<Mutex<HashMap<&'static Class, &'static Class>>> =
+    SyncLazy::new(|| Mutex::new(HashMap::new()));
 
 // Declare as mutable to ensure the address is unique.
 static mut ASSOCIATED_OBJECT_KEY: u8 = 0;
@@ -32,11 +33,13 @@ fn associated_object_key() -> *const c_void {
     unsafe { &ASSOCIATED_OBJECT_KEY as *const u8 as *const _ }
 }
 
+type LazyAdapter = Lazy<Adapter, Box<dyn FnOnce() -> Adapter>>;
+
 declare_class!(
     struct AssociatedObject {
         // SAFETY: These are set in AssociatedObject::new, immediately after
         // the object is created.
-        adapter: IvarDrop<Box<Adapter>>,
+        adapter: IvarDrop<Box<LazyAdapter>>,
         prev_class: &'static Class,
     }
 
@@ -47,7 +50,7 @@ declare_class!(
 );
 
 impl AssociatedObject {
-    fn new(adapter: Adapter, prev_class: &'static Class) -> Id<Self, Shared> {
+    fn new(adapter: LazyAdapter, prev_class: &'static Class) -> Id<Self, Shared> {
         unsafe {
             let mut object: Id<Self, Owned> = msg_send_id![Self::class(), new];
             Ivar::write(&mut object.adapter, Box::new(adapter));
@@ -76,36 +79,49 @@ unsafe extern "C" fn superclass(this: &NSView, _cmd: Sel) -> Option<&Class> {
 
 unsafe extern "C" fn children(this: &NSView, _cmd: Sel) -> *mut NSArray<NSObject> {
     let associated = associated_object(this);
-    associated.adapter.view_children()
+    let adapter = Lazy::force(&associated.adapter);
+    adapter.view_children()
 }
 
 unsafe extern "C" fn focus(this: &NSView, _cmd: Sel) -> *mut NSObject {
     let associated = associated_object(this);
-    associated.adapter.focus()
+    let adapter = Lazy::force(&associated.adapter);
+    adapter.focus()
 }
 
 unsafe extern "C" fn hit_test(this: &NSView, _cmd: Sel, point: NSPoint) -> *mut NSObject {
     let associated = associated_object(this);
-    associated.adapter.hit_test(point)
+    let adapter = Lazy::force(&associated.adapter);
+    adapter.hit_test(point)
 }
 
 /// Uses dynamic Objective-C subclassing to implement the NSView
 /// accessibility methods when normal subclassing isn't an option.
 pub struct SubclassingAdapter {
-    view: WeakId<NSView>,
+    view: Id<NSView, Shared>,
     associated: Id<AssociatedObject, Shared>,
 }
 
 impl SubclassingAdapter {
-    /// Dynamically subclass the specified view to use the specified adapter.
+    /// Create an adapter that dynamically subclasses the specified view.
     ///
     /// # Safety
     ///
     /// `view` must be a valid, unreleased pointer to an `NSView`.
-    pub unsafe fn new(view: *mut c_void, adapter: Adapter) -> Self {
+    pub unsafe fn new(
+        view: *mut c_void,
+        source: Box<dyn FnOnce() -> TreeUpdate>,
+        action_handler: Box<dyn ActionHandler>,
+    ) -> Self {
         let view = view as *mut NSView;
         let retained_view = unsafe { Id::retain(view) }.unwrap();
-        let weak_view = WeakId::new(&retained_view);
+        let adapter: LazyAdapter = {
+            let retained_view = retained_view.clone();
+            Lazy::new(Box::new(move || {
+                let view = Id::as_ptr(&retained_view) as *mut c_void;
+                unsafe { Adapter::new(view, source(), action_handler) }
+            }))
+        };
         // Cast to a pointer and back to force the lifetime to 'static
         // SAFETY: We know the class will live as long as the instance,
         // and we only use this reference while the instance is alive.
@@ -149,38 +165,45 @@ impl SubclassingAdapter {
         // it uses an associated object instead.
         unsafe { object_setClass(view as *mut _, (*subclass as *const Class).cast()) };
         Self {
-            view: weak_view,
+            view: retained_view,
             associated,
         }
     }
 
-    pub fn inner(&self) -> &Adapter {
-        &self.associated.adapter
+    /// Initialize the tree if it hasn't been initialized already, then apply
+    /// the provided update.
+    ///
+    /// The caller must call [`QueuedEvents::raise`] on the return value.
+    pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
+        let adapter = Lazy::force(&self.associated.adapter);
+        adapter.update(update)
     }
-}
 
-impl Deref for SubclassingAdapter {
-    type Target = Adapter;
-
-    fn deref(&self) -> &Adapter {
-        self.inner()
+    /// If and only if the tree has been initialized, call the provided function
+    /// and apply the resulting update.
+    ///
+    /// If a [`QueuedEvents`] instance is returned, the caller must call
+    /// [`QueuedEvents::raise`] on it.
+    pub fn update_if_active(
+        &self,
+        update_factory: impl FnOnce() -> TreeUpdate,
+    ) -> Option<QueuedEvents> {
+        Lazy::get(&self.associated.adapter).map(|adapter| adapter.update(update_factory()))
     }
 }
 
 impl Drop for SubclassingAdapter {
     fn drop(&mut self) {
-        if let Some(view) = self.view.load() {
-            let prev_class = *self.associated.prev_class;
-            let view = Id::as_ptr(&view) as *mut NSView;
-            unsafe { object_setClass(view as *mut _, (prev_class as *const Class).cast()) };
-            unsafe {
-                objc_setAssociatedObject(
-                    view as *mut _,
-                    associated_object_key(),
-                    std::ptr::null_mut(),
-                    OBJC_ASSOCIATION_RETAIN_NONATOMIC,
-                )
-            };
-        }
+        let prev_class = *self.associated.prev_class;
+        let view = Id::as_ptr(&self.view) as *mut NSView;
+        unsafe { object_setClass(view as *mut _, (prev_class as *const Class).cast()) };
+        unsafe {
+            objc_setAssociatedObject(
+                view as *mut _,
+                associated_object_key(),
+                std::ptr::null_mut(),
+                OBJC_ASSOCIATION_RETAIN_NONATOMIC,
+            )
+        };
     }
 }
