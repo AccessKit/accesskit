@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{ActionHandler, NodeId, TreeUpdate};
-use lazy_static::lazy_static;
+use once_cell::{sync::Lazy as SyncLazy, unsync::Lazy};
 use parking_lot::{const_mutex, Condvar, Mutex};
 use std::{cell::RefCell, rc::Rc, sync::Arc, thread, time::Duration};
 use windows as Windows;
@@ -18,47 +18,39 @@ use windows::{
     },
 };
 
-use super::Adapter;
+use super::{Adapter, UiaInitMarker};
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
 
-lazy_static! {
-    static ref WIN32_INSTANCE: HINSTANCE = {
-        let instance = unsafe { GetModuleHandleW(None) };
-        instance.unwrap()
-    };
-    static ref DEFAULT_CURSOR: HCURSOR = {
-        let cursor = unsafe { LoadCursorW(None, IDC_ARROW) };
-        cursor.unwrap()
-    };
-    static ref WINDOW_CLASS_ATOM: u16 = {
-        let class_name = w!("AccessKitTest");
+static WINDOW_CLASS_ATOM: SyncLazy<u16> = SyncLazy::new(|| {
+    let class_name = w!("AccessKitTest");
 
-        let wc = WNDCLASSW {
-            hCursor: *DEFAULT_CURSOR,
-            hInstance: *WIN32_INSTANCE,
-            lpszClassName: class_name.into(),
-            style: CS_HREDRAW | CS_VREDRAW,
-            lpfnWndProc: Some(wndproc),
-            ..Default::default()
-        };
-
-        let atom = unsafe { RegisterClassW(&wc) };
-        if atom == 0 {
-            let result: Result<()> = Err(Error::from_win32());
-            result.unwrap();
-        }
-        atom
+    let wc = WNDCLASSW {
+        hCursor: unsafe { LoadCursorW(None, IDC_ARROW) }.unwrap(),
+        hInstance: unsafe { GetModuleHandleW(None) }.unwrap(),
+        lpszClassName: class_name.into(),
+        style: CS_HREDRAW | CS_VREDRAW,
+        lpfnWndProc: Some(wndproc),
+        ..Default::default()
     };
-}
+
+    let atom = unsafe { RegisterClassW(&wc) };
+    if atom == 0 {
+        let result: Result<()> = Err(Error::from_win32());
+        result.unwrap();
+    }
+    atom
+});
 
 struct InnerWindowState {
     focus: NodeId,
     is_window_focused: bool,
 }
 
+type LazyAdapter = Lazy<Adapter, Box<dyn FnOnce() -> Adapter>>;
+
 struct WindowState {
-    adapter: Adapter,
+    adapter: LazyAdapter,
     inner_state: Rc<RefCell<InnerWindowState>>,
 }
 
@@ -72,12 +64,14 @@ fn update_focus(window: HWND, is_window_focused: bool) {
     inner_state.is_window_focused = is_window_focused;
     let focus = inner_state.focus;
     drop(inner_state);
-    let events = window_state.adapter.update_if_active(|| TreeUpdate {
-        nodes: vec![],
-        tree: None,
-        focus: is_window_focused.then(|| focus),
-    });
-    events.raise();
+    if let Some(adapter) = Lazy::get(&window_state.adapter) {
+        let events = adapter.update(TreeUpdate {
+            nodes: vec![],
+            tree: None,
+            focus: is_window_focused.then(|| focus),
+        });
+        events.raise();
+    }
 }
 
 struct WindowCreateParams(TreeUpdate, NodeId, Box<dyn ActionHandler>);
@@ -94,17 +88,14 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 is_window_focused: false,
             }));
             let inner_state_for_tree_init = inner_state.clone();
+            let uia_init_marker = UiaInitMarker::new();
             let state = Box::new(WindowState {
-                adapter: Adapter::new(
-                    window,
-                    Box::new(move || {
-                        let mut result = initial_state;
-                        let state = inner_state_for_tree_init.borrow();
-                        result.focus = state.is_window_focused.then(|| state.focus);
-                        result
-                    }),
-                    action_handler,
-                ),
+                adapter: Lazy::new(Box::new(move || {
+                    let mut initial_tree = initial_state;
+                    let state = inner_state_for_tree_init.borrow();
+                    initial_tree.focus = state.is_window_focused.then(|| state.focus);
+                    Adapter::new(window, initial_tree, action_handler, uia_init_marker)
+                })),
                 inner_state,
             });
             unsafe { SetWindowLongPtrW(window, GWLP_USERDATA, Box::into_raw(state) as _) };
@@ -131,7 +122,8 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 return unsafe { DefWindowProcW(window, message, wparam, lparam) };
             }
             let window_state = unsafe { &*window_state };
-            let result = window_state.adapter.handle_wm_getobject(wparam, lparam);
+            let adapter = Lazy::force(&window_state.adapter);
+            let result = adapter.handle_wm_getobject(wparam, lparam);
             result.map_or_else(
                 || unsafe { DefWindowProcW(window, message, wparam, lparam) },
                 |result| result.into(),
@@ -173,7 +165,7 @@ fn create_window(
             CW_USEDEFAULT,
             None,
             None,
-            *WIN32_INSTANCE,
+            GetModuleHandleW(None).unwrap(),
             Some(Box::into_raw(create_params) as _),
         )
     };

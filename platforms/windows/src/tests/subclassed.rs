@@ -13,7 +13,7 @@ use winit::{
     window::WindowBuilder,
 };
 
-use crate::{Adapter, SubclassingAdapter};
+use crate::SubclassingAdapter;
 
 const WINDOW_TITLE: &str = "Simple test";
 
@@ -70,16 +70,19 @@ fn has_native_uia() {
         .unwrap();
     let hwnd = HWND(window.hwnd());
     assert!(!unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
-    let adapter = Adapter::new(
+    let adapter = SubclassingAdapter::new(
         hwnd,
         Box::new(get_initial_state),
         Box::new(NullActionHandler {}),
     );
-    let adapter = SubclassingAdapter::new(adapter);
     assert!(unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
-    let adapter = adapter.into_inner(); // stops subclassing
+    drop(adapter);
     assert!(!unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
-    let adapter = SubclassingAdapter::new(adapter);
+    let adapter = SubclassingAdapter::new(
+        hwnd,
+        Box::new(get_initial_state),
+        Box::new(NullActionHandler {}),
+    );
     assert!(unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
     drop(window);
     drop(adapter);

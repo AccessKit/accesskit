@@ -3,18 +3,23 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::{cell::Cell, ffi::c_void, mem::transmute, ops::Deref};
+use accesskit::{ActionHandler, TreeUpdate};
+use once_cell::unsync::Lazy;
+use std::{cell::Cell, ffi::c_void, mem::transmute};
 use windows::{
     core::*,
     Win32::{Foundation::*, UI::WindowsAndMessaging::*},
 };
 
-use crate::Adapter;
+use crate::{Adapter, QueuedEvents, UiaInitMarker};
 
 const PROP_NAME: &HSTRING = w!("AccessKitAdapter");
 
+type LazyAdapter = Lazy<Adapter, Box<dyn FnOnce() -> Adapter>>;
+
 struct SubclassImpl {
-    adapter: Adapter,
+    hwnd: HWND,
+    adapter: LazyAdapter,
     prev_wnd_proc: WNDPROC,
     window_destroyed: Cell<bool>,
 }
@@ -25,7 +30,8 @@ extern "system" fn wnd_proc(window: HWND, message: u32, wparam: WPARAM, lparam: 
     assert!(!impl_ptr.is_null());
     let r#impl = unsafe { &*impl_ptr };
     if message == WM_GETOBJECT {
-        if let Some(result) = r#impl.adapter.handle_wm_getobject(wparam, lparam) {
+        let adapter = Lazy::force(&r#impl.adapter);
+        if let Some(result) = adapter.handle_wm_getobject(wparam, lparam) {
             return result.into();
         }
     }
@@ -36,8 +42,9 @@ extern "system" fn wnd_proc(window: HWND, message: u32, wparam: WPARAM, lparam: 
 }
 
 impl SubclassImpl {
-    fn new(adapter: Adapter) -> Box<Self> {
+    fn new(hwnd: HWND, adapter: LazyAdapter) -> Box<Self> {
         Box::new(Self {
+            hwnd,
             adapter,
             prev_wnd_proc: None,
             window_destroyed: Cell::new(false),
@@ -45,10 +52,16 @@ impl SubclassImpl {
     }
 
     fn install(&mut self) {
-        let hwnd = self.adapter.window_handle();
-        unsafe { SetPropW(hwnd, PROP_NAME, HANDLE(self as *const SubclassImpl as _)) }.unwrap();
+        unsafe {
+            SetPropW(
+                self.hwnd,
+                PROP_NAME,
+                HANDLE(self as *const SubclassImpl as _),
+            )
+        }
+        .unwrap();
         let result =
-            unsafe { SetWindowLongPtrW(hwnd, GWLP_WNDPROC, wnd_proc as *const c_void as _) };
+            unsafe { SetWindowLongPtrW(self.hwnd, GWLP_WNDPROC, wnd_proc as *const c_void as _) };
         if result == 0 {
             let result: Result<()> = Err(Error::from_win32());
             result.unwrap();
@@ -60,10 +73,9 @@ impl SubclassImpl {
         if self.window_destroyed.get() {
             return;
         }
-        let hwnd = self.adapter.window_handle();
         let result = unsafe {
             SetWindowLongPtrW(
-                hwnd,
+                self.hwnd,
                 GWLP_WNDPROC,
                 transmute::<WNDPROC, isize>(self.prev_wnd_proc),
             )
@@ -72,7 +84,7 @@ impl SubclassImpl {
             let result: Result<()> = Err(Error::from_win32());
             result.unwrap();
         }
-        unsafe { RemovePropW(hwnd, PROP_NAME) }.unwrap();
+        unsafe { RemovePropW(self.hwnd, PROP_NAME) }.unwrap();
     }
 }
 
@@ -80,39 +92,55 @@ impl SubclassImpl {
 /// that provides no other way of adding custom message handlers.
 ///
 /// [Win32 subclassing]: https://docs.microsoft.com/en-us/windows/win32/controls/subclassing-overview
-#[repr(transparent)]
-pub struct SubclassingAdapter(Option<Box<SubclassImpl>>);
+pub struct SubclassingAdapter(Box<SubclassImpl>);
 
 impl SubclassingAdapter {
-    pub fn new(adapter: Adapter) -> Self {
-        let mut r#impl = SubclassImpl::new(adapter);
+    pub fn new(
+        hwnd: HWND,
+        source: Box<dyn FnOnce() -> TreeUpdate>,
+        action_handler: Box<dyn ActionHandler>,
+    ) -> Self {
+        let uia_init_marker = UiaInitMarker::new();
+        let adapter: LazyAdapter = Lazy::new(Box::new(move || {
+            Adapter::new(hwnd, source(), action_handler, uia_init_marker)
+        }));
+        let mut r#impl = SubclassImpl::new(hwnd, adapter);
         r#impl.install();
-        Self(Some(r#impl))
+        Self(r#impl)
     }
 
-    pub fn inner(&self) -> &Adapter {
-        &self.0.as_ref().unwrap().adapter
+    /// Initialize the tree if it hasn't been initialized already, then apply
+    /// the provided update.
+    ///
+    /// The caller must call [`QueuedEvents::raise`] on the return value.
+    ///
+    /// This method may be safely called on any thread, but refer to
+    /// [`QueuedEvents::raise`] for restrictions on the context in which
+    /// it should be called.
+    pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
+        let adapter = Lazy::force(&self.0.adapter);
+        adapter.update(update)
     }
 
-    pub fn into_inner(mut self) -> Adapter {
-        let r#impl = self.0.take().unwrap();
-        r#impl.uninstall();
-        r#impl.adapter
-    }
-}
-
-impl Deref for SubclassingAdapter {
-    type Target = Adapter;
-
-    fn deref(&self) -> &Adapter {
-        self.inner()
+    /// If and only if the tree has been initialized, call the provided function
+    /// and apply the resulting update.
+    ///
+    /// If a [`QueuedEvents`] instance is returned, the caller must call
+    /// [`QueuedEvents::raise`] on it.
+    ///
+    /// This method may be safely called on any thread, but refer to
+    /// [`QueuedEvents::raise`] for restrictions on the context in which
+    /// it should be called.
+    pub fn update_if_active(
+        &self,
+        update_factory: impl FnOnce() -> TreeUpdate,
+    ) -> Option<QueuedEvents> {
+        Lazy::get(&self.0.adapter).map(|adapter| adapter.update(update_factory()))
     }
 }
 
 impl Drop for SubclassingAdapter {
     fn drop(&mut self) {
-        if let Some(r#impl) = self.0.as_ref() {
-            r#impl.uninstall();
-        }
+        self.0.uninstall();
     }
 }
