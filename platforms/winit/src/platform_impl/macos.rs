@@ -13,7 +13,7 @@ pub struct Adapter {
 impl Adapter {
     pub fn new(
         window: &Window,
-        source: Box<dyn FnOnce() -> TreeUpdate>,
+        source: impl 'static + FnOnce() -> TreeUpdate,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let view = window.ns_view();

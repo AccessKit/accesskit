@@ -97,7 +97,7 @@ pub struct SubclassingAdapter(Box<SubclassImpl>);
 impl SubclassingAdapter {
     pub fn new(
         hwnd: HWND,
-        source: Box<dyn FnOnce() -> TreeUpdate>,
+        source: impl 'static + FnOnce() -> TreeUpdate,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let uia_init_marker = UiaInitMarker::new();

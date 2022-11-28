@@ -70,19 +70,11 @@ fn has_native_uia() {
         .unwrap();
     let hwnd = HWND(window.hwnd());
     assert!(!unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
-    let adapter = SubclassingAdapter::new(
-        hwnd,
-        Box::new(get_initial_state),
-        Box::new(NullActionHandler {}),
-    );
+    let adapter = SubclassingAdapter::new(hwnd, get_initial_state, Box::new(NullActionHandler {}));
     assert!(unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
     drop(adapter);
     assert!(!unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
-    let adapter = SubclassingAdapter::new(
-        hwnd,
-        Box::new(get_initial_state),
-        Box::new(NullActionHandler {}),
-    );
+    let adapter = SubclassingAdapter::new(hwnd, get_initial_state, Box::new(NullActionHandler {}));
     assert!(unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
     drop(window);
     drop(adapter);

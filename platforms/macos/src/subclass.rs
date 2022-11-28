@@ -110,7 +110,7 @@ impl SubclassingAdapter {
     /// `view` must be a valid, unreleased pointer to an `NSView`.
     pub unsafe fn new(
         view: *mut c_void,
-        source: Box<dyn FnOnce() -> TreeUpdate>,
+        source: impl 'static + FnOnce() -> TreeUpdate,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let view = view as *mut NSView;
