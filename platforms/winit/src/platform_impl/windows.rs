@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file).
 
 use accesskit::{ActionHandler, TreeUpdate};
-use accesskit_windows::{Adapter as WindowsAdapter, SubclassingAdapter, HWND};
+use accesskit_windows::{SubclassingAdapter, HWND};
 use winit::{platform::windows::WindowExtWindows, window::Window};
 
 pub struct Adapter {
@@ -13,12 +13,11 @@ pub struct Adapter {
 impl Adapter {
     pub fn new(
         window: &Window,
-        source: Box<dyn FnOnce() -> TreeUpdate>,
+        source: impl 'static + FnOnce() -> TreeUpdate,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let hwnd = HWND(window.hwnd());
-        let adapter = WindowsAdapter::new(hwnd, source, action_handler);
-        let adapter = SubclassingAdapter::new(adapter);
+        let adapter = SubclassingAdapter::new(hwnd, source, action_handler);
         Self { adapter }
     }
 
@@ -27,6 +26,8 @@ impl Adapter {
     }
 
     pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
-        self.adapter.update_if_active(updater).raise();
+        if let Some(events) = self.adapter.update_if_active(updater) {
+            events.raise();
+        }
     }
 }

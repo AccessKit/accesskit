@@ -40,7 +40,7 @@ pub struct Adapter {
 impl Adapter {
     pub fn new<T: From<ActionRequestEvent> + Send + 'static>(
         window: &Window,
-        source: Box<dyn FnOnce() -> TreeUpdate + Send>,
+        source: impl 'static + FnOnce() -> TreeUpdate + Send,
         event_loop_proxy: EventLoopProxy<T>,
     ) -> Self {
         let action_handler = WinitActionHandler {
@@ -56,7 +56,7 @@ impl Adapter {
     /// depending on the underlying AccessKit platform adapter.
     pub fn with_action_handler(
         window: &Window,
-        source: Box<dyn FnOnce() -> TreeUpdate + Send>,
+        source: impl 'static + FnOnce() -> TreeUpdate + Send,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let adapter = platform_impl::Adapter::new(window, source, action_handler);

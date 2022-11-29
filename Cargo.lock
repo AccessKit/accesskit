@@ -38,8 +38,7 @@ dependencies = [
  "accesskit",
  "accesskit_consumer",
  "arrayvec 0.7.1",
- "lazy-init",
- "lazy_static",
+ "once_cell",
  "parking_lot",
  "paste",
  "scopeguard",
@@ -524,12 +523,6 @@ dependencies = [
  "schemars",
  "serde",
 ]
-
-[[package]]
-name = "lazy-init"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23517540be87a91d06324e6bf6286ba8214171123ee8862ae9a5e7d938d71815"
 
 [[package]]
 name = "lazy_static"

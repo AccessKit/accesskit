@@ -10,6 +10,9 @@ mod util;
 mod adapter;
 pub use adapter::{Adapter, QueuedEvents};
 
+mod init;
+pub use init::UiaInitMarker;
+
 mod subclass;
 pub use subclass::SubclassingAdapter;
 

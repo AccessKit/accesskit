@@ -10,7 +10,7 @@ pub struct Adapter;
 impl Adapter {
     pub fn new(
         _window: &Window,
-        _source: Box<dyn FnOnce() -> TreeUpdate>,
+        _source: impl 'static + FnOnce() -> TreeUpdate,
         _action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         Self {}

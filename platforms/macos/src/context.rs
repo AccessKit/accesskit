@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{NodeId, TreeUpdate};
+use accesskit::NodeId;
 use accesskit_consumer::Tree;
 use objc2::{
     foundation::MainThreadMarker,
@@ -11,11 +11,7 @@ use objc2::{
 };
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use crate::{
-    appkit::*,
-    event::{EventGenerator, QueuedEvents},
-    node::PlatformNode,
-};
+use crate::{appkit::*, node::PlatformNode};
 
 pub(crate) struct Context {
     pub(crate) view: WeakId<NSView>,
@@ -51,13 +47,6 @@ impl Context {
     pub(crate) fn remove_platform_node(&self, id: NodeId) -> Option<Id<PlatformNode, Shared>> {
         let mut platform_nodes = self.platform_nodes.borrow_mut();
         platform_nodes.remove(&id)
-    }
-
-    pub(crate) fn update(self: &Rc<Self>, update: TreeUpdate) -> QueuedEvents {
-        let mut event_generator = EventGenerator::new(self.clone());
-        self.tree
-            .update_and_process_changes(update, &mut event_generator);
-        event_generator.into_result()
     }
 }
 

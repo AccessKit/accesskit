@@ -152,10 +152,10 @@ fn main() {
         let state = Arc::clone(&state);
         Adapter::new(
             &window,
-            Box::new(move || {
+            move || {
                 let state = state.lock().unwrap();
                 initial_tree_update(&state)
-            }),
+            },
             event_loop.create_proxy(),
         )
     };
