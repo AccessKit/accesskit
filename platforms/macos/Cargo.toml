@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_macos"
-version = "0.1.5"
+version = "0.2.0"
 authors = ["Matt Campbell <mattcampbell@pobox.com>"]
 license = "MIT/Apache-2.0"
 description = "AccessKit UI accessibility infrastructure: macOS adapter"
