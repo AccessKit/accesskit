@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.9.3...accesskit_windows-v0.10.0) (2022-11-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* Move lazy initialization from the core platform adapter to the caller ([#179](https://github.com/AccessKit/accesskit/issues/179))
+
+### Code Refactoring
+
+* Move lazy initialization from the core platform adapter to the caller ([#179](https://github.com/AccessKit/accesskit/issues/179)) ([f35c941](https://github.com/AccessKit/accesskit/commit/f35c941f395f3162db376a69cfaaaf770d376267))
+
 ### [0.9.3](https://www.github.com/AccessKit/accesskit/compare/accesskit_windows-v0.9.2...accesskit_windows-v0.9.3) (2022-11-25)
 
 

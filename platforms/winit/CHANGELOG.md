@@ -4,6 +4,25 @@
   * dependencies
     * accesskit_macos bumped from 0.1.4 to 0.1.5
 
+## [0.7.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.6.6...accesskit_winit-v0.7.0) (2022-11-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* Move lazy initialization from the core platform adapter to the caller ([#179](https://github.com/AccessKit/accesskit/issues/179))
+
+### Code Refactoring
+
+* Move lazy initialization from the core platform adapter to the caller ([#179](https://github.com/AccessKit/accesskit/issues/179)) ([f35c941](https://github.com/AccessKit/accesskit/commit/f35c941f395f3162db376a69cfaaaf770d376267))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_windows bumped from 0.9.3 to 0.10.0
+    * accesskit_macos bumped from 0.1.5 to 0.2.0
+
 ### [0.6.4](https://www.github.com/AccessKit/accesskit/compare/accesskit_winit-v0.6.3...accesskit_winit-v0.6.4) (2022-11-25)
 
 
