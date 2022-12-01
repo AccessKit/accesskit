@@ -18,7 +18,8 @@ use objc2::{
     foundation::{NSArray, NSCopying, NSNumber, NSObject, NSPoint, NSRect, NSSize, NSString},
     msg_send_id, ns_string,
     rc::{Id, Owned, Shared},
-    ClassType,
+    runtime::Sel,
+    sel, ClassType,
 };
 use std::{
     ptr::null_mut,
@@ -510,6 +511,39 @@ declare_class!(
         #[sel(accessibilityNotifiesWhenDestroyed)]
         fn notifies_when_destroyed(&self) -> bool {
             true
+        }
+
+        #[sel(isAccessibilitySelectorAllowed:)]
+        fn is_selector_allowed(&self, selector: Sel) -> bool {
+            self.resolve(|node| {
+                if selector == sel!(setAccessibilityFocused:) {
+                    return node.is_focusable();
+                }
+                if selector == sel!(accessibilityPerformPress) {
+                    return node.is_clickable();
+                }
+                if selector == sel!(accessibilityPerformIncrement) {
+                    return node.supports_increment();
+                }
+                if selector == sel!(accessibilityPerformDecrement) {
+                    return node.supports_decrement();
+                }
+                selector == sel!(accessibilityParent)
+                    || selector == sel!(accessibilityChildren)
+                    || selector == sel!(accessibilityChildrenInNavigationOrder)
+                    || selector == sel!(accessibilityFrame)
+                    || selector == sel!(accessibilityRole)
+                    || selector == sel!(accessibilityRoleDescription)
+                    || selector == sel!(accessibilityTitle)
+                    || selector == sel!(accessibilityValue)
+                    || selector == sel!(accessibilityMinValue)
+                    || selector == sel!(accessibilityMaxValue)
+                    || selector == sel!(isAccessibilityElement)
+                    || selector == sel!(isAccessibilityFocused)
+                    || selector == sel!(accessibilityNotifiesWhenDestroyed)
+                    || selector == sel!(isAccessibilitySelectorAllowed:)
+            })
+            .unwrap_or(false)
         }
     }
 );
