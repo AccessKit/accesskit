@@ -1267,23 +1267,26 @@ impl Tree {
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TreeUpdate {
-    /// An ordered list of zero or more node updates to apply to the tree.
+    /// Zero or more new or updated nodes. Order doesn't matter.
     ///
-    /// Suppose that the next [`Node`] to be applied is `node`. The following
-    /// invariants must hold:
+    /// Each node in this list will overwrite any existing node with the same ID.
+    /// This means that when updating a node, fields that are unchanged
+    /// from the previous version must still be set to the same values
+    /// as before.
     ///
-    /// * Either:
-    ///     1. `node.id` is already in the tree, or
-    ///     2. the tree is empty, and `node` is the new root of the tree.
-    /// * Every child ID in `node.children` must either be already a child
-    ///   of this node, or a new ID not previously in the tree. It is not
-    ///   allowed to "reparent" a child to this node without first removing
-    ///   that child from its previous parent.
-    /// * When a new ID appears in `node.children`, the tree should create a
-    ///   new uninitialized placeholder node for it immediately. That
-    ///   placeholder must be updated within the same `TreeUpdate`, otherwise
-    ///   it's a fatal error. This guarantees the tree is always complete
-    ///   before or after a `TreeUpdate`.
+    /// It is an error for any node in this list to not be either the root
+    /// or a child of another node. For nodes other than the root, the parent
+    /// must be either an unchanged node already in the tree, or another node
+    /// in this list.
+    ///
+    /// To add a child to the tree, the list must include both the child
+    /// and an updated version of the parent with the child's ID added to
+    /// [`Node::children`].
+    ///
+    /// To remove a child and all of its descendants, this list must include
+    /// an updated version of the parent node with the child's ID removed
+    /// from [`Node::children`]. Neither the child nor any of its descendants
+    /// may be included in this list.
     pub nodes: Vec<(NodeId, Arc<Node>)>,
 
     /// Rarely updated information about the tree as a whole. This may be omitted
@@ -1294,9 +1297,7 @@ pub struct TreeUpdate {
     pub tree: Option<Tree>,
 
     /// The node with keyboard focus within this tree, if any.
-    /// If the focus is in a descendant tree, set this to the node
-    /// to which that tree is anchored. The most recent focus, if any,
-    /// must be provided with every tree update.
+    /// The most recent focus, if any,must be provided with every tree update.
     ///
     /// This field must contain a value if and only if the native host
     /// (e.g. window) currently has the keyboard focus. This implies
