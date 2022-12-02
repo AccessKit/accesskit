@@ -345,19 +345,23 @@ declare_class!(
                 };
 
                 node.bounding_box().map_or(NSRect::ZERO, |rect| {
+                    // AccessKit coordinates are in physical (DPI-dependent)
+                    // pixels, but macOS expects logical (DPI-independent)
+                    // coordinates here.
+                    let factor = view.backing_scale_factor();
                     let rect = NSRect {
                         origin: NSPoint {
-                            x: rect.x0,
+                            x: rect.x0 / factor,
                             y: if view.is_flipped() {
-                                rect.y0
+                                rect.y0 / factor
                             } else {
                                 let view_bounds = view.bounds();
-                                view_bounds.size.height - rect.y1
+                                view_bounds.size.height - rect.y1 / factor
                             },
                         },
                         size: NSSize {
-                            width: rect.width(),
-                            height: rect.height(),
+                            width: rect.width() / factor,
+                            height: rect.height() / factor,
                         },
                     };
                     let rect = view.convert_rect_to_view(rect, None);

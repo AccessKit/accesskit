@@ -5,7 +5,7 @@
 
 use objc2::{
     extern_class, extern_methods,
-    foundation::{NSObject, NSPoint, NSRect},
+    foundation::{CGFloat, NSObject, NSPoint, NSRect},
     msg_send_id,
     rc::{Id, Shared},
     ClassType,
@@ -44,5 +44,8 @@ extern_methods!(
 
         #[sel(isFlipped)]
         pub(crate) fn is_flipped(&self) -> bool;
+
+        #[sel(backingScaleFactor)]
+        pub(crate) fn backing_scale_factor(&self) -> CGFloat;
     }
 );
