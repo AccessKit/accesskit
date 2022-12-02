@@ -12,7 +12,7 @@ use std::iter::FusedIterator;
 
 use accesskit::NodeId;
 
-use crate::node::Node;
+use crate::{node::Node, tree::State as TreeState};
 
 /// An iterator that yields following siblings of a node.
 ///
@@ -436,6 +436,47 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator for FilteredChil
 }
 
 impl<'a, Filter: Fn(&Node) -> FilterResult> FusedIterator for FilteredChildren<'a, Filter> {}
+
+pub(crate) enum LabelledBy<'a, Filter: Fn(&Node) -> FilterResult> {
+    FromDescendants(FilteredChildren<'a, Filter>),
+    Explicit {
+        ids: std::slice::Iter<'a, NodeId>,
+        tree_state: &'a TreeState,
+    },
+}
+
+impl<'a, Filter: Fn(&Node) -> FilterResult> Iterator for LabelledBy<'a, Filter> {
+    type Item = Node<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::FromDescendants(iter) => iter.next(),
+            Self::Explicit { ids, tree_state } => {
+                ids.next().map(|id| tree_state.node_by_id(*id).unwrap())
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            Self::FromDescendants(iter) => iter.size_hint(),
+            Self::Explicit { ids, .. } => ids.size_hint(),
+        }
+    }
+}
+
+impl<'a, Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator for LabelledBy<'a, Filter> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::FromDescendants(iter) => iter.next_back(),
+            Self::Explicit { ids, tree_state } => ids
+                .next_back()
+                .map(|id| tree_state.node_by_id(*id).unwrap()),
+        }
+    }
+}
+
+impl<'a, Filter: Fn(&Node) -> FilterResult> FusedIterator for LabelledBy<'a, Filter> {}
 
 #[cfg(test)]
 mod tests {
