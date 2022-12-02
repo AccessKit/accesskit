@@ -16,7 +16,7 @@ use accesskit::{
 };
 
 use crate::iterators::{
-    FilterResult, FilteredChildren, FollowingFilteredSiblings, FollowingSiblings,
+    FilterResult, FilteredChildren, FollowingFilteredSiblings, FollowingSiblings, LabelledBy,
     PrecedingFilteredSiblings, PrecedingSiblings,
 };
 use crate::tree::State as TreeState;
@@ -484,23 +484,38 @@ impl NodeState {
     }
 }
 
+fn descendant_label_filter(node: &Node) -> FilterResult {
+    match node.role() {
+        Role::StaticText | Role::Image => FilterResult::Include,
+        Role::GenericContainer => FilterResult::ExcludeNode,
+        _ => FilterResult::ExcludeSubtree,
+    }
+}
+
 impl<'a> Node<'a> {
+    pub fn labelled_by(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+        let explicit = &self.state.data.labelled_by;
+        if explicit.is_empty() && matches!(self.role(), Role::Button | Role::Link) {
+            LabelledBy::FromDescendants(FilteredChildren::new(*self, &descendant_label_filter))
+        } else {
+            LabelledBy::Explicit {
+                ids: explicit.iter(),
+                tree_state: self.tree_state,
+            }
+        }
+    }
+
     pub fn name(&self) -> Option<String> {
         if let Some(name) = &self.data().name {
             Some(name.to_string())
         } else {
-            let labelled_by = &self.data().labelled_by;
-            if labelled_by.is_empty() {
-                None
-            } else {
-                Some(
-                    labelled_by
-                        .iter()
-                        .filter_map(|id| self.tree_state.node_by_id(*id).unwrap().name())
-                        .collect::<Vec<String>>()
-                        .join(" "),
-                )
-            }
+            let names = self
+                .labelled_by()
+                .filter_map(|node| node.name())
+                .collect::<Vec<String>>();
+            (!names.is_empty()).then(move || names.join(" "))
         }
     }
 }
@@ -700,6 +715,7 @@ mod tests {
     const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
     const NODE_ID_4: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(4) });
     const NODE_ID_5: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(5) });
+    const NODE_ID_6: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(6) });
 
     #[test]
     fn parent_and_index() {
@@ -1026,6 +1042,76 @@ mod tests {
         );
         assert_eq!(
             Some(LABEL_2.into()),
+            tree.read().node_by_id(NODE_ID_4).unwrap().name()
+        );
+    }
+
+    #[test]
+    fn name_from_descendant_label() {
+        const BUTTON_LABEL: &str = "Play";
+        const LINK_LABEL: &str = "Watch in browser";
+
+        let update = TreeUpdate {
+            nodes: vec![
+                (
+                    NODE_ID_1,
+                    Arc::new(Node {
+                        role: Role::Window,
+                        children: vec![NODE_ID_2, NODE_ID_4],
+                        ..Default::default()
+                    }),
+                ),
+                (
+                    NODE_ID_2,
+                    Arc::new(Node {
+                        role: Role::Button,
+                        children: vec![NODE_ID_3],
+                        ..Default::default()
+                    }),
+                ),
+                (
+                    NODE_ID_3,
+                    Arc::new(Node {
+                        role: Role::Image,
+                        name: Some(BUTTON_LABEL.into()),
+                        ..Default::default()
+                    }),
+                ),
+                (
+                    NODE_ID_4,
+                    Arc::new(Node {
+                        role: Role::Link,
+                        children: vec![NODE_ID_5],
+                        ..Default::default()
+                    }),
+                ),
+                (
+                    NODE_ID_5,
+                    Arc::new(Node {
+                        role: Role::GenericContainer,
+                        children: vec![NODE_ID_6],
+                        ..Default::default()
+                    }),
+                ),
+                (
+                    NODE_ID_6,
+                    Arc::new(Node {
+                        role: Role::StaticText,
+                        name: Some(LINK_LABEL.into()),
+                        ..Default::default()
+                    }),
+                ),
+            ],
+            tree: Some(Tree::new(NODE_ID_1)),
+            focus: None,
+        };
+        let tree = crate::Tree::new(update, Box::new(NullActionHandler {}));
+        assert_eq!(
+            Some(BUTTON_LABEL.into()),
+            tree.read().node_by_id(NODE_ID_2).unwrap().name()
+        );
+        assert_eq!(
+            Some(LINK_LABEL.into()),
             tree.read().node_by_id(NODE_ID_4).unwrap().name()
         );
     }
