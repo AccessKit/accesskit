@@ -259,7 +259,19 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
+    fn is_root(&self) -> bool {
+        match self {
+            Self::Node(node) => node.is_root(),
+            Self::DetachedNode(node) => node.is_root(),
+        }
+    }
+
     fn name(&self) -> Option<String> {
+        if self.is_root() && self.node_state().role() == Role::Window {
+            // If the group element that we expose for the top-level window
+            // includes a title, VoiceOver behavior is broken.
+            return None;
+        }
         match self {
             Self::Node(node) => node.name(),
             Self::DetachedNode(node) => node.name(),
