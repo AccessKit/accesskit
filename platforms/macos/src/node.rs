@@ -271,18 +271,29 @@ impl<'a> NodeWrapper<'a> {
     // and figure out how this is different in the macOS 10.10+ protocol
 
     pub(crate) fn title(&self) -> Option<String> {
+        let state = self.node_state();
+        if state.role() == Role::StaticText && state.value().is_none() {
+            // In this case, macOS wants the text to be the value, not title.
+            return None;
+        }
         self.name()
     }
 
     pub(crate) fn value(&self) -> Option<Value> {
-        if let Some(state) = self.node_state().checked_state() {
+        let state = self.node_state();
+        if let Some(state) = state.checked_state() {
             return Some(Value::Bool(state != CheckedState::False));
         }
-        if let Some(value) = self.node_state().value() {
+        if let Some(value) = state.value() {
             return Some(Value::String(value.into()));
         }
-        if let Some(value) = self.node_state().numeric_value() {
+        if let Some(value) = state.numeric_value() {
             return Some(Value::Number(value));
+        }
+        if state.role() == Role::StaticText {
+            if let Some(name) = self.name() {
+                return Some(Value::String(name));
+            }
         }
         None
     }
