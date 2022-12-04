@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.10.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.9.1...accesskit_consumer-v0.10.0) (2022-12-04)
+
+
+### Features
+
+* Automatically get button and link labels from descendants ([#184](https://github.com/AccessKit/accesskit/issues/184)) ([ec5c38e](https://github.com/AccessKit/accesskit/commit/ec5c38ef3001a10b7a135df1438901246463f3e1))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.8.0 to 0.8.1
+
 ### [0.9.1](https://www.github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.9.0...accesskit_consumer-v0.9.1) (2022-11-25)
 
 
