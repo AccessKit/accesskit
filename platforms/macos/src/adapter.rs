@@ -96,13 +96,16 @@ impl Adapter {
         let window = view.window().unwrap();
         let point = window.convert_point_from_screen(point);
         let point = view.convert_point_from_view(point, None);
+        // AccessKit coordinates are in physical (DPI-dependent) pixels, but
+        // macOS provides logical (DPI-independent) coordinates here.
+        let factor = view.backing_scale_factor();
         let point = Point::new(
-            point.x,
+            point.x * factor,
             if view.is_flipped() {
-                point.y
+                point.y * factor
             } else {
                 let view_bounds = view.bounds();
-                view_bounds.size.height - point.y
+                (view_bounds.size.height - point.y) * factor
             },
         );
 
