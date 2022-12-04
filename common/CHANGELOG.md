@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.8.0...accesskit-v0.8.1) (2022-12-04)
+
+
+### Documentation
+
+* Fix outdated documentation for `TreeUpdate` ([#182](https://github.com/AccessKit/accesskit/issues/182)) ([dd658c7](https://github.com/AccessKit/accesskit/commit/dd658c70df55b2234a0346220362b0b9a40bb41d))
+
 ## [0.8.0](https://www.github.com/AccessKit/accesskit/compare/accesskit-v0.7.0...accesskit-v0.8.0) (2022-11-17)
 
 
