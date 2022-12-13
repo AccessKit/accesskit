@@ -54,7 +54,13 @@ fn ns_role(node: &Node) -> &'static NSString {
             Role::Presentation => NSAccessibilityUnknownRole,
             Role::CheckBox => NSAccessibilityCheckBoxRole,
             Role::RadioButton => NSAccessibilityRadioButtonRole,
-            Role::TextField => NSAccessibilityTextFieldRole,
+            Role::TextField => {
+                if node.is_multiline() {
+                    NSAccessibilityTextAreaRole
+                } else {
+                    NSAccessibilityTextFieldRole
+                }
+            }
             Role::Button => NSAccessibilityButtonRole,
             Role::LabelText => NSAccessibilityGroupRole,
             Role::Pane => NSAccessibilityUnknownRole,

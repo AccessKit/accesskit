@@ -42,6 +42,7 @@ extern "C" {
     pub(crate) static NSAccessibilityStaticTextRole: &'static NSString;
     pub(crate) static NSAccessibilityTabGroupRole: &'static NSString;
     pub(crate) static NSAccessibilityTableRole: &'static NSString;
+    pub(crate) static NSAccessibilityTextAreaRole: &'static NSString;
     pub(crate) static NSAccessibilityTextFieldRole: &'static NSString;
     pub(crate) static NSAccessibilityToolbarRole: &'static NSString;
     pub(crate) static NSAccessibilityUnknownRole: &'static NSString;

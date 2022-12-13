@@ -409,6 +409,10 @@ impl NodeState {
         }
     }
 
+    pub fn is_multiline(&self) -> bool {
+        self.data().multiline
+    }
+
     pub fn default_action_verb(&self) -> Option<DefaultActionVerb> {
         self.data().default_action_verb
     }
