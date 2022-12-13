@@ -12,6 +12,7 @@ extern "C" {
     pub(crate) static NSAccessibilityFocusedUIElementChangedNotification: &'static NSString;
     pub(crate) static NSAccessibilityTitleChangedNotification: &'static NSString;
     pub(crate) static NSAccessibilityValueChangedNotification: &'static NSString;
+    pub(crate) static NSAccessibilitySelectedTextChangedNotification: &'static NSString;
 
     // Roles
     pub(crate) static NSAccessibilityButtonRole: &'static NSString;

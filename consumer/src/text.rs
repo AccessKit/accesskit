@@ -229,8 +229,43 @@ impl<'a> Position<'a> {
         self.inner.is_document_end(&self.root_node)
     }
 
-    pub fn to_degenerate_range(&self) -> Range {
+    pub fn to_degenerate_range(&self) -> Range<'a> {
         Range::new(self.root_node, self.inner, self.inner)
+    }
+
+    pub fn to_global_utf16_index(&self) -> usize {
+        let mut total_length = 0usize;
+        for node in self.root_node.inline_text_boxes() {
+            let node_text = node.value().unwrap();
+            if node.id() == self.inner.node.id() {
+                let character_lengths = &node.data().character_lengths;
+                let slice_end = character_lengths[..self.inner.character_index]
+                    .iter()
+                    .copied()
+                    .map(usize::from)
+                    .sum::<usize>();
+                return total_length
+                    + node_text[..slice_end]
+                        .chars()
+                        .map(char::len_utf16)
+                        .sum::<usize>();
+            }
+            total_length += node_text.chars().map(char::len_utf16).sum::<usize>();
+        }
+        panic!("invalid position")
+    }
+
+    pub fn to_line_index(&self) -> usize {
+        let mut pos = *self;
+        if !pos.is_line_start() {
+            pos = pos.backward_by_line();
+        }
+        let mut lines_before_current = 0usize;
+        while !pos.is_document_start() {
+            pos = pos.backward_by_line();
+            lines_before_current += 1;
+        }
+        lines_before_current
     }
 
     pub fn forward_by_character(&self) -> Self {
@@ -778,6 +813,16 @@ impl<'a> Node<'a> {
         })
     }
 
+    pub fn text_selection_focus(&self) -> Option<Position> {
+        self.data().text_selection.map(|selection| {
+            let focus = InnerPosition::upgrade(self.tree_state, selection.focus).unwrap();
+            Position {
+                root_node: *self,
+                inner: focus,
+            }
+        })
+    }
+
     /// Returns the nearest text position to the given point
     /// in this node's coordinate space.
     pub fn text_position_at_point(&self, point: Point) -> Position {
@@ -848,6 +893,71 @@ impl<'a> Node<'a> {
             inner: self.document_end(),
         }
     }
+
+    pub fn line_range_from_index(&self, line_index: usize) -> Option<Range> {
+        let mut pos = self.document_range().start();
+
+        if line_index > 0 {
+            if pos.is_document_end() || pos.forward_by_line().is_document_end() {
+                return None;
+            }
+            for _ in 0..line_index {
+                if pos.is_document_end() {
+                    return None;
+                }
+                pos = pos.forward_by_line();
+            }
+        }
+
+        let end = if pos.is_document_end() {
+            pos
+        } else {
+            pos.forward_by_line()
+        };
+        Some(Range::new(*self, pos.inner, end.inner))
+    }
+
+    pub fn text_position_from_global_utf16_index(&self, index: usize) -> Option<Position> {
+        let mut total_length = 0usize;
+        for node in self.inline_text_boxes() {
+            let node_text = node.value().unwrap();
+            let node_text_length = node_text.chars().map(char::len_utf16).sum::<usize>();
+            let new_total_length = total_length + node_text_length;
+            if index >= total_length && index < new_total_length {
+                let index = index - total_length;
+                let mut utf8_length = 0usize;
+                let mut utf16_length = 0usize;
+                for (character_index, utf8_char_length) in
+                    node.data().character_lengths.iter().enumerate()
+                {
+                    let new_utf8_length = utf8_length + (*utf8_char_length as usize);
+                    let char_str = &node_text[utf8_length..new_utf8_length];
+                    let utf16_char_length = char_str.chars().map(char::len_utf16).sum::<usize>();
+                    let new_utf16_length = utf16_length + utf16_char_length;
+                    if index >= utf16_length && index < new_utf16_length {
+                        return Some(Position {
+                            root_node: *self,
+                            inner: InnerPosition {
+                                node,
+                                character_index,
+                            },
+                        });
+                    }
+                    utf8_length = new_utf8_length;
+                    utf16_length = new_utf16_length;
+                }
+                panic!("index out of range");
+            }
+            total_length = new_total_length;
+        }
+        if index == total_length {
+            return Some(Position {
+                root_node: *self,
+                inner: self.document_end(),
+            });
+        }
+        None
+    }
 }
 
 #[cfg(test)]
@@ -911,10 +1021,14 @@ mod tests {
                             x1: 290.9189147949219,
                             y1: 48.33333206176758,
                         }),
-                        value: Some("This paragraph is long enough to wrap ".into()),
+                        // The non-breaking space in the following text
+                        // is in an arbitrary spot; its only purpose
+                        // is to test conversion between UTF-8 and UTF-16
+                        // indices.
+                        value: Some("This paragraph is\u{a0}long enough to wrap ".into()),
                         text_direction: Some(TextDirection::LeftToRight),
                         character_lengths: vec![
-                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1,
                             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                         ]
                         .into(),
@@ -1043,10 +1157,13 @@ mod tests {
                             x1: 158.9188995361328,
                             y1: 107.0,
                         }),
-                        value: Some("Last non-blank line.\n".into()),
+                        // Use an arbitrary emoji that encodes to two
+                        // UTF-16 code units to fully test conversion between
+                        // UTF-8, UTF-16, and character indices.
+                        value: Some("Last non-blank line\u{1f60a}\n".into()),
                         text_direction: Some(TextDirection::LeftToRight),
                         character_lengths: vec![
-                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 1,
                         ]
                         .into(),
                         character_positions: Some(
@@ -1171,7 +1288,7 @@ mod tests {
         assert!(end.is_paragraph_start());
         assert!(!end.is_document_start());
         assert!(end.is_document_end());
-        assert_eq!(range.text(), "This paragraph is long enough to wrap to another line.\nAnother paragraph.\n\nLast non-blank line.\n");
+        assert_eq!(range.text(), "This paragraph is\u{a0}long enough to wrap to another line.\nAnother paragraph.\n\nLast non-blank line\u{1f60a}\n");
         assert_eq!(
             range.bounding_boxes(),
             vec![
@@ -1336,7 +1453,7 @@ mod tests {
         assert!(!range.is_degenerate());
         assert_eq!(
             range.text(),
-            "This paragraph is long enough to wrap to another line.\n"
+            "This paragraph is\u{a0}long enough to wrap to another line.\n"
         );
         assert_eq!(
             range.bounding_boxes(),
@@ -1475,5 +1592,176 @@ mod tests {
             let pos = node.text_position_at_point(Point::new(250.0, 122.0));
             assert!(pos.is_document_end());
         }
+    }
+
+    #[test]
+    fn to_global_utf16_index() {
+        let tree = main_multiline_tree(None);
+        let state = tree.read();
+        let node = state.node_by_id(NODE_ID_2).unwrap();
+
+        {
+            let range = node.document_range();
+            assert_eq!(range.start().to_global_utf16_index(), 0);
+            assert_eq!(range.end().to_global_utf16_index(), 97);
+        }
+
+        {
+            let range = node.document_range();
+            let pos = range.start().forward_by_line();
+            assert_eq!(pos.to_global_utf16_index(), 38);
+            let pos = pos.forward_by_character();
+            assert_eq!(pos.to_global_utf16_index(), 39);
+            let pos = pos.forward_by_line();
+            assert_eq!(pos.to_global_utf16_index(), 55);
+        }
+    }
+
+    #[test]
+    fn to_line_index() {
+        let tree = main_multiline_tree(None);
+        let state = tree.read();
+        let node = state.node_by_id(NODE_ID_2).unwrap();
+
+        {
+            let range = node.document_range();
+            assert_eq!(range.start().to_line_index(), 0);
+            assert_eq!(range.end().to_line_index(), 5);
+        }
+
+        {
+            let range = node.document_range();
+            let pos = range.start().forward_by_line();
+            assert_eq!(pos.to_line_index(), 0);
+            let pos = pos.forward_by_character();
+            assert_eq!(pos.to_line_index(), 1);
+            let pos = pos.forward_by_line();
+            assert_eq!(pos.to_line_index(), 2);
+        }
+    }
+
+    #[test]
+    fn line_range_from_index() {
+        let tree = main_multiline_tree(None);
+        let state = tree.read();
+        let node = state.node_by_id(NODE_ID_2).unwrap();
+
+        {
+            let range = node.line_range_from_index(0).unwrap();
+            assert_eq!(range.text(), "This paragraph is\u{a0}long enough to wrap ");
+        }
+
+        {
+            let range = node.line_range_from_index(1).unwrap();
+            assert_eq!(range.text(), "to another line.\n");
+        }
+
+        {
+            let range = node.line_range_from_index(2).unwrap();
+            assert_eq!(range.text(), "Another paragraph.\n");
+        }
+
+        {
+            let range = node.line_range_from_index(3).unwrap();
+            assert_eq!(range.text(), "\n");
+        }
+
+        {
+            let range = node.line_range_from_index(4).unwrap();
+            assert_eq!(range.text(), "Last non-blank line\u{1f60a}\n");
+        }
+
+        {
+            let range = node.line_range_from_index(5).unwrap();
+            assert_eq!(range.text(), "");
+        }
+
+        assert!(node.line_range_from_index(6).is_none());
+    }
+
+    #[test]
+    fn text_position_from_global_utf16_index() {
+        let tree = main_multiline_tree(None);
+        let state = tree.read();
+        let node = state.node_by_id(NODE_ID_2).unwrap();
+
+        {
+            let pos = node.text_position_from_global_utf16_index(0).unwrap();
+            assert!(pos.is_document_start());
+        }
+
+        {
+            let pos = node.text_position_from_global_utf16_index(17).unwrap();
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_by_character());
+            assert_eq!(range.text(), "\u{a0}");
+        }
+
+        {
+            let pos = node.text_position_from_global_utf16_index(18).unwrap();
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_by_character());
+            assert_eq!(range.text(), "l");
+        }
+
+        {
+            let pos = node.text_position_from_global_utf16_index(37).unwrap();
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_by_character());
+            assert_eq!(range.text(), " ");
+        }
+
+        {
+            let pos = node.text_position_from_global_utf16_index(38).unwrap();
+            assert!(!pos.is_paragraph_start());
+            assert!(pos.is_line_start());
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_by_character());
+            assert_eq!(range.text(), "t");
+        }
+
+        {
+            let pos = node.text_position_from_global_utf16_index(54).unwrap();
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_by_character());
+            assert_eq!(range.text(), "\n");
+        }
+
+        {
+            let pos = node.text_position_from_global_utf16_index(55).unwrap();
+            assert!(pos.is_paragraph_start());
+            assert!(pos.is_line_start());
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_by_character());
+            assert_eq!(range.text(), "A");
+        }
+
+        {
+            let pos = node.text_position_from_global_utf16_index(94).unwrap();
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_by_character());
+            assert_eq!(range.text(), "\u{1f60a}");
+        }
+
+        {
+            let pos = node.text_position_from_global_utf16_index(95).unwrap();
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_by_character());
+            assert_eq!(range.text(), "\u{1f60a}");
+        }
+
+        {
+            let pos = node.text_position_from_global_utf16_index(96).unwrap();
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_by_character());
+            assert_eq!(range.text(), "\n");
+        }
+
+        {
+            let pos = node.text_position_from_global_utf16_index(97).unwrap();
+            assert!(pos.is_document_end());
+        }
+
+        assert!(node.text_position_from_global_utf16_index(98).is_none());
     }
 }
