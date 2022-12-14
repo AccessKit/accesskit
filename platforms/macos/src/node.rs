@@ -804,13 +804,16 @@ declare_class!(
                     || selector == sel!(accessibilityFrameForRange:)
                     || selector == sel!(accessibilityLineForIndex:)
                     || selector == sel!(accessibilityRangeForIndex:)
-                    // This adapter doesn't yet actually support the SetValue
-                    // action, but we must claim to support it in order
-                    // to get the expected VoiceOver behavior in edits.
-                    || selector == sel!(setAccessibilityValue:)
                     || selector == sel!(setAccessibilitySelectedTextRange:)
                 {
                     return node.supports_text_ranges();
+                }
+                if selector == sel!(setAccessibilityValue:) {
+                    // We don't implement this selector, and it's not clear
+                    // if VoiceOver ever actually uses it, but it must be
+                    // allowed for editable text in order to get the expected
+                    // VoiceOver behavior.
+                    return node.supports_text_ranges() && !node.is_read_only();
                 }
                 selector == sel!(accessibilityParent)
                     || selector == sel!(accessibilityChildren)
