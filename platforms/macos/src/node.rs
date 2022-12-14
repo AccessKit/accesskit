@@ -10,14 +10,13 @@
 
 #![allow(non_upper_case_globals)]
 
-use accesskit::{kurbo::Point, CheckedState, NodeId, Role, TextSelection};
-use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TextRange, Tree};
+use accesskit::{CheckedState, NodeId, Role, TextSelection};
+use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, Tree};
 use objc2::{
     declare::{Ivar, IvarDrop},
     declare_class,
     foundation::{
-        NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSPoint, NSRange, NSRect, NSSize,
-        NSString,
+        NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSPoint, NSRange, NSRect, NSString,
     },
     msg_send_id, ns_string,
     rc::{Id, Owned, Shared},
@@ -29,7 +28,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use crate::{appkit::*, context::Context};
+use crate::{appkit::*, context::Context, util::*};
 
 fn ns_role(node: &Node) -> &'static NSString {
     let role = node.role();
@@ -325,17 +324,6 @@ struct BoxedData {
     node_id: NodeId,
 }
 
-fn text_range_from_ns_range<'a>(node: &'a Node<'a>, ns_range: NSRange) -> Option<TextRange<'a>> {
-    let pos = node.text_position_from_global_utf16_index(ns_range.location)?;
-    let mut range = pos.to_degenerate_range();
-    if ns_range.length > 0 {
-        let end =
-            node.text_position_from_global_utf16_index(ns_range.location + ns_range.length)?;
-        range.set_end(end);
-    }
-    Some(range)
-}
-
 declare_class!(
     pub(crate) struct PlatformNode {
         // SAFETY: This is set in `PlatformNode::new` immediately after
@@ -387,30 +375,8 @@ declare_class!(
                     }
                 };
 
-                node.bounding_box().map_or(NSRect::ZERO, |rect| {
-                    // AccessKit coordinates are in physical (DPI-dependent)
-                    // pixels, but macOS expects logical (DPI-independent)
-                    // coordinates here.
-                    let factor = view.backing_scale_factor();
-                    let rect = NSRect {
-                        origin: NSPoint {
-                            x: rect.x0 / factor,
-                            y: if view.is_flipped() {
-                                rect.y0 / factor
-                            } else {
-                                let view_bounds = view.bounds();
-                                view_bounds.size.height - rect.y1 / factor
-                            },
-                        },
-                        size: NSSize {
-                            width: rect.width() / factor,
-                            height: rect.height() / factor,
-                        },
-                    };
-                    let rect = view.convert_rect_to_view(rect, None);
-                    let window = view.window().unwrap();
-                    window.convert_rect_to_screen(rect)
-                })
+                node.bounding_box()
+                    .map_or(NSRect::ZERO, |rect| to_ns_rect(&view, rect))
             })
             .unwrap_or(NSRect::ZERO)
         }
@@ -575,9 +541,7 @@ declare_class!(
             self.resolve(|node| {
                 if node.supports_text_ranges() {
                     if let Some(range) = node.text_selection() {
-                        let start = range.start().to_global_utf16_index();
-                        let end = range.end().to_global_utf16_index();
-                        return NSRange::from(start..end);
+                        return to_ns_range(&range);
                     }
                 }
                 NSRange::new(0, 0)
@@ -603,9 +567,7 @@ declare_class!(
             self.resolve(|node| {
                 if node.supports_text_ranges() && line_index >= 0 {
                     if let Some(range) = node.line_range_from_index(line_index as _) {
-                        let start = range.start().to_global_utf16_index();
-                        let end = range.end().to_global_utf16_index();
-                        return NSRange::from(start..end);
+                        return to_ns_range(&range);
                     }
                 }
                 NSRange::new(0, 0)
@@ -623,33 +585,10 @@ declare_class!(
                     }
                 };
 
-                let window = view.window().unwrap();
-                let point = window.convert_point_from_screen(point);
-                let point = view.convert_point_from_view(point, None);
-                // AccessKit coordinates are in physical (DPI-dependent) pixels, but
-                // macOS provides logical (DPI-independent) coordinates here.
-                let factor = view.backing_scale_factor();
-                let point = Point::new(
-                    point.x * factor,
-                    if view.is_flipped() {
-                        point.y * factor
-                    } else {
-                        let view_bounds = view.bounds();
-                        (view_bounds.size.height - point.y) * factor
-                    },
-                );
-                let point = node.transform().inverse() * point;
-
                 if node.supports_text_ranges() {
-                    let start = node.text_position_at_point(point);
-                    let end = if start.is_document_end() {
-                        start
-                    } else {
-                        start.forward_by_character()
-                    };
-                    let start = start.to_global_utf16_index();
-                    let end = end.to_global_utf16_index();
-                    return NSRange::from(start..end);
+                    let point = from_ns_point(&view, node, point);
+                    let pos = node.text_position_at_point(point);
+                    return to_ns_range_for_character(&pos);
                 }
                 NSRange::new(0, 0)
             })
@@ -660,7 +599,7 @@ declare_class!(
         fn string_for_range(&self, range: NSRange) -> *mut NSString {
             self.resolve(|node| {
                 if node.supports_text_ranges() {
-                    if let Some(range) = text_range_from_ns_range(node, range) {
+                    if let Some(range) = from_ns_range(node, range) {
                         let text = range.text();
                         return Id::autorelease_return(NSString::from_str(&text));
                     }
@@ -681,33 +620,12 @@ declare_class!(
                 };
 
                 if node.supports_text_ranges() {
-                    if let Some(range) = text_range_from_ns_range(node, range) {
+                    if let Some(range) = from_ns_range(node, range) {
                         let rects = range.bounding_boxes();
                         if let Some(rect) =
                             rects.into_iter().reduce(|rect1, rect2| rect1.union(rect2))
                         {
-                            // AccessKit coordinates are in physical (DPI-dependent)
-                            // pixels, but macOS expects logical (DPI-independent)
-                            // coordinates here.
-                            let factor = view.backing_scale_factor();
-                            let rect = NSRect {
-                                origin: NSPoint {
-                                    x: rect.x0 / factor,
-                                    y: if view.is_flipped() {
-                                        rect.y0 / factor
-                                    } else {
-                                        let view_bounds = view.bounds();
-                                        view_bounds.size.height - rect.y1 / factor
-                                    },
-                                },
-                                size: NSSize {
-                                    width: rect.width() / factor,
-                                    height: rect.height() / factor,
-                                },
-                            };
-                            let rect = view.convert_rect_to_view(rect, None);
-                            let window = view.window().unwrap();
-                            return window.convert_rect_to_screen(rect);
+                            return to_ns_rect(&view, rect);
                         }
                     }
                 }
@@ -733,15 +651,8 @@ declare_class!(
         fn range_for_index(&self, index: NSInteger) -> NSRange {
             self.resolve(|node| {
                 if node.supports_text_ranges() && index >= 0 {
-                    if let Some(start) = node.text_position_from_global_utf16_index(index as _) {
-                        let end = if start.is_document_end() {
-                            start
-                        } else {
-                            start.forward_by_character()
-                        };
-                        let start = start.to_global_utf16_index();
-                        let end = end.to_global_utf16_index();
-                        return NSRange::from(start..end);
+                    if let Some(pos) = node.text_position_from_global_utf16_index(index as _) {
+                        return to_ns_range_for_character(&pos);
                     }
                 }
                 NSRange::new(0, 0)
@@ -753,7 +664,7 @@ declare_class!(
         fn set_selected_text_range(&self, range: NSRange) {
             self.resolve_with_tree(|node, tree| {
                 if node.supports_text_ranges() {
-                    if let Some(range) = text_range_from_ns_range(node, range) {
+                    if let Some(range) = from_ns_range(node, range) {
                         tree.select_text_range(&range);
                     }
                 }

@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{kurbo::Point, ActionHandler, TreeUpdate};
+use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_consumer::{FilterResult, Tree};
 use objc2::{
     foundation::{MainThreadMarker, NSArray, NSObject, NSPoint},
@@ -16,6 +16,7 @@ use crate::{
     context::Context,
     event::{EventGenerator, QueuedEvents},
     node::{can_be_focused, filter},
+    util::*,
 };
 
 pub struct Adapter {
@@ -93,25 +94,9 @@ impl Adapter {
             }
         };
 
-        let window = view.window().unwrap();
-        let point = window.convert_point_from_screen(point);
-        let point = view.convert_point_from_view(point, None);
-        // AccessKit coordinates are in physical (DPI-dependent) pixels, but
-        // macOS provides logical (DPI-independent) coordinates here.
-        let factor = view.backing_scale_factor();
-        let point = Point::new(
-            point.x * factor,
-            if view.is_flipped() {
-                point.y * factor
-            } else {
-                let view_bounds = view.bounds();
-                (view_bounds.size.height - point.y) * factor
-            },
-        );
-
         let state = self.context.tree.read();
         let root = state.root();
-        let point = root.transform().inverse() * point;
+        let point = from_ns_point(&view, &root, point);
         if let Some(node) = root.node_at_point(point, &filter) {
             return Id::autorelease_return(self.context.get_or_create_platform_node(node.id()))
                 as *mut _;
