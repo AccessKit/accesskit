@@ -16,8 +16,8 @@ use objc2::{
     declare::{Ivar, IvarDrop},
     declare_class,
     foundation::{
-        NSArray, NSAttributedString, NSCopying, NSInteger, NSNumber, NSObject, NSPoint, NSRange,
-        NSRect, NSSize, NSString,
+        NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSPoint, NSRange, NSRect, NSSize,
+        NSString,
     },
     msg_send_id, ns_string,
     rc::{Id, Owned, Shared},
@@ -670,24 +670,6 @@ declare_class!(
             .unwrap_or_else(null_mut)
         }
 
-        #[sel(accessibilityAttributedStringForRange:)]
-        fn attributed_string_for_range(&self, range: NSRange) -> *mut NSAttributedString {
-            self.resolve(|node| {
-                if node.supports_text_ranges() {
-                    if let Some(range) = text_range_from_ns_range(node, range) {
-                        let text = range.text();
-                        // TODO: Expose formatting information.
-                        let ns_string = NSString::from_str(&text);
-                        return Id::autorelease_return(NSAttributedString::from_nsstring(
-                            &ns_string,
-                        ));
-                    }
-                }
-                null_mut()
-            })
-            .unwrap_or_else(null_mut)
-        }
-
         #[sel(accessibilityFrameForRange:)]
         fn frame_for_range(&self, range: NSRange) -> NSRect {
             self.resolve_with_context(|node, context| {
@@ -800,7 +782,6 @@ declare_class!(
                     || selector == sel!(accessibilityRangeForLine:)
                     || selector == sel!(accessibilityRangeForPosition:)
                     || selector == sel!(accessibilityStringForRange:)
-                    || selector == sel!(accessibilityAttributedStringForRange:)
                     || selector == sel!(accessibilityFrameForRange:)
                     || selector == sel!(accessibilityLineForIndex:)
                     || selector == sel!(accessibilityRangeForIndex:)
