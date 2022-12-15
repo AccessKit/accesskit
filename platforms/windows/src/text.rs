@@ -86,104 +86,93 @@ fn back_to_unit_start(start: Position, unit: TextUnit) -> Result<Position> {
             if start.is_format_start() {
                 Ok(start)
             } else {
-                Ok(start.backward_by_format())
+                Ok(start.backward_to_format_start())
             }
         }
         TextUnit_Word => {
             if start.is_word_start() {
                 Ok(start)
             } else {
-                Ok(start.backward_by_word())
+                Ok(start.backward_to_word_start())
             }
         }
         TextUnit_Line => {
             if start.is_line_start() {
                 Ok(start)
             } else {
-                Ok(start.backward_by_line())
+                Ok(start.backward_to_line_start())
             }
         }
         TextUnit_Paragraph => {
             if start.is_paragraph_start() {
                 Ok(start)
             } else {
-                Ok(start.backward_by_paragraph())
+                Ok(start.backward_to_paragraph_start())
             }
         }
         TextUnit_Page => {
             if start.is_page_start() {
                 Ok(start)
             } else {
-                Ok(start.backward_by_page())
+                Ok(start.backward_to_page_start())
             }
         }
         TextUnit_Document => {
             if start.is_document_start() {
                 Ok(start)
             } else {
-                Ok(start.backward_by_document())
+                Ok(start.document_start())
             }
         }
         _ => Err(invalid_arg()),
     }
 }
 
-fn move_position_once(pos: Position, unit: TextUnit, forward: bool) -> Result<Position> {
+fn move_forward_to_start(pos: Position, unit: TextUnit) -> Result<Position> {
     match unit {
-        TextUnit_Character => {
-            if forward {
-                Ok(pos.forward_by_character())
-            } else {
-                Ok(pos.backward_by_character())
-            }
-        }
-        TextUnit_Format => {
-            if forward {
-                Ok(pos.forward_by_format())
-            } else {
-                Ok(pos.backward_by_format())
-            }
-        }
-        TextUnit_Word => {
-            if forward {
-                Ok(pos.forward_by_word())
-            } else {
-                Ok(pos.backward_by_word())
-            }
-        }
-        TextUnit_Line => {
-            if forward {
-                Ok(pos.forward_by_line())
-            } else {
-                Ok(pos.backward_by_line())
-            }
-        }
-        TextUnit_Paragraph => {
-            if forward {
-                Ok(pos.forward_by_paragraph())
-            } else {
-                Ok(pos.backward_by_paragraph())
-            }
-        }
-        TextUnit_Page => {
-            if forward {
-                Ok(pos.forward_by_page())
-            } else {
-                Ok(pos.backward_by_page())
-            }
-        }
-        TextUnit_Document => {
-            if forward {
-                Ok(pos.forward_by_document())
-            } else {
-                Ok(pos.backward_by_document())
-            }
-        }
+        TextUnit_Character => Ok(pos.forward_to_character_start()),
+        TextUnit_Format => Ok(pos.forward_to_format_start()),
+        TextUnit_Word => Ok(pos.forward_to_word_start()),
+        TextUnit_Line => Ok(pos.forward_to_line_start()),
+        TextUnit_Paragraph => Ok(pos.forward_to_paragraph_start()),
+        TextUnit_Page => Ok(pos.forward_to_page_start()),
+        TextUnit_Document => Ok(pos.document_end()),
         _ => Err(invalid_arg()),
     }
 }
 
-fn move_position(mut pos: Position, unit: TextUnit, count: i32) -> Result<(Position, i32)> {
+fn move_forward_to_end(pos: Position, unit: TextUnit) -> Result<Position> {
+    match unit {
+        TextUnit_Character => Ok(pos.forward_to_character_end()),
+        TextUnit_Format => Ok(pos.forward_to_format_end()),
+        TextUnit_Word => Ok(pos.forward_to_word_end()),
+        TextUnit_Line => Ok(pos.forward_to_line_end()),
+        TextUnit_Paragraph => Ok(pos.forward_to_paragraph_end()),
+        TextUnit_Page => Ok(pos.forward_to_page_end()),
+        TextUnit_Document => Ok(pos.document_end()),
+        _ => Err(invalid_arg()),
+    }
+}
+
+fn move_backward(pos: Position, unit: TextUnit) -> Result<Position> {
+    match unit {
+        TextUnit_Character => Ok(pos.backward_to_character_start()),
+        TextUnit_Format => Ok(pos.backward_to_format_start()),
+        TextUnit_Word => Ok(pos.backward_to_word_start()),
+        TextUnit_Line => Ok(pos.backward_to_line_start()),
+        TextUnit_Paragraph => Ok(pos.backward_to_paragraph_start()),
+        TextUnit_Page => Ok(pos.backward_to_page_start()),
+        TextUnit_Document => Ok(pos.document_start()),
+        _ => Err(invalid_arg()),
+    }
+}
+
+fn move_position(
+    mut pos: Position,
+    unit: TextUnit,
+    to_end: bool,
+    count: i32,
+) -> Result<(Position, i32)> {
     let forward = count > 0;
     let count = count.abs();
     let mut moved = 0i32;
@@ -196,7 +185,15 @@ fn move_position(mut pos: Position, unit: TextUnit, count: i32) -> Result<(Posit
         if at_end {
             break;
         }
-        pos = move_position_once(pos, unit, forward)?;
+        pos = if forward {
+            if to_end {
+                move_forward_to_end(pos, unit)
+            } else {
+                move_forward_to_start(pos, unit)
+            }
+        } else {
+            move_backward(pos, unit)
+        }?;
         moved += 1;
     }
     if !forward {
@@ -382,7 +379,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
             let start = back_to_unit_start(start, unit)?;
             range.set_start(start);
             if !start.is_document_end() {
-                let end = move_position_once(start, unit, true)?;
+                let end = move_forward_to_end(start, unit)?;
                 range.set_end(end);
             }
             Ok(())
@@ -488,13 +485,13 @@ impl ITextRangeProvider_Impl for PlatformRange {
             } else {
                 back_to_unit_start(start, unit)?
             };
-            let (start, moved) = move_position(start, unit, count)?;
+            let (start, moved) = move_position(start, unit, false, count)?;
             if moved != 0 {
                 range.set_start(start);
                 let end = if degenerate || start.is_document_end() {
                     start
                 } else {
-                    move_position_once(start, unit, true)?
+                    move_forward_to_end(start, unit)?
                 };
                 range.set_end(end);
             }
@@ -510,7 +507,8 @@ impl ITextRangeProvider_Impl for PlatformRange {
     ) -> Result<i32> {
         self.write(|range| {
             let pos = position_from_endpoint(range, endpoint)?;
-            let (pos, moved) = move_position(pos, unit, count)?;
+            let (pos, moved) =
+                move_position(pos, unit, endpoint == TextPatternRangeEndpoint_End, count)?;
             set_endpoint_position(range, endpoint, pos)?;
             Ok(moved)
         })
