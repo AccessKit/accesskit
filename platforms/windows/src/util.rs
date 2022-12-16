@@ -11,7 +11,7 @@ use windows::{
         Foundation::*,
         Graphics::Gdi::*,
         System::{Com::*, Ole::*},
-        UI::Accessibility::*,
+        UI::{Accessibility::*, WindowsAndMessaging::*},
     },
 };
 
@@ -39,6 +39,10 @@ impl VariantFactory {
         // The choice of value field is probably arbitrary, but it seems
         // reasonable to make sure that at least a whole machine word is zero.
         Self(VT_EMPTY, VARIANT_0_0_0 { llVal: 0 })
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.0 == VT_EMPTY
     }
 }
 
@@ -205,4 +209,32 @@ pub(crate) fn client_top_left(hwnd: HWND) -> Point {
     // That's an unexpected condition, so we should fail loudly.
     unsafe { ClientToScreen(hwnd, &mut result) }.unwrap();
     Point::new(result.x.into(), result.y.into())
+}
+
+pub(crate) fn window_title(hwnd: HWND) -> Option<BSTR> {
+    // The following is an old hack to get the window caption without ever
+    // sending messages to the window itself, even if the window is in
+    // the same process but possibly a separate thread. This prevents
+    // possible hangs and sluggishness. This hack has been proven to work
+    // over nearly 20 years on every version of Windows back to XP.
+    let result = unsafe { DefWindowProcW(hwnd, WM_GETTEXTLENGTH, WPARAM(0), LPARAM(0)) };
+    if result.0 <= 0 {
+        return None;
+    }
+    let capacity = (result.0 as usize) + 1; // make room for the null
+    let mut buffer = Vec::<u16>::with_capacity(capacity);
+    let result = unsafe {
+        DefWindowProcW(
+            hwnd,
+            WM_GETTEXT,
+            WPARAM(capacity),
+            LPARAM(buffer.as_mut_ptr() as _),
+        )
+    };
+    if result.0 <= 0 {
+        return None;
+    }
+    let len = result.0 as usize;
+    unsafe { buffer.set_len(len) };
+    Some(BSTR::from_wide(&buffer))
 }

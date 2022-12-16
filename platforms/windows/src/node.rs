@@ -607,7 +607,10 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
     fn GetPropertyValue(&self, property_id: UIA_PROPERTY_ID) -> Result<VARIANT> {
         self.resolve(|node| {
             let wrapper = NodeWrapper::Node(&node);
-            let result = wrapper.get_property_value(property_id);
+            let mut result = wrapper.get_property_value(property_id);
+            if property_id == UIA_NamePropertyId && result.is_empty() && node.is_root() {
+                result = window_title(self.hwnd).into();
+            }
             Ok(result.into())
         })
     }

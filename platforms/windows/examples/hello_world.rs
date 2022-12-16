@@ -84,7 +84,6 @@ fn get_initial_state() -> TreeUpdate {
     let root = Arc::new(Node {
         role: Role::Window,
         children: vec![BUTTON_1_ID, BUTTON_2_ID],
-        name: Some(WINDOW_TITLE.into()),
         ..Default::default()
     });
     let button_1 = make_button(BUTTON_1_ID, "Button 1");
@@ -162,7 +161,6 @@ impl WindowState {
         let root = Arc::new(Node {
             role: Role::Window,
             children: vec![BUTTON_1_ID, BUTTON_2_ID, PRESSED_TEXT_ID],
-            name: Some(WINDOW_TITLE.into()),
             ..Node::default()
         });
         let update = TreeUpdate {
