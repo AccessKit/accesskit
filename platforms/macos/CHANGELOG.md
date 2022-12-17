@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.2.1...accesskit_macos-v0.3.0) (2022-12-17)
+
+
+### Features
+
+* Text support on macOS ([#191](https://github.com/AccessKit/accesskit/issues/191)) ([3a35dbe](https://github.com/AccessKit/accesskit/commit/3a35dbe02122c789fe682995c5b7e022aef5cc36))
+
+
+### Bug Fixes
+
+* Don't expose the window title in our root element on macOS ([#187](https://github.com/AccessKit/accesskit/issues/187)) ([9739b74](https://github.com/AccessKit/accesskit/commit/9739b7424328da45c1c43b6db49af142a8789aa5))
+* Expose which accessibility selectors are actually allowed for a particular node ([#181](https://github.com/AccessKit/accesskit/issues/181)) ([c4cbb23](https://github.com/AccessKit/accesskit/commit/c4cbb23156749d513df4e520dcb9be0a74c697d3))
+* More reliable handling of the edge case for wrapped lines ([#192](https://github.com/AccessKit/accesskit/issues/192)) ([c626d2c](https://github.com/AccessKit/accesskit/commit/c626d2c3028085b076ada7dd31242cf3ca3c0f08))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.10.0 to 0.11.0
+
 ## [0.2.1](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.2.0...accesskit_macos-v0.2.1) (2022-12-04)
 
 

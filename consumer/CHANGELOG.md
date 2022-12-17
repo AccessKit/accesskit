@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.11.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.10.0...accesskit_consumer-v0.11.0) (2022-12-17)
+
+
+### Features
+
+* Text support on macOS ([#191](https://github.com/AccessKit/accesskit/issues/191)) ([3a35dbe](https://github.com/AccessKit/accesskit/commit/3a35dbe02122c789fe682995c5b7e022aef5cc36))
+
+
+### Bug Fixes
+
+* More reliable handling of the edge case for wrapped lines ([#192](https://github.com/AccessKit/accesskit/issues/192)) ([c626d2c](https://github.com/AccessKit/accesskit/commit/c626d2c3028085b076ada7dd31242cf3ca3c0f08))
+
 ## [0.10.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.9.1...accesskit_consumer-v0.10.0) (2022-12-04)
 
 
