@@ -121,7 +121,7 @@ impl WindowState {
             // window state.
             let mut initial_tree = get_initial_state();
             let inner_state = self.inner_state.borrow();
-            initial_tree.focus = inner_state.is_window_focused.then(|| inner_state.focus);
+            initial_tree.focus = inner_state.is_window_focused.then_some(inner_state.focus);
             let action_handler = Box::new(SimpleActionHandler { window });
             accesskit_windows::Adapter::new(
                 window,
@@ -168,7 +168,7 @@ impl WindowState {
         let update = TreeUpdate {
             nodes: vec![(PRESSED_TEXT_ID, node), (WINDOW_ID, root)],
             tree: None,
-            focus: is_window_focused.then(|| focus),
+            focus: is_window_focused.then_some(focus),
         };
         let events = adapter.update(update);
         events.raise();
@@ -189,7 +189,7 @@ fn update_focus(window: HWND, is_window_focused: bool) {
         let events = adapter.update(TreeUpdate {
             nodes: vec![],
             tree: None,
-            focus: is_window_focused.then(|| focus),
+            focus: is_window_focused.then_some(focus),
         });
         events.raise();
     }
@@ -230,7 +230,7 @@ impl ActionHandler for SimpleActionHandler {
 }
 
 extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    match message as u32 {
+    match message {
         WM_NCCREATE => {
             let create_struct: &CREATESTRUCTW = unsafe { &mut *(lparam.0 as *mut _) };
             let create_params: Box<WindowCreateParams> =
