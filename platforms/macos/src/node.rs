@@ -421,6 +421,12 @@ declare_class!(
             .unwrap_or_else(null_mut)
         }
 
+        #[sel(setAccessibilityValue:)]
+        fn set_value(&self, _value: &NSObject) {
+            // This isn't yet implemented. See the comment on this selector
+            // in `is_selector_allowed`.
+        }
+
         #[sel(accessibilityMinValue)]
         fn min_value(&self) -> *mut NSNumber {
             self.resolve(|node| {
@@ -701,10 +707,10 @@ declare_class!(
                     return node.supports_text_ranges();
                 }
                 if selector == sel!(setAccessibilityValue:) {
-                    // We don't implement this selector, and it's not clear
-                    // if VoiceOver ever actually uses it, but it must be
-                    // allowed for editable text in order to get the expected
-                    // VoiceOver behavior.
+                    // Our implementation of this currently does nothing,
+                    // and it's not clear if VoiceOver ever actually uses it,
+                    // but it must be allowed for editable text in order to get
+                    // the expected VoiceOver behavior.
                     return node.supports_text_ranges() && !node.is_read_only();
                 }
                 selector == sel!(accessibilityParent)
