@@ -68,7 +68,7 @@ fn update_focus(window: HWND, is_window_focused: bool) {
         let events = adapter.update(TreeUpdate {
             nodes: vec![],
             tree: None,
-            focus: is_window_focused.then(|| focus),
+            focus: is_window_focused.then_some(focus),
         });
         events.raise();
     }
@@ -77,7 +77,7 @@ fn update_focus(window: HWND, is_window_focused: bool) {
 struct WindowCreateParams(TreeUpdate, NodeId, Box<dyn ActionHandler>);
 
 extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    match message as u32 {
+    match message {
         WM_NCCREATE => {
             let create_struct: &CREATESTRUCTW = unsafe { &mut *(lparam.0 as *mut _) };
             let create_params: Box<WindowCreateParams> =
@@ -93,7 +93,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 adapter: Lazy::new(Box::new(move || {
                     let mut initial_tree = initial_state;
                     let state = inner_state_for_tree_init.borrow();
-                    initial_tree.focus = state.is_window_focused.then(|| state.focus);
+                    initial_tree.focus = state.is_window_focused.then_some(state.focus);
                     Adapter::new(window, initial_tree, action_handler, uia_init_marker)
                 })),
                 inner_state,

@@ -23,7 +23,7 @@ impl From<VariantFactory> for VARIANT {
         Self {
             Anonymous: VARIANT_0 {
                 Anonymous: ManuallyDrop::new(VARIANT_0_0 {
-                    vt: VARENUM(vt.0 as u16),
+                    vt: VARENUM(vt.0),
                     wReserved1: 0,
                     wReserved2: 0,
                     wReserved3: 0,
@@ -135,8 +135,7 @@ impl<T: Into<VariantFactory>> From<Option<T>> for VariantFactory {
 }
 
 fn safe_array_from_primitive_slice<T>(vt: VARENUM, slice: &[T]) -> *mut SAFEARRAY {
-    let sa =
-        unsafe { SafeArrayCreateVector(VARENUM(vt.0 as u16), 0, slice.len().try_into().unwrap()) };
+    let sa = unsafe { SafeArrayCreateVector(VARENUM(vt.0), 0, slice.len().try_into().unwrap()) };
     if sa.is_null() {
         panic!("SAFEARRAY allocation failed");
     }

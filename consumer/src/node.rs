@@ -91,15 +91,8 @@ impl<'a> Node<'a> {
     }
 
     pub fn filtered_parent(&self, filter: &impl Fn(&Node) -> FilterResult) -> Option<Node<'a>> {
-        if let Some(parent) = self.parent() {
-            if filter(&parent) != FilterResult::Include {
-                parent.filtered_parent(filter)
-            } else {
-                Some(parent)
-            }
-        } else {
-            None
-        }
+        self.parent()
+            .filter(|parent| filter(parent) == FilterResult::Include)
     }
 
     pub fn parent_and_index(self) -> Option<(Node<'a>, usize)> {
