@@ -5,6 +5,22 @@
     * accesskit bumped from 0.8.0 to 0.8.1
     * accesskit_consumer bumped from 0.9.1 to 0.10.0
 
+## [0.10.2](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.10.1...accesskit_windows-v0.10.2) (2022-12-17)
+
+
+### Bug Fixes
+
+* Correct broken UIA method implementation that was incompatible with Windows 11 ATs ([#193](https://github.com/AccessKit/accesskit/issues/193)) ([3c527c7](https://github.com/AccessKit/accesskit/commit/3c527c76cb4139402d2b5550d2eb1ad12e07ebe5))
+* More reliable handling of the edge case for wrapped lines ([#192](https://github.com/AccessKit/accesskit/issues/192)) ([c626d2c](https://github.com/AccessKit/accesskit/commit/c626d2c3028085b076ada7dd31242cf3ca3c0f08))
+* Provide fallback property implementations for the window root ([#194](https://github.com/AccessKit/accesskit/issues/194)) ([f3d30b9](https://github.com/AccessKit/accesskit/commit/f3d30b9ba2f66e08fb7f78c304ab8a9e83e1aeca))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.10.0 to 0.11.0
+
 ## [0.10.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.9.3...accesskit_windows-v0.10.0) (2022-11-29)
 
 
