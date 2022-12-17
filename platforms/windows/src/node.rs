@@ -608,8 +608,16 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
         self.resolve(|node| {
             let wrapper = NodeWrapper::Node(&node);
             let mut result = wrapper.get_property_value(property_id);
-            if property_id == UIA_NamePropertyId && result.is_empty() && node.is_root() {
-                result = window_title(self.hwnd).into();
+            if result.is_empty() && node.is_root() {
+                match property_id {
+                    UIA_NamePropertyId => {
+                        result = window_title(self.hwnd).into();
+                    }
+                    UIA_NativeWindowHandlePropertyId => {
+                        result = (self.hwnd.0 as i32).into();
+                    }
+                    _ => (),
+                }
             }
             Ok(result.into())
         })
