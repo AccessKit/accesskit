@@ -254,11 +254,11 @@ impl<'a> Position<'a> {
     pub fn to_line_index(&self) -> usize {
         let mut pos = *self;
         if !pos.is_line_start() {
-            pos = pos.backward_by_line();
+            pos = pos.backward_to_line_start();
         }
         let mut lines_before_current = 0usize;
         while !pos.is_document_start() {
-            pos = pos.backward_by_line();
+            pos = pos.backward_to_line_start();
             lines_before_current += 1;
         }
         lines_before_current
@@ -949,21 +949,21 @@ impl<'a> Node<'a> {
         let mut pos = self.document_range().start();
 
         if line_index > 0 {
-            if pos.is_document_end() || pos.forward_by_line().is_document_end() {
+            if pos.is_document_end() || pos.forward_to_line_end().is_document_end() {
                 return None;
             }
             for _ in 0..line_index {
                 if pos.is_document_end() {
                     return None;
                 }
-                pos = pos.forward_by_line();
+                pos = pos.forward_to_line_start();
             }
         }
 
         let end = if pos.is_document_end() {
             pos
         } else {
-            pos.forward_by_line()
+            pos.forward_to_line_end()
         };
         Some(Range::new(*self, pos.inner, end.inner))
     }
@@ -1531,7 +1531,7 @@ mod tests {
         assert!(!range.is_degenerate());
         assert!(range.start().is_line_start());
         assert!(range.end().is_line_end());
-        assert_eq!(range.text(), "This paragraph is long enough to wrap ");
+        assert_eq!(range.text(), "This paragraph is\u{a0}long enough to wrap ");
         assert_eq!(
             range.bounding_boxes(),
             vec![Rect {
@@ -1722,11 +1722,13 @@ mod tests {
 
         {
             let range = node.document_range();
-            let pos = range.start().forward_by_line();
+            let pos = range.start().forward_to_line_end();
             assert_eq!(pos.to_global_utf16_index(), 38);
-            let pos = pos.forward_by_character();
+            let pos = range.start().forward_to_line_start();
+            assert_eq!(pos.to_global_utf16_index(), 38);
+            let pos = pos.forward_to_character_start();
             assert_eq!(pos.to_global_utf16_index(), 39);
-            let pos = pos.forward_by_line();
+            let pos = pos.forward_to_line_start();
             assert_eq!(pos.to_global_utf16_index(), 55);
         }
     }
@@ -1745,11 +1747,14 @@ mod tests {
 
         {
             let range = node.document_range();
-            let pos = range.start().forward_by_line();
+            let pos = range.start().forward_to_line_end();
             assert_eq!(pos.to_line_index(), 0);
-            let pos = pos.forward_by_character();
+            let pos = range.start().forward_to_line_start();
             assert_eq!(pos.to_line_index(), 1);
-            let pos = pos.forward_by_line();
+            let pos = pos.forward_to_character_start();
+            assert_eq!(pos.to_line_index(), 1);
+            assert_eq!(pos.forward_to_line_end().to_line_index(), 1);
+            let pos = pos.forward_to_line_start();
             assert_eq!(pos.to_line_index(), 2);
         }
     }
@@ -1807,21 +1812,21 @@ mod tests {
         {
             let pos = node.text_position_from_global_utf16_index(17).unwrap();
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "\u{a0}");
         }
 
         {
             let pos = node.text_position_from_global_utf16_index(18).unwrap();
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "l");
         }
 
         {
             let pos = node.text_position_from_global_utf16_index(37).unwrap();
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), " ");
         }
 
@@ -1830,14 +1835,14 @@ mod tests {
             assert!(!pos.is_paragraph_start());
             assert!(pos.is_line_start());
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "t");
         }
 
         {
             let pos = node.text_position_from_global_utf16_index(54).unwrap();
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "\n");
         }
 
@@ -1846,28 +1851,28 @@ mod tests {
             assert!(pos.is_paragraph_start());
             assert!(pos.is_line_start());
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "A");
         }
 
         {
             let pos = node.text_position_from_global_utf16_index(94).unwrap();
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "\u{1f60a}");
         }
 
         {
             let pos = node.text_position_from_global_utf16_index(95).unwrap();
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "\u{1f60a}");
         }
 
         {
             let pos = node.text_position_from_global_utf16_index(96).unwrap();
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "\n");
         }
 
