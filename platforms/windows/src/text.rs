@@ -570,6 +570,6 @@ impl ITextRangeProvider_Impl for PlatformRange {
 
     fn GetChildren(&self) -> Result<*mut SAFEARRAY> {
         // We don't support embedded objects in text.
-        Ok(std::ptr::null_mut())
+        Ok(safe_array_from_com_slice(&[]))
     }
 }
