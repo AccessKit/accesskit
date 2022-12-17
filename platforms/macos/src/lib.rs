@@ -8,6 +8,7 @@
 mod appkit;
 mod context;
 mod node;
+mod util;
 
 mod adapter;
 pub use adapter::Adapter;

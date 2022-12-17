@@ -12,6 +12,7 @@ extern "C" {
     pub(crate) static NSAccessibilityFocusedUIElementChangedNotification: &'static NSString;
     pub(crate) static NSAccessibilityTitleChangedNotification: &'static NSString;
     pub(crate) static NSAccessibilityValueChangedNotification: &'static NSString;
+    pub(crate) static NSAccessibilitySelectedTextChangedNotification: &'static NSString;
 
     // Roles
     pub(crate) static NSAccessibilityButtonRole: &'static NSString;
@@ -41,6 +42,7 @@ extern "C" {
     pub(crate) static NSAccessibilityStaticTextRole: &'static NSString;
     pub(crate) static NSAccessibilityTabGroupRole: &'static NSString;
     pub(crate) static NSAccessibilityTableRole: &'static NSString;
+    pub(crate) static NSAccessibilityTextAreaRole: &'static NSString;
     pub(crate) static NSAccessibilityTextFieldRole: &'static NSString;
     pub(crate) static NSAccessibilityToolbarRole: &'static NSString;
     pub(crate) static NSAccessibilityUnknownRole: &'static NSString;

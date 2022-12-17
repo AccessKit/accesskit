@@ -10,12 +10,14 @@
 
 #![allow(non_upper_case_globals)]
 
-use accesskit::{CheckedState, NodeId, Role};
+use accesskit::{CheckedState, NodeId, Role, TextSelection};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, Tree};
 use objc2::{
     declare::{Ivar, IvarDrop},
     declare_class,
-    foundation::{NSArray, NSCopying, NSNumber, NSObject, NSPoint, NSRect, NSSize, NSString},
+    foundation::{
+        NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSPoint, NSRange, NSRect, NSString,
+    },
     msg_send_id, ns_string,
     rc::{Id, Owned, Shared},
     runtime::Sel,
@@ -26,7 +28,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use crate::{appkit::*, context::Context};
+use crate::{appkit::*, context::Context, util::*};
 
 fn ns_role(node: &Node) -> &'static NSString {
     let role = node.role();
@@ -51,7 +53,13 @@ fn ns_role(node: &Node) -> &'static NSString {
             Role::Presentation => NSAccessibilityUnknownRole,
             Role::CheckBox => NSAccessibilityCheckBoxRole,
             Role::RadioButton => NSAccessibilityRadioButtonRole,
-            Role::TextField => NSAccessibilityTextFieldRole,
+            Role::TextField => {
+                if node.is_multiline() {
+                    NSAccessibilityTextAreaRole
+                } else {
+                    NSAccessibilityTextFieldRole
+                }
+            }
             Role::Button => NSAccessibilityButtonRole,
             Role::LabelText => NSAccessibilityGroupRole,
             Role::Pane => NSAccessibilityUnknownRole,
@@ -298,6 +306,17 @@ impl<'a> NodeWrapper<'a> {
         }
         None
     }
+
+    pub(crate) fn supports_text_ranges(&self) -> bool {
+        match self {
+            Self::Node(node) => node.supports_text_ranges(),
+            Self::DetachedNode(node) => node.supports_text_ranges(),
+        }
+    }
+
+    pub(crate) fn raw_text_selection(&self) -> Option<&TextSelection> {
+        self.node_state().raw_text_selection()
+    }
 }
 
 struct BoxedData {
@@ -356,30 +375,8 @@ declare_class!(
                     }
                 };
 
-                node.bounding_box().map_or(NSRect::ZERO, |rect| {
-                    // AccessKit coordinates are in physical (DPI-dependent)
-                    // pixels, but macOS expects logical (DPI-independent)
-                    // coordinates here.
-                    let factor = view.backing_scale_factor();
-                    let rect = NSRect {
-                        origin: NSPoint {
-                            x: rect.x0 / factor,
-                            y: if view.is_flipped() {
-                                rect.y0 / factor
-                            } else {
-                                let view_bounds = view.bounds();
-                                view_bounds.size.height - rect.y1 / factor
-                            },
-                        },
-                        size: NSSize {
-                            width: rect.width() / factor,
-                            height: rect.height() / factor,
-                        },
-                    };
-                    let rect = view.convert_rect_to_view(rect, None);
-                    let window = view.window().unwrap();
-                    window.convert_rect_to_screen(rect)
-                })
+                node.bounding_box()
+                    .map_or(NSRect::ZERO, |rect| to_ns_rect(&view, rect))
             })
             .unwrap_or(NSRect::ZERO)
         }
@@ -422,6 +419,12 @@ declare_class!(
                 })
             })
             .unwrap_or_else(null_mut)
+        }
+
+        #[sel(setAccessibilityValue:)]
+        fn set_value(&self, _value: &NSObject) {
+            // This isn't yet implemented. See the comment on this selector
+            // in `is_selector_allowed`.
         }
 
         #[sel(accessibilityMinValue)]
@@ -513,6 +516,167 @@ declare_class!(
             true
         }
 
+        #[sel(accessibilityNumberOfCharacters)]
+        fn number_of_characters(&self) -> NSInteger {
+            self.resolve(|node| {
+                if node.supports_text_ranges() {
+                    node.document_range().end().to_global_utf16_index() as _
+                } else {
+                    0
+                }
+            })
+            .unwrap_or(0)
+        }
+
+        #[sel(accessibilitySelectedText)]
+        fn selected_text(&self) -> *mut NSString {
+            self.resolve(|node| {
+                if node.supports_text_ranges() {
+                    if let Some(range) = node.text_selection() {
+                        let text = range.text();
+                        return Id::autorelease_return(NSString::from_str(&text));
+                    }
+                }
+                null_mut()
+            })
+            .unwrap_or_else(null_mut)
+        }
+
+        #[sel(accessibilitySelectedTextRange)]
+        fn selected_text_range(&self) -> NSRange {
+            self.resolve(|node| {
+                if node.supports_text_ranges() {
+                    if let Some(range) = node.text_selection() {
+                        return to_ns_range(&range);
+                    }
+                }
+                NSRange::new(0, 0)
+            })
+            .unwrap_or_else(|| NSRange::new(0, 0))
+        }
+
+        #[sel(accessibilityInsertionPointLineNumber)]
+        fn insertion_point_line_number(&self) -> NSInteger {
+            self.resolve(|node| {
+                if node.supports_text_ranges() {
+                    if let Some(pos) = node.text_selection_focus() {
+                        return pos.to_line_index() as _;
+                    }
+                }
+                0
+            })
+            .unwrap_or(0)
+        }
+
+        #[sel(accessibilityRangeForLine:)]
+        fn range_for_line(&self, line_index: NSInteger) -> NSRange {
+            self.resolve(|node| {
+                if node.supports_text_ranges() && line_index >= 0 {
+                    if let Some(range) = node.line_range_from_index(line_index as _) {
+                        return to_ns_range(&range);
+                    }
+                }
+                NSRange::new(0, 0)
+            })
+            .unwrap_or_else(|| NSRange::new(0, 0))
+        }
+
+        #[sel(accessibilityRangeForPosition:)]
+        fn range_for_position(&self, point: NSPoint) -> NSRange {
+            self.resolve_with_context(|node, context| {
+                let view = match context.view.load() {
+                    Some(view) => view,
+                    None => {
+                        return NSRange::new(0, 0);
+                    }
+                };
+
+                if node.supports_text_ranges() {
+                    let point = from_ns_point(&view, node, point);
+                    let pos = node.text_position_at_point(point);
+                    return to_ns_range_for_character(&pos);
+                }
+                NSRange::new(0, 0)
+            })
+            .unwrap_or_else(|| NSRange::new(0, 0))
+        }
+
+        #[sel(accessibilityStringForRange:)]
+        fn string_for_range(&self, range: NSRange) -> *mut NSString {
+            self.resolve(|node| {
+                if node.supports_text_ranges() {
+                    if let Some(range) = from_ns_range(node, range) {
+                        let text = range.text();
+                        return Id::autorelease_return(NSString::from_str(&text));
+                    }
+                }
+                null_mut()
+            })
+            .unwrap_or_else(null_mut)
+        }
+
+        #[sel(accessibilityFrameForRange:)]
+        fn frame_for_range(&self, range: NSRange) -> NSRect {
+            self.resolve_with_context(|node, context| {
+                let view = match context.view.load() {
+                    Some(view) => view,
+                    None => {
+                        return NSRect::ZERO;
+                    }
+                };
+
+                if node.supports_text_ranges() {
+                    if let Some(range) = from_ns_range(node, range) {
+                        let rects = range.bounding_boxes();
+                        if let Some(rect) =
+                            rects.into_iter().reduce(|rect1, rect2| rect1.union(rect2))
+                        {
+                            return to_ns_rect(&view, rect);
+                        }
+                    }
+                }
+                NSRect::ZERO
+            })
+            .unwrap_or(NSRect::ZERO)
+        }
+
+        #[sel(accessibilityLineForIndex:)]
+        fn line_for_index(&self, index: NSInteger) -> NSInteger {
+            self.resolve(|node| {
+                if node.supports_text_ranges() && index >= 0 {
+                    if let Some(pos) = node.text_position_from_global_utf16_index(index as _) {
+                        return pos.to_line_index() as _;
+                    }
+                }
+                0
+            })
+            .unwrap_or(0)
+        }
+
+        #[sel(accessibilityRangeForIndex:)]
+        fn range_for_index(&self, index: NSInteger) -> NSRange {
+            self.resolve(|node| {
+                if node.supports_text_ranges() && index >= 0 {
+                    if let Some(pos) = node.text_position_from_global_utf16_index(index as _) {
+                        return to_ns_range_for_character(&pos);
+                    }
+                }
+                NSRange::new(0, 0)
+            })
+            .unwrap_or_else(|| NSRange::new(0, 0))
+        }
+
+        #[sel(setAccessibilitySelectedTextRange:)]
+        fn set_selected_text_range(&self, range: NSRange) {
+            self.resolve_with_tree(|node, tree| {
+                if node.supports_text_ranges() {
+                    if let Some(range) = from_ns_range(node, range) {
+                        tree.select_text_range(&range);
+                    }
+                }
+            });
+        }
+
         #[sel(isAccessibilitySelectorAllowed:)]
         fn is_selector_allowed(&self, selector: Sel) -> bool {
             self.resolve(|node| {
@@ -527,6 +691,27 @@ declare_class!(
                 }
                 if selector == sel!(accessibilityPerformDecrement) {
                     return node.supports_decrement();
+                }
+                if selector == sel!(accessibilityNumberOfCharacters)
+                    || selector == sel!(accessibilitySelectedText)
+                    || selector == sel!(accessibilitySelectedTextRange)
+                    || selector == sel!(accessibilityInsertionPointLineNumber)
+                    || selector == sel!(accessibilityRangeForLine:)
+                    || selector == sel!(accessibilityRangeForPosition:)
+                    || selector == sel!(accessibilityStringForRange:)
+                    || selector == sel!(accessibilityFrameForRange:)
+                    || selector == sel!(accessibilityLineForIndex:)
+                    || selector == sel!(accessibilityRangeForIndex:)
+                    || selector == sel!(setAccessibilitySelectedTextRange:)
+                {
+                    return node.supports_text_ranges();
+                }
+                if selector == sel!(setAccessibilityValue:) {
+                    // Our implementation of this currently does nothing,
+                    // and it's not clear if VoiceOver ever actually uses it,
+                    // but it must be allowed for editable text in order to get
+                    // the expected VoiceOver behavior.
+                    return node.supports_text_ranges() && !node.is_read_only();
                 }
                 selector == sel!(accessibilityParent)
                     || selector == sel!(accessibilityChildren)

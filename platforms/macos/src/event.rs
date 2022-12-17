@@ -115,6 +115,15 @@ impl TreeChangeHandler for EventGenerator {
                 notification: unsafe { NSAccessibilityValueChangedNotification },
             });
         }
+        if old_wrapper.supports_text_ranges()
+            && new_wrapper.supports_text_ranges()
+            && old_wrapper.raw_text_selection() != new_wrapper.raw_text_selection()
+        {
+            self.events.push(QueuedEvent::Generic {
+                node_id,
+                notification: unsafe { NSAccessibilitySelectedTextChangedNotification },
+            });
+        }
     }
 
     fn focus_moved(&mut self, _old_node: Option<&DetachedNode>, new_node: Option<&Node>) {
