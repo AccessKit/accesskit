@@ -29,7 +29,7 @@ pub(crate) fn to_ns_range(range: &TextRange) -> NSRange {
 pub(crate) fn to_ns_range_for_character(pos: &TextPosition) -> NSRange {
     let mut range = pos.to_degenerate_range();
     if !pos.is_document_end() {
-        range.set_end(pos.forward_by_character());
+        range.set_end(pos.forward_to_character_end());
     }
     to_ns_range(&range)
 }

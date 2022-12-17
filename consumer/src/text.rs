@@ -104,14 +104,6 @@ impl<'a> InnerPosition<'a> {
         *self
     }
 
-    fn normalized(&self, root_node: &Node) -> Self {
-        if self.is_line_end() && !self.is_paragraph_end() {
-            *self
-        } else {
-            self.biased_to_start(root_node)
-        }
-    }
-
     fn comparable(&self, root_node: &Node) -> (Vec<usize>, usize) {
         let normalized = self.biased_to_start(root_node);
         (
@@ -217,6 +209,10 @@ impl<'a> Position<'a> {
                 && self.inner.biased_to_end(&self.root_node).is_paragraph_end())
     }
 
+    pub fn is_paragraph_end(&self) -> bool {
+        self.is_document_end() || self.inner.is_paragraph_end()
+    }
+
     pub fn is_page_start(&self) -> bool {
         self.is_document_start()
     }
@@ -258,17 +254,17 @@ impl<'a> Position<'a> {
     pub fn to_line_index(&self) -> usize {
         let mut pos = *self;
         if !pos.is_line_start() {
-            pos = pos.backward_by_line();
+            pos = pos.backward_to_line_start();
         }
         let mut lines_before_current = 0usize;
         while !pos.is_document_start() {
-            pos = pos.backward_by_line();
+            pos = pos.backward_to_line_start();
             lines_before_current += 1;
         }
         lines_before_current
     }
 
-    pub fn forward_by_character(&self) -> Self {
+    pub fn forward_to_character_start(&self) -> Self {
         let pos = self.inner.biased_to_start(&self.root_node);
         Self {
             root_node: self.root_node,
@@ -276,11 +272,22 @@ impl<'a> Position<'a> {
                 node: pos.node,
                 character_index: pos.character_index + 1,
             }
-            .normalized(&self.root_node),
+            .biased_to_start(&self.root_node),
         }
     }
 
-    pub fn backward_by_character(&self) -> Self {
+    pub fn forward_to_character_end(&self) -> Self {
+        let pos = self.inner.biased_to_start(&self.root_node);
+        Self {
+            root_node: self.root_node,
+            inner: InnerPosition {
+                node: pos.node,
+                character_index: pos.character_index + 1,
+            },
+        }
+    }
+
+    pub fn backward_to_character_start(&self) -> Self {
         let pos = self.inner.biased_to_end(&self.root_node);
         Self {
             root_node: self.root_node,
@@ -288,56 +295,77 @@ impl<'a> Position<'a> {
                 node: pos.node,
                 character_index: pos.character_index - 1,
             }
-            .normalized(&self.root_node),
+            .biased_to_start(&self.root_node),
         }
     }
 
-    pub fn forward_by_format(&self) -> Self {
+    pub fn forward_to_format_start(&self) -> Self {
         // TODO: support variable text formatting (part of rich text)
-        self.forward_by_document()
+        self.document_end()
     }
 
-    pub fn backward_by_format(&self) -> Self {
+    pub fn forward_to_format_end(&self) -> Self {
         // TODO: support variable text formatting (part of rich text)
-        self.backward_by_document()
+        self.document_end()
     }
 
-    pub fn forward_by_word(&self) -> Self {
+    pub fn backward_to_format_start(&self) -> Self {
+        // TODO: support variable text formatting (part of rich text)
+        self.document_start()
+    }
+
+    pub fn forward_to_word_start(&self) -> Self {
         let pos = self.inner.biased_to_start(&self.root_node);
         Self {
             root_node: self.root_node,
-            inner: pos.word_end().normalized(&self.root_node),
+            inner: pos.word_end().biased_to_start(&self.root_node),
         }
     }
 
-    pub fn backward_by_word(&self) -> Self {
-        let pos = self.inner.biased_to_end(&self.root_node);
-        Self {
-            root_node: self.root_node,
-            inner: pos.previous_word_start().normalized(&self.root_node),
-        }
-    }
-
-    pub fn forward_by_line(&self) -> Self {
+    pub fn forward_to_word_end(&self) -> Self {
         let pos = self.inner.biased_to_start(&self.root_node);
         Self {
             root_node: self.root_node,
-            inner: pos.line_end().normalized(&self.root_node),
+            inner: pos.word_end(),
         }
     }
 
-    pub fn backward_by_line(&self) -> Self {
+    pub fn backward_to_word_start(&self) -> Self {
         let pos = self.inner.biased_to_end(&self.root_node);
         Self {
             root_node: self.root_node,
-            inner: pos.line_start().normalized(&self.root_node),
+            inner: pos.previous_word_start().biased_to_start(&self.root_node),
         }
     }
 
-    pub fn forward_by_paragraph(&self) -> Self {
+    pub fn forward_to_line_start(&self) -> Self {
+        let pos = self.inner.biased_to_start(&self.root_node);
+        Self {
+            root_node: self.root_node,
+            inner: pos.line_end().biased_to_start(&self.root_node),
+        }
+    }
+
+    pub fn forward_to_line_end(&self) -> Self {
+        let pos = self.inner.biased_to_start(&self.root_node);
+        Self {
+            root_node: self.root_node,
+            inner: pos.line_end(),
+        }
+    }
+
+    pub fn backward_to_line_start(&self) -> Self {
+        let pos = self.inner.biased_to_end(&self.root_node);
+        Self {
+            root_node: self.root_node,
+            inner: pos.line_start().biased_to_start(&self.root_node),
+        }
+    }
+
+    pub fn forward_to_paragraph_start(&self) -> Self {
         let mut current = *self;
         loop {
-            current = current.forward_by_line();
+            current = current.forward_to_line_start();
             if current.is_document_end()
                 || current
                     .inner
@@ -350,10 +378,21 @@ impl<'a> Position<'a> {
         current
     }
 
-    pub fn backward_by_paragraph(&self) -> Self {
+    pub fn forward_to_paragraph_end(&self) -> Self {
         let mut current = *self;
         loop {
-            current = current.backward_by_line();
+            current = current.forward_to_line_end();
+            if current.is_document_end() || current.inner.is_paragraph_end() {
+                break;
+            }
+        }
+        current
+    }
+
+    pub fn backward_to_paragraph_start(&self) -> Self {
+        let mut current = *self;
+        loop {
+            current = current.backward_to_line_start();
             if current.is_paragraph_start() {
                 break;
             }
@@ -361,22 +400,26 @@ impl<'a> Position<'a> {
         current
     }
 
-    pub fn forward_by_page(&self) -> Self {
-        self.forward_by_document()
+    pub fn forward_to_page_start(&self) -> Self {
+        self.document_end()
     }
 
-    pub fn backward_by_page(&self) -> Self {
-        self.backward_by_document()
+    pub fn forward_to_page_end(&self) -> Self {
+        self.document_end()
     }
 
-    pub fn forward_by_document(&self) -> Self {
+    pub fn backward_to_page_start(&self) -> Self {
+        self.document_start()
+    }
+
+    pub fn document_end(&self) -> Self {
         Self {
             root_node: self.root_node,
             inner: self.root_node.document_end(),
         }
     }
 
-    pub fn backward_by_document(&self) -> Self {
+    pub fn document_start(&self) -> Self {
         Self {
             root_node: self.root_node,
             inner: self.root_node.document_start(),
@@ -625,6 +668,12 @@ impl<'a> Range<'a> {
         .unwrap_or_else(|| AttributeValue::Single(value.unwrap()))
     }
 
+    fn fix_start_bias(&mut self) {
+        if !self.is_degenerate() {
+            self.start = self.start.biased_to_start(&self.node);
+        }
+    }
+
     pub fn set_start(&mut self, pos: Position<'a>) {
         assert_eq!(pos.root_node.id(), self.node.id());
         self.start = pos.inner;
@@ -633,6 +682,7 @@ impl<'a> Range<'a> {
         if self.start.comparable(&self.node) >= self.end.comparable(&self.node) {
             self.end = self.start;
         }
+        self.fix_start_bias();
     }
 
     pub fn set_end(&mut self, pos: Position<'a>) {
@@ -643,6 +693,7 @@ impl<'a> Range<'a> {
         if self.start.comparable(&self.node) >= self.end.comparable(&self.node) {
             self.start = self.end;
         }
+        self.fix_start_bias();
     }
 
     pub fn downgrade(&self) -> WeakRange {
@@ -898,21 +949,21 @@ impl<'a> Node<'a> {
         let mut pos = self.document_range().start();
 
         if line_index > 0 {
-            if pos.is_document_end() || pos.forward_by_line().is_document_end() {
+            if pos.is_document_end() || pos.forward_to_line_end().is_document_end() {
                 return None;
             }
             for _ in 0..line_index {
                 if pos.is_document_end() {
                     return None;
                 }
-                pos = pos.forward_by_line();
+                pos = pos.forward_to_line_start();
             }
         }
 
         let end = if pos.is_document_end() {
             pos
         } else {
-            pos.forward_by_line()
+            pos.forward_to_line_end()
         };
         Some(Range::new(*self, pos.inner, end.inner))
     }
@@ -1244,6 +1295,21 @@ mod tests {
         }
     }
 
+    fn multiline_first_line_middle_selection() -> TextSelection {
+        use accesskit::TextPosition;
+
+        TextSelection {
+            anchor: TextPosition {
+                node: NODE_ID_3,
+                character_index: 5,
+            },
+            focus: TextPosition {
+                node: NODE_ID_3,
+                character_index: 5,
+            },
+        }
+    }
+
     fn multiline_second_line_middle_selection() -> TextSelection {
         use accesskit::TextPosition;
 
@@ -1376,10 +1442,11 @@ mod tests {
                 y1: 72.49999809265137
             }]
         );
-        let next_char_pos = pos.forward_by_character();
+        let char_end_pos = pos.forward_to_character_end();
         let mut line_start_range = range;
-        line_start_range.set_end(next_char_pos);
+        line_start_range.set_end(char_end_pos);
         assert!(!line_start_range.is_degenerate());
+        assert!(line_start_range.start().is_line_start());
         assert_eq!(line_start_range.text(), "t");
         assert_eq!(
             line_start_range.bounding_boxes(),
@@ -1390,10 +1457,11 @@ mod tests {
                 y1: 94.5
             }]
         );
-        let prev_char_pos = pos.backward_by_character();
+        let prev_char_pos = pos.backward_to_character_start();
         let mut prev_char_range = range;
         prev_char_range.set_start(prev_char_pos);
         assert!(!prev_char_range.is_degenerate());
+        assert!(prev_char_range.end().is_line_end());
         assert_eq!(prev_char_range.text(), " ");
         assert_eq!(
             prev_char_range.bounding_boxes(),
@@ -1404,6 +1472,12 @@ mod tests {
                 y1: 72.49999809265137
             }]
         );
+        assert!(prev_char_pos.forward_to_character_end().is_line_end());
+        assert!(prev_char_pos.forward_to_word_end().is_line_end());
+        assert!(prev_char_pos.forward_to_line_end().is_line_end());
+        assert!(prev_char_pos.forward_to_character_start().is_line_start());
+        assert!(prev_char_pos.forward_to_word_start().is_line_start());
+        assert!(prev_char_pos.forward_to_line_start().is_line_start());
     }
 
     #[test]
@@ -1418,11 +1492,13 @@ mod tests {
         assert!(!pos.is_line_end());
         assert!(!pos.is_document_start());
         assert!(!pos.is_document_end());
-        let line_start = pos.backward_by_line();
+        let line_start = pos.backward_to_line_start();
         range.set_start(line_start);
-        let line_end = line_start.forward_by_line();
+        let line_end = line_start.forward_to_line_end();
         range.set_end(line_end);
         assert!(!range.is_degenerate());
+        assert!(range.start().is_line_start());
+        assert!(range.end().is_line_end());
         assert_eq!(range.text(), "to another line.\n");
         assert_eq!(
             range.bounding_boxes(),
@@ -1433,6 +1509,39 @@ mod tests {
                 y1: 94.5
             },]
         );
+        assert!(line_start.forward_to_line_start().is_line_start());
+    }
+
+    #[test]
+    fn multiline_find_wrapped_line_ends_from_middle() {
+        let tree = main_multiline_tree(Some(multiline_first_line_middle_selection()));
+        let state = tree.read();
+        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let mut range = node.text_selection().unwrap();
+        assert!(range.is_degenerate());
+        let pos = range.start();
+        assert!(!pos.is_line_start());
+        assert!(!pos.is_line_end());
+        assert!(!pos.is_document_start());
+        assert!(!pos.is_document_end());
+        let line_start = pos.backward_to_line_start();
+        range.set_start(line_start);
+        let line_end = line_start.forward_to_line_end();
+        range.set_end(line_end);
+        assert!(!range.is_degenerate());
+        assert!(range.start().is_line_start());
+        assert!(range.end().is_line_end());
+        assert_eq!(range.text(), "This paragraph is\u{a0}long enough to wrap ");
+        assert_eq!(
+            range.bounding_boxes(),
+            vec![Rect {
+                x0: 18.0,
+                y0: 50.499996185302734,
+                x1: 436.3783721923828,
+                y1: 72.49999809265137
+            }]
+        );
+        assert!(line_start.forward_to_line_start().is_line_start());
     }
 
     #[test]
@@ -1446,11 +1555,13 @@ mod tests {
         assert!(!pos.is_paragraph_start());
         assert!(!pos.is_document_start());
         assert!(!pos.is_document_end());
-        let paragraph_start = pos.backward_by_paragraph();
+        let paragraph_start = pos.backward_to_paragraph_start();
         range.set_start(paragraph_start);
-        let paragraph_end = paragraph_start.forward_by_paragraph();
+        let paragraph_end = paragraph_start.forward_to_paragraph_end();
         range.set_end(paragraph_end);
         assert!(!range.is_degenerate());
+        assert!(range.start().is_paragraph_start());
+        assert!(range.end().is_paragraph_end());
         assert_eq!(
             range.text(),
             "This paragraph is\u{a0}long enough to wrap to another line.\n"
@@ -1472,6 +1583,9 @@ mod tests {
                 },
             ]
         );
+        assert!(paragraph_start
+            .forward_to_paragraph_start()
+            .is_paragraph_start());
     }
 
     #[test]
@@ -1485,9 +1599,9 @@ mod tests {
         assert!(!pos.is_word_start());
         assert!(!pos.is_document_start());
         assert!(!pos.is_document_end());
-        let word_start = pos.backward_by_word();
+        let word_start = pos.backward_to_word_start();
         range.set_start(word_start);
-        let word_end = word_start.forward_by_word();
+        let word_end = word_start.forward_to_word_end();
         range.set_end(word_end);
         assert!(!range.is_degenerate());
         assert_eq!(range.text(), "another ");
@@ -1529,7 +1643,7 @@ mod tests {
             assert!(!pos.is_document_end());
             assert!(!pos.is_line_end());
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "l");
         }
 
@@ -1539,7 +1653,7 @@ mod tests {
             assert!(!pos.is_document_end());
             assert!(!pos.is_line_end());
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "l");
         }
 
@@ -1549,7 +1663,7 @@ mod tests {
             assert!(!pos.is_document_end());
             assert!(pos.is_line_end());
             let mut range = pos.to_degenerate_range();
-            range.set_start(pos.backward_by_word());
+            range.set_start(pos.backward_to_word_start());
             assert_eq!(range.text(), "wrap ");
         }
 
@@ -1559,7 +1673,7 @@ mod tests {
             assert!(pos.is_line_start());
             assert!(!pos.is_paragraph_start());
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_word());
+            range.set_end(pos.forward_to_word_end());
             assert_eq!(range.text(), "to ");
         }
 
@@ -1569,7 +1683,7 @@ mod tests {
             assert!(!pos.is_document_end());
             assert!(pos.is_line_end());
             let mut range = pos.to_degenerate_range();
-            range.set_start(pos.backward_by_word());
+            range.set_start(pos.backward_to_word_start());
             assert_eq!(range.text(), "line.\n");
         }
 
@@ -1579,7 +1693,7 @@ mod tests {
             assert!(!pos.is_document_end());
             assert!(pos.is_line_end());
             let mut range = pos.to_degenerate_range();
-            range.set_start(pos.backward_by_line());
+            range.set_start(pos.backward_to_line_start());
             assert_eq!(range.text(), "\n");
         }
 
@@ -1608,11 +1722,13 @@ mod tests {
 
         {
             let range = node.document_range();
-            let pos = range.start().forward_by_line();
+            let pos = range.start().forward_to_line_end();
             assert_eq!(pos.to_global_utf16_index(), 38);
-            let pos = pos.forward_by_character();
+            let pos = range.start().forward_to_line_start();
+            assert_eq!(pos.to_global_utf16_index(), 38);
+            let pos = pos.forward_to_character_start();
             assert_eq!(pos.to_global_utf16_index(), 39);
-            let pos = pos.forward_by_line();
+            let pos = pos.forward_to_line_start();
             assert_eq!(pos.to_global_utf16_index(), 55);
         }
     }
@@ -1631,11 +1747,14 @@ mod tests {
 
         {
             let range = node.document_range();
-            let pos = range.start().forward_by_line();
+            let pos = range.start().forward_to_line_end();
             assert_eq!(pos.to_line_index(), 0);
-            let pos = pos.forward_by_character();
+            let pos = range.start().forward_to_line_start();
             assert_eq!(pos.to_line_index(), 1);
-            let pos = pos.forward_by_line();
+            let pos = pos.forward_to_character_start();
+            assert_eq!(pos.to_line_index(), 1);
+            assert_eq!(pos.forward_to_line_end().to_line_index(), 1);
+            let pos = pos.forward_to_line_start();
             assert_eq!(pos.to_line_index(), 2);
         }
     }
@@ -1693,21 +1812,21 @@ mod tests {
         {
             let pos = node.text_position_from_global_utf16_index(17).unwrap();
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "\u{a0}");
         }
 
         {
             let pos = node.text_position_from_global_utf16_index(18).unwrap();
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "l");
         }
 
         {
             let pos = node.text_position_from_global_utf16_index(37).unwrap();
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), " ");
         }
 
@@ -1716,14 +1835,14 @@ mod tests {
             assert!(!pos.is_paragraph_start());
             assert!(pos.is_line_start());
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "t");
         }
 
         {
             let pos = node.text_position_from_global_utf16_index(54).unwrap();
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "\n");
         }
 
@@ -1732,28 +1851,28 @@ mod tests {
             assert!(pos.is_paragraph_start());
             assert!(pos.is_line_start());
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "A");
         }
 
         {
             let pos = node.text_position_from_global_utf16_index(94).unwrap();
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "\u{1f60a}");
         }
 
         {
             let pos = node.text_position_from_global_utf16_index(95).unwrap();
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "\u{1f60a}");
         }
 
         {
             let pos = node.text_position_from_global_utf16_index(96).unwrap();
             let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_by_character());
+            range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "\n");
         }
 
