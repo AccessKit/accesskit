@@ -11,10 +11,10 @@ readme = "README.md"
 edition = "2021"
 
 [dependencies]
-accesskit = { version = "0.7.0", path = "../../common" }
-accesskit_consumer = { version = "0.7.1", path = "../../consumer" }
-atspi = "0.3.5"
+accesskit = { version = "0.7.0" }
+accesskit_consumer = { version = "0.7.1" }
+atspi = "0.3.10"
 parking_lot = "0.12.1"
 serde = "1.0"
 strum = { version = "0.23.0", features = ["derive"] }
-zbus = "3.0"
+zbus = "3.6"
