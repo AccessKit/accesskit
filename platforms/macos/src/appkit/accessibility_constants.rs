@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use objc2::foundation::NSString;
+use objc2::foundation::{NSInteger, NSString};
 
 #[link(name = "AppKit", kind = "framework")]
 extern "C" {
@@ -13,6 +13,7 @@ extern "C" {
     pub(crate) static NSAccessibilityTitleChangedNotification: &'static NSString;
     pub(crate) static NSAccessibilityValueChangedNotification: &'static NSString;
     pub(crate) static NSAccessibilitySelectedTextChangedNotification: &'static NSString;
+    pub(crate) static NSAccessibilityAnnouncementRequestedNotification: &'static NSString;
 
     // Roles
     pub(crate) static NSAccessibilityButtonRole: &'static NSString;
@@ -46,4 +47,12 @@ extern "C" {
     pub(crate) static NSAccessibilityTextFieldRole: &'static NSString;
     pub(crate) static NSAccessibilityToolbarRole: &'static NSString;
     pub(crate) static NSAccessibilityUnknownRole: &'static NSString;
+
+    // Notification user info keys
+    pub(crate) static NSAccessibilityAnnouncementKey: &'static NSString;
+    pub(crate) static NSAccessibilityPriorityKey: &'static NSString;
 }
+
+// Announcement priorities
+pub(crate) const NSAccessibilityPriorityMedium: NSInteger = 50;
+pub(crate) const NSAccessibilityPriorityHigh: NSInteger = 90;
