@@ -197,6 +197,10 @@ impl Adapter {
             }
             fn node_removed(&mut self, node: &Node) {
                 let node = NodeWrapper::new(node);
+                self.queue.push(QueuedEvent::Object {
+                    target: node.id(),
+                    event: ObjectEvent::StateChanged(State::Defunct, true),
+                });
                 self.adapter
                     .unregister_interfaces(&node.id(), node.interfaces())
                     .unwrap();
