@@ -66,8 +66,8 @@ impl Bus {
                 self.unique_name().as_str(),
                 ObjectPath::from_str_unchecked(ROOT_PATH),
             ))?;
-            if let Some(state) = node.state.upgrade() {
-                state.write().desktop_address = Some(desktop.into());
+            if let Some(context) = node.context.upgrade() {
+                context.write().desktop_address = Some(desktop.into());
             }
             Ok(true)
         } else {

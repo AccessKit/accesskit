@@ -3,9 +3,11 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::atspi::{ObjectAddress, ObjectId, ObjectRef, OwnedObjectAddress};
-use crate::{PlatformNode, PlatformRootNode};
 use atspi::{accessible::Role, Interface, InterfaceSet, StateSet};
+use crate::{
+    atspi::{ObjectAddress, ObjectId, ObjectRef, OwnedObjectAddress},
+    PlatformNode, PlatformRootNode, unknown_object,
+};
 use std::convert::TryInto;
 use zbus::{fdo, names::OwnedUniqueName, MessageHeader};
 
@@ -55,7 +57,6 @@ impl AccessibleInterface<PlatformNode> {
     fn accessible_id(&self) -> ObjectId {
         self.node
             .accessible_id()
-            .unwrap_or_else(|_| unsafe { ObjectId::from_str_unchecked("") })
     }
 
     fn get_child_at_index(
@@ -115,9 +116,9 @@ impl AccessibleInterface<PlatformRootNode> {
     #[dbus_interface(property)]
     fn name(&self) -> String {
         self.node
-            .state
+            .context
             .upgrade()
-            .map(|state| state.read().name.clone())
+            .map(|context| context.read().name.clone())
             .unwrap_or_default()
     }
 
@@ -129,14 +130,15 @@ impl AccessibleInterface<PlatformRootNode> {
     #[dbus_interface(property)]
     fn parent(&self) -> OwnedObjectAddress {
         self.node
-            .state
+            .context
             .upgrade()
-            .and_then(|state| state.read().desktop_address.clone())
+            .and_then(|context| context.read().desktop_address.clone())
             .unwrap_or_else(|| OwnedObjectAddress::null(self.bus_name.clone()))
     }
 
     #[dbus_interface(property)]
     fn child_count(&self) -> i32 {
+        // TODO: Handle multiple top-level windows.
         1
     }
 
@@ -155,6 +157,7 @@ impl AccessibleInterface<PlatformRootNode> {
         #[zbus(header)] hdr: MessageHeader<'_>,
         index: i32,
     ) -> fdo::Result<(OwnedObjectAddress,)> {
+        // TODO: Handle multiple top-level windows.
         if index != 0 {
             return super::object_address(hdr.destination()?, None);
         }
@@ -167,6 +170,7 @@ impl AccessibleInterface<PlatformRootNode> {
     }
 
     fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
+        // TODO: Handle multiple top-level windows.
         self.node
             .tree
             .upgrade()
@@ -177,7 +181,7 @@ impl AccessibleInterface<PlatformRootNode> {
                 )
                 .into()]
             })
-            .ok_or_else(|| fdo::Error::UnknownObject("".into()))
+            .ok_or_else(|| unknown_object(&ObjectId::root()))
     }
 
     fn get_index_in_parent(&self) -> i32 {

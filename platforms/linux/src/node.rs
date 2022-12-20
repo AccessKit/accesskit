@@ -8,16 +8,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use crate::atspi::{
-    interfaces::{Action, ObjectEvent, Property, QueuedEvent},
-    ObjectId, ObjectRef, OwnedObjectAddress, Rect as AtspiRect,
-};
-use accesskit::{
-    kurbo::{Point, Rect},
-    CheckedState, DefaultActionVerb, NodeId, Role,
-};
+use accesskit::{kurbo::Point, CheckedState, DefaultActionVerb, NodeId, Role};
 use accesskit_consumer::{FilterResult, Node, Tree, TreeState};
 use atspi::{accessible::Role as AtspiRole, CoordType, Interface, InterfaceSet, State, StateSet};
+use crate::{
+    atspi::{
+        interfaces::{Action, ObjectEvent, Property, QueuedEvent},
+        ACCESSIBLE_PATH_PREFIX, ObjectId, ObjectRef, Rect as AtspiRect,
+    },
+    util::{AppContext, WindowBounds},
+};
 use parking_lot::RwLock;
 use std::{
     convert::TryFrom,
@@ -44,15 +44,11 @@ pub(crate) fn filter(node: &Node) -> FilterResult {
 
 pub(crate) struct NodeWrapper<'a> {
     node: &'a Node<'a>,
-    app_state: Arc<RwLock<AppState>>,
 }
 
 impl<'a> NodeWrapper<'a> {
-    pub(crate) fn new(node: &'a Node<'a>, app_state: &Arc<RwLock<AppState>>) -> Self {
-        NodeWrapper {
-            node,
-            app_state: app_state.clone(),
-        }
+    pub(crate) fn new(node: &'a Node<'a>) -> Self {
+        NodeWrapper { node }
     }
 
     pub fn name(&self) -> String {
@@ -525,27 +521,21 @@ impl<'a> NodeWrapper<'a> {
     }
 }
 
-fn unknown_object() -> fdo::Error {
-    fdo::Error::UnknownObject("".into())
+pub(crate) fn unknown_object(id: &ObjectId) -> fdo::Error {
+    fdo::Error::UnknownObject(format!("{}{}", ACCESSIBLE_PATH_PREFIX, id.as_str()))
 }
 
 #[derive(Clone)]
 pub(crate) struct PlatformNode {
     tree: Weak<Tree>,
     node_id: NodeId,
-    app_state: Weak<RwLock<AppState>>,
 }
 
 impl PlatformNode {
-    pub(crate) fn new(
-        tree: &Arc<Tree>,
-        node_id: NodeId,
-        app_state: &Arc<RwLock<AppState>>,
-    ) -> Self {
+    pub(crate) fn new(tree: &Arc<Tree>, node_id: NodeId) -> Self {
         Self {
             tree: Arc::downgrade(tree),
             node_id,
-            app_state: Arc::downgrade(app_state),
         }
     }
 
@@ -553,37 +543,28 @@ impl PlatformNode {
         if let Some(tree) = self.tree.upgrade() {
             Ok(tree)
         } else {
-            Err(unknown_object())
-        }
-    }
-
-    fn upgrade_app_state(&self) -> fdo::Result<Arc<RwLock<AppState>>> {
-        if let Some(state) = self.app_state.upgrade() {
-            Ok(state)
-        } else {
-            Err(unknown_object())
+            Err(unknown_object(&self.accessible_id()))
         }
     }
 
     fn with_state<F, T>(&self, f: F) -> fdo::Result<T>
     where
-        F: FnOnce((&TreeState, &Arc<RwLock<AppState>>)) -> fdo::Result<T>,
+        F: FnOnce(&TreeState) -> fdo::Result<T>,
     {
         let tree = self.upgrade_tree()?;
-        let app_state = self.upgrade_app_state()?;
         let state = tree.read();
-        f((&state, &app_state))
+        f(&state)
     }
 
     fn resolve<F, T>(&self, f: F) -> fdo::Result<T>
     where
         for<'a> F: FnOnce(NodeWrapper<'a>) -> fdo::Result<T>,
     {
-        self.with_state(|(tree, app)| {
+        self.with_state(|tree| {
             if let Some(node) = tree.node_by_id(self.node_id) {
-                f(NodeWrapper::new(&node, app))
+                f(NodeWrapper::new(&node))
             } else {
-                Err(unknown_object())
+                Err(unknown_object(&self.accessible_id()))
             }
         })
     }
@@ -595,7 +576,7 @@ impl PlatformNode {
             drop(state);
             Ok(tree)
         } else {
-            Err(unknown_object())
+            Err(unknown_object(&self.accessible_id()))
         }
     }
 
@@ -626,8 +607,8 @@ impl PlatformNode {
         self.resolve(|resolved| Ok(resolved.locale()))
     }
 
-    pub fn accessible_id(&self) -> fdo::Result<ObjectId> {
-        self.resolve(|resolved| Ok(resolved.id()))
+    pub fn accessible_id(&self) -> ObjectId<'static> {
+        self.node_id.into()
     }
 
     pub fn child_at_index(&self, index: usize) -> fdo::Result<Option<ObjectRef>> {
@@ -693,36 +674,24 @@ impl PlatformNode {
         Ok(true)
     }
 
-    pub fn contains(&self, x: i32, y: i32, coord_type: CoordType) -> fdo::Result<bool> {
+    pub fn contains(&self, window_bounds: &WindowBounds, x: i32, y: i32, coord_type: CoordType) -> fdo::Result<bool> {
         self.resolve(|wrapper| {
-            let app_state = wrapper.app_state.read();
             let bounds = match wrapper.node.bounding_box() {
                 Some(node_bounds) => {
-                    let top_left = match coord_type {
-                        CoordType::Screen => app_state.inner_bounds.origin(),
-                        CoordType::Window => {
-                            let outer_position = app_state.outer_bounds.origin();
-                            let inner_position = app_state.inner_bounds.origin();
-                            Point::new(
-                                inner_position.x - outer_position.x,
-                                inner_position.y - outer_position.y,
-                            )
-                        }
-                        _ => unimplemented!(),
-                    };
+                    let top_left = window_bounds.top_left(coord_type, wrapper.node.is_root());
                     let new_origin =
                         Point::new(top_left.x + node_bounds.x0, top_left.y + node_bounds.y0);
                     node_bounds.with_origin(new_origin)
                 }
                 None if wrapper.node.is_root() => {
-                    let window_bounds = app_state.outer_bounds;
+                    let bounds = window_bounds.outer;
                     match coord_type {
-                        CoordType::Screen => window_bounds,
-                        CoordType::Window => window_bounds.with_origin(Point::ZERO),
+                        CoordType::Screen => bounds,
+                        CoordType::Window => bounds.with_origin(Point::ZERO),
                         _ => unimplemented!(),
                     }
                 }
-                _ => return Err(unknown_object()),
+                _ => return Err(unknown_object(&wrapper.id())),
             };
             Ok(bounds.contains(Point::new(x.into(), y.into())))
         })
@@ -730,20 +699,13 @@ impl PlatformNode {
 
     pub fn get_accessible_at_point(
         &self,
+        window_bounds: &WindowBounds,
         x: i32,
         y: i32,
         coord_type: CoordType,
     ) -> fdo::Result<Option<ObjectRef>> {
         self.resolve(|wrapper| {
-            let app_state = wrapper.app_state.read();
-            let is_root = wrapper.node.is_root();
-            let top_left = match coord_type {
-                CoordType::Screen if is_root => app_state.outer_bounds.origin(),
-                CoordType::Screen => app_state.inner_bounds.origin(),
-                CoordType::Window if is_root => Point::ZERO,
-                CoordType::Window => app_state.inner_bounds.origin(),
-                _ => unimplemented!(),
-            };
+            let top_left = window_bounds.top_left(coord_type, wrapper.node.is_root());
             let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
             Ok(wrapper
                 .node
@@ -752,36 +714,24 @@ impl PlatformNode {
         })
     }
 
-    pub fn get_extents(&self, coord_type: CoordType) -> fdo::Result<(AtspiRect,)> {
+    pub fn get_extents(&self, window_bounds: &WindowBounds, coord_type: CoordType) -> fdo::Result<(AtspiRect,)> {
         self.resolve(|wrapper| {
-            let app_state = wrapper.app_state.read();
             match wrapper.node.bounding_box() {
                 Some(node_bounds) => {
-                    let top_left = match coord_type {
-                        CoordType::Screen => app_state.inner_bounds.origin(),
-                        CoordType::Window => {
-                            let outer_position = app_state.outer_bounds.origin();
-                            let inner_position = app_state.inner_bounds.origin();
-                            Point::new(
-                                inner_position.x - outer_position.x,
-                                inner_position.y - outer_position.y,
-                            )
-                        }
-                        _ => unimplemented!(),
-                    };
+                    let top_left = window_bounds.top_left(coord_type, wrapper.node.is_root());
                     let new_origin =
                         Point::new(top_left.x + node_bounds.x0, top_left.y + node_bounds.y0);
                     Ok((node_bounds.with_origin(new_origin).into(),))
                 }
                 None if wrapper.node.is_root() => {
-                    let window_bounds = app_state.outer_bounds;
+                    let bounds = window_bounds.outer;
                     Ok((match coord_type {
-                        CoordType::Screen => window_bounds.into(),
-                        CoordType::Window => window_bounds.with_origin(Point::ZERO).into(),
+                        CoordType::Screen => bounds.into(),
+                        CoordType::Window => bounds.with_origin(Point::ZERO).into(),
                         _ => unimplemented!(),
                     },))
                 }
-                _ => Err(unknown_object()),
+                _ => Err(unknown_object(&wrapper.id())),
             }
         })
     }
@@ -815,38 +765,17 @@ impl PlatformNode {
     }
 }
 
-pub(crate) struct AppState {
-    pub name: String,
-    pub toolkit_name: String,
-    pub toolkit_version: String,
-    pub id: Option<i32>,
-    pub desktop_address: Option<OwnedObjectAddress>,
-    pub outer_bounds: Rect,
-    pub inner_bounds: Rect,
-}
-
-impl AppState {
-    pub fn new(name: String, toolkit_name: String, toolkit_version: String) -> Self {
-        Self {
-            name,
-            toolkit_name,
-            toolkit_version,
-            id: None,
-            desktop_address: None,
-            outer_bounds: Rect::default(),
-            inner_bounds: Rect::default(),
-        }
-    }
-}
-
 #[derive(Clone)]
 pub(crate) struct PlatformRootNode {
-    pub state: Weak<RwLock<AppState>>,
-    pub tree: Weak<Tree>,
+    pub(crate) context: Weak<RwLock<AppContext>>,
+    pub(crate) tree: Weak<Tree>,
 }
 
 impl PlatformRootNode {
-    pub fn new(state: Weak<RwLock<AppState>>, tree: Weak<Tree>) -> Self {
-        Self { state, tree }
+    pub fn new(context: &Arc<RwLock<AppContext>>, tree: &Arc<Tree>) -> Self {
+        Self {
+            context: Arc::downgrade(context),
+            tree: Arc::downgrade(tree),
+        }
     }
 }

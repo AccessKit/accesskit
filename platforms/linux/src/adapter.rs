@@ -3,23 +3,27 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::atspi::{
-    interfaces::{
-        AccessibleInterface, ActionInterface, ComponentInterface, ObjectEvent, QueuedEvent,
-        ValueInterface, WindowEvent,
-    },
-    Bus, ObjectId, ACCESSIBLE_PATH_PREFIX,
-};
-use crate::node::{filter, AppState, NodeWrapper, PlatformNode, PlatformRootNode};
 use accesskit::{kurbo::Rect, ActionHandler, NodeId, Role, TreeUpdate};
 use accesskit_consumer::{Node, Tree, TreeChangeHandler};
 use atspi::{Interface, InterfaceSet, State};
+use crate::{
+    atspi::{
+        interfaces::{
+            AccessibleInterface, ActionInterface, ComponentInterface,
+            ObjectEvent, QueuedEvent, ValueInterface, WindowEvent,
+        },
+        Bus, ObjectId, ACCESSIBLE_PATH_PREFIX,
+    },
+    node::{filter, NodeWrapper, PlatformNode, PlatformRootNode},
+    util::{AppContext, WindowBounds},
+};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
 pub struct Adapter {
     atspi_bus: Option<Bus>,
-    app_state: Arc<RwLock<AppState>>,
+    _app_context: Arc<RwLock<AppContext>>,
+    root_window_bounds: Arc<RwLock<WindowBounds>>,
     tree: Arc<Tree>,
 }
 
@@ -33,21 +37,19 @@ impl Adapter {
     ) -> Self {
         let mut atspi_bus = Bus::a11y_bus();
         let tree = Arc::new(Tree::new(initial_state(), action_handler));
-        let app_state = Arc::new(RwLock::new(AppState::new(
+        let app_context = Arc::new(RwLock::new(AppContext::new(
             app_name,
             toolkit_name,
             toolkit_version,
         )));
         atspi_bus.as_mut().and_then(|bus| {
-            bus.register_root_node(PlatformRootNode::new(
-                Arc::downgrade(&app_state),
-                Arc::downgrade(&tree),
-            ))
-            .ok()
+            bus.register_root_node(PlatformRootNode::new(&app_context, &tree))
+                .ok()
         });
         let adapter = Adapter {
             atspi_bus,
-            app_state,
+            _app_context: app_context,
+            root_window_bounds: Arc::new(RwLock::new(WindowBounds::default())),
             tree,
         };
         {
@@ -64,8 +66,7 @@ impl Adapter {
             objects_to_add.push(reader.root().id());
             add_children(reader.root(), &mut objects_to_add);
             for id in objects_to_add {
-                let interfaces =
-                    NodeWrapper::new(&reader.node_by_id(id).unwrap(), &adapter.app_state)
+                let interfaces = NodeWrapper::new(&reader.node_by_id(id).unwrap())
                         .interfaces();
                 adapter
                     .register_interfaces(&adapter.tree, id, interfaces)
@@ -89,26 +90,26 @@ impl Adapter {
                     &path,
                     AccessibleInterface::new(
                         bus.unique_name().to_owned(),
-                        PlatformNode::new(tree, id, &self.app_state),
+                        PlatformNode::new(tree, id),
                     ),
                 )?;
             }
             if new_interfaces.contains(Interface::Action) {
                 bus.register_interface(
                     &path,
-                    ActionInterface::new(PlatformNode::new(tree, id, &self.app_state)),
+                    ActionInterface::new(PlatformNode::new(tree, id)),
                 )?;
             }
             if new_interfaces.contains(Interface::Component) {
                 bus.register_interface(
                     &path,
-                    ComponentInterface::new(PlatformNode::new(tree, id, &self.app_state)),
+                    ComponentInterface::new(PlatformNode::new(tree, id), &self.root_window_bounds),
                 )?;
             }
             if new_interfaces.contains(Interface::Value) {
                 bus.register_interface(
                     &path,
-                    ValueInterface::new(PlatformNode::new(tree, id, &self.app_state)),
+                    ValueInterface::new(PlatformNode::new(tree, id)),
                 )?;
             }
             Ok(true)
@@ -139,9 +140,9 @@ impl Adapter {
     }
 
     pub fn set_root_window_bounds(&self, outer: Rect, inner: Rect) {
-        let mut app_state = self.app_state.write();
-        app_state.outer_bounds = outer;
-        app_state.inner_bounds = inner;
+        let mut bounds = self.root_window_bounds.write();
+        bounds.outer = outer;
+        bounds.inner = inner;
     }
 
     pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
@@ -152,14 +153,14 @@ impl Adapter {
         }
         impl TreeChangeHandler for Handler<'_> {
             fn node_added(&mut self, node: &Node) {
-                let interfaces = NodeWrapper::new(node, &self.adapter.app_state).interfaces();
+                let interfaces = NodeWrapper::new(node).interfaces();
                 self.adapter
                     .register_interfaces(self.tree, node.id(), interfaces)
                     .unwrap();
             }
             fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
-                let old_wrapper = NodeWrapper::new(old_node, &self.adapter.app_state);
-                let new_wrapper = NodeWrapper::new(new_node, &self.adapter.app_state);
+                let old_wrapper = NodeWrapper::new(old_node);
+                let new_wrapper = NodeWrapper::new(new_node);
                 let old_interfaces = old_wrapper.interfaces();
                 let new_interfaces = new_wrapper.interfaces();
                 let kept_interfaces = old_interfaces & new_interfaces;
@@ -177,28 +178,24 @@ impl Adapter {
                 if old_window.map(|n| n.id()) != new_window.map(|n| n.id()) {
                     if let Some(window) = old_window {
                         self.adapter.window_deactivated(
-                            &NodeWrapper::new(&window, &self.adapter.app_state),
+                            &NodeWrapper::new(&window),
                             &mut self.queue,
                         );
                     }
                     if let Some(window) = new_window {
                         self.adapter.window_activated(
-                            &NodeWrapper::new(&window, &self.adapter.app_state),
+                            &NodeWrapper::new(&window),
                             &mut self.queue,
                         );
                     }
                 }
-                if let Some(node) =
-                    new_node.map(|node| NodeWrapper::new(node, &self.adapter.app_state))
-                {
+                if let Some(node) = new_node.map(NodeWrapper::new) {
                     self.queue.push(QueuedEvent::Object {
                         target: node.id(),
                         event: ObjectEvent::StateChanged(State::Focused, true),
                     });
                 }
-                if let Some(node) =
-                    old_node.map(|node| NodeWrapper::new(node, &self.adapter.app_state))
-                {
+                if let Some(node) = old_node.map(NodeWrapper::new) {
                     self.queue.push(QueuedEvent::Object {
                         target: node.id(),
                         event: ObjectEvent::StateChanged(State::Focused, false),
@@ -206,7 +203,7 @@ impl Adapter {
                 }
             }
             fn node_removed(&mut self, node: &Node) {
-                let node = NodeWrapper::new(node, &self.adapter.app_state);
+                let node = NodeWrapper::new(node);
                 self.adapter
                     .unregister_interfaces(&node.id(), node.interfaces())
                     .unwrap();
