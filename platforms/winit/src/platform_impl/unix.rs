@@ -7,7 +7,7 @@ use accesskit_unix::Adapter as UnixAdapter;
 use winit::window::Window;
 
 pub struct Adapter {
-    adapter: UnixAdapter,
+    adapter: Option<UnixAdapter>,
 }
 
 impl Adapter {
@@ -27,14 +27,20 @@ impl Adapter {
     }
 
     pub fn set_root_window_bounds(&self, outer: Rect, inner: Rect) {
-        self.adapter.set_root_window_bounds(outer, inner);
+        if let Some(adapter) = self.adapter {
+            adapter.set_root_window_bounds(outer, inner);
+        }
     }
 
     pub fn update(&self, update: TreeUpdate) {
-        self.adapter.update(update).raise();
+        if let Some(adapter) = self.adapter {
+            adapter.update(update).raise();
+        }
     }
 
     pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
-        self.adapter.update(updater()).raise();
+        if let Some(adapter) = self.adapter {
+            adapter.update(updater()).raise();
+        }
     }
 }
