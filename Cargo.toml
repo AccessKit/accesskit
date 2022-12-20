@@ -2,8 +2,8 @@
 members = [
     "common",
     "consumer",
-    "platforms/linux",
     "platforms/macos",
+    "platforms/unix",
     "platforms/windows",
     "platforms/winit",
 ]

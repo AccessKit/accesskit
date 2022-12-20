@@ -14,11 +14,24 @@ mod platform;
 #[path = "macos.rs"]
 mod platform;
 
-#[cfg(target_os = "linux")]
-#[path = "linux.rs"]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
+#[path = "unix.rs"]
 mod platform;
 
-#[cfg(all(not(target_os = "windows"), not(target_os = "macos"), not(target_os = "linux")))]
-#[cfg(all(not(target_os = "windows"), not(target_os = "linux"),))]
+#[cfg(all(
+    not(target_os = "windows"),
+    not(target_os = "macos"),
+    not(target_os = "linux"),
+    not(target_os = "dragonfly"),
+    not(target_os = "freebsd"),
+    not(target_os = "netbsd"),
+    not(target_os = "openbsd")
+))]
 #[path = "null.rs"]
 mod platform;

@@ -3,11 +3,11 @@
 // the LICENSE-APACHE file).
 
 use accesskit::{kurbo::Rect, ActionHandler, TreeUpdate};
-use accesskit_linux::Adapter as LinuxAdapter;
+use accesskit_unix::Adapter as UnixAdapter;
 use winit::window::Window;
 
 pub struct Adapter {
-    adapter: LinuxAdapter,
+    adapter: UnixAdapter,
 }
 
 impl Adapter {
@@ -16,7 +16,7 @@ impl Adapter {
         source: Box<dyn FnOnce() -> TreeUpdate>,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
-        let adapter = LinuxAdapter::new(
+        let adapter = UnixAdapter::new(
             String::new(),
             String::new(),
             String::new(),
