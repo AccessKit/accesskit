@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file).
 
-use accesskit::{kurbo::Rect, ActionHandler, ActionRequest, TreeUpdate};
+use accesskit::{ActionHandler, ActionRequest, TreeUpdate};
 use parking_lot::Mutex;
 use winit::{
     event::WindowEvent,
@@ -64,14 +64,28 @@ impl Adapter {
         Self { adapter }
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(all(
+        not(target_os = "linux"),
+        not(target_os = "dragonfly"),
+        not(target_os = "freebsd"),
+        not(target_os = "netbsd"),
+        not(target_os = "openbsd")
+    ))]
     #[must_use]
-    pub fn on_event(&self, window: &Window, event: &WindowEvent) -> bool {
+    pub fn on_event(&self, _window: &Window, _event: &WindowEvent) -> bool {
         true
     }
-    #[cfg(target_os = "linux")]
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ))]
     #[must_use]
     pub fn on_event(&self, window: &Window, event: &WindowEvent) -> bool {
+        use accesskit::kurbo::Rect;
+
         match event {
             WindowEvent::Moved(outer_position) => {
                 let outer_position: (_, _) = outer_position.cast::<f64>().into();

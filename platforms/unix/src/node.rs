@@ -9,7 +9,9 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{kurbo::Point, CheckedState, DefaultActionVerb, NodeId, Role};
-use accesskit_consumer::{FilterResult, Node, Tree, TreeState};
+use accesskit_consumer::{
+    DetachedNode, FilterResult, Node, NodeState, Tree, TreeState,
+};
 use atspi::{accessible::Role as AtspiRole, CoordType, Interface, InterfaceSet, State, StateSet};
 use crate::{
     atspi::{
@@ -19,17 +21,10 @@ use crate::{
     util::{AppContext, WindowBounds},
 };
 use parking_lot::RwLock;
-use std::{
-    convert::TryFrom,
-    sync::{Arc, Weak},
-};
+use std::{iter::FusedIterator, sync::{Arc, Weak}};
 use zbus::fdo;
 
-pub(crate) fn filter(node: &Node) -> FilterResult {
-    if node.is_focused() {
-        return FilterResult::Include;
-    }
-
+fn filter_common(node: &NodeState) -> FilterResult {
     if node.is_hidden() {
         return FilterResult::ExcludeSubtree;
     }
@@ -42,17 +37,40 @@ pub(crate) fn filter(node: &Node) -> FilterResult {
     FilterResult::Include
 }
 
-pub(crate) struct NodeWrapper<'a> {
-    node: &'a Node<'a>,
+pub(crate) fn filter(node: &Node) -> FilterResult {
+    if node.is_focused() {
+        return FilterResult::Include;
+    }
+
+    filter_common(node.state())
+}
+
+pub(crate) fn filter_detached(node: &DetachedNode) -> FilterResult {
+    if node.is_focused() {
+        return FilterResult::Include;
+    }
+
+    filter_common(node.state())
+}
+
+pub(crate) enum NodeWrapper<'a> {
+    Node(&'a Node<'a>),
+    DetachedNode(&'a DetachedNode),
 }
 
 impl<'a> NodeWrapper<'a> {
-    pub(crate) fn new(node: &'a Node<'a>) -> Self {
-        NodeWrapper { node }
+    fn node_state(&self) -> &NodeState {
+        match self {
+            Self::Node(node) => node.state(),
+            Self::DetachedNode(node) => node.state(),
+        }
     }
 
     pub fn name(&self) -> String {
-        self.node.name().unwrap_or_default()
+        match self {
+            Self::Node(node) => node.name(),
+            Self::DetachedNode(node) => node.name(),
+        }.unwrap_or_default()
     }
 
     pub fn description(&self) -> String {
@@ -60,23 +78,24 @@ impl<'a> NodeWrapper<'a> {
     }
 
     pub fn parent(&self) -> Option<ObjectRef> {
-        self.node.parent().map(|parent| parent.id().into())
-    }
-
-    pub fn child_count(&self) -> usize {
-        self.node.child_ids().count()
-    }
-
-    pub fn locale(&self) -> String {
-        String::new()
+        self.node_state().parent_id().map(Into::into)
     }
 
     pub fn id(&self) -> ObjectId<'static> {
-        self.node.id().into()
+        self.node_state().id().into()
+    }
+
+    pub fn child_ids(
+        &self
+    ) -> impl DoubleEndedIterator<Item = NodeId>
+           + ExactSizeIterator<Item = NodeId>
+           + FusedIterator<Item = NodeId>
+           + '_ {
+        self.node_state().child_ids()
     }
 
     pub fn role(&self) -> AtspiRole {
-        match self.node.role() {
+        match self.node_state().role() {
             Role::Alert => AtspiRole::Notification,
             Role::AlertDialog => AtspiRole::Alert,
             Role::Comment | Role::Suggestion => AtspiRole::Section,
@@ -150,7 +169,7 @@ impl<'a> NodeWrapper<'a> {
             Role::Document => AtspiRole::DocumentFrame,
             Role::EmbeddedObject => AtspiRole::Embedded,
             // TODO: Forms which lack an accessible name are no longer
-            // exposed as forms. http://crbug.com/874384. Forms which have accessible
+            // exposed as forms. Forms which have accessible
             // names should be exposed as `AtspiRole::Landmark` according to Core AAM.
             Role::Form => AtspiRole::Form,
             Role::Figure | Role::Feed => AtspiRole::Panel,
@@ -165,13 +184,8 @@ impl<'a> NodeWrapper<'a> {
             Role::Group => AtspiRole::Panel,
             Role::Heading => AtspiRole::Heading,
             Role::Iframe | Role::IframePresentational => AtspiRole::InternalFrame,
-            Role::Image => {
-                if self.node.filtered_children(&filter).next().is_some() {
-                    AtspiRole::ImageMap
-                } else {
-                    AtspiRole::Image
-                }
-            }
+            // TODO: If there are unignored children, then it should be AtspiRole::ImageMap.
+            Role::Image => AtspiRole::Image,
             Role::InlineTextBox => AtspiRole::Static,
             Role::InputTime => AtspiRole::DateEditor,
             Role::LabelText | Role::Legend => AtspiRole::Label,
@@ -180,13 +194,12 @@ impl<'a> NodeWrapper<'a> {
             Role::LayoutTableCell => AtspiRole::Section,
             Role::LayoutTableRow => AtspiRole::Section,
             // TODO: Having a separate accessible object for line breaks
-            // is inconsistent with other implementations. http://crbug.com/873144#c1.
+            // is inconsistent with other implementations.
             Role::LineBreak => AtspiRole::Static,
             Role::Link => AtspiRole::Link,
             Role::List => AtspiRole::List,
             Role::ListBox => AtspiRole::ListBox,
-            // TODO: Use `AtspiRole::MenuItem' inside a combo box, see how
-            // ax_platform_node_win.cc code does this.
+            // TODO: Use `AtspiRole::MenuItem' inside a combo box.
             Role::ListBoxOption => AtspiRole::ListItem,
             Role::ListGrid => AtspiRole::Table,
             Role::ListItem => AtspiRole::ListItem,
@@ -198,13 +211,8 @@ impl<'a> NodeWrapper<'a> {
             // only if it still has non-ignored descendants, which happens only when =>
             // - The list marker itself is ignored but the descendants are not
             // - Or the list marker contains images
-            Role::ListMarker => {
-                if self.node.filtered_children(&filter).next().is_none() {
-                    AtspiRole::Static
-                } else {
-                    AtspiRole::Panel
-                }
-            }
+            // TODO: How to check for unignored children when the node is detached?
+            Role::ListMarker => AtspiRole::Static,
             Role::Log => AtspiRole::Log,
             Role::Main => AtspiRole::Landmark,
             Role::Mark => AtspiRole::Static,
@@ -223,20 +231,7 @@ impl<'a> NodeWrapper<'a> {
             Role::PdfActionableHighlight => AtspiRole::PushButton,
             Role::PdfRoot => AtspiRole::DocumentFrame,
             Role::PluginObject => AtspiRole::Embedded,
-            Role::PopupButton => {
-                // TODO: Add a getter for html_tag
-                //if self
-                //    .node
-                //    .data()
-                //    .html_tag
-                //    .as_ref()
-                //    .map_or(false, |tag| tag.as_ref() == "select")
-                //{
-                //    AtspiRole::ComboBox
-                //} else {
-                AtspiRole::PushButton
-                //}
-            }
+            Role::PopupButton => AtspiRole::PushButton,
             Role::Portal => AtspiRole::PushButton,
             Role::Pre => AtspiRole::Section,
             Role::ProgressIndicator => AtspiRole::ProgressBar,
@@ -250,9 +245,9 @@ impl<'a> NodeWrapper<'a> {
             // TODO: Generally exposed as description on <ruby> (`Role::Ruby`) element, not
             // as its own object in the tree.
             // However, it's possible to make a `Role::RubyAnnotation` element show up in the
-            // AX tree, for example by adding tabindex="0" to the source <rp> or <rt>
+            // tree, for example by adding tabindex="0" to the source <rp> or <rt>
             // element or making the source element the target of an aria-owns.
-            // Therefore, browser side needs to gracefully handle it if it actually
+            // Therefore, we need to gracefully handle it if it actually
             // shows up in the tree.
             Role::RubyAnnotation => AtspiRole::Static,
             Role::Section => AtspiRole::Section,
@@ -263,30 +258,25 @@ impl<'a> NodeWrapper<'a> {
             Role::Splitter => AtspiRole::Separator,
             Role::StaticText => AtspiRole::Static,
             Role::Status => AtspiRole::StatusBar,
-            // ax::mojom::Role::kSubscript =>
-            // AtspiRole::Subscript,
-            // ax::mojom::Role::kSuperscript =>
-            // AtspiRole::Superscript,
             Role::SvgRoot => AtspiRole::DocumentFrame,
             Role::Tab => AtspiRole::PageTab,
             Role::Table => AtspiRole::Table,
             // TODO: This mapping is correct, but it doesn't seem to be
             // used. We don't necessarily want to always expose these containers, but
-            // we must do so if they are focusable. http://crbug.com/874043
+            // we must do so if they are focusable.
             Role::TableHeaderContainer => AtspiRole::Panel,
             Role::TabList => AtspiRole::PageTabList,
             Role::TabPanel => AtspiRole::ScrollPane,
             // TODO: This mapping should also be applied to the dfn
-            // element. http://crbug.com/874411
+            // element.
             Role::Term => AtspiRole::DescriptionTerm,
             Role::TitleBar => AtspiRole::TitleBar,
             Role::TextField | Role::SearchBox => {
-                // TODO: Add a getter for protected
-                //if self.node.data().protected {
-                //    AtspiRole::PasswordText
-                //} else {
-                AtspiRole::Entry
-                //}
+                if self.node_state().is_protected() {
+                    AtspiRole::PasswordText
+                } else {
+                    AtspiRole::Entry
+                }
             }
             Role::TextFieldWithComboBox => AtspiRole::ComboBox,
             Role::Abbr | Role::Code | Role::Emphasis | Role::Strong | Role::Time => {
@@ -312,12 +302,19 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
+    fn is_focused(&self) -> bool {
+        match self {
+            Self::Node(node) => node.is_focused(),
+            Self::DetachedNode(node) => node.is_focused(),
+        }
+    }
+
     pub fn state(&self) -> StateSet {
-        let platform_role = self.role();
-        //let data = self.node.data();
-        let mut state = StateSet::empty();
-        if self.node.role() == Role::Window && self.node.parent().is_none() {
-            state.insert(State::Active);
+        let state = self.node_state();
+        let atspi_role = self.role();
+        let mut atspi_state = StateSet::empty();
+        if state.role() == Role::Window && state.parent_id().is_none() {
+            atspi_state.insert(State::Active);
         }
         //if let Some(expanded) = data.expanded {
         //    state.insert(State::Expandable);
@@ -332,18 +329,20 @@ impl<'a> NodeWrapper<'a> {
         //    state.insert(State::Editable);
         //}
         // TODO: Focus and selection.
-        if self.node.is_focusable() {
-            state.insert(State::Focusable);
+        if state.is_focusable() {
+            atspi_state.insert(State::Focusable);
         }
         //match data.orientation {
         //    Some(Orientation::Horizontal) => state.insert(State::Horizontal),
         //    Some(Orientation::Vertical) => state.insert(State::Vertical),
         //    _ => {}
         //}
-        if filter(self.node) == FilterResult::Include {
-            state.insert(State::Visible);
-            // if (!delegate_->IsOffscreen() && !is_minimized)
-            state.insert(State::Showing);
+        let filter_result = match self {
+            Self::Node(node) => filter(node),
+            Self::DetachedNode(node) => filter_detached(node),
+        };
+        if filter_result == FilterResult::Include {
+            atspi_state.insert(State::Visible | State::Showing);
         }
         //if data.multiselectable {
         //    state.insert(State::Multiselectable);
@@ -361,8 +360,8 @@ impl<'a> NodeWrapper<'a> {
         //    None | Some(AriaCurrent::False) => {}
         //    _ => state.insert(State::Active),
         //}
-        if platform_role != AtspiRole::ToggleButton && self.node.checked_state().is_some() {
-            state.insert(State::Checkable);
+        if atspi_role != AtspiRole::ToggleButton && state.checked_state().is_some() {
+            atspi_state.insert(State::Checkable);
         }
         //if data.has_popup.is_some() {
         //    state.insert(State::HasPopup);
@@ -373,25 +372,25 @@ impl<'a> NodeWrapper<'a> {
         //if data.modal {
         //    state.insert(State::Modal);
         //}
-        if let Some(selected) = self.node.is_selected() {
-            if !self.node.is_disabled() {
-                state.insert(State::Selectable);
+        if let Some(selected) = state.is_selected() {
+            if !state.is_disabled() {
+                atspi_state.insert(State::Selectable);
             }
             if selected {
-                state.insert(State::Selected);
+                atspi_state.insert(State::Selected);
             }
         }
-        if self.node.is_text_field() {
-            state.insert(State::SelectableText);
-            //match self.node.data().multiline {
-            //    true => state.insert(State::MultiLine),
-            //    false => state.insert(State::SingleLine),
-            //}
+        if state.is_text_field() {
+            atspi_state.insert(State::SelectableText);
+            atspi_state.insert(match state.is_multiline() {
+                true => State::MultiLine,
+                false => State::SingleLine,
+            });
         }
 
         // Special case for indeterminate progressbar.
-        if self.node.role() == Role::ProgressIndicator && self.node.numeric_value().is_none() {
-            state.insert(State::Indeterminate);
+        if state.role() == Role::ProgressIndicator && state.numeric_value().is_none() {
+            atspi_state.insert(State::Indeterminate);
         }
 
         //let has_suggestion = data
@@ -403,27 +402,24 @@ impl<'a> NodeWrapper<'a> {
         //}
 
         // Checked state
-        match self.node.checked_state() {
-            Some(CheckedState::Mixed) => state.insert(State::Indeterminate),
-            Some(CheckedState::True) => {
-                if platform_role == AtspiRole::ToggleButton {
-                    state.insert(State::Pressed);
-                } else {
-                    state.insert(State::Checked);
-                }
-            }
+        match state.checked_state() {
+            Some(CheckedState::Mixed) =>
+                atspi_state.insert(State::Indeterminate),
+            Some(CheckedState::True) if atspi_role == AtspiRole::ToggleButton =>
+                atspi_state.insert(State::Pressed),
+            Some(CheckedState::True) =>
+                atspi_state.insert(State::Checked),
             _ => {}
         }
 
-        if self.node.is_read_only_supported() && self.node.is_read_only_or_disabled() {
-            state.insert(State::ReadOnly);
+        if state.is_read_only_supported() && state.is_read_only_or_disabled() {
+            atspi_state.insert(State::ReadOnly);
         } else {
-            state.insert(State::Enabled);
-            state.insert(State::Sensitive);
+            atspi_state.insert(State::Enabled | State::Sensitive);
         }
 
-        if self.node.is_focused() {
-            state.insert(State::Focused);
+        if self.is_focused() {
+            atspi_state.insert(State::Focused);
         }
 
         // It is insufficient to compare with g_current_activedescendant due to both
@@ -433,32 +429,43 @@ impl<'a> NodeWrapper<'a> {
         // the activedescendant change.
         // if (GetActiveDescendantOfCurrentFocused() == atk_object)
         //     state.insert(State::Focused);
-        state
+        atspi_state
+    }
+
+    fn is_root(&self) -> bool {
+        match self {
+            Self::Node(node) => node.is_root(),
+            Self::DetachedNode(node) => node.is_root(),
+        }
     }
 
     pub fn interfaces(&self) -> InterfaceSet {
+        let state = self.node_state();
         let mut interfaces = InterfaceSet::new(Interface::Accessible);
-        if self.node.default_action_verb().is_some() {
+        if state.default_action_verb().is_some() {
             interfaces.insert(Interface::Action);
         }
-        if self.node.bounding_box().is_some() || self.node.is_root() {
+        if state.raw_bounds().is_some() || self.is_root() {
             interfaces.insert(Interface::Component);
         }
-        if self.node.numeric_value().is_some() {
+        if self.current_value().is_some() {
             interfaces.insert(Interface::Value);
         }
         interfaces
     }
 
-    pub fn n_actions(&self) -> i32 {
-        self.node.default_action_verb().map_or(0, |_| 1)
+    fn n_actions(&self) -> i32 {
+        match self.node_state().default_action_verb() {
+            Some(_) => 1,
+            None => 0,
+        }
     }
 
-    pub fn get_action_name(&self, index: i32) -> String {
+    fn get_action_name(&self, index: i32) -> String {
         if index != 0 {
             return String::new();
         }
-        String::from(match self.node.default_action_verb() {
+        String::from(match self.node_state().default_action_verb() {
             Some(DefaultActionVerb::Click) => "click",
             Some(DefaultActionVerb::Focus) => "focus",
             Some(DefaultActionVerb::Check) => "check",
@@ -470,6 +477,10 @@ impl<'a> NodeWrapper<'a> {
             Some(DefaultActionVerb::Select) => "select",
             None => "",
         })
+    }
+
+    fn current_value(&self) -> Option<f64> {
+        self.node_state().numeric_value()
     }
 
     pub fn enqueue_changes(&self, queue: &mut Vec<QueuedEvent>, old: &NodeWrapper) {
@@ -547,7 +558,7 @@ impl PlatformNode {
         }
     }
 
-    fn with_state<F, T>(&self, f: F) -> fdo::Result<T>
+    fn with_tree_state<F, T>(&self, f: F) -> fdo::Result<T>
     where
         F: FnOnce(&TreeState) -> fdo::Result<T>,
     {
@@ -558,11 +569,11 @@ impl PlatformNode {
 
     fn resolve<F, T>(&self, f: F) -> fdo::Result<T>
     where
-        for<'a> F: FnOnce(NodeWrapper<'a>) -> fdo::Result<T>,
+        for<'a> F: FnOnce(Node<'a>) -> fdo::Result<T>,
     {
-        self.with_state(|tree| {
-            if let Some(node) = tree.node_by_id(self.node_id) {
-                f(NodeWrapper::new(&node))
+        self.with_tree_state(|state| {
+            if let Some(node) = state.node_by_id(self.node_id) {
+                f(node)
             } else {
                 Err(unknown_object(&self.accessible_id()))
             }
@@ -581,30 +592,31 @@ impl PlatformNode {
     }
 
     pub fn name(&self) -> fdo::Result<String> {
-        self.resolve(|resolved| Ok(resolved.name()))
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            Ok(wrapper.name())
+        })
     }
 
     pub fn description(&self) -> fdo::Result<String> {
-        self.resolve(|resolved| Ok(resolved.description()))
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            Ok(wrapper.description())
+        })
     }
 
     pub fn parent(&self) -> fdo::Result<ObjectRef> {
-        self.resolve(|resolved| {
-            Ok(resolved
-                .parent()
-                .unwrap_or_else(|| ObjectRef::Managed(ObjectId::root())))
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            Ok(wrapper.parent().unwrap_or_else(|| ObjectRef::Managed(ObjectId::root())))
         })
     }
 
     pub fn child_count(&self) -> fdo::Result<i32> {
-        self.resolve(|resolved| {
-            i32::try_from(resolved.child_count())
+        self.resolve(|node| {
+            i32::try_from(node.state().child_ids().count())
                 .map_err(|_| fdo::Error::Failed("Too many children.".into()))
         })
-    }
-
-    pub fn locale(&self) -> fdo::Result<String> {
-        self.resolve(|resolved| Ok(resolved.locale()))
     }
 
     pub fn accessible_id(&self) -> ObjectId<'static> {
@@ -612,17 +624,23 @@ impl PlatformNode {
     }
 
     pub fn child_at_index(&self, index: usize) -> fdo::Result<Option<ObjectRef>> {
-        self.resolve(|resolved| Ok(resolved.node.child_ids().nth(index).map(ObjectRef::from)))
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            let child = wrapper.child_ids().nth(index).map(ObjectRef::from);
+            Ok(child)
+        })
     }
 
     pub fn children(&self) -> fdo::Result<Vec<ObjectRef>> {
-        self.resolve(|resolved| Ok(resolved.node.child_ids().map(ObjectRef::from).collect()))
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            Ok(wrapper.child_ids().map(ObjectRef::from).collect())
+        })
     }
 
     pub fn index_in_parent(&self) -> fdo::Result<i32> {
-        self.resolve(|resolved| {
-            resolved
-                .node
+        self.resolve(|node| {
+            node
                 .parent_and_index()
                 .map_or(Ok(-1), |(_, index)| {
                     i32::try_from(index).map_err(|_| fdo::Error::Failed("Index is too big.".into()))
@@ -631,32 +649,48 @@ impl PlatformNode {
     }
 
     pub fn role(&self) -> fdo::Result<AtspiRole> {
-        self.resolve(|resolved| Ok(resolved.role()))
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            Ok(wrapper.role())
+        })
     }
 
     pub fn state(&self) -> fdo::Result<StateSet> {
-        self.resolve(|resolved| Ok(resolved.state()))
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            Ok(wrapper.state())
+        })
     }
 
     pub fn interfaces(&self) -> fdo::Result<InterfaceSet> {
-        self.resolve(|resolved| Ok(resolved.interfaces()))
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            Ok(wrapper.interfaces())
+        })
     }
 
     pub fn n_actions(&self) -> fdo::Result<i32> {
-        self.resolve(|resolved| Ok(resolved.n_actions()))
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            Ok(wrapper.n_actions())
+        })
     }
 
     pub fn get_action_name(&self, index: i32) -> fdo::Result<String> {
-        self.resolve(|resolved| Ok(resolved.get_action_name(index)))
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            Ok(wrapper.get_action_name(index))
+        })
     }
 
     pub fn get_actions(&self) -> fdo::Result<Vec<Action>> {
-        self.resolve(|resolved| {
-            let n_actions = resolved.n_actions() as usize;
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            let n_actions = wrapper.n_actions() as usize;
             let mut actions = Vec::with_capacity(n_actions);
             for i in 0..n_actions {
                 actions.push(Action {
-                    localized_name: resolved.get_action_name(i as i32),
+                    localized_name: wrapper.get_action_name(i as i32),
                     description: "".into(),
                     key_binding: "".into(),
                 });
@@ -675,15 +709,15 @@ impl PlatformNode {
     }
 
     pub fn contains(&self, window_bounds: &WindowBounds, x: i32, y: i32, coord_type: CoordType) -> fdo::Result<bool> {
-        self.resolve(|wrapper| {
-            let bounds = match wrapper.node.bounding_box() {
+        self.resolve(|node| {
+            let bounds = match node.bounding_box() {
                 Some(node_bounds) => {
-                    let top_left = window_bounds.top_left(coord_type, wrapper.node.is_root());
+                    let top_left = window_bounds.top_left(coord_type, node.is_root());
                     let new_origin =
                         Point::new(top_left.x + node_bounds.x0, top_left.y + node_bounds.y0);
                     node_bounds.with_origin(new_origin)
                 }
-                None if wrapper.node.is_root() => {
+                None if node.is_root() => {
                     let bounds = window_bounds.outer;
                     match coord_type {
                         CoordType::Screen => bounds,
@@ -691,7 +725,7 @@ impl PlatformNode {
                         _ => unimplemented!(),
                     }
                 }
-                _ => return Err(unknown_object(&wrapper.id())),
+                _ => return Err(unknown_object(&self.accessible_id())),
             };
             Ok(bounds.contains(Point::new(x.into(), y.into())))
         })
@@ -704,26 +738,25 @@ impl PlatformNode {
         y: i32,
         coord_type: CoordType,
     ) -> fdo::Result<Option<ObjectRef>> {
-        self.resolve(|wrapper| {
-            let top_left = window_bounds.top_left(coord_type, wrapper.node.is_root());
+        self.resolve(|node| {
+            let top_left = window_bounds.top_left(coord_type, node.is_root());
             let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
-            Ok(wrapper
-                .node
+            Ok(node
                 .node_at_point(point, &filter)
-                .map(|node| ObjectRef::Managed(node.id().into())))
+                .map(|node| ObjectRef::Managed(NodeWrapper::Node(&node).id().into())))
         })
     }
 
     pub fn get_extents(&self, window_bounds: &WindowBounds, coord_type: CoordType) -> fdo::Result<(AtspiRect,)> {
-        self.resolve(|wrapper| {
-            match wrapper.node.bounding_box() {
+        self.resolve(|node| {
+            match node.bounding_box() {
                 Some(node_bounds) => {
-                    let top_left = window_bounds.top_left(coord_type, wrapper.node.is_root());
+                    let top_left = window_bounds.top_left(coord_type, node.is_root());
                     let new_origin =
                         Point::new(top_left.x + node_bounds.x0, top_left.y + node_bounds.y0);
                     Ok((node_bounds.with_origin(new_origin).into(),))
                 }
-                None if wrapper.node.is_root() => {
+                None if node.is_root() => {
                     let bounds = window_bounds.outer;
                     Ok((match coord_type {
                         CoordType::Screen => bounds.into(),
@@ -731,7 +764,7 @@ impl PlatformNode {
                         _ => unimplemented!(),
                     },))
                 }
-                _ => Err(unknown_object(&wrapper.id())),
+                _ => Err(unknown_object(&self.accessible_id())),
             }
         })
     }
@@ -743,19 +776,22 @@ impl PlatformNode {
     }
 
     pub fn minimum_value(&self) -> fdo::Result<f64> {
-        self.resolve(|resolved| Ok(resolved.node.min_numeric_value().unwrap_or(std::f64::MIN)))
+        self.resolve(|node| Ok(node.state().min_numeric_value().unwrap_or(std::f64::MIN)))
     }
 
     pub fn maximum_value(&self) -> fdo::Result<f64> {
-        self.resolve(|resolved| Ok(resolved.node.max_numeric_value().unwrap_or(std::f64::MAX)))
+        self.resolve(|node| Ok(node.state().max_numeric_value().unwrap_or(std::f64::MAX)))
     }
 
     pub fn minimum_increment(&self) -> fdo::Result<f64> {
-        self.resolve(|resolved| Ok(resolved.node.numeric_value_step().unwrap_or(0.0)))
+        self.resolve(|node| Ok(node.state().numeric_value_step().unwrap_or(0.0)))
     }
 
     pub fn current_value(&self) -> fdo::Result<f64> {
-        self.resolve(|resolved| Ok(resolved.node.numeric_value().unwrap_or(0.0)))
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            Ok(wrapper.current_value().unwrap_or(0.0))
+        })
     }
 
     pub fn set_current_value(&self, value: f64) -> fdo::Result<()> {

@@ -13,7 +13,7 @@ pub struct Adapter {
 impl Adapter {
     pub fn new(
         _: &Window,
-        source: Box<dyn FnOnce() -> TreeUpdate>,
+        source: impl 'static + FnOnce() -> TreeUpdate,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let adapter = UnixAdapter::new(
@@ -27,19 +27,19 @@ impl Adapter {
     }
 
     pub fn set_root_window_bounds(&self, outer: Rect, inner: Rect) {
-        if let Some(adapter) = self.adapter {
+        if let Some(adapter) = &self.adapter {
             adapter.set_root_window_bounds(outer, inner);
         }
     }
 
     pub fn update(&self, update: TreeUpdate) {
-        if let Some(adapter) = self.adapter {
+        if let Some(adapter) = &self.adapter {
             adapter.update(update).raise();
         }
     }
 
     pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
-        if let Some(adapter) = self.adapter {
+        if let Some(adapter) = &self.adapter {
             adapter.update(updater()).raise();
         }
     }

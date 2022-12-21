@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{kurbo::Rect, ActionHandler, NodeId, Role, TreeUpdate};
-use accesskit_consumer::{Node, Tree, TreeChangeHandler};
+use accesskit_consumer::{DetachedNode, Node, Tree, TreeChangeHandler, TreeState};
 use atspi::{Interface, InterfaceSet, State};
 use crate::{
     atspi::{
@@ -32,7 +32,7 @@ impl Adapter {
         app_name: String,
         toolkit_name: String,
         toolkit_version: String,
-        initial_state: Box<dyn FnOnce() -> TreeUpdate>,
+        initial_state: impl 'static + FnOnce() -> TreeUpdate,
         action_handler: Box<dyn ActionHandler>,
     ) -> Option<Self> {
         let mut atspi_bus = Bus::a11y_bus()?;
@@ -64,7 +64,7 @@ impl Adapter {
             objects_to_add.push(reader.root().id());
             add_children(reader.root(), &mut objects_to_add);
             for id in objects_to_add {
-                let interfaces = NodeWrapper::new(&reader.node_by_id(id).unwrap())
+                let interfaces = NodeWrapper::Node(&reader.node_by_id(id).unwrap())
                         .interfaces();
                 adapter
                     .register_interfaces(&adapter.tree, id, interfaces)
@@ -146,14 +146,14 @@ impl Adapter {
         }
         impl TreeChangeHandler for Handler<'_> {
             fn node_added(&mut self, node: &Node) {
-                let interfaces = NodeWrapper::new(node).interfaces();
+                let interfaces = NodeWrapper::Node(node).interfaces();
                 self.adapter
                     .register_interfaces(self.tree, node.id(), interfaces)
                     .unwrap();
             }
-            fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
-                let old_wrapper = NodeWrapper::new(old_node);
-                let new_wrapper = NodeWrapper::new(new_node);
+            fn node_updated(&mut self, old_node: &DetachedNode, new_node: &Node) {
+                let old_wrapper = NodeWrapper::DetachedNode(old_node);
+                let new_wrapper = NodeWrapper::Node(new_node);
                 let old_interfaces = old_wrapper.interfaces();
                 let new_interfaces = new_wrapper.interfaces();
                 let kept_interfaces = old_interfaces & new_interfaces;
@@ -165,38 +165,35 @@ impl Adapter {
                     .unwrap();
                 new_wrapper.enqueue_changes(&mut self.queue, &old_wrapper);
             }
-            fn focus_moved(&mut self, old_node: Option<&Node>, new_node: Option<&Node>) {
-                let old_window = old_node.and_then(|node| containing_window(*node));
-                let new_window = new_node.and_then(|node| containing_window(*node));
-                if old_window.map(|n| n.id()) != new_window.map(|n| n.id()) {
-                    if let Some(window) = old_window {
-                        self.adapter.window_deactivated(
-                            &NodeWrapper::new(&window),
+            fn focus_moved(&mut self, old_node: Option<&DetachedNode>, new_node: Option<&Node>) {
+                if let Some(root_window) = root_window(&self.tree.read()) {
+                    if old_node.is_none() && new_node.is_some() {
+                        self.adapter.window_activated(
+                            &NodeWrapper::Node(&root_window),
                             &mut self.queue,
                         );
-                    }
-                    if let Some(window) = new_window {
-                        self.adapter.window_activated(
-                            &NodeWrapper::new(&window),
+                    } else if old_node.is_some() && new_node.is_none() {
+                        self.adapter.window_deactivated(
+                            &NodeWrapper::Node(&root_window),
                             &mut self.queue,
                         );
                     }
                 }
-                if let Some(node) = new_node.map(NodeWrapper::new) {
+                if let Some(node) = new_node.map(NodeWrapper::Node) {
                     self.queue.push(QueuedEvent::Object {
                         target: node.id(),
                         event: ObjectEvent::StateChanged(State::Focused, true),
                     });
                 }
-                if let Some(node) = old_node.map(NodeWrapper::new) {
+                if let Some(node) = old_node.map(NodeWrapper::DetachedNode) {
                     self.queue.push(QueuedEvent::Object {
                         target: node.id(),
                         event: ObjectEvent::StateChanged(State::Focused, false),
                     });
                 }
             }
-            fn node_removed(&mut self, node: &Node) {
-                let node = NodeWrapper::new(node);
+            fn node_removed(&mut self, node: &DetachedNode, _: &TreeState) {
+                let node = NodeWrapper::DetachedNode(node);
                 self.queue.push(QueuedEvent::Object {
                     target: node.id(),
                     event: ObjectEvent::StateChanged(State::Defunct, true),
@@ -243,16 +240,12 @@ impl Adapter {
     }
 }
 
-fn containing_window(node: Node) -> Option<Node> {
+fn root_window(current_state: &TreeState) -> Option<Node> {
     const WINDOW_ROLES: &[Role] = &[Role::AlertDialog, Role::Dialog, Role::Window];
-    if WINDOW_ROLES.contains(&node.role()) {
-        Some(node)
+    let root = current_state.root();
+    if WINDOW_ROLES.contains(&root.role()) {
+        Some(root)
     } else {
-        while let Some(node) = node.parent() {
-            if WINDOW_ROLES.contains(&node.role()) {
-                return Some(node);
-            }
-        }
         None
     }
 }

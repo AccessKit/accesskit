@@ -49,8 +49,8 @@ impl AccessibleInterface<PlatformNode> {
     }
 
     #[dbus_interface(property)]
-    fn locale(&self) -> String {
-        self.node.locale().unwrap_or_default()
+    fn locale(&self) -> &str {
+        ""
     }
 
     #[dbus_interface(property)]
