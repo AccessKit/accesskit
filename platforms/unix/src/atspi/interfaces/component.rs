@@ -57,6 +57,7 @@ impl ComponentInterface {
             self.node
                 .get_accessible_at_point(&window_bounds.read(), x, y, coord_type)?,
         );
+        drop(window_bounds);
         accessible
     }
 

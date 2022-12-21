@@ -750,7 +750,7 @@ impl PlatformNode {
             let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
             Ok(node
                 .node_at_point(point, &filter)
-                .map(|node| ObjectRef::Managed(NodeWrapper::Node(&node).id().into())))
+                .map(|node| ObjectRef::Managed(NodeWrapper::Node(&node).id())))
         })
     }
 
