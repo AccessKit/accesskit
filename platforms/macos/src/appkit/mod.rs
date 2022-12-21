@@ -3,6 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+#![allow(non_upper_case_globals)]
+
 #[link(name = "AppKit", kind = "framework")]
 extern "C" {}
 

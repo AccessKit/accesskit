@@ -3,9 +3,14 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use objc2::foundation::{NSObject, NSString};
+use objc2::foundation::{NSDictionary, NSObject, NSString};
 
 #[link(name = "AppKit", kind = "framework")]
 extern "C" {
     pub(crate) fn NSAccessibilityPostNotification(element: &NSObject, notification: &NSString);
+    pub(crate) fn NSAccessibilityPostNotificationWithUserInfo(
+        element: &NSObject,
+        notification: &NSString,
+        user_info: &NSDictionary<NSString, NSObject>,
+    );
 }

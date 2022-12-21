@@ -30,8 +30,8 @@ use std::{
 
 use crate::{appkit::*, context::Context, util::*};
 
-fn ns_role(node: &Node) -> &'static NSString {
-    let role = node.role();
+fn ns_role(node_state: &NodeState) -> &'static NSString {
+    let role = node_state.role();
     // TODO: Handle special cases.
     unsafe {
         match role {
@@ -54,7 +54,7 @@ fn ns_role(node: &Node) -> &'static NSString {
             Role::CheckBox => NSAccessibilityCheckBoxRole,
             Role::RadioButton => NSAccessibilityRadioButtonRole,
             Role::TextField => {
-                if node.is_multiline() {
+                if node_state.is_multiline() {
                     NSAccessibilityTextAreaRole
                 } else {
                     NSAccessibilityTextFieldRole
@@ -231,17 +231,33 @@ fn ns_role(node: &Node) -> &'static NSString {
     }
 }
 
-pub(crate) fn filter(node: &Node) -> FilterResult {
-    let ns_role = ns_role(node);
+fn filter_common(node_state: &NodeState) -> FilterResult {
+    let ns_role = ns_role(node_state);
     if ns_role == unsafe { NSAccessibilityUnknownRole } {
         return FilterResult::ExcludeNode;
     }
 
-    if node.is_hidden() && !node.is_focused() {
+    if node_state.is_hidden() {
         return FilterResult::ExcludeSubtree;
     }
 
     FilterResult::Include
+}
+
+pub(crate) fn filter(node: &Node) -> FilterResult {
+    if node.is_focused() {
+        return FilterResult::Include;
+    }
+
+    filter_common(node.state())
+}
+
+pub(crate) fn filter_detached(node: &DetachedNode) -> FilterResult {
+    if node.is_focused() {
+        return FilterResult::Include;
+    }
+
+    filter_common(node.state())
 }
 
 pub(crate) fn can_be_focused(node: &Node) -> bool {
@@ -396,7 +412,7 @@ declare_class!(
         #[sel(accessibilityRole)]
         fn role(&self) -> *mut NSString {
             let role = self
-                .resolve(ns_role)
+                .resolve(|node| ns_role(node.state()))
                 .unwrap_or(unsafe { NSAccessibilityUnknownRole });
             Id::autorelease_return(role.copy())
         }
