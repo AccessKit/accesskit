@@ -7,9 +7,7 @@ use accesskit::{Live, NodeId};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, TreeChangeHandler, TreeState};
 use objc2::{
     foundation::{NSInteger, NSMutableDictionary, NSNumber, NSObject, NSString},
-    msg_send,
-    rc::Id,
-    Message,
+    msg_send, Message,
 };
 use std::rc::Rc;
 
@@ -88,8 +86,7 @@ impl QueuedEvent {
                     }
                 };
 
-                let mut user_info: Id<NSMutableDictionary<NSString, NSObject>, _> =
-                    NSMutableDictionary::new();
+                let mut user_info = NSMutableDictionary::<_, NSObject>::new();
                 let text = NSString::from_str(&text);
                 set_object_for_key(&mut user_info, &*text, unsafe {
                     NSAccessibilityAnnouncementKey
