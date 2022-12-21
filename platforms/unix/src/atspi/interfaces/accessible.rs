@@ -3,11 +3,11 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use atspi::{accessible::Role, Interface, InterfaceSet, StateSet};
 use crate::{
     atspi::{ObjectAddress, ObjectId, ObjectRef, OwnedObjectAddress},
-    PlatformNode, PlatformRootNode, unknown_object,
+    unknown_object, PlatformNode, PlatformRootNode,
 };
+use atspi::{accessible::Role, Interface, InterfaceSet, StateSet};
 use std::convert::TryInto;
 use zbus::{fdo, names::OwnedUniqueName, MessageHeader};
 
@@ -55,8 +55,7 @@ impl AccessibleInterface<PlatformNode> {
 
     #[dbus_interface(property)]
     fn accessible_id(&self) -> ObjectId {
-        self.node
-            .accessible_id()
+        self.node.accessible_id()
     }
 
     fn get_child_at_index(

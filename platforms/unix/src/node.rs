@@ -8,20 +8,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use accesskit::{kurbo::Point, CheckedState, DefaultActionVerb, NodeId, Role};
-use accesskit_consumer::{
-    DetachedNode, FilterResult, Node, NodeState, Tree, TreeState,
-};
-use atspi::{accessible::Role as AtspiRole, CoordType, Interface, InterfaceSet, State, StateSet};
 use crate::{
     atspi::{
         interfaces::{Action, ObjectEvent, Property, QueuedEvent},
-        ACCESSIBLE_PATH_PREFIX, ObjectId, ObjectRef, Rect as AtspiRect,
+        ObjectId, ObjectRef, Rect as AtspiRect, ACCESSIBLE_PATH_PREFIX,
     },
     util::{AppContext, WindowBounds},
 };
+use accesskit::{kurbo::Point, CheckedState, DefaultActionVerb, NodeId, Role};
+use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, Tree, TreeState};
+use atspi::{accessible::Role as AtspiRole, CoordType, Interface, InterfaceSet, State, StateSet};
 use parking_lot::RwLock;
-use std::{iter::FusedIterator, sync::{Arc, Weak}};
+use std::{
+    iter::FusedIterator,
+    sync::{Arc, Weak},
+};
 use zbus::fdo;
 
 fn filter_common(node: &NodeState) -> FilterResult {
@@ -70,7 +71,8 @@ impl<'a> NodeWrapper<'a> {
         match self {
             Self::Node(node) => node.name(),
             Self::DetachedNode(node) => node.name(),
-        }.unwrap_or_default()
+        }
+        .unwrap_or_default()
     }
 
     pub fn description(&self) -> String {
@@ -86,7 +88,7 @@ impl<'a> NodeWrapper<'a> {
     }
 
     pub fn child_ids(
-        &self
+        &self,
     ) -> impl DoubleEndedIterator<Item = NodeId>
            + ExactSizeIterator<Item = NodeId>
            + FusedIterator<Item = NodeId>
@@ -403,12 +405,11 @@ impl<'a> NodeWrapper<'a> {
 
         // Checked state
         match state.checked_state() {
-            Some(CheckedState::Mixed) =>
-                atspi_state.insert(State::Indeterminate),
-            Some(CheckedState::True) if atspi_role == AtspiRole::ToggleButton =>
-                atspi_state.insert(State::Pressed),
-            Some(CheckedState::True) =>
-                atspi_state.insert(State::Checked),
+            Some(CheckedState::Mixed) => atspi_state.insert(State::Indeterminate),
+            Some(CheckedState::True) if atspi_role == AtspiRole::ToggleButton => {
+                atspi_state.insert(State::Pressed)
+            }
+            Some(CheckedState::True) => atspi_state.insert(State::Checked),
             _ => {}
         }
 
@@ -608,7 +609,9 @@ impl PlatformNode {
     pub fn parent(&self) -> fdo::Result<ObjectRef> {
         self.resolve(|node| {
             let wrapper = NodeWrapper::Node(&node);
-            Ok(wrapper.parent().unwrap_or_else(|| ObjectRef::Managed(ObjectId::root())))
+            Ok(wrapper
+                .parent()
+                .unwrap_or_else(|| ObjectRef::Managed(ObjectId::root())))
         })
     }
 
@@ -640,11 +643,9 @@ impl PlatformNode {
 
     pub fn index_in_parent(&self) -> fdo::Result<i32> {
         self.resolve(|node| {
-            node
-                .parent_and_index()
-                .map_or(Ok(-1), |(_, index)| {
-                    i32::try_from(index).map_err(|_| fdo::Error::Failed("Index is too big.".into()))
-                })
+            node.parent_and_index().map_or(Ok(-1), |(_, index)| {
+                i32::try_from(index).map_err(|_| fdo::Error::Failed("Index is too big.".into()))
+            })
         })
     }
 
@@ -708,7 +709,13 @@ impl PlatformNode {
         Ok(true)
     }
 
-    pub fn contains(&self, window_bounds: &WindowBounds, x: i32, y: i32, coord_type: CoordType) -> fdo::Result<bool> {
+    pub fn contains(
+        &self,
+        window_bounds: &WindowBounds,
+        x: i32,
+        y: i32,
+        coord_type: CoordType,
+    ) -> fdo::Result<bool> {
         self.resolve(|node| {
             let bounds = match node.bounding_box() {
                 Some(node_bounds) => {
@@ -747,25 +754,27 @@ impl PlatformNode {
         })
     }
 
-    pub fn get_extents(&self, window_bounds: &WindowBounds, coord_type: CoordType) -> fdo::Result<(AtspiRect,)> {
-        self.resolve(|node| {
-            match node.bounding_box() {
-                Some(node_bounds) => {
-                    let top_left = window_bounds.top_left(coord_type, node.is_root());
-                    let new_origin =
-                        Point::new(top_left.x + node_bounds.x0, top_left.y + node_bounds.y0);
-                    Ok((node_bounds.with_origin(new_origin).into(),))
-                }
-                None if node.is_root() => {
-                    let bounds = window_bounds.outer;
-                    Ok((match coord_type {
-                        CoordType::Screen => bounds.into(),
-                        CoordType::Window => bounds.with_origin(Point::ZERO).into(),
-                        _ => unimplemented!(),
-                    },))
-                }
-                _ => Err(unknown_object(&self.accessible_id())),
+    pub fn get_extents(
+        &self,
+        window_bounds: &WindowBounds,
+        coord_type: CoordType,
+    ) -> fdo::Result<(AtspiRect,)> {
+        self.resolve(|node| match node.bounding_box() {
+            Some(node_bounds) => {
+                let top_left = window_bounds.top_left(coord_type, node.is_root());
+                let new_origin =
+                    Point::new(top_left.x + node_bounds.x0, top_left.y + node_bounds.y0);
+                Ok((node_bounds.with_origin(new_origin).into(),))
             }
+            None if node.is_root() => {
+                let bounds = window_bounds.outer;
+                Ok((match coord_type {
+                    CoordType::Screen => bounds.into(),
+                    CoordType::Window => bounds.with_origin(Point::ZERO).into(),
+                    _ => unimplemented!(),
+                },))
+            }
+            _ => Err(unknown_object(&self.accessible_id())),
         })
     }
 

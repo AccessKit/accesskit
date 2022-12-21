@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::{atspi::ObjectId, PlatformRootNode, unknown_object};
+use crate::{atspi::ObjectId, unknown_object, PlatformRootNode};
 use zbus::fdo;
 
 pub(crate) struct ApplicationInterface(pub PlatformRootNode);

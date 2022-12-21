@@ -5,8 +5,9 @@
 
 use crate::{
     atspi::{object_address::OwnedObjectAddress, Rect},
+    unknown_object,
     util::WindowBounds,
-    PlatformNode, unknown_object,
+    PlatformNode,
 };
 use atspi::CoordType;
 use parking_lot::RwLock;
@@ -53,7 +54,8 @@ impl ComponentInterface {
         let window_bounds = self.upgrade_bounds()?;
         let accessible = super::object_address(
             hdr.destination()?,
-            self.node.get_accessible_at_point(&window_bounds.read(), x, y, coord_type)?,
+            self.node
+                .get_accessible_at_point(&window_bounds.read(), x, y, coord_type)?,
         );
         accessible
     }

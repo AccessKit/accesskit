@@ -3,9 +3,9 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use crate::atspi::OwnedObjectAddress;
 use accesskit::kurbo::{Point, Rect};
 use atspi::CoordType;
-use crate::atspi::OwnedObjectAddress;
 
 pub(crate) struct AppContext {
     pub(crate) name: String,
@@ -16,11 +16,7 @@ pub(crate) struct AppContext {
 }
 
 impl AppContext {
-    pub(crate) fn new(
-        name: String,
-        toolkit_name: String,
-        toolkit_version: String
-    ) -> Self {
+    pub(crate) fn new(name: String, toolkit_name: String, toolkit_version: String) -> Self {
         Self {
             name,
             toolkit_name,

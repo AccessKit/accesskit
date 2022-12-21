@@ -125,7 +125,8 @@ impl<'a> Node<'a> {
            + FusedIterator<Item = Node<'a>>
            + 'a {
         let state = self.tree_state;
-        self.state.child_ids()
+        self.state
+            .child_ids()
             .map(move |id| state.node_by_id(id).unwrap())
     }
 

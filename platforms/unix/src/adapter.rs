@@ -3,20 +3,20 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{kurbo::Rect, ActionHandler, NodeId, Role, TreeUpdate};
-use accesskit_consumer::{DetachedNode, Node, Tree, TreeChangeHandler, TreeState};
-use atspi::{Interface, InterfaceSet, State};
 use crate::{
     atspi::{
         interfaces::{
-            AccessibleInterface, ActionInterface, ComponentInterface,
-            ObjectEvent, QueuedEvent, ValueInterface, WindowEvent,
+            AccessibleInterface, ActionInterface, ComponentInterface, ObjectEvent, QueuedEvent,
+            ValueInterface, WindowEvent,
         },
         Bus, ObjectId, ACCESSIBLE_PATH_PREFIX,
     },
     node::{filter, NodeWrapper, PlatformNode, PlatformRootNode},
     util::{AppContext, WindowBounds},
 };
+use accesskit::{kurbo::Rect, ActionHandler, NodeId, Role, TreeUpdate};
+use accesskit_consumer::{DetachedNode, Node, Tree, TreeChangeHandler, TreeState};
+use atspi::{Interface, InterfaceSet, State};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -42,7 +42,8 @@ impl Adapter {
             toolkit_name,
             toolkit_version,
         )));
-        atspi_bus.register_root_node(PlatformRootNode::new(&app_context, &tree))
+        atspi_bus
+            .register_root_node(PlatformRootNode::new(&app_context, &tree))
             .ok()?;
         let adapter = Adapter {
             atspi_bus,
@@ -64,8 +65,7 @@ impl Adapter {
             objects_to_add.push(reader.root().id());
             add_children(reader.root(), &mut objects_to_add);
             for id in objects_to_add {
-                let interfaces = NodeWrapper::Node(&reader.node_by_id(id).unwrap())
-                        .interfaces();
+                let interfaces = NodeWrapper::Node(&reader.node_by_id(id).unwrap()).interfaces();
                 adapter
                     .register_interfaces(&adapter.tree, id, interfaces)
                     .unwrap();
@@ -91,10 +91,8 @@ impl Adapter {
             )?;
         }
         if new_interfaces.contains(Interface::Action) {
-            self.atspi_bus.register_interface(
-                &path,
-                ActionInterface::new(PlatformNode::new(tree, id)),
-            )?;
+            self.atspi_bus
+                .register_interface(&path, ActionInterface::new(PlatformNode::new(tree, id)))?;
         }
         if new_interfaces.contains(Interface::Component) {
             self.atspi_bus.register_interface(
@@ -103,10 +101,8 @@ impl Adapter {
             )?;
         }
         if new_interfaces.contains(Interface::Value) {
-            self.atspi_bus.register_interface(
-                &path,
-                ValueInterface::new(PlatformNode::new(tree, id)),
-            )?;
+            self.atspi_bus
+                .register_interface(&path, ValueInterface::new(PlatformNode::new(tree, id)))?;
         }
         Ok(true)
     }
@@ -118,16 +114,20 @@ impl Adapter {
     ) -> zbus::Result<bool> {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, id.as_str());
         if old_interfaces.contains(Interface::Accessible) {
-            self.atspi_bus.unregister_interface::<AccessibleInterface<PlatformNode>>(&path)?;
+            self.atspi_bus
+                .unregister_interface::<AccessibleInterface<PlatformNode>>(&path)?;
         }
         if old_interfaces.contains(Interface::Action) {
-            self.atspi_bus.unregister_interface::<ActionInterface>(&path)?;
+            self.atspi_bus
+                .unregister_interface::<ActionInterface>(&path)?;
         }
         if old_interfaces.contains(Interface::Component) {
-            self.atspi_bus.unregister_interface::<ComponentInterface>(&path)?;
+            self.atspi_bus
+                .unregister_interface::<ComponentInterface>(&path)?;
         }
         if old_interfaces.contains(Interface::Value) {
-            self.atspi_bus.unregister_interface::<ValueInterface>(&path)?;
+            self.atspi_bus
+                .unregister_interface::<ValueInterface>(&path)?;
         }
         Ok(true)
     }
@@ -168,15 +168,11 @@ impl Adapter {
             fn focus_moved(&mut self, old_node: Option<&DetachedNode>, new_node: Option<&Node>) {
                 if let Some(root_window) = root_window(&self.tree.read()) {
                     if old_node.is_none() && new_node.is_some() {
-                        self.adapter.window_activated(
-                            &NodeWrapper::Node(&root_window),
-                            &mut self.queue,
-                        );
+                        self.adapter
+                            .window_activated(&NodeWrapper::Node(&root_window), &mut self.queue);
                     } else if old_node.is_some() && new_node.is_none() {
-                        self.adapter.window_deactivated(
-                            &NodeWrapper::Node(&root_window),
-                            &mut self.queue,
-                        );
+                        self.adapter
+                            .window_deactivated(&NodeWrapper::Node(&root_window), &mut self.queue);
                     }
                 }
                 if let Some(node) = new_node.map(NodeWrapper::Node) {
@@ -260,8 +256,7 @@ impl QueuedEvents {
     pub fn raise(&self) {
         for event in &self.queue {
             let _ = match &event {
-                QueuedEvent::Object { target, event } =>
-                    self.bus.emit_object_event(target, event),
+                QueuedEvent::Object { target, event } => self.bus.emit_object_event(target, event),
                 QueuedEvent::Window {
                     target,
                     name,

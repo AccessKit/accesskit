@@ -12,4 +12,4 @@ mod node;
 mod util;
 
 pub use adapter::Adapter;
-pub(crate) use node::{PlatformNode, PlatformRootNode, unknown_object};
+pub(crate) use node::{unknown_object, PlatformNode, PlatformRootNode};
