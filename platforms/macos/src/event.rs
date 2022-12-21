@@ -6,7 +6,7 @@
 use accesskit::{Live, NodeId};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, TreeChangeHandler, TreeState};
 use objc2::{
-    foundation::{NSInteger, NSMutableDictionary, NSNumber, NSString},
+    foundation::{NSInteger, NSMutableDictionary, NSNumber, NSObject, NSString},
     msg_send,
     rc::Id,
     Message,
@@ -88,16 +88,16 @@ impl QueuedEvent {
                     }
                 };
 
-                let mut user_info = NSMutableDictionary::new();
-                let text = Id::into_super(NSString::from_str(&text));
+                let mut user_info: Id<NSMutableDictionary<NSString, NSObject>, _> =
+                    NSMutableDictionary::new();
+                let text = NSString::from_str(&text);
                 set_object_for_key(&mut user_info, &*text, unsafe {
                     NSAccessibilityAnnouncementKey
                 });
-                let priority = Id::into_super(Id::into_super(NSNumber::new_isize(priority)));
+                let priority = NSNumber::new_isize(priority);
                 set_object_for_key(&mut user_info, &*priority, unsafe {
                     NSAccessibilityPriorityKey
                 });
-                let user_info = Id::into_super(user_info);
 
                 unsafe {
                     NSAccessibilityPostNotificationWithUserInfo(
