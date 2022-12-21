@@ -318,27 +318,10 @@ impl<'a> NodeWrapper<'a> {
         if state.role() == Role::Window && state.parent_id().is_none() {
             atspi_state.insert(State::Active);
         }
-        //if let Some(expanded) = data.expanded {
-        //    state.insert(State::Expandable);
-        //    if expanded {
-        //        state.insert(State::Expanded);
-        //    }
-        //}
-        //if data.default {
-        //    state.insert(State::IsDefault);
-        //}
-        //if data.editable && !data.read_only {
-        //    state.insert(State::Editable);
-        //}
         // TODO: Focus and selection.
         if state.is_focusable() {
             atspi_state.insert(State::Focusable);
         }
-        //match data.orientation {
-        //    Some(Orientation::Horizontal) => state.insert(State::Horizontal),
-        //    Some(Orientation::Vertical) => state.insert(State::Vertical),
-        //    _ => {}
-        //}
         let filter_result = match self {
             Self::Node(node) => filter(node),
             Self::DetachedNode(node) => filter_detached(node),
@@ -346,34 +329,9 @@ impl<'a> NodeWrapper<'a> {
         if filter_result == FilterResult::Include {
             atspi_state.insert(State::Visible | State::Showing);
         }
-        //if data.multiselectable {
-        //    state.insert(State::Multiselectable);
-        //}
-        //if data.required {
-        //    state.insert(State::Required);
-        //}
-        //if data.visited {
-        //    state.insert(State::Visited);
-        //}
-        //if let Some(InvalidState::True | InvalidState::Other(_)) = data.invalid_state {
-        //    state.insert(State::InvalidEntry);
-        //}
-        //match data.aria_current {
-        //    None | Some(AriaCurrent::False) => {}
-        //    _ => state.insert(State::Active),
-        //}
         if atspi_role != AtspiRole::ToggleButton && state.checked_state().is_some() {
             atspi_state.insert(State::Checkable);
         }
-        //if data.has_popup.is_some() {
-        //    state.insert(State::HasPopup);
-        //}
-        //if data.busy {
-        //    state.insert(State::Busy);
-        //}
-        //if data.modal {
-        //    state.insert(State::Modal);
-        //}
         if let Some(selected) = state.is_selected() {
             if !state.is_disabled() {
                 atspi_state.insert(State::Selectable);
@@ -395,14 +353,6 @@ impl<'a> NodeWrapper<'a> {
             atspi_state.insert(State::Indeterminate);
         }
 
-        //let has_suggestion = data
-        //    .auto_complete
-        //    .as_ref()
-        //    .map_or(false, |a| !a.as_ref().is_empty());
-        //if has_suggestion || data.autofill_available {
-        //    state.insert(State::SupportsAutocompletion);
-        //}
-
         // Checked state
         match state.checked_state() {
             Some(CheckedState::Mixed) => atspi_state.insert(State::Indeterminate),
@@ -423,13 +373,6 @@ impl<'a> NodeWrapper<'a> {
             atspi_state.insert(State::Focused);
         }
 
-        // It is insufficient to compare with g_current_activedescendant due to both
-        // timing and event ordering for objects which implement AtkSelection and also
-        // have an active descendant. For instance, if we check the state set of a
-        // selectable child, it will only have ATK_STATE_FOCUSED if we've processed
-        // the activedescendant change.
-        // if (GetActiveDescendantOfCurrentFocused() == atk_object)
-        //     state.insert(State::Focused);
         atspi_state
     }
 

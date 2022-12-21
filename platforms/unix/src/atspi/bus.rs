@@ -51,7 +51,6 @@ impl Bus {
     }
 
     pub fn register_root_node(&mut self, node: PlatformRootNode) -> Result<bool> {
-        println!("Registering on {:?}", self.unique_name());
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, ObjectId::root().as_str());
         let registered = self
             .conn
