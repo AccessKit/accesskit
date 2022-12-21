@@ -25,7 +25,7 @@ fn set_object_for_key<K: Message, V: Message>(
     value: &V,
     key: &K,
 ) {
-    let _: () = unsafe { msg_send![dictionary, setObject:value forKey:key] };
+    let _: () = unsafe { msg_send![dictionary, setObject: value, forKey: key] };
 }
 
 // This type is designed to be safe to create on a non-main thread
