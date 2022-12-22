@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    atspi::{object_address::OwnedObjectAddress, Rect},
+    atspi::{OwnedObjectAddress, Rect},
     unknown_object,
     util::WindowBounds,
     PlatformNode,

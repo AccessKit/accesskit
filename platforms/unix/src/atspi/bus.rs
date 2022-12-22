@@ -108,18 +108,17 @@ impl Bus {
                         Property::Name(value) => Str::from(value).into(),
                         Property::Description(value) => Str::from(value).into(),
                         Property::Parent(Some(ObjectRef::Managed(parent))) => {
-                            OwnedObjectAddress::from(ObjectAddress::accessible(
-                                self.unique_name().into(),
-                                parent,
-                            ))
+                            OwnedObjectAddress::accessible(
+                                self.unique_name().clone(),
+                                parent.clone(),
+                            )
                             .into()
                         }
                         Property::Parent(Some(ObjectRef::Unmanaged(parent))) => {
                             parent.clone().into()
                         }
                         Property::Parent(None) => {
-                            OwnedObjectAddress::from(ObjectAddress::root(self.unique_name().into()))
-                                .into()
+                            OwnedObjectAddress::root(self.unique_name().clone()).into()
                         }
                         Property::Role(value) => Value::U32(*value as u32),
                     },

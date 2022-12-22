@@ -8,27 +8,15 @@ use serde::{Deserialize, Serialize};
 use zbus::zvariant::{Str, Type, Value};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Type, Value)]
-pub struct ObjectId<'a>(#[serde(borrow)] Str<'a>);
+pub(crate) struct ObjectId<'a>(#[serde(borrow)] Str<'a>);
 
 impl<'a> ObjectId<'a> {
-    pub unsafe fn from_str_unchecked(id: &'a str) -> ObjectId<'a> {
-        Self(Str::from(id))
-    }
-
-    pub fn root() -> ObjectId<'static> {
+    pub(crate) fn root() -> ObjectId<'static> {
         ObjectId(Str::from("root"))
     }
 
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_bytes()
-    }
-
-    pub fn as_str(&self) -> &str {
+    pub(crate) fn as_str(&self) -> &str {
         self.0.as_str()
-    }
-
-    pub fn to_owned(&self) -> ObjectId<'static> {
-        ObjectId(self.0.to_owned())
     }
 }
 

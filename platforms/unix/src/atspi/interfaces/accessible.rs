@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    atspi::{ObjectAddress, ObjectId, ObjectRef, OwnedObjectAddress},
+    atspi::{ObjectId, ObjectRef, OwnedObjectAddress},
     unknown_object, PlatformNode, PlatformRootNode,
 };
 use atspi::{accessible::Role, Interface, InterfaceSet, StateSet};
@@ -75,9 +75,7 @@ impl AccessibleInterface<PlatformNode> {
             .children()?
             .into_iter()
             .map(|child| match child {
-                ObjectRef::Managed(id) => {
-                    ObjectAddress::accessible(self.bus_name.as_ref(), &id).into()
-                }
+                ObjectRef::Managed(id) => OwnedObjectAddress::accessible(self.bus_name.clone(), id),
                 ObjectRef::Unmanaged(address) => address,
             })
             .collect())
@@ -174,11 +172,10 @@ impl AccessibleInterface<PlatformRootNode> {
             .tree
             .upgrade()
             .map(|tree| {
-                vec![ObjectAddress::accessible(
-                    self.bus_name.as_ref(),
-                    &tree.read().root().id().into(),
-                )
-                .into()]
+                vec![OwnedObjectAddress::accessible(
+                    self.bus_name.clone(),
+                    tree.read().root().id().into(),
+                )]
             })
             .ok_or_else(|| unknown_object(&ObjectId::root()))
     }
