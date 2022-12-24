@@ -52,13 +52,10 @@ impl ComponentInterface {
         coord_type: CoordType,
     ) -> fdo::Result<(OwnedObjectAddress,)> {
         let window_bounds = self.upgrade_bounds()?;
-        let accessible = super::object_address(
-            hdr.destination()?,
+        let accessible =
             self.node
-                .get_accessible_at_point(&window_bounds.read(), x, y, coord_type)?,
-        );
-        drop(window_bounds);
-        accessible
+                .get_accessible_at_point(&window_bounds.read(), x, y, coord_type)?;
+        super::object_address(hdr.destination()?, accessible)
     }
 
     fn get_extents(&self, coord_type: CoordType) -> fdo::Result<(Rect,)> {
