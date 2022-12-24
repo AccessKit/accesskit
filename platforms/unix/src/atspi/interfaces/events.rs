@@ -5,7 +5,6 @@
 
 use crate::atspi::{ObjectId, ObjectRef};
 use atspi::{accessible::Role, State};
-use strum::AsRefStr;
 
 pub(crate) enum QueuedEvent {
     Object {
@@ -19,31 +18,20 @@ pub(crate) enum QueuedEvent {
     },
 }
 
-#[derive(AsRefStr)]
 pub(crate) enum Property {
-    #[strum(serialize = "accessible-name")]
     Name(String),
-    #[strum(serialize = "accessible-description")]
     Description(String),
-    #[strum(serialize = "accessible-parent")]
     Parent(Option<ObjectRef>),
-    #[strum(serialize = "accessible-role")]
     Role(Role),
-    #[strum(serialize = "accessible-value")]
     Value(f64),
 }
 
-#[derive(AsRefStr)]
 pub(crate) enum ObjectEvent {
     StateChanged(State, bool),
-    #[strum(serialize = "PropertyChange")]
     PropertyChanged(Property),
 }
 
-#[derive(AsRefStr)]
 pub(crate) enum WindowEvent {
-    #[strum(serialize = "Activate")]
     Activated,
-    #[strum(serialize = "Deactivate")]
     Deactivated,
 }

@@ -3,15 +3,13 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::atspi::{interfaces::*, object_address::*, ObjectId, ObjectRef};
-use crate::PlatformRootNode;
+use crate::{
+    atspi::{interfaces::*, object_address::*, ObjectId, ObjectRef},
+    PlatformRootNode,
+};
 use atspi::{bus::BusProxyBlocking, socket::SocketProxyBlocking, EventBody};
 use serde::Serialize;
-use std::{
-    collections::HashMap,
-    convert::{AsRef, TryInto},
-    env::var,
-};
+use std::{collections::HashMap, env::var};
 use zbus::{
     blocking::{Connection, ConnectionBuilder},
     names::{BusName, InterfaceName, MemberName, OwnedUniqueName},
@@ -76,7 +74,10 @@ impl Bus {
 
     pub fn emit_object_event(&self, target: &ObjectId, event: &ObjectEvent) -> Result<()> {
         let interface = "org.a11y.atspi.Event.Object";
-        let signal = event.as_ref();
+        let signal = match event {
+            ObjectEvent::StateChanged(_, _) => "StateChanged",
+            ObjectEvent::PropertyChanged(_) => "PropertyChange",
+        };
         let properties = HashMap::new();
         match event {
             ObjectEvent::StateChanged(state, value) => self.emit_event(
@@ -136,10 +137,14 @@ impl Bus {
         window_name: &str,
         event: &WindowEvent,
     ) -> Result<()> {
+        let signal = match event {
+            WindowEvent::Activated => "Activate",
+            WindowEvent::Deactivated => "Deactivate",
+        };
         self.emit_event(
             target,
             "org.a11y.atspi.Event.Window",
-            event.as_ref(),
+            signal,
             EventBody {
                 kind: "",
                 detail1: 0,
