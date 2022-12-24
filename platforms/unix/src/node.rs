@@ -691,6 +691,7 @@ impl PlatformNode {
         self.resolve(|node| {
             let top_left = window_bounds.top_left(coord_type, node.is_root());
             let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
+            let point = node.transform().inverse() * point;
             Ok(node
                 .node_at_point(point, &filter)
                 .map(|node| ObjectRef::Managed(NodeWrapper::Node(&node).id())))
