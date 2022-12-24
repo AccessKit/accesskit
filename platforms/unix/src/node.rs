@@ -79,8 +79,17 @@ impl<'a> NodeWrapper<'a> {
         String::new()
     }
 
-    pub fn parent(&self) -> Option<ObjectRef> {
-        self.node_state().parent_id().map(Into::into)
+    pub fn parent_id(&self) -> Option<NodeId> {
+        self.node_state().parent_id()
+    }
+
+    pub fn filtered_parent(&self) -> Option<ObjectRef> {
+        match self {
+            Self::Node(node) => node
+                .filtered_parent(&filter)
+                .map(|parent| parent.id().into()),
+            _ => unreachable!(),
+        }
     }
 
     pub fn id(&self) -> ObjectId<'static> {
@@ -459,11 +468,11 @@ impl<'a> NodeWrapper<'a> {
                 event: ObjectEvent::PropertyChanged(Property::Description(description)),
             });
         }
-        let parent = self.parent();
-        if parent != old.parent() {
+        let parent_id = self.parent_id();
+        if parent_id != old.parent_id() {
             queue.push(QueuedEvent::Object {
                 target: self.id(),
-                event: ObjectEvent::PropertyChanged(Property::Parent(parent)),
+                event: ObjectEvent::PropertyChanged(Property::Parent(self.filtered_parent())),
             });
         }
         let role = self.role();
@@ -551,9 +560,9 @@ impl PlatformNode {
 
     pub fn parent(&self) -> fdo::Result<ObjectRef> {
         self.resolve(|node| {
-            let wrapper = NodeWrapper::Node(&node);
-            Ok(wrapper
-                .parent()
+            Ok(node
+                .filtered_parent(&filter)
+                .map(|parent| parent.id().into())
                 .unwrap_or_else(|| ObjectRef::Managed(ObjectId::root())))
         })
     }
@@ -579,16 +588,17 @@ impl PlatformNode {
 
     pub fn children(&self) -> fdo::Result<Vec<ObjectRef>> {
         self.resolve(|node| {
-            let wrapper = NodeWrapper::Node(&node);
-            Ok(wrapper.child_ids().map(ObjectRef::from).collect())
+            Ok(node
+                .filtered_children(&filter)
+                .map(|child| child.id().into())
+                .collect())
         })
     }
 
     pub fn index_in_parent(&self) -> fdo::Result<i32> {
         self.resolve(|node| {
-            node.parent_and_index().map_or(Ok(-1), |(_, index)| {
-                i32::try_from(index).map_err(|_| fdo::Error::Failed("Index is too big.".into()))
-            })
+            i32::try_from(node.preceding_filtered_siblings(&filter).count())
+                .map_err(|_| fdo::Error::Failed("Index is too big.".into()))
         })
     }
 
