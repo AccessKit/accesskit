@@ -101,6 +101,7 @@ impl Bus {
                         Property::Description(_) => "accessible-description",
                         Property::Parent(_) => "accessible-parent",
                         Property::Role(_) => "accessible-role",
+                        Property::Value(_) => "accessible-value",
                     },
                     detail1: 0,
                     detail2: 0,
@@ -121,6 +122,7 @@ impl Bus {
                             OwnedObjectAddress::root(self.unique_name().clone()).into()
                         }
                         Property::Role(value) => Value::U32(*value as u32),
+                        Property::Value(value) => Value::F64(*value),
                     },
                     properties,
                 },

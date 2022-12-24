@@ -482,6 +482,14 @@ impl<'a> NodeWrapper<'a> {
                 event: ObjectEvent::PropertyChanged(Property::Role(role)),
             });
         }
+        if let Some(value) = self.current_value() {
+            if Some(value) != old.current_value() {
+                queue.push(QueuedEvent::Object {
+                    target: self.id(),
+                    event: ObjectEvent::PropertyChanged(Property::Value(value)),
+                });
+            }
+        }
     }
 }
 

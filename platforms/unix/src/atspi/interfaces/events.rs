@@ -29,6 +29,8 @@ pub(crate) enum Property {
     Parent(Option<ObjectRef>),
     #[strum(serialize = "accessible-role")]
     Role(Role),
+    #[strum(serialize = "accessible-value")]
+    Value(f64),
 }
 
 #[derive(AsRefStr)]
