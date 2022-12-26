@@ -75,20 +75,21 @@ impl Bus {
     pub fn emit_object_event(&self, target: &ObjectId, event: &ObjectEvent) -> Result<()> {
         let interface = "org.a11y.atspi.Event.Object";
         let signal = match event {
-            ObjectEvent::StateChanged(_, _) => "StateChanged",
+            ObjectEvent::BoundsChanged(_) => "BoundsChanged",
             ObjectEvent::PropertyChanged(_) => "PropertyChange",
+            ObjectEvent::StateChanged(_, _) => "StateChanged",
         };
         let properties = HashMap::new();
         match event {
-            ObjectEvent::StateChanged(state, value) => self.emit_event(
+            ObjectEvent::BoundsChanged(bounds) => self.emit_event(
                 target,
                 interface,
                 signal,
                 EventBody {
-                    kind: state,
-                    detail1: *value as i32,
+                    kind: "",
+                    detail1: 0,
                     detail2: 0,
-                    any_data: 0i32.into(),
+                    any_data: Value::from(*bounds),
                     properties,
                 },
             ),
@@ -125,6 +126,18 @@ impl Bus {
                         Property::Role(value) => Value::U32(*value as u32),
                         Property::Value(value) => Value::F64(*value),
                     },
+                    properties,
+                },
+            ),
+            ObjectEvent::StateChanged(state, value) => self.emit_event(
+                target,
+                interface,
+                signal,
+                EventBody {
+                    kind: state,
+                    detail1: *value as i32,
+                    detail2: 0,
+                    any_data: 0i32.into(),
                     properties,
                 },
             ),

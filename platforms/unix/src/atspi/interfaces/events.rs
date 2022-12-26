@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::atspi::{ObjectId, ObjectRef};
+use crate::atspi::{ObjectId, ObjectRef, Rect};
 use atspi::{accessible::Role, State};
 
 pub(crate) enum QueuedEvent {
@@ -26,9 +26,11 @@ pub(crate) enum Property {
     Value(f64),
 }
 
+#[allow(clippy::enum_variant_names)]
 pub(crate) enum ObjectEvent {
-    StateChanged(State, bool),
+    BoundsChanged(Rect),
     PropertyChanged(Property),
+    StateChanged(State, bool),
 }
 
 pub(crate) enum WindowEvent {

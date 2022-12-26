@@ -15,9 +15,15 @@ use crate::{
     },
     util::{AppContext, WindowBounds},
 };
-use accesskit::{kurbo::Point, CheckedState, DefaultActionVerb, NodeId, Role};
+use accesskit::{
+    kurbo::{Affine, Point, Rect},
+    CheckedState, DefaultActionVerb, NodeId, Role,
+};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, Tree, TreeState};
-use atspi::{accessible::Role as AtspiRole, CoordType, Interface, InterfaceSet, State, StateSet};
+use atspi::{
+    accessible::Role as AtspiRole, component::Layer, CoordType, Interface, InterfaceSet, State,
+    StateSet,
+};
 use parking_lot::RwLock;
 use std::{
     iter::FusedIterator,
@@ -432,13 +438,45 @@ impl<'a> NodeWrapper<'a> {
         })
     }
 
+    fn raw_bounds_and_transform(&self) -> (Option<Rect>, Affine) {
+        let state = self.node_state();
+        (state.raw_bounds(), state.direct_transform())
+    }
+
+    fn extents(&self, window_bounds: &WindowBounds) -> AtspiRect {
+        if self.is_root() {
+            return window_bounds.outer.into();
+        }
+        match self {
+            Self::Node(node) => node.bounding_box().map_or_else(
+                || AtspiRect::INVALID,
+                |bounds| {
+                    let window_top_left = window_bounds.inner.origin();
+                    let node_origin = bounds.origin();
+                    let new_origin = Point::new(
+                        window_top_left.x + node_origin.x,
+                        window_top_left.y + node_origin.y,
+                    );
+                    bounds.with_origin(new_origin).into()
+                },
+            ),
+            _ => unreachable!(),
+        }
+    }
+
     fn current_value(&self) -> Option<f64> {
         self.node_state().numeric_value()
     }
 
-    pub fn enqueue_changes(&self, queue: &mut Vec<QueuedEvent>, old: &NodeWrapper) {
+    pub fn enqueue_changes(
+        &self,
+        window_bounds: &WindowBounds,
+        queue: &mut Vec<QueuedEvent>,
+        old: &NodeWrapper,
+    ) {
         self.enqueue_state_changes(queue, old);
         self.enqueue_property_changes(queue, old);
+        self.enqueue_bounds_changes(window_bounds, queue, old);
     }
 
     fn enqueue_state_changes(&self, queue: &mut Vec<QueuedEvent>, old: &NodeWrapper) {
@@ -489,6 +527,20 @@ impl<'a> NodeWrapper<'a> {
                     event: ObjectEvent::PropertyChanged(Property::Value(value)),
                 });
             }
+        }
+    }
+
+    fn enqueue_bounds_changes(
+        &self,
+        window_bounds: &WindowBounds,
+        queue: &mut Vec<QueuedEvent>,
+        old: &NodeWrapper,
+    ) {
+        if self.raw_bounds_and_transform() != old.raw_bounds_and_transform() {
+            queue.push(QueuedEvent::Object {
+                target: self.id(),
+                event: ObjectEvent::BoundsChanged(self.extents(window_bounds)),
+            });
         }
     }
 }
@@ -740,9 +792,35 @@ impl PlatformNode {
         })
     }
 
+    pub fn get_layer(&self) -> fdo::Result<Layer> {
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            if wrapper.role() == AtspiRole::Window {
+                Ok(Layer::Window)
+            } else {
+                Ok(Layer::Widget)
+            }
+        })
+    }
+
     pub fn grab_focus(&self) -> fdo::Result<bool> {
         let tree = self.validate_for_action()?;
         tree.set_focus(self.node_id);
+        Ok(true)
+    }
+
+    pub fn scroll_to_point(
+        &self,
+        window_bounds: &WindowBounds,
+        coord_type: CoordType,
+        x: i32,
+        y: i32,
+    ) -> fdo::Result<bool> {
+        let tree = self.validate_for_action()?;
+        let is_root = self.node_id == tree.read().root_id();
+        let top_left = window_bounds.top_left(coord_type, is_root);
+        let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
+        tree.scroll_to_point(self.node_id, point);
         Ok(true)
     }
 

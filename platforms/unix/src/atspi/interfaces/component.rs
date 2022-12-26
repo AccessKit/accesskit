@@ -9,7 +9,7 @@ use crate::{
     util::WindowBounds,
     PlatformNode,
 };
-use atspi::CoordType;
+use atspi::{component::Layer, CoordType};
 use parking_lot::RwLock;
 use std::sync::{Arc, Weak};
 use zbus::{fdo, MessageHeader};
@@ -64,7 +64,19 @@ impl ComponentInterface {
         extents
     }
 
+    fn get_layer(&self) -> fdo::Result<Layer> {
+        self.node.get_layer()
+    }
+
     fn grab_focus(&self) -> fdo::Result<bool> {
         self.node.grab_focus()
+    }
+
+    fn scroll_to_point(&self, coord_type: CoordType, x: i32, y: i32) -> fdo::Result<bool> {
+        let window_bounds = self.upgrade_bounds()?;
+        let scrolled = self
+            .node
+            .scroll_to_point(&window_bounds.read(), coord_type, x, y);
+        scrolled
     }
 }

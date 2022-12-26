@@ -163,7 +163,11 @@ impl Adapter {
                 self.adapter
                     .register_interfaces(self.tree, new_node.id(), new_interfaces ^ kept_interfaces)
                     .unwrap();
-                new_wrapper.enqueue_changes(&mut self.queue, &old_wrapper);
+                new_wrapper.enqueue_changes(
+                    &self.adapter.root_window_bounds.read(),
+                    &mut self.queue,
+                    &old_wrapper,
+                );
             }
             fn focus_moved(&mut self, old_node: Option<&DetachedNode>, new_node: Option<&Node>) {
                 if let Some(root_window) = root_window(&self.tree.read()) {

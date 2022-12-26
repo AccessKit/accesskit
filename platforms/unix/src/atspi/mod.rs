@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use serde::{Deserialize, Serialize};
-use zbus::zvariant::Type;
+use zbus::zvariant::{OwnedValue, Type, Value};
 
 mod bus;
 pub(crate) mod interfaces;
@@ -12,12 +12,21 @@ mod object_address;
 mod object_id;
 mod object_ref;
 
-#[derive(Debug, Default, Serialize, Deserialize, Type)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, OwnedValue, Type, Value)]
 pub(crate) struct Rect {
     x: i32,
     y: i32,
     width: i32,
     height: i32,
+}
+
+impl Rect {
+    pub const INVALID: Rect = Rect {
+        x: -1,
+        y: -1,
+        width: -1,
+        height: -1,
+    };
 }
 
 impl From<accesskit::kurbo::Rect> for Rect {
