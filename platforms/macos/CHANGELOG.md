@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.3.0...accesskit_macos-v0.4.0) (2022-12-27)
+
+
+### Features
+
+* Live regions on macOS ([#196](https://github.com/AccessKit/accesskit/issues/196)) ([47d8d9f](https://github.com/AccessKit/accesskit/commit/47d8d9f6a567dfe909aa4065886cace07084efb7))
+
+
+### Bug Fixes
+
+* Pin objc2 dependency to 0.3.0-beta.3 ([#201](https://github.com/AccessKit/accesskit/issues/201)) ([0adfed1](https://github.com/AccessKit/accesskit/commit/0adfed1192ee255fba34ad82e8483ab9296ac2df))
+
 ## [0.3.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.2.1...accesskit_macos-v0.3.0) (2022-12-17)
 
 
