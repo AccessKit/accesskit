@@ -13,7 +13,7 @@ edition = "2021"
 [dependencies]
 accesskit = { version = "0.8.1", path = "../../common" }
 accesskit_consumer = { version = "0.11.0", path = "../../consumer" }
-atspi = { git = "https://github.com/odilia-app/atspi" }
+atspi = "0.6.0"
 parking_lot = "0.12.1"
 serde = "1.0"
 zbus = "3.6"
