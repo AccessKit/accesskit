@@ -15,6 +15,10 @@
     * accesskit_windows bumped from 0.10.1 to 0.10.2
     * accesskit_macos bumped from 0.2.1 to 0.3.0
 
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_macos bumped from 0.3.0 to 0.4.0
+
 ## [0.7.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.6.6...accesskit_winit-v0.7.0) (2022-11-29)
 
 
