@@ -26,6 +26,7 @@ version = "0.3.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
+ "icrate",
  "objc2",
  "once_cell",
  "parking_lot",
@@ -101,18 +102,18 @@ checksum = "0d8c1fef690941d3e7788d328517591fecc684c084084702d6ff1641e993699a"
 
 [[package]]
 name = "block-sys"
-version = "0.1.0-beta.1"
+version = "0.1.0-beta.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fa55741ee90902547802152aaf3f8e5248aab7e21468089560d4c8840561146"
+checksum = "a0a27d75e09d3d1a1b72c2583aaec59db16932ea927846036b24b968d8240c08"
 dependencies = [
  "objc-sys",
 ]
 
 [[package]]
 name = "block2"
-version = "0.2.0-alpha.6"
+version = "0.2.0-alpha.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8dd9e63c1744f755c2f60332b88de39d341e5e86239014ad839bd71c106dec42"
+checksum = "344b33cc92d2c0816f45d61b2dca4a30fb8c84e395a4323397f0965f16f990e1"
 dependencies = [
  "block-sys",
  "objc2-encode",
@@ -475,6 +476,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "icrate"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "237fb2e3e141fa4698b2dbb0fa1db42a6726bf73d3503441ae68d472bedfb67a"
+dependencies = [
+ "block2",
+ "objc2",
+]
+
+[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -750,15 +761,15 @@ dependencies = [
 
 [[package]]
 name = "objc-sys"
-version = "0.2.0-beta.2"
+version = "0.2.0-beta.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df3b9834c1e95694a05a828b59f55fa2afec6288359cda67146126b3f90a55d7"
+checksum = "c0925b3332d2aaa3a78b65b065cf68ab0e1d7527d5f7fe48c7613ce166f1494a"
 
 [[package]]
 name = "objc2"
-version = "0.3.0-beta.3"
+version = "0.3.0-beta.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe31e5425d3d0b89a15982c024392815da40689aceb34bad364d58732bcfd649"
+checksum = "cd23541ef10d7053608da654dcc785e7bba1f9c9a9b3f01abef086e6b18e55af"
 dependencies = [
  "block2",
  "objc-sys",
@@ -767,9 +778,9 @@ dependencies = [
 
 [[package]]
 name = "objc2-encode"
-version = "2.0.0-pre.2"
+version = "2.0.0-pre.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abfcac41015b00a120608fdaa6938c44cb983fee294351cc4bac7638b4e50512"
+checksum = "2612e4d4049c415e4a5de45c1d000df1bcf4782167716db14c3d5d54285da846"
 dependencies = [
  "objc-sys",
 ]

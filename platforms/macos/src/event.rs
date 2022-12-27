@@ -5,14 +5,14 @@
 
 use accesskit::{Live, NodeId};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, TreeChangeHandler, TreeState};
-use objc2::{
-    foundation::{NSInteger, NSMutableDictionary, NSNumber, NSObject, NSString},
-    msg_send, Message,
+use icrate::{
+    AppKit::*,
+    Foundation::{NSInteger, NSMutableDictionary, NSNumber, NSString},
 };
+use objc2::{msg_send, runtime::Object, Message};
 use std::rc::Rc;
 
 use crate::{
-    appkit::*,
     context::Context,
     node::{filter, filter_detached, NodeWrapper},
 };
@@ -79,14 +79,14 @@ impl QueuedEvent {
                     }
                 };
 
-                let window = match view.window() {
+                let window = match unsafe { view.window() } {
                     Some(window) => window,
                     None => {
                         return;
                     }
                 };
 
-                let mut user_info = NSMutableDictionary::<_, NSObject>::new();
+                let mut user_info = NSMutableDictionary::<_, Object>::new();
                 let text = NSString::from_str(&text);
                 set_object_for_key(&mut user_info, &*text, unsafe {
                     NSAccessibilityAnnouncementKey
@@ -100,7 +100,7 @@ impl QueuedEvent {
                     NSAccessibilityPostNotificationWithUserInfo(
                         &window,
                         NSAccessibilityAnnouncementRequestedNotification,
-                        &user_info,
+                        Some(&**user_info),
                     )
                 };
             }

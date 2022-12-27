@@ -4,6 +4,10 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{ActionHandler, TreeUpdate};
+use icrate::{
+    AppKit::NSView,
+    Foundation::{NSArray, NSObject, NSPoint},
+};
 use objc2::{
     declare::{ClassBuilder, Ivar, IvarDrop},
     declare_class,
@@ -11,7 +15,6 @@ use objc2::{
         objc_getAssociatedObject, objc_setAssociatedObject, object_setClass,
         OBJC_ASSOCIATION_RETAIN_NONATOMIC,
     },
-    foundation::{NSArray, NSObject, NSPoint},
     msg_send_id,
     rc::{Id, Owned, Shared},
     runtime::{Class, Sel},
@@ -21,7 +24,7 @@ use once_cell::{sync::Lazy as SyncLazy, unsync::Lazy};
 use parking_lot::Mutex;
 use std::{collections::HashMap, ffi::c_void};
 
-use crate::{appkit::NSView, event::QueuedEvents, Adapter};
+use crate::{event::QueuedEvents, Adapter};
 
 static SUBCLASSES: SyncLazy<Mutex<HashMap<&'static Class, &'static Class>>> =
     SyncLazy::new(|| Mutex::new(HashMap::new()));

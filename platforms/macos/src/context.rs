@@ -5,13 +5,11 @@
 
 use accesskit::NodeId;
 use accesskit_consumer::Tree;
-use objc2::{
-    foundation::MainThreadMarker,
-    rc::{Id, Shared, WeakId},
-};
+use icrate::{AppKit::*, Foundation::MainThreadMarker};
+use objc2::rc::{Id, Shared, WeakId};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use crate::{appkit::*, node::PlatformNode};
+use crate::node::PlatformNode;
 
 pub(crate) struct Context {
     pub(crate) view: WeakId<NSView>,
