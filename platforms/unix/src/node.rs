@@ -25,10 +25,7 @@ use atspi::{
     StateSet,
 };
 use parking_lot::RwLock;
-use std::{
-    iter::FusedIterator,
-    sync::{Arc, Weak},
-};
+use std::sync::{Arc, Weak};
 use zbus::fdo;
 
 fn filter_common(node: &NodeState) -> FilterResult {
@@ -100,15 +97,6 @@ impl<'a> NodeWrapper<'a> {
 
     pub fn id(&self) -> ObjectId<'static> {
         self.node_state().id().into()
-    }
-
-    pub fn child_ids(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = NodeId>
-           + ExactSizeIterator<Item = NodeId>
-           + FusedIterator<Item = NodeId>
-           + '_ {
-        self.node_state().child_ids()
     }
 
     pub fn role(&self) -> AtspiRole {
@@ -629,7 +617,7 @@ impl PlatformNode {
 
     pub fn child_count(&self) -> fdo::Result<i32> {
         self.resolve(|node| {
-            i32::try_from(node.state().child_ids().count())
+            i32::try_from(node.filtered_children(&filter).count())
                 .map_err(|_| fdo::Error::Failed("Too many children.".into()))
         })
     }
@@ -640,18 +628,21 @@ impl PlatformNode {
 
     pub fn child_at_index(&self, index: usize) -> fdo::Result<Option<ObjectRef>> {
         self.resolve(|node| {
-            let wrapper = NodeWrapper::Node(&node);
-            let child = wrapper.child_ids().nth(index).map(ObjectRef::from);
+            let child = node
+                .filtered_children(&filter)
+                .nth(index)
+                .map(|child| child.id().into());
             Ok(child)
         })
     }
 
     pub fn children(&self) -> fdo::Result<Vec<ObjectRef>> {
         self.resolve(|node| {
-            Ok(node
+            let children = node
                 .filtered_children(&filter)
                 .map(|child| child.id().into())
-                .collect())
+                .collect();
+            Ok(children)
         })
     }
 

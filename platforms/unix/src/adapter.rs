@@ -11,11 +11,11 @@ use crate::{
         },
         Bus, ObjectId, ACCESSIBLE_PATH_PREFIX,
     },
-    node::{filter, NodeWrapper, PlatformNode, PlatformRootNode},
+    node::{filter, filter_detached, NodeWrapper, PlatformNode, PlatformRootNode},
     util::{AppContext, WindowBounds},
 };
 use accesskit::{kurbo::Rect, ActionHandler, NodeId, Role, TreeUpdate};
-use accesskit_consumer::{DetachedNode, Node, Tree, TreeChangeHandler, TreeState};
+use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use atspi::{Interface, InterfaceSet, State};
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -144,30 +144,61 @@ impl Adapter {
             tree: &'a Arc<Tree>,
             queue: Vec<QueuedEvent>,
         }
-        impl TreeChangeHandler for Handler<'_> {
-            fn node_added(&mut self, node: &Node) {
+        impl Handler<'_> {
+            fn add_node(&mut self, node: &Node) {
                 let interfaces = NodeWrapper::Node(node).interfaces();
                 self.adapter
                     .register_interfaces(self.tree, node.id(), interfaces)
                     .unwrap();
             }
+            fn remove_node(&mut self, node: &DetachedNode) {
+                let node = NodeWrapper::DetachedNode(node);
+                self.queue.push(QueuedEvent::Object {
+                    target: node.id(),
+                    event: ObjectEvent::StateChanged(State::Defunct, true),
+                });
+                self.adapter
+                    .unregister_interfaces(&node.id(), node.interfaces())
+                    .unwrap();
+            }
+        }
+        impl TreeChangeHandler for Handler<'_> {
+            fn node_added(&mut self, node: &Node) {
+                if filter(node) == FilterResult::Include {
+                    self.add_node(node);
+                }
+            }
             fn node_updated(&mut self, old_node: &DetachedNode, new_node: &Node) {
-                let old_wrapper = NodeWrapper::DetachedNode(old_node);
-                let new_wrapper = NodeWrapper::Node(new_node);
-                let old_interfaces = old_wrapper.interfaces();
-                let new_interfaces = new_wrapper.interfaces();
-                let kept_interfaces = old_interfaces & new_interfaces;
-                self.adapter
-                    .unregister_interfaces(&new_wrapper.id(), old_interfaces ^ kept_interfaces)
-                    .unwrap();
-                self.adapter
-                    .register_interfaces(self.tree, new_node.id(), new_interfaces ^ kept_interfaces)
-                    .unwrap();
-                new_wrapper.enqueue_changes(
-                    &self.adapter.root_window_bounds.read(),
-                    &mut self.queue,
-                    &old_wrapper,
-                );
+                let filter_old = filter_detached(old_node);
+                let filter_new = filter(new_node);
+                if filter_new != filter_old {
+                    if filter_new == FilterResult::Include {
+                        self.add_node(new_node);
+                    } else if filter_old == FilterResult::Include {
+                        self.remove_node(old_node);
+                    }
+                } else if filter_new == FilterResult::Include {
+                    let old_wrapper = NodeWrapper::DetachedNode(old_node);
+                    let new_wrapper = NodeWrapper::Node(new_node);
+                    let old_interfaces = old_wrapper.interfaces();
+                    let new_interfaces = new_wrapper.interfaces();
+                    let kept_interfaces = old_interfaces & new_interfaces;
+                    self.adapter
+                        .unregister_interfaces(&new_wrapper.id(), old_interfaces ^ kept_interfaces)
+                        .unwrap();
+                    self.adapter
+                        .register_interfaces(
+                            self.tree,
+                            new_node.id(),
+                            new_interfaces ^ kept_interfaces,
+                        )
+                        .unwrap();
+                    new_wrapper.enqueue_changes(
+                        &self.adapter.root_window_bounds.read(),
+                        &mut self.queue,
+                        &old_wrapper,
+                    );
+                }
             }
             fn focus_moved(&mut self, old_node: Option<&DetachedNode>, new_node: Option<&Node>) {
                 if let Some(root_window) = root_window(&self.tree.read()) {
@@ -193,14 +224,9 @@ impl Adapter {
                 }
             }
             fn node_removed(&mut self, node: &DetachedNode, _: &TreeState) {
-                let node = NodeWrapper::DetachedNode(node);
-                self.queue.push(QueuedEvent::Object {
-                    target: node.id(),
-                    event: ObjectEvent::StateChanged(State::Defunct, true),
-                });
-                self.adapter
-                    .unregister_interfaces(&node.id(), node.interfaces())
-                    .unwrap();
+                if filter_detached(node) == FilterResult::Include {
+                    self.remove_node(node);
+                }
             }
         }
         let mut handler = Handler {
