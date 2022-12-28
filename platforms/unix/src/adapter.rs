@@ -283,9 +283,9 @@ pub struct QueuedEvents {
 }
 
 impl QueuedEvents {
-    pub fn raise(&self) {
-        for event in &self.queue {
-            let _ = match &event {
+    pub fn raise(self) {
+        for event in self.queue {
+            let _ = match event {
                 QueuedEvent::Object { target, event } => self.bus.emit_object_event(target, event),
                 QueuedEvent::Window {
                     target,

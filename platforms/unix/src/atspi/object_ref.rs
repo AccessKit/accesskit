@@ -5,11 +5,22 @@
 
 use crate::atspi::{ObjectId, OwnedObjectAddress};
 use accesskit::NodeId;
+use zbus::{names::OwnedUniqueName, zvariant::Value};
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum ObjectRef {
     Managed(ObjectId<'static>),
     Unmanaged(OwnedObjectAddress),
+}
+
+impl<'a> ObjectRef {
+    pub(crate) fn into_value(self, name: OwnedUniqueName) -> Value<'a> {
+        match self {
+            Self::Managed(object) => OwnedObjectAddress::accessible(name, object),
+            Self::Unmanaged(object) => object,
+        }
+        .into()
+    }
 }
 
 impl From<NodeId> for ObjectRef {

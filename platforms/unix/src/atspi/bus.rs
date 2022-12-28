@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    atspi::{interfaces::*, object_address::*, ObjectId, ObjectRef},
+    atspi::{interfaces::*, object_address::*, ObjectId},
     PlatformRootNode,
 };
 use atspi::{bus::BusProxyBlocking, socket::SocketProxyBlocking, EventBody};
@@ -72,10 +72,11 @@ impl Bus {
         }
     }
 
-    pub fn emit_object_event(&self, target: &ObjectId, event: &ObjectEvent) -> Result<()> {
+    pub fn emit_object_event(&self, target: ObjectId, event: ObjectEvent) -> Result<()> {
         let interface = "org.a11y.atspi.Event.Object";
         let signal = match event {
             ObjectEvent::BoundsChanged(_) => "BoundsChanged",
+            ObjectEvent::ChildAdded(_, _) | ObjectEvent::ChildRemoved(_) => "ChildrenChanged",
             ObjectEvent::PropertyChanged(_) => "PropertyChange",
             ObjectEvent::StateChanged(_, _) => "StateChanged",
         };
@@ -89,7 +90,31 @@ impl Bus {
                     kind: "",
                     detail1: 0,
                     detail2: 0,
-                    any_data: Value::from(*bounds),
+                    any_data: Value::from(bounds),
+                    properties,
+                },
+            ),
+            ObjectEvent::ChildAdded(index, child) => self.emit_event(
+                target,
+                interface,
+                signal,
+                EventBody {
+                    kind: "add",
+                    detail1: index as i32,
+                    detail2: 0,
+                    any_data: child.into_value(self.unique_name().clone()),
+                    properties,
+                },
+            ),
+            ObjectEvent::ChildRemoved(child) => self.emit_event(
+                target,
+                interface,
+                signal,
+                EventBody {
+                    kind: "remove",
+                    detail1: -1,
+                    detail2: 0,
+                    any_data: child.into_value(self.unique_name().clone()),
                     properties,
                 },
             ),
@@ -110,21 +135,14 @@ impl Bus {
                     any_data: match property {
                         Property::Name(value) => Str::from(value).into(),
                         Property::Description(value) => Str::from(value).into(),
-                        Property::Parent(Some(ObjectRef::Managed(parent))) => {
-                            OwnedObjectAddress::accessible(
-                                self.unique_name().clone(),
-                                parent.clone(),
-                            )
-                            .into()
-                        }
-                        Property::Parent(Some(ObjectRef::Unmanaged(parent))) => {
-                            parent.clone().into()
+                        Property::Parent(Some(parent)) => {
+                            parent.into_value(self.unique_name().clone())
                         }
                         Property::Parent(None) => {
                             OwnedObjectAddress::root(self.unique_name().clone()).into()
                         }
-                        Property::Role(value) => Value::U32(*value as u32),
-                        Property::Value(value) => Value::F64(*value),
+                        Property::Role(value) => Value::U32(value as u32),
+                        Property::Value(value) => Value::F64(value),
                     },
                     properties,
                 },
@@ -135,7 +153,7 @@ impl Bus {
                 signal,
                 EventBody {
                     kind: state,
-                    detail1: *value as i32,
+                    detail1: value as i32,
                     detail2: 0,
                     any_data: 0i32.into(),
                     properties,
@@ -146,9 +164,9 @@ impl Bus {
 
     pub fn emit_window_event(
         &self,
-        target: &ObjectId,
-        window_name: &str,
-        event: &WindowEvent,
+        target: ObjectId,
+        window_name: String,
+        event: WindowEvent,
     ) -> Result<()> {
         let signal = match event {
             WindowEvent::Activated => "Activate",
@@ -170,7 +188,7 @@ impl Bus {
 
     fn emit_event<T: Serialize>(
         &self,
-        id: &ObjectId,
+        id: ObjectId,
         interface: &str,
         signal_name: &str,
         body: EventBody<T>,

@@ -29,6 +29,8 @@ pub(crate) enum Property {
 #[allow(clippy::enum_variant_names)]
 pub(crate) enum ObjectEvent {
     BoundsChanged(Rect),
+    ChildAdded(usize, ObjectRef),
+    ChildRemoved(ObjectRef),
     PropertyChanged(Property),
     StateChanged(State, bool),
 }

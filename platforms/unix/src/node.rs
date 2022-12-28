@@ -25,7 +25,10 @@ use atspi::{
     StateSet,
 };
 use parking_lot::RwLock;
-use std::sync::{Arc, Weak};
+use std::{
+    iter::FusedIterator,
+    sync::{Arc, Weak},
+};
 use zbus::fdo;
 
 fn filter_common(node: &NodeState) -> FilterResult {
@@ -97,6 +100,24 @@ impl<'a> NodeWrapper<'a> {
 
     pub fn id(&self) -> ObjectId<'static> {
         self.node_state().id().into()
+    }
+
+    fn child_ids(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = NodeId>
+           + ExactSizeIterator<Item = NodeId>
+           + FusedIterator<Item = NodeId>
+           + '_ {
+        self.node_state().child_ids()
+    }
+
+    fn filtered_child_ids(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = NodeId> + FusedIterator<Item = NodeId> + '_ {
+        match self {
+            Self::Node(node) => node.filtered_children(&filter).map(|child| child.id()),
+            Self::DetachedNode(_) => unreachable!(),
+        }
     }
 
     pub fn role(&self) -> AtspiRole {
@@ -465,6 +486,7 @@ impl<'a> NodeWrapper<'a> {
         self.enqueue_state_changes(queue, old);
         self.enqueue_property_changes(queue, old);
         self.enqueue_bounds_changes(window_bounds, queue, old);
+        self.enqueue_children_changes(queue, old);
     }
 
     fn enqueue_state_changes(&self, queue: &mut Vec<QueuedEvent>, old: &NodeWrapper) {
@@ -529,6 +551,27 @@ impl<'a> NodeWrapper<'a> {
                 target: self.id(),
                 event: ObjectEvent::BoundsChanged(self.extents(window_bounds)),
             });
+        }
+    }
+
+    fn enqueue_children_changes(&self, queue: &mut Vec<QueuedEvent>, old: &NodeWrapper) {
+        let old_children = old.child_ids().collect::<Vec<NodeId>>();
+        let filtered_children = self.filtered_child_ids().collect::<Vec<NodeId>>();
+        for (index, child) in filtered_children.iter().enumerate() {
+            if !old_children.contains(child) {
+                queue.push(QueuedEvent::Object {
+                    target: self.id(),
+                    event: ObjectEvent::ChildAdded(index, ObjectRef::from(*child)),
+                });
+            }
+        }
+        for child in old_children.into_iter() {
+            if !filtered_children.contains(&child) {
+                queue.push(QueuedEvent::Object {
+                    target: self.id(),
+                    event: ObjectEvent::ChildRemoved(child.into()),
+                });
+            }
         }
     }
 }
