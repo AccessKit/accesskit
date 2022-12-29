@@ -34,13 +34,13 @@ impl Adapter {
 
     pub fn update(&self, update: TreeUpdate) {
         if let Some(adapter) = &self.adapter {
-            adapter.update(update).raise();
+            adapter.update(update);
         }
     }
 
     pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
         if let Some(adapter) = &self.adapter {
-            adapter.update(updater()).raise();
+            adapter.update(updater());
         }
     }
 }

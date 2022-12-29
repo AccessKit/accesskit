@@ -6,7 +6,7 @@
 use crate::{
     atspi::{
         interfaces::{
-            AccessibleInterface, ActionInterface, ComponentInterface, ObjectEvent, QueuedEvent,
+            AccessibleInterface, ActionInterface, ComponentInterface, Event, ObjectEvent,
             ValueInterface, WindowEvent,
         },
         Bus, ObjectId, ACCESSIBLE_PATH_PREFIX,
@@ -17,11 +17,18 @@ use crate::{
 use accesskit::{kurbo::Rect, ActionHandler, NodeId, Role, TreeUpdate};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use atspi::{Interface, InterfaceSet, State};
+use futures::{
+    channel::mpsc::{self, UnboundedReceiver, UnboundedSender},
+    StreamExt,
+};
 use parking_lot::RwLock;
 use std::sync::Arc;
+use zbus::Task;
 
 pub struct Adapter {
     atspi_bus: Bus,
+    _event_task: Task<()>,
+    events: UnboundedSender<Event>,
     _app_context: Arc<RwLock<AppContext>>,
     root_window_bounds: Arc<RwLock<WindowBounds>>,
     tree: Arc<Tree>,
@@ -36,6 +43,14 @@ impl Adapter {
         action_handler: Box<dyn ActionHandler>,
     ) -> Option<Self> {
         let mut atspi_bus = Bus::a11y_bus()?;
+        let (event_sender, event_receiver) = mpsc::unbounded();
+        let atspi_bus_copy = atspi_bus.clone();
+        let event_task = atspi_bus.connection().inner().executor().spawn(
+            async move {
+                handle_events(atspi_bus_copy, event_receiver).await;
+            },
+            "accesskit_event_task",
+        );
         let tree = Arc::new(Tree::new(initial_state(), action_handler));
         let app_context = Arc::new(RwLock::new(AppContext::new(
             app_name,
@@ -47,6 +62,8 @@ impl Adapter {
             .ok()?;
         let adapter = Adapter {
             atspi_bus,
+            _event_task: event_task,
+            events: event_sender,
             _app_context: app_context,
             root_window_bounds: Arc::new(RwLock::new(WindowBounds::default())),
             tree,
@@ -138,11 +155,10 @@ impl Adapter {
         bounds.inner = inner;
     }
 
-    pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
+    pub fn update(&self, update: TreeUpdate) {
         struct Handler<'a> {
             adapter: &'a Adapter,
             tree: &'a Arc<Tree>,
-            queue: Vec<QueuedEvent>,
         }
         impl Handler<'_> {
             fn add_node(&mut self, node: &Node) {
@@ -153,10 +169,13 @@ impl Adapter {
             }
             fn remove_node(&mut self, node: &DetachedNode) {
                 let node = NodeWrapper::DetachedNode(node);
-                self.queue.push(QueuedEvent::Object {
-                    target: node.id(),
-                    event: ObjectEvent::StateChanged(State::Defunct, true),
-                });
+                self.adapter
+                    .events
+                    .unbounded_send(Event::Object {
+                        target: node.id(),
+                        event: ObjectEvent::StateChanged(State::Defunct, true),
+                    })
+                    .unwrap();
                 self.adapter
                     .unregister_interfaces(&node.id(), node.interfaces())
                     .unwrap();
@@ -193,9 +212,9 @@ impl Adapter {
                             new_interfaces ^ kept_interfaces,
                         )
                         .unwrap();
-                    new_wrapper.enqueue_changes(
+                    new_wrapper.notify_changes(
                         &self.adapter.root_window_bounds.read(),
-                        &mut self.queue,
+                        &self.adapter.events,
                         &old_wrapper,
                     );
                 }
@@ -203,24 +222,34 @@ impl Adapter {
             fn focus_moved(&mut self, old_node: Option<&DetachedNode>, new_node: Option<&Node>) {
                 if let Some(root_window) = root_window(&self.tree.read()) {
                     if old_node.is_none() && new_node.is_some() {
-                        self.adapter
-                            .window_activated(&NodeWrapper::Node(&root_window), &mut self.queue);
+                        self.adapter.window_activated(
+                            &NodeWrapper::Node(&root_window),
+                            &self.adapter.events,
+                        );
                     } else if old_node.is_some() && new_node.is_none() {
-                        self.adapter
-                            .window_deactivated(&NodeWrapper::Node(&root_window), &mut self.queue);
+                        self.adapter.window_deactivated(
+                            &NodeWrapper::Node(&root_window),
+                            &self.adapter.events,
+                        );
                     }
                 }
                 if let Some(node) = new_node.map(NodeWrapper::Node) {
-                    self.queue.push(QueuedEvent::Object {
-                        target: node.id(),
-                        event: ObjectEvent::StateChanged(State::Focused, true),
-                    });
+                    self.adapter
+                        .events
+                        .unbounded_send(Event::Object {
+                            target: node.id(),
+                            event: ObjectEvent::StateChanged(State::Focused, true),
+                        })
+                        .unwrap();
                 }
                 if let Some(node) = old_node.map(NodeWrapper::DetachedNode) {
-                    self.queue.push(QueuedEvent::Object {
-                        target: node.id(),
-                        event: ObjectEvent::StateChanged(State::Focused, false),
-                    });
+                    self.adapter
+                        .events
+                        .unbounded_send(Event::Object {
+                            target: node.id(),
+                            event: ObjectEvent::StateChanged(State::Focused, false),
+                        })
+                        .unwrap();
                 }
             }
             fn node_removed(&mut self, node: &DetachedNode, _: &TreeState) {
@@ -232,37 +261,40 @@ impl Adapter {
         let mut handler = Handler {
             adapter: self,
             tree: &self.tree,
-            queue: Vec::new(),
         };
         self.tree.update_and_process_changes(update, &mut handler);
-        QueuedEvents {
-            bus: self.atspi_bus.clone(),
-            queue: handler.queue,
-        }
     }
 
-    fn window_activated(&self, window: &NodeWrapper, queue: &mut Vec<QueuedEvent>) {
-        queue.push(QueuedEvent::Window {
-            target: window.id(),
-            name: window.name(),
-            event: WindowEvent::Activated,
-        });
-        queue.push(QueuedEvent::Object {
-            target: window.id(),
-            event: ObjectEvent::StateChanged(State::Active, true),
-        });
+    fn window_activated(&self, window: &NodeWrapper, events: &UnboundedSender<Event>) {
+        events
+            .unbounded_send(Event::Window {
+                target: window.id(),
+                name: window.name(),
+                event: WindowEvent::Activated,
+            })
+            .unwrap();
+        events
+            .unbounded_send(Event::Object {
+                target: window.id(),
+                event: ObjectEvent::StateChanged(State::Active, true),
+            })
+            .unwrap();
     }
 
-    fn window_deactivated(&self, window: &NodeWrapper, queue: &mut Vec<QueuedEvent>) {
-        queue.push(QueuedEvent::Window {
-            target: window.id(),
-            name: window.name(),
-            event: WindowEvent::Deactivated,
-        });
-        queue.push(QueuedEvent::Object {
-            target: window.id(),
-            event: ObjectEvent::StateChanged(State::Active, false),
-        });
+    fn window_deactivated(&self, window: &NodeWrapper, events: &UnboundedSender<Event>) {
+        events
+            .unbounded_send(Event::Window {
+                target: window.id(),
+                name: window.name(),
+                event: WindowEvent::Deactivated,
+            })
+            .unwrap();
+        events
+            .unbounded_send(Event::Object {
+                target: window.id(),
+                event: ObjectEvent::StateChanged(State::Active, false),
+            })
+            .unwrap();
     }
 }
 
@@ -276,23 +308,15 @@ fn root_window(current_state: &TreeState) -> Option<Node> {
     }
 }
 
-#[must_use = "events must be explicitly raised"]
-pub struct QueuedEvents {
-    bus: Bus,
-    queue: Vec<QueuedEvent>,
-}
-
-impl QueuedEvents {
-    pub fn raise(self) {
-        for event in self.queue {
-            let _ = match event {
-                QueuedEvent::Object { target, event } => self.bus.emit_object_event(target, event),
-                QueuedEvent::Window {
-                    target,
-                    name,
-                    event,
-                } => self.bus.emit_window_event(target, name, event),
-            };
-        }
+async fn handle_events(bus: Bus, mut events: UnboundedReceiver<Event>) {
+    while let Some(event) = events.next().await {
+        let _ = match event {
+            Event::Object { target, event } => bus.emit_object_event(target, event).await,
+            Event::Window {
+                target,
+                name,
+                event,
+            } => bus.emit_window_event(target, name, event).await,
+        };
     }
 }

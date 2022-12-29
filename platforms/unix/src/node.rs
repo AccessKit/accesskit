@@ -10,7 +10,7 @@
 
 use crate::{
     atspi::{
-        interfaces::{Action, ObjectEvent, Property, QueuedEvent},
+        interfaces::{Action, Event, ObjectEvent, Property},
         ObjectId, ObjectRef, Rect as AtspiRect, ACCESSIBLE_PATH_PREFIX,
     },
     util::{AppContext, WindowBounds},
@@ -24,6 +24,7 @@ use atspi::{
     accessible::Role as AtspiRole, component::Layer, CoordType, Interface, InterfaceSet, State,
     StateSet,
 };
+use futures::channel::mpsc::UnboundedSender;
 use parking_lot::RwLock;
 use std::{
     iter::FusedIterator,
@@ -477,100 +478,118 @@ impl<'a> NodeWrapper<'a> {
         self.node_state().numeric_value()
     }
 
-    pub fn enqueue_changes(
+    pub fn notify_changes(
         &self,
         window_bounds: &WindowBounds,
-        queue: &mut Vec<QueuedEvent>,
+        events: &UnboundedSender<Event>,
         old: &NodeWrapper,
     ) {
-        self.enqueue_state_changes(queue, old);
-        self.enqueue_property_changes(queue, old);
-        self.enqueue_bounds_changes(window_bounds, queue, old);
-        self.enqueue_children_changes(queue, old);
+        self.notify_state_changes(events, old);
+        self.notify_property_changes(events, old);
+        self.notify_bounds_changes(window_bounds, events, old);
+        self.notify_children_changes(events, old);
     }
 
-    fn enqueue_state_changes(&self, queue: &mut Vec<QueuedEvent>, old: &NodeWrapper) {
+    fn notify_state_changes(&self, events: &UnboundedSender<Event>, old: &NodeWrapper) {
         let old_state = old.state();
         let new_state = self.state();
         let changed_states = old_state ^ new_state;
         for state in changed_states.iter() {
-            queue.push(QueuedEvent::Object {
-                target: self.id(),
-                event: ObjectEvent::StateChanged(state, new_state.contains(state)),
-            });
+            events
+                .unbounded_send(Event::Object {
+                    target: self.id(),
+                    event: ObjectEvent::StateChanged(state, new_state.contains(state)),
+                })
+                .unwrap();
         }
     }
 
-    fn enqueue_property_changes(&self, queue: &mut Vec<QueuedEvent>, old: &NodeWrapper) {
+    fn notify_property_changes(&self, events: &UnboundedSender<Event>, old: &NodeWrapper) {
         let name = self.name();
         if name != old.name() {
-            queue.push(QueuedEvent::Object {
-                target: self.id(),
-                event: ObjectEvent::PropertyChanged(Property::Name(name)),
-            });
+            events
+                .unbounded_send(Event::Object {
+                    target: self.id(),
+                    event: ObjectEvent::PropertyChanged(Property::Name(name)),
+                })
+                .unwrap();
         }
         let description = self.description();
         if description != old.description() {
-            queue.push(QueuedEvent::Object {
-                target: self.id(),
-                event: ObjectEvent::PropertyChanged(Property::Description(description)),
-            });
+            events
+                .unbounded_send(Event::Object {
+                    target: self.id(),
+                    event: ObjectEvent::PropertyChanged(Property::Description(description)),
+                })
+                .unwrap();
         }
         let parent_id = self.parent_id();
         if parent_id != old.parent_id() {
-            queue.push(QueuedEvent::Object {
-                target: self.id(),
-                event: ObjectEvent::PropertyChanged(Property::Parent(self.filtered_parent())),
-            });
+            events
+                .unbounded_send(Event::Object {
+                    target: self.id(),
+                    event: ObjectEvent::PropertyChanged(Property::Parent(self.filtered_parent())),
+                })
+                .unwrap();
         }
         let role = self.role();
         if role != old.role() {
-            queue.push(QueuedEvent::Object {
-                target: self.id(),
-                event: ObjectEvent::PropertyChanged(Property::Role(role)),
-            });
+            events
+                .unbounded_send(Event::Object {
+                    target: self.id(),
+                    event: ObjectEvent::PropertyChanged(Property::Role(role)),
+                })
+                .unwrap();
         }
         if let Some(value) = self.current_value() {
             if Some(value) != old.current_value() {
-                queue.push(QueuedEvent::Object {
-                    target: self.id(),
-                    event: ObjectEvent::PropertyChanged(Property::Value(value)),
-                });
+                events
+                    .unbounded_send(Event::Object {
+                        target: self.id(),
+                        event: ObjectEvent::PropertyChanged(Property::Value(value)),
+                    })
+                    .unwrap();
             }
         }
     }
 
-    fn enqueue_bounds_changes(
+    fn notify_bounds_changes(
         &self,
         window_bounds: &WindowBounds,
-        queue: &mut Vec<QueuedEvent>,
+        events: &UnboundedSender<Event>,
         old: &NodeWrapper,
     ) {
         if self.raw_bounds_and_transform() != old.raw_bounds_and_transform() {
-            queue.push(QueuedEvent::Object {
-                target: self.id(),
-                event: ObjectEvent::BoundsChanged(self.extents(window_bounds)),
-            });
+            events
+                .unbounded_send(Event::Object {
+                    target: self.id(),
+                    event: ObjectEvent::BoundsChanged(self.extents(window_bounds)),
+                })
+                .unwrap();
         }
     }
 
-    fn enqueue_children_changes(&self, queue: &mut Vec<QueuedEvent>, old: &NodeWrapper) {
+    fn notify_children_changes(&self, events: &UnboundedSender<Event>, old: &NodeWrapper) {
         let old_children = old.child_ids().collect::<Vec<NodeId>>();
         let filtered_children = self.filtered_child_ids().collect::<Vec<NodeId>>();
         for (index, child) in filtered_children.iter().enumerate() {
             if !old_children.contains(child) {
-                queue.push(QueuedEvent::Object {
-                    target: self.id(),
-                    event: ObjectEvent::ChildAdded(index, ObjectRef::from(*child)),
-                });
+                events
+                    .unbounded_send(Event::Object {
+                        target: self.id(),
+                        event: ObjectEvent::ChildAdded(index, ObjectRef::from(*child)),
+                    })
+                    .unwrap();
             }
         }
         for child in old_children.into_iter() {
             if !filtered_children.contains(&child) {
-                queue.push(QueuedEvent::Object {
-                    target: self.id(),
-                    event: ObjectEvent::ChildRemoved(child.into()),
-                });
+                events
+                    .unbounded_send(Event::Object {
+                        target: self.id(),
+                        event: ObjectEvent::ChildRemoved(child.into()),
+                    })
+                    .unwrap();
             }
         }
     }

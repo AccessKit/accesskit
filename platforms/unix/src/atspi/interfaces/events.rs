@@ -6,7 +6,7 @@
 use crate::atspi::{ObjectId, ObjectRef, Rect};
 use atspi::{accessible::Role, State};
 
-pub(crate) enum QueuedEvent {
+pub(crate) enum Event {
     Object {
         target: ObjectId<'static>,
         event: ObjectEvent,

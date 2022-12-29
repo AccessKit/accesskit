@@ -30,6 +30,10 @@ impl Bus {
         Some(Bus { conn, socket_proxy })
     }
 
+    pub(crate) fn connection(&self) -> &Connection {
+        &self.conn
+    }
+
     pub fn unique_name(&self) -> &OwnedUniqueName {
         self.conn.unique_name().unwrap()
     }
@@ -72,7 +76,11 @@ impl Bus {
         }
     }
 
-    pub fn emit_object_event(&self, target: ObjectId, event: ObjectEvent) -> Result<()> {
+    pub(crate) async fn emit_object_event(
+        &self,
+        target: ObjectId<'_>,
+        event: ObjectEvent,
+    ) -> Result<()> {
         let interface = "org.a11y.atspi.Event.Object";
         let signal = match event {
             ObjectEvent::BoundsChanged(_) => "BoundsChanged",
@@ -82,89 +90,104 @@ impl Bus {
         };
         let properties = HashMap::new();
         match event {
-            ObjectEvent::BoundsChanged(bounds) => self.emit_event(
-                target,
-                interface,
-                signal,
-                EventBody {
-                    kind: "",
-                    detail1: 0,
-                    detail2: 0,
-                    any_data: Value::from(bounds),
-                    properties,
-                },
-            ),
-            ObjectEvent::ChildAdded(index, child) => self.emit_event(
-                target,
-                interface,
-                signal,
-                EventBody {
-                    kind: "add",
-                    detail1: index as i32,
-                    detail2: 0,
-                    any_data: child.into_value(self.unique_name().clone()),
-                    properties,
-                },
-            ),
-            ObjectEvent::ChildRemoved(child) => self.emit_event(
-                target,
-                interface,
-                signal,
-                EventBody {
-                    kind: "remove",
-                    detail1: -1,
-                    detail2: 0,
-                    any_data: child.into_value(self.unique_name().clone()),
-                    properties,
-                },
-            ),
-            ObjectEvent::PropertyChanged(property) => self.emit_event(
-                target,
-                interface,
-                signal,
-                EventBody {
-                    kind: match property {
-                        Property::Name(_) => "accessible-name",
-                        Property::Description(_) => "accessible-description",
-                        Property::Parent(_) => "accessible-parent",
-                        Property::Role(_) => "accessible-role",
-                        Property::Value(_) => "accessible-value",
+            ObjectEvent::BoundsChanged(bounds) => {
+                self.emit_event(
+                    target,
+                    interface,
+                    signal,
+                    EventBody {
+                        kind: "",
+                        detail1: 0,
+                        detail2: 0,
+                        any_data: Value::from(bounds),
+                        properties,
                     },
-                    detail1: 0,
-                    detail2: 0,
-                    any_data: match property {
-                        Property::Name(value) => Str::from(value).into(),
-                        Property::Description(value) => Str::from(value).into(),
-                        Property::Parent(Some(parent)) => {
-                            parent.into_value(self.unique_name().clone())
-                        }
-                        Property::Parent(None) => {
-                            OwnedObjectAddress::root(self.unique_name().clone()).into()
-                        }
-                        Property::Role(value) => Value::U32(value as u32),
-                        Property::Value(value) => Value::F64(value),
+                )
+                .await
+            }
+            ObjectEvent::ChildAdded(index, child) => {
+                self.emit_event(
+                    target,
+                    interface,
+                    signal,
+                    EventBody {
+                        kind: "add",
+                        detail1: index as i32,
+                        detail2: 0,
+                        any_data: child.into_value(self.unique_name().clone()),
+                        properties,
                     },
-                    properties,
-                },
-            ),
-            ObjectEvent::StateChanged(state, value) => self.emit_event(
-                target,
-                interface,
-                signal,
-                EventBody {
-                    kind: state,
-                    detail1: value as i32,
-                    detail2: 0,
-                    any_data: 0i32.into(),
-                    properties,
-                },
-            ),
+                )
+                .await
+            }
+            ObjectEvent::ChildRemoved(child) => {
+                self.emit_event(
+                    target,
+                    interface,
+                    signal,
+                    EventBody {
+                        kind: "remove",
+                        detail1: -1,
+                        detail2: 0,
+                        any_data: child.into_value(self.unique_name().clone()),
+                        properties,
+                    },
+                )
+                .await
+            }
+            ObjectEvent::PropertyChanged(property) => {
+                self.emit_event(
+                    target,
+                    interface,
+                    signal,
+                    EventBody {
+                        kind: match property {
+                            Property::Name(_) => "accessible-name",
+                            Property::Description(_) => "accessible-description",
+                            Property::Parent(_) => "accessible-parent",
+                            Property::Role(_) => "accessible-role",
+                            Property::Value(_) => "accessible-value",
+                        },
+                        detail1: 0,
+                        detail2: 0,
+                        any_data: match property {
+                            Property::Name(value) => Str::from(value).into(),
+                            Property::Description(value) => Str::from(value).into(),
+                            Property::Parent(Some(parent)) => {
+                                parent.into_value(self.unique_name().clone())
+                            }
+                            Property::Parent(None) => {
+                                OwnedObjectAddress::root(self.unique_name().clone()).into()
+                            }
+                            Property::Role(value) => Value::U32(value as u32),
+                            Property::Value(value) => Value::F64(value),
+                        },
+                        properties,
+                    },
+                )
+                .await
+            }
+            ObjectEvent::StateChanged(state, value) => {
+                self.emit_event(
+                    target,
+                    interface,
+                    signal,
+                    EventBody {
+                        kind: state,
+                        detail1: value as i32,
+                        detail2: 0,
+                        any_data: 0i32.into(),
+                        properties,
+                    },
+                )
+                .await
+            }
         }
     }
 
-    pub fn emit_window_event(
+    pub(crate) async fn emit_window_event(
         &self,
-        target: ObjectId,
+        target: ObjectId<'_>,
         window_name: String,
         event: WindowEvent,
     ) -> Result<()> {
@@ -184,23 +207,27 @@ impl Bus {
                 properties: HashMap::new(),
             },
         )
+        .await
     }
 
-    fn emit_event<T: Serialize>(
+    async fn emit_event<T: Serialize>(
         &self,
-        id: ObjectId,
+        id: ObjectId<'_>,
         interface: &str,
         signal_name: &str,
-        body: EventBody<T>,
+        body: EventBody<'_, T>,
     ) -> Result<()> {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, id.as_str());
-        self.conn.emit_signal(
-            Option::<BusName>::None,
-            path,
-            InterfaceName::from_str_unchecked(interface),
-            MemberName::from_str_unchecked(signal_name),
-            &body,
-        )
+        self.conn
+            .inner()
+            .emit_signal(
+                Option::<BusName>::None,
+                path,
+                InterfaceName::from_str_unchecked(interface),
+                MemberName::from_str_unchecked(signal_name),
+                &body,
+            )
+            .await
     }
 }
 
