@@ -16,11 +16,9 @@ use crate::{
 };
 use accesskit::{kurbo::Rect, ActionHandler, NodeId, Role, TreeUpdate};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
+use async_channel::{Receiver, Sender};
 use atspi::{Interface, InterfaceSet, State};
-use futures::{
-    channel::mpsc::{self, UnboundedReceiver, UnboundedSender},
-    StreamExt,
-};
+use futures_lite::StreamExt;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use zbus::Task;
@@ -28,7 +26,7 @@ use zbus::Task;
 pub struct Adapter {
     atspi_bus: Bus,
     _event_task: Task<()>,
-    events: UnboundedSender<Event>,
+    events: Sender<Event>,
     _app_context: Arc<RwLock<AppContext>>,
     root_window_bounds: Arc<RwLock<WindowBounds>>,
     tree: Arc<Tree>,
@@ -43,7 +41,7 @@ impl Adapter {
         action_handler: Box<dyn ActionHandler>,
     ) -> Option<Self> {
         let mut atspi_bus = Bus::a11y_bus()?;
-        let (event_sender, event_receiver) = mpsc::unbounded();
+        let (event_sender, event_receiver) = async_channel::unbounded();
         let atspi_bus_copy = atspi_bus.clone();
         let event_task = atspi_bus.connection().inner().executor().spawn(
             async move {
@@ -171,7 +169,7 @@ impl Adapter {
                 let node = NodeWrapper::DetachedNode(node);
                 self.adapter
                     .events
-                    .unbounded_send(Event::Object {
+                    .send_blocking(Event::Object {
                         target: node.id(),
                         event: ObjectEvent::StateChanged(State::Defunct, true),
                     })
@@ -236,7 +234,7 @@ impl Adapter {
                 if let Some(node) = new_node.map(NodeWrapper::Node) {
                     self.adapter
                         .events
-                        .unbounded_send(Event::Object {
+                        .send_blocking(Event::Object {
                             target: node.id(),
                             event: ObjectEvent::StateChanged(State::Focused, true),
                         })
@@ -245,7 +243,7 @@ impl Adapter {
                 if let Some(node) = old_node.map(NodeWrapper::DetachedNode) {
                     self.adapter
                         .events
-                        .unbounded_send(Event::Object {
+                        .send_blocking(Event::Object {
                             target: node.id(),
                             event: ObjectEvent::StateChanged(State::Focused, false),
                         })
@@ -265,32 +263,32 @@ impl Adapter {
         self.tree.update_and_process_changes(update, &mut handler);
     }
 
-    fn window_activated(&self, window: &NodeWrapper, events: &UnboundedSender<Event>) {
+    fn window_activated(&self, window: &NodeWrapper, events: &Sender<Event>) {
         events
-            .unbounded_send(Event::Window {
+            .send_blocking(Event::Window {
                 target: window.id(),
                 name: window.name(),
                 event: WindowEvent::Activated,
             })
             .unwrap();
         events
-            .unbounded_send(Event::Object {
+            .send_blocking(Event::Object {
                 target: window.id(),
                 event: ObjectEvent::StateChanged(State::Active, true),
             })
             .unwrap();
     }
 
-    fn window_deactivated(&self, window: &NodeWrapper, events: &UnboundedSender<Event>) {
+    fn window_deactivated(&self, window: &NodeWrapper, events: &Sender<Event>) {
         events
-            .unbounded_send(Event::Window {
+            .send_blocking(Event::Window {
                 target: window.id(),
                 name: window.name(),
                 event: WindowEvent::Deactivated,
             })
             .unwrap();
         events
-            .unbounded_send(Event::Object {
+            .send_blocking(Event::Object {
                 target: window.id(),
                 event: ObjectEvent::StateChanged(State::Active, false),
             })
@@ -308,7 +306,7 @@ fn root_window(current_state: &TreeState) -> Option<Node> {
     }
 }
 
-async fn handle_events(bus: Bus, mut events: UnboundedReceiver<Event>) {
+async fn handle_events(bus: Bus, mut events: Receiver<Event>) {
     while let Some(event) = events.next().await {
         let _ = match event {
             Event::Object { target, event } => bus.emit_object_event(target, event).await,

@@ -20,11 +20,11 @@ use accesskit::{
     CheckedState, DefaultActionVerb, NodeId, Role,
 };
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, Tree, TreeState};
+use async_channel::Sender;
 use atspi::{
     accessible::Role as AtspiRole, component::Layer, CoordType, Interface, InterfaceSet, State,
     StateSet,
 };
-use futures::channel::mpsc::UnboundedSender;
 use parking_lot::RwLock;
 use std::{
     iter::FusedIterator,
@@ -481,7 +481,7 @@ impl<'a> NodeWrapper<'a> {
     pub fn notify_changes(
         &self,
         window_bounds: &WindowBounds,
-        events: &UnboundedSender<Event>,
+        events: &Sender<Event>,
         old: &NodeWrapper,
     ) {
         self.notify_state_changes(events, old);
@@ -490,13 +490,13 @@ impl<'a> NodeWrapper<'a> {
         self.notify_children_changes(events, old);
     }
 
-    fn notify_state_changes(&self, events: &UnboundedSender<Event>, old: &NodeWrapper) {
+    fn notify_state_changes(&self, events: &Sender<Event>, old: &NodeWrapper) {
         let old_state = old.state();
         let new_state = self.state();
         let changed_states = old_state ^ new_state;
         for state in changed_states.iter() {
             events
-                .unbounded_send(Event::Object {
+                .send_blocking(Event::Object {
                     target: self.id(),
                     event: ObjectEvent::StateChanged(state, new_state.contains(state)),
                 })
@@ -504,11 +504,11 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
-    fn notify_property_changes(&self, events: &UnboundedSender<Event>, old: &NodeWrapper) {
+    fn notify_property_changes(&self, events: &Sender<Event>, old: &NodeWrapper) {
         let name = self.name();
         if name != old.name() {
             events
-                .unbounded_send(Event::Object {
+                .send_blocking(Event::Object {
                     target: self.id(),
                     event: ObjectEvent::PropertyChanged(Property::Name(name)),
                 })
@@ -517,7 +517,7 @@ impl<'a> NodeWrapper<'a> {
         let description = self.description();
         if description != old.description() {
             events
-                .unbounded_send(Event::Object {
+                .send_blocking(Event::Object {
                     target: self.id(),
                     event: ObjectEvent::PropertyChanged(Property::Description(description)),
                 })
@@ -526,7 +526,7 @@ impl<'a> NodeWrapper<'a> {
         let parent_id = self.parent_id();
         if parent_id != old.parent_id() {
             events
-                .unbounded_send(Event::Object {
+                .send_blocking(Event::Object {
                     target: self.id(),
                     event: ObjectEvent::PropertyChanged(Property::Parent(self.filtered_parent())),
                 })
@@ -535,7 +535,7 @@ impl<'a> NodeWrapper<'a> {
         let role = self.role();
         if role != old.role() {
             events
-                .unbounded_send(Event::Object {
+                .send_blocking(Event::Object {
                     target: self.id(),
                     event: ObjectEvent::PropertyChanged(Property::Role(role)),
                 })
@@ -544,7 +544,7 @@ impl<'a> NodeWrapper<'a> {
         if let Some(value) = self.current_value() {
             if Some(value) != old.current_value() {
                 events
-                    .unbounded_send(Event::Object {
+                    .send_blocking(Event::Object {
                         target: self.id(),
                         event: ObjectEvent::PropertyChanged(Property::Value(value)),
                     })
@@ -556,12 +556,12 @@ impl<'a> NodeWrapper<'a> {
     fn notify_bounds_changes(
         &self,
         window_bounds: &WindowBounds,
-        events: &UnboundedSender<Event>,
+        events: &Sender<Event>,
         old: &NodeWrapper,
     ) {
         if self.raw_bounds_and_transform() != old.raw_bounds_and_transform() {
             events
-                .unbounded_send(Event::Object {
+                .send_blocking(Event::Object {
                     target: self.id(),
                     event: ObjectEvent::BoundsChanged(self.extents(window_bounds)),
                 })
@@ -569,13 +569,13 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
-    fn notify_children_changes(&self, events: &UnboundedSender<Event>, old: &NodeWrapper) {
+    fn notify_children_changes(&self, events: &Sender<Event>, old: &NodeWrapper) {
         let old_children = old.child_ids().collect::<Vec<NodeId>>();
         let filtered_children = self.filtered_child_ids().collect::<Vec<NodeId>>();
         for (index, child) in filtered_children.iter().enumerate() {
             if !old_children.contains(child) {
                 events
-                    .unbounded_send(Event::Object {
+                    .send_blocking(Event::Object {
                         target: self.id(),
                         event: ObjectEvent::ChildAdded(index, ObjectRef::from(*child)),
                     })
@@ -585,7 +585,7 @@ impl<'a> NodeWrapper<'a> {
         for child in old_children.into_iter() {
             if !filtered_children.contains(&child) {
                 events
-                    .unbounded_send(Event::Object {
+                    .send_blocking(Event::Object {
                         target: self.id(),
                         event: ObjectEvent::ChildRemoved(child.into()),
                     })
