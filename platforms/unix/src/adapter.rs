@@ -66,8 +66,12 @@ impl Adapter {
             root_window_bounds: Arc::new(RwLock::new(WindowBounds::default())),
             tree,
         };
-        {
-            let reader = adapter.tree.read();
+        adapter.register_tree();
+        Some(adapter)
+    }
+
+    fn register_tree(&self) {
+            let reader = self.tree.read();
             let mut objects_to_add = Vec::new();
 
             fn add_children(node: Node<'_>, to_add: &mut Vec<NodeId>) {
@@ -81,12 +85,10 @@ impl Adapter {
             add_children(reader.root(), &mut objects_to_add);
             for id in objects_to_add {
                 let interfaces = NodeWrapper::Node(&reader.node_by_id(id).unwrap()).interfaces();
-                adapter
-                    .register_interfaces(&adapter.tree, id, interfaces)
+                self
+                    .register_interfaces(&self.tree, id, interfaces)
                     .unwrap();
             }
-        }
-        Some(adapter)
     }
 
     fn register_interfaces(
