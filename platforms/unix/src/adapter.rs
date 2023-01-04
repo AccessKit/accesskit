@@ -33,6 +33,7 @@ pub struct Adapter {
 }
 
 impl Adapter {
+    /// Create a new Unix adapter.
     pub fn new(
         app_name: String,
         toolkit_name: String,
@@ -71,24 +72,23 @@ impl Adapter {
     }
 
     fn register_tree(&self) {
-            let reader = self.tree.read();
-            let mut objects_to_add = Vec::new();
+        let reader = self.tree.read();
+        let mut objects_to_add = Vec::new();
 
-            fn add_children(node: Node<'_>, to_add: &mut Vec<NodeId>) {
-                for child in node.filtered_children(&filter) {
-                    to_add.push(child.id());
-                    add_children(child, to_add);
-                }
+        fn add_children(node: Node<'_>, to_add: &mut Vec<NodeId>) {
+            for child in node.filtered_children(&filter) {
+                to_add.push(child.id());
+                add_children(child, to_add);
             }
+        }
 
-            objects_to_add.push(reader.root().id());
-            add_children(reader.root(), &mut objects_to_add);
-            for id in objects_to_add {
-                let interfaces = NodeWrapper::Node(&reader.node_by_id(id).unwrap()).interfaces();
-                self
-                    .register_interfaces(&self.tree, id, interfaces)
-                    .unwrap();
-            }
+        objects_to_add.push(reader.root().id());
+        add_children(reader.root(), &mut objects_to_add);
+        for id in objects_to_add {
+            let interfaces = NodeWrapper::Node(&reader.node_by_id(id).unwrap()).interfaces();
+            self.register_interfaces(&self.tree, id, interfaces)
+                .unwrap();
+        }
     }
 
     fn register_interfaces(
@@ -155,6 +155,7 @@ impl Adapter {
         bounds.inner = inner;
     }
 
+    /// Apply the provided update to the tree.
     pub fn update(&self, update: TreeUpdate) {
         struct Handler<'a> {
             adapter: &'a Adapter,
