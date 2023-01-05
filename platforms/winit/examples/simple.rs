@@ -137,6 +137,14 @@ fn main() {
     println!("- [Space] 'presses' the button, adding static text in a live region announcing that it was pressed.");
     #[cfg(target_os = "windows")]
     println!("Enable Narrator with [Win]+[Ctrl]+[Enter] (or [Win]+[Enter] on older versions of Windows).");
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ))]
+    println!("Enable Orca with [Super]+[Alt]+[S].");
 
     let event_loop = EventLoopBuilder::with_user_event().build();
 
@@ -166,7 +174,7 @@ fn main() {
         *control_flow = ControlFlow::Wait;
 
         match event {
-            Event::WindowEvent { event, .. } => match event {
+            Event::WindowEvent { event, .. } if adapter.on_event(&window, &event) => match event {
                 WindowEvent::CloseRequested => {
                     *control_flow = ControlFlow::ExitWithCode(0);
                 }

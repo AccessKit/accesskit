@@ -103,17 +103,21 @@ impl<'a> Node<'a> {
                 (self.tree_state.node_by_id(*parent).unwrap(), *index)
             })
     }
+}
 
+impl NodeState {
     pub fn child_ids(
         &self,
     ) -> impl DoubleEndedIterator<Item = NodeId>
            + ExactSizeIterator<Item = NodeId>
            + FusedIterator<Item = NodeId>
-           + 'a {
-        let data = &self.state.data;
+           + '_ {
+        let data = &self.data;
         data.children.iter().copied()
     }
+}
 
+impl<'a> Node<'a> {
     pub fn children(
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>>
@@ -121,7 +125,8 @@ impl<'a> Node<'a> {
            + FusedIterator<Item = Node<'a>>
            + 'a {
         let state = self.tree_state;
-        self.child_ids()
+        self.state
+            .child_ids()
             .map(move |id| state.node_by_id(id).unwrap())
     }
 
@@ -267,23 +272,31 @@ impl<'a> Node<'a> {
         };
         parent_transform * self.direct_transform()
     }
+}
 
+impl NodeState {
+    pub fn raw_bounds(&self) -> Option<Rect> {
+        self.data().bounds
+    }
+}
+
+impl<'a> Node<'a> {
     pub fn has_bounds(&self) -> bool {
-        self.data().bounds.is_some()
+        self.state.raw_bounds().is_some()
     }
 
     /// Returns the node's transformed bounding box relative to the tree's
     /// container (e.g. window).
     pub fn bounding_box(&self) -> Option<Rect> {
-        self.data()
-            .bounds
+        self.state
+            .raw_bounds()
             .as_ref()
             .map(|rect| self.transform().transform_rect_bbox(*rect))
     }
 
     pub(crate) fn bounding_box_in_coordinate_space(&self, other: &Node) -> Option<Rect> {
-        self.data()
-            .bounds
+        self.state
+            .raw_bounds()
             .as_ref()
             .map(|rect| self.relative_transform(other).transform_rect_bbox(*rect))
     }
@@ -307,7 +320,7 @@ impl<'a> Node<'a> {
         }
 
         if filter_result == FilterResult::Include {
-            if let Some(rect) = &self.data().bounds {
+            if let Some(rect) = &self.state.raw_bounds() {
                 if rect.contains(point) {
                     return Some((*self, point));
                 }
@@ -411,6 +424,10 @@ impl NodeState {
 
     pub fn is_multiline(&self) -> bool {
         self.data().multiline
+    }
+
+    pub fn is_protected(&self) -> bool {
+        self.data().protected
     }
 
     pub fn default_action_verb(&self) -> Option<DefaultActionVerb> {

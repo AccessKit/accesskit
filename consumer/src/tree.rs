@@ -3,6 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use accesskit::kurbo::Point;
 use accesskit::{
     Action, ActionData, ActionHandler, ActionRequest, Live, Node as NodeData, NodeId,
     TextSelection, Tree as TreeData, TreeUpdate,
@@ -383,6 +384,14 @@ impl Tree {
             action: Action::ScrollIntoView,
             target: target.inner.node.id(),
             data: None,
+        })
+    }
+
+    pub fn scroll_to_point(&self, target: NodeId, point: Point) {
+        self.action_handler.do_action(ActionRequest {
+            action: Action::ScrollToPoint,
+            target,
+            data: Some(ActionData::ScrollToPoint(point)),
         })
     }
 

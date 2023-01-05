@@ -1,0 +1,21 @@
+[package]
+name = "accesskit_unix"
+version = "0.1.0"
+authors = ["Arnold Loubriat <datatriny@gmail.com>"]
+license = "MIT/Apache-2.0"
+description = "AccessKit UI accessibility infrastructure: Linux adapter"
+categories = ["gui"]
+keywords = ["gui", "ui", "accessibility"]
+repository = "https://github.com/AccessKit/accesskit"
+readme = "README.md"
+edition = "2021"
+
+[dependencies]
+accesskit = { version = "0.8.1", path = "../../common" }
+accesskit_consumer = { version = "0.11.0", path = "../../consumer" }
+async-channel = "1.8.0"
+atspi = "0.8.7"
+futures-lite = "1.12.0"
+parking_lot = "0.12.1"
+serde = "1.0"
+zbus = "3.6"
