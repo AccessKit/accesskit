@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.11.0...accesskit_consumer-v0.12.0) (2023-01-05)
+
+
+### Features
+
+* Basic Unix platform adapter ([#198](https://github.com/AccessKit/accesskit/issues/198)) ([1cea32e](https://github.com/AccessKit/accesskit/commit/1cea32e44ee743b778ac941ceff9087ae745cb37))
+
 ## [0.11.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.10.0...accesskit_consumer-v0.11.0) (2022-12-17)
 
 

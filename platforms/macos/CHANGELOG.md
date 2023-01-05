@@ -1,5 +1,9 @@
 # Changelog
 
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.11.0 to 0.12.0
+
 ## [0.4.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.3.0...accesskit_macos-v0.4.0) (2022-12-27)
 
 
