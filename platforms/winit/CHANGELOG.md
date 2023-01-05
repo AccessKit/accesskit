@@ -19,6 +19,21 @@
   * dependencies
     * accesskit_macos bumped from 0.3.0 to 0.4.0
 
+## [0.8.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.7.3...accesskit_winit-v0.8.0) (2023-01-05)
+
+
+### Features
+
+* Basic Unix platform adapter ([#198](https://github.com/AccessKit/accesskit/issues/198)) ([1cea32e](https://github.com/AccessKit/accesskit/commit/1cea32e44ee743b778ac941ceff9087ae745cb37))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_windows bumped from 0.10.2 to 0.10.3
+    * accesskit_macos bumped from 0.4.0 to 0.4.1
+
 ## [0.7.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.6.6...accesskit_winit-v0.7.0) (2022-11-29)
 
 
