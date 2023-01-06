@@ -1,5 +1,9 @@
 # Changelog
 
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.12.0 to 0.12.1
+
 ## 0.1.0 (2023-01-05)
 
 

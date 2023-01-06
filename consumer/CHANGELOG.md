@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.12.0...accesskit_consumer-v0.12.1) (2023-01-06)
+
+
+### Bug Fixes
+
+* Make `Node::filtered_parent` recursive as it was meant to be ([#203](https://github.com/AccessKit/accesskit/issues/203)) ([d2faef5](https://github.com/AccessKit/accesskit/commit/d2faef5a2ad61b9e4d3f3d5c89570cdeec6fe6e6))
+
 ## [0.12.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.11.0...accesskit_consumer-v0.12.0) (2023-01-05)
 
 

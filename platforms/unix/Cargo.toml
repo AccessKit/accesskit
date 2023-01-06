@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_unix"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Arnold Loubriat <datatriny@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "AccessKit UI accessibility infrastructure: Linux adapter"
@@ -12,7 +12,7 @@ edition = "2021"
 
 [dependencies]
 accesskit = { version = "0.8.1", path = "../../common" }
-accesskit_consumer = { version = "0.12.0", path = "../../consumer" }
+accesskit_consumer = { version = "0.12.1", path = "../../consumer" }
 async-channel = "1.8.0"
 atspi = "0.8.7"
 futures-lite = "1.12.0"
