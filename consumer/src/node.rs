@@ -91,8 +91,13 @@ impl<'a> Node<'a> {
     }
 
     pub fn filtered_parent(&self, filter: &impl Fn(&Node) -> FilterResult) -> Option<Node<'a>> {
-        self.parent()
-            .filter(|parent| filter(parent) == FilterResult::Include)
+        self.parent().and_then(move |parent| {
+            if filter(&parent) == FilterResult::Include {
+                Some(parent)
+            } else {
+                parent.filtered_parent(filter)
+            }
+        })
     }
 
     pub fn parent_and_index(self) -> Option<(Node<'a>, usize)> {
@@ -782,6 +787,25 @@ mod tests {
             .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
             .unwrap()
             .deepest_first_child()
+            .is_none());
+    }
+
+    #[test]
+    fn filtered_parent() {
+        let tree = test_tree();
+        assert_eq!(
+            ROOT_ID,
+            tree.read()
+                .node_by_id(STATIC_TEXT_1_0_ID)
+                .unwrap()
+                .filtered_parent(&test_tree_filter)
+                .unwrap()
+                .id()
+        );
+        assert!(tree
+            .read()
+            .root()
+            .filtered_parent(&test_tree_filter)
             .is_none());
     }
 
