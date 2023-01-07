@@ -62,9 +62,7 @@ impl<'a> Node<'a> {
 
 impl NodeState {
     pub fn is_focusable(&self) -> bool {
-        // TBD: Is it ever safe to imply this on a node that doesn't explicitly
-        // specify it?
-        self.data().focusable
+        self.supports_action(Action::Focus)
     }
 }
 
@@ -118,7 +116,7 @@ impl NodeState {
            + FusedIterator<Item = NodeId>
            + '_ {
         let data = &self.data;
-        data.children.iter().copied()
+        data.children().iter().copied()
     }
 }
 
@@ -249,10 +247,7 @@ impl NodeState {
     /// Returns the transform defined directly on this node, or the identity
     /// transform, without taking into account transforms on ancestors.
     pub fn direct_transform(&self) -> Affine {
-        self.data()
-            .transform
-            .as_ref()
-            .map_or(Affine::IDENTITY, |t| **t)
+        self.data().transform().unwrap_or(Affine::IDENTITY)
     }
 }
 
@@ -281,7 +276,7 @@ impl<'a> Node<'a> {
 
 impl NodeState {
     pub fn raw_bounds(&self) -> Option<Rect> {
-        self.data().bounds
+        self.data().bounds()
     }
 }
 
@@ -352,22 +347,22 @@ impl NodeState {
     }
 
     pub fn role(&self) -> Role {
-        self.data().role
+        self.data().role()
     }
 
     pub fn is_hidden(&self) -> bool {
-        self.data().hidden
+        self.data().is_hidden()
     }
 
     pub fn is_disabled(&self) -> bool {
-        self.data().disabled
+        self.data().is_disabled()
     }
 
     pub fn is_read_only(&self) -> bool {
         let data = self.data();
-        if data.read_only {
+        if data.is_read_only() {
             true
-        } else if !data.editable {
+        } else if !data.is_editable() {
             false
         } else {
             self.should_have_read_only_state_by_default() || !self.is_read_only_supported()
@@ -379,35 +374,35 @@ impl NodeState {
     }
 
     pub fn checked_state(&self) -> Option<CheckedState> {
-        self.data().checked_state
+        self.data().checked_state()
     }
 
     pub fn value(&self) -> Option<&str> {
-        self.data().value.as_deref()
+        self.data().value()
     }
 
     pub fn numeric_value(&self) -> Option<f64> {
-        self.data().numeric_value
+        self.data().numeric_value()
     }
 
     pub fn min_numeric_value(&self) -> Option<f64> {
-        self.data().min_numeric_value
+        self.data().min_numeric_value()
     }
 
     pub fn max_numeric_value(&self) -> Option<f64> {
-        self.data().max_numeric_value
+        self.data().max_numeric_value()
     }
 
     pub fn numeric_value_step(&self) -> Option<f64> {
-        self.data().numeric_value_step
+        self.data().numeric_value_step()
     }
 
     pub fn numeric_value_jump(&self) -> Option<f64> {
-        self.data().numeric_value_jump
+        self.data().numeric_value_jump()
     }
 
     pub fn is_text_field(&self) -> bool {
-        self.is_atomic_text_field() || self.data().nonatomic_text_field_root
+        self.is_atomic_text_field() || self.data().is_nonatomic_text_field_root()
     }
 
     pub fn is_atomic_text_field(&self) -> bool {
@@ -421,22 +416,22 @@ impl NodeState {
         // treat them as non-atomic.
         match self.role() {
             Role::SearchBox | Role::TextField | Role::TextFieldWithComboBox => {
-                !self.data().nonatomic_text_field_root
+                !self.data().is_nonatomic_text_field_root()
             }
             _ => false,
         }
     }
 
     pub fn is_multiline(&self) -> bool {
-        self.data().multiline
+        self.data().is_multiline()
     }
 
     pub fn is_protected(&self) -> bool {
-        self.data().protected
+        self.data().is_protected()
     }
 
     pub fn default_action_verb(&self) -> Option<DefaultActionVerb> {
-        self.data().default_action_verb
+        self.data().default_action_verb()
     }
 
     // When probing for supported actions as the next several functions do,
@@ -467,7 +462,7 @@ impl NodeState {
     }
 
     pub fn supports_expand_collapse(&self) -> bool {
-        self.data().expanded.is_some()
+        self.data().is_expanded().is_some()
     }
 
     pub fn is_invocable(&self) -> bool {
@@ -491,7 +486,7 @@ impl NodeState {
     // The future of the `Action` enum is undecided, so keep the following
     // function private for now.
     fn supports_action(&self, action: Action) -> bool {
-        self.data().actions.contains(action)
+        self.data().supports_action(action)
     }
 
     pub fn supports_increment(&self) -> bool {
@@ -515,7 +510,7 @@ impl<'a> Node<'a> {
     pub fn labelled_by(
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
-        let explicit = &self.state.data.labelled_by;
+        let explicit = &self.state.data.labelled_by();
         if explicit.is_empty() && matches!(self.role(), Role::Button | Role::Link) {
             LabelledBy::FromDescendants(FilteredChildren::new(*self, &descendant_label_filter))
         } else {
@@ -527,7 +522,7 @@ impl<'a> Node<'a> {
     }
 
     pub fn name(&self) -> Option<String> {
-        if let Some(name) = &self.data().name {
+        if let Some(name) = &self.data().name() {
             Some(name.to_string())
         } else {
             let names = self
@@ -596,18 +591,18 @@ impl NodeState {
 impl<'a> Node<'a> {
     pub fn live(&self) -> Live {
         self.data()
-            .live
+            .live()
             .unwrap_or_else(|| self.parent().map_or(Live::Off, |parent| parent.live()))
     }
 }
 
 impl NodeState {
     pub fn is_selected(&self) -> Option<bool> {
-        self.data().selected
+        self.data().is_selected()
     }
 
-    pub fn raw_text_selection(&self) -> Option<&TextSelection> {
-        self.data().text_selection.as_ref()
+    pub fn raw_text_selection(&self) -> Option<TextSelection> {
+        self.data().text_selection()
     }
 }
 
@@ -999,19 +994,13 @@ mod tests {
             nodes: vec![
                 (
                     NODE_ID_1,
-                    Arc::new(Node {
-                        role: Role::Window,
-                        children: vec![NODE_ID_2],
-                        ..Default::default()
+                    Arc::new({
+                        let mut node = Node::new(Role::Window);
+                        node.set_children(vec![NODE_ID_2]);
+                        node
                     }),
                 ),
-                (
-                    NODE_ID_2,
-                    Arc::new(Node {
-                        role: Role::Button,
-                        ..Default::default()
-                    }),
-                ),
+                (NODE_ID_2, Arc::new(Node::new(Role::Button))),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
@@ -1031,42 +1020,42 @@ mod tests {
             nodes: vec![
                 (
                     NODE_ID_1,
-                    Arc::new(Node {
-                        role: Role::Window,
-                        children: vec![NODE_ID_2, NODE_ID_3, NODE_ID_4, NODE_ID_5],
-                        ..Default::default()
+                    Arc::new({
+                        let mut node = Node::new(Role::Window);
+                        node.set_children(vec![NODE_ID_2, NODE_ID_3, NODE_ID_4, NODE_ID_5]);
+                        node
                     }),
                 ),
                 (
                     NODE_ID_2,
-                    Arc::new(Node {
-                        role: Role::CheckBox,
-                        labelled_by: vec![NODE_ID_3, NODE_ID_5],
-                        ..Default::default()
+                    Arc::new({
+                        let mut node = Node::new(Role::CheckBox);
+                        node.set_labelled_by(vec![NODE_ID_3, NODE_ID_5]);
+                        node
                     }),
                 ),
                 (
                     NODE_ID_3,
-                    Arc::new(Node {
-                        role: Role::StaticText,
-                        name: Some(LABEL_1.into()),
-                        ..Default::default()
+                    Arc::new({
+                        let mut node = Node::new(Role::StaticText);
+                        node.set_name(LABEL_1);
+                        node
                     }),
                 ),
                 (
                     NODE_ID_4,
-                    Arc::new(Node {
-                        role: Role::CheckBox,
-                        labelled_by: vec![NODE_ID_5],
-                        ..Default::default()
+                    Arc::new({
+                        let mut node = Node::new(Role::TextField);
+                        node.push_labelled_by(NODE_ID_5);
+                        node
                     }),
                 ),
                 (
                     NODE_ID_5,
-                    Arc::new(Node {
-                        role: Role::StaticText,
-                        name: Some(LABEL_2.into()),
-                        ..Default::default()
+                    Arc::new({
+                        let mut node = Node::new(Role::StaticText);
+                        node.set_name(LABEL_2);
+                        node
                     }),
                 ),
             ],
@@ -1093,50 +1082,50 @@ mod tests {
             nodes: vec![
                 (
                     NODE_ID_1,
-                    Arc::new(Node {
-                        role: Role::Window,
-                        children: vec![NODE_ID_2, NODE_ID_4],
-                        ..Default::default()
+                    Arc::new({
+                        let mut node = Node::new(Role::Window);
+                        node.set_children(vec![NODE_ID_2, NODE_ID_4]);
+                        node
                     }),
                 ),
                 (
                     NODE_ID_2,
-                    Arc::new(Node {
-                        role: Role::Button,
-                        children: vec![NODE_ID_3],
-                        ..Default::default()
+                    Arc::new({
+                        let mut node = Node::new(Role::Button);
+                        node.push_child(NODE_ID_3);
+                        node
                     }),
                 ),
                 (
                     NODE_ID_3,
-                    Arc::new(Node {
-                        role: Role::Image,
-                        name: Some(BUTTON_LABEL.into()),
-                        ..Default::default()
+                    Arc::new({
+                        let mut node = Node::new(Role::Image);
+                        node.set_name(BUTTON_LABEL);
+                        node
                     }),
                 ),
                 (
                     NODE_ID_4,
-                    Arc::new(Node {
-                        role: Role::Link,
-                        children: vec![NODE_ID_5],
-                        ..Default::default()
+                    Arc::new({
+                        let mut node = Node::new(Role::Link);
+                        node.push_child(NODE_ID_5);
+                        node
                     }),
                 ),
                 (
                     NODE_ID_5,
-                    Arc::new(Node {
-                        role: Role::GenericContainer,
-                        children: vec![NODE_ID_6],
-                        ..Default::default()
+                    Arc::new({
+                        let mut node = Node::new(Role::GenericContainer);
+                        node.push_child(NODE_ID_6);
+                        node
                     }),
                 ),
                 (
                     NODE_ID_6,
-                    Arc::new(Node {
-                        role: Role::StaticText,
-                        name: Some(LINK_LABEL.into()),
-                        ..Default::default()
+                    Arc::new({
+                        let mut node = Node::new(Role::StaticText);
+                        node.set_name(LINK_LABEL);
+                        node
                     }),
                 ),
             ],

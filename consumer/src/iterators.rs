@@ -29,7 +29,7 @@ impl<'a> FollowingSiblings<'a> {
         let parent_and_index = node.parent_and_index();
         let (back_position, front_position, done) =
             if let Some((ref parent, index)) = parent_and_index {
-                let back_position = parent.data().children.len() - 1;
+                let back_position = parent.data().children().len() - 1;
                 let front_position = index + 1;
                 (
                     back_position,
@@ -60,7 +60,7 @@ impl<'a> Iterator for FollowingSiblings<'a> {
                 .parent
                 .as_ref()?
                 .data()
-                .children
+                .children()
                 .get(self.front_position)?;
             self.front_position += 1;
             Some(*child)
@@ -86,7 +86,7 @@ impl<'a> DoubleEndedIterator for FollowingSiblings<'a> {
                 .parent
                 .as_ref()?
                 .data()
-                .children
+                .children()
                 .get(self.back_position)?;
             self.back_position -= 1;
             Some(*child)
@@ -138,7 +138,7 @@ impl<'a> Iterator for PrecedingSiblings<'a> {
                 .parent
                 .as_ref()?
                 .data()
-                .children
+                .children()
                 .get(self.front_position)?;
             if !self.done {
                 self.front_position -= 1;
@@ -166,7 +166,7 @@ impl<'a> DoubleEndedIterator for PrecedingSiblings<'a> {
                 .parent
                 .as_ref()?
                 .data()
-                .children
+                .children()
                 .get(self.back_position)?;
             self.back_position += 1;
             Some(*child)

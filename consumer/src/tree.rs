@@ -101,7 +101,7 @@ impl State {
             orphans.remove(&node_id);
 
             let mut seen_child_ids = HashSet::new();
-            for (child_index, child_id) in node_data.children.iter().enumerate() {
+            for (child_index, child_id) in node_data.children().iter().enumerate() {
                 assert!(!seen_child_ids.contains(child_id));
                 orphans.remove(child_id);
                 let parent_and_index = ParentAndIndex(node_id, child_index);
@@ -127,7 +127,7 @@ impl State {
                 if node_id == root {
                     node_state.parent_and_index = None
                 }
-                for child_id in node_state.data.children.iter() {
+                for child_id in node_state.data.children().iter() {
                     if !seen_child_ids.contains(child_id) {
                         orphans.insert(*child_id);
                     }
@@ -177,7 +177,7 @@ impl State {
             ) {
                 to_remove.insert(id);
                 let node = nodes.get(&id).unwrap();
-                for child_id in node.data.children.iter() {
+                for child_id in node.data.children().iter() {
                     traverse_orphan(nodes, to_remove, *child_id);
                 }
             }
@@ -213,7 +213,7 @@ impl State {
             let node = state.nodes.get(&id).unwrap();
             nodes.push((id, Arc::clone(&node.data)));
 
-            for child_id in node.data.children.iter() {
+            for child_id in node.data.children().iter() {
                 traverse(state, nodes, *child_id);
             }
         }
@@ -438,13 +438,7 @@ mod tests {
     #[test]
     fn init_tree_with_root_node() {
         let update = TreeUpdate {
-            nodes: vec![(
-                NODE_ID_1,
-                Arc::new(Node {
-                    role: Role::Window,
-                    ..Node::default()
-                }),
-            )],
+            nodes: vec![(NODE_ID_1, Arc::new(Node::new(Role::Window)))],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
@@ -460,26 +454,14 @@ mod tests {
             nodes: vec![
                 (
                     NODE_ID_1,
-                    Arc::new(Node {
-                        role: Role::Window,
-                        children: vec![NODE_ID_2, NODE_ID_3],
-                        ..Default::default()
+                    Arc::new({
+                        let mut node = Node::new(Role::Window);
+                        node.set_children(vec![NODE_ID_2, NODE_ID_3]);
+                        node
                     }),
                 ),
-                (
-                    NODE_ID_2,
-                    Arc::new(Node {
-                        role: Role::Button,
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_3,
-                    Arc::new(Node {
-                        role: Role::Button,
-                        ..Default::default()
-                    }),
-                ),
+                (NODE_ID_2, Arc::new(Node::new(Role::Button))),
+                (NODE_ID_3, Arc::new(Node::new(Role::Button))),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
@@ -499,10 +481,7 @@ mod tests {
 
     #[test]
     fn add_child_to_root_node() {
-        let root_node = Node {
-            role: Role::Window,
-            ..Default::default()
-        };
+        let root_node = Node::new(Role::Window);
         let first_update = TreeUpdate {
             nodes: vec![(NODE_ID_1, Arc::new(root_node.clone()))],
             tree: Some(Tree::new(NODE_ID_1)),
@@ -514,18 +493,13 @@ mod tests {
             nodes: vec![
                 (
                     NODE_ID_1,
-                    Arc::new(Node {
-                        children: vec![NODE_ID_2],
-                        ..root_node
+                    Arc::new({
+                        let mut node = root_node;
+                        node.push_child(NODE_ID_2);
+                        node
                     }),
                 ),
-                (
-                    NODE_ID_2,
-                    Arc::new(Node {
-                        role: Role::RootWebArea,
-                        ..Default::default()
-                    }),
-                ),
+                (NODE_ID_2, Arc::new(Node::new(Role::RootWebArea))),
             ],
             tree: None,
             focus: None,
@@ -547,8 +521,8 @@ mod tests {
             }
             fn node_updated(&mut self, old_node: &crate::DetachedNode, new_node: &crate::Node) {
                 if new_node.id() == NODE_ID_1
-                    && old_node.data().children == vec![]
-                    && new_node.data().children == vec![NODE_ID_2]
+                    && old_node.data().children().is_empty()
+                    && new_node.data().children() == [NODE_ID_2]
                 {
                     self.got_updated_root_node = true;
                     return;
@@ -588,26 +562,18 @@ mod tests {
 
     #[test]
     fn remove_child_from_root_node() {
-        let root_node = Node {
-            role: Role::Window,
-            ..Default::default()
-        };
+        let root_node = Node::new(Role::Window);
         let first_update = TreeUpdate {
             nodes: vec![
                 (
                     NODE_ID_1,
-                    Arc::new(Node {
-                        children: vec![NODE_ID_2],
-                        ..root_node.clone()
+                    Arc::new({
+                        let mut node = root_node.clone();
+                        node.push_child(NODE_ID_2);
+                        node
                     }),
                 ),
-                (
-                    NODE_ID_2,
-                    Arc::new(Node {
-                        role: Role::RootWebArea,
-                        ..Default::default()
-                    }),
-                ),
+                (NODE_ID_2, Arc::new(Node::new(Role::RootWebArea))),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
@@ -632,8 +598,8 @@ mod tests {
             }
             fn node_updated(&mut self, old_node: &crate::DetachedNode, new_node: &crate::Node) {
                 if new_node.id() == NODE_ID_1
-                    && old_node.data().children == vec![NODE_ID_2]
-                    && new_node.data().children == vec![]
+                    && old_node.data().children() == [NODE_ID_2]
+                    && new_node.data().children().is_empty()
                 {
                     self.got_updated_root_node = true;
                     return;
@@ -676,26 +642,14 @@ mod tests {
             nodes: vec![
                 (
                     NODE_ID_1,
-                    Arc::new(Node {
-                        role: Role::Window,
-                        children: vec![NODE_ID_2, NODE_ID_3],
-                        ..Default::default()
+                    Arc::new({
+                        let mut node = Node::new(Role::Window);
+                        node.set_children(vec![NODE_ID_2, NODE_ID_3]);
+                        node
                     }),
                 ),
-                (
-                    NODE_ID_2,
-                    Arc::new(Node {
-                        role: Role::Button,
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_3,
-                    Arc::new(Node {
-                        role: Role::Button,
-                        ..Default::default()
-                    }),
-                ),
+                (NODE_ID_2, Arc::new(Node::new(Role::Button))),
+                (NODE_ID_3, Arc::new(Node::new(Role::Button))),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: Some(NODE_ID_2),
@@ -774,25 +728,23 @@ mod tests {
 
     #[test]
     fn update_node() {
-        let child_node = Node {
-            role: Role::Button,
-            ..Default::default()
-        };
+        let child_node = Node::new(Role::Button);
         let first_update = TreeUpdate {
             nodes: vec![
                 (
                     NODE_ID_1,
-                    Arc::new(Node {
-                        role: Role::Window,
-                        children: vec![NODE_ID_2],
-                        ..Default::default()
+                    Arc::new({
+                        let mut node = Node::new(Role::Window);
+                        node.set_children(vec![NODE_ID_2]);
+                        node
                     }),
                 ),
                 (
                     NODE_ID_2,
-                    Arc::new(Node {
-                        name: Some("foo".into()),
-                        ..child_node.clone()
+                    Arc::new({
+                        let mut node = child_node.clone();
+                        node.set_name("foo");
+                        node
                     }),
                 ),
             ],
@@ -807,9 +759,10 @@ mod tests {
         let second_update = TreeUpdate {
             nodes: vec![(
                 NODE_ID_2,
-                Arc::new(Node {
-                    name: Some("bar".into()),
-                    ..child_node
+                Arc::new({
+                    let mut node = child_node;
+                    node.set_name("bar");
+                    node
                 }),
             )],
             tree: None,

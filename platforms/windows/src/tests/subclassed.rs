@@ -5,7 +5,7 @@
 
 use std::{num::NonZeroU128, sync::Arc};
 
-use accesskit::{ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
+use accesskit::{Action, ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
 use windows::Win32::{Foundation::*, UI::Accessibility::*};
 use winit::{
     event_loop::EventLoopBuilder,
@@ -22,20 +22,20 @@ const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
 
 fn make_button(name: &str) -> Arc<Node> {
-    Arc::new(Node {
-        role: Role::Button,
-        name: Some(name.into()),
-        focusable: true,
-        ..Default::default()
+    Arc::new({
+        let mut node = Node::new(Role::Button);
+        node.set_name(name);
+        node.add_action(Action::Focus);
+        node
     })
 }
 
 fn get_initial_state() -> TreeUpdate {
-    let root = Arc::new(Node {
-        role: Role::Window,
-        children: vec![BUTTON_1_ID, BUTTON_2_ID],
-        name: Some(WINDOW_TITLE.into()),
-        ..Default::default()
+    let root = Arc::new({
+        let mut node = Node::new(Role::Window);
+        node.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
+        node.set_name(WINDOW_TITLE);
+        node
     });
     let button_1 = make_button("Button 1");
     let button_2 = make_button("Button 2");
