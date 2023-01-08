@@ -628,7 +628,6 @@ enum Flag {
     LiveAtomic,
     Modal,
     Scrollable,
-    NotUserSelectableStyle,
     SelectedFromFocus,
     TouchPassThrough,
     ReadOnly,
@@ -1227,11 +1226,6 @@ flag_methods! {
     /// opposed to only programmatically scrollable, like `overflow: hidden`, or
     /// not scrollable at all, e.g. `overflow: visible`.
     (scrollable, Scrollable)
-    /// Indicates that this node is not selectable because the style has
-    /// `user-select: none`. Note that there may be other reasons why a node is
-    /// not selectable - for example, bullets in a list. However, this attribute
-    /// is only set on `user-select: none`.
-    (not_user_selectable_style, NotUserSelectableStyle)
     /// Indicates whether this node is selected due to selection follows focus.
     (selected_from_focus, SelectedFromFocus)
     /// This element allows touches to be passed through when a screen reader
