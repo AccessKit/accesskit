@@ -13,13 +13,9 @@ pub use kurbo;
 use kurbo::{Affine, Point, Rect};
 use paste::paste;
 #[cfg(feature = "schemars")]
-use schemars_lib as schemars;
-#[cfg(feature = "schemars")]
-use schemars_lib::JsonSchema;
+use schemars::JsonSchema;
 #[cfg(feature = "serde")]
-use serde_lib as serde;
-#[cfg(feature = "serde")]
-use serde_lib::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::{
     num::{NonZeroU128, NonZeroU64},
     sync::Arc,
@@ -38,7 +34,6 @@ use std::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum Role {
     Unknown,
@@ -258,7 +253,6 @@ impl Default for Role {
 #[derive(EnumSetType, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(feature = "serde", enumset(serialize_as_list))]
 pub enum Action {
@@ -338,7 +332,6 @@ pub enum Action {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum Orientation {
     /// E.g. most toolbars and separators.
@@ -350,7 +343,6 @@ pub enum Orientation {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum NameFrom {
     /// E.g. [`aria-label`].
@@ -374,7 +366,6 @@ pub enum NameFrom {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum DescriptionFrom {
     AriaDescription,
@@ -392,7 +383,6 @@ pub enum DescriptionFrom {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum TextDirection {
     LeftToRight,
@@ -408,7 +398,6 @@ pub enum TextDirection {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum Invalid {
     True,
@@ -419,7 +408,6 @@ pub enum Invalid {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum CheckedState {
     False,
@@ -436,7 +424,6 @@ pub enum CheckedState {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum DefaultActionVerb {
     Click,
@@ -457,7 +444,6 @@ pub enum DefaultActionVerb {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum SortDirection {
     Unsorted,
@@ -469,7 +455,6 @@ pub enum SortDirection {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum AriaCurrent {
     False,
@@ -484,7 +469,6 @@ pub enum AriaCurrent {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum Live {
     Off,
@@ -495,7 +479,6 @@ pub enum Live {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum HasPopup {
     True,
@@ -509,7 +492,6 @@ pub enum HasPopup {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum ListStyle {
     Circle,
@@ -524,7 +506,6 @@ pub enum ListStyle {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum TextAlign {
     Left,
@@ -536,7 +517,6 @@ pub enum TextAlign {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum VerticalOffset {
     Subscript,
@@ -546,7 +526,6 @@ pub enum VerticalOffset {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum TextDecoration {
     Solid,
@@ -564,7 +543,6 @@ pub type NodeIdContent = NonZeroU128;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 pub struct NodeId(pub NodeIdContent);
 
 impl From<NonZeroU64> for NodeId {
@@ -580,7 +558,6 @@ impl From<NonZeroU64> for NodeId {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct CustomAction {
@@ -603,7 +580,6 @@ fn is_empty<T>(slice: &[T]) -> bool {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TextPosition {
@@ -617,7 +593,6 @@ pub struct TextPosition {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TextSelection {
@@ -1602,7 +1577,6 @@ impl Node {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct Tree {
@@ -1638,7 +1612,6 @@ impl Tree {
 #[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TreeUpdate {
@@ -1695,7 +1668,6 @@ impl<T: FnOnce() -> TreeUpdate> From<T> for TreeUpdate {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum ActionData {
     CustomAction(i32),
@@ -1716,7 +1688,6 @@ pub enum ActionData {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct ActionRequest {
