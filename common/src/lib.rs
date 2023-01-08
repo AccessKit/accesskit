@@ -732,8 +732,8 @@ enum Property {
     NodeIdVec(Vec<NodeId>),
     NodeId(NodeId),
     String(Box<str>),
-    U8Slice(Box<[u8]>),
-    F32Slice(Box<[f32]>),
+    LengthSlice(Box<[u8]>),
+    CoordSlice(Box<[f32]>),
     CustomActionVec(Vec<CustomAction>),
     F64(f64),
     TextSelection(TextSelection),
@@ -893,28 +893,28 @@ impl Node {
         self.set_property(id, Property::String(value.into()));
     }
 
-    fn get_u8_slice(&self, id: PropertyId) -> &[u8] {
+    fn get_length_slice(&self, id: PropertyId) -> &[u8] {
         match self.get_property(id) {
             Property::None => &[],
-            Property::U8Slice(value) => value,
+            Property::LengthSlice(value) => value,
             _ => panic!(),
         }
     }
 
-    fn set_u8_slice(&mut self, id: PropertyId, value: impl Into<Box<[u8]>>) {
-        self.set_property(id, Property::U8Slice(value.into()));
+    fn set_length_slice(&mut self, id: PropertyId, value: impl Into<Box<[u8]>>) {
+        self.set_property(id, Property::LengthSlice(value.into()));
     }
 
-    fn get_optional_f32_slice(&self, id: PropertyId) -> Option<&[f32]> {
+    fn get_coord_slice(&self, id: PropertyId) -> Option<&[f32]> {
         match self.get_property(id) {
             Property::None => None,
-            Property::F32Slice(value) => Some(value),
+            Property::CoordSlice(value) => Some(value),
             _ => panic!(),
         }
     }
 
-    fn set_f32_slice(&mut self, id: PropertyId, value: impl Into<Box<[f32]>>) {
-        self.set_property(id, Property::F32Slice(value.into()));
+    fn set_coord_slice(&mut self, id: PropertyId, value: impl Into<Box<[f32]>>) {
+        self.set_property(id, Property::CoordSlice(value.into()));
     }
 
     fn get_f64(&self, id: PropertyId) -> Option<f64> {
@@ -1558,10 +1558,10 @@ impl Node {
     ///
     /// [`value`]: NodeProvider::value
     pub fn character_lengths(&self) -> &[u8] {
-        self.get_u8_slice(PropertyId::CharacterLengths)
+        self.get_length_slice(PropertyId::CharacterLengths)
     }
     pub fn set_character_lengths(&mut self, value: impl Into<Box<[u8]>>) {
-        self.set_u8_slice(PropertyId::CharacterLengths, value);
+        self.set_length_slice(PropertyId::CharacterLengths, value);
     }
 
     /// For inline text. This is the position of each character within
@@ -1581,10 +1581,10 @@ impl Node {
     /// [`text_direction`]: NodeProvider::text_direction
     /// [`character_lengths`]: NodeProvider::character_lengths
     pub fn character_positions(&self) -> Option<&[f32]> {
-        self.get_optional_f32_slice(PropertyId::CharacterPositions)
+        self.get_coord_slice(PropertyId::CharacterPositions)
     }
     pub fn set_character_positions(&mut self, value: impl Into<Box<[f32]>>) {
-        self.set_f32_slice(PropertyId::CharacterPositions, value);
+        self.set_coord_slice(PropertyId::CharacterPositions, value);
     }
     pub fn clear_character_positions(&mut self) {
         self.clear_property(PropertyId::CharacterPositions);
@@ -1609,10 +1609,10 @@ impl Node {
     /// [`text_direction`]: NodeProvider::text_direction
     /// [`character_lengths`]: NodeProvider::character_lengths
     pub fn character_widths(&self) -> Option<&[f32]> {
-        self.get_optional_f32_slice(PropertyId::CharacterWidths)
+        self.get_coord_slice(PropertyId::CharacterWidths)
     }
     pub fn set_character_widths(&mut self, value: impl Into<Box<[f32]>>) {
-        self.set_f32_slice(PropertyId::CharacterWidths, value);
+        self.set_coord_slice(PropertyId::CharacterWidths, value);
     }
     pub fn clear_character_widths(&mut self) {
         self.clear_property(PropertyId::CharacterWidths);
@@ -1641,10 +1641,10 @@ impl Node {
     ///
     /// [`character_lengths`]: NodeProvider::character_lengths
     pub fn word_lengths(&self) -> &[u8] {
-        self.get_u8_slice(PropertyId::WordLengths)
+        self.get_length_slice(PropertyId::WordLengths)
     }
     pub fn set_word_lengths(&mut self, value: impl Into<Box<[u8]>>) {
-        self.set_u8_slice(PropertyId::WordLengths, value);
+        self.set_length_slice(PropertyId::WordLengths, value);
     }
 
     pub fn custom_actions(&self) -> &[CustomAction] {
