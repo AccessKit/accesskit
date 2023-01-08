@@ -1648,13 +1648,13 @@ string_property_methods! {
     (live_relevant, LiveRelevant)
     /// Only if not already exposed in [`name`] ([`NameFrom::Placeholder`]).
     ///
-    /// [`name`]: NodeProvider::name
+    /// [`name`]: Node::name
     (placeholder, Placeholder)
     (aria_role, AriaRole)
     (role_description, RoleDescription)
     /// Only if not already exposed in [`name`] ([`NameFrom::Title`]).
     ///
-    /// [`name`]: NodeProvider::name
+    /// [`name`]: Node::name
     (tooltip, Tooltip)
     (url, Url)
 }
@@ -1727,7 +1727,7 @@ length_slice_property_methods! {
     /// When the caret is at the end of such a line, the focus of the text
     /// selection should be on the line break, not after it.
     ///
-    /// [`value`]: NodeProvider::value
+    /// [`value`]: Node::value
     (character_lengths, CharacterLengths)
 
     /// For inline text. The length of each word in characters, as defined
@@ -1751,7 +1751,7 @@ length_slice_property_methods! {
     /// the editor's behavior. This is why AccessKit does not determine
     /// word boundaries itself.
     ///
-    /// [`character_lengths`]: NodeProvider::character_lengths
+    /// [`character_lengths`]: Node::character_lengths
     (word_lengths, WordLengths)
 }
 
@@ -1770,8 +1770,8 @@ coord_slice_property_methods! {
     /// or screen readers that display a highlight cursor. However,
     /// most text functionality still works without this information.
     ///
-    /// [`text_direction`]: NodeProvider::text_direction
-    /// [`character_lengths`]: NodeProvider::character_lengths
+    /// [`text_direction`]: Node::text_direction
+    /// [`character_lengths`]: Node::character_lengths
     (character_positions, CharacterPositions)
 
     /// For inline text. This is the advance width of each character,
@@ -1790,8 +1790,8 @@ coord_slice_property_methods! {
     /// or screen readers that display a highlight cursor. However,
     /// most text functionality still works without this information.
     ///
-    /// [`text_direction`]: NodeProvider::text_direction
-    /// [`character_lengths`]: NodeProvider::character_lengths
+    /// [`text_direction`]: Node::text_direction
+    /// [`character_lengths`]: Node::character_lengths
     (character_widths, CharacterWidths)
 }
 
@@ -1807,7 +1807,7 @@ property_methods! {
     /// to the origin of the tree's container (e.g. window), in physical
     /// pixels, with the y coordinate being top-down.
     ///
-    /// [`bounds`]: NodeProvider::bounds
+    /// [`bounds`]: Node::bounds
     (transform, Transform, affine, Option<Affine>, Affine)
 
     /// The bounding box of this node, in the node's coordinate space.
@@ -1819,7 +1819,7 @@ property_methods! {
     /// with a non-`None` [`transform`], or if there is no such ancestor,
     /// the tree's container (e.g. window).
     ///
-    /// [`transform`]: NodeProvider::transform
+    /// [`transform`]: Node::transform
     (bounds, Bounds, rect, Option<Rect>, Rect)
 }
 
