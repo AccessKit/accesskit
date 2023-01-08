@@ -731,12 +731,6 @@ enum PropertyId {
     TextIndent,
 
     // usize
-    AriaColumnCount,
-    AriaCellColumnIndex,
-    AriaCellColumnSpan,
-    AriaRowCount,
-    AriaCellRowIndex,
-    AriaCellRowSpan,
     TableRowCount,
     TableColumnCount,
     TableRowIndex,
@@ -1392,12 +1386,6 @@ f64_property_methods! {
 }
 
 usize_property_methods! {
-    (aria_column_count, AriaColumnCount)
-    (aria_cell_column_index, AriaCellColumnIndex)
-    (aria_cell_column_span, AriaCellColumnSpan)
-    (aria_row_count, AriaRowCount)
-    (aria_cell_row_index, AriaCellRowIndex)
-    (aria_cell_row_span, AriaCellRowSpan)
     (table_row_count, TableRowCount)
     (table_column_count, TableColumnCount)
     (table_row_index, TableRowIndex)
