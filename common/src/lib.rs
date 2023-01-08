@@ -11,6 +11,7 @@
 use enumset::{EnumSet, EnumSetType};
 pub use kurbo;
 use kurbo::{Affine, Point, Rect};
+use paste::paste;
 #[cfg(feature = "schemars")]
 use schemars_lib as schemars;
 #[cfg(feature = "schemars")]
@@ -634,16 +635,37 @@ pub struct TextSelection {
 // The following is based on the technique described here:
 // https://viruta.org/reducing-memory-consumption-in-librsvg-2.html
 
+#[derive(Clone, Debug, PartialEq)]
+enum Property {
+    None,
+    NodeIdVec(Vec<NodeId>),
+    NodeId(NodeId),
+    String(Box<str>),
+    F64(f64),
+    Usize(usize),
+    Color(u32),
+    LengthSlice(Box<[u8]>),
+    CoordSlice(Box<[f32]>),
+    Affine(Affine),
+    Rect(Rect),
+    TextSelection(TextSelection),
+    CustomActionVec(Vec<CustomAction>),
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 enum PropertyId {
-    Transform,
-    Bounds,
+    // NodeIdVec
     Children,
-    Name,
-    Description,
-    Value,
     IndirectChildren,
+    Controls,
+    Details,
+    DescribedBy,
+    FlowTo,
+    LabelledBy,
+    RadioGroup,
+
+    // NodeId
     ActiveDescendant,
     ErrorMessage,
     InPageLinkTarget,
@@ -651,17 +673,16 @@ enum PropertyId {
     NextOnLine,
     PreviousOnLine,
     PopupFor,
-    Controls,
-    Details,
-    DescribedBy,
-    FlowTo,
-    LabelledBy,
-    RadioGroup,
-    CharacterLengths,
-    CharacterPositions,
-    CharacterWidths,
-    WordLengths,
-    CustomActions,
+    TableHeader,
+    TableRowHeader,
+    TableColumnHeader,
+    NextFocus,
+    PreviousFocus,
+
+    // String
+    Name,
+    Description,
+    Value,
     AccessKey,
     AutoComplete,
     CheckedStateDescription,
@@ -679,38 +700,14 @@ enum PropertyId {
     RoleDescription,
     Tooltip,
     Url,
+
+    // f64
     ScrollX,
     ScrollXMin,
     ScrollXMax,
     ScrollY,
     ScrollYMin,
     ScrollYMax,
-    TextSelection,
-    AriaColumnCount,
-    AriaCellColumnIndex,
-    AriaCellColumnSpan,
-    AriaRowCount,
-    AriaCellRowIndex,
-    AriaCellRowSpan,
-    TableRowCount,
-    TableColumnCount,
-    TableHeader,
-    TableRowIndex,
-    TableRowHeader,
-    TableColumnIndex,
-    TableColumnHeader,
-    TableCellColumnIndex,
-    TableCellColumnSpan,
-    TableCellRowIndex,
-    TableCellRowSpan,
-    HierarchicalLevel,
-    SizeOfSet,
-    PositionInSet,
-    ColorValue,
-    BackgroundColor,
-    ForegroundColor,
-    PreviousFocus,
-    NextFocus,
     NumericValue,
     MinNumericValue,
     MaxNumericValue,
@@ -720,25 +717,159 @@ enum PropertyId {
     FontWeight,
     TextIndent,
 
+    // usize
+    AriaColumnCount,
+    AriaCellColumnIndex,
+    AriaCellColumnSpan,
+    AriaRowCount,
+    AriaCellRowIndex,
+    AriaCellRowSpan,
+    TableRowCount,
+    TableColumnCount,
+    TableRowIndex,
+    TableColumnIndex,
+    TableCellColumnIndex,
+    TableCellColumnSpan,
+    TableCellRowIndex,
+    TableCellRowSpan,
+    HierarchicalLevel,
+    SizeOfSet,
+    PositionInSet,
+
+    // Color
+    ColorValue,
+    BackgroundColor,
+    ForegroundColor,
+
+    // LengthSlice
+    CharacterLengths,
+    WordLengths,
+
+    // CoordSlice
+    CharacterPositions,
+    CharacterWidths,
+
+    // Other
+    Transform,
+    Bounds,
+    TextSelection,
+    CustomActions,
+
     // This should come last.
     Unset,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-enum Property {
-    None,
-    Affine(Affine),
-    Rect(Rect),
-    NodeIdVec(Vec<NodeId>),
-    NodeId(NodeId),
-    String(Box<str>),
-    LengthSlice(Box<[u8]>),
-    CoordSlice(Box<[f32]>),
-    CustomActionVec(Vec<CustomAction>),
-    F64(f64),
-    TextSelection(TextSelection),
-    Usize(usize),
-    U32(u32),
+macro_rules! property_methods {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident, $type_method_base:ident, $getter_result:ty, $setter_param:ty))+) => {
+        paste! {
+            impl Node {
+                $($(#[$doc])*
+                pub fn $base_name(&self) -> $getter_result {
+                    self.[< get_ $type_method_base >](PropertyId::$id)
+                }
+                pub fn [< set_ $base_name >](&mut self, value: $setter_param) {
+                    self.[< set_ $type_method_base >](PropertyId::$id, value);
+                }
+                pub fn [< clear_ $base_name >](&mut self) {
+                    self.clear_property(PropertyId::$id);
+                })*
+            }
+        }
+    }
+}
+
+macro_rules! vec_property_methods {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident, $type_method_base:ident, $item_type:ty))+) => {
+        paste! {
+            impl Node {
+                $($(#[$doc])*
+                pub fn $base_name(&self) -> &[$item_type] {
+                    self.[< get_ $type_method_base >](PropertyId::$id)
+                }
+                pub fn [< set_ $base_name >](&mut self, value: impl Into<Vec<$item_type>>) {
+                    self.[< set_ $type_method_base >](PropertyId::$id, value);
+                }
+                pub fn [< push_to_ $base_name >](&mut self, item: $item_type) {
+                    self.[< push_to_ $type_method_base >](PropertyId::$id, item);
+                }
+                pub fn [< clear_ $base_name >](&mut self) {
+                    self.clear_property(PropertyId::$id);
+                })*
+            }
+        }
+    }
+}
+
+macro_rules! node_id_vec_property_methods {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
+        vec_property_methods! {
+            $($(#[$doc])*
+            ($base_name, $id, node_id_vec, NodeId))*
+        }
+    }
+}
+
+macro_rules! node_id_property_methods {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
+        property_methods! {
+            $($(#[$doc])*
+            ($base_name, $id, node_id, Option<NodeId>, NodeId))*
+        }
+    }
+}
+
+macro_rules! string_property_methods {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
+        property_methods! {
+            $($(#[$doc])*
+            ($base_name, $id, string, Option<&str>, impl Into<Box<str>>))*
+        }
+    }
+}
+
+macro_rules! f64_property_methods {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
+        property_methods! {
+            $($(#[$doc])*
+            ($base_name, $id, f64, Option<f64>, f64))*
+        }
+    }
+}
+
+macro_rules! usize_property_methods {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
+        property_methods! {
+            $($(#[$doc])*
+            ($base_name, $id, usize, Option<usize>, usize))*
+        }
+    }
+}
+
+macro_rules! color_property_methods {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
+        property_methods! {
+            $($(#[$doc])*
+            ($base_name, $id, color, Option<u32>, u32))*
+        }
+    }
+}
+
+macro_rules! length_slice_property_methods {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
+        property_methods! {
+            $($(#[$doc])*
+            ($base_name, $id, length_slice, &[u8], impl Into<Box<[u8]>>))*
+        }
+    }
+}
+
+macro_rules! coord_slice_property_methods {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
+        property_methods! {
+            $($(#[$doc])*
+            ($base_name, $id, coord_slice, Option<&[f32]>, impl Into<Box<[f32]>>))*
+        }
+    }
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
@@ -750,16 +881,12 @@ enum Property {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Node {
     role: Role,
+    actions: EnumSet<Action>,
     indices: [u8; PropertyId::Unset as usize],
     props: Vec<Property>,
-    actions: EnumSet<Action>,
-    name_from: Option<NameFrom>,
-    description_from: Option<DescriptionFrom>,
     autofill_available: bool,
-    expanded: Option<bool>,
     default: bool,
     editable: bool,
-    orientation: Option<Orientation>,
     hovered: bool,
     hidden: bool,
     linked: bool,
@@ -776,31 +903,35 @@ pub struct Node {
     scrollable: bool,
     clips_children: bool,
     not_user_selectable_style: bool,
-    selected: Option<bool>,
     selected_from_focus: bool,
-    is_line_breaking_object: bool,
-    is_page_breaking_object: bool,
     has_aria_attribute: bool,
     touch_pass_through: bool,
+    read_only: bool,
+    disabled: bool,
+    bold: bool,
+    italic: bool,
+    is_line_breaking_object: bool,
+    is_page_breaking_object: bool,
     is_spelling_error: bool,
     is_grammar_error: bool,
     is_search_match: bool,
     is_suggestion: bool,
-    text_direction: Option<TextDirection>,
+    expanded: Option<bool>,
+    selected: Option<bool>,
+    name_from: Option<NameFrom>,
+    description_from: Option<DescriptionFrom>,
     invalid: Option<Invalid>,
     checked_state: Option<CheckedState>,
     live: Option<Live>,
     default_action_verb: Option<DefaultActionVerb>,
+    text_direction: Option<TextDirection>,
+    orientation: Option<Orientation>,
     sort_direction: Option<SortDirection>,
-    read_only: bool,
-    disabled: bool,
     aria_current: Option<AriaCurrent>,
     has_popup: Option<HasPopup>,
     list_style: Option<ListStyle>,
     text_align: Option<TextAlign>,
     vertical_offset: Option<VerticalOffset>,
-    bold: bool,
-    italic: bool,
     overline: Option<TextDecoration>,
     strikethrough: Option<TextDecoration>,
     underline: Option<TextDecoration>,
@@ -848,6 +979,30 @@ impl Node {
         }
     }
 
+    fn get_affine(&self, id: PropertyId) -> Option<Affine> {
+        match self.get_property(id) {
+            Property::None => None,
+            Property::Affine(value) => Some(*value),
+            _ => panic!(),
+        }
+    }
+
+    fn set_affine(&mut self, id: PropertyId, value: Affine) {
+        self.set_property(id, Property::Affine(value));
+    }
+
+    fn get_rect(&self, id: PropertyId) -> Option<Rect> {
+        match self.get_property(id) {
+            Property::None => None,
+            Property::Rect(value) => Some(*value),
+            _ => panic!(),
+        }
+    }
+
+    fn set_rect(&mut self, id: PropertyId, value: Rect) {
+        self.set_property(id, Property::Rect(value));
+    }
+
     fn get_node_id_vec(&self, id: PropertyId) -> &[NodeId] {
         match self.get_property(id) {
             Property::None => &[],
@@ -893,30 +1048,6 @@ impl Node {
         self.set_property(id, Property::String(value.into()));
     }
 
-    fn get_length_slice(&self, id: PropertyId) -> &[u8] {
-        match self.get_property(id) {
-            Property::None => &[],
-            Property::LengthSlice(value) => value,
-            _ => panic!(),
-        }
-    }
-
-    fn set_length_slice(&mut self, id: PropertyId, value: impl Into<Box<[u8]>>) {
-        self.set_property(id, Property::LengthSlice(value.into()));
-    }
-
-    fn get_coord_slice(&self, id: PropertyId) -> Option<&[f32]> {
-        match self.get_property(id) {
-            Property::None => None,
-            Property::CoordSlice(value) => Some(value),
-            _ => panic!(),
-        }
-    }
-
-    fn set_coord_slice(&mut self, id: PropertyId, value: impl Into<Box<[f32]>>) {
-        self.set_property(id, Property::CoordSlice(value.into()));
-    }
-
     fn get_f64(&self, id: PropertyId) -> Option<f64> {
         match self.get_property(id) {
             Property::None => None,
@@ -941,16 +1072,40 @@ impl Node {
         self.set_property(id, Property::Usize(value));
     }
 
-    fn get_u32(&self, id: PropertyId) -> Option<u32> {
+    fn get_color(&self, id: PropertyId) -> Option<u32> {
         match self.get_property(id) {
             Property::None => None,
-            Property::U32(value) => Some(*value),
+            Property::Color(value) => Some(*value),
             _ => panic!(),
         }
     }
 
-    fn set_u32(&mut self, id: PropertyId, value: u32) {
-        self.set_property(id, Property::U32(value));
+    fn set_color(&mut self, id: PropertyId, value: u32) {
+        self.set_property(id, Property::Color(value));
+    }
+
+    fn get_length_slice(&self, id: PropertyId) -> &[u8] {
+        match self.get_property(id) {
+            Property::None => &[],
+            Property::LengthSlice(value) => value,
+            _ => panic!(),
+        }
+    }
+
+    fn set_length_slice(&mut self, id: PropertyId, value: impl Into<Box<[u8]>>) {
+        self.set_property(id, Property::LengthSlice(value.into()));
+    }
+
+    fn get_coord_slice(&self, id: PropertyId) -> Option<&[f32]> {
+        match self.get_property(id) {
+            Property::None => None,
+            Property::CoordSlice(value) => Some(value),
+            _ => panic!(),
+        }
+    }
+
+    fn set_coord_slice(&mut self, id: PropertyId, value: impl Into<Box<[f32]>>) {
+        self.set_property(id, Property::CoordSlice(value.into()));
     }
 
     pub fn new(role: Role) -> Self {
@@ -967,69 +1122,6 @@ impl Node {
         self.role = value;
     }
 
-    /// An affine transform to apply to any coordinates within this node
-    /// and its descendants, including the [`bounds`] property of this node.
-    /// The combined transforms of this node and its ancestors define
-    /// the coordinate space of this node. /// This should be `None` if
-    /// it would be set to the identity transform, which should be the case
-    /// for most nodes.
-    ///
-    /// AccessKit expects the final transformed coordinates to be relative
-    /// to the origin of the tree's container (e.g. window), in physical
-    /// pixels, with the y coordinate being top-down.
-    ///
-    /// [`bounds`]: NodeProvider::bounds
-    pub fn transform(&self) -> Option<Affine> {
-        match self.get_property(PropertyId::Transform) {
-            Property::None => None,
-            Property::Affine(value) => Some(*value),
-            _ => panic!(),
-        }
-    }
-    pub fn set_transform(&mut self, value: Affine) {
-        self.set_property(PropertyId::Transform, Property::Affine(value));
-    }
-    pub fn clear_transform(&mut self) {
-        self.clear_property(PropertyId::Transform);
-    }
-
-    /// The bounding box of this node, in the node's coordinate space.
-    /// This property does not affect the coordinate space of either this node
-    /// or its descendants; only the [`transform`] property affects that.
-    /// This, along with the recommendation that most nodes should have
-    /// a [`transform`] of `None`, implies that the `bounds` property
-    /// of most nodes should be in the coordinate space of the nearest ancestor
-    /// with a non-`None` [`transform`], or if there is no such ancestor,
-    /// the tree's container (e.g. window).
-    ///
-    /// [`transform`]: NodeProvider::transform
-    pub fn bounds(&self) -> Option<Rect> {
-        match self.get_property(PropertyId::Bounds) {
-            Property::None => None,
-            Property::Rect(value) => Some(*value),
-            _ => panic!(),
-        }
-    }
-    pub fn set_bounds(&mut self, value: Rect) {
-        self.set_property(PropertyId::Bounds, Property::Rect(value));
-    }
-    pub fn clear_bounds(&mut self) {
-        self.clear_property(PropertyId::Bounds);
-    }
-
-    pub fn children(&self) -> &[NodeId] {
-        self.get_node_id_vec(PropertyId::Children)
-    }
-    pub fn set_children(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.set_node_id_vec(PropertyId::Children, value);
-    }
-    pub fn push_to_children(&mut self, id: NodeId) {
-        self.push_to_node_id_vec(PropertyId::Children, id);
-    }
-    pub fn clear_children(&mut self) {
-        self.clear_property(PropertyId::Children);
-    }
-
     pub fn supports_action(&self, action: Action) -> bool {
         self.actions.contains(action)
     }
@@ -1043,77 +1135,11 @@ impl Node {
         self.actions.clear();
     }
 
-    pub fn name(&self) -> Option<&str> {
-        self.get_string(PropertyId::Name)
-    }
-    pub fn set_name(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::Name, value);
-    }
-    pub fn clear_name(&mut self) {
-        self.clear_property(PropertyId::Name);
-    }
-
-    /// What information was used to compute the object's name.
-    pub fn name_from(&self) -> Option<NameFrom> {
-        self.name_from
-    }
-    pub fn set_name_from(&mut self, value: NameFrom) {
-        self.name_from = Some(value);
-    }
-    pub fn clear_name_from(&mut self) {
-        self.name_from = None;
-    }
-
-    pub fn description(&self) -> Option<&str> {
-        self.get_string(PropertyId::Description)
-    }
-    pub fn set_description(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::Description, value);
-    }
-    pub fn clear_description(&mut self) {
-        self.clear_property(PropertyId::Description);
-    }
-
-    /// What information was used to compute the object's description.
-    pub fn description_from(&self) -> Option<DescriptionFrom> {
-        self.description_from
-    }
-    pub fn set_description_from(&mut self, value: DescriptionFrom) {
-        self.description_from = Some(value);
-    }
-    pub fn clear_description_from(&mut self) {
-        self.description_from = None;
-    }
-
-    pub fn value(&self) -> Option<&str> {
-        self.get_string(PropertyId::Value)
-    }
-    pub fn set_value(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::Value, value);
-    }
-    pub fn clear_value(&mut self) {
-        self.clear_property(PropertyId::Value);
-    }
-
     pub fn is_autofill_available(&self) -> bool {
         self.autofill_available
     }
     pub fn set_autofill_available(&mut self, value: bool) {
         self.autofill_available = value;
-    }
-
-    /// Whether this node is expanded, collapsed, or neither.
-    ///
-    /// Setting this to `false` means the node is collapsed; omitting it means this state
-    /// isn't applicable.
-    pub fn is_expanded(&self) -> Option<bool> {
-        self.expanded
-    }
-    pub fn set_expanded(&mut self, value: bool) {
-        self.expanded = Some(value);
-    }
-    pub fn clear_expanded(&mut self) {
-        self.expanded = None;
     }
 
     pub fn is_default(&self) -> bool {
@@ -1128,16 +1154,6 @@ impl Node {
     }
     pub fn set_editable(&mut self, value: bool) {
         self.editable = value;
-    }
-
-    pub fn orientation(&self) -> Option<Orientation> {
-        self.orientation
-    }
-    pub fn set_orientation(&mut self, value: Orientation) {
-        self.orientation = Some(value);
-    }
-    pub fn clear_orientation(&mut self) {
-        self.orientation = None;
     }
 
     pub fn is_hovered(&self) -> bool {
@@ -1270,48 +1286,12 @@ impl Node {
         self.not_user_selectable_style = value;
     }
 
-    /// Indicates whether this node is selected or unselected.
-    ///
-    /// The absence of this flag (as opposed to a `false` setting)
-    /// means that the concept of "selected" doesn't apply.
-    /// When deciding whether to set the flag to false or omit it,
-    /// consider whether it would be appropriate for a screen reader
-    /// to announce "not selected". The ambiguity of this flag
-    /// in platform accessibility APIs has made extraneous
-    /// "not selected" announcements a common annoyance.
-    pub fn is_selected(&self) -> Option<bool> {
-        self.selected
-    }
-    pub fn set_selected(&mut self, value: bool) {
-        self.selected = Some(value);
-    }
-    pub fn clear_selected(&mut self) {
-        self.selected = None;
-    }
-
     /// Indicates whether this node is selected due to selection follows focus.
     pub fn is_selected_from_focus(&self) -> bool {
         self.selected_from_focus
     }
     pub fn set_selected_from_focus(&mut self, value: bool) {
         self.selected_from_focus = value;
-    }
-
-    /// Indicates whether this node causes a hard line-break
-    /// (e.g. block level elements, or `<br>`).
-    pub fn is_line_breaking_object(&self) -> bool {
-        self.is_line_breaking_object
-    }
-    pub fn set_is_line_breaking_object(&mut self, value: bool) {
-        self.is_line_breaking_object = value;
-    }
-
-    /// Indicates whether this node causes a page break.
-    pub fn is_page_breaking_object(&self) -> bool {
-        self.is_page_breaking_object
-    }
-    pub fn set_is_page_breaking_object(&mut self, value: bool) {
-        self.is_page_breaking_object = value;
     }
 
     /// True if the node has any ARIA attributes set.
@@ -1332,173 +1312,51 @@ impl Node {
         self.touch_pass_through = value;
     }
 
-    /// Ids of nodes that are children of this node logically, but are
-    /// not children of this node in the tree structure. As an example,
-    /// a table cell is a child of a row, and an 'indirect' child of a
-    /// column.
-    pub fn indirect_children(&self) -> &[NodeId] {
-        self.get_node_id_vec(PropertyId::IndirectChildren)
+    /// Use for a textbox that allows focus/selection but not input.
+    pub fn is_read_only(&self) -> bool {
+        self.read_only
     }
-    pub fn set_indirect_children(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.set_node_id_vec(PropertyId::IndirectChildren, value);
-    }
-    pub fn push_to_indirect_children(&mut self, id: NodeId) {
-        self.push_to_node_id_vec(PropertyId::IndirectChildren, id);
-    }
-    pub fn clear_indirect_children(&mut self) {
-        self.clear_property(PropertyId::IndirectChildren);
+    pub fn set_read_only(&mut self, value: bool) {
+        self.read_only = value;
     }
 
-    // Relationships between this node and other nodes.
-
-    pub fn active_descendant(&self) -> Option<NodeId> {
-        self.get_node_id(PropertyId::ActiveDescendant)
+    /// Use for a control or group of controls that disallows input.
+    pub fn is_disabled(&self) -> bool {
+        self.disabled
     }
-    pub fn set_active_descendant(&mut self, value: NodeId) {
-        self.set_node_id(PropertyId::ActiveDescendant, value);
-    }
-    pub fn clear_active_descendant(&mut self) {
-        self.clear_property(PropertyId::ActiveDescendant);
+    pub fn set_disabled(&mut self, value: bool) {
+        self.disabled = value;
     }
 
-    pub fn error_message(&self) -> Option<NodeId> {
-        self.get_node_id(PropertyId::ErrorMessage)
+    pub fn is_bold(&self) -> bool {
+        self.bold
     }
-    pub fn set_error_message(&mut self, value: NodeId) {
-        self.set_node_id(PropertyId::ErrorMessage, value);
-    }
-    pub fn clear_error_message(&mut self) {
-        self.clear_property(PropertyId::ErrorMessage);
+    pub fn set_bold(&mut self, value: bool) {
+        self.bold = value;
     }
 
-    pub fn in_page_link_target(&self) -> Option<NodeId> {
-        self.get_node_id(PropertyId::InPageLinkTarget)
+    pub fn is_italic(&self) -> bool {
+        self.italic
     }
-    pub fn set_in_page_link_target(&mut self, value: NodeId) {
-        self.set_node_id(PropertyId::InPageLinkTarget, value);
-    }
-    pub fn clear_in_page_link_target(&mut self) {
-        self.clear_property(PropertyId::InPageLinkTarget);
+    pub fn set_italic(&mut self, value: bool) {
+        self.italic = value;
     }
 
-    pub fn member_of(&self) -> Option<NodeId> {
-        self.get_node_id(PropertyId::MemberOf)
+    /// Indicates whether this node causes a hard line-break
+    /// (e.g. block level elements, or `<br>`).
+    pub fn is_line_breaking_object(&self) -> bool {
+        self.is_line_breaking_object
     }
-    pub fn set_member_of(&mut self, value: NodeId) {
-        self.set_node_id(PropertyId::MemberOf, value);
-    }
-    pub fn clear_member_of(&mut self) {
-        self.clear_property(PropertyId::MemberOf);
-    }
-
-    pub fn next_on_line(&self) -> Option<NodeId> {
-        self.get_node_id(PropertyId::NextOnLine)
-    }
-    pub fn set_next_on_line(&mut self, value: NodeId) {
-        self.set_node_id(PropertyId::NextOnLine, value);
-    }
-    pub fn clear_next_on_line(&mut self) {
-        self.clear_property(PropertyId::NextOnLine);
+    pub fn set_is_line_breaking_object(&mut self, value: bool) {
+        self.is_line_breaking_object = value;
     }
 
-    pub fn previous_on_line(&self) -> Option<NodeId> {
-        self.get_node_id(PropertyId::PreviousOnLine)
+    /// Indicates whether this node causes a page break.
+    pub fn is_page_breaking_object(&self) -> bool {
+        self.is_page_breaking_object
     }
-    pub fn set_previous_on_line(&mut self, value: NodeId) {
-        self.set_node_id(PropertyId::PreviousOnLine, value);
-    }
-    pub fn clear_previous_on_line(&mut self) {
-        self.clear_property(PropertyId::PreviousOnLine);
-    }
-
-    pub fn popup_for(&self) -> Option<NodeId> {
-        self.get_node_id(PropertyId::PopupFor)
-    }
-    pub fn set_popup_for(&mut self, value: NodeId) {
-        self.set_node_id(PropertyId::PopupFor, value);
-    }
-    pub fn clear_popup_for(&mut self) {
-        self.clear_property(PropertyId::PopupFor);
-    }
-
-    pub fn controls(&self) -> &[NodeId] {
-        self.get_node_id_vec(PropertyId::Controls)
-    }
-    pub fn set_controls(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.set_node_id_vec(PropertyId::Controls, value);
-    }
-    pub fn push_to_controls(&mut self, id: NodeId) {
-        self.push_to_node_id_vec(PropertyId::Controls, id);
-    }
-    pub fn clear_controls(&mut self) {
-        self.clear_property(PropertyId::Controls);
-    }
-
-    pub fn details(&self) -> &[NodeId] {
-        self.get_node_id_vec(PropertyId::Details)
-    }
-    pub fn set_details(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.set_node_id_vec(PropertyId::Details, value);
-    }
-    pub fn push_to_details(&mut self, id: NodeId) {
-        self.push_to_node_id_vec(PropertyId::Details, id);
-    }
-    pub fn clear_details(&mut self) {
-        self.clear_property(PropertyId::Details);
-    }
-
-    pub fn described_by(&self) -> &[NodeId] {
-        self.get_node_id_vec(PropertyId::DescribedBy)
-    }
-    pub fn set_described_by(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.set_node_id_vec(PropertyId::DescribedBy, value);
-    }
-    pub fn push_to_described_by(&mut self, id: NodeId) {
-        self.push_to_node_id_vec(PropertyId::DescribedBy, id);
-    }
-    pub fn clear_described_by(&mut self) {
-        self.clear_property(PropertyId::DescribedBy);
-    }
-
-    pub fn flow_to(&self) -> &[NodeId] {
-        self.get_node_id_vec(PropertyId::FlowTo)
-    }
-    pub fn set_flow_to(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.set_node_id_vec(PropertyId::FlowTo, value);
-    }
-    pub fn push_to_flow_to(&mut self, id: NodeId) {
-        self.push_to_node_id_vec(PropertyId::FlowTo, id);
-    }
-    pub fn clear_flow_to(&mut self) {
-        self.clear_property(PropertyId::FlowTo);
-    }
-
-    pub fn labelled_by(&self) -> &[NodeId] {
-        self.get_node_id_vec(PropertyId::LabelledBy)
-    }
-    pub fn set_labelled_by(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.set_node_id_vec(PropertyId::LabelledBy, value);
-    }
-    pub fn push_to_labelled_by(&mut self, id: NodeId) {
-        self.push_to_node_id_vec(PropertyId::LabelledBy, id);
-    }
-    pub fn clear_labelled_by(&mut self) {
-        self.clear_property(PropertyId::LabelledBy);
-    }
-
-    /// On radio buttons this should be set to a list of all of the buttons
-    /// in the same group as this one, including this radio button itself.
-    pub fn radio_group(&self) -> &[NodeId] {
-        self.get_node_id_vec(PropertyId::RadioGroup)
-    }
-    pub fn set_radio_group(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.set_node_id_vec(PropertyId::RadioGroup, value);
-    }
-    pub fn push_to_radio_group(&mut self, id: NodeId) {
-        self.push_to_node_id_vec(PropertyId::RadioGroup, id);
-    }
-    pub fn clear_radio_group(&mut self) {
-        self.clear_property(PropertyId::RadioGroup);
+    pub fn set_is_page_breaking_object(&mut self, value: bool) {
+        self.is_page_breaking_object = value;
     }
 
     pub fn is_spelling_error(&self) -> bool {
@@ -1529,160 +1387,59 @@ impl Node {
         self.is_suggestion = value;
     }
 
-    pub fn text_direction(&self) -> Option<TextDirection> {
-        self.text_direction
+    /// Whether this node is expanded, collapsed, or neither.
+    ///
+    /// Setting this to `false` means the node is collapsed; omitting it means this state
+    /// isn't applicable.
+    pub fn is_expanded(&self) -> Option<bool> {
+        self.expanded
     }
-    pub fn set_text_direction(&mut self, value: TextDirection) {
-        self.text_direction = Some(value);
+    pub fn set_expanded(&mut self, value: bool) {
+        self.expanded = Some(value);
     }
-    pub fn clear_text_direction(&mut self) {
-        self.text_direction = None;
+    pub fn clear_expanded(&mut self) {
+        self.expanded = None;
     }
 
-    /// For inline text. The length (non-inclusive) of each character
-    /// in UTF-8 code units (bytes). The sum of these lengths must equal
-    /// the length of [`value`], also in bytes.
+    /// Indicates whether this node is selected or unselected.
     ///
-    /// A character is defined as the smallest unit of text that
-    /// can be selected. This isn't necessarily a single Unicode
-    /// scalar value (code point). This is why AccessKit can't compute
-    /// the lengths of the characters from the text itself; this information
-    /// must be provided by the text editing implementation.
-    ///
-    /// If this node is the last text box in a line that ends with a hard
-    /// line break, that line break should be included at the end of this
-    /// node's value as either a CRLF or LF; in both cases, the line break
-    /// should be counted as a single character for the sake of this slice.
-    /// When the caret is at the end of such a line, the focus of the text
-    /// selection should be on the line break, not after it.
-    ///
-    /// [`value`]: NodeProvider::value
-    pub fn character_lengths(&self) -> &[u8] {
-        self.get_length_slice(PropertyId::CharacterLengths)
+    /// The absence of this flag (as opposed to a `false` setting)
+    /// means that the concept of "selected" doesn't apply.
+    /// When deciding whether to set the flag to false or omit it,
+    /// consider whether it would be appropriate for a screen reader
+    /// to announce "not selected". The ambiguity of this flag
+    /// in platform accessibility APIs has made extraneous
+    /// "not selected" announcements a common annoyance.
+    pub fn is_selected(&self) -> Option<bool> {
+        self.selected
     }
-    pub fn set_character_lengths(&mut self, value: impl Into<Box<[u8]>>) {
-        self.set_length_slice(PropertyId::CharacterLengths, value);
+    pub fn set_selected(&mut self, value: bool) {
+        self.selected = Some(value);
+    }
+    pub fn clear_selected(&mut self) {
+        self.selected = None;
     }
 
-    /// For inline text. This is the position of each character within
-    /// the node's bounding box, in the direction given by
-    /// [`text_direction`], in the coordinate space of this node.
-    ///
-    /// When present, the length of this slice should be the same as the length
-    /// of [`character_lengths`], including for lines that end
-    /// with a hard line break. The position of such a line break should
-    /// be the position where an end-of-paragraph marker would be rendered.
-    ///
-    /// This property is optional. Without it, AccessKit can't support some
-    /// use cases, such as screen magnifiers that track the caret position
-    /// or screen readers that display a highlight cursor. However,
-    /// most text functionality still works without this information.
-    ///
-    /// [`text_direction`]: NodeProvider::text_direction
-    /// [`character_lengths`]: NodeProvider::character_lengths
-    pub fn character_positions(&self) -> Option<&[f32]> {
-        self.get_coord_slice(PropertyId::CharacterPositions)
+    /// What information was used to compute the object's name.
+    pub fn name_from(&self) -> Option<NameFrom> {
+        self.name_from
     }
-    pub fn set_character_positions(&mut self, value: impl Into<Box<[f32]>>) {
-        self.set_coord_slice(PropertyId::CharacterPositions, value);
+    pub fn set_name_from(&mut self, value: NameFrom) {
+        self.name_from = Some(value);
     }
-    pub fn clear_character_positions(&mut self) {
-        self.clear_property(PropertyId::CharacterPositions);
+    pub fn clear_name_from(&mut self) {
+        self.name_from = None;
     }
 
-    /// For inline text. This is the advance width of each character,
-    /// in the direction given by [`text_direction`], in the coordinate
-    /// space of this node.
-    ///
-    /// When present, the length of this slice should be the same as the length
-    /// of [`character_lengths`], including for lines that end
-    /// with a hard line break. The width of such a line break should
-    /// be non-zero if selecting the line break by itself results in
-    /// a visible highlight (as in Microsoft Word), or zero if not
-    /// (as in Windows Notepad).
-    ///
-    /// This property is optional. Without it, AccessKit can't support some
-    /// use cases, such as screen magnifiers that track the caret position
-    /// or screen readers that display a highlight cursor. However,
-    /// most text functionality still works without this information.
-    ///
-    /// [`text_direction`]: NodeProvider::text_direction
-    /// [`character_lengths`]: NodeProvider::character_lengths
-    pub fn character_widths(&self) -> Option<&[f32]> {
-        self.get_coord_slice(PropertyId::CharacterWidths)
+    /// What information was used to compute the object's description.
+    pub fn description_from(&self) -> Option<DescriptionFrom> {
+        self.description_from
     }
-    pub fn set_character_widths(&mut self, value: impl Into<Box<[f32]>>) {
-        self.set_coord_slice(PropertyId::CharacterWidths, value);
+    pub fn set_description_from(&mut self, value: DescriptionFrom) {
+        self.description_from = Some(value);
     }
-    pub fn clear_character_widths(&mut self) {
-        self.clear_property(PropertyId::CharacterWidths);
-    }
-
-    /// For inline text. The length of each word in characters, as defined
-    /// in [`character_lengths`]. The sum of these lengths must equal
-    /// the length of [`character_lengths`].
-    ///
-    /// The end of each word is the beginning of the next word; there are no
-    /// characters that are not considered part of a word. Trailing whitespace
-    /// is typically considered part of the word that precedes it, while
-    /// a line's leading whitespace is considered its own word. Whether
-    /// punctuation is considered a separate word or part of the preceding
-    /// word depends on the particular text editing implementation.
-    /// Some editors may have their own definition of a word; for example,
-    /// in an IDE, words may correspond to programming language tokens.
-    ///
-    /// Not all assistive technologies require information about word
-    /// boundaries, and not all platform accessibility APIs even expose
-    /// this information, but for assistive technologies that do use
-    /// this information, users will get unpredictable results if the word
-    /// boundaries exposed by the accessibility tree don't match
-    /// the editor's behavior. This is why AccessKit does not determine
-    /// word boundaries itself.
-    ///
-    /// [`character_lengths`]: NodeProvider::character_lengths
-    pub fn word_lengths(&self) -> &[u8] {
-        self.get_length_slice(PropertyId::WordLengths)
-    }
-    pub fn set_word_lengths(&mut self, value: impl Into<Box<[u8]>>) {
-        self.set_length_slice(PropertyId::WordLengths, value);
-    }
-
-    pub fn custom_actions(&self) -> &[CustomAction] {
-        match self.get_property(PropertyId::CustomActions) {
-            Property::None => &[],
-            Property::CustomActionVec(value) => value,
-            _ => panic!(),
-        }
-    }
-    pub fn set_custom_actions(&mut self, value: impl Into<Vec<CustomAction>>) {
-        self.set_property(
-            PropertyId::CustomActions,
-            Property::CustomActionVec(value.into()),
-        );
-    }
-    pub fn push_to_custom_actions(&mut self, action: CustomAction) {
-        match self.get_property_mut(
-            PropertyId::CustomActions,
-            Property::CustomActionVec(Vec::new()),
-        ) {
-            Property::CustomActionVec(v) => {
-                v.push(action);
-            }
-            _ => panic!(),
-        }
-    }
-    pub fn clear_custom_actions(&mut self) {
-        self.clear_property(PropertyId::CustomActions);
-    }
-
-    pub fn access_key(&self) -> Option<&str> {
-        self.get_string(PropertyId::AccessKey)
-    }
-    pub fn set_access_key(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::AccessKey, value);
-    }
-    pub fn clear_access_key(&mut self) {
-        self.clear_property(PropertyId::AccessKey);
+    pub fn clear_description_from(&mut self) {
+        self.description_from = None;
     }
 
     pub fn invalid(&self) -> Option<Invalid> {
@@ -1695,16 +1452,6 @@ impl Node {
         self.invalid = None;
     }
 
-    pub fn auto_complete(&self) -> Option<&str> {
-        self.get_string(PropertyId::AutoComplete)
-    }
-    pub fn set_auto_complete(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::AutoComplete, value);
-    }
-    pub fn clear_auto_complete(&mut self) {
-        self.clear_property(PropertyId::AutoComplete);
-    }
-
     pub fn checked_state(&self) -> Option<CheckedState> {
         self.checked_state
     }
@@ -1713,110 +1460,6 @@ impl Node {
     }
     pub fn clear_checked_state(&mut self) {
         self.checked_state = None;
-    }
-
-    pub fn checked_state_description(&self) -> Option<&str> {
-        self.get_string(PropertyId::CheckedStateDescription)
-    }
-    pub fn set_checked_state_description(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::CheckedStateDescription, value);
-    }
-    pub fn clear_checked_state_description(&mut self) {
-        self.clear_property(PropertyId::CheckedStateDescription);
-    }
-
-    pub fn class_name(&self) -> Option<&str> {
-        self.get_string(PropertyId::ClassName)
-    }
-    pub fn set_class_name(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::ClassName, value);
-    }
-    pub fn clear_class_name(&mut self) {
-        self.clear_property(PropertyId::ClassName);
-    }
-
-    pub fn css_display(&self) -> Option<&str> {
-        self.get_string(PropertyId::CssDisplay)
-    }
-    pub fn set_css_display(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::CssDisplay, value);
-    }
-    pub fn clear_css_display(&mut self) {
-        self.clear_property(PropertyId::CssDisplay);
-    }
-
-    /// Only present when different from parent.
-    pub fn font_family(&self) -> Option<&str> {
-        self.get_string(PropertyId::FontFamily)
-    }
-    pub fn set_font_family(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::FontFamily, value);
-    }
-    pub fn clear_font_family(&mut self) {
-        self.clear_property(PropertyId::FontFamily);
-    }
-
-    pub fn html_tag(&self) -> Option<&str> {
-        self.get_string(PropertyId::HtmlTag)
-    }
-    pub fn set_html_tag(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::HtmlTag, value);
-    }
-    pub fn clear_html_tag(&mut self) {
-        self.clear_property(PropertyId::HtmlTag);
-    }
-
-    /// Inner HTML of an element. Only used for a top-level math element,
-    /// to support third-party math accessibility products that parse MathML.
-    pub fn inner_html(&self) -> Option<&str> {
-        self.get_string(PropertyId::InnerHtml)
-    }
-    pub fn set_inner_html(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::InnerHtml, value);
-    }
-    pub fn clear_inner_html(&mut self) {
-        self.clear_property(PropertyId::InnerHtml);
-    }
-
-    pub fn input_type(&self) -> Option<&str> {
-        self.get_string(PropertyId::InputType)
-    }
-    pub fn set_input_type(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::InputType, value);
-    }
-    pub fn clear_input_type(&mut self) {
-        self.clear_property(PropertyId::InputType);
-    }
-
-    pub fn key_shortcuts(&self) -> Option<&str> {
-        self.get_string(PropertyId::KeyShortcuts)
-    }
-    pub fn set_key_shortcuts(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::KeyShortcuts, value);
-    }
-    pub fn clear_key_shortcuts(&mut self) {
-        self.clear_property(PropertyId::KeyShortcuts);
-    }
-
-    /// Only present when different from parent.
-    pub fn language(&self) -> Option<&str> {
-        self.get_string(PropertyId::Language)
-    }
-    pub fn set_language(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::Language, value);
-    }
-    pub fn clear_language(&mut self) {
-        self.clear_property(PropertyId::Language);
-    }
-
-    pub fn live_relevant(&self) -> Option<&str> {
-        self.get_string(PropertyId::LiveRelevant)
-    }
-    pub fn set_live_relevant(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::LiveRelevant, value);
-    }
-    pub fn clear_live_relevant(&mut self) {
-        self.clear_property(PropertyId::LiveRelevant);
     }
 
     pub fn live(&self) -> Option<Live> {
@@ -1829,62 +1472,6 @@ impl Node {
         self.live = None;
     }
 
-    /// Only if not already exposed in [`name`] ([`NameFrom::Placeholder`]).
-    ///
-    /// [`name`]: NodeProvider::name
-    pub fn placeholder(&self) -> Option<&str> {
-        self.get_string(PropertyId::Placeholder)
-    }
-    pub fn set_placeholder(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::Placeholder, value);
-    }
-    pub fn clear_placeholder(&mut self) {
-        self.clear_property(PropertyId::Placeholder);
-    }
-
-    pub fn aria_role(&self) -> Option<&str> {
-        self.get_string(PropertyId::AriaRole)
-    }
-    pub fn set_aria_role(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::AriaRole, value);
-    }
-    pub fn clear_aria_role(&mut self) {
-        self.clear_property(PropertyId::AriaRole);
-    }
-
-    pub fn role_description(&self) -> Option<&str> {
-        self.get_string(PropertyId::RoleDescription)
-    }
-    pub fn set_role_description(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::RoleDescription, value);
-    }
-    pub fn clear_role_description(&mut self) {
-        self.clear_property(PropertyId::RoleDescription);
-    }
-
-    /// Only if not already exposed in [`name`] ([`NameFrom::Title`]).
-    ///
-    /// [`name`]: NodeProvider::name
-    pub fn tooltip(&self) -> Option<&str> {
-        self.get_string(PropertyId::Tooltip)
-    }
-    pub fn set_tooltip(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::Tooltip, value);
-    }
-    pub fn clear_tooltip(&mut self) {
-        self.clear_property(PropertyId::Tooltip);
-    }
-
-    pub fn url(&self) -> Option<&str> {
-        self.get_string(PropertyId::Url)
-    }
-    pub fn set_url(&mut self, value: impl Into<Box<str>>) {
-        self.set_string(PropertyId::Url, value);
-    }
-    pub fn clear_url(&mut self) {
-        self.clear_property(PropertyId::Url);
-    }
-
     pub fn default_action_verb(&self) -> Option<DefaultActionVerb> {
         self.default_action_verb
     }
@@ -1895,258 +1482,24 @@ impl Node {
         self.default_action_verb = None;
     }
 
-    // Scrollable container attributes.
-
-    pub fn scroll_x(&self) -> Option<f64> {
-        self.get_f64(PropertyId::ScrollX)
+    pub fn text_direction(&self) -> Option<TextDirection> {
+        self.text_direction
     }
-    pub fn set_scroll_x(&mut self, value: f64) {
-        self.set_f64(PropertyId::ScrollX, value);
+    pub fn set_text_direction(&mut self, value: TextDirection) {
+        self.text_direction = Some(value);
     }
-    pub fn clear_scroll_x(&mut self) {
-        self.clear_property(PropertyId::ScrollX);
+    pub fn clear_text_direction(&mut self) {
+        self.text_direction = None;
     }
 
-    pub fn scroll_x_min(&self) -> Option<f64> {
-        self.get_f64(PropertyId::ScrollXMin)
+    pub fn orientation(&self) -> Option<Orientation> {
+        self.orientation
     }
-    pub fn set_scroll_x_min(&mut self, value: f64) {
-        self.set_f64(PropertyId::ScrollXMin, value);
+    pub fn set_orientation(&mut self, value: Orientation) {
+        self.orientation = Some(value);
     }
-    pub fn clear_scroll_x_min(&mut self) {
-        self.clear_property(PropertyId::ScrollXMin);
-    }
-
-    pub fn scroll_x_max(&self) -> Option<f64> {
-        self.get_f64(PropertyId::ScrollXMax)
-    }
-    pub fn set_scroll_x_max(&mut self, value: f64) {
-        self.set_f64(PropertyId::ScrollXMax, value);
-    }
-    pub fn clear_scroll_x_max(&mut self) {
-        self.clear_property(PropertyId::ScrollXMax);
-    }
-
-    pub fn scroll_y(&self) -> Option<f64> {
-        self.get_f64(PropertyId::ScrollY)
-    }
-    pub fn set_scroll_y(&mut self, value: f64) {
-        self.set_f64(PropertyId::ScrollY, value);
-    }
-    pub fn clear_scroll_y(&mut self) {
-        self.clear_property(PropertyId::ScrollY);
-    }
-
-    pub fn scroll_y_min(&self) -> Option<f64> {
-        self.get_f64(PropertyId::ScrollYMin)
-    }
-    pub fn set_scroll_y_min(&mut self, value: f64) {
-        self.set_f64(PropertyId::ScrollYMin, value);
-    }
-    pub fn clear_scroll_y_min(&mut self) {
-        self.clear_property(PropertyId::ScrollYMin);
-    }
-
-    pub fn scroll_y_max(&self) -> Option<f64> {
-        self.get_f64(PropertyId::ScrollYMax)
-    }
-    pub fn set_scroll_y_max(&mut self, value: f64) {
-        self.set_f64(PropertyId::ScrollYMax, value);
-    }
-    pub fn clear_scroll_y_max(&mut self) {
-        self.clear_property(PropertyId::ScrollYMax);
-    }
-
-    pub fn text_selection(&self) -> Option<TextSelection> {
-        match self.get_property(PropertyId::TextSelection) {
-            Property::None => None,
-            Property::TextSelection(value) => Some(*value),
-            _ => panic!(),
-        }
-    }
-    pub fn set_text_selection(&mut self, value: TextSelection) {
-        self.set_property(PropertyId::TextSelection, Property::TextSelection(value));
-    }
-    pub fn clear_text_selection(&mut self) {
-        self.clear_property(PropertyId::TextSelection);
-    }
-
-    pub fn aria_column_count(&self) -> Option<usize> {
-        self.get_usize(PropertyId::AriaColumnCount)
-    }
-    pub fn set_aria_column_count(&mut self, value: usize) {
-        self.set_usize(PropertyId::AriaColumnCount, value);
-    }
-    pub fn clear_aria_column_count(&mut self) {
-        self.clear_property(PropertyId::AriaColumnCount);
-    }
-
-    pub fn aria_cell_column_index(&self) -> Option<usize> {
-        self.get_usize(PropertyId::AriaCellColumnIndex)
-    }
-    pub fn set_aria_cell_column_index(&mut self, value: usize) {
-        self.set_usize(PropertyId::AriaCellColumnIndex, value);
-    }
-    pub fn clear_aria_cell_column_index(&mut self) {
-        self.clear_property(PropertyId::AriaCellColumnIndex);
-    }
-
-    pub fn aria_cell_column_span(&self) -> Option<usize> {
-        self.get_usize(PropertyId::AriaCellColumnSpan)
-    }
-    pub fn set_aria_cell_column_span(&mut self, value: usize) {
-        self.set_usize(PropertyId::AriaCellColumnSpan, value);
-    }
-    pub fn clear_aria_cell_column_span(&mut self) {
-        self.clear_property(PropertyId::AriaCellColumnSpan);
-    }
-
-    pub fn aria_row_count(&self) -> Option<usize> {
-        self.get_usize(PropertyId::AriaRowCount)
-    }
-    pub fn set_aria_row_count(&mut self, value: usize) {
-        self.set_usize(PropertyId::AriaRowCount, value);
-    }
-    pub fn clear_aria_row_count(&mut self) {
-        self.clear_property(PropertyId::AriaRowCount);
-    }
-
-    pub fn aria_cell_row_index(&self) -> Option<usize> {
-        self.get_usize(PropertyId::AriaCellRowIndex)
-    }
-    pub fn set_aria_cell_row_index(&mut self, value: usize) {
-        self.set_usize(PropertyId::AriaCellRowIndex, value);
-    }
-    pub fn clear_aria_cell_row_index(&mut self) {
-        self.clear_property(PropertyId::AriaCellRowIndex);
-    }
-
-    pub fn aria_cell_row_span(&self) -> Option<usize> {
-        self.get_usize(PropertyId::AriaCellRowSpan)
-    }
-    pub fn set_aria_cell_row_span(&mut self, value: usize) {
-        self.set_usize(PropertyId::AriaCellRowSpan, value);
-    }
-    pub fn clear_aria_cell_row_span(&mut self) {
-        self.clear_property(PropertyId::AriaCellRowSpan);
-    }
-
-    // Table attributes.
-
-    pub fn table_row_count(&self) -> Option<usize> {
-        self.get_usize(PropertyId::TableRowCount)
-    }
-    pub fn set_table_row_count(&mut self, value: usize) {
-        self.set_usize(PropertyId::TableRowCount, value);
-    }
-    pub fn clear_table_row_count(&mut self) {
-        self.clear_property(PropertyId::TableRowCount);
-    }
-
-    pub fn table_column_count(&self) -> Option<usize> {
-        self.get_usize(PropertyId::TableColumnCount)
-    }
-    pub fn set_table_column_count(&mut self, value: usize) {
-        self.set_usize(PropertyId::TableColumnCount, value);
-    }
-    pub fn clear_table_column_count(&mut self) {
-        self.clear_property(PropertyId::TableColumnCount);
-    }
-
-    pub fn table_header(&self) -> Option<NodeId> {
-        self.get_node_id(PropertyId::TableHeader)
-    }
-    pub fn set_table_header(&mut self, value: NodeId) {
-        self.set_node_id(PropertyId::TableHeader, value);
-    }
-    pub fn clear_table_header(&mut self) {
-        self.clear_property(PropertyId::TableHeader);
-    }
-
-    // Table row attributes.
-
-    pub fn table_row_index(&self) -> Option<usize> {
-        self.get_usize(PropertyId::TableRowIndex)
-    }
-    pub fn set_table_row_index(&mut self, value: usize) {
-        self.set_usize(PropertyId::TableRowIndex, value);
-    }
-    pub fn clear_table_row_index(&mut self) {
-        self.clear_property(PropertyId::TableRowIndex);
-    }
-
-    pub fn table_row_header(&self) -> Option<NodeId> {
-        self.get_node_id(PropertyId::TableRowHeader)
-    }
-    pub fn set_table_row_header(&mut self, value: NodeId) {
-        self.set_node_id(PropertyId::TableRowHeader, value);
-    }
-    pub fn clear_table_row_header(&mut self) {
-        self.clear_property(PropertyId::TableRowHeader);
-    }
-
-    // Table column attributes.
-
-    pub fn table_column_index(&self) -> Option<usize> {
-        self.get_usize(PropertyId::TableColumnIndex)
-    }
-    pub fn set_table_column_index(&mut self, value: usize) {
-        self.set_usize(PropertyId::TableColumnIndex, value);
-    }
-    pub fn clear_table_column_index(&mut self) {
-        self.clear_property(PropertyId::TableColumnIndex);
-    }
-
-    pub fn table_column_header(&self) -> Option<NodeId> {
-        self.get_node_id(PropertyId::TableColumnHeader)
-    }
-    pub fn set_table_column_header(&mut self, value: NodeId) {
-        self.set_node_id(PropertyId::TableColumnHeader, value);
-    }
-    pub fn clear_table_column_header(&mut self) {
-        self.clear_property(PropertyId::TableColumnHeader);
-    }
-
-    // Table cell attributes.
-
-    pub fn table_cell_column_index(&self) -> Option<usize> {
-        self.get_usize(PropertyId::TableCellColumnIndex)
-    }
-    pub fn set_table_cell_column_index(&mut self, value: usize) {
-        self.set_usize(PropertyId::TableCellColumnIndex, value);
-    }
-    pub fn clear_table_cell_column_index(&mut self) {
-        self.clear_property(PropertyId::TableCellColumnIndex);
-    }
-
-    pub fn table_cell_column_span(&self) -> Option<usize> {
-        self.get_usize(PropertyId::TableCellColumnSpan)
-    }
-    pub fn set_table_cell_column_span(&mut self, value: usize) {
-        self.set_usize(PropertyId::TableCellColumnSpan, value);
-    }
-    pub fn clear_table_cell_column_span(&mut self) {
-        self.clear_property(PropertyId::TableCellColumnSpan);
-    }
-
-    pub fn table_cell_row_index(&self) -> Option<usize> {
-        self.get_usize(PropertyId::TableCellRowIndex)
-    }
-    pub fn set_table_cell_row_index(&mut self, value: usize) {
-        self.set_usize(PropertyId::TableCellRowIndex, value);
-    }
-    pub fn clear_table_cell_row_index(&mut self) {
-        self.clear_property(PropertyId::TableCellRowIndex);
-    }
-
-    pub fn table_cell_row_span(&self) -> Option<usize> {
-        self.get_usize(PropertyId::TableCellRowSpan)
-    }
-    pub fn set_table_cell_row_span(&mut self, value: usize) {
-        self.set_usize(PropertyId::TableCellRowSpan, value);
-    }
-    pub fn clear_table_cell_row_span(&mut self) {
-        self.clear_property(PropertyId::TableCellRowSpan);
+    pub fn clear_orientation(&mut self) {
+        self.orientation = None;
     }
 
     pub fn sort_direction(&self) -> Option<SortDirection> {
@@ -2159,66 +1512,6 @@ impl Node {
         self.sort_direction = None;
     }
 
-    /// Tree control attributes.
-    pub fn hierarchical_level(&self) -> Option<usize> {
-        self.get_usize(PropertyId::HierarchicalLevel)
-    }
-    pub fn set_hierarchical_level(&mut self, value: usize) {
-        self.set_usize(PropertyId::HierarchicalLevel, value);
-    }
-    pub fn clear_hierarchical_level(&mut self) {
-        self.clear_property(PropertyId::HierarchicalLevel);
-    }
-
-    /// Use for a textbox that allows focus/selection but not input.
-    pub fn is_read_only(&self) -> bool {
-        self.read_only
-    }
-    pub fn set_read_only(&mut self, value: bool) {
-        self.read_only = value;
-    }
-
-    /// Use for a control or group of controls that disallows input.
-    pub fn is_disabled(&self) -> bool {
-        self.disabled
-    }
-    pub fn set_disabled(&mut self, value: bool) {
-        self.disabled = value;
-    }
-
-    // Position or Number of items in current set of listitems or treeitems
-
-    pub fn size_of_set(&self) -> Option<usize> {
-        self.get_usize(PropertyId::SizeOfSet)
-    }
-    pub fn set_size_of_set(&mut self, value: usize) {
-        self.set_usize(PropertyId::SizeOfSet, value);
-    }
-    pub fn clear_size_of_set(&mut self) {
-        self.clear_property(PropertyId::SizeOfSet);
-    }
-
-    pub fn position_in_set(&self) -> Option<usize> {
-        self.get_usize(PropertyId::PositionInSet)
-    }
-    pub fn set_position_in_set(&mut self, value: usize) {
-        self.set_usize(PropertyId::PositionInSet, value);
-    }
-    pub fn clear_position_in_set(&mut self) {
-        self.clear_property(PropertyId::PositionInSet);
-    }
-
-    /// For [`Role::ColorWell`], specifies the selected color in RGBA.
-    pub fn color_value(&self) -> Option<u32> {
-        self.get_u32(PropertyId::ColorValue)
-    }
-    pub fn set_color_value(&mut self, value: u32) {
-        self.set_u32(PropertyId::ColorValue, value);
-    }
-    pub fn clear_color_value(&mut self) {
-        self.clear_property(PropertyId::ColorValue);
-    }
-
     pub fn aria_current(&self) -> Option<AriaCurrent> {
         self.aria_current
     }
@@ -2229,30 +1522,14 @@ impl Node {
         self.aria_current = None;
     }
 
-    /// Background color in RGBA.
-    pub fn background_color(&self) -> Option<u32> {
-        self.get_u32(PropertyId::BackgroundColor)
-    }
-    pub fn set_background_color(&mut self, value: u32) {
-        self.set_u32(PropertyId::BackgroundColor, value);
-    }
-    pub fn clear_background_color(&mut self) {
-        self.clear_property(PropertyId::BackgroundColor);
-    }
-
-    /// Foreground color in RGBA.
-    pub fn foreground_color(&self) -> Option<u32> {
-        self.get_u32(PropertyId::ForegroundColor)
-    }
-    pub fn set_foreground_color(&mut self, value: u32) {
-        self.set_u32(PropertyId::ForegroundColor, value);
-    }
-    pub fn clear_foreground_color(&mut self) {
-        self.clear_property(PropertyId::ForegroundColor);
-    }
-
     pub fn has_popup(&self) -> Option<HasPopup> {
         self.has_popup
+    }
+    pub fn set_has_popup(&mut self, value: HasPopup) {
+        self.has_popup = Some(value);
+    }
+    pub fn clear_has_popup(&mut self) {
+        self.has_popup = None;
     }
 
     /// The list style type. Only available on list items.
@@ -2286,20 +1563,6 @@ impl Node {
         self.vertical_offset = None;
     }
 
-    pub fn is_bold(&self) -> bool {
-        self.bold
-    }
-    pub fn set_bold(&mut self, value: bool) {
-        self.bold = value;
-    }
-
-    pub fn is_italic(&self) -> bool {
-        self.italic
-    }
-    pub fn set_italic(&mut self, value: bool) {
-        self.italic = value;
-    }
-
     pub fn overline(&self) -> Option<TextDecoration> {
         self.overline
     }
@@ -2329,113 +1592,278 @@ impl Node {
     pub fn clear_underline(&mut self) {
         self.underline = None;
     }
+}
 
-    // Focus traversal order.
+node_id_vec_property_methods! {
+    (children, Children)
+    /// Ids of nodes that are children of this node logically, but are
+    /// not children of this node in the tree structure. As an example,
+    /// a table cell is a child of a row, and an 'indirect' child of a
+    /// column.
+    (indirect_children, IndirectChildren)
+    (controls, Controls)
+    (details, Details)
+    (described_by, DescribedBy)
+    (flow_to, FlowTo)
+    (labelled_by, LabelledBy)
+    /// On radio buttons this should be set to a list of all of the buttons
+    /// in the same group as this one, including this radio button itself.
+    (radio_group, RadioGroup)
+}
 
-    pub fn previous_focus(&self) -> Option<NodeId> {
-        self.get_node_id(PropertyId::PreviousFocus)
-    }
-    pub fn set_previous_focus(&mut self, value: NodeId) {
-        self.set_node_id(PropertyId::PreviousFocus, value);
-    }
-    pub fn clear_previous_focus(&mut self) {
-        self.clear_property(PropertyId::PreviousFocus);
-    }
+node_id_property_methods! {
+    (active_descendant, ActiveDescendant)
+    (error_message, ErrorMessage)
+    (in_page_link_target, InPageLinkTarget)
+    (member_of, MemberOf)
+    (next_on_line, NextOnLine)
+    (previous_on_line, PreviousOnLine)
+    (popup_for, PopupFor)
+    (table_header, TableHeader)
+    (table_row_header, TableRowHeader)
+    (table_column_header, TableColumnHeader)
+    (next_focus, NextFocus)
+    (previous_focus, PreviousFocus)
+}
 
-    pub fn next_focus(&self) -> Option<NodeId> {
-        self.get_node_id(PropertyId::NextFocus)
-    }
-    pub fn set_next_focus(&mut self, value: NodeId) {
-        self.set_node_id(PropertyId::NextFocus, value);
-    }
-    pub fn clear_next_focus(&mut self) {
-        self.clear_property(PropertyId::NextFocus);
-    }
+string_property_methods! {
+    (name, Name)
+    (description, Description)
+    (value, Value)
+    (access_key, AccessKey)
+    (auto_complete, AutoComplete)
+    (checked_state_description, CheckedStateDescription)
+    (class_name, ClassName)
+    (css_display, CssDisplay)
+    /// Only present when different from parent.
+    (font_family, FontFamily)
+    (html_tag, HtmlTag)
+    /// Inner HTML of an element. Only used for a top-level math element,
+    /// to support third-party math accessibility products that parse MathML.
+    (inner_html, InnerHtml)
+    (input_type, InputType)
+    (key_shortcuts, KeyShortcuts)
+    /// Only present when different from parent.
+    (language, Language)
+    (live_relevant, LiveRelevant)
+    /// Only if not already exposed in [`name`] ([`NameFrom::Placeholder`]).
+    ///
+    /// [`name`]: NodeProvider::name
+    (placeholder, Placeholder)
+    (aria_role, AriaRole)
+    (role_description, RoleDescription)
+    /// Only if not already exposed in [`name`] ([`NameFrom::Title`]).
+    ///
+    /// [`name`]: NodeProvider::name
+    (tooltip, Tooltip)
+    (url, Url)
+}
 
-    // Numeric value attributes.
-
-    pub fn numeric_value(&self) -> Option<f64> {
-        self.get_f64(PropertyId::NumericValue)
-    }
-    pub fn set_numeric_value(&mut self, value: f64) {
-        self.set_f64(PropertyId::NumericValue, value);
-    }
-    pub fn clear_numeric_value(&mut self) {
-        self.clear_property(PropertyId::NumericValue);
-    }
-
-    pub fn min_numeric_value(&self) -> Option<f64> {
-        self.get_f64(PropertyId::MinNumericValue)
-    }
-    pub fn set_min_numeric_value(&mut self, value: f64) {
-        self.set_f64(PropertyId::MinNumericValue, value);
-    }
-    pub fn clear_min_numeric_value(&mut self) {
-        self.clear_property(PropertyId::MinNumericValue);
-    }
-
-    pub fn max_numeric_value(&self) -> Option<f64> {
-        self.get_f64(PropertyId::MaxNumericValue)
-    }
-    pub fn set_max_numeric_value(&mut self, value: f64) {
-        self.set_f64(PropertyId::MaxNumericValue, value);
-    }
-    pub fn clear_max_numeric_value(&mut self) {
-        self.clear_property(PropertyId::MaxNumericValue);
-    }
-
-    pub fn numeric_value_step(&self) -> Option<f64> {
-        self.get_f64(PropertyId::NumericValueStep)
-    }
-    pub fn set_numeric_value_step(&mut self, value: f64) {
-        self.set_f64(PropertyId::NumericValueStep, value);
-    }
-    pub fn clear_numeric_value_step(&mut self) {
-        self.clear_property(PropertyId::NumericValueStep);
-    }
-
-    pub fn numeric_value_jump(&self) -> Option<f64> {
-        self.get_f64(PropertyId::NumericValueJump)
-    }
-    pub fn set_numeric_value_jump(&mut self, value: f64) {
-        self.set_f64(PropertyId::NumericValueJump, value);
-    }
-    pub fn clear_numeric_value_jump(&mut self) {
-        self.clear_property(PropertyId::NumericValueJump);
-    }
-
+f64_property_methods! {
+    (scroll_x, ScrollX)
+    (scroll_x_min, ScrollXMin)
+    (scroll_x_max, ScrollXMax)
+    (scroll_y, ScrollY)
+    (scroll_y_min, ScrollYMin)
+    (scroll_y_max, ScrollYMax)
+    (numeric_value, NumericValue)
+    (min_numeric_value, MinNumericValue)
+    (max_numeric_value, MaxNumericValue)
+    (numeric_value_step, NumericValueStep)
+    (numeric_value_jump, NumericValueJump)
     /// Font size is in pixels.
-    pub fn font_size(&self) -> Option<f64> {
-        self.get_f64(PropertyId::FontSize)
-    }
-    pub fn set_font_size(&mut self, value: f64) {
-        self.set_f64(PropertyId::FontSize, value);
-    }
-    pub fn clear_font_size(&mut self) {
-        self.clear_property(PropertyId::FontSize);
-    }
-
+    (font_size, FontSize)
     /// Font weight can take on any arbitrary numeric value. Increments of 100 in
     /// range `[0, 900]` represent keywords such as light, normal, bold, etc.
-    pub fn font_weight(&self) -> Option<f64> {
-        self.get_f64(PropertyId::FontWeight)
+    (font_weight, FontWeight)
+    /// The indentation of the text, in mm.
+    (text_indent, TextIndent)
+}
+
+usize_property_methods! {
+    (aria_column_count, AriaColumnCount)
+    (aria_cell_column_index, AriaCellColumnIndex)
+    (aria_cell_column_span, AriaCellColumnSpan)
+    (aria_row_count, AriaRowCount)
+    (aria_cell_row_index, AriaCellRowIndex)
+    (aria_cell_row_span, AriaCellRowSpan)
+    (table_row_count, TableRowCount)
+    (table_column_count, TableColumnCount)
+    (table_row_index, TableRowIndex)
+    (table_column_index, TableColumnIndex)
+    (table_cell_column_index, TableCellColumnIndex)
+    (table_cell_column_span, TableCellColumnSpan)
+    (table_cell_row_index, TableCellRowIndex)
+    (table_cell_row_span, TableCellRowSpan)
+    (hierarchical_level, HierarchicalLevel)
+    (size_of_set, SizeOfSet)
+    (position_in_set, PositionInSet)
+}
+
+color_property_methods! {
+    /// For [`Role::ColorWell`], specifies the selected color in RGBA.
+    (color_value, ColorValue)
+    /// Background color in RGBA.
+    (background_color, BackgroundColor)
+    /// Foreground color in RGBA.
+    (foreground_color, ForegroundColor)
+}
+
+length_slice_property_methods! {
+    /// For inline text. The length (non-inclusive) of each character
+    /// in UTF-8 code units (bytes). The sum of these lengths must equal
+    /// the length of [`value`], also in bytes.
+    ///
+    /// A character is defined as the smallest unit of text that
+    /// can be selected. This isn't necessarily a single Unicode
+    /// scalar value (code point). This is why AccessKit can't compute
+    /// the lengths of the characters from the text itself; this information
+    /// must be provided by the text editing implementation.
+    ///
+    /// If this node is the last text box in a line that ends with a hard
+    /// line break, that line break should be included at the end of this
+    /// node's value as either a CRLF or LF; in both cases, the line break
+    /// should be counted as a single character for the sake of this slice.
+    /// When the caret is at the end of such a line, the focus of the text
+    /// selection should be on the line break, not after it.
+    ///
+    /// [`value`]: NodeProvider::value
+    (character_lengths, CharacterLengths)
+
+    /// For inline text. The length of each word in characters, as defined
+    /// in [`character_lengths`]. The sum of these lengths must equal
+    /// the length of [`character_lengths`].
+    ///
+    /// The end of each word is the beginning of the next word; there are no
+    /// characters that are not considered part of a word. Trailing whitespace
+    /// is typically considered part of the word that precedes it, while
+    /// a line's leading whitespace is considered its own word. Whether
+    /// punctuation is considered a separate word or part of the preceding
+    /// word depends on the particular text editing implementation.
+    /// Some editors may have their own definition of a word; for example,
+    /// in an IDE, words may correspond to programming language tokens.
+    ///
+    /// Not all assistive technologies require information about word
+    /// boundaries, and not all platform accessibility APIs even expose
+    /// this information, but for assistive technologies that do use
+    /// this information, users will get unpredictable results if the word
+    /// boundaries exposed by the accessibility tree don't match
+    /// the editor's behavior. This is why AccessKit does not determine
+    /// word boundaries itself.
+    ///
+    /// [`character_lengths`]: NodeProvider::character_lengths
+    (word_lengths, WordLengths)
+}
+
+coord_slice_property_methods! {
+    /// For inline text. This is the position of each character within
+    /// the node's bounding box, in the direction given by
+    /// [`text_direction`], in the coordinate space of this node.
+    ///
+    /// When present, the length of this slice should be the same as the length
+    /// of [`character_lengths`], including for lines that end
+    /// with a hard line break. The position of such a line break should
+    /// be the position where an end-of-paragraph marker would be rendered.
+    ///
+    /// This property is optional. Without it, AccessKit can't support some
+    /// use cases, such as screen magnifiers that track the caret position
+    /// or screen readers that display a highlight cursor. However,
+    /// most text functionality still works without this information.
+    ///
+    /// [`text_direction`]: NodeProvider::text_direction
+    /// [`character_lengths`]: NodeProvider::character_lengths
+    (character_positions, CharacterPositions)
+
+    /// For inline text. This is the advance width of each character,
+    /// in the direction given by [`text_direction`], in the coordinate
+    /// space of this node.
+    ///
+    /// When present, the length of this slice should be the same as the length
+    /// of [`character_lengths`], including for lines that end
+    /// with a hard line break. The width of such a line break should
+    /// be non-zero if selecting the line break by itself results in
+    /// a visible highlight (as in Microsoft Word), or zero if not
+    /// (as in Windows Notepad).
+    ///
+    /// This property is optional. Without it, AccessKit can't support some
+    /// use cases, such as screen magnifiers that track the caret position
+    /// or screen readers that display a highlight cursor. However,
+    /// most text functionality still works without this information.
+    ///
+    /// [`text_direction`]: NodeProvider::text_direction
+    /// [`character_lengths`]: NodeProvider::character_lengths
+    (character_widths, CharacterWidths)
+}
+
+property_methods! {
+    /// An affine transform to apply to any coordinates within this node
+    /// and its descendants, including the [`bounds`] property of this node.
+    /// The combined transforms of this node and its ancestors define
+    /// the coordinate space of this node. /// This should be `None` if
+    /// it would be set to the identity transform, which should be the case
+    /// for most nodes.
+    ///
+    /// AccessKit expects the final transformed coordinates to be relative
+    /// to the origin of the tree's container (e.g. window), in physical
+    /// pixels, with the y coordinate being top-down.
+    ///
+    /// [`bounds`]: NodeProvider::bounds
+    (transform, Transform, affine, Option<Affine>, Affine)
+
+    /// The bounding box of this node, in the node's coordinate space.
+    /// This property does not affect the coordinate space of either this node
+    /// or its descendants; only the [`transform`] property affects that.
+    /// This, along with the recommendation that most nodes should have
+    /// a [`transform`] of `None`, implies that the `bounds` property
+    /// of most nodes should be in the coordinate space of the nearest ancestor
+    /// with a non-`None` [`transform`], or if there is no such ancestor,
+    /// the tree's container (e.g. window).
+    ///
+    /// [`transform`]: NodeProvider::transform
+    (bounds, Bounds, rect, Option<Rect>, Rect)
+}
+
+impl Node {
+    pub fn text_selection(&self) -> Option<TextSelection> {
+        match self.get_property(PropertyId::TextSelection) {
+            Property::None => None,
+            Property::TextSelection(value) => Some(*value),
+            _ => panic!(),
+        }
     }
-    pub fn set_font_weight(&mut self, value: f64) {
-        self.set_f64(PropertyId::FontWeight, value);
+    pub fn set_text_selection(&mut self, value: TextSelection) {
+        self.set_property(PropertyId::TextSelection, Property::TextSelection(value));
     }
-    pub fn clear_font_weight(&mut self) {
-        self.clear_property(PropertyId::FontWeight);
+    pub fn clear_text_selection(&mut self) {
+        self.clear_property(PropertyId::TextSelection);
     }
 
-    /// The text indent of the text, in mm.
-    pub fn text_indent(&self) -> Option<f64> {
-        self.get_f64(PropertyId::TextIndent)
+    pub fn custom_actions(&self) -> &[CustomAction] {
+        match self.get_property(PropertyId::CustomActions) {
+            Property::None => &[],
+            Property::CustomActionVec(value) => value,
+            _ => panic!(),
+        }
     }
-    pub fn set_text_indent(&mut self, value: f64) {
-        self.set_f64(PropertyId::TextIndent, value);
+    pub fn set_custom_actions(&mut self, value: impl Into<Vec<CustomAction>>) {
+        self.set_property(
+            PropertyId::CustomActions,
+            Property::CustomActionVec(value.into()),
+        );
     }
-    pub fn clear_text_indent(&mut self) {
-        self.clear_property(PropertyId::TextIndent);
+    pub fn push_to_custom_actions(&mut self, action: CustomAction) {
+        match self.get_property_mut(
+            PropertyId::CustomActions,
+            Property::CustomActionVec(Vec::new()),
+        ) {
+            Property::CustomActionVec(v) => {
+                v.push(action);
+            }
+            _ => panic!(),
+        }
+    }
+    pub fn clear_custom_actions(&mut self) {
+        self.clear_property(PropertyId::CustomActions);
     }
 }
 

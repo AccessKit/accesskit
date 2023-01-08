@@ -8,6 +8,7 @@ version = "0.8.1"
 dependencies = [
  "enumset",
  "kurbo",
+ "paste",
  "schemars",
  "serde",
 ]
