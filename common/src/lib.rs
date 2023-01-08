@@ -769,6 +769,25 @@ impl Default for PropertyIndices {
     }
 }
 
+macro_rules! optional_enum_methods {
+    ($($(#[$doc:meta])* ($base_name:ident, $type:ty))+) => {
+        paste! {
+            impl Node {
+                $($(#[$doc])*
+                pub fn $base_name(&self) -> Option<$type> {
+                    self.$base_name
+                }
+                pub fn [< set_ $base_name >](&mut self, value: $type) {
+                    self.$base_name = Some(value);
+                }
+                pub fn [< clear_ $base_name >](&mut self) {
+                    self.$base_name = None;
+                })*
+            }
+        }
+    }
+}
+
 macro_rules! property_methods {
     ($($(#[$doc:meta])* ($base_name:ident, $id:ident, $type_method_base:ident, $getter_result:ty, $setter_param:ty))+) => {
         paste! {
@@ -1429,179 +1448,29 @@ impl Node {
     pub fn clear_selected(&mut self) {
         self.selected = None;
     }
+}
 
+optional_enum_methods! {
     /// What information was used to compute the object's name.
-    pub fn name_from(&self) -> Option<NameFrom> {
-        self.name_from
-    }
-    pub fn set_name_from(&mut self, value: NameFrom) {
-        self.name_from = Some(value);
-    }
-    pub fn clear_name_from(&mut self) {
-        self.name_from = None;
-    }
-
+    (name_from, NameFrom)
     /// What information was used to compute the object's description.
-    pub fn description_from(&self) -> Option<DescriptionFrom> {
-        self.description_from
-    }
-    pub fn set_description_from(&mut self, value: DescriptionFrom) {
-        self.description_from = Some(value);
-    }
-    pub fn clear_description_from(&mut self) {
-        self.description_from = None;
-    }
-
-    pub fn invalid(&self) -> Option<Invalid> {
-        self.invalid
-    }
-    pub fn set_invalid(&mut self, value: Invalid) {
-        self.invalid = Some(value);
-    }
-    pub fn clear_invalid(&mut self) {
-        self.invalid = None;
-    }
-
-    pub fn checked_state(&self) -> Option<CheckedState> {
-        self.checked_state
-    }
-    pub fn set_checked_state(&mut self, value: CheckedState) {
-        self.checked_state = Some(value);
-    }
-    pub fn clear_checked_state(&mut self) {
-        self.checked_state = None;
-    }
-
-    pub fn live(&self) -> Option<Live> {
-        self.live
-    }
-    pub fn set_live(&mut self, value: Live) {
-        self.live = Some(value);
-    }
-    pub fn clear_live(&mut self) {
-        self.live = None;
-    }
-
-    pub fn default_action_verb(&self) -> Option<DefaultActionVerb> {
-        self.default_action_verb
-    }
-    pub fn set_default_action_verb(&mut self, value: DefaultActionVerb) {
-        self.default_action_verb = Some(value);
-    }
-    pub fn clear_default_action_verb(&mut self) {
-        self.default_action_verb = None;
-    }
-
-    pub fn text_direction(&self) -> Option<TextDirection> {
-        self.text_direction
-    }
-    pub fn set_text_direction(&mut self, value: TextDirection) {
-        self.text_direction = Some(value);
-    }
-    pub fn clear_text_direction(&mut self) {
-        self.text_direction = None;
-    }
-
-    pub fn orientation(&self) -> Option<Orientation> {
-        self.orientation
-    }
-    pub fn set_orientation(&mut self, value: Orientation) {
-        self.orientation = Some(value);
-    }
-    pub fn clear_orientation(&mut self) {
-        self.orientation = None;
-    }
-
-    pub fn sort_direction(&self) -> Option<SortDirection> {
-        self.sort_direction
-    }
-    pub fn set_sort_direction(&mut self, value: SortDirection) {
-        self.sort_direction = Some(value);
-    }
-    pub fn clear_sort_direction(&mut self) {
-        self.sort_direction = None;
-    }
-
-    pub fn aria_current(&self) -> Option<AriaCurrent> {
-        self.aria_current
-    }
-    pub fn set_aria_current(&mut self, value: AriaCurrent) {
-        self.aria_current = Some(value);
-    }
-    pub fn clear_aria_current(&mut self) {
-        self.aria_current = None;
-    }
-
-    pub fn has_popup(&self) -> Option<HasPopup> {
-        self.has_popup
-    }
-    pub fn set_has_popup(&mut self, value: HasPopup) {
-        self.has_popup = Some(value);
-    }
-    pub fn clear_has_popup(&mut self) {
-        self.has_popup = None;
-    }
-
+    (description_from, DescriptionFrom)
+    (invalid, Invalid)
+    (checked_state, CheckedState)
+    (live, Live)
+    (default_action_verb, DefaultActionVerb)
+    (text_direction, TextDirection)
+    (orientation, Orientation)
+    (sort_direction, SortDirection)
+    (aria_current, AriaCurrent)
+    (has_popup, HasPopup)
     /// The list style type. Only available on list items.
-    pub fn list_style(&self) -> Option<ListStyle> {
-        self.list_style
-    }
-    pub fn set_list_style(&mut self, value: ListStyle) {
-        self.list_style = Some(value);
-    }
-    pub fn clear_list_style(&mut self) {
-        self.list_style = None;
-    }
-
-    pub fn text_align(&self) -> Option<TextAlign> {
-        self.text_align
-    }
-    pub fn set_text_align(&mut self, value: TextAlign) {
-        self.text_align = Some(value);
-    }
-    pub fn clear_text_align(&mut self) {
-        self.text_align = None;
-    }
-
-    pub fn vertical_offset(&self) -> Option<VerticalOffset> {
-        self.vertical_offset
-    }
-    pub fn set_vertical_offset(&mut self, value: VerticalOffset) {
-        self.vertical_offset = Some(value);
-    }
-    pub fn clear_vertical_offset(&mut self) {
-        self.vertical_offset = None;
-    }
-
-    pub fn overline(&self) -> Option<TextDecoration> {
-        self.overline
-    }
-    pub fn set_overline(&mut self, value: TextDecoration) {
-        self.overline = Some(value);
-    }
-    pub fn clear_overline(&mut self) {
-        self.overline = None;
-    }
-
-    pub fn strikethrough(&self) -> Option<TextDecoration> {
-        self.strikethrough
-    }
-    pub fn set_strikethrough(&mut self, value: TextDecoration) {
-        self.strikethrough = Some(value);
-    }
-    pub fn clear_strikethrough(&mut self) {
-        self.strikethrough = None;
-    }
-
-    pub fn underline(&self) -> Option<TextDecoration> {
-        self.underline
-    }
-    pub fn set_underline(&mut self, value: TextDecoration) {
-        self.underline = Some(value);
-    }
-    pub fn clear_underline(&mut self) {
-        self.underline = None;
-    }
+    (list_style, ListStyle)
+    (text_align, TextAlign)
+    (vertical_offset, VerticalOffset)
+    (overline, TextDecoration)
+    (strikethrough, TextDecoration)
+    (underline, TextDecoration)
 }
 
 node_id_vec_property_methods! {
