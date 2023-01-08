@@ -631,398 +631,328 @@ pub struct TextSelection {
     pub focus: TextPosition,
 }
 
+// The following is based on the technique described here:
+// https://viruta.org/reducing-memory-consumption-in-librsvg-2.html
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(u8)]
+enum PropertyId {
+    Transform,
+    Bounds,
+    Children,
+    Name,
+    Description,
+    Value,
+    IndirectChildren,
+    ActiveDescendant,
+    ErrorMessage,
+    InPageLinkTarget,
+    MemberOf,
+    NextOnLine,
+    PreviousOnLine,
+    PopupFor,
+    Controls,
+    Details,
+    DescribedBy,
+    FlowTo,
+    LabelledBy,
+    RadioGroup,
+    CharacterLengths,
+    CharacterPositions,
+    CharacterWidths,
+    WordLengths,
+    CustomActions,
+    AccessKey,
+    AutoComplete,
+    CheckedStateDescription,
+    ClassName,
+    CssDisplay,
+    FontFamily,
+    HtmlTag,
+    InnerHtml,
+    InputType,
+    KeyShortcuts,
+    Language,
+    LiveRelevant,
+    Placeholder,
+    AriaRole,
+    RoleDescription,
+    Tooltip,
+    Url,
+    ScrollX,
+    ScrollXMin,
+    ScrollXMax,
+    ScrollY,
+    ScrollYMin,
+    ScrollYMax,
+    TextSelection,
+    AriaColumnCount,
+    AriaCellColumnIndex,
+    AriaCellColumnSpan,
+    AriaRowCount,
+    AriaCellRowIndex,
+    AriaCellRowSpan,
+    TableRowCount,
+    TableColumnCount,
+    TableHeader,
+    TableRowIndex,
+    TableRowHeader,
+    TableColumnIndex,
+    TableColumnHeader,
+    TableCellColumnIndex,
+    TableCellColumnSpan,
+    TableCellRowIndex,
+    TableCellRowSpan,
+    HierarchicalLevel,
+    SizeOfSet,
+    PositionInSet,
+    ColorValue,
+    BackgroundColor,
+    ForegroundColor,
+    PreviousFocus,
+    NextFocus,
+    NumericValue,
+    MinNumericValue,
+    MaxNumericValue,
+    NumericValueStep,
+    NumericValueJump,
+    FontSize,
+    FontWeight,
+    TextIndent,
+
+    // This should come last.
+    Unset,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum Property {
+    None,
+    Affine(Affine),
+    Rect(Rect),
+    NodeIdVec(Vec<NodeId>),
+    NodeId(NodeId),
+    String(Box<str>),
+    U8Slice(Box<[u8]>),
+    F32Slice(Box<[f32]>),
+    CustomActionVec(Vec<CustomAction>),
+    F64(f64),
+    TextSelection(TextSelection),
+    Usize(usize),
+    U32(u32),
+}
+
 /// A single accessible object. A complete UI is represented as a tree of these.
 ///
 /// For brevity, and to make more of the documentation usable in bindings
 /// to other languages, documentation of getter methods is written as if
 /// documenting fields in a struct, and such methods are referred to
 /// as properties.
-#[derive(Clone, Debug, Default, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Node {
     role: Role,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    transform: Option<Box<Affine>>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    bounds: Option<Rect>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    children: Vec<NodeId>,
-
-    /// Unordered set of actions supported by this node.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "EnumSet::is_empty"))]
+    indices: [u8; PropertyId::Unset as usize],
+    props: Vec<Property>,
     actions: EnumSet<Action>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    name: Option<Box<str>>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     name_from: Option<NameFrom>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    description: Option<Box<str>>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     description_from: Option<DescriptionFrom>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    value: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     autofill_available: bool,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     expanded: Option<bool>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     default: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     editable: bool,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     orientation: Option<Orientation>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     hovered: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     hidden: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     linked: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     multiline: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     multiselectable: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     protected: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     required: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     visited: bool,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     busy: bool,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     nonatomic_text_field_root: bool,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     live_atomic: bool,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     modal: bool,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     canvas_has_fallback: bool,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     scrollable: bool,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     clips_children: bool,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     not_user_selectable_style: bool,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     selected: Option<bool>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     selected_from_focus: bool,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     is_line_breaking_object: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     is_page_breaking_object: bool,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     has_aria_attribute: bool,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     touch_pass_through: bool,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    indirect_children: Vec<NodeId>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    active_descendant: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    error_message: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    in_page_link_target: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    member_of: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    next_on_line: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    previous_on_line: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    popup_for: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    controls: Vec<NodeId>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    details: Vec<NodeId>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    described_by: Vec<NodeId>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    flow_to: Vec<NodeId>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    labelled_by: Vec<NodeId>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    radio_group: Vec<NodeId>,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     is_spelling_error: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     is_grammar_error: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     is_search_match: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     is_suggestion: bool,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     text_direction: Option<TextDirection>,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    character_lengths: Box<[u8]>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    character_positions: Option<Box<[f32]>>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    character_widths: Option<Box<[f32]>>,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    word_lengths: Box<[u8]>,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    custom_actions: Vec<CustomAction>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    access_key: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     invalid: Option<Invalid>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    auto_complete: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     checked_state: Option<CheckedState>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    checked_state_description: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    class_name: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    css_display: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    font_family: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    html_tag: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    inner_html: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    input_type: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    key_shortcuts: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    language: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    live_relevant: Option<Box<str>>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     live: Option<Live>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    placeholder: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    aria_role: Option<Box<str>>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    role_description: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    tooltip: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    url: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     default_action_verb: Option<DefaultActionVerb>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    scroll_x: Option<f32>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    scroll_x_min: Option<f32>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    scroll_x_max: Option<f32>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    scroll_y: Option<f32>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    scroll_y_min: Option<f32>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    scroll_y_max: Option<f32>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    text_selection: Option<TextSelection>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    aria_column_count: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    aria_cell_column_index: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    aria_cell_column_span: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    aria_row_count: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    aria_cell_row_index: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    aria_cell_row_span: Option<usize>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    table_row_count: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    table_column_count: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    table_header: Option<NodeId>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    table_row_index: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    table_row_header: Option<NodeId>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    table_column_index: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    table_column_header: Option<NodeId>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    table_cell_column_index: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    table_cell_column_span: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    table_cell_row_index: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    table_cell_row_span: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     sort_direction: Option<SortDirection>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    hierarchical_level: Option<usize>,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     read_only: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     disabled: bool,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    size_of_set: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    position_in_set: Option<usize>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    color_value: Option<u32>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     aria_current: Option<AriaCurrent>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    background_color: Option<u32>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    foreground_color: Option<u32>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     has_popup: Option<HasPopup>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     list_style: Option<ListStyle>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     text_align: Option<TextAlign>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     vertical_offset: Option<VerticalOffset>,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     bold: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
     italic: bool,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     overline: Option<TextDecoration>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     strikethrough: Option<TextDecoration>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     underline: Option<TextDecoration>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    previous_focus: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    next_focus: Option<NodeId>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    numeric_value: Option<f64>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    min_numeric_value: Option<f64>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    max_numeric_value: Option<f64>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    numeric_value_step: Option<f64>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    numeric_value_jump: Option<f64>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    font_size: Option<f32>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    font_weight: Option<f32>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    text_indent: Option<f32>,
 }
 
 impl Node {
+    fn get_property(&self, id: PropertyId) -> &Property {
+        let index = self.indices[id as usize];
+        if index == PropertyId::Unset as u8 {
+            &Property::None
+        } else {
+            &self.props[index as usize]
+        }
+    }
+
+    fn get_property_mut(&mut self, id: PropertyId, default: Property) -> &mut Property {
+        let index = self.indices[id as usize] as usize;
+        if index == PropertyId::Unset as usize {
+            self.props.push(default);
+            let index = self.props.len() - 1;
+            self.indices[id as usize] = index as u8;
+            &mut self.props[index]
+        } else {
+            if matches!(self.props[index], Property::None) {
+                self.props[index] = default;
+            }
+            &mut self.props[index]
+        }
+    }
+
+    fn set_property(&mut self, id: PropertyId, value: Property) {
+        let index = self.indices[id as usize];
+        if index == PropertyId::Unset as u8 {
+            self.props.push(value);
+            self.indices[id as usize] = (self.props.len() - 1) as u8;
+        } else {
+            self.props[index as usize] = value;
+        }
+    }
+
+    fn clear_property(&mut self, id: PropertyId) {
+        let index = self.indices[id as usize];
+        if index != PropertyId::Unset as u8 {
+            self.props[index as usize] = Property::None;
+        }
+    }
+
+    fn get_node_id_vec(&self, id: PropertyId) -> &[NodeId] {
+        match self.get_property(id) {
+            Property::None => &[],
+            Property::NodeIdVec(value) => value,
+            _ => panic!(),
+        }
+    }
+
+    fn push_to_node_id_vec(&mut self, property_id: PropertyId, node_id: NodeId) {
+        match self.get_property_mut(property_id, Property::NodeIdVec(Vec::new())) {
+            Property::NodeIdVec(v) => {
+                v.push(node_id);
+            }
+            _ => panic!(),
+        }
+    }
+
+    fn set_node_id_vec(&mut self, id: PropertyId, value: impl Into<Vec<NodeId>>) {
+        self.set_property(id, Property::NodeIdVec(value.into()));
+    }
+
+    fn get_node_id(&self, id: PropertyId) -> Option<NodeId> {
+        match self.get_property(id) {
+            Property::None => None,
+            Property::NodeId(value) => Some(*value),
+            _ => panic!(),
+        }
+    }
+
+    fn set_node_id(&mut self, id: PropertyId, value: NodeId) {
+        self.set_property(id, Property::NodeId(value));
+    }
+
+    fn get_string(&self, id: PropertyId) -> Option<&str> {
+        match self.get_property(id) {
+            Property::None => None,
+            Property::String(value) => Some(value),
+            _ => panic!(),
+        }
+    }
+
+    fn set_string(&mut self, id: PropertyId, value: impl Into<Box<str>>) {
+        self.set_property(id, Property::String(value.into()));
+    }
+
+    fn get_u8_slice(&self, id: PropertyId) -> &[u8] {
+        match self.get_property(id) {
+            Property::None => &[],
+            Property::U8Slice(value) => value,
+            _ => panic!(),
+        }
+    }
+
+    fn set_u8_slice(&mut self, id: PropertyId, value: impl Into<Box<[u8]>>) {
+        self.set_property(id, Property::U8Slice(value.into()));
+    }
+
+    fn get_optional_f32_slice(&self, id: PropertyId) -> Option<&[f32]> {
+        match self.get_property(id) {
+            Property::None => None,
+            Property::F32Slice(value) => Some(value),
+            _ => panic!(),
+        }
+    }
+
+    fn set_f32_slice(&mut self, id: PropertyId, value: impl Into<Box<[f32]>>) {
+        self.set_property(id, Property::F32Slice(value.into()));
+    }
+
+    fn get_f64(&self, id: PropertyId) -> Option<f64> {
+        match self.get_property(id) {
+            Property::None => None,
+            Property::F64(value) => Some(*value),
+            _ => panic!(),
+        }
+    }
+
+    fn set_f64(&mut self, id: PropertyId, value: f64) {
+        self.set_property(id, Property::F64(value));
+    }
+
+    fn get_usize(&self, id: PropertyId) -> Option<usize> {
+        match self.get_property(id) {
+            Property::None => None,
+            Property::Usize(value) => Some(*value),
+            _ => panic!(),
+        }
+    }
+
+    fn set_usize(&mut self, id: PropertyId, value: usize) {
+        self.set_property(id, Property::Usize(value));
+    }
+
+    fn get_u32(&self, id: PropertyId) -> Option<u32> {
+        match self.get_property(id) {
+            Property::None => None,
+            Property::U32(value) => Some(*value),
+            _ => panic!(),
+        }
+    }
+
+    fn set_u32(&mut self, id: PropertyId, value: u32) {
+        self.set_property(id, Property::U32(value));
+    }
+
     pub fn new(role: Role) -> Self {
         Self {
             role,
@@ -1050,13 +980,17 @@ impl Node {
     ///
     /// [`bounds`]: NodeProvider::bounds
     pub fn transform(&self) -> Option<Affine> {
-        self.transform.as_ref().map(|v| **v)
+        match self.get_property(PropertyId::Transform) {
+            Property::None => None,
+            Property::Affine(value) => Some(*value),
+            _ => panic!(),
+        }
     }
     pub fn set_transform(&mut self, value: Affine) {
-        self.transform = Some(Box::new(value));
+        self.set_property(PropertyId::Transform, Property::Affine(value));
     }
     pub fn clear_transform(&mut self) {
-        self.transform = None;
+        self.clear_property(PropertyId::Transform);
     }
 
     /// The bounding box of this node, in the node's coordinate space.
@@ -1070,26 +1004,30 @@ impl Node {
     ///
     /// [`transform`]: NodeProvider::transform
     pub fn bounds(&self) -> Option<Rect> {
-        self.bounds
+        match self.get_property(PropertyId::Bounds) {
+            Property::None => None,
+            Property::Rect(value) => Some(*value),
+            _ => panic!(),
+        }
     }
     pub fn set_bounds(&mut self, value: Rect) {
-        self.bounds = Some(value);
+        self.set_property(PropertyId::Bounds, Property::Rect(value));
     }
     pub fn clear_bounds(&mut self) {
-        self.bounds = None;
+        self.clear_property(PropertyId::Bounds);
     }
 
     pub fn children(&self) -> &[NodeId] {
-        &self.children
+        self.get_node_id_vec(PropertyId::Children)
     }
     pub fn set_children(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.children = value.into();
+        self.set_node_id_vec(PropertyId::Children, value);
     }
     pub fn push_child(&mut self, id: NodeId) {
-        self.children.push(id);
+        self.push_to_node_id_vec(PropertyId::Children, id);
     }
     pub fn clear_children(&mut self) {
-        self.children.clear();
+        self.clear_property(PropertyId::Children);
     }
 
     pub fn supports_action(&self, action: Action) -> bool {
@@ -1106,13 +1044,13 @@ impl Node {
     }
 
     pub fn name(&self) -> Option<&str> {
-        self.name.as_deref()
+        self.get_string(PropertyId::Name)
     }
     pub fn set_name(&mut self, value: impl Into<Box<str>>) {
-        self.name = Some(value.into());
+        self.set_string(PropertyId::Name, value);
     }
     pub fn clear_name(&mut self) {
-        self.name = None;
+        self.clear_property(PropertyId::Name);
     }
 
     /// What information was used to compute the object's name.
@@ -1127,13 +1065,13 @@ impl Node {
     }
 
     pub fn description(&self) -> Option<&str> {
-        self.description.as_deref()
+        self.get_string(PropertyId::Description)
     }
     pub fn set_description(&mut self, value: impl Into<Box<str>>) {
-        self.description = Some(value.into());
+        self.set_string(PropertyId::Description, value);
     }
     pub fn clear_description(&mut self) {
-        self.description = None;
+        self.clear_property(PropertyId::Description);
     }
 
     /// What information was used to compute the object's description.
@@ -1148,13 +1086,13 @@ impl Node {
     }
 
     pub fn value(&self) -> Option<&str> {
-        self.value.as_deref()
+        self.get_string(PropertyId::Value)
     }
     pub fn set_value(&mut self, value: impl Into<Box<str>>) {
-        self.value = Some(value.into());
+        self.set_string(PropertyId::Value, value);
     }
     pub fn clear_value(&mut self) {
-        self.value = None;
+        self.clear_property(PropertyId::Value);
     }
 
     pub fn is_autofill_available(&self) -> bool {
@@ -1399,168 +1337,168 @@ impl Node {
     /// a table cell is a child of a row, and an 'indirect' child of a
     /// column.
     pub fn indirect_children(&self) -> &[NodeId] {
-        &self.indirect_children
+        self.get_node_id_vec(PropertyId::IndirectChildren)
     }
     pub fn set_indirect_children(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.indirect_children = value.into();
+        self.set_node_id_vec(PropertyId::IndirectChildren, value);
     }
     pub fn push_indirect_child(&mut self, id: NodeId) {
-        self.indirect_children.push(id);
+        self.push_to_node_id_vec(PropertyId::IndirectChildren, id);
     }
     pub fn clear_indirect_children(&mut self) {
-        self.indirect_children.clear();
+        self.clear_property(PropertyId::IndirectChildren);
     }
 
     // Relationships between this node and other nodes.
 
     pub fn active_descendant(&self) -> Option<NodeId> {
-        self.active_descendant
+        self.get_node_id(PropertyId::ActiveDescendant)
     }
     pub fn set_active_descendant(&mut self, value: NodeId) {
-        self.active_descendant = Some(value);
+        self.set_node_id(PropertyId::ActiveDescendant, value);
     }
     pub fn clear_active_descendant(&mut self) {
-        self.active_descendant = None;
+        self.clear_property(PropertyId::ActiveDescendant);
     }
 
     pub fn error_message(&self) -> Option<NodeId> {
-        self.error_message
+        self.get_node_id(PropertyId::ErrorMessage)
     }
     pub fn set_error_message(&mut self, value: NodeId) {
-        self.error_message = Some(value);
+        self.set_node_id(PropertyId::ErrorMessage, value);
     }
     pub fn clear_error_message(&mut self) {
-        self.error_message = None;
+        self.clear_property(PropertyId::ErrorMessage);
     }
 
     pub fn in_page_link_target(&self) -> Option<NodeId> {
-        self.in_page_link_target
+        self.get_node_id(PropertyId::InPageLinkTarget)
     }
     pub fn set_in_page_link_target(&mut self, value: NodeId) {
-        self.in_page_link_target = Some(value);
+        self.set_node_id(PropertyId::InPageLinkTarget, value);
     }
     pub fn clear_in_page_link_target(&mut self) {
-        self.in_page_link_target = None;
+        self.clear_property(PropertyId::InPageLinkTarget);
     }
 
     pub fn member_of(&self) -> Option<NodeId> {
-        self.member_of
+        self.get_node_id(PropertyId::MemberOf)
     }
     pub fn set_member_of(&mut self, value: NodeId) {
-        self.member_of = Some(value);
+        self.set_node_id(PropertyId::MemberOf, value);
     }
     pub fn clear_member_of(&mut self) {
-        self.member_of = None;
+        self.clear_property(PropertyId::MemberOf);
     }
 
     pub fn next_on_line(&self) -> Option<NodeId> {
-        self.next_on_line
+        self.get_node_id(PropertyId::NextOnLine)
     }
     pub fn set_next_on_line(&mut self, value: NodeId) {
-        self.next_on_line = Some(value);
+        self.set_node_id(PropertyId::NextOnLine, value);
     }
     pub fn clear_next_on_line(&mut self) {
-        self.next_on_line = None;
+        self.clear_property(PropertyId::NextOnLine);
     }
 
     pub fn previous_on_line(&self) -> Option<NodeId> {
-        self.previous_on_line
+        self.get_node_id(PropertyId::PreviousOnLine)
     }
     pub fn set_previous_on_line(&mut self, value: NodeId) {
-        self.previous_on_line = Some(value);
+        self.set_node_id(PropertyId::PreviousOnLine, value);
     }
     pub fn clear_previous_on_line(&mut self) {
-        self.previous_on_line = None;
+        self.clear_property(PropertyId::PreviousOnLine);
     }
 
     pub fn popup_for(&self) -> Option<NodeId> {
-        self.popup_for
+        self.get_node_id(PropertyId::PopupFor)
     }
     pub fn set_popup_for(&mut self, value: NodeId) {
-        self.popup_for = Some(value);
+        self.set_node_id(PropertyId::PopupFor, value);
     }
     pub fn clear_popup_for(&mut self) {
-        self.popup_for = None;
+        self.clear_property(PropertyId::PopupFor);
     }
 
     pub fn controls(&self) -> &[NodeId] {
-        &self.controls
+        self.get_node_id_vec(PropertyId::Controls)
     }
     pub fn set_controls(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.controls = value.into();
+        self.set_node_id_vec(PropertyId::Controls, value);
     }
     pub fn push_controls(&mut self, id: NodeId) {
-        self.controls.push(id);
+        self.push_to_node_id_vec(PropertyId::Controls, id);
     }
     pub fn clear_controls(&mut self) {
-        self.controls.clear();
+        self.clear_property(PropertyId::Controls);
     }
 
     pub fn details(&self) -> &[NodeId] {
-        &self.details
+        self.get_node_id_vec(PropertyId::Details)
     }
     pub fn set_details(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.details = value.into();
+        self.set_node_id_vec(PropertyId::Details, value);
     }
     pub fn push_details(&mut self, id: NodeId) {
-        self.details.push(id);
+        self.push_to_node_id_vec(PropertyId::Details, id);
     }
     pub fn clear_details(&mut self) {
-        self.details.clear();
+        self.clear_property(PropertyId::Details);
     }
 
     pub fn described_by(&self) -> &[NodeId] {
-        &self.described_by
+        self.get_node_id_vec(PropertyId::DescribedBy)
     }
     pub fn set_described_by(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.described_by = value.into();
+        self.set_node_id_vec(PropertyId::DescribedBy, value);
     }
     pub fn push_described_by(&mut self, id: NodeId) {
-        self.described_by.push(id);
+        self.push_to_node_id_vec(PropertyId::DescribedBy, id);
     }
     pub fn clear_described_by(&mut self) {
-        self.described_by.clear();
+        self.clear_property(PropertyId::DescribedBy);
     }
 
     pub fn flow_to(&self) -> &[NodeId] {
-        &self.flow_to
+        self.get_node_id_vec(PropertyId::FlowTo)
     }
     pub fn set_flow_to(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.flow_to = value.into();
+        self.set_node_id_vec(PropertyId::FlowTo, value);
     }
     pub fn push_flow_to(&mut self, id: NodeId) {
-        self.flow_to.push(id);
+        self.push_to_node_id_vec(PropertyId::FlowTo, id);
     }
     pub fn clear_flow_to(&mut self) {
-        self.flow_to.clear();
+        self.clear_property(PropertyId::FlowTo);
     }
 
     pub fn labelled_by(&self) -> &[NodeId] {
-        &self.labelled_by
+        self.get_node_id_vec(PropertyId::LabelledBy)
     }
     pub fn set_labelled_by(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.labelled_by = value.into();
+        self.set_node_id_vec(PropertyId::LabelledBy, value);
     }
     pub fn push_labelled_by(&mut self, id: NodeId) {
-        self.labelled_by.push(id);
+        self.push_to_node_id_vec(PropertyId::LabelledBy, id);
     }
     pub fn clear_labelled_by(&mut self) {
-        self.labelled_by.clear();
+        self.clear_property(PropertyId::LabelledBy);
     }
 
     /// On radio buttons this should be set to a list of all of the buttons
     /// in the same group as this one, including this radio button itself.
     pub fn radio_group(&self) -> &[NodeId] {
-        &self.radio_group
+        self.get_node_id_vec(PropertyId::RadioGroup)
     }
     pub fn set_radio_group(&mut self, value: impl Into<Vec<NodeId>>) {
-        self.radio_group = value.into();
+        self.set_node_id_vec(PropertyId::RadioGroup, value);
     }
     pub fn push_to_radio_group(&mut self, id: NodeId) {
-        self.radio_group.push(id);
+        self.push_to_node_id_vec(PropertyId::RadioGroup, id);
     }
     pub fn clear_radio_group(&mut self) {
-        self.radio_group.clear();
+        self.clear_property(PropertyId::RadioGroup);
     }
 
     pub fn is_spelling_error(&self) -> bool {
@@ -1620,10 +1558,10 @@ impl Node {
     ///
     /// [`value`]: NodeProvider::value
     pub fn character_lengths(&self) -> &[u8] {
-        &self.character_lengths
+        self.get_u8_slice(PropertyId::CharacterLengths)
     }
     pub fn set_character_lengths(&mut self, value: impl Into<Box<[u8]>>) {
-        self.character_lengths = value.into();
+        self.set_u8_slice(PropertyId::CharacterLengths, value);
     }
 
     /// For inline text. This is the position of each character within
@@ -1643,13 +1581,13 @@ impl Node {
     /// [`text_direction`]: NodeProvider::text_direction
     /// [`character_lengths`]: NodeProvider::character_lengths
     pub fn character_positions(&self) -> Option<&[f32]> {
-        self.character_positions.as_deref()
+        self.get_optional_f32_slice(PropertyId::CharacterPositions)
     }
     pub fn set_character_positions(&mut self, value: impl Into<Box<[f32]>>) {
-        self.character_positions = Some(value.into());
+        self.set_f32_slice(PropertyId::CharacterPositions, value);
     }
     pub fn clear_character_positions(&mut self) {
-        self.character_positions = None;
+        self.clear_property(PropertyId::CharacterPositions);
     }
 
     /// For inline text. This is the advance width of each character,
@@ -1671,13 +1609,13 @@ impl Node {
     /// [`text_direction`]: NodeProvider::text_direction
     /// [`character_lengths`]: NodeProvider::character_lengths
     pub fn character_widths(&self) -> Option<&[f32]> {
-        self.character_widths.as_deref()
+        self.get_optional_f32_slice(PropertyId::CharacterWidths)
     }
     pub fn set_character_widths(&mut self, value: impl Into<Box<[f32]>>) {
-        self.character_widths = Some(value.into());
+        self.set_f32_slice(PropertyId::CharacterWidths, value);
     }
     pub fn clear_character_widths(&mut self) {
-        self.character_widths = None;
+        self.clear_property(PropertyId::CharacterWidths);
     }
 
     /// For inline text. The length of each word in characters, as defined
@@ -1703,33 +1641,48 @@ impl Node {
     ///
     /// [`character_lengths`]: NodeProvider::character_lengths
     pub fn word_lengths(&self) -> &[u8] {
-        &self.word_lengths
+        self.get_u8_slice(PropertyId::WordLengths)
     }
     pub fn set_word_lengths(&mut self, value: impl Into<Box<[u8]>>) {
-        self.word_lengths = value.into();
+        self.set_u8_slice(PropertyId::WordLengths, value);
     }
 
     pub fn custom_actions(&self) -> &[CustomAction] {
-        &self.custom_actions
+        match self.get_property(PropertyId::CustomActions) {
+            Property::None => &[],
+            Property::CustomActionVec(value) => value,
+            _ => panic!(),
+        }
     }
     pub fn set_custom_actions(&mut self, value: impl Into<Vec<CustomAction>>) {
-        self.custom_actions = value.into();
+        self.set_property(
+            PropertyId::CustomActions,
+            Property::CustomActionVec(value.into()),
+        );
     }
     pub fn push_custom_action(&mut self, action: CustomAction) {
-        self.custom_actions.push(action);
+        match self.get_property_mut(
+            PropertyId::CustomActions,
+            Property::CustomActionVec(Vec::new()),
+        ) {
+            Property::CustomActionVec(v) => {
+                v.push(action);
+            }
+            _ => panic!(),
+        }
     }
     pub fn clear_custom_actions(&mut self) {
-        self.custom_actions.clear();
+        self.clear_property(PropertyId::CustomActions);
     }
 
     pub fn access_key(&self) -> Option<&str> {
-        self.access_key.as_deref()
+        self.get_string(PropertyId::AccessKey)
     }
     pub fn set_access_key(&mut self, value: impl Into<Box<str>>) {
-        self.access_key = Some(value.into());
+        self.set_string(PropertyId::AccessKey, value);
     }
     pub fn clear_access_key(&mut self) {
-        self.access_key = None;
+        self.clear_property(PropertyId::AccessKey);
     }
 
     pub fn invalid(&self) -> Option<Invalid> {
@@ -1743,13 +1696,13 @@ impl Node {
     }
 
     pub fn auto_complete(&self) -> Option<&str> {
-        self.auto_complete.as_deref()
+        self.get_string(PropertyId::AutoComplete)
     }
     pub fn set_auto_complete(&mut self, value: impl Into<Box<str>>) {
-        self.auto_complete = Some(value.into());
+        self.set_string(PropertyId::AutoComplete, value);
     }
     pub fn clear_auto_complete(&mut self) {
-        self.auto_complete = None;
+        self.clear_property(PropertyId::AutoComplete);
     }
 
     pub fn checked_state(&self) -> Option<CheckedState> {
@@ -1763,107 +1716,107 @@ impl Node {
     }
 
     pub fn checked_state_description(&self) -> Option<&str> {
-        self.checked_state_description.as_deref()
+        self.get_string(PropertyId::CheckedStateDescription)
     }
     pub fn set_checked_state_description(&mut self, value: impl Into<Box<str>>) {
-        self.checked_state_description = Some(value.into());
+        self.set_string(PropertyId::CheckedStateDescription, value);
     }
     pub fn clear_checked_state_description(&mut self) {
-        self.checked_state_description = None;
+        self.clear_property(PropertyId::CheckedStateDescription);
     }
 
     pub fn class_name(&self) -> Option<&str> {
-        self.class_name.as_deref()
+        self.get_string(PropertyId::ClassName)
     }
     pub fn set_class_name(&mut self, value: impl Into<Box<str>>) {
-        self.class_name = Some(value.into());
+        self.set_string(PropertyId::ClassName, value);
     }
     pub fn clear_class_name(&mut self) {
-        self.class_name = None;
+        self.clear_property(PropertyId::ClassName);
     }
 
     pub fn css_display(&self) -> Option<&str> {
-        self.css_display.as_deref()
+        self.get_string(PropertyId::CssDisplay)
     }
     pub fn set_css_display(&mut self, value: impl Into<Box<str>>) {
-        self.css_display = Some(value.into());
+        self.set_string(PropertyId::CssDisplay, value);
     }
     pub fn clear_css_display(&mut self) {
-        self.css_display = None;
+        self.clear_property(PropertyId::CssDisplay);
     }
 
     /// Only present when different from parent.
     pub fn font_family(&self) -> Option<&str> {
-        self.font_family.as_deref()
+        self.get_string(PropertyId::FontFamily)
     }
     pub fn set_font_family(&mut self, value: impl Into<Box<str>>) {
-        self.font_family = Some(value.into());
+        self.set_string(PropertyId::FontFamily, value);
     }
     pub fn clear_font_family(&mut self) {
-        self.font_family = None;
+        self.clear_property(PropertyId::FontFamily);
     }
 
     pub fn html_tag(&self) -> Option<&str> {
-        self.html_tag.as_deref()
+        self.get_string(PropertyId::HtmlTag)
     }
     pub fn set_html_tag(&mut self, value: impl Into<Box<str>>) {
-        self.html_tag = Some(value.into());
+        self.set_string(PropertyId::HtmlTag, value);
     }
     pub fn clear_html_tag(&mut self) {
-        self.html_tag = None;
+        self.clear_property(PropertyId::HtmlTag);
     }
 
     /// Inner HTML of an element. Only used for a top-level math element,
     /// to support third-party math accessibility products that parse MathML.
     pub fn inner_html(&self) -> Option<&str> {
-        self.inner_html.as_deref()
+        self.get_string(PropertyId::InnerHtml)
     }
     pub fn set_inner_html(&mut self, value: impl Into<Box<str>>) {
-        self.inner_html = Some(value.into());
+        self.set_string(PropertyId::InnerHtml, value);
     }
     pub fn clear_inner_html(&mut self) {
-        self.inner_html = None;
+        self.clear_property(PropertyId::InnerHtml);
     }
 
     pub fn input_type(&self) -> Option<&str> {
-        self.input_type.as_deref()
+        self.get_string(PropertyId::InputType)
     }
     pub fn set_input_type(&mut self, value: impl Into<Box<str>>) {
-        self.input_type = Some(value.into());
+        self.set_string(PropertyId::InputType, value);
     }
     pub fn clear_input_type(&mut self) {
-        self.input_type = None;
+        self.clear_property(PropertyId::InputType);
     }
 
     pub fn key_shortcuts(&self) -> Option<&str> {
-        self.key_shortcuts.as_deref()
+        self.get_string(PropertyId::KeyShortcuts)
     }
     pub fn set_key_shortcuts(&mut self, value: impl Into<Box<str>>) {
-        self.key_shortcuts = Some(value.into());
+        self.set_string(PropertyId::KeyShortcuts, value);
     }
     pub fn clear_key_shortcuts(&mut self) {
-        self.key_shortcuts = None;
+        self.clear_property(PropertyId::KeyShortcuts);
     }
 
     /// Only present when different from parent.
     pub fn language(&self) -> Option<&str> {
-        self.language.as_deref()
+        self.get_string(PropertyId::Language)
     }
     pub fn set_language(&mut self, value: impl Into<Box<str>>) {
-        self.language = Some(value.into());
+        self.set_string(PropertyId::Language, value);
     }
     pub fn clear_language(&mut self) {
-        self.language = None;
+        self.clear_property(PropertyId::Language);
     }
 
     pub fn live_relevant(&self) -> Option<&str> {
-        self.live_relevant.as_deref()
+        self.get_string(PropertyId::LiveRelevant)
     }
     pub fn set_live_relevant(&mut self, value: impl Into<Box<str>>) {
-        self.live_relevant = Some(value.into());
+        self.set_string(PropertyId::LiveRelevant, value);
     }
     pub fn clear_live_relevant(&mut self) {
-        self.live_relevant = None;
+        self.clear_property(PropertyId::LiveRelevant);
     }
 
     pub fn live(&self) -> Option<Live> {
@@ -1880,56 +1833,56 @@ impl Node {
     ///
     /// [`name`]: NodeProvider::name
     pub fn placeholder(&self) -> Option<&str> {
-        self.placeholder.as_deref()
+        self.get_string(PropertyId::Placeholder)
     }
     pub fn set_placeholder(&mut self, value: impl Into<Box<str>>) {
-        self.placeholder = Some(value.into());
+        self.set_string(PropertyId::Placeholder, value);
     }
     pub fn clear_placeholder(&mut self) {
-        self.placeholder = None;
+        self.clear_property(PropertyId::Placeholder);
     }
 
     pub fn aria_role(&self) -> Option<&str> {
-        self.aria_role.as_deref()
+        self.get_string(PropertyId::AriaRole)
     }
     pub fn set_aria_role(&mut self, value: impl Into<Box<str>>) {
-        self.aria_role = Some(value.into());
+        self.set_string(PropertyId::AriaRole, value);
     }
     pub fn clear_aria_role(&mut self) {
-        self.aria_role = None;
+        self.clear_property(PropertyId::AriaRole);
     }
 
     pub fn role_description(&self) -> Option<&str> {
-        self.role_description.as_deref()
+        self.get_string(PropertyId::RoleDescription)
     }
     pub fn set_role_description(&mut self, value: impl Into<Box<str>>) {
-        self.role_description = Some(value.into());
+        self.set_string(PropertyId::RoleDescription, value);
     }
     pub fn clear_role_description(&mut self) {
-        self.role_description = None;
+        self.clear_property(PropertyId::RoleDescription);
     }
 
     /// Only if not already exposed in [`name`] ([`NameFrom::Title`]).
     ///
     /// [`name`]: NodeProvider::name
     pub fn tooltip(&self) -> Option<&str> {
-        self.tooltip.as_deref()
+        self.get_string(PropertyId::Tooltip)
     }
     pub fn set_tooltip(&mut self, value: impl Into<Box<str>>) {
-        self.tooltip = Some(value.into());
+        self.set_string(PropertyId::Tooltip, value);
     }
     pub fn clear_tooltip(&mut self) {
-        self.tooltip = None;
+        self.clear_property(PropertyId::Tooltip);
     }
 
     pub fn url(&self) -> Option<&str> {
-        self.url.as_deref()
+        self.get_string(PropertyId::Url)
     }
     pub fn set_url(&mut self, value: impl Into<Box<str>>) {
-        self.url = Some(value.into());
+        self.set_string(PropertyId::Url, value);
     }
     pub fn clear_url(&mut self) {
-        self.url = None;
+        self.clear_property(PropertyId::Url);
     }
 
     pub fn default_action_verb(&self) -> Option<DefaultActionVerb> {
@@ -1944,252 +1897,256 @@ impl Node {
 
     // Scrollable container attributes.
 
-    pub fn scroll_x(&self) -> Option<f32> {
-        self.scroll_x
+    pub fn scroll_x(&self) -> Option<f64> {
+        self.get_f64(PropertyId::ScrollX)
     }
-    pub fn set_scroll_x(&mut self, value: f32) {
-        self.scroll_x = Some(value);
+    pub fn set_scroll_x(&mut self, value: f64) {
+        self.set_f64(PropertyId::ScrollX, value);
     }
     pub fn clear_scroll_x(&mut self) {
-        self.scroll_x = None;
+        self.clear_property(PropertyId::ScrollX);
     }
 
-    pub fn scroll_x_min(&self) -> Option<f32> {
-        self.scroll_x_min
+    pub fn scroll_x_min(&self) -> Option<f64> {
+        self.get_f64(PropertyId::ScrollXMin)
     }
-    pub fn set_scroll_x_min(&mut self, value: f32) {
-        self.scroll_x_min = Some(value);
+    pub fn set_scroll_x_min(&mut self, value: f64) {
+        self.set_f64(PropertyId::ScrollXMin, value);
     }
     pub fn clear_scroll_x_min(&mut self) {
-        self.scroll_x_min = None;
+        self.clear_property(PropertyId::ScrollXMin);
     }
 
-    pub fn scroll_x_max(&self) -> Option<f32> {
-        self.scroll_x_max
+    pub fn scroll_x_max(&self) -> Option<f64> {
+        self.get_f64(PropertyId::ScrollXMax)
     }
-    pub fn set_scroll_x_max(&mut self, value: f32) {
-        self.scroll_x_max = Some(value);
+    pub fn set_scroll_x_max(&mut self, value: f64) {
+        self.set_f64(PropertyId::ScrollXMax, value);
     }
     pub fn clear_scroll_x_max(&mut self) {
-        self.scroll_x_max = None;
+        self.clear_property(PropertyId::ScrollXMax);
     }
 
-    pub fn scroll_y(&self) -> Option<f32> {
-        self.scroll_y
+    pub fn scroll_y(&self) -> Option<f64> {
+        self.get_f64(PropertyId::ScrollY)
     }
-    pub fn set_scroll_y(&mut self, value: f32) {
-        self.scroll_y = Some(value);
+    pub fn set_scroll_y(&mut self, value: f64) {
+        self.set_f64(PropertyId::ScrollY, value);
     }
     pub fn clear_scroll_y(&mut self) {
-        self.scroll_y = None;
+        self.clear_property(PropertyId::ScrollY);
     }
 
-    pub fn scroll_y_min(&self) -> Option<f32> {
-        self.scroll_y_min
+    pub fn scroll_y_min(&self) -> Option<f64> {
+        self.get_f64(PropertyId::ScrollYMin)
     }
-    pub fn set_scroll_y_min(&mut self, value: f32) {
-        self.scroll_y_min = Some(value);
+    pub fn set_scroll_y_min(&mut self, value: f64) {
+        self.set_f64(PropertyId::ScrollYMin, value);
     }
     pub fn clear_scroll_y_min(&mut self) {
-        self.scroll_y_min = None;
+        self.clear_property(PropertyId::ScrollYMin);
     }
 
-    pub fn scroll_y_max(&self) -> Option<f32> {
-        self.scroll_y_max
+    pub fn scroll_y_max(&self) -> Option<f64> {
+        self.get_f64(PropertyId::ScrollYMax)
     }
-    pub fn set_scroll_y_max(&mut self, value: f32) {
-        self.scroll_y_max = Some(value);
+    pub fn set_scroll_y_max(&mut self, value: f64) {
+        self.set_f64(PropertyId::ScrollYMax, value);
     }
     pub fn clear_scroll_y_max(&mut self) {
-        self.scroll_y_max = None;
+        self.clear_property(PropertyId::ScrollYMax);
     }
 
     pub fn text_selection(&self) -> Option<TextSelection> {
-        self.text_selection
+        match self.get_property(PropertyId::TextSelection) {
+            Property::None => None,
+            Property::TextSelection(value) => Some(*value),
+            _ => panic!(),
+        }
     }
     pub fn set_text_selection(&mut self, value: TextSelection) {
-        self.text_selection = Some(value);
+        self.set_property(PropertyId::TextSelection, Property::TextSelection(value));
     }
     pub fn clear_text_selection(&mut self) {
-        self.text_selection = None;
+        self.clear_property(PropertyId::TextSelection);
     }
 
     pub fn aria_column_count(&self) -> Option<usize> {
-        self.aria_column_count
+        self.get_usize(PropertyId::AriaColumnCount)
     }
     pub fn set_aria_column_count(&mut self, value: usize) {
-        self.aria_column_count = Some(value);
+        self.set_usize(PropertyId::AriaColumnCount, value);
     }
     pub fn clear_aria_column_count(&mut self) {
-        self.aria_column_count = None;
+        self.clear_property(PropertyId::AriaColumnCount);
     }
 
     pub fn aria_cell_column_index(&self) -> Option<usize> {
-        self.aria_cell_column_index
+        self.get_usize(PropertyId::AriaCellColumnIndex)
     }
     pub fn set_aria_cell_column_index(&mut self, value: usize) {
-        self.aria_cell_column_index = Some(value);
+        self.set_usize(PropertyId::AriaCellColumnIndex, value);
     }
     pub fn clear_aria_cell_column_index(&mut self) {
-        self.aria_cell_column_index = None;
+        self.clear_property(PropertyId::AriaCellColumnIndex);
     }
 
     pub fn aria_cell_column_span(&self) -> Option<usize> {
-        self.aria_cell_column_span
+        self.get_usize(PropertyId::AriaCellColumnSpan)
     }
     pub fn set_aria_cell_column_span(&mut self, value: usize) {
-        self.aria_cell_column_span = Some(value);
+        self.set_usize(PropertyId::AriaCellColumnSpan, value);
     }
     pub fn clear_aria_cell_column_span(&mut self) {
-        self.aria_cell_column_span = None;
+        self.clear_property(PropertyId::AriaCellColumnSpan);
     }
 
     pub fn aria_row_count(&self) -> Option<usize> {
-        self.aria_row_count
+        self.get_usize(PropertyId::AriaRowCount)
     }
     pub fn set_aria_row_count(&mut self, value: usize) {
-        self.aria_row_count = Some(value);
+        self.set_usize(PropertyId::AriaRowCount, value);
     }
     pub fn clear_aria_row_count(&mut self) {
-        self.aria_row_count = None;
+        self.clear_property(PropertyId::AriaRowCount);
     }
 
     pub fn aria_cell_row_index(&self) -> Option<usize> {
-        self.aria_cell_row_index
+        self.get_usize(PropertyId::AriaCellRowIndex)
     }
     pub fn set_aria_cell_row_index(&mut self, value: usize) {
-        self.aria_cell_row_index = Some(value);
+        self.set_usize(PropertyId::AriaCellRowIndex, value);
     }
     pub fn clear_aria_cell_row_index(&mut self) {
-        self.aria_cell_row_index = None;
+        self.clear_property(PropertyId::AriaCellRowIndex);
     }
 
     pub fn aria_cell_row_span(&self) -> Option<usize> {
-        self.aria_cell_row_span
+        self.get_usize(PropertyId::AriaCellRowSpan)
     }
     pub fn set_aria_cell_row_span(&mut self, value: usize) {
-        self.aria_cell_row_span = Some(value);
+        self.set_usize(PropertyId::AriaCellRowSpan, value);
     }
     pub fn clear_aria_cell_row_span(&mut self) {
-        self.aria_cell_row_span = None;
+        self.clear_property(PropertyId::AriaCellRowSpan);
     }
 
     // Table attributes.
 
     pub fn table_row_count(&self) -> Option<usize> {
-        self.table_row_count
+        self.get_usize(PropertyId::TableRowCount)
     }
     pub fn set_table_row_count(&mut self, value: usize) {
-        self.table_row_count = Some(value);
+        self.set_usize(PropertyId::TableRowCount, value);
     }
     pub fn clear_table_row_count(&mut self) {
-        self.table_row_count = None;
+        self.clear_property(PropertyId::TableRowCount);
     }
 
     pub fn table_column_count(&self) -> Option<usize> {
-        self.table_column_count
+        self.get_usize(PropertyId::TableColumnCount)
     }
     pub fn set_table_column_count(&mut self, value: usize) {
-        self.table_column_count = Some(value);
+        self.set_usize(PropertyId::TableColumnCount, value);
     }
     pub fn clear_table_column_count(&mut self) {
-        self.table_column_count = None;
+        self.clear_property(PropertyId::TableColumnCount);
     }
 
     pub fn table_header(&self) -> Option<NodeId> {
-        self.table_header
+        self.get_node_id(PropertyId::TableHeader)
     }
     pub fn set_table_header(&mut self, value: NodeId) {
-        self.table_header = Some(value);
+        self.set_node_id(PropertyId::TableHeader, value);
     }
     pub fn clear_table_header(&mut self) {
-        self.table_header = None;
+        self.clear_property(PropertyId::TableHeader);
     }
 
     // Table row attributes.
 
     pub fn table_row_index(&self) -> Option<usize> {
-        self.table_row_index
+        self.get_usize(PropertyId::TableRowIndex)
     }
     pub fn set_table_row_index(&mut self, value: usize) {
-        self.table_row_index = Some(value);
+        self.set_usize(PropertyId::TableRowIndex, value);
     }
     pub fn clear_table_row_index(&mut self) {
-        self.table_row_index = None;
+        self.clear_property(PropertyId::TableRowIndex);
     }
 
     pub fn table_row_header(&self) -> Option<NodeId> {
-        self.table_row_header
+        self.get_node_id(PropertyId::TableRowHeader)
     }
     pub fn set_table_row_header(&mut self, value: NodeId) {
-        self.table_row_header = Some(value);
+        self.set_node_id(PropertyId::TableRowHeader, value);
     }
     pub fn clear_table_row_header(&mut self) {
-        self.table_row_header = None;
+        self.clear_property(PropertyId::TableRowHeader);
     }
 
     // Table column attributes.
 
     pub fn table_column_index(&self) -> Option<usize> {
-        self.table_column_index
+        self.get_usize(PropertyId::TableColumnIndex)
     }
     pub fn set_table_column_index(&mut self, value: usize) {
-        self.table_column_index = Some(value);
+        self.set_usize(PropertyId::TableColumnIndex, value);
     }
     pub fn clear_table_column_index(&mut self) {
-        self.table_column_index = None;
+        self.clear_property(PropertyId::TableColumnIndex);
     }
 
     pub fn table_column_header(&self) -> Option<NodeId> {
-        self.table_column_header
+        self.get_node_id(PropertyId::TableColumnHeader)
     }
     pub fn set_table_column_header(&mut self, value: NodeId) {
-        self.table_column_header = Some(value);
+        self.set_node_id(PropertyId::TableColumnHeader, value);
     }
     pub fn clear_table_column_header(&mut self) {
-        self.table_column_header = None;
+        self.clear_property(PropertyId::TableColumnHeader);
     }
 
     // Table cell attributes.
 
     pub fn table_cell_column_index(&self) -> Option<usize> {
-        self.table_cell_column_index
+        self.get_usize(PropertyId::TableCellColumnIndex)
     }
     pub fn set_table_cell_column_index(&mut self, value: usize) {
-        self.table_cell_column_index = Some(value);
+        self.set_usize(PropertyId::TableCellColumnIndex, value);
     }
     pub fn clear_table_cell_column_index(&mut self) {
-        self.table_cell_column_index = None;
+        self.clear_property(PropertyId::TableCellColumnIndex);
     }
 
     pub fn table_cell_column_span(&self) -> Option<usize> {
-        self.table_cell_column_span
+        self.get_usize(PropertyId::TableCellColumnSpan)
     }
     pub fn set_table_cell_column_span(&mut self, value: usize) {
-        self.table_cell_column_span = Some(value);
+        self.set_usize(PropertyId::TableCellColumnSpan, value);
     }
     pub fn clear_table_cell_column_span(&mut self) {
-        self.table_cell_column_span = None;
+        self.clear_property(PropertyId::TableCellColumnSpan);
     }
 
     pub fn table_cell_row_index(&self) -> Option<usize> {
-        self.table_cell_row_index
+        self.get_usize(PropertyId::TableCellRowIndex)
     }
     pub fn set_table_cell_row_index(&mut self, value: usize) {
-        self.table_cell_row_index = Some(value);
+        self.set_usize(PropertyId::TableCellRowIndex, value);
     }
     pub fn clear_table_cell_row_index(&mut self) {
-        self.table_cell_row_index = None;
+        self.clear_property(PropertyId::TableCellRowIndex);
     }
 
     pub fn table_cell_row_span(&self) -> Option<usize> {
-        self.table_cell_row_span
+        self.get_usize(PropertyId::TableCellRowSpan)
     }
     pub fn set_table_cell_row_span(&mut self, value: usize) {
-        self.table_cell_row_span = Some(value);
+        self.set_usize(PropertyId::TableCellRowSpan, value);
     }
     pub fn clear_table_cell_row_span(&mut self) {
-        self.table_cell_row_span = None;
+        self.clear_property(PropertyId::TableCellRowSpan);
     }
 
     pub fn sort_direction(&self) -> Option<SortDirection> {
@@ -2204,13 +2161,13 @@ impl Node {
 
     /// Tree control attributes.
     pub fn hierarchical_level(&self) -> Option<usize> {
-        self.hierarchical_level
+        self.get_usize(PropertyId::HierarchicalLevel)
     }
     pub fn set_hierarchical_level(&mut self, value: usize) {
-        self.hierarchical_level = Some(value);
+        self.set_usize(PropertyId::HierarchicalLevel, value);
     }
     pub fn clear_hierarchical_level(&mut self) {
-        self.hierarchical_level = None;
+        self.clear_property(PropertyId::HierarchicalLevel);
     }
 
     /// Use for a textbox that allows focus/selection but not input.
@@ -2232,34 +2189,34 @@ impl Node {
     // Position or Number of items in current set of listitems or treeitems
 
     pub fn size_of_set(&self) -> Option<usize> {
-        self.size_of_set
+        self.get_usize(PropertyId::SizeOfSet)
     }
     pub fn set_size_of_set(&mut self, value: usize) {
-        self.size_of_set = Some(value);
+        self.set_usize(PropertyId::SizeOfSet, value);
     }
     pub fn clear_size_of_set(&mut self) {
-        self.size_of_set = None;
+        self.clear_property(PropertyId::SizeOfSet);
     }
 
     pub fn position_in_set(&self) -> Option<usize> {
-        self.position_in_set
+        self.get_usize(PropertyId::PositionInSet)
     }
     pub fn set_position_in_set(&mut self, value: usize) {
-        self.position_in_set = Some(value);
+        self.set_usize(PropertyId::PositionInSet, value);
     }
     pub fn clear_position_in_set(&mut self) {
-        self.position_in_set = None;
+        self.clear_property(PropertyId::PositionInSet);
     }
 
     /// For [`Role::ColorWell`], specifies the selected color in RGBA.
     pub fn color_value(&self) -> Option<u32> {
-        self.color_value
+        self.get_u32(PropertyId::ColorValue)
     }
     pub fn set_color_value(&mut self, value: u32) {
-        self.color_value = Some(value);
+        self.set_u32(PropertyId::ColorValue, value);
     }
     pub fn clear_color_value(&mut self) {
-        self.color_value = None;
+        self.clear_property(PropertyId::ColorValue);
     }
 
     pub fn aria_current(&self) -> Option<AriaCurrent> {
@@ -2274,24 +2231,24 @@ impl Node {
 
     /// Background color in RGBA.
     pub fn background_color(&self) -> Option<u32> {
-        self.background_color
+        self.get_u32(PropertyId::BackgroundColor)
     }
     pub fn set_background_color(&mut self, value: u32) {
-        self.background_color = Some(value);
+        self.set_u32(PropertyId::BackgroundColor, value);
     }
     pub fn clear_background_color(&mut self) {
-        self.background_color = None;
+        self.clear_property(PropertyId::BackgroundColor);
     }
 
     /// Foreground color in RGBA.
     pub fn foreground_color(&self) -> Option<u32> {
-        self.foreground_color
+        self.get_u32(PropertyId::ForegroundColor)
     }
     pub fn set_foreground_color(&mut self, value: u32) {
-        self.foreground_color = Some(value);
+        self.set_u32(PropertyId::ForegroundColor, value);
     }
     pub fn clear_foreground_color(&mut self) {
-        self.foreground_color = None;
+        self.clear_property(PropertyId::ForegroundColor);
     }
 
     pub fn has_popup(&self) -> Option<HasPopup> {
@@ -2376,109 +2333,171 @@ impl Node {
     // Focus traversal order.
 
     pub fn previous_focus(&self) -> Option<NodeId> {
-        self.previous_focus
+        self.get_node_id(PropertyId::PreviousFocus)
     }
     pub fn set_previous_focus(&mut self, value: NodeId) {
-        self.previous_focus = Some(value);
+        self.set_node_id(PropertyId::PreviousFocus, value);
     }
     pub fn clear_previous_focus(&mut self) {
-        self.previous_focus = None;
+        self.clear_property(PropertyId::PreviousFocus);
     }
 
     pub fn next_focus(&self) -> Option<NodeId> {
-        self.next_focus
+        self.get_node_id(PropertyId::NextFocus)
     }
     pub fn set_next_focus(&mut self, value: NodeId) {
-        self.next_focus = Some(value);
+        self.set_node_id(PropertyId::NextFocus, value);
     }
     pub fn clear_next_focus(&mut self) {
-        self.next_focus = None;
+        self.clear_property(PropertyId::NextFocus);
     }
 
     // Numeric value attributes.
 
     pub fn numeric_value(&self) -> Option<f64> {
-        self.numeric_value
+        self.get_f64(PropertyId::NumericValue)
     }
     pub fn set_numeric_value(&mut self, value: f64) {
-        self.numeric_value = Some(value);
+        self.set_f64(PropertyId::NumericValue, value);
     }
     pub fn clear_numeric_value(&mut self) {
-        self.numeric_value = None;
+        self.clear_property(PropertyId::NumericValue);
     }
 
     pub fn min_numeric_value(&self) -> Option<f64> {
-        self.min_numeric_value
+        self.get_f64(PropertyId::MinNumericValue)
     }
     pub fn set_min_numeric_value(&mut self, value: f64) {
-        self.min_numeric_value = Some(value);
+        self.set_f64(PropertyId::MinNumericValue, value);
     }
     pub fn clear_min_numeric_value(&mut self) {
-        self.min_numeric_value = None;
+        self.clear_property(PropertyId::MinNumericValue);
     }
 
     pub fn max_numeric_value(&self) -> Option<f64> {
-        self.max_numeric_value
+        self.get_f64(PropertyId::MaxNumericValue)
     }
     pub fn set_max_numeric_value(&mut self, value: f64) {
-        self.max_numeric_value = Some(value);
+        self.set_f64(PropertyId::MaxNumericValue, value);
     }
     pub fn clear_max_numeric_value(&mut self) {
-        self.max_numeric_value = None;
+        self.clear_property(PropertyId::MaxNumericValue);
     }
 
     pub fn numeric_value_step(&self) -> Option<f64> {
-        self.numeric_value_step
+        self.get_f64(PropertyId::NumericValueStep)
     }
     pub fn set_numeric_value_step(&mut self, value: f64) {
-        self.numeric_value_step = Some(value);
+        self.set_f64(PropertyId::NumericValueStep, value);
     }
     pub fn clear_numeric_value_step(&mut self) {
-        self.numeric_value_step = None;
+        self.clear_property(PropertyId::NumericValueStep);
     }
 
     pub fn numeric_value_jump(&self) -> Option<f64> {
-        self.numeric_value_jump
+        self.get_f64(PropertyId::NumericValueJump)
     }
     pub fn set_numeric_value_jump(&mut self, value: f64) {
-        self.numeric_value_jump = Some(value);
+        self.set_f64(PropertyId::NumericValueJump, value);
     }
     pub fn clear_numeric_value_jump(&mut self) {
-        self.numeric_value_jump = None;
+        self.clear_property(PropertyId::NumericValueJump);
     }
 
     /// Font size is in pixels.
-    pub fn font_size(&self) -> Option<f32> {
-        self.font_size
+    pub fn font_size(&self) -> Option<f64> {
+        self.get_f64(PropertyId::FontSize)
     }
-    pub fn set_font_size(&mut self, value: f32) {
-        self.font_size = Some(value);
+    pub fn set_font_size(&mut self, value: f64) {
+        self.set_f64(PropertyId::FontSize, value);
     }
     pub fn clear_font_size(&mut self) {
-        self.font_size = None;
+        self.clear_property(PropertyId::FontSize);
     }
 
     /// Font weight can take on any arbitrary numeric value. Increments of 100 in
     /// range `[0, 900]` represent keywords such as light, normal, bold, etc.
-    pub fn font_weight(&self) -> Option<f32> {
-        self.font_weight
+    pub fn font_weight(&self) -> Option<f64> {
+        self.get_f64(PropertyId::FontWeight)
     }
-    pub fn set_font_weight(&mut self, value: f32) {
-        self.font_weight = Some(value);
+    pub fn set_font_weight(&mut self, value: f64) {
+        self.set_f64(PropertyId::FontWeight, value);
     }
     pub fn clear_font_weight(&mut self) {
-        self.font_weight = None;
+        self.clear_property(PropertyId::FontWeight);
     }
 
     /// The text indent of the text, in mm.
-    pub fn text_indent(&self) -> Option<f32> {
-        self.text_indent
+    pub fn text_indent(&self) -> Option<f64> {
+        self.get_f64(PropertyId::TextIndent)
     }
-    pub fn set_text_indent(&mut self, value: f32) {
-        self.text_indent = Some(value);
+    pub fn set_text_indent(&mut self, value: f64) {
+        self.set_f64(PropertyId::TextIndent, value);
     }
     pub fn clear_text_indent(&mut self) {
-        self.text_indent = None;
+        self.clear_property(PropertyId::TextIndent);
+    }
+}
+
+impl Default for Node {
+    fn default() -> Self {
+        Self {
+            role: Role::Unknown,
+            indices: [PropertyId::Unset as u8; PropertyId::Unset as usize],
+            props: Vec::new(),
+            actions: EnumSet::new(),
+            name_from: None,
+            description_from: None,
+            autofill_available: false,
+            expanded: None,
+            default: false,
+            editable: false,
+            orientation: None,
+            hovered: false,
+            hidden: false,
+            linked: false,
+            multiline: false,
+            multiselectable: false,
+            protected: false,
+            required: false,
+            visited: false,
+            busy: false,
+            nonatomic_text_field_root: false,
+            live_atomic: false,
+            modal: false,
+            canvas_has_fallback: false,
+            scrollable: false,
+            clips_children: false,
+            not_user_selectable_style: false,
+            selected: None,
+            selected_from_focus: false,
+            is_line_breaking_object: false,
+            is_page_breaking_object: false,
+            has_aria_attribute: false,
+            touch_pass_through: false,
+            is_spelling_error: false,
+            is_grammar_error: false,
+            is_search_match: false,
+            is_suggestion: false,
+            text_direction: None,
+            invalid: None,
+            checked_state: None,
+            live: None,
+            default_action_verb: None,
+            sort_direction: None,
+            read_only: false,
+            disabled: false,
+            aria_current: None,
+            has_popup: None,
+            list_style: None,
+            text_align: None,
+            vertical_offset: None,
+            bold: false,
+            italic: false,
+            overline: None,
+            strikethrough: None,
+            underline: None,
+        }
     }
 }
 
