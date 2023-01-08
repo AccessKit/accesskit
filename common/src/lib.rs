@@ -1023,7 +1023,7 @@ impl Node {
     pub fn set_children(&mut self, value: impl Into<Vec<NodeId>>) {
         self.set_node_id_vec(PropertyId::Children, value);
     }
-    pub fn push_child(&mut self, id: NodeId) {
+    pub fn push_to_children(&mut self, id: NodeId) {
         self.push_to_node_id_vec(PropertyId::Children, id);
     }
     pub fn clear_children(&mut self) {
@@ -1342,7 +1342,7 @@ impl Node {
     pub fn set_indirect_children(&mut self, value: impl Into<Vec<NodeId>>) {
         self.set_node_id_vec(PropertyId::IndirectChildren, value);
     }
-    pub fn push_indirect_child(&mut self, id: NodeId) {
+    pub fn push_to_indirect_children(&mut self, id: NodeId) {
         self.push_to_node_id_vec(PropertyId::IndirectChildren, id);
     }
     pub fn clear_indirect_children(&mut self) {
@@ -1427,7 +1427,7 @@ impl Node {
     pub fn set_controls(&mut self, value: impl Into<Vec<NodeId>>) {
         self.set_node_id_vec(PropertyId::Controls, value);
     }
-    pub fn push_controls(&mut self, id: NodeId) {
+    pub fn push_to_controls(&mut self, id: NodeId) {
         self.push_to_node_id_vec(PropertyId::Controls, id);
     }
     pub fn clear_controls(&mut self) {
@@ -1440,7 +1440,7 @@ impl Node {
     pub fn set_details(&mut self, value: impl Into<Vec<NodeId>>) {
         self.set_node_id_vec(PropertyId::Details, value);
     }
-    pub fn push_details(&mut self, id: NodeId) {
+    pub fn push_to_details(&mut self, id: NodeId) {
         self.push_to_node_id_vec(PropertyId::Details, id);
     }
     pub fn clear_details(&mut self) {
@@ -1453,7 +1453,7 @@ impl Node {
     pub fn set_described_by(&mut self, value: impl Into<Vec<NodeId>>) {
         self.set_node_id_vec(PropertyId::DescribedBy, value);
     }
-    pub fn push_described_by(&mut self, id: NodeId) {
+    pub fn push_to_described_by(&mut self, id: NodeId) {
         self.push_to_node_id_vec(PropertyId::DescribedBy, id);
     }
     pub fn clear_described_by(&mut self) {
@@ -1466,7 +1466,7 @@ impl Node {
     pub fn set_flow_to(&mut self, value: impl Into<Vec<NodeId>>) {
         self.set_node_id_vec(PropertyId::FlowTo, value);
     }
-    pub fn push_flow_to(&mut self, id: NodeId) {
+    pub fn push_to_flow_to(&mut self, id: NodeId) {
         self.push_to_node_id_vec(PropertyId::FlowTo, id);
     }
     pub fn clear_flow_to(&mut self) {
@@ -1479,7 +1479,7 @@ impl Node {
     pub fn set_labelled_by(&mut self, value: impl Into<Vec<NodeId>>) {
         self.set_node_id_vec(PropertyId::LabelledBy, value);
     }
-    pub fn push_labelled_by(&mut self, id: NodeId) {
+    pub fn push_to_labelled_by(&mut self, id: NodeId) {
         self.push_to_node_id_vec(PropertyId::LabelledBy, id);
     }
     pub fn clear_labelled_by(&mut self) {
@@ -1660,7 +1660,7 @@ impl Node {
             Property::CustomActionVec(value.into()),
         );
     }
-    pub fn push_custom_action(&mut self, action: CustomAction) {
+    pub fn push_to_custom_actions(&mut self, action: CustomAction) {
         match self.get_property_mut(
             PropertyId::CustomActions,
             Property::CustomActionVec(Vec::new()),

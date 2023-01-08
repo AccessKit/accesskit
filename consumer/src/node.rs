@@ -1046,7 +1046,7 @@ mod tests {
                     NODE_ID_4,
                     Arc::new({
                         let mut node = Node::new(Role::TextField);
-                        node.push_labelled_by(NODE_ID_5);
+                        node.push_to_labelled_by(NODE_ID_5);
                         node
                     }),
                 ),
@@ -1092,7 +1092,7 @@ mod tests {
                     NODE_ID_2,
                     Arc::new({
                         let mut node = Node::new(Role::Button);
-                        node.push_child(NODE_ID_3);
+                        node.push_to_children(NODE_ID_3);
                         node
                     }),
                 ),
@@ -1108,7 +1108,7 @@ mod tests {
                     NODE_ID_4,
                     Arc::new({
                         let mut node = Node::new(Role::Link);
-                        node.push_child(NODE_ID_5);
+                        node.push_to_children(NODE_ID_5);
                         node
                     }),
                 ),
@@ -1116,7 +1116,7 @@ mod tests {
                     NODE_ID_5,
                     Arc::new({
                         let mut node = Node::new(Role::GenericContainer);
-                        node.push_child(NODE_ID_6);
+                        node.push_to_children(NODE_ID_6);
                         node
                     }),
                 ),

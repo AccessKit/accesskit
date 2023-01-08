@@ -495,7 +495,7 @@ mod tests {
                     NODE_ID_1,
                     Arc::new({
                         let mut node = root_node;
-                        node.push_child(NODE_ID_2);
+                        node.push_to_children(NODE_ID_2);
                         node
                     }),
                 ),
@@ -569,7 +569,7 @@ mod tests {
                     NODE_ID_1,
                     Arc::new({
                         let mut node = root_node.clone();
-                        node.push_child(NODE_ID_2);
+                        node.push_to_children(NODE_ID_2);
                         node
                     }),
                 ),
