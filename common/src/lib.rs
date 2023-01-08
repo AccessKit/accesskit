@@ -769,6 +769,57 @@ impl Default for PropertyIndices {
     }
 }
 
+macro_rules! bool_methods {
+    ($($(#[$doc:meta])* ($base_name:ident))+) => {
+        paste! {
+            impl Node {
+                $($(#[$doc])*
+                pub fn [< is_ $base_name >](&self) -> bool {
+                    self.$base_name
+                }
+                pub fn [< set_ $base_name >](&mut self, value: bool) {
+                    self.$base_name = value;
+                })*
+            }
+        }
+    }
+}
+
+macro_rules! irregular_bool_methods {
+    ($($(#[$doc:meta])* ($base_name:ident))+) => {
+        paste! {
+            impl Node {
+                $($(#[$doc])*
+                pub fn $base_name(&self) -> bool {
+                    self.$base_name
+                }
+                pub fn [< set_ $base_name >](&mut self, value: bool) {
+                    self.$base_name = value;
+                })*
+            }
+        }
+    }
+}
+
+macro_rules! optional_bool_methods {
+    ($($(#[$doc:meta])* ($base_name:ident))+) => {
+        paste! {
+            impl Node {
+                $($(#[$doc])*
+                pub fn [< is_ $base_name >](&self) -> Option<bool> {
+                    self.$base_name
+                }
+                pub fn [< set_ $base_name >](&mut self, value: bool) {
+                    self.$base_name = Some(value);
+                }
+                pub fn [< clear_ $base_name >](&mut self) {
+                    self.$base_name = None;
+                })*
+            }
+        }
+    }
+}
+
 macro_rules! optional_enum_methods {
     ($($(#[$doc:meta])* ($base_name:ident, $type:ty))+) => {
         paste! {
@@ -925,25 +976,25 @@ pub struct Node {
     required: bool,
     visited: bool,
     busy: bool,
-    nonatomic_text_field_root: bool,
     live_atomic: bool,
     modal: bool,
-    canvas_has_fallback: bool,
     scrollable: bool,
-    clips_children: bool,
     not_user_selectable_style: bool,
     selected_from_focus: bool,
-    has_aria_attribute: bool,
     touch_pass_through: bool,
     read_only: bool,
     disabled: bool,
     bold: bool,
     italic: bool,
+    canvas_has_fallback: bool,
+    clips_children: bool,
+    has_aria_attribute: bool,
     is_line_breaking_object: bool,
     is_page_breaking_object: bool,
     is_spelling_error: bool,
     is_grammar_error: bool,
     is_search_match: bool,
+    is_nonatomic_text_field_root: bool,
     is_suggestion: bool,
     expanded: Option<bool>,
     selected: Option<bool>,
@@ -1163,272 +1214,80 @@ impl Node {
     pub fn clear_actions(&mut self) {
         self.actions.clear();
     }
+}
 
-    pub fn is_autofill_available(&self) -> bool {
-        self.autofill_available
-    }
-    pub fn set_autofill_available(&mut self, value: bool) {
-        self.autofill_available = value;
-    }
-
-    pub fn is_default(&self) -> bool {
-        self.default
-    }
-    pub fn set_default(&mut self, value: bool) {
-        self.default = value;
-    }
-
-    pub fn is_editable(&self) -> bool {
-        self.editable
-    }
-    pub fn set_editable(&mut self, value: bool) {
-        self.editable = value;
-    }
-
-    pub fn is_hovered(&self) -> bool {
-        self.hovered
-    }
-    pub fn set_hovered(&mut self, value: bool) {
-        self.hovered = value;
-    }
-
+bool_methods! {
+    (autofill_available)
+    (default)
+    (editable)
+    (hovered)
     /// Exclude this node and its descendants from the tree presented to
     /// assistive technologies, and from hit testing.
-    pub fn is_hidden(&self) -> bool {
-        self.hidden
-    }
-    pub fn set_hidden(&mut self, value: bool) {
-        self.hidden = value;
-    }
+    (hidden)
+    (linked)
+    (multiline)
+    (multiselectable)
+    (protected)
+    (required)
+    (visited)
+    (busy)
+    (live_atomic)
+    /// If a dialog box is marked as explicitly modal.
+    (modal)
+    /// Indicates this node is user-scrollable, e.g. `overflow: scroll|auto`, as
+    /// opposed to only programmatically scrollable, like `overflow: hidden`, or
+    /// not scrollable at all, e.g. `overflow: visible`.
+    (scrollable)
+    /// Indicates that this node is not selectable because the style has
+    /// `user-select: none`. Note that there may be other reasons why a node is
+    /// not selectable - for example, bullets in a list. However, this attribute
+    /// is only set on `user-select: none`.
+    (not_user_selectable_style)
+    /// Indicates whether this node is selected due to selection follows focus.
+    (selected_from_focus)
+    /// This element allows touches to be passed through when a screen reader
+    /// is in touch exploration mode, e.g. a virtual keyboard normally
+    /// behaves this way.
+    (touch_pass_through)
+    /// Use for a textbox that allows focus/selection but not input.
+    (read_only)
+    /// Use for a control or group of controls that disallows input.
+    (disabled)
+    (bold)
+    (italic)
+}
 
-    pub fn is_linked(&self) -> bool {
-        self.linked
-    }
-    pub fn set_linked(&mut self, value: bool) {
-        self.linked = value;
-    }
-
-    pub fn is_multiline(&self) -> bool {
-        self.multiline
-    }
-    pub fn set_multiline(&mut self, value: bool) {
-        self.multiline = value;
-    }
-
-    pub fn is_multiselectable(&self) -> bool {
-        self.multiselectable
-    }
-    pub fn set_multiselectable(&mut self, value: bool) {
-        self.multiselectable = value;
-    }
-
-    pub fn is_protected(&self) -> bool {
-        self.protected
-    }
-    pub fn set_protected(&mut self, value: bool) {
-        self.protected = value;
-    }
-
-    pub fn is_required(&self) -> bool {
-        self.required
-    }
-    pub fn set_required(&mut self, value: bool) {
-        self.required = value;
-    }
-
-    pub fn is_visited(&self) -> bool {
-        self.visited
-    }
-    pub fn set_visited(&mut self, value: bool) {
-        self.visited = value;
-    }
-
-    pub fn is_busy(&self) -> bool {
-        self.busy
-    }
-    pub fn set_busy(&mut self, value: bool) {
-        self.busy = value;
-    }
-
+irregular_bool_methods! {
+    /// Set on a canvas element if it has fallback content.
+    (canvas_has_fallback)
+    /// Indicates that this node clips its children, i.e. may have
+    /// `overflow: hidden` or clip children by default.
+    (clips_children)
+    /// True if the node has any ARIA attributes set.
+    (has_aria_attribute)
+    /// Indicates whether this node causes a hard line-break
+    /// (e.g. block level elements, or `<br>`).
+    (is_line_breaking_object)
+    /// Indicates whether this node causes a page break.
+    (is_page_breaking_object)
+    (is_spelling_error)
+    (is_grammar_error)
+    (is_search_match)
+    (is_suggestion)
     /// The object functions as a text field which exposes its descendants.
     ///
     /// Use cases include the root of a content-editable region, an ARIA
     /// textbox which isn't currently editable and which has interactive
     /// descendants, and a `<body>` element that has "design-mode" set to "on".
-    pub fn is_nonatomic_text_field_root(&self) -> bool {
-        self.nonatomic_text_field_root
-    }
-    pub fn set_nonatomic_text_field_root(&mut self, value: bool) {
-        self.nonatomic_text_field_root = value;
-    }
+    (is_nonatomic_text_field_root)
+}
 
-    pub fn is_live_atomic(&self) -> bool {
-        self.live_atomic
-    }
-    pub fn set_live_atomic(&mut self, value: bool) {
-        self.live_atomic = value;
-    }
-
-    /// If a dialog box is marked as explicitly modal.
-    pub fn is_modal(&self) -> bool {
-        self.modal
-    }
-    pub fn set_modal(&mut self, value: bool) {
-        self.modal = value;
-    }
-
-    /// Set on a canvas element if it has fallback content.
-    pub fn canvas_has_fallback(&self) -> bool {
-        self.canvas_has_fallback
-    }
-    pub fn set_canvas_has_fallback(&mut self, value: bool) {
-        self.canvas_has_fallback = value;
-    }
-
-    /// Indicates this node is user-scrollable, e.g. `overflow: scroll|auto`, as
-    /// opposed to only programmatically scrollable, like `overflow: hidden`, or
-    /// not scrollable at all, e.g. `overflow: visible`.
-    pub fn is_scrollable(&self) -> bool {
-        self.scrollable
-    }
-    pub fn set_scrollable(&mut self, value: bool) {
-        self.scrollable = value;
-    }
-
-    /// Indicates that this node clips its children, i.e. may have
-    /// `overflow: hidden` or clip children by default.
-    pub fn clips_children(&self) -> bool {
-        self.clips_children
-    }
-    pub fn set_clips_children(&mut self, value: bool) {
-        self.clips_children = value;
-    }
-
-    /// Indicates that this node is not selectable because the style has
-    /// `user-select: none`. Note that there may be other reasons why a node is
-    /// not selectable - for example, bullets in a list. However, this attribute
-    /// is only set on `user-select: none`.
-    pub fn is_not_user_selectable_style(&self) -> bool {
-        self.not_user_selectable_style
-    }
-    pub fn set_not_user_selectable_style(&mut self, value: bool) {
-        self.not_user_selectable_style = value;
-    }
-
-    /// Indicates whether this node is selected due to selection follows focus.
-    pub fn is_selected_from_focus(&self) -> bool {
-        self.selected_from_focus
-    }
-    pub fn set_selected_from_focus(&mut self, value: bool) {
-        self.selected_from_focus = value;
-    }
-
-    /// True if the node has any ARIA attributes set.
-    pub fn has_aria_attribute(&self) -> bool {
-        self.has_aria_attribute
-    }
-    pub fn set_has_aria_attribute(&mut self, value: bool) {
-        self.has_aria_attribute = value;
-    }
-
-    /// This element allows touches to be passed through when a screen reader
-    /// is in touch exploration mode, e.g. a virtual keyboard normally
-    /// behaves this way.
-    pub fn is_touch_pass_through(&self) -> bool {
-        self.touch_pass_through
-    }
-    pub fn set_touch_pass_through(&mut self, value: bool) {
-        self.touch_pass_through = value;
-    }
-
-    /// Use for a textbox that allows focus/selection but not input.
-    pub fn is_read_only(&self) -> bool {
-        self.read_only
-    }
-    pub fn set_read_only(&mut self, value: bool) {
-        self.read_only = value;
-    }
-
-    /// Use for a control or group of controls that disallows input.
-    pub fn is_disabled(&self) -> bool {
-        self.disabled
-    }
-    pub fn set_disabled(&mut self, value: bool) {
-        self.disabled = value;
-    }
-
-    pub fn is_bold(&self) -> bool {
-        self.bold
-    }
-    pub fn set_bold(&mut self, value: bool) {
-        self.bold = value;
-    }
-
-    pub fn is_italic(&self) -> bool {
-        self.italic
-    }
-    pub fn set_italic(&mut self, value: bool) {
-        self.italic = value;
-    }
-
-    /// Indicates whether this node causes a hard line-break
-    /// (e.g. block level elements, or `<br>`).
-    pub fn is_line_breaking_object(&self) -> bool {
-        self.is_line_breaking_object
-    }
-    pub fn set_is_line_breaking_object(&mut self, value: bool) {
-        self.is_line_breaking_object = value;
-    }
-
-    /// Indicates whether this node causes a page break.
-    pub fn is_page_breaking_object(&self) -> bool {
-        self.is_page_breaking_object
-    }
-    pub fn set_is_page_breaking_object(&mut self, value: bool) {
-        self.is_page_breaking_object = value;
-    }
-
-    pub fn is_spelling_error(&self) -> bool {
-        self.is_spelling_error
-    }
-    pub fn set_is_spelling_error(&mut self, value: bool) {
-        self.is_spelling_error = value;
-    }
-
-    pub fn is_grammar_error(&self) -> bool {
-        self.is_grammar_error
-    }
-    pub fn set_is_grammar_error(&mut self, value: bool) {
-        self.is_grammar_error = value;
-    }
-
-    pub fn is_search_match(&self) -> bool {
-        self.is_search_match
-    }
-    pub fn set_is_search_match(&mut self, value: bool) {
-        self.is_search_match = value;
-    }
-
-    pub fn is_suggestion(&self) -> bool {
-        self.is_suggestion
-    }
-    pub fn set_is_suggestion(&mut self, value: bool) {
-        self.is_suggestion = value;
-    }
-
+optional_bool_methods! {
     /// Whether this node is expanded, collapsed, or neither.
     ///
     /// Setting this to `false` means the node is collapsed; omitting it means this state
     /// isn't applicable.
-    pub fn is_expanded(&self) -> Option<bool> {
-        self.expanded
-    }
-    pub fn set_expanded(&mut self, value: bool) {
-        self.expanded = Some(value);
-    }
-    pub fn clear_expanded(&mut self) {
-        self.expanded = None;
-    }
+    (expanded)
 
     /// Indicates whether this node is selected or unselected.
     ///
@@ -1439,15 +1298,7 @@ impl Node {
     /// to announce "not selected". The ambiguity of this flag
     /// in platform accessibility APIs has made extraneous
     /// "not selected" announcements a common annoyance.
-    pub fn is_selected(&self) -> Option<bool> {
-        self.selected
-    }
-    pub fn set_selected(&mut self, value: bool) {
-        self.selected = Some(value);
-    }
-    pub fn clear_selected(&mut self) {
-        self.selected = None;
-    }
+    (selected)
 }
 
 optional_enum_methods! {
