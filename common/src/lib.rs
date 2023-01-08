@@ -637,7 +637,6 @@ enum Flag {
     Italic,
     CanvasHasFallback,
     ClipsChildren,
-    HasAriaAttribute,
     IsLineBreakingObject,
     IsPageBreakingObject,
     IsSpellingError,
@@ -1253,8 +1252,6 @@ irregular_flag_methods! {
     /// Indicates that this node clips its children, i.e. may have
     /// `overflow: hidden` or clip children by default.
     (clips_children, ClipsChildren)
-    /// True if the node has any ARIA attributes set.
-    (has_aria_attribute, HasAriaAttribute)
     /// Indicates whether this node causes a hard line-break
     /// (e.g. block level elements, or `<br>`).
     (is_line_breaking_object, IsLineBreakingObject)
