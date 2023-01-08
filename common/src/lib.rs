@@ -755,8 +755,18 @@ enum PropertyId {
     TextSelection,
     CustomActions,
 
-    // This should come last.
+    // This MUST be last.
     Unset,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(transparent)]
+struct PropertyIndices([u8; PropertyId::Unset as usize]);
+
+impl Default for PropertyIndices {
+    fn default() -> Self {
+        Self([PropertyId::Unset as u8; PropertyId::Unset as usize])
+    }
 }
 
 macro_rules! property_methods {
@@ -878,11 +888,11 @@ macro_rules! coord_slice_property_methods {
 /// to other languages, documentation of getter methods is written as if
 /// documenting fields in a struct, and such methods are referred to
 /// as properties.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Node {
     role: Role,
     actions: EnumSet<Action>,
-    indices: [u8; PropertyId::Unset as usize],
+    indices: PropertyIndices,
     props: Vec<Property>,
     autofill_available: bool,
     default: bool,
@@ -939,7 +949,7 @@ pub struct Node {
 
 impl Node {
     fn get_property(&self, id: PropertyId) -> &Property {
-        let index = self.indices[id as usize];
+        let index = self.indices.0[id as usize];
         if index == PropertyId::Unset as u8 {
             &Property::None
         } else {
@@ -948,11 +958,11 @@ impl Node {
     }
 
     fn get_property_mut(&mut self, id: PropertyId, default: Property) -> &mut Property {
-        let index = self.indices[id as usize] as usize;
+        let index = self.indices.0[id as usize] as usize;
         if index == PropertyId::Unset as usize {
             self.props.push(default);
             let index = self.props.len() - 1;
-            self.indices[id as usize] = index as u8;
+            self.indices.0[id as usize] = index as u8;
             &mut self.props[index]
         } else {
             if matches!(self.props[index], Property::None) {
@@ -963,17 +973,17 @@ impl Node {
     }
 
     fn set_property(&mut self, id: PropertyId, value: Property) {
-        let index = self.indices[id as usize];
+        let index = self.indices.0[id as usize];
         if index == PropertyId::Unset as u8 {
             self.props.push(value);
-            self.indices[id as usize] = (self.props.len() - 1) as u8;
+            self.indices.0[id as usize] = (self.props.len() - 1) as u8;
         } else {
             self.props[index as usize] = value;
         }
     }
 
     fn clear_property(&mut self, id: PropertyId) {
-        let index = self.indices[id as usize];
+        let index = self.indices.0[id as usize];
         if index != PropertyId::Unset as u8 {
             self.props[index as usize] = Property::None;
         }
@@ -1864,68 +1874,6 @@ impl Node {
     }
     pub fn clear_custom_actions(&mut self) {
         self.clear_property(PropertyId::CustomActions);
-    }
-}
-
-impl Default for Node {
-    fn default() -> Self {
-        Self {
-            role: Role::Unknown,
-            indices: [PropertyId::Unset as u8; PropertyId::Unset as usize],
-            props: Vec::new(),
-            actions: EnumSet::new(),
-            name_from: None,
-            description_from: None,
-            autofill_available: false,
-            expanded: None,
-            default: false,
-            editable: false,
-            orientation: None,
-            hovered: false,
-            hidden: false,
-            linked: false,
-            multiline: false,
-            multiselectable: false,
-            protected: false,
-            required: false,
-            visited: false,
-            busy: false,
-            nonatomic_text_field_root: false,
-            live_atomic: false,
-            modal: false,
-            canvas_has_fallback: false,
-            scrollable: false,
-            clips_children: false,
-            not_user_selectable_style: false,
-            selected: None,
-            selected_from_focus: false,
-            is_line_breaking_object: false,
-            is_page_breaking_object: false,
-            has_aria_attribute: false,
-            touch_pass_through: false,
-            is_spelling_error: false,
-            is_grammar_error: false,
-            is_search_match: false,
-            is_suggestion: false,
-            text_direction: None,
-            invalid: None,
-            checked_state: None,
-            live: None,
-            default_action_verb: None,
-            sort_direction: None,
-            read_only: false,
-            disabled: false,
-            aria_current: None,
-            has_popup: None,
-            list_style: None,
-            text_align: None,
-            vertical_offset: None,
-            bold: false,
-            italic: false,
-            overline: None,
-            strikethrough: None,
-            underline: None,
-        }
     }
 }
 
