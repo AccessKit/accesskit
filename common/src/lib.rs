@@ -607,6 +607,46 @@ pub struct TextSelection {
     pub focus: TextPosition,
 }
 
+#[derive(EnumSetType, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "serde", enumset(serialize_as_list))]
+enum Flag {
+    AutofillAvailable,
+    Default,
+    Editable,
+    Hovered,
+    Hidden,
+    Linked,
+    Multiline,
+    Multiselectable,
+    Protected,
+    Required,
+    Visited,
+    Busy,
+    LiveAtomic,
+    Modal,
+    Scrollable,
+    NotUserSelectableStyle,
+    SelectedFromFocus,
+    TouchPassThrough,
+    ReadOnly,
+    Disabled,
+    Bold,
+    Italic,
+    CanvasHasFallback,
+    ClipsChildren,
+    HasAriaAttribute,
+    IsLineBreakingObject,
+    IsPageBreakingObject,
+    IsSpellingError,
+    IsGrammarError,
+    IsSearchMatch,
+    IsSuggestion,
+    IsNonatomicTextFieldRoot,
+}
+
 // The following is based on the technique described here:
 // https://viruta.org/reducing-memory-consumption-in-librsvg-2.html
 
@@ -744,32 +784,38 @@ impl Default for PropertyIndices {
     }
 }
 
-macro_rules! bool_methods {
-    ($($(#[$doc:meta])* ($base_name:ident))+) => {
+macro_rules! flag_methods {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
         paste! {
             impl Node {
                 $($(#[$doc])*
                 pub fn [< is_ $base_name >](&self) -> bool {
-                    self.$base_name
+                    self.flags.contains(Flag::$id)
                 }
-                pub fn [< set_ $base_name >](&mut self, value: bool) {
-                    self.$base_name = value;
+                pub fn [< set_ $base_name >](&mut self) {
+                    self.flags.insert(Flag::$id);
+                }
+                pub fn [< clear_ $base_name >](&mut self) {
+                    self.flags.remove(Flag::$id);
                 })*
             }
         }
     }
 }
 
-macro_rules! irregular_bool_methods {
-    ($($(#[$doc:meta])* ($base_name:ident))+) => {
+macro_rules! irregular_flag_methods {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
         paste! {
             impl Node {
                 $($(#[$doc])*
                 pub fn $base_name(&self) -> bool {
-                    self.$base_name
+                    self.flags.contains(Flag::$id)
                 }
-                pub fn [< set_ $base_name >](&mut self, value: bool) {
-                    self.$base_name = value;
+                pub fn [< set_ $base_name >](&mut self) {
+                    self.flags.insert(Flag::$id);
+                }
+                pub fn [< clear_ $base_name >](&mut self) {
+                    self.flags.remove(Flag::$id);
                 })*
             }
         }
@@ -939,38 +985,7 @@ pub struct Node {
     actions: EnumSet<Action>,
     indices: PropertyIndices,
     props: Vec<Property>,
-    autofill_available: bool,
-    default: bool,
-    editable: bool,
-    hovered: bool,
-    hidden: bool,
-    linked: bool,
-    multiline: bool,
-    multiselectable: bool,
-    protected: bool,
-    required: bool,
-    visited: bool,
-    busy: bool,
-    live_atomic: bool,
-    modal: bool,
-    scrollable: bool,
-    not_user_selectable_style: bool,
-    selected_from_focus: bool,
-    touch_pass_through: bool,
-    read_only: bool,
-    disabled: bool,
-    bold: bool,
-    italic: bool,
-    canvas_has_fallback: bool,
-    clips_children: bool,
-    has_aria_attribute: bool,
-    is_line_breaking_object: bool,
-    is_page_breaking_object: bool,
-    is_spelling_error: bool,
-    is_grammar_error: bool,
-    is_search_match: bool,
-    is_nonatomic_text_field_root: bool,
-    is_suggestion: bool,
+    flags: EnumSet<Flag>,
     expanded: Option<bool>,
     selected: Option<bool>,
     name_from: Option<NameFrom>,
@@ -1191,70 +1206,70 @@ impl Node {
     }
 }
 
-bool_methods! {
-    (autofill_available)
-    (default)
-    (editable)
-    (hovered)
+flag_methods! {
+    (autofill_available, AutofillAvailable)
+    (default, Default)
+    (editable, Editable)
+    (hovered, Hovered)
     /// Exclude this node and its descendants from the tree presented to
     /// assistive technologies, and from hit testing.
-    (hidden)
-    (linked)
-    (multiline)
-    (multiselectable)
-    (protected)
-    (required)
-    (visited)
-    (busy)
-    (live_atomic)
+    (hidden, Hidden)
+    (linked, Linked)
+    (multiline, Multiline)
+    (multiselectable, Multiselectable)
+    (protected, Protected)
+    (required, Required)
+    (visited, Visited)
+    (busy, Busy)
+    (live_atomic, LiveAtomic)
     /// If a dialog box is marked as explicitly modal.
-    (modal)
+    (modal, Modal)
     /// Indicates this node is user-scrollable, e.g. `overflow: scroll|auto`, as
     /// opposed to only programmatically scrollable, like `overflow: hidden`, or
     /// not scrollable at all, e.g. `overflow: visible`.
-    (scrollable)
+    (scrollable, Scrollable)
     /// Indicates that this node is not selectable because the style has
     /// `user-select: none`. Note that there may be other reasons why a node is
     /// not selectable - for example, bullets in a list. However, this attribute
     /// is only set on `user-select: none`.
-    (not_user_selectable_style)
+    (not_user_selectable_style, NotUserSelectableStyle)
     /// Indicates whether this node is selected due to selection follows focus.
-    (selected_from_focus)
+    (selected_from_focus, SelectedFromFocus)
     /// This element allows touches to be passed through when a screen reader
     /// is in touch exploration mode, e.g. a virtual keyboard normally
     /// behaves this way.
-    (touch_pass_through)
+    (touch_pass_through, TouchPassThrough)
     /// Use for a textbox that allows focus/selection but not input.
-    (read_only)
+    (read_only, ReadOnly)
     /// Use for a control or group of controls that disallows input.
-    (disabled)
-    (bold)
-    (italic)
+    (disabled, Disabled)
+    (bold, Bold)
+    (italic, Italic)
 }
 
-irregular_bool_methods! {
+irregular_flag_methods! {
     /// Set on a canvas element if it has fallback content.
-    (canvas_has_fallback)
+    (canvas_has_fallback, CanvasHasFallback)
     /// Indicates that this node clips its children, i.e. may have
     /// `overflow: hidden` or clip children by default.
-    (clips_children)
+    (clips_children, ClipsChildren)
     /// True if the node has any ARIA attributes set.
-    (has_aria_attribute)
+    (has_aria_attribute, HasAriaAttribute)
     /// Indicates whether this node causes a hard line-break
     /// (e.g. block level elements, or `<br>`).
-    (is_line_breaking_object)
+    (is_line_breaking_object, IsLineBreakingObject)
     /// Indicates whether this node causes a page break.
-    (is_page_breaking_object)
-    (is_spelling_error)
-    (is_grammar_error)
-    (is_search_match)
-    (is_suggestion)
+    (is_page_breaking_object, IsPageBreakingObject)
+    (is_spelling_error, IsSpellingError)
+    (is_grammar_error, IsGrammarError)
+    (is_search_match, IsSearchMatch)
+    (is_suggestion, IsSuggestion)
     /// The object functions as a text field which exposes its descendants.
     ///
     /// Use cases include the root of a content-editable region, an ARIA
     /// textbox which isn't currently editable and which has interactive
     /// descendants, and a `<body>` element that has "design-mode" set to "on".
-    (is_nonatomic_text_field_root)
+    (is_nonatomic_text_field_root, IsNonatomicTextFieldRoot)
 }
 
 optional_bool_methods! {

@@ -117,7 +117,7 @@ mod tests {
         let link_3_1_ignored = Arc::new({
             let mut node = Node::new(Role::Link);
             node.set_children(vec![STATIC_TEXT_3_1_0_ID]);
-            node.set_linked(true);
+            node.set_linked();
             node
         });
         let static_text_3_1_0 = Arc::new({
