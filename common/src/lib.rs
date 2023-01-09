@@ -1614,8 +1614,8 @@ macro_rules! serialize_simple_fields {
 #[cfg(feature = "serde")]
 macro_rules! serialize_optional_fields {
     ($self:ident, $map:ident, { $(($name:ident, $id:ident)),+ }) => {
-        $(if let Some(value) = $self.$name {
-            $map.serialize_entry(&FieldId::$id, &value)?;
+        $(if $self.$name.is_some() {
+            $map.serialize_entry(&FieldId::$id, &$self.$name)?;
         })*
     }
 }
@@ -1626,7 +1626,7 @@ macro_rules! serialize_property {
         match &$self.props[$index as usize] {
             Property::None => (),
             $(Property::$variant(value) => {
-                $map.serialize_entry(&$id, value)?;
+                $map.serialize_entry(&$id, &Some(value))?;
             })*
         }
     }
