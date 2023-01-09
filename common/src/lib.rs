@@ -22,10 +22,12 @@ use paste::paste;
 use schemars::JsonSchema;
 #[cfg(feature = "serde")]
 use serde::{
-    de::Deserializer,
+    de::{Deserializer, IgnoredAny, MapAccess, Visitor},
     ser::{SerializeMap, Serializer},
     Deserialize, Serialize,
 };
+#[cfg(feature = "serde")]
+use std::fmt;
 use std::{
     num::{NonZeroU128, NonZeroU64},
     sync::Arc,
@@ -1568,7 +1570,7 @@ impl Node {
 
 #[cfg(feature = "serde")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
-enum OtherField {
+enum FieldId {
     Role,
     Actions,
     Expanded,
@@ -1593,18 +1595,19 @@ enum OtherField {
 }
 
 #[cfg(feature = "serde")]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
-enum Field {
+enum DeserializeKey {
+    Field(FieldId),
     Flag(Flag),
     Property(PropertyId),
-    Other(OtherField),
+    Unknown(String),
 }
 
 #[cfg(feature = "serde")]
 macro_rules! serialize_simple_fields {
     ($self:ident, $map:ident, { $(($name:ident, $id:ident)),+ }) => {
-        $($map.serialize_entry(&OtherField::$id, &$self.$name)?;)*
+        $($map.serialize_entry(&FieldId::$id, &$self.$name)?;)*
     }
 }
 
@@ -1612,7 +1615,7 @@ macro_rules! serialize_simple_fields {
 macro_rules! serialize_optional_fields {
     ($self:ident, $map:ident, { $(($name:ident, $id:ident)),+ }) => {
         $(if let Some(value) = $self.$name {
-            $map.serialize_entry(&OtherField::$id, &value)?;
+            $map.serialize_entry(&FieldId::$id, &value)?;
         })*
     }
 }
@@ -1625,6 +1628,35 @@ macro_rules! serialize_property {
             $(Property::$variant(value) => {
                 $map.serialize_entry(&$id, value)?;
             })*
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+macro_rules! deserialize_field {
+    ($node:ident, $map:ident, $key:ident, { $(($name:ident, $id:ident)),+ }) => {
+        match $key {
+            $(FieldId::$id => {
+                $node.$name = $map.next_value()?;
+            })*
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+macro_rules! deserialize_property {
+    ($node:ident, $map:ident, $key:ident, { $($type:ident { $($id:ident),+ }),+ }) => {
+        match $key {
+            $($(PropertyId::$id => {
+                if let Some(value) = $map.next_value()? {
+                    $node.set_property(PropertyId::$id, Property::$type(value));
+                } else {
+                    $node.clear_property(PropertyId::$id);
+                }
+            })*)*
+            PropertyId::Unset => {
+                let _ = $map.next_value::<IgnoredAny>()?;
+            }
         }
     }
 }
@@ -1689,12 +1721,168 @@ impl Serialize for Node {
 }
 
 #[cfg(feature = "serde")]
+struct NodeVisitor;
+
+#[cfg(feature = "serde")]
+impl<'de> Visitor<'de> for NodeVisitor {
+    type Value = Node;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("struct Node")
+    }
+
+    fn visit_map<V>(self, mut map: V) -> Result<Node, V::Error>
+    where
+        V: MapAccess<'de>,
+    {
+        let mut node = Node::default();
+        while let Some(key) = map.next_key()? {
+            match key {
+                DeserializeKey::Field(id) => {
+                    deserialize_field!(node, map, id, {
+                       (role, Role),
+                       (actions, Actions),
+                       (expanded, Expanded),
+                       (selected, Selected),
+                       (name_from, NameFrom),
+                       (description_from, DescriptionFrom),
+                       (invalid, Invalid),
+                       (checked_state, CheckedState),
+                       (live, Live),
+                       (default_action_verb, DefaultActionVerb),
+                       (text_direction, TextDirection),
+                       (orientation, Orientation),
+                       (sort_direction, SortDirection),
+                       (aria_current, AriaCurrent),
+                       (has_popup, HasPopup),
+                       (list_style, ListStyle),
+                       (text_align, TextAlign),
+                       (vertical_offset, VerticalOffset),
+                       (overline, Overline),
+                       (strikethrough, Strikethrough),
+                       (underline, Underline)
+                    });
+                }
+                DeserializeKey::Flag(flag) => {
+                    if map.next_value()? {
+                        node.flags.insert(flag);
+                    } else {
+                        node.flags.remove(flag);
+                    }
+                }
+                DeserializeKey::Property(id) => {
+                    deserialize_property!(node, map, id, {
+                        NodeIdVec {
+                            Children,
+                            IndirectChildren,
+                            Controls,
+                            Details,
+                            DescribedBy,
+                            FlowTo,
+                            LabelledBy,
+                            RadioGroup
+                        },
+                        NodeId {
+                            ActiveDescendant,
+                            ErrorMessage,
+                            InPageLinkTarget,
+                            MemberOf,
+                            NextOnLine,
+                            PreviousOnLine,
+                            PopupFor,
+                            TableHeader,
+                            TableRowHeader,
+                            TableColumnHeader,
+                            NextFocus,
+                            PreviousFocus
+                        },
+                        String {
+                            Name,
+                            Description,
+                            Value,
+                            AccessKey,
+                            AutoComplete,
+                            CheckedStateDescription,
+                            ClassName,
+                            CssDisplay,
+                            FontFamily,
+                            HtmlTag,
+                            InnerHtml,
+                            InputType,
+                            KeyShortcuts,
+                            Language,
+                            LiveRelevant,
+                            Placeholder,
+                            AriaRole,
+                            RoleDescription,
+                            Tooltip,
+                            Url
+                        },
+                        F64 {
+                            ScrollX,
+                            ScrollXMin,
+                            ScrollXMax,
+                            ScrollY,
+                            ScrollYMin,
+                            ScrollYMax,
+                            NumericValue,
+                            MinNumericValue,
+                            MaxNumericValue,
+                            NumericValueStep,
+                            NumericValueJump,
+                            FontSize,
+                            FontWeight,
+                            TextIndent
+                        },
+                        Usize {
+                            TableRowCount,
+                            TableColumnCount,
+                            TableRowIndex,
+                            TableColumnIndex,
+                            TableCellColumnIndex,
+                            TableCellColumnSpan,
+                            TableCellRowIndex,
+                            TableCellRowSpan,
+                            HierarchicalLevel,
+                            SizeOfSet,
+                            PositionInSet
+                        },
+                        Color {
+                            ColorValue,
+                            BackgroundColor,
+                            ForegroundColor
+                        },
+                        LengthSlice {
+                            CharacterLengths,
+                            WordLengths
+                        },
+                        CoordSlice {
+                            CharacterPositions,
+                            CharacterWidths
+                        },
+                        Affine { Transform },
+                        Rect { Bounds },
+                        TextSelection { TextSelection },
+                        CustomActionVec { CustomActions }
+                    });
+                }
+                DeserializeKey::Unknown(_) => {
+                    let _ = map.next_value::<IgnoredAny>()?;
+                }
+            }
+        }
+
+        Ok(node)
+    }
+}
+
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for Node {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        todo!()
+        deserializer.deserialize_map(NodeVisitor)
     }
 }
 
