@@ -1900,7 +1900,6 @@ pub struct Tree {
     /// The node that's used as the root scroller, if any. On some platforms
     /// like Android we need to ignore accessibility scroll offsets for
     /// that node and get them from the viewport instead.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub root_scroller: Option<NodeId>,
 }
 
@@ -1956,7 +1955,6 @@ pub struct TreeUpdate {
     /// if it has not changed since the previous update, but providing the same
     /// information again is also allowed. This is required when initializing
     /// a tree.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub tree: Option<Tree>,
 
     /// The node with keyboard focus within this tree, if any.
@@ -1970,7 +1968,6 @@ pub struct TreeUpdate {
     /// render widgets (e.g. to draw or not draw a focus rectangle),
     /// so this focus tracking should not be duplicated between the toolkit
     /// and the AccessKit platform adapters.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub focus: Option<NodeId>,
 }
 
@@ -2008,7 +2005,6 @@ pub enum ActionData {
 pub struct ActionRequest {
     pub action: Action,
     pub target: NodeId,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub data: Option<ActionData>,
 }
 
