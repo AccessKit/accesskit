@@ -1570,6 +1570,7 @@ impl Node {
 
 #[cfg(feature = "serde")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 enum FieldId {
     Role,
     Actions,
