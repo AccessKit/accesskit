@@ -8,14 +8,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
+#[cfg(feature = "serde")]
+#[macro_use]
+extern crate num_derive;
+
 use enumset::{EnumSet, EnumSetType};
 pub use kurbo;
 use kurbo::{Affine, Point, Rect};
+#[cfg(feature = "serde")]
+use num_traits::FromPrimitive;
 use paste::paste;
 #[cfg(feature = "schemars")]
 use schemars::JsonSchema;
 #[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use serde::{
+    de::Deserializer,
+    ser::{SerializeMap, Serializer},
+    Deserialize, Serialize,
+};
 use std::{
     num::{NonZeroU128, NonZeroU64},
     sync::Arc,
@@ -565,18 +575,6 @@ pub struct CustomAction {
     pub description: Box<str>,
 }
 
-// Helper for skipping false values in serialization.
-#[cfg(feature = "serde")]
-fn is_false(b: &bool) -> bool {
-    !b
-}
-
-// Helper for skipping empty slices in serialization.
-#[cfg(feature = "serde")]
-fn is_empty<T>(slice: &[T]) -> bool {
-    slice.is_empty()
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
@@ -611,7 +609,6 @@ pub struct TextSelection {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-#[cfg_attr(feature = "serde", enumset(serialize_as_list))]
 enum Flag {
     AutofillAvailable,
     Default,
@@ -666,6 +663,9 @@ enum Property {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, FromPrimitive))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[repr(u8)]
 enum PropertyId {
     // NodeIdVec
@@ -1563,6 +1563,138 @@ impl Node {
     }
     pub fn clear_custom_actions(&mut self) {
         self.clear_property(PropertyId::CustomActions);
+    }
+}
+
+#[cfg(feature = "serde")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+enum OtherField {
+    Role,
+    Actions,
+    Expanded,
+    Selected,
+    NameFrom,
+    DescriptionFrom,
+    Invalid,
+    CheckedState,
+    Live,
+    DefaultActionVerb,
+    TextDirection,
+    Orientation,
+    SortDirection,
+    AriaCurrent,
+    HasPopup,
+    ListStyle,
+    TextAlign,
+    VerticalOffset,
+    Overline,
+    Strikethrough,
+    Underline,
+}
+
+#[cfg(feature = "serde")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(untagged)]
+enum Field {
+    Flag(Flag),
+    Property(PropertyId),
+    Other(OtherField),
+}
+
+#[cfg(feature = "serde")]
+macro_rules! serialize_simple_fields {
+    ($self:ident, $map:ident, { $(($name:ident, $id:ident)),+ }) => {
+        $($map.serialize_entry(&OtherField::$id, &$self.$name)?;)*
+    }
+}
+
+#[cfg(feature = "serde")]
+macro_rules! serialize_optional_fields {
+    ($self:ident, $map:ident, { $(($name:ident, $id:ident)),+ }) => {
+        $(if let Some(value) = $self.$name {
+            $map.serialize_entry(&OtherField::$id, &value)?;
+        })*
+    }
+}
+
+#[cfg(feature = "serde")]
+macro_rules! serialize_property {
+    ($self:ident, $map:ident, $index:ident, $id:ident, { $($variant:ident),+ }) => {
+        match &$self.props[$index as usize] {
+            Property::None => (),
+            $(Property::$variant(value) => {
+                $map.serialize_entry(&$id, value)?;
+            })*
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl Serialize for Node {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(None)?;
+        serialize_simple_fields!(self, map, {
+            (role, Role),
+            (actions, Actions)
+        });
+        for flag in self.flags {
+            map.serialize_entry(&flag, &true)?;
+        }
+        serialize_optional_fields!(self, map, {
+            (expanded, Expanded),
+            (selected, Selected),
+            (name_from, NameFrom),
+            (description_from, DescriptionFrom),
+            (invalid, Invalid),
+            (checked_state, CheckedState),
+            (live, Live),
+            (default_action_verb, DefaultActionVerb),
+            (text_direction, TextDirection),
+            (orientation, Orientation),
+            (sort_direction, SortDirection),
+            (aria_current, AriaCurrent),
+            (has_popup, HasPopup),
+            (list_style, ListStyle),
+            (text_align, TextAlign),
+            (vertical_offset, VerticalOffset),
+            (overline, Overline),
+            (strikethrough, Strikethrough),
+            (underline, Underline)
+        });
+        for (id, index) in self.indices.0.iter().copied().enumerate() {
+            if index == PropertyId::Unset as u8 {
+                continue;
+            }
+            let id = PropertyId::from_usize(id).unwrap();
+            serialize_property!(self, map, index, id, {
+                NodeIdVec,
+                NodeId,
+                String,
+                F64,
+                Usize,
+                Color,
+                LengthSlice,
+                CoordSlice,
+                Affine,
+                Rect,
+                TextSelection,
+                CustomActionVec
+            });
+        }
+        map.end()
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for Node {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        todo!()
     }
 }
 
