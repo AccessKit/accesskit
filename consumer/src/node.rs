@@ -247,7 +247,9 @@ impl NodeState {
     /// Returns the transform defined directly on this node, or the identity
     /// transform, without taking into account transforms on ancestors.
     pub fn direct_transform(&self) -> Affine {
-        self.data().transform().map_or(Affine::IDENTITY, |value| *value)
+        self.data()
+            .transform()
+            .map_or(Affine::IDENTITY, |value| *value)
     }
 }
 

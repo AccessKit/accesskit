@@ -1533,7 +1533,10 @@ impl Node {
         }
     }
     pub fn set_text_selection(&mut self, value: impl Into<Box<TextSelection>>) {
-        self.set_property(PropertyId::TextSelection, Property::TextSelection(value.into()));
+        self.set_property(
+            PropertyId::TextSelection,
+            Property::TextSelection(value.into()),
+        );
     }
     pub fn clear_text_selection(&mut self) {
         self.clear_property(PropertyId::TextSelection);
