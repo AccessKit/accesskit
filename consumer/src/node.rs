@@ -247,7 +247,7 @@ impl NodeState {
     /// Returns the transform defined directly on this node, or the identity
     /// transform, without taking into account transforms on ancestors.
     pub fn direct_transform(&self) -> Affine {
-        self.data().transform().unwrap_or(Affine::IDENTITY)
+        self.data().transform().map_or(Affine::IDENTITY, |value| *value)
     }
 }
 
@@ -601,7 +601,7 @@ impl NodeState {
         self.data().is_selected()
     }
 
-    pub fn raw_text_selection(&self) -> Option<TextSelection> {
+    pub fn raw_text_selection(&self) -> Option<&TextSelection> {
         self.data().text_selection()
     }
 }

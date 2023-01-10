@@ -342,7 +342,7 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
-    pub(crate) fn raw_text_selection(&self) -> Option<TextSelection> {
+    pub(crate) fn raw_text_selection(&self) -> Option<&TextSelection> {
         self.node_state().raw_text_selection()
     }
 }

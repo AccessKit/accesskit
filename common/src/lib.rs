@@ -658,9 +658,9 @@ enum Property {
     Color(u32),
     LengthSlice(Box<[u8]>),
     CoordSlice(Box<[f32]>),
-    Affine(Affine),
+    Affine(Box<Affine>),
     Rect(Rect),
-    TextSelection(TextSelection),
+    TextSelection(Box<TextSelection>),
     CustomActionVec(Vec<CustomAction>),
 }
 
@@ -1043,16 +1043,16 @@ impl Node {
         }
     }
 
-    fn get_affine(&self, id: PropertyId) -> Option<Affine> {
+    fn get_affine(&self, id: PropertyId) -> Option<&Affine> {
         match self.get_property(id) {
             Property::None => None,
-            Property::Affine(value) => Some(*value),
+            Property::Affine(value) => Some(value),
             _ => panic!(),
         }
     }
 
-    fn set_affine(&mut self, id: PropertyId, value: Affine) {
-        self.set_property(id, Property::Affine(value));
+    fn set_affine(&mut self, id: PropertyId, value: impl Into<Box<Affine>>) {
+        self.set_property(id, Property::Affine(value.into()));
     }
 
     fn get_rect(&self, id: PropertyId) -> Option<Rect> {
@@ -1509,7 +1509,7 @@ property_methods! {
     /// pixels, with the y coordinate being top-down.
     ///
     /// [`bounds`]: Node::bounds
-    (transform, Transform, affine, Option<Affine>, Affine)
+    (transform, Transform, affine, Option<&Affine>, impl Into<Box<Affine>>)
 
     /// The bounding box of this node, in the node's coordinate space.
     /// This property does not affect the coordinate space of either this node
@@ -1525,15 +1525,15 @@ property_methods! {
 }
 
 impl Node {
-    pub fn text_selection(&self) -> Option<TextSelection> {
+    pub fn text_selection(&self) -> Option<&TextSelection> {
         match self.get_property(PropertyId::TextSelection) {
             Property::None => None,
-            Property::TextSelection(value) => Some(*value),
+            Property::TextSelection(value) => Some(value),
             _ => panic!(),
         }
     }
-    pub fn set_text_selection(&mut self, value: TextSelection) {
-        self.set_property(PropertyId::TextSelection, Property::TextSelection(value));
+    pub fn set_text_selection(&mut self, value: impl Into<Box<TextSelection>>) {
+        self.set_property(PropertyId::TextSelection, Property::TextSelection(value.into()));
     }
     pub fn clear_text_selection(&mut self) {
         self.clear_property(PropertyId::TextSelection);
