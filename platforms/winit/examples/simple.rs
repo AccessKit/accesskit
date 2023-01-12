@@ -35,21 +35,19 @@ const BUTTON_2_RECT: Rect = Rect {
     y1: 100.0,
 };
 
-fn make_button(id: NodeId, name: &str) -> Arc<Node> {
+fn make_button(id: NodeId, name: &str) -> Node {
     let rect = match id {
         BUTTON_1_ID => BUTTON_1_RECT,
         BUTTON_2_ID => BUTTON_2_RECT,
         _ => unreachable!(),
     };
 
-    Arc::new({
-        let mut node = Node::new(Role::Button);
-        node.set_bounds(rect);
-        node.set_name(name);
-        node.add_action(Action::Focus);
-        node.set_default_action_verb(DefaultActionVerb::Click);
-        node
-    })
+    let mut node = Node::new(Role::Button);
+    node.set_bounds(rect);
+    node.set_name(name);
+    node.add_action(Action::Focus);
+    node.set_default_action_verb(DefaultActionVerb::Click);
+    node
 }
 
 #[derive(Debug)]
@@ -90,18 +88,18 @@ impl State {
         } else {
             "You pressed button 2"
         };
-        let node = Arc::new({
+        let node = {
             let mut node = Node::new(Role::StaticText);
             node.set_name(name);
             node.set_live(Live::Polite);
             node
-        });
-        let root = Arc::new({
+        };
+        let root = {
             let mut node = Node::new(Role::Window);
             node.set_children(vec![BUTTON_1_ID, BUTTON_2_ID, PRESSED_TEXT_ID]);
             node.set_name(WINDOW_TITLE);
             node
-        });
+        };
         let update = TreeUpdate {
             nodes: vec![(PRESSED_TEXT_ID, node), (WINDOW_ID, root)],
             tree: None,
@@ -112,12 +110,12 @@ impl State {
 }
 
 fn initial_tree_update(state: &State) -> TreeUpdate {
-    let root = Arc::new({
+    let root = {
         let mut node = Node::new(Role::Window);
         node.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
         node.set_name(WINDOW_TITLE);
         node
-    });
+    };
     let button_1 = make_button(BUTTON_1_ID, "Button 1");
     let button_2 = make_button(BUTTON_2_ID, "Button 2");
     TreeUpdate {

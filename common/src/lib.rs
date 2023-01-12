@@ -28,10 +28,7 @@ use serde::{
 };
 #[cfg(feature = "serde")]
 use std::fmt;
-use std::{
-    num::{NonZeroU128, NonZeroU64},
-    sync::Arc,
-};
+use std::num::{NonZeroU128, NonZeroU64};
 
 /// The type of an accessibility node.
 ///
@@ -1952,7 +1949,7 @@ pub struct TreeUpdate {
     /// an updated version of the parent node with the child's ID removed
     /// from [`Node::children`]. Neither the child nor any of its descendants
     /// may be included in this list.
-    pub nodes: Vec<(NodeId, Arc<Node>)>,
+    pub nodes: Vec<(NodeId, Node)>,
 
     /// Rarely updated information about the tree as a whole. This may be omitted
     /// if it has not changed since the previous update, but providing the same

@@ -722,7 +722,7 @@ impl Deref for DetachedNode {
 mod tests {
     use accesskit::kurbo::{Point, Rect};
     use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
-    use std::{num::NonZeroU128, sync::Arc};
+    use std::num::NonZeroU128;
 
     use crate::tests::*;
 
@@ -994,15 +994,12 @@ mod tests {
     fn no_name_or_labelled_by() {
         let update = TreeUpdate {
             nodes: vec![
-                (
-                    NODE_ID_1,
-                    Arc::new({
-                        let mut node = Node::new(Role::Window);
-                        node.set_children(vec![NODE_ID_2]);
-                        node
-                    }),
-                ),
-                (NODE_ID_2, Arc::new(Node::new(Role::Button))),
+                (NODE_ID_1, {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![NODE_ID_2]);
+                    node
+                }),
+                (NODE_ID_2, Node::new(Role::Button)),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
@@ -1020,46 +1017,31 @@ mod tests {
 
         let update = TreeUpdate {
             nodes: vec![
-                (
-                    NODE_ID_1,
-                    Arc::new({
-                        let mut node = Node::new(Role::Window);
-                        node.set_children(vec![NODE_ID_2, NODE_ID_3, NODE_ID_4, NODE_ID_5]);
-                        node
-                    }),
-                ),
-                (
-                    NODE_ID_2,
-                    Arc::new({
-                        let mut node = Node::new(Role::CheckBox);
-                        node.set_labelled_by(vec![NODE_ID_3, NODE_ID_5]);
-                        node
-                    }),
-                ),
-                (
-                    NODE_ID_3,
-                    Arc::new({
-                        let mut node = Node::new(Role::StaticText);
-                        node.set_name(LABEL_1);
-                        node
-                    }),
-                ),
-                (
-                    NODE_ID_4,
-                    Arc::new({
-                        let mut node = Node::new(Role::TextField);
-                        node.push_to_labelled_by(NODE_ID_5);
-                        node
-                    }),
-                ),
-                (
-                    NODE_ID_5,
-                    Arc::new({
-                        let mut node = Node::new(Role::StaticText);
-                        node.set_name(LABEL_2);
-                        node
-                    }),
-                ),
+                (NODE_ID_1, {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![NODE_ID_2, NODE_ID_3, NODE_ID_4, NODE_ID_5]);
+                    node
+                }),
+                (NODE_ID_2, {
+                    let mut node = Node::new(Role::CheckBox);
+                    node.set_labelled_by(vec![NODE_ID_3, NODE_ID_5]);
+                    node
+                }),
+                (NODE_ID_3, {
+                    let mut node = Node::new(Role::StaticText);
+                    node.set_name(LABEL_1);
+                    node
+                }),
+                (NODE_ID_4, {
+                    let mut node = Node::new(Role::TextField);
+                    node.push_to_labelled_by(NODE_ID_5);
+                    node
+                }),
+                (NODE_ID_5, {
+                    let mut node = Node::new(Role::StaticText);
+                    node.set_name(LABEL_2);
+                    node
+                }),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
@@ -1082,54 +1064,36 @@ mod tests {
 
         let update = TreeUpdate {
             nodes: vec![
-                (
-                    NODE_ID_1,
-                    Arc::new({
-                        let mut node = Node::new(Role::Window);
-                        node.set_children(vec![NODE_ID_2, NODE_ID_4]);
-                        node
-                    }),
-                ),
-                (
-                    NODE_ID_2,
-                    Arc::new({
-                        let mut node = Node::new(Role::Button);
-                        node.push_to_children(NODE_ID_3);
-                        node
-                    }),
-                ),
-                (
-                    NODE_ID_3,
-                    Arc::new({
-                        let mut node = Node::new(Role::Image);
-                        node.set_name(BUTTON_LABEL);
-                        node
-                    }),
-                ),
-                (
-                    NODE_ID_4,
-                    Arc::new({
-                        let mut node = Node::new(Role::Link);
-                        node.push_to_children(NODE_ID_5);
-                        node
-                    }),
-                ),
-                (
-                    NODE_ID_5,
-                    Arc::new({
-                        let mut node = Node::new(Role::GenericContainer);
-                        node.push_to_children(NODE_ID_6);
-                        node
-                    }),
-                ),
-                (
-                    NODE_ID_6,
-                    Arc::new({
-                        let mut node = Node::new(Role::StaticText);
-                        node.set_name(LINK_LABEL);
-                        node
-                    }),
-                ),
+                (NODE_ID_1, {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![NODE_ID_2, NODE_ID_4]);
+                    node
+                }),
+                (NODE_ID_2, {
+                    let mut node = Node::new(Role::Button);
+                    node.push_to_children(NODE_ID_3);
+                    node
+                }),
+                (NODE_ID_3, {
+                    let mut node = Node::new(Role::Image);
+                    node.set_name(BUTTON_LABEL);
+                    node
+                }),
+                (NODE_ID_4, {
+                    let mut node = Node::new(Role::Link);
+                    node.push_to_children(NODE_ID_5);
+                    node
+                }),
+                (NODE_ID_5, {
+                    let mut node = Node::new(Role::GenericContainer);
+                    node.push_to_children(NODE_ID_6);
+                    node
+                }),
+                (NODE_ID_6, {
+                    let mut node = Node::new(Role::StaticText);
+                    node.set_name(LINK_LABEL);
+                    node
+                }),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,

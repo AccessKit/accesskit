@@ -23,7 +23,6 @@ mod tests {
     use accesskit::kurbo::{Affine, Rect, Vec2};
     use accesskit::{ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
     use std::num::NonZeroU128;
-    use std::sync::Arc;
 
     use crate::FilterResult;
 
@@ -50,7 +49,7 @@ mod tests {
     }
 
     pub fn test_tree() -> crate::tree::Tree {
-        let root = Arc::new({
+        let root = {
             let mut node = Node::new(Role::RootWebArea);
             node.set_children(vec![
                 PARAGRAPH_0_ID,
@@ -59,18 +58,18 @@ mod tests {
                 PARAGRAPH_3_IGNORED_ID,
             ]);
             node
-        });
-        let paragraph_0 = Arc::new({
+        };
+        let paragraph_0 = {
             let mut node = Node::new(Role::Paragraph);
             node.set_children(vec![STATIC_TEXT_0_0_IGNORED_ID]);
             node
-        });
-        let static_text_0_0_ignored = Arc::new({
+        };
+        let static_text_0_0_ignored = {
             let mut node = Node::new(Role::StaticText);
             node.set_name("static_text_0_0_ignored");
             node
-        });
-        let paragraph_1_ignored = Arc::new({
+        };
+        let paragraph_1_ignored = {
             let mut node = Node::new(Role::Paragraph);
             node.set_transform(Affine::translate(Vec2::new(10.0, 40.0)));
             node.set_bounds(Rect {
@@ -81,8 +80,8 @@ mod tests {
             });
             node.set_children(vec![STATIC_TEXT_1_0_ID]);
             node
-        });
-        let static_text_1_0 = Arc::new({
+        };
+        let static_text_1_0 = {
             let mut node = Node::new(Role::StaticText);
             node.set_bounds(Rect {
                 x0: 10.0,
@@ -92,18 +91,18 @@ mod tests {
             });
             node.set_name("static_text_1_0");
             node
-        });
-        let paragraph_2 = Arc::new({
+        };
+        let paragraph_2 = {
             let mut node = Node::new(Role::Paragraph);
             node.set_children(vec![STATIC_TEXT_2_0_ID]);
             node
-        });
-        let static_text_2_0 = Arc::new({
+        };
+        let static_text_2_0 = {
             let mut node = Node::new(Role::StaticText);
             node.set_name("static_text_2_0");
             node
-        });
-        let paragraph_3_ignored = Arc::new({
+        };
+        let paragraph_3_ignored = {
             let mut node = Node::new(Role::Paragraph);
             node.set_children(vec![
                 EMPTY_CONTAINER_3_0_IGNORED_ID,
@@ -112,25 +111,25 @@ mod tests {
                 EMPTY_CONTAINER_3_3_IGNORED_ID,
             ]);
             node
-        });
-        let empty_container_3_0_ignored = Arc::new(Node::new(Role::GenericContainer));
-        let link_3_1_ignored = Arc::new({
+        };
+        let empty_container_3_0_ignored = Node::new(Role::GenericContainer);
+        let link_3_1_ignored = {
             let mut node = Node::new(Role::Link);
             node.set_children(vec![STATIC_TEXT_3_1_0_ID]);
             node.set_linked();
             node
-        });
-        let static_text_3_1_0 = Arc::new({
+        };
+        let static_text_3_1_0 = {
             let mut node = Node::new(Role::StaticText);
             node.set_name("static_text_3_1_0");
             node
-        });
-        let button_3_2 = Arc::new({
+        };
+        let button_3_2 = {
             let mut node = Node::new(Role::Button);
             node.set_name("button_3_2");
             node
-        });
-        let empty_container_3_3_ignored = Arc::new(Node::new(Role::GenericContainer));
+        };
+        let empty_container_3_3_ignored = Node::new(Role::GenericContainer);
         let initial_update = TreeUpdate {
             nodes: vec![
                 (ROOT_ID, root),
