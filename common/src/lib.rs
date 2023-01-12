@@ -779,7 +779,7 @@ impl Default for PropertyIndices {
 }
 
 macro_rules! flag_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
         paste! {
             impl Node {
                 $($(#[$doc])*
@@ -798,7 +798,7 @@ macro_rules! flag_methods {
 }
 
 macro_rules! irregular_flag_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
         paste! {
             impl Node {
                 $($(#[$doc])*
@@ -817,7 +817,7 @@ macro_rules! irregular_flag_methods {
 }
 
 macro_rules! optional_bool_methods {
-    ($($(#[$doc:meta])* ($base_name:ident))+) => {
+    ($($(#[$doc:meta])* ($base_name:ident)),+) => {
         paste! {
             impl Node {
                 $($(#[$doc])*
@@ -836,7 +836,7 @@ macro_rules! optional_bool_methods {
 }
 
 macro_rules! optional_enum_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $type:ty))+) => {
+    ($($(#[$doc:meta])* ($base_name:ident, $type:ty)),+) => {
         paste! {
             impl Node {
                 $($(#[$doc])*
@@ -855,7 +855,7 @@ macro_rules! optional_enum_methods {
 }
 
 macro_rules! property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident, $type_method_base:ident, $getter_result:ty, $setter_param:ty))+) => {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident, $type_method_base:ident, $getter_result:ty, $setter_param:ty)),+) => {
         paste! {
             impl Node {
                 $($(#[$doc])*
@@ -874,7 +874,7 @@ macro_rules! property_methods {
 }
 
 macro_rules! vec_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident, $type_method_base:ident, $item_type:ty))+) => {
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident, $type_method_base:ident, $item_type:ty)),+) => {
         paste! {
             impl Node {
                 $($(#[$doc])*
@@ -896,74 +896,74 @@ macro_rules! vec_property_methods {
 }
 
 macro_rules! node_id_vec_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
-        vec_property_methods! {
-            $($(#[$doc])*
-            ($base_name, $id, node_id_vec, NodeId))*
-        }
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+        $(vec_property_methods! {
+            $(#[$doc])*
+            ($base_name, $id, node_id_vec, NodeId)
+        })*
     }
 }
 
 macro_rules! node_id_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
-        property_methods! {
-            $($(#[$doc])*
-            ($base_name, $id, node_id, Option<NodeId>, NodeId))*
-        }
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($base_name, $id, node_id, Option<NodeId>, NodeId)
+        })*
     }
 }
 
 macro_rules! string_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
-        property_methods! {
-            $($(#[$doc])*
-            ($base_name, $id, string, Option<&str>, impl Into<Box<str>>))*
-        }
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($base_name, $id, string, Option<&str>, impl Into<Box<str>>)
+        })*
     }
 }
 
 macro_rules! f64_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
-        property_methods! {
-            $($(#[$doc])*
-            ($base_name, $id, f64, Option<f64>, f64))*
-        }
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($base_name, $id, f64, Option<f64>, f64)
+        })*
     }
 }
 
 macro_rules! usize_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
-        property_methods! {
-            $($(#[$doc])*
-            ($base_name, $id, usize, Option<usize>, usize))*
-        }
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($base_name, $id, usize, Option<usize>, usize)
+        })*
     }
 }
 
 macro_rules! color_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
-        property_methods! {
-            $($(#[$doc])*
-            ($base_name, $id, color, Option<u32>, u32))*
-        }
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($base_name, $id, color, Option<u32>, u32)
+        })*
     }
 }
 
 macro_rules! length_slice_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
-        property_methods! {
-            $($(#[$doc])*
-            ($base_name, $id, length_slice, &[u8], impl Into<Box<[u8]>>))*
-        }
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($base_name, $id, length_slice, &[u8], impl Into<Box<[u8]>>)
+        })*
     }
 }
 
 macro_rules! coord_slice_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident))+) => {
-        property_methods! {
-            $($(#[$doc])*
-            ($base_name, $id, coord_slice, Option<&[f32]>, impl Into<Box<[f32]>>))*
-        }
+    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($base_name, $id, coord_slice, Option<&[f32]>, impl Into<Box<[f32]>>)
+        })*
     }
 }
 
@@ -1201,56 +1201,56 @@ impl Node {
 }
 
 flag_methods! {
-    (autofill_available, AutofillAvailable)
-    (default, Default)
-    (editable, Editable)
-    (hovered, Hovered)
+    (autofill_available, AutofillAvailable),
+    (default, Default),
+    (editable, Editable),
+    (hovered, Hovered),
     /// Exclude this node and its descendants from the tree presented to
     /// assistive technologies, and from hit testing.
-    (hidden, Hidden)
-    (linked, Linked)
-    (multiline, Multiline)
-    (multiselectable, Multiselectable)
-    (protected, Protected)
-    (required, Required)
-    (visited, Visited)
-    (busy, Busy)
-    (live_atomic, LiveAtomic)
+    (hidden, Hidden),
+    (linked, Linked),
+    (multiline, Multiline),
+    (multiselectable, Multiselectable),
+    (protected, Protected),
+    (required, Required),
+    (visited, Visited),
+    (busy, Busy),
+    (live_atomic, LiveAtomic),
     /// If a dialog box is marked as explicitly modal.
-    (modal, Modal)
+    (modal, Modal),
     /// Indicates this node is user-scrollable, e.g. `overflow: scroll|auto`, as
     /// opposed to only programmatically scrollable, like `overflow: hidden`, or
     /// not scrollable at all, e.g. `overflow: visible`.
-    (scrollable, Scrollable)
+    (scrollable, Scrollable),
     /// Indicates whether this node is selected due to selection follows focus.
-    (selected_from_focus, SelectedFromFocus)
+    (selected_from_focus, SelectedFromFocus),
     /// This element allows touches to be passed through when a screen reader
     /// is in touch exploration mode, e.g. a virtual keyboard normally
     /// behaves this way.
-    (touch_pass_through, TouchPassThrough)
+    (touch_pass_through, TouchPassThrough),
     /// Use for a textbox that allows focus/selection but not input.
-    (read_only, ReadOnly)
+    (read_only, ReadOnly),
     /// Use for a control or group of controls that disallows input.
-    (disabled, Disabled)
-    (bold, Bold)
+    (disabled, Disabled),
+    (bold, Bold),
     (italic, Italic)
 }
 
 irregular_flag_methods! {
     /// Set on a canvas element if it has fallback content.
-    (canvas_has_fallback, CanvasHasFallback)
+    (canvas_has_fallback, CanvasHasFallback),
     /// Indicates that this node clips its children, i.e. may have
     /// `overflow: hidden` or clip children by default.
-    (clips_children, ClipsChildren)
+    (clips_children, ClipsChildren),
     /// Indicates whether this node causes a hard line-break
     /// (e.g. block level elements, or `<br>`).
-    (is_line_breaking_object, IsLineBreakingObject)
+    (is_line_breaking_object, IsLineBreakingObject),
     /// Indicates whether this node causes a page break.
-    (is_page_breaking_object, IsPageBreakingObject)
-    (is_spelling_error, IsSpellingError)
-    (is_grammar_error, IsGrammarError)
-    (is_search_match, IsSearchMatch)
-    (is_suggestion, IsSuggestion)
+    (is_page_breaking_object, IsPageBreakingObject),
+    (is_spelling_error, IsSpellingError),
+    (is_grammar_error, IsGrammarError),
+    (is_search_match, IsSearchMatch),
+    (is_suggestion, IsSuggestion),
     /// The object functions as a text field which exposes its descendants.
     ///
     /// Use cases include the root of a content-editable region, an ARIA
@@ -1264,7 +1264,7 @@ optional_bool_methods! {
     ///
     /// Setting this to `false` means the node is collapsed; omitting it means this state
     /// isn't applicable.
-    (expanded)
+    (expanded),
 
     /// Indicates whether this node is selected or unselected.
     ///
@@ -1280,132 +1280,132 @@ optional_bool_methods! {
 
 optional_enum_methods! {
     /// What information was used to compute the object's name.
-    (name_from, NameFrom)
+    (name_from, NameFrom),
     /// What information was used to compute the object's description.
-    (description_from, DescriptionFrom)
-    (invalid, Invalid)
-    (checked_state, CheckedState)
-    (live, Live)
-    (default_action_verb, DefaultActionVerb)
-    (text_direction, TextDirection)
-    (orientation, Orientation)
-    (sort_direction, SortDirection)
-    (aria_current, AriaCurrent)
-    (has_popup, HasPopup)
+    (description_from, DescriptionFrom),
+    (invalid, Invalid),
+    (checked_state, CheckedState),
+    (live, Live),
+    (default_action_verb, DefaultActionVerb),
+    (text_direction, TextDirection),
+    (orientation, Orientation),
+    (sort_direction, SortDirection),
+    (aria_current, AriaCurrent),
+    (has_popup, HasPopup),
     /// The list style type. Only available on list items.
-    (list_style, ListStyle)
-    (text_align, TextAlign)
-    (vertical_offset, VerticalOffset)
-    (overline, TextDecoration)
-    (strikethrough, TextDecoration)
+    (list_style, ListStyle),
+    (text_align, TextAlign),
+    (vertical_offset, VerticalOffset),
+    (overline, TextDecoration),
+    (strikethrough, TextDecoration),
     (underline, TextDecoration)
 }
 
 node_id_vec_property_methods! {
-    (children, Children)
+    (children, Children),
     /// Ids of nodes that are children of this node logically, but are
     /// not children of this node in the tree structure. As an example,
     /// a table cell is a child of a row, and an 'indirect' child of a
     /// column.
-    (indirect_children, IndirectChildren)
-    (controls, Controls)
-    (details, Details)
-    (described_by, DescribedBy)
-    (flow_to, FlowTo)
-    (labelled_by, LabelledBy)
+    (indirect_children, IndirectChildren),
+    (controls, Controls),
+    (details, Details),
+    (described_by, DescribedBy),
+    (flow_to, FlowTo),
+    (labelled_by, LabelledBy),
     /// On radio buttons this should be set to a list of all of the buttons
     /// in the same group as this one, including this radio button itself.
     (radio_group, RadioGroup)
 }
 
 node_id_property_methods! {
-    (active_descendant, ActiveDescendant)
-    (error_message, ErrorMessage)
-    (in_page_link_target, InPageLinkTarget)
-    (member_of, MemberOf)
-    (next_on_line, NextOnLine)
-    (previous_on_line, PreviousOnLine)
-    (popup_for, PopupFor)
-    (table_header, TableHeader)
-    (table_row_header, TableRowHeader)
-    (table_column_header, TableColumnHeader)
-    (next_focus, NextFocus)
+    (active_descendant, ActiveDescendant),
+    (error_message, ErrorMessage),
+    (in_page_link_target, InPageLinkTarget),
+    (member_of, MemberOf),
+    (next_on_line, NextOnLine),
+    (previous_on_line, PreviousOnLine),
+    (popup_for, PopupFor),
+    (table_header, TableHeader),
+    (table_row_header, TableRowHeader),
+    (table_column_header, TableColumnHeader),
+    (next_focus, NextFocus),
     (previous_focus, PreviousFocus)
 }
 
 string_property_methods! {
-    (name, Name)
-    (description, Description)
-    (value, Value)
-    (access_key, AccessKey)
-    (auto_complete, AutoComplete)
-    (checked_state_description, CheckedStateDescription)
-    (class_name, ClassName)
-    (css_display, CssDisplay)
+    (name, Name),
+    (description, Description),
+    (value, Value),
+    (access_key, AccessKey),
+    (auto_complete, AutoComplete),
+    (checked_state_description, CheckedStateDescription),
+    (class_name, ClassName),
+    (css_display, CssDisplay),
     /// Only present when different from parent.
-    (font_family, FontFamily)
-    (html_tag, HtmlTag)
+    (font_family, FontFamily),
+    (html_tag, HtmlTag),
     /// Inner HTML of an element. Only used for a top-level math element,
     /// to support third-party math accessibility products that parse MathML.
-    (inner_html, InnerHtml)
-    (input_type, InputType)
-    (key_shortcuts, KeyShortcuts)
+    (inner_html, InnerHtml),
+    (input_type, InputType),
+    (key_shortcuts, KeyShortcuts),
     /// Only present when different from parent.
-    (language, Language)
-    (live_relevant, LiveRelevant)
+    (language, Language),
+    (live_relevant, LiveRelevant),
     /// Only if not already exposed in [`name`] ([`NameFrom::Placeholder`]).
     ///
     /// [`name`]: Node::name
-    (placeholder, Placeholder)
-    (aria_role, AriaRole)
-    (role_description, RoleDescription)
+    (placeholder, Placeholder),
+    (aria_role, AriaRole),
+    (role_description, RoleDescription),
     /// Only if not already exposed in [`name`] ([`NameFrom::Title`]).
     ///
     /// [`name`]: Node::name
-    (tooltip, Tooltip)
+    (tooltip, Tooltip),
     (url, Url)
 }
 
 f64_property_methods! {
-    (scroll_x, ScrollX)
-    (scroll_x_min, ScrollXMin)
-    (scroll_x_max, ScrollXMax)
-    (scroll_y, ScrollY)
-    (scroll_y_min, ScrollYMin)
-    (scroll_y_max, ScrollYMax)
-    (numeric_value, NumericValue)
-    (min_numeric_value, MinNumericValue)
-    (max_numeric_value, MaxNumericValue)
-    (numeric_value_step, NumericValueStep)
-    (numeric_value_jump, NumericValueJump)
+    (scroll_x, ScrollX),
+    (scroll_x_min, ScrollXMin),
+    (scroll_x_max, ScrollXMax),
+    (scroll_y, ScrollY),
+    (scroll_y_min, ScrollYMin),
+    (scroll_y_max, ScrollYMax),
+    (numeric_value, NumericValue),
+    (min_numeric_value, MinNumericValue),
+    (max_numeric_value, MaxNumericValue),
+    (numeric_value_step, NumericValueStep),
+    (numeric_value_jump, NumericValueJump),
     /// Font size is in pixels.
-    (font_size, FontSize)
+    (font_size, FontSize),
     /// Font weight can take on any arbitrary numeric value. Increments of 100 in
     /// range `[0, 900]` represent keywords such as light, normal, bold, etc.
-    (font_weight, FontWeight)
+    (font_weight, FontWeight),
     /// The indentation of the text, in mm.
     (text_indent, TextIndent)
 }
 
 usize_property_methods! {
-    (table_row_count, TableRowCount)
-    (table_column_count, TableColumnCount)
-    (table_row_index, TableRowIndex)
-    (table_column_index, TableColumnIndex)
-    (table_cell_column_index, TableCellColumnIndex)
-    (table_cell_column_span, TableCellColumnSpan)
-    (table_cell_row_index, TableCellRowIndex)
-    (table_cell_row_span, TableCellRowSpan)
-    (hierarchical_level, HierarchicalLevel)
-    (size_of_set, SizeOfSet)
+    (table_row_count, TableRowCount),
+    (table_column_count, TableColumnCount),
+    (table_row_index, TableRowIndex),
+    (table_column_index, TableColumnIndex),
+    (table_cell_column_index, TableCellColumnIndex),
+    (table_cell_column_span, TableCellColumnSpan),
+    (table_cell_row_index, TableCellRowIndex),
+    (table_cell_row_span, TableCellRowSpan),
+    (hierarchical_level, HierarchicalLevel),
+    (size_of_set, SizeOfSet),
     (position_in_set, PositionInSet)
 }
 
 color_property_methods! {
     /// For [`Role::ColorWell`], specifies the selected color in RGBA.
-    (color_value, ColorValue)
+    (color_value, ColorValue),
     /// Background color in RGBA.
-    (background_color, BackgroundColor)
+    (background_color, BackgroundColor),
     /// Foreground color in RGBA.
     (foreground_color, ForegroundColor)
 }
@@ -1429,7 +1429,7 @@ length_slice_property_methods! {
     /// selection should be on the line break, not after it.
     ///
     /// [`value`]: Node::value
-    (character_lengths, CharacterLengths)
+    (character_lengths, CharacterLengths),
 
     /// For inline text. The length of each word in characters, as defined
     /// in [`character_lengths`]. The sum of these lengths must equal
@@ -1473,7 +1473,7 @@ coord_slice_property_methods! {
     ///
     /// [`text_direction`]: Node::text_direction
     /// [`character_lengths`]: Node::character_lengths
-    (character_positions, CharacterPositions)
+    (character_positions, CharacterPositions),
 
     /// For inline text. This is the advance width of each character,
     /// in the direction given by [`text_direction`], in the coordinate
@@ -1509,7 +1509,7 @@ property_methods! {
     /// pixels, with the y coordinate being top-down.
     ///
     /// [`bounds`]: Node::bounds
-    (transform, Transform, affine, Option<&Affine>, impl Into<Box<Affine>>)
+    (transform, Transform, affine, Option<&Affine>, impl Into<Box<Affine>>),
 
     /// The bounding box of this node, in the node's coordinate space.
     /// This property does not affect the coordinate space of either this node
