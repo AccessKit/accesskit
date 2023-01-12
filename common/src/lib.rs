@@ -648,7 +648,7 @@ enum Flag {
 // https://viruta.org/reducing-memory-consumption-in-librsvg-2.html
 
 #[derive(Clone, Debug, PartialEq)]
-enum Property {
+enum PropertyValue {
     None,
     NodeIdVec(Vec<NodeId>),
     NodeId(NodeId),
@@ -978,7 +978,7 @@ pub struct Node {
     role: Role,
     actions: EnumSet<Action>,
     indices: PropertyIndices,
-    props: Vec<Property>,
+    props: Vec<PropertyValue>,
     flags: EnumSet<Flag>,
     expanded: Option<bool>,
     selected: Option<bool>,
@@ -1002,16 +1002,16 @@ pub struct Node {
 }
 
 impl Node {
-    fn get_property(&self, id: PropertyId) -> &Property {
+    fn get_property(&self, id: PropertyId) -> &PropertyValue {
         let index = self.indices.0[id as usize];
         if index == PropertyId::Unset as u8 {
-            &Property::None
+            &PropertyValue::None
         } else {
             &self.props[index as usize]
         }
     }
 
-    fn get_property_mut(&mut self, id: PropertyId, default: Property) -> &mut Property {
+    fn get_property_mut(&mut self, id: PropertyId, default: PropertyValue) -> &mut PropertyValue {
         let index = self.indices.0[id as usize] as usize;
         if index == PropertyId::Unset as usize {
             self.props.push(default);
@@ -1019,14 +1019,14 @@ impl Node {
             self.indices.0[id as usize] = index as u8;
             &mut self.props[index]
         } else {
-            if matches!(self.props[index], Property::None) {
+            if matches!(self.props[index], PropertyValue::None) {
                 self.props[index] = default;
             }
             &mut self.props[index]
         }
     }
 
-    fn set_property(&mut self, id: PropertyId, value: Property) {
+    fn set_property(&mut self, id: PropertyId, value: PropertyValue) {
         let index = self.indices.0[id as usize];
         if index == PropertyId::Unset as u8 {
             self.props.push(value);
@@ -1039,45 +1039,45 @@ impl Node {
     fn clear_property(&mut self, id: PropertyId) {
         let index = self.indices.0[id as usize];
         if index != PropertyId::Unset as u8 {
-            self.props[index as usize] = Property::None;
+            self.props[index as usize] = PropertyValue::None;
         }
     }
 
     fn get_affine(&self, id: PropertyId) -> Option<&Affine> {
         match self.get_property(id) {
-            Property::None => None,
-            Property::Affine(value) => Some(value),
+            PropertyValue::None => None,
+            PropertyValue::Affine(value) => Some(value),
             _ => panic!(),
         }
     }
 
     fn set_affine(&mut self, id: PropertyId, value: impl Into<Box<Affine>>) {
-        self.set_property(id, Property::Affine(value.into()));
+        self.set_property(id, PropertyValue::Affine(value.into()));
     }
 
     fn get_rect(&self, id: PropertyId) -> Option<Rect> {
         match self.get_property(id) {
-            Property::None => None,
-            Property::Rect(value) => Some(*value),
+            PropertyValue::None => None,
+            PropertyValue::Rect(value) => Some(*value),
             _ => panic!(),
         }
     }
 
     fn set_rect(&mut self, id: PropertyId, value: Rect) {
-        self.set_property(id, Property::Rect(value));
+        self.set_property(id, PropertyValue::Rect(value));
     }
 
     fn get_node_id_vec(&self, id: PropertyId) -> &[NodeId] {
         match self.get_property(id) {
-            Property::None => &[],
-            Property::NodeIdVec(value) => value,
+            PropertyValue::None => &[],
+            PropertyValue::NodeIdVec(value) => value,
             _ => panic!(),
         }
     }
 
     fn push_to_node_id_vec(&mut self, property_id: PropertyId, node_id: NodeId) {
-        match self.get_property_mut(property_id, Property::NodeIdVec(Vec::new())) {
-            Property::NodeIdVec(v) => {
+        match self.get_property_mut(property_id, PropertyValue::NodeIdVec(Vec::new())) {
+            PropertyValue::NodeIdVec(v) => {
                 v.push(node_id);
             }
             _ => panic!(),
@@ -1085,91 +1085,91 @@ impl Node {
     }
 
     fn set_node_id_vec(&mut self, id: PropertyId, value: impl Into<Vec<NodeId>>) {
-        self.set_property(id, Property::NodeIdVec(value.into()));
+        self.set_property(id, PropertyValue::NodeIdVec(value.into()));
     }
 
     fn get_node_id(&self, id: PropertyId) -> Option<NodeId> {
         match self.get_property(id) {
-            Property::None => None,
-            Property::NodeId(value) => Some(*value),
+            PropertyValue::None => None,
+            PropertyValue::NodeId(value) => Some(*value),
             _ => panic!(),
         }
     }
 
     fn set_node_id(&mut self, id: PropertyId, value: NodeId) {
-        self.set_property(id, Property::NodeId(value));
+        self.set_property(id, PropertyValue::NodeId(value));
     }
 
     fn get_string(&self, id: PropertyId) -> Option<&str> {
         match self.get_property(id) {
-            Property::None => None,
-            Property::String(value) => Some(value),
+            PropertyValue::None => None,
+            PropertyValue::String(value) => Some(value),
             _ => panic!(),
         }
     }
 
     fn set_string(&mut self, id: PropertyId, value: impl Into<Box<str>>) {
-        self.set_property(id, Property::String(value.into()));
+        self.set_property(id, PropertyValue::String(value.into()));
     }
 
     fn get_f64(&self, id: PropertyId) -> Option<f64> {
         match self.get_property(id) {
-            Property::None => None,
-            Property::F64(value) => Some(*value),
+            PropertyValue::None => None,
+            PropertyValue::F64(value) => Some(*value),
             _ => panic!(),
         }
     }
 
     fn set_f64(&mut self, id: PropertyId, value: f64) {
-        self.set_property(id, Property::F64(value));
+        self.set_property(id, PropertyValue::F64(value));
     }
 
     fn get_usize(&self, id: PropertyId) -> Option<usize> {
         match self.get_property(id) {
-            Property::None => None,
-            Property::Usize(value) => Some(*value),
+            PropertyValue::None => None,
+            PropertyValue::Usize(value) => Some(*value),
             _ => panic!(),
         }
     }
 
     fn set_usize(&mut self, id: PropertyId, value: usize) {
-        self.set_property(id, Property::Usize(value));
+        self.set_property(id, PropertyValue::Usize(value));
     }
 
     fn get_color(&self, id: PropertyId) -> Option<u32> {
         match self.get_property(id) {
-            Property::None => None,
-            Property::Color(value) => Some(*value),
+            PropertyValue::None => None,
+            PropertyValue::Color(value) => Some(*value),
             _ => panic!(),
         }
     }
 
     fn set_color(&mut self, id: PropertyId, value: u32) {
-        self.set_property(id, Property::Color(value));
+        self.set_property(id, PropertyValue::Color(value));
     }
 
     fn get_length_slice(&self, id: PropertyId) -> &[u8] {
         match self.get_property(id) {
-            Property::None => &[],
-            Property::LengthSlice(value) => value,
+            PropertyValue::None => &[],
+            PropertyValue::LengthSlice(value) => value,
             _ => panic!(),
         }
     }
 
     fn set_length_slice(&mut self, id: PropertyId, value: impl Into<Box<[u8]>>) {
-        self.set_property(id, Property::LengthSlice(value.into()));
+        self.set_property(id, PropertyValue::LengthSlice(value.into()));
     }
 
     fn get_coord_slice(&self, id: PropertyId) -> Option<&[f32]> {
         match self.get_property(id) {
-            Property::None => None,
-            Property::CoordSlice(value) => Some(value),
+            PropertyValue::None => None,
+            PropertyValue::CoordSlice(value) => Some(value),
             _ => panic!(),
         }
     }
 
     fn set_coord_slice(&mut self, id: PropertyId, value: impl Into<Box<[f32]>>) {
-        self.set_property(id, Property::CoordSlice(value.into()));
+        self.set_property(id, PropertyValue::CoordSlice(value.into()));
     }
 
     pub fn new(role: Role) -> Self {
@@ -1527,15 +1527,15 @@ property_methods! {
 impl Node {
     pub fn text_selection(&self) -> Option<&TextSelection> {
         match self.get_property(PropertyId::TextSelection) {
-            Property::None => None,
-            Property::TextSelection(value) => Some(value),
+            PropertyValue::None => None,
+            PropertyValue::TextSelection(value) => Some(value),
             _ => panic!(),
         }
     }
     pub fn set_text_selection(&mut self, value: impl Into<Box<TextSelection>>) {
         self.set_property(
             PropertyId::TextSelection,
-            Property::TextSelection(value.into()),
+            PropertyValue::TextSelection(value.into()),
         );
     }
     pub fn clear_text_selection(&mut self) {
@@ -1544,23 +1544,23 @@ impl Node {
 
     pub fn custom_actions(&self) -> &[CustomAction] {
         match self.get_property(PropertyId::CustomActions) {
-            Property::None => &[],
-            Property::CustomActionVec(value) => value,
+            PropertyValue::None => &[],
+            PropertyValue::CustomActionVec(value) => value,
             _ => panic!(),
         }
     }
     pub fn set_custom_actions(&mut self, value: impl Into<Vec<CustomAction>>) {
         self.set_property(
             PropertyId::CustomActions,
-            Property::CustomActionVec(value.into()),
+            PropertyValue::CustomActionVec(value.into()),
         );
     }
     pub fn push_to_custom_actions(&mut self, action: CustomAction) {
         match self.get_property_mut(
             PropertyId::CustomActions,
-            Property::CustomActionVec(Vec::new()),
+            PropertyValue::CustomActionVec(Vec::new()),
         ) {
-            Property::CustomActionVec(v) => {
+            PropertyValue::CustomActionVec(v) => {
                 v.push(action);
             }
             _ => panic!(),
@@ -1628,8 +1628,8 @@ macro_rules! serialize_optional_fields {
 macro_rules! serialize_property {
     ($self:ident, $map:ident, $index:ident, $id:ident, { $($variant:ident),+ }) => {
         match &$self.props[$index as usize] {
-            Property::None => (),
-            $(Property::$variant(value) => {
+            PropertyValue::None => (),
+            $(PropertyValue::$variant(value) => {
                 $map.serialize_entry(&$id, &Some(value))?;
             })*
         }
@@ -1653,7 +1653,7 @@ macro_rules! deserialize_property {
         match $key {
             $($(PropertyId::$id => {
                 if let Some(value) = $map.next_value()? {
-                    $node.set_property(PropertyId::$id, Property::$type(value));
+                    $node.set_property(PropertyId::$id, PropertyValue::$type(value));
                 } else {
                     $node.clear_property(PropertyId::$id);
                 }
