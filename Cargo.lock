@@ -6,7 +6,6 @@ version = 3
 name = "accesskit"
 version = "0.8.1"
 dependencies = [
- "enumset",
  "kurbo",
  "num-derive",
  "num-traits",
@@ -624,28 +623,6 @@ version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f58dc3c5e468259f19f2d46304a6b28f1c3d034442e14b322d2b850e36f6d5ae"
 dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "enumset"
-version = "1.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6216d2c19a6fb5f29d1ada1dc7bc4367a8cbf0fa4af5cf12e07b5bbdde6b5b2c"
-dependencies = [
- "enumset_derive",
- "serde",
-]
-
-[[package]]
-name = "enumset_derive"
-version = "0.5.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6451128aa6655d880755345d085494cf7561a6bee7c8dc821e5d77e6d267ecd4"
-dependencies = [
- "darling",
  "proc-macro2",
  "quote",
  "syn",
@@ -1422,7 +1399,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "271ac0c667b8229adf70f0f957697c96fafd7486ab7481e15dc5e45e3e6a4368"
 dependencies = [
  "dyn-clone",
- "enumset",
  "schemars_derive",
  "serde",
  "serde_json",

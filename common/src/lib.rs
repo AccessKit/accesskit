@@ -12,7 +12,6 @@
 #[macro_use]
 extern crate num_derive;
 
-use enumset::{EnumSet, EnumSetType};
 pub use kurbo;
 use kurbo::{Affine, Point, Rect};
 #[cfg(feature = "serde")]
@@ -22,13 +21,13 @@ use paste::paste;
 use schemars::JsonSchema;
 #[cfg(feature = "serde")]
 use serde::{
-    de::{Deserializer, IgnoredAny, MapAccess, Visitor},
-    ser::{SerializeMap, Serializer},
+    de::{Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeMap, SerializeSeq, Serializer},
     Deserialize, Serialize,
 };
-#[cfg(feature = "serde")]
-use std::fmt;
 use std::num::{NonZeroU128, NonZeroU64};
+#[cfg(feature = "serde")]
+use std::{fmt, mem::size_of_val};
 
 /// The type of an accessibility node.
 ///
@@ -259,11 +258,11 @@ impl Default for Role {
 ///
 /// In contrast to [`DefaultActionVerb`], these describe what happens to the
 /// object, e.g. "focus".
-#[derive(EnumSetType, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, FromPrimitive))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-#[cfg_attr(feature = "serde", enumset(serialize_as_list))]
+#[repr(u8)]
 pub enum Action {
     /// Do the default action for an object, typically this means "click".
     Default,
@@ -336,6 +335,67 @@ pub enum Action {
     SetValue,
 
     ShowContextMenu,
+}
+
+impl Action {
+    fn mask(self) -> u32 {
+        1 << (self as u8)
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[repr(transparent)]
+struct Actions(u32);
+
+#[cfg(feature = "serde")]
+impl Serialize for Actions {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(None)?;
+        for i in 0..(size_of_val(&self.0) * 8) {
+            if let Some(action) = Action::from_usize(i) {
+                if (self.0 & action.mask()) != 0 {
+                    seq.serialize_element(&action)?;
+                }
+            }
+        }
+        seq.end()
+    }
+}
+
+#[cfg(feature = "serde")]
+struct ActionsVisitor;
+
+#[cfg(feature = "serde")]
+impl<'de> Visitor<'de> for ActionsVisitor {
+    type Value = Actions;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("action set")
+    }
+
+    fn visit_seq<V>(self, mut seq: V) -> Result<Actions, V::Error>
+    where
+        V: SeqAccess<'de>,
+    {
+        let mut actions = Actions::default();
+        while let Some(action) = seq.next_element::<Action>()? {
+            actions.0 |= action.mask();
+        }
+        Ok(actions)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for Actions {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(ActionsVisitor)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -604,10 +664,11 @@ pub struct TextSelection {
     pub focus: TextPosition,
 }
 
-#[derive(EnumSetType, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, FromPrimitive))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 enum Flag {
     AutofillAvailable,
     Default,
@@ -639,6 +700,12 @@ enum Flag {
     IsSearchMatch,
     IsSuggestion,
     IsNonatomicTextFieldRoot,
+}
+
+impl Flag {
+    fn mask(self) -> u32 {
+        1 << (self as u8)
+    }
 }
 
 // The following is based on the technique described here:
@@ -781,13 +848,13 @@ macro_rules! flag_methods {
             impl Node {
                 $($(#[$doc])*
                 pub fn [< is_ $base_name >](&self) -> bool {
-                    self.flags.contains(Flag::$id)
+                    (self.flags & (Flag::$id).mask()) != 0
                 }
                 pub fn [< set_ $base_name >](&mut self) {
-                    self.flags.insert(Flag::$id);
+                    self.flags |= (Flag::$id).mask();
                 }
                 pub fn [< clear_ $base_name >](&mut self) {
-                    self.flags.remove(Flag::$id);
+                    self.flags &= !((Flag::$id).mask());
                 })*
             }
         }
@@ -800,13 +867,13 @@ macro_rules! irregular_flag_methods {
             impl Node {
                 $($(#[$doc])*
                 pub fn $base_name(&self) -> bool {
-                    self.flags.contains(Flag::$id)
+                    (self.flags & (Flag::$id).mask()) != 0
                 }
                 pub fn [< set_ $base_name >](&mut self) {
-                    self.flags.insert(Flag::$id);
+                    self.flags |= (Flag::$id).mask();
                 }
                 pub fn [< clear_ $base_name >](&mut self) {
-                    self.flags.remove(Flag::$id);
+                    self.flags &= !((Flag::$id).mask());
                 })*
             }
         }
@@ -973,10 +1040,10 @@ macro_rules! coord_slice_property_methods {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Node {
     role: Role,
-    actions: EnumSet<Action>,
+    actions: Actions,
     indices: PropertyIndices,
     props: Vec<PropertyValue>,
-    flags: EnumSet<Flag>,
+    flags: u32,
     expanded: Option<bool>,
     selected: Option<bool>,
     name_from: Option<NameFrom>,
@@ -1184,16 +1251,16 @@ impl Node {
     }
 
     pub fn supports_action(&self, action: Action) -> bool {
-        self.actions.contains(action)
+        (self.actions.0 & action.mask()) != 0
     }
     pub fn add_action(&mut self, action: Action) {
-        self.actions.insert(action);
+        self.actions.0 |= action.mask();
     }
     pub fn remove_action(&mut self, action: Action) {
-        self.actions.remove(action);
+        self.actions.0 &= !(action.mask());
     }
     pub fn clear_actions(&mut self) {
-        self.actions.clear();
+        self.actions.0 = 0;
     }
 }
 
@@ -1673,8 +1740,12 @@ impl Serialize for Node {
             (role, Role),
             (actions, Actions)
         });
-        for flag in self.flags {
-            map.serialize_entry(&flag, &true)?;
+        for i in 0..(size_of_val(&self.flags) * 8) {
+            if let Some(flag) = Flag::from_usize(i) {
+                if (self.flags & flag.mask()) != 0 {
+                    map.serialize_entry(&flag, &true)?;
+                }
+            }
         }
         serialize_optional_fields!(self, map, {
             (expanded, Expanded),
@@ -1766,9 +1837,9 @@ impl<'de> Visitor<'de> for NodeVisitor {
                 }
                 DeserializeKey::Flag(flag) => {
                     if map.next_value()? {
-                        node.flags.insert(flag);
+                        node.flags |= flag.mask();
                     } else {
-                        node.flags.remove(flag);
+                        node.flags &= !(flag.mask());
                     }
                 }
                 DeserializeKey::Property(id) => {
