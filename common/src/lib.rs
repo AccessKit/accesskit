@@ -8,12 +8,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-#[cfg(feature = "serde")]
-#[macro_use]
-extern crate num_derive;
-
-#[cfg(feature = "serde")]
-use num_traits::FromPrimitive;
 use paste::paste;
 #[cfg(feature = "schemars")]
 use schemars::JsonSchema;
@@ -260,7 +254,7 @@ impl Default for Role {
 /// In contrast to [`DefaultActionVerb`], these describe what happens to the
 /// object, e.g. "focus".
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, FromPrimitive))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, enumn::N))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[repr(u8)]
@@ -355,8 +349,8 @@ impl Serialize for Actions {
         S: Serializer,
     {
         let mut seq = serializer.serialize_seq(None)?;
-        for i in 0..(size_of_val(&self.0) * 8) {
-            if let Some(action) = Action::from_usize(i) {
+        for i in 0..((size_of_val(&self.0) as u8) * 8) {
+            if let Some(action) = Action::n(i) {
                 if (self.0 & action.mask()) != 0 {
                     seq.serialize_element(&action)?;
                 }
@@ -666,7 +660,7 @@ pub struct TextSelection {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, FromPrimitive))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, enumn::N))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[repr(u8)]
@@ -730,7 +724,7 @@ enum PropertyValue {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, FromPrimitive))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, enumn::N))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[repr(u8)]
@@ -1741,8 +1735,8 @@ impl Serialize for Node {
             (role, Role),
             (actions, Actions)
         });
-        for i in 0..(size_of_val(&self.flags) * 8) {
-            if let Some(flag) = Flag::from_usize(i) {
+        for i in 0..((size_of_val(&self.flags) as u8) * 8) {
+            if let Some(flag) = Flag::n(i) {
                 if (self.flags & flag.mask()) != 0 {
                     map.serialize_entry(&flag, &true)?;
                 }
@@ -1773,7 +1767,7 @@ impl Serialize for Node {
             if index == PropertyId::Unset as u8 {
                 continue;
             }
-            let id = PropertyId::from_usize(id).unwrap();
+            let id = PropertyId::n(id as _).unwrap();
             serialize_property!(self, map, index, id, {
                 NodeIdVec,
                 NodeId,
