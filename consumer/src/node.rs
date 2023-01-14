@@ -1033,7 +1033,7 @@ mod tests {
                 }),
                 (NODE_ID_4, {
                     let mut node = Node::new(Role::TextField);
-                    node.push_to_labelled_by(NODE_ID_5);
+                    node.push_labelled_by(NODE_ID_5);
                     node
                 }),
                 (NODE_ID_5, {
@@ -1070,7 +1070,7 @@ mod tests {
                 }),
                 (NODE_ID_2, {
                     let mut node = Node::new(Role::Button);
-                    node.push_to_children(NODE_ID_3);
+                    node.push_child(NODE_ID_3);
                     node
                 }),
                 (NODE_ID_3, {
@@ -1080,12 +1080,12 @@ mod tests {
                 }),
                 (NODE_ID_4, {
                     let mut node = Node::new(Role::Link);
-                    node.push_to_children(NODE_ID_5);
+                    node.push_child(NODE_ID_5);
                     node
                 }),
                 (NODE_ID_5, {
                     let mut node = Node::new(Role::GenericContainer);
-                    node.push_to_children(NODE_ID_6);
+                    node.push_child(NODE_ID_6);
                     node
                 }),
                 (NODE_ID_6, {

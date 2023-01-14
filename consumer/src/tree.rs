@@ -489,7 +489,7 @@ mod tests {
             nodes: vec![
                 (NODE_ID_1, {
                     let mut node = root_node;
-                    node.push_to_children(NODE_ID_2);
+                    node.push_child(NODE_ID_2);
                     node
                 }),
                 (NODE_ID_2, Node::new(Role::RootWebArea)),
@@ -560,7 +560,7 @@ mod tests {
             nodes: vec![
                 (NODE_ID_1, {
                     let mut node = root_node.clone();
-                    node.push_to_children(NODE_ID_2);
+                    node.push_child(NODE_ID_2);
                     node
                 }),
                 (NODE_ID_2, Node::new(Role::RootWebArea)),

@@ -1322,17 +1322,17 @@ optional_enum_methods! {
 }
 
 node_id_vec_property_methods! {
-    (Children, children, set_children, push_to_children, clear_children),
+    (Children, children, set_children, push_child, clear_children),
     /// Ids of nodes that are children of this node logically, but are
     /// not children of this node in the tree structure. As an example,
     /// a table cell is a child of a row, and an 'indirect' child of a
     /// column.
-    (IndirectChildren, indirect_children, set_indirect_children, push_to_indirect_children, clear_indirect_children),
-    (Controls, controls, set_controls, push_to_controls, clear_controls),
-    (Details, details, set_details, push_to_details, clear_details),
-    (DescribedBy, described_by, set_described_by, push_to_described_by, clear_described_by),
-    (FlowTo, flow_to, set_flow_to, push_to_flow_to, clear_flow_to),
-    (LabelledBy, labelled_by, set_labelled_by, push_to_labelled_by, clear_labelled_by),
+    (IndirectChildren, indirect_children, set_indirect_children, push_indirect_child, clear_indirect_children),
+    (Controls, controls, set_controls, push_controlled, clear_controls),
+    (Details, details, set_details, push_detail, clear_details),
+    (DescribedBy, described_by, set_described_by, push_described_by, clear_described_by),
+    (FlowTo, flow_to, set_flow_to, push_flow_to, clear_flow_to),
+    (LabelledBy, labelled_by, set_labelled_by, push_labelled_by, clear_labelled_by),
     /// On radio buttons this should be set to a list of all of the buttons
     /// in the same group as this one, including this radio button itself.
     (RadioGroup, radio_group, set_radio_group, push_to_radio_group, clear_radio_group)
@@ -1575,7 +1575,7 @@ impl Node {
             PropertyValue::CustomActionVec(value.into()),
         );
     }
-    pub fn push_to_custom_actions(&mut self, action: CustomAction) {
+    pub fn push_custom_action(&mut self, action: CustomAction) {
         match self.get_property_mut(
             PropertyId::CustomActions,
             PropertyValue::CustomActionVec(Vec::new()),
