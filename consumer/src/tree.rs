@@ -11,7 +11,6 @@ use parking_lot::{RwLock, RwLockWriteGuard};
 use std::{
     collections::{HashMap, HashSet},
     ops::Deref,
-    sync::Arc,
 };
 
 use crate::{
@@ -88,7 +87,7 @@ impl State {
             let state = NodeState {
                 id,
                 parent_and_index,
-                data: Arc::new(data),
+                data,
             };
             nodes.insert(id, state);
             if let Some(changes) = changes {
@@ -131,7 +130,7 @@ impl State {
                         orphans.insert(*child_id);
                     }
                 }
-                node_state.data = Arc::new(node_data);
+                node_state.data = node_data;
             } else if let Some(parent_and_index) = pending_children.remove(&node_id) {
                 add_node(
                     &mut self.nodes,
@@ -210,7 +209,7 @@ impl State {
 
         fn traverse(state: &State, nodes: &mut Vec<(NodeId, NodeData)>, id: NodeId) {
             let node = state.nodes.get(&id).unwrap();
-            nodes.push((id, (*node.data).clone()));
+            nodes.push((id, node.data.clone()));
 
             for child_id in node.data.children().iter() {
                 traverse(state, nodes, *child_id);

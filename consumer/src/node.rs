@@ -8,7 +8,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use std::{iter::FusedIterator, ops::Deref, sync::Arc};
+use std::{iter::FusedIterator, ops::Deref};
 
 use accesskit::{
     Action, Affine, CheckedState, DefaultActionVerb, Live, Node as NodeData, NodeId, Point, Rect,
@@ -28,7 +28,7 @@ pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
 pub struct NodeState {
     pub(crate) id: NodeId,
     pub(crate) parent_and_index: Option<ParentAndIndex>,
-    pub(crate) data: Arc<NodeData>,
+    pub(crate) data: NodeData,
 }
 
 #[derive(Copy, Clone)]
