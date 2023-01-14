@@ -14,7 +14,7 @@ use crate::{
     node::{filter, filter_detached, NodeWrapper, PlatformNode, PlatformRootNode},
     util::{AppContext, WindowBounds},
 };
-use accesskit::{kurbo::Rect, ActionHandler, NodeId, Role, TreeUpdate};
+use accesskit::{ActionHandler, NodeId, Rect, Role, TreeUpdate};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use async_channel::{Receiver, Sender};
 use atspi::{Interface, InterfaceSet, State};

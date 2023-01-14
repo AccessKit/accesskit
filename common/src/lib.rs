@@ -12,8 +12,6 @@
 #[macro_use]
 extern crate num_derive;
 
-pub use kurbo;
-use kurbo::{Affine, Point, Rect};
 #[cfg(feature = "serde")]
 use num_traits::FromPrimitive;
 use paste::paste;
@@ -28,6 +26,9 @@ use serde::{
 use std::num::{NonZeroU128, NonZeroU64};
 #[cfg(feature = "serde")]
 use std::{fmt, mem::size_of_val};
+
+mod geometry;
+pub use geometry::{Affine, Point, Rect, Size, Vec2};
 
 /// The type of an accessibility node.
 ///

@@ -14,7 +14,6 @@ edition = "2021"
 features = ["schemars", "serde"]
 
 [dependencies]
-kurbo = "0.8.3"
 num-derive = { version = "0.3", optional = true }
 num-traits = { version = "0.2", optional = true }
 paste = "1.0"
@@ -22,5 +21,4 @@ schemars = { version = "0.8.7", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 
 [features]
-schemars = ["serde", "dep:schemars", "kurbo/schemars"]
-serde = ["dep:serde", "kurbo/serde", "num-derive", "num-traits"]
+serde = ["dep:serde", "num-derive", "num-traits"]

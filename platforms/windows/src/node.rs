@@ -10,8 +10,7 @@
 
 #![allow(non_upper_case_globals)]
 
-use accesskit::kurbo::Point;
-use accesskit::{CheckedState, Live, NodeId, NodeIdContent, Role};
+use accesskit::{CheckedState, Live, NodeId, NodeIdContent, Point, Role};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, Tree, TreeState};
 use arrayvec::ArrayVec;
 use paste::paste;

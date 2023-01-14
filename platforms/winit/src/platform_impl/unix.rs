@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file).
 
-use accesskit::{kurbo::Rect, ActionHandler, TreeUpdate};
+use accesskit::{ActionHandler, Rect, TreeUpdate};
 use accesskit_unix::Adapter as UnixAdapter;
 use winit::window::Window;
 

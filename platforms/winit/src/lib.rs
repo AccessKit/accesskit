@@ -84,7 +84,7 @@ impl Adapter {
     ))]
     #[must_use]
     pub fn on_event(&self, window: &Window, event: &WindowEvent) -> bool {
-        use accesskit::kurbo::Rect;
+        use accesskit::Rect;
 
         match event {
             WindowEvent::Moved(outer_position) => {

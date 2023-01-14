@@ -3,9 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::kurbo::Point;
 use accesskit::{
-    Action, ActionData, ActionHandler, ActionRequest, Live, Node as NodeData, NodeId,
+    Action, ActionData, ActionHandler, ActionRequest, Live, Node as NodeData, NodeId, Point,
     TextSelection, Tree as TreeData, TreeUpdate,
 };
 use parking_lot::{RwLock, RwLockWriteGuard};

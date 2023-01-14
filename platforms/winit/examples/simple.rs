@@ -1,6 +1,5 @@
-use accesskit::kurbo::Rect;
 use accesskit::{
-    Action, ActionRequest, DefaultActionVerb, Live, Node, NodeId, Role, Tree, TreeUpdate,
+    Action, ActionRequest, DefaultActionVerb, Live, Node, NodeId, Rect, Role, Tree, TreeUpdate,
 };
 use accesskit_winit::{ActionRequestEvent, Adapter};
 use std::{

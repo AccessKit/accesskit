@@ -10,9 +10,9 @@
 
 use std::{iter::FusedIterator, ops::Deref, sync::Arc};
 
-use accesskit::kurbo::{Affine, Point, Rect};
 use accesskit::{
-    Action, CheckedState, DefaultActionVerb, Live, Node as NodeData, NodeId, Role, TextSelection,
+    Action, Affine, CheckedState, DefaultActionVerb, Live, Node as NodeData, NodeId, Point, Rect,
+    Role, TextSelection,
 };
 
 use crate::iterators::{
@@ -720,8 +720,7 @@ impl Deref for DetachedNode {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::kurbo::{Point, Rect};
-    use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
+    use accesskit::{Node, NodeId, Point, Rect, Role, Tree, TreeUpdate};
     use std::num::NonZeroU128;
 
     use crate::tests::*;

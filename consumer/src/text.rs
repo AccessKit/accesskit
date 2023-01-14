@@ -3,8 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::kurbo::{Point, Rect};
-use accesskit::{NodeId, Role, TextDirection, TextPosition as WeakPosition};
+use accesskit::{NodeId, Point, Rect, Role, TextDirection, TextPosition as WeakPosition};
 use std::{cmp::Ordering, iter::FusedIterator};
 
 use crate::{FilterResult, Node, TreeState};
@@ -1013,8 +1012,7 @@ impl<'a> Node<'a> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::kurbo::{Point, Rect};
-    use accesskit::{NodeId, TextSelection};
+    use accesskit::{NodeId, Point, Rect, TextSelection};
     use std::num::NonZeroU128;
 
     use crate::tests::NullActionHandler;
@@ -1030,8 +1028,7 @@ mod tests {
 
     // This is based on an actual tree produced by egui.
     fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {
-        use accesskit::kurbo::Affine;
-        use accesskit::{Action, Node, Role, TextDirection, Tree, TreeUpdate};
+        use accesskit::{Action, Affine, Node, Role, TextDirection, Tree, TreeUpdate};
 
         let update = TreeUpdate {
             nodes: vec![

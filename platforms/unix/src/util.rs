@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::atspi::OwnedObjectAddress;
-use accesskit::kurbo::{Point, Rect};
+use accesskit::{Point, Rect};
 use atspi::CoordType;
 
 pub(crate) struct AppContext {

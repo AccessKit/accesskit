@@ -15,10 +15,7 @@ use crate::{
     },
     util::{AppContext, WindowBounds},
 };
-use accesskit::{
-    kurbo::{Affine, Point, Rect},
-    CheckedState, DefaultActionVerb, NodeId, Role,
-};
+use accesskit::{Affine, CheckedState, DefaultActionVerb, NodeId, Point, Rect, Role};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, Tree, TreeState};
 use async_channel::Sender;
 use atspi::{

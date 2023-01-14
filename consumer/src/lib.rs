@@ -20,8 +20,9 @@ pub use text::{
 
 #[cfg(test)]
 mod tests {
-    use accesskit::kurbo::{Affine, Rect, Vec2};
-    use accesskit::{ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
+    use accesskit::{
+        ActionHandler, ActionRequest, Affine, Node, NodeId, Rect, Role, Tree, TreeUpdate, Vec2,
+    };
     use std::num::NonZeroU128;
 
     use crate::FilterResult;

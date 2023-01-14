@@ -6,7 +6,6 @@ version = 3
 name = "accesskit"
 version = "0.8.1"
 dependencies = [
- "kurbo",
  "num-derive",
  "num-traits",
  "paste",
@@ -850,17 +849,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3fac17f7123a73ca62df411b1bf727ccc805daa070338fda671c86dac1bdc27"
 dependencies = [
  "wasm-bindgen",
-]
-
-[[package]]
-name = "kurbo"
-version = "0.8.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a53776d271cfb873b17c618af0298445c88afc52837f3e948fa3fafd131f449"
-dependencies = [
- "arrayvec 0.7.1",
- "schemars",
- "serde",
 ]
 
 [[package]]

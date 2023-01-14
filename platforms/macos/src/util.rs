@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::kurbo::{Point, Rect};
+use accesskit::{Point, Rect};
 use accesskit_consumer::{Node, TextPosition, TextRange};
 use objc2::foundation::{NSPoint, NSRange, NSRect, NSSize};
 

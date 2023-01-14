@@ -1,8 +1,7 @@
 // Based on the create_window sample in windows-samples-rs.
 
-use accesskit::kurbo::Rect;
 use accesskit::{
-    Action, ActionHandler, ActionRequest, DefaultActionVerb, Live, Node, NodeId, Role, Tree,
+    Action, ActionHandler, ActionRequest, DefaultActionVerb, Live, Node, NodeId, Rect, Role, Tree,
     TreeUpdate,
 };
 use accesskit_windows::UiaInitMarker;
