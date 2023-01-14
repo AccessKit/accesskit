@@ -8,7 +8,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use paste::paste;
 #[cfg(feature = "schemars")]
 use schemars::JsonSchema;
 #[cfg(feature = "serde")]
@@ -838,190 +837,155 @@ impl Default for PropertyIndices {
 }
 
 macro_rules! flag_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
-        paste! {
-            impl Node {
-                $($(#[$doc])*
-                pub fn [< is_ $base_name >](&self) -> bool {
-                    (self.flags & (Flag::$id).mask()) != 0
-                }
-                pub fn [< set_ $base_name >](&mut self) {
-                    self.flags |= (Flag::$id).mask();
-                }
-                pub fn [< clear_ $base_name >](&mut self) {
-                    self.flags &= !((Flag::$id).mask());
-                })*
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        impl Node {
+            $($(#[$doc])*
+            pub fn $getter(&self) -> bool {
+                (self.flags & (Flag::$id).mask()) != 0
             }
-        }
-    }
-}
-
-macro_rules! irregular_flag_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
-        paste! {
-            impl Node {
-                $($(#[$doc])*
-                pub fn $base_name(&self) -> bool {
-                    (self.flags & (Flag::$id).mask()) != 0
-                }
-                pub fn [< set_ $base_name >](&mut self) {
-                    self.flags |= (Flag::$id).mask();
-                }
-                pub fn [< clear_ $base_name >](&mut self) {
-                    self.flags &= !((Flag::$id).mask());
-                })*
+            pub fn $setter(&mut self) {
+                self.flags |= (Flag::$id).mask();
             }
+            pub fn $clearer(&mut self) {
+                self.flags &= !((Flag::$id).mask());
+            })*
         }
     }
 }
 
 macro_rules! optional_bool_methods {
-    ($($(#[$doc:meta])* ($base_name:ident)),+) => {
-        paste! {
-            impl Node {
-                $($(#[$doc])*
-                pub fn [< is_ $base_name >](&self) -> Option<bool> {
-                    self.$base_name
-                }
-                pub fn [< set_ $base_name >](&mut self, value: bool) {
-                    self.$base_name = Some(value);
-                }
-                pub fn [< clear_ $base_name >](&mut self) {
-                    self.$base_name = None;
-                })*
+    ($($(#[$doc:meta])* ($field:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        impl Node {
+            $($(#[$doc])*
+            pub fn $getter(&self) -> Option<bool> {
+                self.$field
             }
+            pub fn $setter(&mut self, value: bool) {
+                self.$field = Some(value);
+            }
+            pub fn $clearer(&mut self) {
+                self.$field = None;
+            })*
         }
     }
 }
 
 macro_rules! optional_enum_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $type:ty)),+) => {
-        paste! {
-            impl Node {
-                $($(#[$doc])*
-                pub fn $base_name(&self) -> Option<$type> {
-                    self.$base_name
-                }
-                pub fn [< set_ $base_name >](&mut self, value: $type) {
-                    self.$base_name = Some(value);
-                }
-                pub fn [< clear_ $base_name >](&mut self) {
-                    self.$base_name = None;
-                })*
+    ($($(#[$doc:meta])* ($field:ident, $type:ty, $setter:ident, $clearer:ident)),+) => {
+        impl Node {
+            $($(#[$doc])*
+            pub fn $field(&self) -> Option<$type> {
+                self.$field
             }
+            pub fn $setter(&mut self, value: $type) {
+                self.$field = Some(value);
+            }
+            pub fn $clearer(&mut self) {
+                self.$field = None;
+            })*
         }
     }
 }
 
 macro_rules! property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident, $type_method_base:ident, $getter_result:ty, $setter_param:ty)),+) => {
-        paste! {
-            impl Node {
-                $($(#[$doc])*
-                pub fn $base_name(&self) -> $getter_result {
-                    self.[< get_ $type_method_base >](PropertyId::$id)
-                }
-                pub fn [< set_ $base_name >](&mut self, value: $setter_param) {
-                    self.[< set_ $type_method_base >](PropertyId::$id, value);
-                }
-                pub fn [< clear_ $base_name >](&mut self) {
-                    self.clear_property(PropertyId::$id);
-                })*
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $type_getter:ident, $getter_result:ty, $setter:ident, $type_setter:ident, $setter_param:ty, $clearer:ident)),+) => {
+        impl Node {
+            $($(#[$doc])*
+            pub fn $getter(&self) -> $getter_result {
+                self.$type_getter(PropertyId::$id)
             }
+            pub fn $setter(&mut self, value: $setter_param) {
+                self.$type_setter(PropertyId::$id, value);
+            }
+            pub fn $clearer(&mut self) {
+                self.clear_property(PropertyId::$id);
+            })*
         }
     }
 }
 
 macro_rules! vec_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident, $type_method_base:ident, $item_type:ty)),+) => {
-        paste! {
-            impl Node {
-                $($(#[$doc])*
-                pub fn $base_name(&self) -> &[$item_type] {
-                    self.[< get_ $type_method_base >](PropertyId::$id)
-                }
-                pub fn [< set_ $base_name >](&mut self, value: impl Into<Vec<$item_type>>) {
-                    self.[< set_ $type_method_base >](PropertyId::$id, value);
-                }
-                pub fn [< push_to_ $base_name >](&mut self, item: $item_type) {
-                    self.[< push_to_ $type_method_base >](PropertyId::$id, item);
-                }
-                pub fn [< clear_ $base_name >](&mut self) {
-                    self.clear_property(PropertyId::$id);
-                })*
-            }
+    ($($(#[$doc:meta])* ($id:ident, $item_type:ty, $getter:ident, $type_getter:ident, $setter:ident, $type_setter:ident, $pusher:ident, $type_pusher:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, $type_getter, &[$item_type], $setter, $type_setter, impl Into<Vec<$item_type>>, $clearer)
         }
+        impl Node {
+            pub fn $pusher(&mut self, item: $item_type) {
+                self.$type_pusher(PropertyId::$id, item);
+            }
+        })*
     }
 }
 
 macro_rules! node_id_vec_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $pusher:ident, $clearer:ident)),+) => {
         $(vec_property_methods! {
             $(#[$doc])*
-            ($base_name, $id, node_id_vec, NodeId)
+            ($id, NodeId, $getter, get_node_id_vec, $setter, set_node_id_vec, $pusher, push_to_node_id_vec, $clearer)
         })*
     }
 }
 
 macro_rules! node_id_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($base_name, $id, node_id, Option<NodeId>, NodeId)
+            ($id, $getter, get_node_id, Option<NodeId>, $setter, set_node_id, NodeId, $clearer)
         })*
     }
 }
 
 macro_rules! string_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($base_name, $id, string, Option<&str>, impl Into<Box<str>>)
+            ($id, $getter, get_string, Option<&str>, $setter, set_string, impl Into<Box<str>>, $clearer)
         })*
     }
 }
 
 macro_rules! f64_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($base_name, $id, f64, Option<f64>, f64)
+            ($id, $getter, get_f64, Option<f64>, $setter, set_f64, f64, $clearer)
         })*
     }
 }
 
 macro_rules! usize_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($base_name, $id, usize, Option<usize>, usize)
+            ($id, $getter, get_usize, Option<usize>, $setter, set_usize, usize, $clearer)
         })*
     }
 }
 
 macro_rules! color_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($base_name, $id, color, Option<u32>, u32)
+            ($id, $getter, get_color, Option<u32>, $setter, set_color, u32, $clearer)
         })*
     }
 }
 
 macro_rules! length_slice_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($base_name, $id, length_slice, &[u8], impl Into<Box<[u8]>>)
+            ($id, $getter, get_length_slice, &[u8], $setter, set_length_slice, impl Into<Box<[u8]>>, $clearer)
         })*
     }
 }
 
 macro_rules! coord_slice_property_methods {
-    ($($(#[$doc:meta])* ($base_name:ident, $id:ident)),+) => {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($base_name, $id, coord_slice, Option<&[f32]>, impl Into<Box<[f32]>>)
+            ($id, $getter, get_coord_slice, Option<&[f32]>, $setter, set_coord_slice, impl Into<Box<[f32]>>, $clearer)
         })*
     }
 }
@@ -1260,62 +1224,59 @@ impl Node {
 }
 
 flag_methods! {
-    (autofill_available, AutofillAvailable),
-    (default, Default),
-    (editable, Editable),
-    (hovered, Hovered),
+    (AutofillAvailable, is_autofill_available, set_autofill_available, clear_autofill_available),
+    (Default, is_default, set_default, clear_default),
+    (Editable, is_editable, set_editable, clear_editable),
+    (Hovered, is_hovered, set_hovered, clear_hovered),
     /// Exclude this node and its descendants from the tree presented to
     /// assistive technologies, and from hit testing.
-    (hidden, Hidden),
-    (linked, Linked),
-    (multiline, Multiline),
-    (multiselectable, Multiselectable),
-    (protected, Protected),
-    (required, Required),
-    (visited, Visited),
-    (busy, Busy),
-    (live_atomic, LiveAtomic),
+    (Hidden, is_hidden, set_hidden, clear_hidden),
+    (Linked, is_linked, set_linked, clear_linked),
+    (Multiline, is_multiline, set_multiline, clear_multiline),
+    (Multiselectable, is_multiselectable, set_multiselectable, clear_multiselectable),
+    (Protected, is_protected, set_protected, clear_protected),
+    (Required, is_required, set_required, clear_required),
+    (Visited, is_visited, set_visited, clear_visited),
+    (Busy, is_busy, set_busy, clear_busy),
+    (LiveAtomic, is_live_atomic, set_live_atomic, clear_live_atomic),
     /// If a dialog box is marked as explicitly modal.
-    (modal, Modal),
+    (Modal, is_modal, set_modal, clear_modal),
     /// Indicates this node is user-scrollable, e.g. `overflow: scroll|auto`, as
     /// opposed to only programmatically scrollable, like `overflow: hidden`, or
     /// not scrollable at all, e.g. `overflow: visible`.
-    (scrollable, Scrollable),
+    (Scrollable, is_scrollable, set_scrollable, clear_scrollable),
     /// Indicates whether this node is selected due to selection follows focus.
-    (selected_from_focus, SelectedFromFocus),
+    (SelectedFromFocus, is_selected_from_focus, set_selected_from_focus, clear_selected_from_focus),
     /// This element allows touches to be passed through when a screen reader
     /// is in touch exploration mode, e.g. a virtual keyboard normally
     /// behaves this way.
-    (touch_pass_through, TouchPassThrough),
+    (TouchPassThrough, is_touch_pass_through, set_touch_pass_through, clear_touch_pass_through),
     /// Use for a textbox that allows focus/selection but not input.
-    (read_only, ReadOnly),
+    (ReadOnly, is_read_only, set_read_only, clear_read_only),
     /// Use for a control or group of controls that disallows input.
-    (disabled, Disabled),
-    (bold, Bold),
-    (italic, Italic)
-}
-
-irregular_flag_methods! {
+    (Disabled, is_disabled, set_disabled, clear_disabled),
+    (Bold, is_bold, set_bold, clear_bold),
+    (Italic, is_italic, set_italic, clear_italic),
     /// Set on a canvas element if it has fallback content.
-    (canvas_has_fallback, CanvasHasFallback),
+    (CanvasHasFallback, canvas_has_fallback, set_canvas_has_fallback, clear_canvas_has_fallback),
     /// Indicates that this node clips its children, i.e. may have
     /// `overflow: hidden` or clip children by default.
-    (clips_children, ClipsChildren),
+    (ClipsChildren, clips_children, set_clips_children, clear_clips_children),
     /// Indicates whether this node causes a hard line-break
     /// (e.g. block level elements, or `<br>`).
-    (is_line_breaking_object, IsLineBreakingObject),
+    (IsLineBreakingObject, is_line_breaking_object, set_is_line_breaking_object, clear_is_line_breaking_object),
     /// Indicates whether this node causes a page break.
-    (is_page_breaking_object, IsPageBreakingObject),
-    (is_spelling_error, IsSpellingError),
-    (is_grammar_error, IsGrammarError),
-    (is_search_match, IsSearchMatch),
-    (is_suggestion, IsSuggestion),
+    (IsPageBreakingObject, is_page_breaking_object, set_is_page_breaking_object, clear_is_page_breaking_object),
+    (IsSpellingError, is_spelling_error, set_is_spelling_error, clear_is_spelling_error),
+    (IsGrammarError, is_grammar_error, set_is_grammar_error, clear_is_grammar_error),
+    (IsSearchMatch, is_search_match, set_is_search_match, clear_is_search_match),
+    (IsSuggestion, is_suggestion, set_is_suggestion, clear_is_suggestion),
     /// The object functions as a text field which exposes its descendants.
     ///
     /// Use cases include the root of a content-editable region, an ARIA
     /// textbox which isn't currently editable and which has interactive
     /// descendants, and a `<body>` element that has "design-mode" set to "on".
-    (is_nonatomic_text_field_root, IsNonatomicTextFieldRoot)
+    (IsNonatomicTextFieldRoot, is_nonatomic_text_field_root, set_is_nonatomic_text_field_root, clear_is_nonatomic_text_field_root)
 }
 
 optional_bool_methods! {
@@ -1323,7 +1284,7 @@ optional_bool_methods! {
     ///
     /// Setting this to `false` means the node is collapsed; omitting it means this state
     /// isn't applicable.
-    (expanded),
+    (expanded, is_expanded, set_expanded, clear_expanded),
 
     /// Indicates whether this node is selected or unselected.
     ///
@@ -1334,139 +1295,139 @@ optional_bool_methods! {
     /// to announce "not selected". The ambiguity of this flag
     /// in platform accessibility APIs has made extraneous
     /// "not selected" announcements a common annoyance.
-    (selected)
+    (selected, is_selected, set_selected, clear_selected)
 }
 
 optional_enum_methods! {
     /// What information was used to compute the object's name.
-    (name_from, NameFrom),
+    (name_from, NameFrom, set_name_from, clear_name_from),
     /// What information was used to compute the object's description.
-    (description_from, DescriptionFrom),
-    (invalid, Invalid),
-    (checked_state, CheckedState),
-    (live, Live),
-    (default_action_verb, DefaultActionVerb),
-    (text_direction, TextDirection),
-    (orientation, Orientation),
-    (sort_direction, SortDirection),
-    (aria_current, AriaCurrent),
-    (has_popup, HasPopup),
+    (description_from, DescriptionFrom, set_description_from, clear_description_from),
+    (invalid, Invalid, set_invalid, clear_invalid),
+    (checked_state, CheckedState, set_checked_state, clear_checked_state),
+    (live, Live, set_live, clear_live),
+    (default_action_verb, DefaultActionVerb, set_default_action_verb, clear_default_action_verb),
+    (text_direction, TextDirection, set_text_direction, clear_text_direction),
+    (orientation, Orientation, set_orientation, clear_orientation),
+    (sort_direction, SortDirection, set_sort_direction, clear_sort_direction),
+    (aria_current, AriaCurrent, set_aria_current, clear_aria_current),
+    (has_popup, HasPopup, set_has_popup, clear_has_popup),
     /// The list style type. Only available on list items.
-    (list_style, ListStyle),
-    (text_align, TextAlign),
-    (vertical_offset, VerticalOffset),
-    (overline, TextDecoration),
-    (strikethrough, TextDecoration),
-    (underline, TextDecoration)
+    (list_style, ListStyle, set_list_style, clear_list_style),
+    (text_align, TextAlign, set_text_align, clear_text_align),
+    (vertical_offset, VerticalOffset, set_vertical_offset, clear_vertical_offset),
+    (overline, TextDecoration, set_overline, clear_overline),
+    (strikethrough, TextDecoration, set_strikethrough, clear_strikethrough),
+    (underline, TextDecoration, set_underline, clear_underline)
 }
 
 node_id_vec_property_methods! {
-    (children, Children),
+    (Children, children, set_children, push_to_children, clear_children),
     /// Ids of nodes that are children of this node logically, but are
     /// not children of this node in the tree structure. As an example,
     /// a table cell is a child of a row, and an 'indirect' child of a
     /// column.
-    (indirect_children, IndirectChildren),
-    (controls, Controls),
-    (details, Details),
-    (described_by, DescribedBy),
-    (flow_to, FlowTo),
-    (labelled_by, LabelledBy),
+    (IndirectChildren, indirect_children, set_indirect_children, push_to_indirect_children, clear_indirect_children),
+    (Controls, controls, set_controls, push_to_controls, clear_controls),
+    (Details, details, set_details, push_to_details, clear_details),
+    (DescribedBy, described_by, set_described_by, push_to_described_by, clear_described_by),
+    (FlowTo, flow_to, set_flow_to, push_to_flow_to, clear_flow_to),
+    (LabelledBy, labelled_by, set_labelled_by, push_to_labelled_by, clear_labelled_by),
     /// On radio buttons this should be set to a list of all of the buttons
     /// in the same group as this one, including this radio button itself.
-    (radio_group, RadioGroup)
+    (RadioGroup, radio_group, set_radio_group, push_to_radio_group, clear_radio_group)
 }
 
 node_id_property_methods! {
-    (active_descendant, ActiveDescendant),
-    (error_message, ErrorMessage),
-    (in_page_link_target, InPageLinkTarget),
-    (member_of, MemberOf),
-    (next_on_line, NextOnLine),
-    (previous_on_line, PreviousOnLine),
-    (popup_for, PopupFor),
-    (table_header, TableHeader),
-    (table_row_header, TableRowHeader),
-    (table_column_header, TableColumnHeader),
-    (next_focus, NextFocus),
-    (previous_focus, PreviousFocus)
+    (ActiveDescendant, active_descendant, set_active_descendant, clear_active_descendant),
+    (ErrorMessage, error_message, set_error_message, clear_error_message),
+    (InPageLinkTarget, in_page_link_target, set_in_page_link_target, clear_in_page_link_target),
+    (MemberOf, member_of, set_member_of, clear_member_of),
+    (NextOnLine, next_on_line, set_next_on_line, clear_next_on_line),
+    (PreviousOnLine, previous_on_line, set_previous_on_line, clear_previous_on_line),
+    (PopupFor, popup_for, set_popup_for, clear_popup_for),
+    (TableHeader, table_header, set_table_header, clear_table_header),
+    (TableRowHeader, table_row_header, set_table_row_header, clear_table_row_header),
+    (TableColumnHeader, table_column_header, set_table_column_header, clear_table_column_header),
+    (NextFocus, next_focus, set_next_focus, clear_next_focus),
+    (PreviousFocus, previous_focus, set_previous_focus, clear_previous_focus)
 }
 
 string_property_methods! {
-    (name, Name),
-    (description, Description),
-    (value, Value),
-    (access_key, AccessKey),
-    (auto_complete, AutoComplete),
-    (checked_state_description, CheckedStateDescription),
-    (class_name, ClassName),
-    (css_display, CssDisplay),
+    (Name, name, set_name, clear_name),
+    (Description, description, set_description, clear_description),
+    (Value, value, set_value, clear_value),
+    (AccessKey, access_key, set_access_key, clear_access_key),
+    (AutoComplete, auto_complete, set_auto_complete, clear_auto_complete),
+    (CheckedStateDescription, checked_state_description, set_checked_state_description, clear_checked_state_description),
+    (ClassName, class_name, set_class_name, clear_class_name),
+    (CssDisplay, css_display, set_css_display, clear_css_display),
     /// Only present when different from parent.
-    (font_family, FontFamily),
-    (html_tag, HtmlTag),
+    (FontFamily, font_family, set_font_family, clear_font_family),
+    (HtmlTag, html_tag, set_html_tag, clear_html_tag),
     /// Inner HTML of an element. Only used for a top-level math element,
     /// to support third-party math accessibility products that parse MathML.
-    (inner_html, InnerHtml),
-    (input_type, InputType),
-    (key_shortcuts, KeyShortcuts),
+    (InnerHtml, inner_html, set_inner_html, clear_inner_html),
+    (InputType, input_type, set_input_type, clear_input_type),
+    (KeyShortcuts, key_shortcuts, set_key_shortcuts, clear_key_shortcuts),
     /// Only present when different from parent.
-    (language, Language),
-    (live_relevant, LiveRelevant),
+    (Language, language, set_language, clear_language),
+    (LiveRelevant, live_relevant, set_live_relevant, clear_live_relevant),
     /// Only if not already exposed in [`name`] ([`NameFrom::Placeholder`]).
     ///
     /// [`name`]: Node::name
-    (placeholder, Placeholder),
-    (aria_role, AriaRole),
-    (role_description, RoleDescription),
+    (Placeholder, placeholder, set_placeholder, clear_placeholder),
+    (AriaRole, aria_role, set_aria_role, clear_aria_role),
+    (RoleDescription, role_description, set_role_description, clear_role_description),
     /// Only if not already exposed in [`name`] ([`NameFrom::Title`]).
     ///
     /// [`name`]: Node::name
-    (tooltip, Tooltip),
-    (url, Url)
+    (Tooltip, tooltip, set_tooltip, clear_tooltip),
+    (Url, url, set_url, clear_url)
 }
 
 f64_property_methods! {
-    (scroll_x, ScrollX),
-    (scroll_x_min, ScrollXMin),
-    (scroll_x_max, ScrollXMax),
-    (scroll_y, ScrollY),
-    (scroll_y_min, ScrollYMin),
-    (scroll_y_max, ScrollYMax),
-    (numeric_value, NumericValue),
-    (min_numeric_value, MinNumericValue),
-    (max_numeric_value, MaxNumericValue),
-    (numeric_value_step, NumericValueStep),
-    (numeric_value_jump, NumericValueJump),
+    (ScrollX, scroll_x, set_scroll_x, clear_scroll_x),
+    (ScrollXMin, scroll_x_min, set_scroll_x_min, clear_scroll_x_min),
+    (ScrollXMax, scroll_x_max, set_scroll_x_max, clear_scroll_x_max),
+    (ScrollY, scroll_y, set_scroll_y, clear_scroll_y),
+    (ScrollYMin, scroll_y_min, set_scroll_y_min, clear_scroll_y_min),
+    (ScrollYMax, scroll_y_max, set_scroll_y_max, clear_scroll_y_max),
+    (NumericValue, numeric_value, set_numeric_value, clear_numeric_value),
+    (MinNumericValue, min_numeric_value, set_min_numeric_value, clear_min_numeric_value),
+    (MaxNumericValue, max_numeric_value, set_max_numeric_value, clear_max_numeric_value),
+    (NumericValueStep, numeric_value_step, set_numeric_value_step, clear_numeric_value_step),
+    (NumericValueJump, numeric_value_jump, set_numeric_value_jump, clear_numeric_value_jump),
     /// Font size is in pixels.
-    (font_size, FontSize),
+    (FontSize, font_size, set_font_size, clear_font_size),
     /// Font weight can take on any arbitrary numeric value. Increments of 100 in
     /// range `[0, 900]` represent keywords such as light, normal, bold, etc.
-    (font_weight, FontWeight),
+    (FontWeight, font_weight, set_font_weight, clear_font_weight),
     /// The indentation of the text, in mm.
-    (text_indent, TextIndent)
+    (TextIndent, text_indent, set_text_indent, clear_text_indent)
 }
 
 usize_property_methods! {
-    (table_row_count, TableRowCount),
-    (table_column_count, TableColumnCount),
-    (table_row_index, TableRowIndex),
-    (table_column_index, TableColumnIndex),
-    (table_cell_column_index, TableCellColumnIndex),
-    (table_cell_column_span, TableCellColumnSpan),
-    (table_cell_row_index, TableCellRowIndex),
-    (table_cell_row_span, TableCellRowSpan),
-    (hierarchical_level, HierarchicalLevel),
-    (size_of_set, SizeOfSet),
-    (position_in_set, PositionInSet)
+    (TableRowCount, table_row_count, set_table_row_count, clear_table_row_count),
+    (TableColumnCount, table_column_count, set_table_column_count, clear_table_column_count),
+    (TableRowIndex, table_row_index, set_table_row_index, clear_table_row_index),
+    (TableColumnIndex, table_column_index, set_table_column_index, clear_table_column_index),
+    (TableCellColumnIndex, table_cell_column_index, set_table_cell_column_index, clear_table_cell_column_index),
+    (TableCellColumnSpan, table_cell_column_span, set_table_cell_column_span, clear_table_cell_column_span),
+    (TableCellRowIndex, table_cell_row_index, set_table_cell_row_index, clear_table_cell_row_index),
+    (TableCellRowSpan, table_cell_row_span, set_table_cell_row_span, clear_table_cell_row_span),
+    (HierarchicalLevel, hierarchical_level, set_hierarchical_level, clear_hierarchical_level),
+    (SizeOfSet, size_of_set, set_size_of_set, clear_size_of_set),
+    (PositionInSet, position_in_set, set_position_in_set, clear_position_in_set)
 }
 
 color_property_methods! {
     /// For [`Role::ColorWell`], specifies the selected color in RGBA.
-    (color_value, ColorValue),
+    (ColorValue, color_value, set_color_value, clear_color_value),
     /// Background color in RGBA.
-    (background_color, BackgroundColor),
+    (BackgroundColor, background_color, set_background_color, clear_background_color),
     /// Foreground color in RGBA.
-    (foreground_color, ForegroundColor)
+    (ForegroundColor, foreground_color, set_foreground_color, clear_foreground_color)
 }
 
 length_slice_property_methods! {
@@ -1488,7 +1449,7 @@ length_slice_property_methods! {
     /// selection should be on the line break, not after it.
     ///
     /// [`value`]: Node::value
-    (character_lengths, CharacterLengths),
+    (CharacterLengths, character_lengths, set_character_lengths, clear_character_lengths),
 
     /// For inline text. The length of each word in characters, as defined
     /// in [`character_lengths`]. The sum of these lengths must equal
@@ -1512,7 +1473,7 @@ length_slice_property_methods! {
     /// word boundaries itself.
     ///
     /// [`character_lengths`]: Node::character_lengths
-    (word_lengths, WordLengths)
+    (WordLengths, word_lengths, set_word_lengths, clear_word_lengths)
 }
 
 coord_slice_property_methods! {
@@ -1532,7 +1493,7 @@ coord_slice_property_methods! {
     ///
     /// [`text_direction`]: Node::text_direction
     /// [`character_lengths`]: Node::character_lengths
-    (character_positions, CharacterPositions),
+    (CharacterPositions, character_positions, set_character_positions, clear_character_positions),
 
     /// For inline text. This is the advance width of each character,
     /// in the direction given by [`text_direction`], in the coordinate
@@ -1552,7 +1513,7 @@ coord_slice_property_methods! {
     ///
     /// [`text_direction`]: Node::text_direction
     /// [`character_lengths`]: Node::character_lengths
-    (character_widths, CharacterWidths)
+    (CharacterWidths, character_widths, set_character_widths, clear_character_widths)
 }
 
 property_methods! {
@@ -1568,7 +1529,7 @@ property_methods! {
     /// pixels, with the y coordinate being top-down.
     ///
     /// [`bounds`]: Node::bounds
-    (transform, Transform, affine, Option<&Affine>, impl Into<Box<Affine>>),
+    (Transform, transform, get_affine, Option<&Affine>, set_transform, set_affine, impl Into<Box<Affine>>, clear_transform),
 
     /// The bounding box of this node, in the node's coordinate space.
     /// This property does not affect the coordinate space of either this node
@@ -1580,7 +1541,7 @@ property_methods! {
     /// the tree's container (e.g. window).
     ///
     /// [`transform`]: Node::transform
-    (bounds, Bounds, rect, Option<Rect>, Rect)
+    (Bounds, bounds, get_rect, Option<Rect>, set_bounds, set_rect, Rect, clear_bounds)
 }
 
 impl Node {
