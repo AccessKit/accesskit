@@ -425,7 +425,7 @@ impl Tree {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
+    use accesskit::{NodeBuilder, NodeId, Role, Tree, TreeUpdate};
     use std::num::NonZeroU128;
 
     use crate::tests::NullActionHandler;
@@ -437,7 +437,7 @@ mod tests {
     #[test]
     fn init_tree_with_root_node() {
         let update = TreeUpdate {
-            nodes: vec![(NODE_ID_1, Node::new(Role::Window))],
+            nodes: vec![(NODE_ID_1, NodeBuilder::new(Role::Window).build())],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
@@ -452,12 +452,12 @@ mod tests {
         let update = TreeUpdate {
             nodes: vec![
                 (NODE_ID_1, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NODE_ID_2, NODE_ID_3]);
-                    node
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_children(vec![NODE_ID_2, NODE_ID_3]);
+                    builder.build()
                 }),
-                (NODE_ID_2, Node::new(Role::Button)),
-                (NODE_ID_3, Node::new(Role::Button)),
+                (NODE_ID_2, NodeBuilder::new(Role::Button).build()),
+                (NODE_ID_3, NodeBuilder::new(Role::Button).build()),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
@@ -477,9 +477,9 @@ mod tests {
 
     #[test]
     fn add_child_to_root_node() {
-        let root_node = Node::new(Role::Window);
+        let root_builder = NodeBuilder::new(Role::Window);
         let first_update = TreeUpdate {
-            nodes: vec![(NODE_ID_1, root_node.clone())],
+            nodes: vec![(NODE_ID_1, root_builder.clone().build())],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
@@ -488,11 +488,11 @@ mod tests {
         let second_update = TreeUpdate {
             nodes: vec![
                 (NODE_ID_1, {
-                    let mut node = root_node;
-                    node.push_child(NODE_ID_2);
-                    node
+                    let mut builder = root_builder;
+                    builder.push_child(NODE_ID_2);
+                    builder.build()
                 }),
-                (NODE_ID_2, Node::new(Role::RootWebArea)),
+                (NODE_ID_2, NodeBuilder::new(Role::RootWebArea).build()),
             ],
             tree: None,
             focus: None,
@@ -555,15 +555,15 @@ mod tests {
 
     #[test]
     fn remove_child_from_root_node() {
-        let root_node = Node::new(Role::Window);
+        let root_builder = NodeBuilder::new(Role::Window);
         let first_update = TreeUpdate {
             nodes: vec![
                 (NODE_ID_1, {
-                    let mut node = root_node.clone();
-                    node.push_child(NODE_ID_2);
-                    node
+                    let mut builder = root_builder.clone();
+                    builder.push_child(NODE_ID_2);
+                    builder.build()
                 }),
-                (NODE_ID_2, Node::new(Role::RootWebArea)),
+                (NODE_ID_2, NodeBuilder::new(Role::RootWebArea).build()),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
@@ -571,7 +571,7 @@ mod tests {
         let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
         assert_eq!(1, tree.read().root().children().count());
         let second_update = TreeUpdate {
-            nodes: vec![(NODE_ID_1, root_node)],
+            nodes: vec![(NODE_ID_1, root_builder.build())],
             tree: None,
             focus: None,
         };
@@ -631,12 +631,12 @@ mod tests {
         let first_update = TreeUpdate {
             nodes: vec![
                 (NODE_ID_1, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NODE_ID_2, NODE_ID_3]);
-                    node
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_children(vec![NODE_ID_2, NODE_ID_3]);
+                    builder.build()
                 }),
-                (NODE_ID_2, Node::new(Role::Button)),
-                (NODE_ID_3, Node::new(Role::Button)),
+                (NODE_ID_2, NodeBuilder::new(Role::Button).build()),
+                (NODE_ID_3, NodeBuilder::new(Role::Button).build()),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: Some(NODE_ID_2),
@@ -715,18 +715,18 @@ mod tests {
 
     #[test]
     fn update_node() {
-        let child_node = Node::new(Role::Button);
+        let child_builder = NodeBuilder::new(Role::Button);
         let first_update = TreeUpdate {
             nodes: vec![
                 (NODE_ID_1, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NODE_ID_2]);
-                    node
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_children(vec![NODE_ID_2]);
+                    builder.build()
                 }),
                 (NODE_ID_2, {
-                    let mut node = child_node.clone();
-                    node.set_name("foo");
-                    node
+                    let mut builder = child_builder.clone();
+                    builder.set_name("foo");
+                    builder.build()
                 }),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
@@ -739,9 +739,9 @@ mod tests {
         );
         let second_update = TreeUpdate {
             nodes: vec![(NODE_ID_2, {
-                let mut node = child_node;
-                node.set_name("bar");
-                node
+                let mut builder = child_builder;
+                builder.set_name("bar");
+                builder.build()
             })],
             tree: None,
             focus: None,

@@ -720,7 +720,7 @@ impl Deref for DetachedNode {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Point, Rect, Role, Tree, TreeUpdate};
+    use accesskit::{NodeBuilder, NodeId, Point, Rect, Role, Tree, TreeUpdate};
     use std::num::NonZeroU128;
 
     use crate::tests::*;
@@ -994,11 +994,11 @@ mod tests {
         let update = TreeUpdate {
             nodes: vec![
                 (NODE_ID_1, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NODE_ID_2]);
-                    node
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_children(vec![NODE_ID_2]);
+                    builder.build()
                 }),
-                (NODE_ID_2, Node::new(Role::Button)),
+                (NODE_ID_2, NodeBuilder::new(Role::Button).build()),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
@@ -1017,29 +1017,29 @@ mod tests {
         let update = TreeUpdate {
             nodes: vec![
                 (NODE_ID_1, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NODE_ID_2, NODE_ID_3, NODE_ID_4, NODE_ID_5]);
-                    node
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_children(vec![NODE_ID_2, NODE_ID_3, NODE_ID_4, NODE_ID_5]);
+                    builder.build()
                 }),
                 (NODE_ID_2, {
-                    let mut node = Node::new(Role::CheckBox);
-                    node.set_labelled_by(vec![NODE_ID_3, NODE_ID_5]);
-                    node
+                    let mut builder = NodeBuilder::new(Role::CheckBox);
+                    builder.set_labelled_by(vec![NODE_ID_3, NODE_ID_5]);
+                    builder.build()
                 }),
                 (NODE_ID_3, {
-                    let mut node = Node::new(Role::StaticText);
-                    node.set_name(LABEL_1);
-                    node
+                    let mut builder = NodeBuilder::new(Role::StaticText);
+                    builder.set_name(LABEL_1);
+                    builder.build()
                 }),
                 (NODE_ID_4, {
-                    let mut node = Node::new(Role::TextField);
-                    node.push_labelled_by(NODE_ID_5);
-                    node
+                    let mut builder = NodeBuilder::new(Role::TextField);
+                    builder.push_labelled_by(NODE_ID_5);
+                    builder.build()
                 }),
                 (NODE_ID_5, {
-                    let mut node = Node::new(Role::StaticText);
-                    node.set_name(LABEL_2);
-                    node
+                    let mut builder = NodeBuilder::new(Role::StaticText);
+                    builder.set_name(LABEL_2);
+                    builder.build()
                 }),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
@@ -1064,34 +1064,34 @@ mod tests {
         let update = TreeUpdate {
             nodes: vec![
                 (NODE_ID_1, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NODE_ID_2, NODE_ID_4]);
-                    node
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_children(vec![NODE_ID_2, NODE_ID_4]);
+                    builder.build()
                 }),
                 (NODE_ID_2, {
-                    let mut node = Node::new(Role::Button);
-                    node.push_child(NODE_ID_3);
-                    node
+                    let mut builder = NodeBuilder::new(Role::Button);
+                    builder.push_child(NODE_ID_3);
+                    builder.build()
                 }),
                 (NODE_ID_3, {
-                    let mut node = Node::new(Role::Image);
-                    node.set_name(BUTTON_LABEL);
-                    node
+                    let mut builder = NodeBuilder::new(Role::Image);
+                    builder.set_name(BUTTON_LABEL);
+                    builder.build()
                 }),
                 (NODE_ID_4, {
-                    let mut node = Node::new(Role::Link);
-                    node.push_child(NODE_ID_5);
-                    node
+                    let mut builder = NodeBuilder::new(Role::Link);
+                    builder.push_child(NODE_ID_5);
+                    builder.build()
                 }),
                 (NODE_ID_5, {
-                    let mut node = Node::new(Role::GenericContainer);
-                    node.push_child(NODE_ID_6);
-                    node
+                    let mut builder = NodeBuilder::new(Role::GenericContainer);
+                    builder.push_child(NODE_ID_6);
+                    builder.build()
                 }),
                 (NODE_ID_6, {
-                    let mut node = Node::new(Role::StaticText);
-                    node.set_name(LINK_LABEL);
-                    node
+                    let mut builder = NodeBuilder::new(Role::StaticText);
+                    builder.set_name(LINK_LABEL);
+                    builder.build()
                 }),
             ],
             tree: Some(Tree::new(NODE_ID_1)),

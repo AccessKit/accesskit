@@ -5,7 +5,9 @@
 
 use std::{convert::TryInto, num::NonZeroU128};
 
-use accesskit::{Action, ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
+use accesskit::{
+    Action, ActionHandler, ActionRequest, Node, NodeBuilder, NodeId, Role, Tree, TreeUpdate,
+};
 use windows::{core::*, Win32::UI::Accessibility::*};
 
 use super::*;
@@ -17,17 +19,17 @@ const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
 
 fn make_button(name: &str) -> Node {
-    let mut node = Node::new(Role::Button);
-    node.set_name(name);
-    node.add_action(Action::Focus);
-    node
+    let mut builder = NodeBuilder::new(Role::Button);
+    builder.set_name(name);
+    builder.add_action(Action::Focus);
+    builder.build()
 }
 
 fn get_initial_state() -> TreeUpdate {
     let root = {
-        let mut node = Node::new(Role::Window);
-        node.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
-        node
+        let mut builder = NodeBuilder::new(Role::Window);
+        builder.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
+        builder.build()
     };
     let button_1 = make_button("Button 1");
     let button_2 = make_button("Button 2");

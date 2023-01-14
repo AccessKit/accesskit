@@ -1028,36 +1028,36 @@ mod tests {
 
     // This is based on an actual tree produced by egui.
     fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {
-        use accesskit::{Action, Affine, Node, Role, TextDirection, Tree, TreeUpdate};
+        use accesskit::{Action, Affine, NodeBuilder, Role, TextDirection, Tree, TreeUpdate};
 
         let update = TreeUpdate {
             nodes: vec![
                 (NODE_ID_1, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_transform(Affine::scale(1.5));
-                    node.set_children(vec![NODE_ID_2]);
-                    node
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_transform(Affine::scale(1.5));
+                    builder.set_children(vec![NODE_ID_2]);
+                    builder.build()
                 }),
                 (NODE_ID_2, {
-                    let mut node = Node::new(Role::TextField);
-                    node.set_bounds(Rect {
+                    let mut builder = NodeBuilder::new(Role::TextField);
+                    builder.set_bounds(Rect {
                         x0: 8.0,
                         y0: 31.666664123535156,
                         x1: 296.0,
                         y1: 123.66666412353516,
                     });
-                    node.set_children(vec![
+                    builder.set_children(vec![
                         NODE_ID_3, NODE_ID_4, NODE_ID_5, NODE_ID_6, NODE_ID_7, NODE_ID_8,
                     ]);
-                    node.add_action(Action::Focus);
+                    builder.add_action(Action::Focus);
                     if let Some(selection) = selection {
-                        node.set_text_selection(selection);
+                        builder.set_text_selection(selection);
                     }
-                    node
+                    builder.build()
                 }),
                 (NODE_ID_3, {
-                    let mut node = Node::new(Role::InlineTextBox);
-                    node.set_bounds(Rect {
+                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    builder.set_bounds(Rect {
                         x0: 12.0,
                         y0: 33.666664123535156,
                         x1: 290.9189147949219,
@@ -1067,98 +1067,99 @@ mod tests {
                     // is in an arbitrary spot; its only purpose
                     // is to test conversion between UTF-8 and UTF-16
                     // indices.
-                    node.set_value("This paragraph is\u{a0}long enough to wrap ");
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node.set_character_lengths([
+                    builder.set_value("This paragraph is\u{a0}long enough to wrap ");
+                    builder.set_text_direction(TextDirection::LeftToRight);
+                    builder.set_character_lengths([
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1,
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                     ]);
-                    node.set_character_positions([
+                    builder.set_character_positions([
                         0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
                         58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
                         117.333336, 124.666664, 132.0, 139.33333, 146.66667, 154.0, 161.33333,
                         168.66667, 176.0, 183.33333, 190.66667, 198.0, 205.33333, 212.66667, 220.0,
                         227.33333, 234.66667, 242.0, 249.33333, 256.66666, 264.0, 271.33334,
                     ]);
-                    node.set_character_widths([
+                    builder.set_character_widths([
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                     ]);
-                    node.set_word_lengths([5, 10, 3, 5, 7, 3, 5]);
-                    node
+                    builder.set_word_lengths([5, 10, 3, 5, 7, 3, 5]);
+                    builder.build()
                 }),
                 (NODE_ID_4, {
-                    let mut node = Node::new(Role::InlineTextBox);
-                    node.set_bounds(Rect {
+                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    builder.set_bounds(Rect {
                         x0: 12.0,
                         y0: 48.33333206176758,
                         x1: 129.5855712890625,
                         y1: 63.0,
                     });
-                    node.set_value("to another line.\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node.set_character_lengths([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
-                    node.set_character_positions([
+                    builder.set_value("to another line.\n");
+                    builder.set_text_direction(TextDirection::LeftToRight);
+                    builder
+                        .set_character_lengths([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+                    builder.set_character_positions([
                         0.0, 7.3333435, 14.666687, 22.0, 29.333344, 36.666687, 44.0, 51.333344,
                         58.666687, 66.0, 73.33334, 80.66669, 88.0, 95.33334, 102.66669, 110.0,
                         117.58557,
                     ]);
-                    node.set_character_widths([
+                    builder.set_character_widths([
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         0.0,
                     ]);
-                    node.set_word_lengths([3, 8, 6]);
-                    node
+                    builder.set_word_lengths([3, 8, 6]);
+                    builder.build()
                 }),
                 (NODE_ID_5, {
-                    let mut node = Node::new(Role::InlineTextBox);
-                    node.set_bounds(Rect {
+                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    builder.set_bounds(Rect {
                         x0: 12.0,
                         y0: 63.0,
                         x1: 144.25222778320313,
                         y1: 77.66666412353516,
                     });
-                    node.set_value("Another paragraph.\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node.set_character_lengths([
+                    builder.set_value("Another paragraph.\n");
+                    builder.set_text_direction(TextDirection::LeftToRight);
+                    builder.set_character_lengths([
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                     ]);
-                    node.set_character_positions([
+                    builder.set_character_positions([
                         0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
                         58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
                         117.333336, 124.666664, 132.25223,
                     ]);
-                    node.set_character_widths([
+                    builder.set_character_widths([
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 0.0,
                     ]);
-                    node.set_word_lengths([8, 11]);
-                    node
+                    builder.set_word_lengths([8, 11]);
+                    builder.build()
                 }),
                 (NODE_ID_6, {
-                    let mut node = Node::new(Role::InlineTextBox);
-                    node.set_bounds(Rect {
+                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    builder.set_bounds(Rect {
                         x0: 12.0,
                         y0: 77.66666412353516,
                         x1: 12.0,
                         y1: 92.33332824707031,
                     });
-                    node.set_value("\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node.set_character_lengths([1]);
-                    node.set_character_positions([0.0]);
-                    node.set_character_widths([0.0]);
-                    node.set_word_lengths([1]);
-                    node
+                    builder.set_value("\n");
+                    builder.set_text_direction(TextDirection::LeftToRight);
+                    builder.set_character_lengths([1]);
+                    builder.set_character_positions([0.0]);
+                    builder.set_character_widths([0.0]);
+                    builder.set_word_lengths([1]);
+                    builder.build()
                 }),
                 (NODE_ID_7, {
-                    let mut node = Node::new(Role::InlineTextBox);
-                    node.set_bounds(Rect {
+                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    builder.set_bounds(Rect {
                         x0: 12.0,
                         y0: 92.33332824707031,
                         x1: 158.9188995361328,
@@ -1167,39 +1168,39 @@ mod tests {
                     // Use an arbitrary emoji that encodes to two
                     // UTF-16 code units to fully test conversion between
                     // UTF-8, UTF-16, and character indices.
-                    node.set_value("Last non-blank line\u{1f60a}\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node.set_character_lengths([
+                    builder.set_value("Last non-blank line\u{1f60a}\n");
+                    builder.set_text_direction(TextDirection::LeftToRight);
+                    builder.set_character_lengths([
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 1,
                     ]);
-                    node.set_character_positions([
+                    builder.set_character_positions([
                         0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
                         58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
                         117.333336, 124.666664, 132.0, 139.33333, 146.9189,
                     ]);
-                    node.set_character_widths([
+                    builder.set_character_widths([
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 0.0,
                     ]);
-                    node.set_word_lengths([5, 4, 6, 6]);
-                    node
+                    builder.set_word_lengths([5, 4, 6, 6]);
+                    builder.build()
                 }),
                 (NODE_ID_8, {
-                    let mut node = Node::new(Role::InlineTextBox);
-                    node.set_bounds(Rect {
+                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    builder.set_bounds(Rect {
                         x0: 12.0,
                         y0: 107.0,
                         x1: 12.0,
                         y1: 121.66666412353516,
                     });
-                    node.set_value("");
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node.set_character_lengths([]);
-                    node.set_character_positions([]);
-                    node.set_character_widths([]);
-                    node.set_word_lengths([0]);
-                    node
+                    builder.set_value("");
+                    builder.set_text_direction(TextDirection::LeftToRight);
+                    builder.set_character_lengths([]);
+                    builder.set_character_positions([]);
+                    builder.set_character_widths([]);
+                    builder.set_word_lengths([0]);
+                    builder.build()
                 }),
             ],
             tree: Some(Tree::new(NODE_ID_1)),

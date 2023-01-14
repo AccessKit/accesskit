@@ -16,9 +16,12 @@ use serde::{
     ser::{SerializeMap, SerializeSeq, Serializer},
     Deserialize, Serialize,
 };
-use std::num::{NonZeroU128, NonZeroU64};
 #[cfg(feature = "serde")]
 use std::{fmt, mem::size_of_val};
+use std::{
+    num::{NonZeroU128, NonZeroU64},
+    sync::Arc,
+};
 
 mod geometry;
 pub use geometry::{Affine, Point, Rect, Size, Vec2};
@@ -890,23 +893,33 @@ struct NodeClass {
 /// to other languages, documentation of getter methods is written as if
 /// documenting fields in a struct, and such methods are referred to
 /// as properties.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Node {
+    class: NodeClass,
+    flags: u32,
+    props: Arc<[PropertyValue]>,
+}
+
+/// Builds a [`Node`].
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct NodeBuilder {
     class: NodeClass,
     flags: u32,
     props: Vec<PropertyValue>,
 }
 
-impl Node {
-    fn get_property(&self, id: PropertyId) -> &PropertyValue {
-        let index = self.class.indices.0[id as usize];
+impl NodeClass {
+    fn get_property<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> &'a PropertyValue {
+        let index = self.indices.0[id as usize];
         if index == PropertyId::Unset as u8 {
             &PropertyValue::None
         } else {
-            &self.props[index as usize]
+            &props[index as usize]
         }
     }
+}
 
+impl NodeBuilder {
     fn get_property_mut(&mut self, id: PropertyId, default: PropertyValue) -> &mut PropertyValue {
         let index = self.class.indices.0[id as usize] as usize;
         if index == PropertyId::Unset as usize {
@@ -938,39 +951,51 @@ impl Node {
             self.props[index as usize] = PropertyValue::None;
         }
     }
+}
 
-    fn get_affine(&self, id: PropertyId) -> Option<&Affine> {
-        match self.get_property(id) {
+impl NodeClass {
+    fn get_affine<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> Option<&'a Affine> {
+        match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::Affine(value) => Some(value),
             _ => panic!(),
         }
     }
+}
 
+impl NodeBuilder {
     fn set_affine(&mut self, id: PropertyId, value: impl Into<Box<Affine>>) {
         self.set_property(id, PropertyValue::Affine(value.into()));
     }
+}
 
-    fn get_rect(&self, id: PropertyId) -> Option<Rect> {
-        match self.get_property(id) {
+impl NodeClass {
+    fn get_rect(&self, props: &[PropertyValue], id: PropertyId) -> Option<Rect> {
+        match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::Rect(value) => Some(*value),
             _ => panic!(),
         }
     }
+}
 
+impl NodeBuilder {
     fn set_rect(&mut self, id: PropertyId, value: Rect) {
         self.set_property(id, PropertyValue::Rect(value));
     }
+}
 
-    fn get_node_id_vec(&self, id: PropertyId) -> &[NodeId] {
-        match self.get_property(id) {
+impl NodeClass {
+    fn get_node_id_vec<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> &'a [NodeId] {
+        match self.get_property(props, id) {
             PropertyValue::None => &[],
             PropertyValue::NodeIdVec(value) => value,
             _ => panic!(),
         }
     }
+}
 
+impl NodeBuilder {
     fn push_to_node_id_vec(&mut self, property_id: PropertyId, node_id: NodeId) {
         match self.get_property_mut(property_id, PropertyValue::NodeIdVec(Vec::new())) {
             PropertyValue::NodeIdVec(v) => {
@@ -983,111 +1008,151 @@ impl Node {
     fn set_node_id_vec(&mut self, id: PropertyId, value: impl Into<Vec<NodeId>>) {
         self.set_property(id, PropertyValue::NodeIdVec(value.into()));
     }
+}
 
-    fn get_node_id(&self, id: PropertyId) -> Option<NodeId> {
-        match self.get_property(id) {
+impl NodeClass {
+    fn get_node_id(&self, props: &[PropertyValue], id: PropertyId) -> Option<NodeId> {
+        match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::NodeId(value) => Some(*value),
             _ => panic!(),
         }
     }
+}
 
+impl NodeBuilder {
     fn set_node_id(&mut self, id: PropertyId, value: NodeId) {
         self.set_property(id, PropertyValue::NodeId(value));
     }
+}
 
-    fn get_string(&self, id: PropertyId) -> Option<&str> {
-        match self.get_property(id) {
+impl NodeClass {
+    fn get_string<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> Option<&'a str> {
+        match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::String(value) => Some(value),
             _ => panic!(),
         }
     }
+}
 
+impl NodeBuilder {
     fn set_string(&mut self, id: PropertyId, value: impl Into<Box<str>>) {
         self.set_property(id, PropertyValue::String(value.into()));
     }
+}
 
-    fn get_f64(&self, id: PropertyId) -> Option<f64> {
-        match self.get_property(id) {
+impl NodeClass {
+    fn get_f64(&self, props: &[PropertyValue], id: PropertyId) -> Option<f64> {
+        match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::F64(value) => Some(*value),
             _ => panic!(),
         }
     }
+}
 
+impl NodeBuilder {
     fn set_f64(&mut self, id: PropertyId, value: f64) {
         self.set_property(id, PropertyValue::F64(value));
     }
+}
 
-    fn get_usize(&self, id: PropertyId) -> Option<usize> {
-        match self.get_property(id) {
+impl NodeClass {
+    fn get_usize(&self, props: &[PropertyValue], id: PropertyId) -> Option<usize> {
+        match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::Usize(value) => Some(*value),
             _ => panic!(),
         }
     }
+}
 
+impl NodeBuilder {
     fn set_usize(&mut self, id: PropertyId, value: usize) {
         self.set_property(id, PropertyValue::Usize(value));
     }
+}
 
-    fn get_color(&self, id: PropertyId) -> Option<u32> {
-        match self.get_property(id) {
+impl NodeClass {
+    fn get_color(&self, props: &[PropertyValue], id: PropertyId) -> Option<u32> {
+        match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::Color(value) => Some(*value),
             _ => panic!(),
         }
     }
+}
 
+impl NodeBuilder {
     fn set_color(&mut self, id: PropertyId, value: u32) {
         self.set_property(id, PropertyValue::Color(value));
     }
+}
 
-    fn get_text_decoration(&self, id: PropertyId) -> Option<TextDecoration> {
-        match self.get_property(id) {
+impl NodeClass {
+    fn get_text_decoration(
+        &self,
+        props: &[PropertyValue],
+        id: PropertyId,
+    ) -> Option<TextDecoration> {
+        match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::TextDecoration(value) => Some(*value),
             _ => panic!(),
         }
     }
+}
 
+impl NodeBuilder {
     fn set_text_decoration(&mut self, id: PropertyId, value: TextDecoration) {
         self.set_property(id, PropertyValue::TextDecoration(value));
     }
+}
 
-    fn get_length_slice(&self, id: PropertyId) -> &[u8] {
-        match self.get_property(id) {
+impl NodeClass {
+    fn get_length_slice<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> &'a [u8] {
+        match self.get_property(props, id) {
             PropertyValue::None => &[],
             PropertyValue::LengthSlice(value) => value,
             _ => panic!(),
         }
     }
+}
 
+impl NodeBuilder {
     fn set_length_slice(&mut self, id: PropertyId, value: impl Into<Box<[u8]>>) {
         self.set_property(id, PropertyValue::LengthSlice(value.into()));
     }
+}
 
-    fn get_coord_slice(&self, id: PropertyId) -> Option<&[f32]> {
-        match self.get_property(id) {
+impl NodeClass {
+    fn get_coord_slice<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> Option<&'a [f32]> {
+        match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::CoordSlice(value) => Some(value),
             _ => panic!(),
         }
     }
+}
 
+impl NodeBuilder {
     fn set_coord_slice(&mut self, id: PropertyId, value: impl Into<Box<[f32]>>) {
         self.set_property(id, PropertyValue::CoordSlice(value.into()));
     }
+}
 
-    fn get_bool(&self, id: PropertyId) -> Option<bool> {
-        match self.get_property(id) {
+impl NodeClass {
+    fn get_bool(&self, props: &[PropertyValue], id: PropertyId) -> Option<bool> {
+        match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::Bool(value) => Some(*value),
             _ => panic!(),
         }
     }
+}
 
+impl NodeBuilder {
     fn set_bool(&mut self, id: PropertyId, value: bool) {
         self.set_property(id, PropertyValue::Bool(value));
     }
@@ -1096,6 +1161,12 @@ impl Node {
 macro_rules! flag_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         impl Node {
+            $($(#[$doc])*
+            pub fn $getter(&self) -> bool {
+                (self.flags & (Flag::$id).mask()) != 0
+            })*
+        }
+        impl NodeBuilder {
             $($(#[$doc])*
             pub fn $getter(&self) -> bool {
                 (self.flags & (Flag::$id).mask()) != 0
@@ -1115,7 +1186,13 @@ macro_rules! property_methods {
         impl Node {
             $($(#[$doc])*
             pub fn $getter(&self) -> $getter_result {
-                self.$type_getter(PropertyId::$id)
+                self.class.$type_getter(&self.props, PropertyId::$id)
+            })*
+        }
+        impl NodeBuilder {
+            $($(#[$doc])*
+            pub fn $getter(&self) -> $getter_result {
+                self.class.$type_getter(&self.props, PropertyId::$id)
             }
             pub fn $setter(&mut self, value: $setter_param) {
                 self.$type_setter(PropertyId::$id, value);
@@ -1133,7 +1210,7 @@ macro_rules! vec_property_methods {
             $(#[$doc])*
             ($id, $getter, $type_getter, &[$item_type], $setter, $type_setter, impl Into<Vec<$item_type>>, $clearer)
         }
-        impl Node {
+        impl NodeBuilder {
             pub fn $pusher(&mut self, item: $item_type) {
                 self.$type_pusher(PropertyId::$id, item);
             }
@@ -1236,7 +1313,17 @@ macro_rules! unique_enum_property_methods {
         impl Node {
             $($(#[$doc])*
             pub fn $getter(&self) -> Option<$id> {
-                match self.get_property(PropertyId::$id) {
+                match self.class.get_property(&self.props, PropertyId::$id) {
+                    PropertyValue::None => None,
+                    PropertyValue::$id(value) => Some(*value),
+                    _ => panic!(),
+                }
+            })*
+        }
+        impl NodeBuilder {
+            $($(#[$doc])*
+            pub fn $getter(&self) -> Option<$id> {
+                match self.class.get_property(&self.props, PropertyId::$id) {
                     PropertyValue::None => None,
                     PropertyValue::$id(value) => Some(*value),
                     _ => panic!(),
@@ -1252,7 +1339,7 @@ macro_rules! unique_enum_property_methods {
     }
 }
 
-impl Node {
+impl NodeBuilder {
     pub fn new(role: Role) -> Self {
         Self {
             class: NodeClass {
@@ -1263,13 +1350,37 @@ impl Node {
         }
     }
 
+    pub fn build(self) -> Node {
+        Node {
+            class: self.class,
+            flags: self.flags,
+            props: self.props.into(),
+        }
+    }
+}
+
+impl Node {
+    pub fn role(&self) -> Role {
+        self.class.role
+    }
+}
+
+impl NodeBuilder {
     pub fn role(&self) -> Role {
         self.class.role
     }
     pub fn set_role(&mut self, value: Role) {
         self.class.role = value;
     }
+}
 
+impl Node {
+    pub fn supports_action(&self, action: Action) -> bool {
+        (self.class.actions.0 & action.mask()) != 0
+    }
+}
+
+impl NodeBuilder {
     pub fn supports_action(&self, action: Action) -> bool {
         (self.class.actions.0 & action.mask()) != 0
     }
@@ -1610,7 +1721,23 @@ property_methods! {
 
 impl Node {
     pub fn text_selection(&self) -> Option<&TextSelection> {
-        match self.get_property(PropertyId::TextSelection) {
+        match self
+            .class
+            .get_property(&self.props, PropertyId::TextSelection)
+        {
+            PropertyValue::None => None,
+            PropertyValue::TextSelection(value) => Some(value),
+            _ => panic!(),
+        }
+    }
+}
+
+impl NodeBuilder {
+    pub fn text_selection(&self) -> Option<&TextSelection> {
+        match self
+            .class
+            .get_property(&self.props, PropertyId::TextSelection)
+        {
             PropertyValue::None => None,
             PropertyValue::TextSelection(value) => Some(value),
             _ => panic!(),
@@ -1625,9 +1752,27 @@ impl Node {
     pub fn clear_text_selection(&mut self) {
         self.clear_property(PropertyId::TextSelection);
     }
+}
 
+impl Node {
     pub fn custom_actions(&self) -> &[CustomAction] {
-        match self.get_property(PropertyId::CustomActions) {
+        match self
+            .class
+            .get_property(&self.props, PropertyId::CustomActions)
+        {
+            PropertyValue::None => &[],
+            PropertyValue::CustomActionVec(value) => value,
+            _ => panic!(),
+        }
+    }
+}
+
+impl NodeBuilder {
+    pub fn custom_actions(&self) -> &[CustomAction] {
+        match self
+            .class
+            .get_property(&self.props, PropertyId::CustomActions)
+        {
             PropertyValue::None => &[],
             PropertyValue::CustomActionVec(value) => value,
             _ => panic!(),
@@ -1694,10 +1839,10 @@ macro_rules! serialize_property {
 
 #[cfg(feature = "serde")]
 macro_rules! deserialize_class_field {
-    ($node:ident, $map:ident, $key:ident, { $(($name:ident, $id:ident)),+ }) => {
+    ($builder:ident, $map:ident, $key:ident, { $(($name:ident, $id:ident)),+ }) => {
         match $key {
             $(ClassFieldId::$id => {
-                $node.class.$name = $map.next_value()?;
+                $builder.class.$name = $map.next_value()?;
             })*
         }
     }
@@ -1705,13 +1850,13 @@ macro_rules! deserialize_class_field {
 
 #[cfg(feature = "serde")]
 macro_rules! deserialize_property {
-    ($node:ident, $map:ident, $key:ident, { $($type:ident { $($id:ident),+ }),+ }) => {
+    ($builder:ident, $map:ident, $key:ident, { $($type:ident { $($id:ident),+ }),+ }) => {
         match $key {
             $($(PropertyId::$id => {
                 if let Some(value) = $map.next_value()? {
-                    $node.set_property(PropertyId::$id, PropertyValue::$type(value));
+                    $builder.set_property(PropertyId::$id, PropertyValue::$type(value));
                 } else {
-                    $node.clear_property(PropertyId::$id);
+                    $builder.clear_property(PropertyId::$id);
                 }
             })*)*
             PropertyId::Unset => {
@@ -1794,24 +1939,24 @@ impl<'de> Visitor<'de> for NodeVisitor {
     where
         V: MapAccess<'de>,
     {
-        let mut node = Node::default();
+        let mut builder = NodeBuilder::default();
         while let Some(key) = map.next_key()? {
             match key {
                 DeserializeKey::ClassField(id) => {
-                    deserialize_class_field!(node, map, id, {
+                    deserialize_class_field!(builder, map, id, {
                        (role, Role),
                        (actions, Actions)
                     });
                 }
                 DeserializeKey::Flag(flag) => {
                     if map.next_value()? {
-                        node.flags |= flag.mask();
+                        builder.flags |= flag.mask();
                     } else {
-                        node.flags &= !(flag.mask());
+                        builder.flags &= !(flag.mask());
                     }
                 }
                 DeserializeKey::Property(id) => {
-                    deserialize_property!(node, map, id, {
+                    deserialize_property!(builder, map, id, {
                         NodeIdVec {
                             Children,
                             IndirectChildren,
@@ -1935,7 +2080,7 @@ impl<'de> Visitor<'de> for NodeVisitor {
             }
         }
 
-        Ok(node)
+        Ok(builder.build())
     }
 }
 
