@@ -922,6 +922,10 @@ impl NodeClass {
     }
 }
 
+fn unexpected_property_type(id: PropertyId) -> ! {
+    panic!("unexpected type for property {:?}", id);
+}
+
 impl NodeBuilder {
     fn get_property_mut(&mut self, id: PropertyId, default: PropertyValue) -> &mut PropertyValue {
         let index = self.class.indices.0[id as usize] as usize;
@@ -961,7 +965,7 @@ impl NodeClass {
         match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::Affine(value) => Some(value),
-            _ => panic!(),
+            _ => unexpected_property_type(id),
         }
     }
 }
@@ -977,7 +981,7 @@ impl NodeClass {
         match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::Rect(value) => Some(*value),
-            _ => panic!(),
+            _ => unexpected_property_type(id),
         }
     }
 }
@@ -993,7 +997,7 @@ impl NodeClass {
         match self.get_property(props, id) {
             PropertyValue::None => &[],
             PropertyValue::NodeIdVec(value) => value,
-            _ => panic!(),
+            _ => unexpected_property_type(id),
         }
     }
 }
@@ -1004,7 +1008,7 @@ impl NodeBuilder {
             PropertyValue::NodeIdVec(v) => {
                 v.push(node_id);
             }
-            _ => panic!(),
+            _ => unexpected_property_type(property_id),
         }
     }
 
@@ -1018,7 +1022,7 @@ impl NodeClass {
         match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::NodeId(value) => Some(*value),
-            _ => panic!(),
+            _ => unexpected_property_type(id),
         }
     }
 }
@@ -1034,7 +1038,7 @@ impl NodeClass {
         match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::String(value) => Some(value),
-            _ => panic!(),
+            _ => unexpected_property_type(id),
         }
     }
 }
@@ -1050,7 +1054,7 @@ impl NodeClass {
         match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::F64(value) => Some(*value),
-            _ => panic!(),
+            _ => unexpected_property_type(id),
         }
     }
 }
@@ -1066,7 +1070,7 @@ impl NodeClass {
         match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::Usize(value) => Some(*value),
-            _ => panic!(),
+            _ => unexpected_property_type(id),
         }
     }
 }
@@ -1082,7 +1086,7 @@ impl NodeClass {
         match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::Color(value) => Some(*value),
-            _ => panic!(),
+            _ => unexpected_property_type(id),
         }
     }
 }
@@ -1102,7 +1106,7 @@ impl NodeClass {
         match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::TextDecoration(value) => Some(*value),
-            _ => panic!(),
+            _ => unexpected_property_type(id),
         }
     }
 }
@@ -1118,7 +1122,7 @@ impl NodeClass {
         match self.get_property(props, id) {
             PropertyValue::None => &[],
             PropertyValue::LengthSlice(value) => value,
-            _ => panic!(),
+            _ => unexpected_property_type(id),
         }
     }
 }
@@ -1134,7 +1138,7 @@ impl NodeClass {
         match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::CoordSlice(value) => Some(value),
-            _ => panic!(),
+            _ => unexpected_property_type(id),
         }
     }
 }
@@ -1150,7 +1154,7 @@ impl NodeClass {
         match self.get_property(props, id) {
             PropertyValue::None => None,
             PropertyValue::Bool(value) => Some(*value),
-            _ => panic!(),
+            _ => unexpected_property_type(id),
         }
     }
 }
@@ -1319,7 +1323,7 @@ macro_rules! unique_enum_property_methods {
                 match self.class.get_property(&self.props, PropertyId::$id) {
                     PropertyValue::None => None,
                     PropertyValue::$id(value) => Some(*value),
-                    _ => panic!(),
+                    _ => unexpected_property_type(PropertyId::$id),
                 }
             })*
         }
@@ -1329,7 +1333,7 @@ macro_rules! unique_enum_property_methods {
                 match self.class.get_property(&self.props, PropertyId::$id) {
                     PropertyValue::None => None,
                     PropertyValue::$id(value) => Some(*value),
-                    _ => panic!(),
+                    _ => unexpected_property_type(PropertyId::$id),
                 }
             }
             pub fn $setter(&mut self, value: $id) {
@@ -1738,7 +1742,7 @@ impl Node {
         {
             PropertyValue::None => None,
             PropertyValue::TextSelection(value) => Some(value),
-            _ => panic!(),
+            _ => unexpected_property_type(PropertyId::TextSelection),
         }
     }
 }
@@ -1751,7 +1755,7 @@ impl NodeBuilder {
         {
             PropertyValue::None => None,
             PropertyValue::TextSelection(value) => Some(value),
-            _ => panic!(),
+            _ => unexpected_property_type(PropertyId::TextSelection),
         }
     }
     pub fn set_text_selection(&mut self, value: impl Into<Box<TextSelection>>) {
@@ -1773,7 +1777,7 @@ impl Node {
         {
             PropertyValue::None => &[],
             PropertyValue::CustomActionVec(value) => value,
-            _ => panic!(),
+            _ => unexpected_property_type(PropertyId::CustomActions),
         }
     }
 }
@@ -1786,7 +1790,7 @@ impl NodeBuilder {
         {
             PropertyValue::None => &[],
             PropertyValue::CustomActionVec(value) => value,
-            _ => panic!(),
+            _ => unexpected_property_type(PropertyId::CustomActions),
         }
     }
     pub fn set_custom_actions(&mut self, value: impl Into<Vec<CustomAction>>) {
@@ -1803,7 +1807,7 @@ impl NodeBuilder {
             PropertyValue::CustomActionVec(v) => {
                 v.push(action);
             }
-            _ => panic!(),
+            _ => unexpected_property_type(PropertyId::CustomActions),
         }
     }
     pub fn clear_custom_actions(&mut self) {
