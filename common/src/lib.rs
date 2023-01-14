@@ -337,7 +337,7 @@ impl Action {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 struct Actions(u32);
 
@@ -867,7 +867,7 @@ enum PropertyId {
     Unset,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 struct PropertyIndices([u8; PropertyId::Unset as usize]);
 
@@ -875,6 +875,13 @@ impl Default for PropertyIndices {
     fn default() -> Self {
         Self([PropertyId::Unset as u8; PropertyId::Unset as usize])
     }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+struct NodeClass {
+    role: Role,
+    actions: Actions,
+    indices: PropertyIndices,
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
@@ -885,16 +892,14 @@ impl Default for PropertyIndices {
 /// as properties.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Node {
-    role: Role,
-    actions: Actions,
-    indices: PropertyIndices,
-    props: Vec<PropertyValue>,
+    class: NodeClass,
     flags: u32,
+    props: Vec<PropertyValue>,
 }
 
 impl Node {
     fn get_property(&self, id: PropertyId) -> &PropertyValue {
-        let index = self.indices.0[id as usize];
+        let index = self.class.indices.0[id as usize];
         if index == PropertyId::Unset as u8 {
             &PropertyValue::None
         } else {
@@ -903,11 +908,11 @@ impl Node {
     }
 
     fn get_property_mut(&mut self, id: PropertyId, default: PropertyValue) -> &mut PropertyValue {
-        let index = self.indices.0[id as usize] as usize;
+        let index = self.class.indices.0[id as usize] as usize;
         if index == PropertyId::Unset as usize {
             self.props.push(default);
             let index = self.props.len() - 1;
-            self.indices.0[id as usize] = index as u8;
+            self.class.indices.0[id as usize] = index as u8;
             &mut self.props[index]
         } else {
             if matches!(self.props[index], PropertyValue::None) {
@@ -918,17 +923,17 @@ impl Node {
     }
 
     fn set_property(&mut self, id: PropertyId, value: PropertyValue) {
-        let index = self.indices.0[id as usize];
+        let index = self.class.indices.0[id as usize];
         if index == PropertyId::Unset as u8 {
             self.props.push(value);
-            self.indices.0[id as usize] = (self.props.len() - 1) as u8;
+            self.class.indices.0[id as usize] = (self.props.len() - 1) as u8;
         } else {
             self.props[index as usize] = value;
         }
     }
 
     fn clear_property(&mut self, id: PropertyId) {
-        let index = self.indices.0[id as usize];
+        let index = self.class.indices.0[id as usize];
         if index != PropertyId::Unset as u8 {
             self.props[index as usize] = PropertyValue::None;
         }
@@ -1085,13 +1090,6 @@ impl Node {
 
     fn set_bool(&mut self, id: PropertyId, value: bool) {
         self.set_property(id, PropertyValue::Bool(value));
-    }
-
-    pub fn new(role: Role) -> Self {
-        Self {
-            role,
-            ..Default::default()
-        }
     }
 }
 
@@ -1255,24 +1253,34 @@ macro_rules! unique_enum_property_methods {
 }
 
 impl Node {
+    pub fn new(role: Role) -> Self {
+        Self {
+            class: NodeClass {
+                role,
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
     pub fn role(&self) -> Role {
-        self.role
+        self.class.role
     }
     pub fn set_role(&mut self, value: Role) {
-        self.role = value;
+        self.class.role = value;
     }
 
     pub fn supports_action(&self, action: Action) -> bool {
-        (self.actions.0 & action.mask()) != 0
+        (self.class.actions.0 & action.mask()) != 0
     }
     pub fn add_action(&mut self, action: Action) {
-        self.actions.0 |= action.mask();
+        self.class.actions.0 |= action.mask();
     }
     pub fn remove_action(&mut self, action: Action) {
-        self.actions.0 &= !(action.mask());
+        self.class.actions.0 &= !(action.mask());
     }
     pub fn clear_actions(&mut self) {
-        self.actions.0 = 0;
+        self.class.actions.0 = 0;
     }
 }
 
@@ -1650,7 +1658,7 @@ impl Node {
 #[cfg(feature = "serde")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-enum FieldId {
+enum ClassFieldId {
     Role,
     Actions,
 }
@@ -1659,16 +1667,16 @@ enum FieldId {
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
 enum DeserializeKey {
-    Field(FieldId),
+    ClassField(ClassFieldId),
     Flag(Flag),
     Property(PropertyId),
     Unknown(String),
 }
 
 #[cfg(feature = "serde")]
-macro_rules! serialize_simple_fields {
+macro_rules! serialize_class_fields {
     ($self:ident, $map:ident, { $(($name:ident, $id:ident)),+ }) => {
-        $($map.serialize_entry(&FieldId::$id, &$self.$name)?;)*
+        $($map.serialize_entry(&ClassFieldId::$id, &$self.class.$name)?;)*
     }
 }
 
@@ -1685,11 +1693,11 @@ macro_rules! serialize_property {
 }
 
 #[cfg(feature = "serde")]
-macro_rules! deserialize_field {
+macro_rules! deserialize_class_field {
     ($node:ident, $map:ident, $key:ident, { $(($name:ident, $id:ident)),+ }) => {
         match $key {
-            $(FieldId::$id => {
-                $node.$name = $map.next_value()?;
+            $(ClassFieldId::$id => {
+                $node.class.$name = $map.next_value()?;
             })*
         }
     }
@@ -1720,7 +1728,7 @@ impl Serialize for Node {
         S: Serializer,
     {
         let mut map = serializer.serialize_map(None)?;
-        serialize_simple_fields!(self, map, {
+        serialize_class_fields!(self, map, {
             (role, Role),
             (actions, Actions)
         });
@@ -1731,7 +1739,7 @@ impl Serialize for Node {
                 }
             }
         }
-        for (id, index) in self.indices.0.iter().copied().enumerate() {
+        for (id, index) in self.class.indices.0.iter().copied().enumerate() {
             if index == PropertyId::Unset as u8 {
                 continue;
             }
@@ -1789,8 +1797,8 @@ impl<'de> Visitor<'de> for NodeVisitor {
         let mut node = Node::default();
         while let Some(key) = map.next_key()? {
             match key {
-                DeserializeKey::Field(id) => {
-                    deserialize_field!(node, map, id, {
+                DeserializeKey::ClassField(id) => {
+                    deserialize_class_field!(node, map, id, {
                        (role, Role),
                        (actions, Actions)
                     });
