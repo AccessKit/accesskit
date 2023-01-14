@@ -714,8 +714,24 @@ enum PropertyValue {
     F64(f64),
     Usize(usize),
     Color(u32),
+    TextDecoration(TextDecoration),
     LengthSlice(Box<[u8]>),
     CoordSlice(Box<[f32]>),
+    Bool(bool),
+    NameFrom(NameFrom),
+    DescriptionFrom(DescriptionFrom),
+    Invalid(Invalid),
+    CheckedState(CheckedState),
+    Live(Live),
+    DefaultActionVerb(DefaultActionVerb),
+    TextDirection(TextDirection),
+    Orientation(Orientation),
+    SortDirection(SortDirection),
+    AriaCurrent(AriaCurrent),
+    HasPopup(HasPopup),
+    ListStyle(ListStyle),
+    TextAlign(TextAlign),
+    VerticalOffset(VerticalOffset),
     Affine(Box<Affine>),
     Rect(Rect),
     TextSelection(Box<TextSelection>),
@@ -808,6 +824,11 @@ enum PropertyId {
     BackgroundColor,
     ForegroundColor,
 
+    // TextDecoration
+    Overline,
+    Strikethrough,
+    Underline,
+
     // LengthSlice
     CharacterLengths,
     WordLengths,
@@ -815,6 +836,26 @@ enum PropertyId {
     // CoordSlice
     CharacterPositions,
     CharacterWidths,
+
+    // bool
+    Expanded,
+    Selected,
+
+    // Unique enums
+    NameFrom,
+    DescriptionFrom,
+    Invalid,
+    CheckedState,
+    Live,
+    DefaultActionVerb,
+    TextDirection,
+    Orientation,
+    SortDirection,
+    AriaCurrent,
+    HasPopup,
+    ListStyle,
+    TextAlign,
+    VerticalOffset,
 
     // Other
     Transform,
@@ -848,40 +889,6 @@ macro_rules! flag_methods {
             }
             pub fn $clearer(&mut self) {
                 self.flags &= !((Flag::$id).mask());
-            })*
-        }
-    }
-}
-
-macro_rules! optional_bool_methods {
-    ($($(#[$doc:meta])* ($field:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        impl Node {
-            $($(#[$doc])*
-            pub fn $getter(&self) -> Option<bool> {
-                self.$field
-            }
-            pub fn $setter(&mut self, value: bool) {
-                self.$field = Some(value);
-            }
-            pub fn $clearer(&mut self) {
-                self.$field = None;
-            })*
-        }
-    }
-}
-
-macro_rules! optional_enum_methods {
-    ($($(#[$doc:meta])* ($field:ident, $type:ty, $setter:ident, $clearer:ident)),+) => {
-        impl Node {
-            $($(#[$doc])*
-            pub fn $field(&self) -> Option<$type> {
-                self.$field
-            }
-            pub fn $setter(&mut self, value: $type) {
-                self.$field = Some(value);
-            }
-            pub fn $clearer(&mut self) {
-                self.$field = None;
             })*
         }
     }
@@ -972,6 +979,15 @@ macro_rules! color_property_methods {
     }
 }
 
+macro_rules! text_decoration_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_text_decoration, Option<TextDecoration>, $setter, set_text_decoration, TextDecoration, $clearer)
+        })*
+    }
+}
+
 macro_rules! length_slice_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
@@ -990,6 +1006,36 @@ macro_rules! coord_slice_property_methods {
     }
 }
 
+macro_rules! bool_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_bool, Option<bool>, $setter, set_bool, bool, $clearer)
+        })*
+    }
+}
+
+macro_rules! unique_enum_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        impl Node {
+            $($(#[$doc])*
+            pub fn $getter(&self) -> Option<$id> {
+                match self.get_property(PropertyId::$id) {
+                    PropertyValue::None => None,
+                    PropertyValue::$id(value) => Some(*value),
+                    _ => panic!(),
+                }
+            }
+            pub fn $setter(&mut self, value: $id) {
+                self.set_property(PropertyId::$id, PropertyValue::$id(value));
+            }
+            pub fn $clearer(&mut self) {
+                self.clear_property(PropertyId::$id);
+            })*
+        }
+    }
+}
+
 /// A single accessible object. A complete UI is represented as a tree of these.
 ///
 /// For brevity, and to make more of the documentation usable in bindings
@@ -1003,25 +1049,6 @@ pub struct Node {
     indices: PropertyIndices,
     props: Vec<PropertyValue>,
     flags: u32,
-    expanded: Option<bool>,
-    selected: Option<bool>,
-    name_from: Option<NameFrom>,
-    description_from: Option<DescriptionFrom>,
-    invalid: Option<Invalid>,
-    checked_state: Option<CheckedState>,
-    live: Option<Live>,
-    default_action_verb: Option<DefaultActionVerb>,
-    text_direction: Option<TextDirection>,
-    orientation: Option<Orientation>,
-    sort_direction: Option<SortDirection>,
-    aria_current: Option<AriaCurrent>,
-    has_popup: Option<HasPopup>,
-    list_style: Option<ListStyle>,
-    text_align: Option<TextAlign>,
-    vertical_offset: Option<VerticalOffset>,
-    overline: Option<TextDecoration>,
-    strikethrough: Option<TextDecoration>,
-    underline: Option<TextDecoration>,
 }
 
 impl Node {
@@ -1171,6 +1198,18 @@ impl Node {
         self.set_property(id, PropertyValue::Color(value));
     }
 
+    fn get_text_decoration(&self, id: PropertyId) -> Option<TextDecoration> {
+        match self.get_property(id) {
+            PropertyValue::None => None,
+            PropertyValue::TextDecoration(value) => Some(*value),
+            _ => panic!(),
+        }
+    }
+
+    fn set_text_decoration(&mut self, id: PropertyId, value: TextDecoration) {
+        self.set_property(id, PropertyValue::TextDecoration(value));
+    }
+
     fn get_length_slice(&self, id: PropertyId) -> &[u8] {
         match self.get_property(id) {
             PropertyValue::None => &[],
@@ -1193,6 +1232,18 @@ impl Node {
 
     fn set_coord_slice(&mut self, id: PropertyId, value: impl Into<Box<[f32]>>) {
         self.set_property(id, PropertyValue::CoordSlice(value.into()));
+    }
+
+    fn get_bool(&self, id: PropertyId) -> Option<bool> {
+        match self.get_property(id) {
+            PropertyValue::None => None,
+            PropertyValue::Bool(value) => Some(*value),
+            _ => panic!(),
+        }
+    }
+
+    fn set_bool(&mut self, id: PropertyId, value: bool) {
+        self.set_property(id, PropertyValue::Bool(value));
     }
 
     pub fn new(role: Role) -> Self {
@@ -1277,48 +1328,6 @@ flag_methods! {
     /// textbox which isn't currently editable and which has interactive
     /// descendants, and a `<body>` element that has "design-mode" set to "on".
     (IsNonatomicTextFieldRoot, is_nonatomic_text_field_root, set_is_nonatomic_text_field_root, clear_is_nonatomic_text_field_root)
-}
-
-optional_bool_methods! {
-    /// Whether this node is expanded, collapsed, or neither.
-    ///
-    /// Setting this to `false` means the node is collapsed; omitting it means this state
-    /// isn't applicable.
-    (expanded, is_expanded, set_expanded, clear_expanded),
-
-    /// Indicates whether this node is selected or unselected.
-    ///
-    /// The absence of this flag (as opposed to a `false` setting)
-    /// means that the concept of "selected" doesn't apply.
-    /// When deciding whether to set the flag to false or omit it,
-    /// consider whether it would be appropriate for a screen reader
-    /// to announce "not selected". The ambiguity of this flag
-    /// in platform accessibility APIs has made extraneous
-    /// "not selected" announcements a common annoyance.
-    (selected, is_selected, set_selected, clear_selected)
-}
-
-optional_enum_methods! {
-    /// What information was used to compute the object's name.
-    (name_from, NameFrom, set_name_from, clear_name_from),
-    /// What information was used to compute the object's description.
-    (description_from, DescriptionFrom, set_description_from, clear_description_from),
-    (invalid, Invalid, set_invalid, clear_invalid),
-    (checked_state, CheckedState, set_checked_state, clear_checked_state),
-    (live, Live, set_live, clear_live),
-    (default_action_verb, DefaultActionVerb, set_default_action_verb, clear_default_action_verb),
-    (text_direction, TextDirection, set_text_direction, clear_text_direction),
-    (orientation, Orientation, set_orientation, clear_orientation),
-    (sort_direction, SortDirection, set_sort_direction, clear_sort_direction),
-    (aria_current, AriaCurrent, set_aria_current, clear_aria_current),
-    (has_popup, HasPopup, set_has_popup, clear_has_popup),
-    /// The list style type. Only available on list items.
-    (list_style, ListStyle, set_list_style, clear_list_style),
-    (text_align, TextAlign, set_text_align, clear_text_align),
-    (vertical_offset, VerticalOffset, set_vertical_offset, clear_vertical_offset),
-    (overline, TextDecoration, set_overline, clear_overline),
-    (strikethrough, TextDecoration, set_strikethrough, clear_strikethrough),
-    (underline, TextDecoration, set_underline, clear_underline)
 }
 
 node_id_vec_property_methods! {
@@ -1430,6 +1439,12 @@ color_property_methods! {
     (ForegroundColor, foreground_color, set_foreground_color, clear_foreground_color)
 }
 
+text_decoration_property_methods! {
+    (Overline, overline, set_overline, clear_overline),
+    (Strikethrough, strikethrough, set_strikethrough, clear_strikethrough),
+    (Underline, underline, set_underline, clear_underline)
+}
+
 length_slice_property_methods! {
     /// For inline text. The length (non-inclusive) of each character
     /// in UTF-8 code units (bytes). The sum of these lengths must equal
@@ -1516,6 +1531,45 @@ coord_slice_property_methods! {
     (CharacterWidths, character_widths, set_character_widths, clear_character_widths)
 }
 
+bool_property_methods! {
+    /// Whether this node is expanded, collapsed, or neither.
+    ///
+    /// Setting this to `false` means the node is collapsed; omitting it means this state
+    /// isn't applicable.
+    (Expanded, is_expanded, set_expanded, clear_expanded),
+
+    /// Indicates whether this node is selected or unselected.
+    ///
+    /// The absence of this flag (as opposed to a `false` setting)
+    /// means that the concept of "selected" doesn't apply.
+    /// When deciding whether to set the flag to false or omit it,
+    /// consider whether it would be appropriate for a screen reader
+    /// to announce "not selected". The ambiguity of this flag
+    /// in platform accessibility APIs has made extraneous
+    /// "not selected" announcements a common annoyance.
+    (Selected, is_selected, set_selected, clear_selected)
+}
+
+unique_enum_property_methods! {
+    /// What information was used to compute the object's name.
+    (NameFrom, name_from, set_name_from, clear_name_from),
+    /// What information was used to compute the object's description.
+    (DescriptionFrom, description_from, set_description_from, clear_description_from),
+    (Invalid, invalid, set_invalid, clear_invalid),
+    (CheckedState, checked_state, set_checked_state, clear_checked_state),
+    (Live, live, set_live, clear_live),
+    (DefaultActionVerb, default_action_verb, set_default_action_verb, clear_default_action_verb),
+    (TextDirection, text_direction, set_text_direction, clear_text_direction),
+    (Orientation, orientation, set_orientation, clear_orientation),
+    (SortDirection, sort_direction, set_sort_direction, clear_sort_direction),
+    (AriaCurrent, aria_current, set_aria_current, clear_aria_current),
+    (HasPopup, has_popup, set_has_popup, clear_has_popup),
+    /// The list style type. Only available on list items.
+    (ListStyle, list_style, set_list_style, clear_list_style),
+    (TextAlign, text_align, set_text_align, clear_text_align),
+    (VerticalOffset, vertical_offset, set_vertical_offset, clear_vertical_offset)
+}
+
 property_methods! {
     /// An affine transform to apply to any coordinates within this node
     /// and its descendants, including the [`bounds`] property of this node.
@@ -1597,25 +1651,6 @@ impl Node {
 enum FieldId {
     Role,
     Actions,
-    Expanded,
-    Selected,
-    NameFrom,
-    DescriptionFrom,
-    Invalid,
-    CheckedState,
-    Live,
-    DefaultActionVerb,
-    TextDirection,
-    Orientation,
-    SortDirection,
-    AriaCurrent,
-    HasPopup,
-    ListStyle,
-    TextAlign,
-    VerticalOffset,
-    Overline,
-    Strikethrough,
-    Underline,
 }
 
 #[cfg(feature = "serde")]
@@ -1632,15 +1667,6 @@ enum DeserializeKey {
 macro_rules! serialize_simple_fields {
     ($self:ident, $map:ident, { $(($name:ident, $id:ident)),+ }) => {
         $($map.serialize_entry(&FieldId::$id, &$self.$name)?;)*
-    }
-}
-
-#[cfg(feature = "serde")]
-macro_rules! serialize_optional_fields {
-    ($self:ident, $map:ident, { $(($name:ident, $id:ident)),+ }) => {
-        $(if $self.$name.is_some() {
-            $map.serialize_entry(&FieldId::$id, &$self.$name)?;
-        })*
     }
 }
 
@@ -1703,27 +1729,6 @@ impl Serialize for Node {
                 }
             }
         }
-        serialize_optional_fields!(self, map, {
-            (expanded, Expanded),
-            (selected, Selected),
-            (name_from, NameFrom),
-            (description_from, DescriptionFrom),
-            (invalid, Invalid),
-            (checked_state, CheckedState),
-            (live, Live),
-            (default_action_verb, DefaultActionVerb),
-            (text_direction, TextDirection),
-            (orientation, Orientation),
-            (sort_direction, SortDirection),
-            (aria_current, AriaCurrent),
-            (has_popup, HasPopup),
-            (list_style, ListStyle),
-            (text_align, TextAlign),
-            (vertical_offset, VerticalOffset),
-            (overline, Overline),
-            (strikethrough, Strikethrough),
-            (underline, Underline)
-        });
         for (id, index) in self.indices.0.iter().copied().enumerate() {
             if index == PropertyId::Unset as u8 {
                 continue;
@@ -1736,8 +1741,24 @@ impl Serialize for Node {
                 F64,
                 Usize,
                 Color,
+                TextDecoration,
                 LengthSlice,
                 CoordSlice,
+                Bool,
+                NameFrom,
+                DescriptionFrom,
+                Invalid,
+                CheckedState,
+                Live,
+                DefaultActionVerb,
+                TextDirection,
+                Orientation,
+                SortDirection,
+                AriaCurrent,
+                HasPopup,
+                ListStyle,
+                TextAlign,
+                VerticalOffset,
                 Affine,
                 Rect,
                 TextSelection,
@@ -1769,26 +1790,7 @@ impl<'de> Visitor<'de> for NodeVisitor {
                 DeserializeKey::Field(id) => {
                     deserialize_field!(node, map, id, {
                        (role, Role),
-                       (actions, Actions),
-                       (expanded, Expanded),
-                       (selected, Selected),
-                       (name_from, NameFrom),
-                       (description_from, DescriptionFrom),
-                       (invalid, Invalid),
-                       (checked_state, CheckedState),
-                       (live, Live),
-                       (default_action_verb, DefaultActionVerb),
-                       (text_direction, TextDirection),
-                       (orientation, Orientation),
-                       (sort_direction, SortDirection),
-                       (aria_current, AriaCurrent),
-                       (has_popup, HasPopup),
-                       (list_style, ListStyle),
-                       (text_align, TextAlign),
-                       (vertical_offset, VerticalOffset),
-                       (overline, Overline),
-                       (strikethrough, Strikethrough),
-                       (underline, Underline)
+                       (actions, Actions)
                     });
                 }
                 DeserializeKey::Flag(flag) => {
@@ -1880,6 +1882,11 @@ impl<'de> Visitor<'de> for NodeVisitor {
                             BackgroundColor,
                             ForegroundColor
                         },
+                        TextDecoration {
+                            Overline,
+                            Strikethrough,
+                            Underline
+                        },
                         LengthSlice {
                             CharacterLengths,
                             WordLengths
@@ -1888,6 +1895,24 @@ impl<'de> Visitor<'de> for NodeVisitor {
                             CharacterPositions,
                             CharacterWidths
                         },
+                        Bool {
+                            Expanded,
+                            Selected
+                        },
+                        NameFrom { NameFrom },
+                        DescriptionFrom { DescriptionFrom },
+                        Invalid { Invalid },
+                        CheckedState { CheckedState },
+                        Live { Live },
+                        DefaultActionVerb { DefaultActionVerb },
+                        TextDirection { TextDirection },
+                        Orientation { Orientation },
+                        SortDirection { SortDirection },
+                        AriaCurrent { AriaCurrent },
+                        HasPopup { HasPopup },
+                        ListStyle { ListStyle },
+                        TextAlign { TextAlign },
+                        VerticalOffset { VerticalOffset },
                         Affine { Transform },
                         Rect { Bounds },
                         TextSelection { TextSelection },
