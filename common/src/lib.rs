@@ -877,165 +877,6 @@ impl Default for PropertyIndices {
     }
 }
 
-macro_rules! flag_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        impl Node {
-            $($(#[$doc])*
-            pub fn $getter(&self) -> bool {
-                (self.flags & (Flag::$id).mask()) != 0
-            }
-            pub fn $setter(&mut self) {
-                self.flags |= (Flag::$id).mask();
-            }
-            pub fn $clearer(&mut self) {
-                self.flags &= !((Flag::$id).mask());
-            })*
-        }
-    }
-}
-
-macro_rules! property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $type_getter:ident, $getter_result:ty, $setter:ident, $type_setter:ident, $setter_param:ty, $clearer:ident)),+) => {
-        impl Node {
-            $($(#[$doc])*
-            pub fn $getter(&self) -> $getter_result {
-                self.$type_getter(PropertyId::$id)
-            }
-            pub fn $setter(&mut self, value: $setter_param) {
-                self.$type_setter(PropertyId::$id, value);
-            }
-            pub fn $clearer(&mut self) {
-                self.clear_property(PropertyId::$id);
-            })*
-        }
-    }
-}
-
-macro_rules! vec_property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $item_type:ty, $getter:ident, $type_getter:ident, $setter:ident, $type_setter:ident, $pusher:ident, $type_pusher:ident, $clearer:ident)),+) => {
-        $(property_methods! {
-            $(#[$doc])*
-            ($id, $getter, $type_getter, &[$item_type], $setter, $type_setter, impl Into<Vec<$item_type>>, $clearer)
-        }
-        impl Node {
-            pub fn $pusher(&mut self, item: $item_type) {
-                self.$type_pusher(PropertyId::$id, item);
-            }
-        })*
-    }
-}
-
-macro_rules! node_id_vec_property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $pusher:ident, $clearer:ident)),+) => {
-        $(vec_property_methods! {
-            $(#[$doc])*
-            ($id, NodeId, $getter, get_node_id_vec, $setter, set_node_id_vec, $pusher, push_to_node_id_vec, $clearer)
-        })*
-    }
-}
-
-macro_rules! node_id_property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        $(property_methods! {
-            $(#[$doc])*
-            ($id, $getter, get_node_id, Option<NodeId>, $setter, set_node_id, NodeId, $clearer)
-        })*
-    }
-}
-
-macro_rules! string_property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        $(property_methods! {
-            $(#[$doc])*
-            ($id, $getter, get_string, Option<&str>, $setter, set_string, impl Into<Box<str>>, $clearer)
-        })*
-    }
-}
-
-macro_rules! f64_property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        $(property_methods! {
-            $(#[$doc])*
-            ($id, $getter, get_f64, Option<f64>, $setter, set_f64, f64, $clearer)
-        })*
-    }
-}
-
-macro_rules! usize_property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        $(property_methods! {
-            $(#[$doc])*
-            ($id, $getter, get_usize, Option<usize>, $setter, set_usize, usize, $clearer)
-        })*
-    }
-}
-
-macro_rules! color_property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        $(property_methods! {
-            $(#[$doc])*
-            ($id, $getter, get_color, Option<u32>, $setter, set_color, u32, $clearer)
-        })*
-    }
-}
-
-macro_rules! text_decoration_property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        $(property_methods! {
-            $(#[$doc])*
-            ($id, $getter, get_text_decoration, Option<TextDecoration>, $setter, set_text_decoration, TextDecoration, $clearer)
-        })*
-    }
-}
-
-macro_rules! length_slice_property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        $(property_methods! {
-            $(#[$doc])*
-            ($id, $getter, get_length_slice, &[u8], $setter, set_length_slice, impl Into<Box<[u8]>>, $clearer)
-        })*
-    }
-}
-
-macro_rules! coord_slice_property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        $(property_methods! {
-            $(#[$doc])*
-            ($id, $getter, get_coord_slice, Option<&[f32]>, $setter, set_coord_slice, impl Into<Box<[f32]>>, $clearer)
-        })*
-    }
-}
-
-macro_rules! bool_property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        $(property_methods! {
-            $(#[$doc])*
-            ($id, $getter, get_bool, Option<bool>, $setter, set_bool, bool, $clearer)
-        })*
-    }
-}
-
-macro_rules! unique_enum_property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        impl Node {
-            $($(#[$doc])*
-            pub fn $getter(&self) -> Option<$id> {
-                match self.get_property(PropertyId::$id) {
-                    PropertyValue::None => None,
-                    PropertyValue::$id(value) => Some(*value),
-                    _ => panic!(),
-                }
-            }
-            pub fn $setter(&mut self, value: $id) {
-                self.set_property(PropertyId::$id, PropertyValue::$id(value));
-            }
-            pub fn $clearer(&mut self) {
-                self.clear_property(PropertyId::$id);
-            })*
-        }
-    }
-}
-
 /// A single accessible object. A complete UI is represented as a tree of these.
 ///
 /// For brevity, and to make more of the documentation usable in bindings
@@ -1252,7 +1093,168 @@ impl Node {
             ..Default::default()
         }
     }
+}
 
+macro_rules! flag_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        impl Node {
+            $($(#[$doc])*
+            pub fn $getter(&self) -> bool {
+                (self.flags & (Flag::$id).mask()) != 0
+            }
+            pub fn $setter(&mut self) {
+                self.flags |= (Flag::$id).mask();
+            }
+            pub fn $clearer(&mut self) {
+                self.flags &= !((Flag::$id).mask());
+            })*
+        }
+    }
+}
+
+macro_rules! property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $type_getter:ident, $getter_result:ty, $setter:ident, $type_setter:ident, $setter_param:ty, $clearer:ident)),+) => {
+        impl Node {
+            $($(#[$doc])*
+            pub fn $getter(&self) -> $getter_result {
+                self.$type_getter(PropertyId::$id)
+            }
+            pub fn $setter(&mut self, value: $setter_param) {
+                self.$type_setter(PropertyId::$id, value);
+            }
+            pub fn $clearer(&mut self) {
+                self.clear_property(PropertyId::$id);
+            })*
+        }
+    }
+}
+
+macro_rules! vec_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $item_type:ty, $getter:ident, $type_getter:ident, $setter:ident, $type_setter:ident, $pusher:ident, $type_pusher:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, $type_getter, &[$item_type], $setter, $type_setter, impl Into<Vec<$item_type>>, $clearer)
+        }
+        impl Node {
+            pub fn $pusher(&mut self, item: $item_type) {
+                self.$type_pusher(PropertyId::$id, item);
+            }
+        })*
+    }
+}
+
+macro_rules! node_id_vec_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $pusher:ident, $clearer:ident)),+) => {
+        $(vec_property_methods! {
+            $(#[$doc])*
+            ($id, NodeId, $getter, get_node_id_vec, $setter, set_node_id_vec, $pusher, push_to_node_id_vec, $clearer)
+        })*
+    }
+}
+
+macro_rules! node_id_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_node_id, Option<NodeId>, $setter, set_node_id, NodeId, $clearer)
+        })*
+    }
+}
+
+macro_rules! string_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_string, Option<&str>, $setter, set_string, impl Into<Box<str>>, $clearer)
+        })*
+    }
+}
+
+macro_rules! f64_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_f64, Option<f64>, $setter, set_f64, f64, $clearer)
+        })*
+    }
+}
+
+macro_rules! usize_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_usize, Option<usize>, $setter, set_usize, usize, $clearer)
+        })*
+    }
+}
+
+macro_rules! color_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_color, Option<u32>, $setter, set_color, u32, $clearer)
+        })*
+    }
+}
+
+macro_rules! text_decoration_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_text_decoration, Option<TextDecoration>, $setter, set_text_decoration, TextDecoration, $clearer)
+        })*
+    }
+}
+
+macro_rules! length_slice_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_length_slice, &[u8], $setter, set_length_slice, impl Into<Box<[u8]>>, $clearer)
+        })*
+    }
+}
+
+macro_rules! coord_slice_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_coord_slice, Option<&[f32]>, $setter, set_coord_slice, impl Into<Box<[f32]>>, $clearer)
+        })*
+    }
+}
+
+macro_rules! bool_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_bool, Option<bool>, $setter, set_bool, bool, $clearer)
+        })*
+    }
+}
+
+macro_rules! unique_enum_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        impl Node {
+            $($(#[$doc])*
+            pub fn $getter(&self) -> Option<$id> {
+                match self.get_property(PropertyId::$id) {
+                    PropertyValue::None => None,
+                    PropertyValue::$id(value) => Some(*value),
+                    _ => panic!(),
+                }
+            }
+            pub fn $setter(&mut self, value: $id) {
+                self.set_property(PropertyId::$id, PropertyValue::$id(value));
+            }
+            pub fn $clearer(&mut self) {
+                self.clear_property(PropertyId::$id);
+            })*
+        }
+    }
+}
+
+impl Node {
     pub fn role(&self) -> Role {
         self.role
     }
