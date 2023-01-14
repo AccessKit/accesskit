@@ -16,12 +16,13 @@ use serde::{
     ser::{SerializeMap, SerializeSeq, Serializer},
     Deserialize, Serialize,
 };
+use std::{
+    collections::BTreeSet,
+    num::{NonZeroU128, NonZeroU64},
+    sync::{Arc, Mutex},
+};
 #[cfg(feature = "serde")]
 use std::{fmt, mem::size_of_val};
-use std::{
-    num::{NonZeroU128, NonZeroU64},
-    sync::Arc,
-};
 
 mod geometry;
 pub use geometry::{Affine, Point, Rect, Size, Vec2};
@@ -36,7 +37,7 @@ pub use geometry::{Affine, Point, Rect, Size, Vec2};
 /// is ordered roughly by expected usage frequency (with the notable exception
 /// of [`Role::Unknown`]). This is more efficient in serialization formats
 /// where integers use a variable-length encoding.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -340,7 +341,7 @@ impl Action {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 struct Actions(u32);
 
@@ -870,7 +871,7 @@ enum PropertyId {
     Unset,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 struct PropertyIndices([u8; PropertyId::Unset as usize]);
 
@@ -880,12 +881,14 @@ impl Default for PropertyIndices {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 struct NodeClass {
     role: Role,
     actions: Actions,
     indices: PropertyIndices,
 }
+
+static NODE_CLASSES: Mutex<BTreeSet<Arc<NodeClass>>> = Mutex::new(BTreeSet::new());
 
 /// A single accessible object. A complete UI is represented as a tree of these.
 ///
@@ -895,7 +898,7 @@ struct NodeClass {
 /// as properties.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Node {
-    class: NodeClass,
+    class: Arc<NodeClass>,
     flags: u32,
     props: Arc<[PropertyValue]>,
 }
@@ -1351,8 +1354,16 @@ impl NodeBuilder {
     }
 
     pub fn build(self) -> Node {
+        let mut classes = NODE_CLASSES.lock().unwrap();
+        let class = if let Some(class) = classes.get(&self.class) {
+            Arc::clone(class)
+        } else {
+            let class = Arc::new(self.class);
+            classes.insert(Arc::clone(&class));
+            class
+        };
         Node {
-            class: self.class,
+            class,
             flags: self.flags,
             props: self.props.into(),
         }
