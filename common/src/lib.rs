@@ -9,7 +9,11 @@
 // found in the LICENSE.chromium file.
 
 #[cfg(feature = "schemars")]
-use schemars::JsonSchema;
+use schemars::{
+    gen::SchemaGenerator,
+    schema::{ArrayValidation, InstanceType, ObjectValidation, Schema, SchemaObject},
+    JsonSchema, Map as SchemaMap,
+};
 #[cfg(feature = "serde")]
 use serde::{
     de::{Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor},
@@ -393,6 +397,33 @@ impl<'de> Deserialize<'de> for Actions {
         D: Deserializer<'de>,
     {
         deserializer.deserialize_seq(ActionsVisitor)
+    }
+}
+
+#[cfg(feature = "schemars")]
+impl JsonSchema for Actions {
+    fn schema_name() -> String {
+        "Actions".into()
+    }
+
+    fn is_referenceable() -> bool {
+        false
+    }
+
+    fn json_schema(gen: &mut SchemaGenerator) -> Schema {
+        SchemaObject {
+            instance_type: Some(InstanceType::Array.into()),
+            array: Some(
+                ArrayValidation {
+                    unique_items: Some(true),
+                    items: Some(gen.subschema_for::<Action>().into()),
+                    ..Default::default()
+                }
+                .into(),
+            ),
+            ..Default::default()
+        }
+        .into()
     }
 }
 
@@ -1953,6 +1984,204 @@ impl<'de> Deserialize<'de> for Node {
         D: Deserializer<'de>,
     {
         deserializer.deserialize_map(NodeVisitor)
+    }
+}
+
+#[cfg(feature = "schemars")]
+macro_rules! add_schema_property {
+    ($gen:ident, $properties:ident, $enum_value:expr, $type:ty) => {{
+        let name = format!("{:?}", $enum_value);
+        let name = name[..1].to_ascii_lowercase() + &name[1..];
+        let subschema = $gen.subschema_for::<$type>();
+        $properties.insert(name, subschema);
+    }};
+}
+
+#[cfg(feature = "schemars")]
+macro_rules! add_flags_to_schema {
+    ($gen:ident, $properties:ident, { $($variant:ident),+ }) => {
+        $(add_schema_property!($gen, $properties, Flag::$variant, bool);)*
+    }
+}
+
+#[cfg(feature = "schemars")]
+macro_rules! add_properties_to_schema {
+    ($gen:ident, $properties:ident, { $($type:ty { $($id:ident),+ }),+ }) => {
+        $($(add_schema_property!($gen, $properties, PropertyId::$id, Option<$type>);)*)*
+    }
+}
+
+#[cfg(feature = "schemars")]
+impl JsonSchema for Node {
+    fn schema_name() -> String {
+        "Node".into()
+    }
+
+    fn json_schema(gen: &mut SchemaGenerator) -> Schema {
+        let mut properties = SchemaMap::<String, Schema>::new();
+        add_schema_property!(gen, properties, ClassFieldId::Role, Role);
+        add_schema_property!(gen, properties, ClassFieldId::Actions, Actions);
+        add_flags_to_schema!(gen, properties, {
+            AutofillAvailable,
+            Default,
+            Editable,
+            Hovered,
+            Hidden,
+            Linked,
+            Multiline,
+            Multiselectable,
+            Protected,
+            Required,
+            Visited,
+            Busy,
+            LiveAtomic,
+            Modal,
+            Scrollable,
+            SelectedFromFocus,
+            TouchPassThrough,
+            ReadOnly,
+            Disabled,
+            Bold,
+            Italic,
+            CanvasHasFallback,
+            ClipsChildren,
+            IsLineBreakingObject,
+            IsPageBreakingObject,
+            IsSpellingError,
+            IsGrammarError,
+            IsSearchMatch,
+            IsSuggestion,
+            IsNonatomicTextFieldRoot
+        });
+        add_properties_to_schema!(gen, properties, {
+            Vec<NodeId> {
+                Children,
+                IndirectChildren,
+                Controls,
+                Details,
+                DescribedBy,
+                FlowTo,
+                LabelledBy,
+                RadioGroup
+            },
+            NodeId {
+                ActiveDescendant,
+                ErrorMessage,
+                InPageLinkTarget,
+                MemberOf,
+                NextOnLine,
+                PreviousOnLine,
+                PopupFor,
+                TableHeader,
+                TableRowHeader,
+                TableColumnHeader,
+                NextFocus,
+                PreviousFocus
+            },
+            Box<str> {
+                Name,
+                Description,
+                Value,
+                AccessKey,
+                AutoComplete,
+                CheckedStateDescription,
+                ClassName,
+                CssDisplay,
+                FontFamily,
+                HtmlTag,
+                InnerHtml,
+                InputType,
+                KeyShortcuts,
+                Language,
+                LiveRelevant,
+                Placeholder,
+                AriaRole,
+                RoleDescription,
+                Tooltip,
+                Url
+            },
+            f64 {
+                ScrollX,
+                ScrollXMin,
+                ScrollXMax,
+                ScrollY,
+                ScrollYMin,
+                ScrollYMax,
+                NumericValue,
+                MinNumericValue,
+                MaxNumericValue,
+                NumericValueStep,
+                NumericValueJump,
+                FontSize,
+                FontWeight,
+                TextIndent
+            },
+            usize {
+                TableRowCount,
+                TableColumnCount,
+                TableRowIndex,
+                TableColumnIndex,
+                TableCellColumnIndex,
+                TableCellColumnSpan,
+                TableCellRowIndex,
+                TableCellRowSpan,
+                HierarchicalLevel,
+                SizeOfSet,
+                PositionInSet
+            },
+            u32 {
+                ColorValue,
+                BackgroundColor,
+                ForegroundColor
+            },
+            TextDecoration {
+                Overline,
+                Strikethrough,
+                Underline
+            },
+            Box<[u8]> {
+                CharacterLengths,
+                WordLengths
+            },
+            Box<[f32]> {
+                CharacterPositions,
+                CharacterWidths
+            },
+            bool {
+                Expanded,
+                Selected
+            },
+            NameFrom { NameFrom },
+            DescriptionFrom { DescriptionFrom },
+            Invalid { Invalid },
+            CheckedState { CheckedState },
+            Live { Live },
+            DefaultActionVerb { DefaultActionVerb },
+            TextDirection { TextDirection },
+            Orientation { Orientation },
+            SortDirection { SortDirection },
+            AriaCurrent { AriaCurrent },
+            HasPopup { HasPopup },
+            ListStyle { ListStyle },
+            TextAlign { TextAlign },
+            VerticalOffset { VerticalOffset },
+            Affine { Transform },
+            Rect { Bounds },
+            TextSelection { TextSelection },
+            Vec<CustomAction> { CustomActions }
+        });
+        SchemaObject {
+            instance_type: Some(InstanceType::Object.into()),
+            object: Some(
+                ObjectValidation {
+                    properties,
+                    ..Default::default()
+                }
+                .into(),
+            ),
+            ..Default::default()
+        }
+        .into()
     }
 }
 

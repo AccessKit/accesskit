@@ -20,3 +20,4 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 
 [features]
 serde = ["dep:serde", "enumn"]
+schemars = ["dep:schemars", "serde"]
