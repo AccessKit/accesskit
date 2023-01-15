@@ -960,211 +960,6 @@ impl NodeBuilder {
     }
 }
 
-impl NodeClass {
-    fn get_affine<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> Option<&'a Affine> {
-        match self.get_property(props, id) {
-            PropertyValue::None => None,
-            PropertyValue::Affine(value) => Some(value),
-            _ => unexpected_property_type(id),
-        }
-    }
-}
-
-impl NodeBuilder {
-    fn set_affine(&mut self, id: PropertyId, value: impl Into<Box<Affine>>) {
-        self.set_property(id, PropertyValue::Affine(value.into()));
-    }
-}
-
-impl NodeClass {
-    fn get_rect(&self, props: &[PropertyValue], id: PropertyId) -> Option<Rect> {
-        match self.get_property(props, id) {
-            PropertyValue::None => None,
-            PropertyValue::Rect(value) => Some(*value),
-            _ => unexpected_property_type(id),
-        }
-    }
-}
-
-impl NodeBuilder {
-    fn set_rect(&mut self, id: PropertyId, value: Rect) {
-        self.set_property(id, PropertyValue::Rect(value));
-    }
-}
-
-impl NodeClass {
-    fn get_node_id_vec<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> &'a [NodeId] {
-        match self.get_property(props, id) {
-            PropertyValue::None => &[],
-            PropertyValue::NodeIdVec(value) => value,
-            _ => unexpected_property_type(id),
-        }
-    }
-}
-
-impl NodeBuilder {
-    fn push_to_node_id_vec(&mut self, property_id: PropertyId, node_id: NodeId) {
-        match self.get_property_mut(property_id, PropertyValue::NodeIdVec(Vec::new())) {
-            PropertyValue::NodeIdVec(v) => {
-                v.push(node_id);
-            }
-            _ => unexpected_property_type(property_id),
-        }
-    }
-
-    fn set_node_id_vec(&mut self, id: PropertyId, value: impl Into<Vec<NodeId>>) {
-        self.set_property(id, PropertyValue::NodeIdVec(value.into()));
-    }
-}
-
-impl NodeClass {
-    fn get_node_id(&self, props: &[PropertyValue], id: PropertyId) -> Option<NodeId> {
-        match self.get_property(props, id) {
-            PropertyValue::None => None,
-            PropertyValue::NodeId(value) => Some(*value),
-            _ => unexpected_property_type(id),
-        }
-    }
-}
-
-impl NodeBuilder {
-    fn set_node_id(&mut self, id: PropertyId, value: NodeId) {
-        self.set_property(id, PropertyValue::NodeId(value));
-    }
-}
-
-impl NodeClass {
-    fn get_string<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> Option<&'a str> {
-        match self.get_property(props, id) {
-            PropertyValue::None => None,
-            PropertyValue::String(value) => Some(value),
-            _ => unexpected_property_type(id),
-        }
-    }
-}
-
-impl NodeBuilder {
-    fn set_string(&mut self, id: PropertyId, value: impl Into<Box<str>>) {
-        self.set_property(id, PropertyValue::String(value.into()));
-    }
-}
-
-impl NodeClass {
-    fn get_f64(&self, props: &[PropertyValue], id: PropertyId) -> Option<f64> {
-        match self.get_property(props, id) {
-            PropertyValue::None => None,
-            PropertyValue::F64(value) => Some(*value),
-            _ => unexpected_property_type(id),
-        }
-    }
-}
-
-impl NodeBuilder {
-    fn set_f64(&mut self, id: PropertyId, value: f64) {
-        self.set_property(id, PropertyValue::F64(value));
-    }
-}
-
-impl NodeClass {
-    fn get_usize(&self, props: &[PropertyValue], id: PropertyId) -> Option<usize> {
-        match self.get_property(props, id) {
-            PropertyValue::None => None,
-            PropertyValue::Usize(value) => Some(*value),
-            _ => unexpected_property_type(id),
-        }
-    }
-}
-
-impl NodeBuilder {
-    fn set_usize(&mut self, id: PropertyId, value: usize) {
-        self.set_property(id, PropertyValue::Usize(value));
-    }
-}
-
-impl NodeClass {
-    fn get_color(&self, props: &[PropertyValue], id: PropertyId) -> Option<u32> {
-        match self.get_property(props, id) {
-            PropertyValue::None => None,
-            PropertyValue::Color(value) => Some(*value),
-            _ => unexpected_property_type(id),
-        }
-    }
-}
-
-impl NodeBuilder {
-    fn set_color(&mut self, id: PropertyId, value: u32) {
-        self.set_property(id, PropertyValue::Color(value));
-    }
-}
-
-impl NodeClass {
-    fn get_text_decoration(
-        &self,
-        props: &[PropertyValue],
-        id: PropertyId,
-    ) -> Option<TextDecoration> {
-        match self.get_property(props, id) {
-            PropertyValue::None => None,
-            PropertyValue::TextDecoration(value) => Some(*value),
-            _ => unexpected_property_type(id),
-        }
-    }
-}
-
-impl NodeBuilder {
-    fn set_text_decoration(&mut self, id: PropertyId, value: TextDecoration) {
-        self.set_property(id, PropertyValue::TextDecoration(value));
-    }
-}
-
-impl NodeClass {
-    fn get_length_slice<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> &'a [u8] {
-        match self.get_property(props, id) {
-            PropertyValue::None => &[],
-            PropertyValue::LengthSlice(value) => value,
-            _ => unexpected_property_type(id),
-        }
-    }
-}
-
-impl NodeBuilder {
-    fn set_length_slice(&mut self, id: PropertyId, value: impl Into<Box<[u8]>>) {
-        self.set_property(id, PropertyValue::LengthSlice(value.into()));
-    }
-}
-
-impl NodeClass {
-    fn get_coord_slice<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> Option<&'a [f32]> {
-        match self.get_property(props, id) {
-            PropertyValue::None => None,
-            PropertyValue::CoordSlice(value) => Some(value),
-            _ => unexpected_property_type(id),
-        }
-    }
-}
-
-impl NodeBuilder {
-    fn set_coord_slice(&mut self, id: PropertyId, value: impl Into<Box<[f32]>>) {
-        self.set_property(id, PropertyValue::CoordSlice(value.into()));
-    }
-}
-
-impl NodeClass {
-    fn get_bool(&self, props: &[PropertyValue], id: PropertyId) -> Option<bool> {
-        match self.get_property(props, id) {
-            PropertyValue::None => None,
-            PropertyValue::Bool(value) => Some(*value),
-            _ => unexpected_property_type(id),
-        }
-    }
-}
-
-impl NodeBuilder {
-    fn set_bool(&mut self, id: PropertyId, value: bool) {
-        self.set_property(id, PropertyValue::Bool(value));
-    }
-}
-
 macro_rules! flag_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         impl Node {
@@ -1183,6 +978,89 @@ macro_rules! flag_methods {
             }
             pub fn $clearer(&mut self) {
                 self.flags &= !((Flag::$id).mask());
+            })*
+        }
+    }
+}
+
+macro_rules! option_ref_type_getters {
+    ($(($method:ident, $type:ty, $variant:ident)),+) => {
+        impl NodeClass {
+            $(fn $method<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> Option<&'a $type> {
+                match self.get_property(props, id) {
+                    PropertyValue::None => None,
+                    PropertyValue::$variant(value) => Some(value),
+                    _ => unexpected_property_type(id),
+                }
+            })*
+        }
+    }
+}
+
+macro_rules! slice_type_getters {
+    ($(($method:ident, $type:ty, $variant:ident)),+) => {
+        impl NodeClass {
+            $(fn $method<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> &'a [$type] {
+                match self.get_property(props, id) {
+                    PropertyValue::None => &[],
+                    PropertyValue::$variant(value) => value,
+                    _ => unexpected_property_type(id),
+                }
+            })*
+        }
+    }
+}
+
+macro_rules! copy_type_getters {
+    ($(($method:ident, $type:ty, $variant:ident)),+) => {
+        impl NodeClass {
+            $(fn $method(&self, props: &[PropertyValue], id: PropertyId) -> Option<$type> {
+                match self.get_property(props, id) {
+                    PropertyValue::None => None,
+                    PropertyValue::$variant(value) => Some(*value),
+                    _ => unexpected_property_type(id),
+                }
+            })*
+        }
+    }
+}
+
+macro_rules! box_type_setters {
+    ($(($method:ident, $type:ty, $variant:ident)),+) => {
+        impl NodeBuilder {
+            $(fn $method(&mut self, id: PropertyId, value: impl Into<Box<$type>>) {
+                self.set_property(id, PropertyValue::$variant(value.into()));
+            })*
+        }
+    }
+}
+
+macro_rules! copy_type_setters {
+    ($(($method:ident, $type:ty, $variant:ident)),+) => {
+        impl NodeBuilder {
+            $(fn $method(&mut self, id: PropertyId, value: $type) {
+                self.set_property(id, PropertyValue::$variant(value));
+            })*
+        }
+    }
+}
+
+macro_rules! vec_type_methods {
+    ($(($type:ty, $variant:ident, $getter:ident, $setter:ident, $pusher:ident)),+) => {
+        $(slice_type_getters! {
+            ($getter, $type, $variant)
+        })*
+        impl NodeBuilder {
+            $(fn $setter(&mut self, id: PropertyId, value: impl Into<Vec<$type>>) {
+                self.set_property(id, PropertyValue::$variant(value.into()));
+            }
+            fn $pusher(&mut self, id: PropertyId, item: $type) {
+                match self.get_property_mut(id, PropertyValue::$variant(Vec::new())) {
+                    PropertyValue::$variant(v) => {
+                        v.push(item);
+                    }
+                    _ => unexpected_property_type(id),
+                }
             })*
         }
     }
@@ -1238,7 +1116,7 @@ macro_rules! node_id_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_node_id, Option<NodeId>, $setter, set_node_id, NodeId, $clearer)
+            ($id, $getter, get_node_id_property, Option<NodeId>, $setter, set_node_id_property, NodeId, $clearer)
         })*
     }
 }
@@ -1247,7 +1125,7 @@ macro_rules! string_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_string, Option<&str>, $setter, set_string, impl Into<Box<str>>, $clearer)
+            ($id, $getter, get_string_property, Option<&str>, $setter, set_string_property, impl Into<Box<str>>, $clearer)
         })*
     }
 }
@@ -1256,7 +1134,7 @@ macro_rules! f64_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_f64, Option<f64>, $setter, set_f64, f64, $clearer)
+            ($id, $getter, get_f64_property, Option<f64>, $setter, set_f64_property, f64, $clearer)
         })*
     }
 }
@@ -1265,7 +1143,7 @@ macro_rules! usize_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_usize, Option<usize>, $setter, set_usize, usize, $clearer)
+            ($id, $getter, get_usize_property, Option<usize>, $setter, set_usize_property, usize, $clearer)
         })*
     }
 }
@@ -1274,7 +1152,7 @@ macro_rules! color_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_color, Option<u32>, $setter, set_color, u32, $clearer)
+            ($id, $getter, get_color_property, Option<u32>, $setter, set_color_property, u32, $clearer)
         })*
     }
 }
@@ -1283,7 +1161,7 @@ macro_rules! text_decoration_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_text_decoration, Option<TextDecoration>, $setter, set_text_decoration, TextDecoration, $clearer)
+            ($id, $getter, get_text_decoration_property, Option<TextDecoration>, $setter, set_text_decoration_property, TextDecoration, $clearer)
         })*
     }
 }
@@ -1292,7 +1170,7 @@ macro_rules! length_slice_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_length_slice, &[u8], $setter, set_length_slice, impl Into<Box<[u8]>>, $clearer)
+            ($id, $getter, get_length_slice_property, &[u8], $setter, set_length_slice_property, impl Into<Box<[u8]>>, $clearer)
         })*
     }
 }
@@ -1301,7 +1179,7 @@ macro_rules! coord_slice_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_coord_slice, Option<&[f32]>, $setter, set_coord_slice, impl Into<Box<[f32]>>, $clearer)
+            ($id, $getter, get_coord_slice_property, Option<&[f32]>, $setter, set_coord_slice_property, impl Into<Box<[f32]>>, $clearer)
         })*
     }
 }
@@ -1310,7 +1188,7 @@ macro_rules! bool_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_bool, Option<bool>, $setter, set_bool, bool, $clearer)
+            ($id, $getter, get_bool_property, Option<bool>, $setter, set_bool_property, bool, $clearer)
         })*
     }
 }
@@ -1464,6 +1342,50 @@ flag_methods! {
     /// textbox which isn't currently editable and which has interactive
     /// descendants, and a `<body>` element that has "design-mode" set to "on".
     (IsNonatomicTextFieldRoot, is_nonatomic_text_field_root, set_is_nonatomic_text_field_root, clear_is_nonatomic_text_field_root)
+}
+
+option_ref_type_getters! {
+    (get_affine_property, Affine, Affine),
+    (get_string_property, str, String),
+    (get_coord_slice_property, [f32], CoordSlice),
+    (get_text_selection_property, TextSelection, TextSelection)
+}
+
+slice_type_getters! {
+    (get_length_slice_property, u8, LengthSlice)
+}
+
+copy_type_getters! {
+    (get_rect_property, Rect, Rect),
+    (get_node_id_property, NodeId, NodeId),
+    (get_f64_property, f64, F64),
+    (get_usize_property, usize, Usize),
+    (get_color_property, u32, Color),
+    (get_text_decoration_property, TextDecoration, TextDecoration),
+    (get_bool_property, bool, Bool)
+}
+
+box_type_setters! {
+    (set_affine_property, Affine, Affine),
+    (set_string_property, str, String),
+    (set_length_slice_property, [u8], LengthSlice),
+    (set_coord_slice_property, [f32], CoordSlice),
+    (set_text_selection_property, TextSelection, TextSelection)
+}
+
+copy_type_setters! {
+    (set_rect_property, Rect, Rect),
+    (set_node_id_property, NodeId, NodeId),
+    (set_f64_property, f64, F64),
+    (set_usize_property, usize, Usize),
+    (set_color_property, u32, Color),
+    (set_text_decoration_property, TextDecoration, TextDecoration),
+    (set_bool_property, bool, Bool)
+}
+
+vec_type_methods! {
+    (NodeId, NodeIdVec, get_node_id_vec, set_node_id_vec, push_to_node_id_vec),
+    (CustomAction, CustomActionVec, get_custom_action_vec, set_custom_action_vec, push_to_custom_action_vec)
 }
 
 node_id_vec_property_methods! {
@@ -1719,7 +1641,7 @@ property_methods! {
     /// pixels, with the y coordinate being top-down.
     ///
     /// [`bounds`]: Node::bounds
-    (Transform, transform, get_affine, Option<&Affine>, set_transform, set_affine, impl Into<Box<Affine>>, clear_transform),
+    (Transform, transform, get_affine_property, Option<&Affine>, set_transform, set_affine_property, impl Into<Box<Affine>>, clear_transform),
 
     /// The bounding box of this node, in the node's coordinate space.
     /// This property does not affect the coordinate space of either this node
@@ -1731,88 +1653,13 @@ property_methods! {
     /// the tree's container (e.g. window).
     ///
     /// [`transform`]: Node::transform
-    (Bounds, bounds, get_rect, Option<Rect>, set_bounds, set_rect, Rect, clear_bounds)
+    (Bounds, bounds, get_rect_property, Option<Rect>, set_bounds, set_rect_property, Rect, clear_bounds),
+
+    (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, impl Into<Box<TextSelection>>, clear_text_selection)
 }
 
-impl Node {
-    pub fn text_selection(&self) -> Option<&TextSelection> {
-        match self
-            .class
-            .get_property(&self.props, PropertyId::TextSelection)
-        {
-            PropertyValue::None => None,
-            PropertyValue::TextSelection(value) => Some(value),
-            _ => unexpected_property_type(PropertyId::TextSelection),
-        }
-    }
-}
-
-impl NodeBuilder {
-    pub fn text_selection(&self) -> Option<&TextSelection> {
-        match self
-            .class
-            .get_property(&self.props, PropertyId::TextSelection)
-        {
-            PropertyValue::None => None,
-            PropertyValue::TextSelection(value) => Some(value),
-            _ => unexpected_property_type(PropertyId::TextSelection),
-        }
-    }
-    pub fn set_text_selection(&mut self, value: impl Into<Box<TextSelection>>) {
-        self.set_property(
-            PropertyId::TextSelection,
-            PropertyValue::TextSelection(value.into()),
-        );
-    }
-    pub fn clear_text_selection(&mut self) {
-        self.clear_property(PropertyId::TextSelection);
-    }
-}
-
-impl Node {
-    pub fn custom_actions(&self) -> &[CustomAction] {
-        match self
-            .class
-            .get_property(&self.props, PropertyId::CustomActions)
-        {
-            PropertyValue::None => &[],
-            PropertyValue::CustomActionVec(value) => value,
-            _ => unexpected_property_type(PropertyId::CustomActions),
-        }
-    }
-}
-
-impl NodeBuilder {
-    pub fn custom_actions(&self) -> &[CustomAction] {
-        match self
-            .class
-            .get_property(&self.props, PropertyId::CustomActions)
-        {
-            PropertyValue::None => &[],
-            PropertyValue::CustomActionVec(value) => value,
-            _ => unexpected_property_type(PropertyId::CustomActions),
-        }
-    }
-    pub fn set_custom_actions(&mut self, value: impl Into<Vec<CustomAction>>) {
-        self.set_property(
-            PropertyId::CustomActions,
-            PropertyValue::CustomActionVec(value.into()),
-        );
-    }
-    pub fn push_custom_action(&mut self, action: CustomAction) {
-        match self.get_property_mut(
-            PropertyId::CustomActions,
-            PropertyValue::CustomActionVec(Vec::new()),
-        ) {
-            PropertyValue::CustomActionVec(v) => {
-                v.push(action);
-            }
-            _ => unexpected_property_type(PropertyId::CustomActions),
-        }
-    }
-    pub fn clear_custom_actions(&mut self) {
-        self.clear_property(PropertyId::CustomActions);
-    }
+vec_property_methods! {
+    (CustomActions, CustomAction, custom_actions, get_custom_action_vec, set_custom_actions, set_custom_action_vec, push_custom_action, push_to_custom_action_vec, clear_custom_actions)
 }
 
 #[cfg(feature = "serde")]
