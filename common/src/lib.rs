@@ -1272,7 +1272,7 @@ impl NodeBuilder {
 
     pub fn build(self) -> Node {
         let mut classes = NODE_CLASSES.lock().unwrap();
-        let classes = classes.get_or_insert_with(|| BTreeSet::new());
+        let classes = classes.get_or_insert_with(BTreeSet::new);
         let class = if let Some(class) = classes.get(&self.class) {
             Arc::clone(class)
         } else {
