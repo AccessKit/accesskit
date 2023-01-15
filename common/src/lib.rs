@@ -922,7 +922,7 @@ struct NodeClass {
 // We don't want to add a dependency like once_cell just like this, and
 // once_cell would add a second level of synchronization anyway. We could use
 // const initialization of BTreeSet, but that wasn't stabilized until
-// Rust 1.65. So we just use Option.
+// Rust 1.66. So we just use Option.
 static NODE_CLASSES: Mutex<Option<BTreeSet<Arc<NodeClass>>>> = Mutex::new(None);
 
 /// A single accessible object. A complete UI is represented as a tree of these.
