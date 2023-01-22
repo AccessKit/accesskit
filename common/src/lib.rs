@@ -252,6 +252,7 @@ pub enum Role {
 }
 
 impl Default for Role {
+    #[inline]
     fn default() -> Self {
         Self::Unknown
     }
@@ -375,6 +376,7 @@ struct ActionsVisitor;
 impl<'de> Visitor<'de> for ActionsVisitor {
     type Value = Actions;
 
+    #[inline]
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("action set")
     }
@@ -403,10 +405,12 @@ impl<'de> Deserialize<'de> for Actions {
 
 #[cfg(feature = "schemars")]
 impl JsonSchema for Actions {
+    #[inline]
     fn schema_name() -> String {
         "Actions".into()
     }
 
+    #[inline]
     fn is_referenceable() -> bool {
         false
     }
@@ -645,6 +649,7 @@ pub type NodeIdContent = NonZeroU128;
 pub struct NodeId(pub NodeIdContent);
 
 impl From<NonZeroU64> for NodeId {
+    #[inline]
     fn from(inner: NonZeroU64) -> Self {
         Self(inner.into())
     }
@@ -940,6 +945,7 @@ struct NodeClass {
 pub struct NodeClassSet(BTreeSet<Arc<NodeClass>>);
 
 impl NodeClassSet {
+    #[inline]
     pub fn new() -> Self {
         Default::default()
     }
@@ -962,12 +968,14 @@ impl NodeClassSet {
         impl<'a> Deref for Guard<'a> {
             type Target = NodeClassSet;
 
+            #[inline]
             fn deref(&self) -> &Self::Target {
                 self.0.as_ref().unwrap()
             }
         }
 
         impl<'a> DerefMut for Guard<'a> {
+            #[inline]
             fn deref_mut(&mut self) -> &mut Self::Target {
                 self.0.as_mut().unwrap()
             }
@@ -1053,18 +1061,22 @@ macro_rules! flag_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         impl Node {
             $($(#[$doc])*
+            #[inline]
             pub fn $getter(&self) -> bool {
                 (self.flags & (Flag::$id).mask()) != 0
             })*
         }
         impl NodeBuilder {
             $($(#[$doc])*
+            #[inline]
             pub fn $getter(&self) -> bool {
                 (self.flags & (Flag::$id).mask()) != 0
             }
+            #[inline]
             pub fn $setter(&mut self) {
                 self.flags |= (Flag::$id).mask();
             }
+            #[inline]
             pub fn $clearer(&mut self) {
                 self.flags &= !((Flag::$id).mask());
             })*
@@ -1159,18 +1171,22 @@ macro_rules! property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $type_getter:ident, $getter_result:ty, $setter:ident, $type_setter:ident, $setter_param:ty, $clearer:ident)),+) => {
         impl Node {
             $($(#[$doc])*
+            #[inline]
             pub fn $getter(&self) -> $getter_result {
                 self.class.$type_getter(&self.props, PropertyId::$id)
             })*
         }
         impl NodeBuilder {
             $($(#[$doc])*
+            #[inline]
             pub fn $getter(&self) -> $getter_result {
                 self.class.$type_getter(&self.props, PropertyId::$id)
             }
+            #[inline]
             pub fn $setter(&mut self, value: $setter_param) {
                 self.$type_setter(PropertyId::$id, value);
             }
+            #[inline]
             pub fn $clearer(&mut self) {
                 self.clear_property(PropertyId::$id);
             })*
@@ -1185,6 +1201,7 @@ macro_rules! vec_property_methods {
             ($id, $getter, $type_getter, &[$item_type], $setter, $type_setter, impl Into<Vec<$item_type>>, $clearer)
         }
         impl NodeBuilder {
+            #[inline]
             pub fn $pusher(&mut self, item: $item_type) {
                 self.$type_pusher(PropertyId::$id, item);
             }
@@ -1286,6 +1303,7 @@ macro_rules! unique_enum_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         impl Node {
             $($(#[$doc])*
+            #[inline]
             pub fn $getter(&self) -> Option<$id> {
                 match self.class.get_property(&self.props, PropertyId::$id) {
                     PropertyValue::None => None,
@@ -1296,6 +1314,7 @@ macro_rules! unique_enum_property_methods {
         }
         impl NodeBuilder {
             $($(#[$doc])*
+            #[inline]
             pub fn $getter(&self) -> Option<$id> {
                 match self.class.get_property(&self.props, PropertyId::$id) {
                     PropertyValue::None => None,
@@ -1303,9 +1322,11 @@ macro_rules! unique_enum_property_methods {
                     _ => unexpected_property_type(),
                 }
             }
+            #[inline]
             pub fn $setter(&mut self, value: $id) {
                 self.set_property(PropertyId::$id, PropertyValue::$id(value));
             }
+            #[inline]
             pub fn $clearer(&mut self) {
                 self.clear_property(PropertyId::$id);
             })*
@@ -1314,6 +1335,7 @@ macro_rules! unique_enum_property_methods {
 }
 
 impl NodeBuilder {
+    #[inline]
     pub fn new(role: Role) -> Self {
         Self {
             class: NodeClass {
@@ -1341,36 +1363,44 @@ impl NodeBuilder {
 }
 
 impl Node {
+    #[inline]
     pub fn role(&self) -> Role {
         self.class.role
     }
 }
 
 impl NodeBuilder {
+    #[inline]
     pub fn role(&self) -> Role {
         self.class.role
     }
+    #[inline]
     pub fn set_role(&mut self, value: Role) {
         self.class.role = value;
     }
 }
 
 impl Node {
+    #[inline]
     pub fn supports_action(&self, action: Action) -> bool {
         (self.class.actions.0 & action.mask()) != 0
     }
 }
 
 impl NodeBuilder {
+    #[inline]
     pub fn supports_action(&self, action: Action) -> bool {
         (self.class.actions.0 & action.mask()) != 0
     }
+    #[inline]
     pub fn add_action(&mut self, action: Action) {
         self.class.actions.0 |= action.mask();
     }
+    #[inline]
     pub fn remove_action(&mut self, action: Action) {
         self.class.actions.0 &= !(action.mask());
     }
+    #[inline]
     pub fn clear_actions(&mut self) {
         self.class.actions.0 = 0;
     }
@@ -1881,6 +1911,7 @@ struct NodeVisitor;
 impl<'de> Visitor<'de> for NodeVisitor {
     type Value = Node;
 
+    #[inline]
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("struct Node")
     }
@@ -2070,6 +2101,7 @@ macro_rules! add_properties_to_schema {
 
 #[cfg(feature = "schemars")]
 impl JsonSchema for Node {
+    #[inline]
     fn schema_name() -> String {
         "Node".into()
     }
@@ -2259,6 +2291,7 @@ pub struct Tree {
 }
 
 impl Tree {
+    #[inline]
     pub fn new(root: NodeId) -> Tree {
         Tree {
             root,
