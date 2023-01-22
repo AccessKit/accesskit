@@ -1011,8 +1011,8 @@ impl NodeClass {
     }
 }
 
-fn unexpected_property_type(id: PropertyId) -> ! {
-    panic!("unexpected type for property {:?}", id);
+fn unexpected_property_type() -> ! {
+    panic!();
 }
 
 impl NodeBuilder {
@@ -1079,7 +1079,7 @@ macro_rules! option_ref_type_getters {
                 match self.get_property(props, id) {
                     PropertyValue::None => None,
                     PropertyValue::$variant(value) => Some(value),
-                    _ => unexpected_property_type(id),
+                    _ => unexpected_property_type(),
                 }
             })*
         }
@@ -1093,7 +1093,7 @@ macro_rules! slice_type_getters {
                 match self.get_property(props, id) {
                     PropertyValue::None => &[],
                     PropertyValue::$variant(value) => value,
-                    _ => unexpected_property_type(id),
+                    _ => unexpected_property_type(),
                 }
             })*
         }
@@ -1107,7 +1107,7 @@ macro_rules! copy_type_getters {
                 match self.get_property(props, id) {
                     PropertyValue::None => None,
                     PropertyValue::$variant(value) => Some(*value),
-                    _ => unexpected_property_type(id),
+                    _ => unexpected_property_type(),
                 }
             })*
         }
@@ -1148,7 +1148,7 @@ macro_rules! vec_type_methods {
                     PropertyValue::$variant(v) => {
                         v.push(item);
                     }
-                    _ => unexpected_property_type(id),
+                    _ => unexpected_property_type(),
                 }
             })*
         }
@@ -1290,7 +1290,7 @@ macro_rules! unique_enum_property_methods {
                 match self.class.get_property(&self.props, PropertyId::$id) {
                     PropertyValue::None => None,
                     PropertyValue::$id(value) => Some(*value),
-                    _ => unexpected_property_type(PropertyId::$id),
+                    _ => unexpected_property_type(),
                 }
             })*
         }
@@ -1300,7 +1300,7 @@ macro_rules! unique_enum_property_methods {
                 match self.class.get_property(&self.props, PropertyId::$id) {
                     PropertyValue::None => None,
                     PropertyValue::$id(value) => Some(*value),
-                    _ => unexpected_property_type(PropertyId::$id),
+                    _ => unexpected_property_type(),
                 }
             }
             pub fn $setter(&mut self, value: $id) {
