@@ -1028,15 +1028,18 @@ mod tests {
 
     // This is based on an actual tree produced by egui.
     fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {
-        use accesskit::{Action, Affine, NodeBuilder, Role, TextDirection, Tree, TreeUpdate};
+        use accesskit::{
+            Action, Affine, NodeBuilder, NodeClassSet, Role, TextDirection, Tree, TreeUpdate,
+        };
 
+        let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
             nodes: vec![
                 (NODE_ID_1, {
                     let mut builder = NodeBuilder::new(Role::Window);
                     builder.set_transform(Affine::scale(1.5));
                     builder.set_children(vec![NODE_ID_2]);
-                    builder.build()
+                    builder.build(&mut classes)
                 }),
                 (NODE_ID_2, {
                     let mut builder = NodeBuilder::new(Role::TextField);
@@ -1053,7 +1056,7 @@ mod tests {
                     if let Some(selection) = selection {
                         builder.set_text_selection(selection);
                     }
-                    builder.build()
+                    builder.build(&mut classes)
                 }),
                 (NODE_ID_3, {
                     let mut builder = NodeBuilder::new(Role::InlineTextBox);
@@ -1088,7 +1091,7 @@ mod tests {
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                     ]);
                     builder.set_word_lengths([5, 10, 3, 5, 7, 3, 5]);
-                    builder.build()
+                    builder.build(&mut classes)
                 }),
                 (NODE_ID_4, {
                     let mut builder = NodeBuilder::new(Role::InlineTextBox);
@@ -1113,7 +1116,7 @@ mod tests {
                         0.0,
                     ]);
                     builder.set_word_lengths([3, 8, 6]);
-                    builder.build()
+                    builder.build(&mut classes)
                 }),
                 (NODE_ID_5, {
                     let mut builder = NodeBuilder::new(Role::InlineTextBox);
@@ -1139,7 +1142,7 @@ mod tests {
                         7.58557, 7.58557, 0.0,
                     ]);
                     builder.set_word_lengths([8, 11]);
-                    builder.build()
+                    builder.build(&mut classes)
                 }),
                 (NODE_ID_6, {
                     let mut builder = NodeBuilder::new(Role::InlineTextBox);
@@ -1155,7 +1158,7 @@ mod tests {
                     builder.set_character_positions([0.0]);
                     builder.set_character_widths([0.0]);
                     builder.set_word_lengths([1]);
-                    builder.build()
+                    builder.build(&mut classes)
                 }),
                 (NODE_ID_7, {
                     let mut builder = NodeBuilder::new(Role::InlineTextBox);
@@ -1184,7 +1187,7 @@ mod tests {
                         7.58557, 7.58557, 7.58557, 7.58557, 0.0,
                     ]);
                     builder.set_word_lengths([5, 4, 6, 6]);
-                    builder.build()
+                    builder.build(&mut classes)
                 }),
                 (NODE_ID_8, {
                     let mut builder = NodeBuilder::new(Role::InlineTextBox);
@@ -1200,7 +1203,7 @@ mod tests {
                     builder.set_character_positions([]);
                     builder.set_character_widths([]);
                     builder.set_word_lengths([0]);
-                    builder.build()
+                    builder.build(&mut classes)
                 }),
             ],
             tree: Some(Tree::new(NODE_ID_1)),

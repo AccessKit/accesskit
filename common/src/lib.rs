@@ -23,7 +23,8 @@ use serde::{
 use std::{
     collections::BTreeSet,
     num::{NonZeroU128, NonZeroU64},
-    sync::{Arc, Mutex},
+    ops::DerefMut,
+    sync::Arc,
 };
 #[cfg(feature = "serde")]
 use std::{fmt, mem::size_of_val};
@@ -919,11 +920,64 @@ struct NodeClass {
     indices: PropertyIndices,
 }
 
-// We don't want to add a dependency like once_cell just like this, and
-// once_cell would add a second level of synchronization anyway. We could use
-// const initialization of BTreeSet, but that wasn't stabilized until
-// Rust 1.66. So we just use Option.
-static NODE_CLASSES: Mutex<Option<BTreeSet<Arc<NodeClass>>>> = Mutex::new(None);
+/// Allows nodes that have the same role, actions, and set of defined properties
+/// to share metadata. Each node has a class which is created by [`NodeBuilder`],
+/// and when [`NodeBuilder::build`] is called, the node's class is added
+/// to the provided instance of this struct if an identical class isn't
+/// in that set already. Once a class is added to a class set, it currently
+/// remains in that set for the life of that set, whether or not any nodes
+/// are still using the class.
+///
+/// It's not an error for different nodes in the same tree, or even subsequent
+/// versions of the same node, to be built from different class sets;
+/// it's merely suboptimal.
+///
+/// Note: This struct's `Default` implementation doesn't provide access to
+/// a shared set, as one might assume; it creates a new set. For a shared set,
+/// use [`NodeClassSet::lock_global`].
+#[derive(Clone, Default)]
+#[repr(transparent)]
+pub struct NodeClassSet(BTreeSet<Arc<NodeClass>>);
+
+impl NodeClassSet {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    /// Accesses a shared class set guarded by a mutex.
+    pub fn lock_global() -> impl DerefMut<Target = Self> {
+        use std::{
+            ops::Deref,
+            sync::{Mutex, MutexGuard},
+        };
+
+        // We don't want to add a dependency like once_cell just like this, and
+        // once_cell would add a second level of synchronization anyway. We could
+        // use const initialization of BTreeSet, but that wasn't stabilized until
+        // Rust 1.66. So we just use Option.
+        static INSTANCE: Mutex<Option<NodeClassSet>> = Mutex::new(None);
+
+        struct Guard<'a>(MutexGuard<'a, Option<NodeClassSet>>);
+
+        impl<'a> Deref for Guard<'a> {
+            type Target = NodeClassSet;
+
+            fn deref(&self) -> &Self::Target {
+                self.0.as_ref().unwrap()
+            }
+        }
+
+        impl<'a> DerefMut for Guard<'a> {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                self.0.as_mut().unwrap()
+            }
+        }
+
+        let mut instance = INSTANCE.lock().unwrap();
+        instance.get_or_insert_with(Default::default);
+        Guard(instance)
+    }
+}
 
 /// A single accessible object. A complete UI is represented as a tree of these.
 ///
@@ -1270,14 +1324,12 @@ impl NodeBuilder {
         }
     }
 
-    pub fn build(self) -> Node {
-        let mut classes = NODE_CLASSES.lock().unwrap();
-        let classes = classes.get_or_insert_with(BTreeSet::new);
-        let class = if let Some(class) = classes.get(&self.class) {
+    pub fn build(self, classes: &mut NodeClassSet) -> Node {
+        let class = if let Some(class) = classes.0.get(&self.class) {
             Arc::clone(class)
         } else {
             let class = Arc::new(self.class);
-            classes.insert(Arc::clone(&class));
+            classes.0.insert(Arc::clone(&class));
             class
         };
         Node {
@@ -1978,7 +2030,7 @@ impl<'de> Visitor<'de> for NodeVisitor {
             }
         }
 
-        Ok(builder.build())
+        Ok(builder.build(&mut NodeClassSet::lock_global()))
     }
 }
 

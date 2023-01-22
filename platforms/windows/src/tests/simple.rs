@@ -6,7 +6,8 @@
 use std::{convert::TryInto, num::NonZeroU128};
 
 use accesskit::{
-    Action, ActionHandler, ActionRequest, Node, NodeBuilder, NodeId, Role, Tree, TreeUpdate,
+    Action, ActionHandler, ActionRequest, Node, NodeBuilder, NodeClassSet, NodeId, Role, Tree,
+    TreeUpdate,
 };
 use windows::{core::*, Win32::UI::Accessibility::*};
 
@@ -18,21 +19,22 @@ const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
 const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
 
-fn make_button(name: &str) -> Node {
+fn make_button(name: &str, classes: &mut NodeClassSet) -> Node {
     let mut builder = NodeBuilder::new(Role::Button);
     builder.set_name(name);
     builder.add_action(Action::Focus);
-    builder.build()
+    builder.build(classes)
 }
 
 fn get_initial_state() -> TreeUpdate {
+    let mut classes = NodeClassSet::new();
     let root = {
         let mut builder = NodeBuilder::new(Role::Window);
         builder.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
-        builder.build()
+        builder.build(&mut classes)
     };
-    let button_1 = make_button("Button 1");
-    let button_2 = make_button("Button 2");
+    let button_1 = make_button("Button 1", &mut classes);
+    let button_2 = make_button("Button 2", &mut classes);
     TreeUpdate {
         nodes: vec![
             (WINDOW_ID, root),
