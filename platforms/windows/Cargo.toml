@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_windows"
-version = "0.10.4"
+version = "0.11.0"
 authors = ["Matt Campbell <mattcampbell@pobox.com>"]
 license = "MIT/Apache-2.0"
 description = "AccessKit UI accessibility infrastructure: Windows adapter"
