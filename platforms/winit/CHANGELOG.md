@@ -25,6 +25,24 @@
     * accesskit_macos bumped from 0.4.1 to 0.4.2
     * accesskit_unix bumped from 0.1.0 to 0.1.1
 
+## [0.9.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.8.1...accesskit_winit-v0.9.0) (2023-02-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* Update winit to 0.28 ([#207](https://github.com/AccessKit/accesskit/issues/207))
+
+### Miscellaneous Chores
+
+* Update winit to 0.28 ([#207](https://github.com/AccessKit/accesskit/issues/207)) ([3ff0cf5](https://github.com/AccessKit/accesskit/commit/3ff0cf59f982af504499142a3804f7aeeb4defe0))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_windows bumped from 0.10.4 to 0.11.0
+
 ## [0.8.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.7.3...accesskit_winit-v0.8.0) (2023-01-05)
 
 

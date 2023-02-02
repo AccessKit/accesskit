@@ -13,6 +13,17 @@
   * dependencies
     * accesskit_consumer bumped from 0.12.0 to 0.12.1
 
+## [0.11.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.10.4...accesskit_windows-v0.11.0) (2023-02-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* Update winit to 0.28 ([#207](https://github.com/AccessKit/accesskit/issues/207))
+
+### Miscellaneous Chores
+
+* Update winit to 0.28 ([#207](https://github.com/AccessKit/accesskit/issues/207)) ([3ff0cf5](https://github.com/AccessKit/accesskit/commit/3ff0cf59f982af504499142a3804f7aeeb4defe0))
+
 ## [0.10.2](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.10.1...accesskit_windows-v0.10.2) (2022-12-17)
 
 
