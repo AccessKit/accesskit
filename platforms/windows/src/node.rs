@@ -13,9 +13,8 @@
 use accesskit::{CheckedState, Live, NodeId, NodeIdContent, Point, Role};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, Tree, TreeState};
 use arrayvec::ArrayVec;
-use parking_lot::RwLock;
 use paste::paste;
-use std::sync::{Arc, Weak};
+use std::sync::{Arc, RwLock, Weak};
 use windows::{
     core::*,
     Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
@@ -524,7 +523,7 @@ impl PlatformNode {
         F: FnOnce(&Tree) -> Result<T>,
     {
         if let Some(tree) = self.tree.upgrade() {
-            let tree = tree.read();
+            let tree = tree.read().unwrap();
             f(&tree)
         } else {
             Err(element_not_available())

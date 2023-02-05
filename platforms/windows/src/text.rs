@@ -8,8 +8,7 @@
 use accesskit_consumer::{
     Node, TextPosition as Position, TextRange as Range, Tree, TreeState, WeakTextRange as WeakRange,
 };
-use parking_lot::RwLock;
-use std::sync::Weak;
+use std::sync::{RwLock, Weak};
 use windows::{
     core::*,
     Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
@@ -223,7 +222,7 @@ impl PlatformRange {
         F: FnOnce(&Tree) -> Result<T>,
     {
         if let Some(tree) = self.tree.upgrade() {
-            let tree = tree.read();
+            let tree = tree.read().unwrap();
             f(&tree)
         } else {
             Err(element_not_available())
@@ -238,7 +237,7 @@ impl PlatformRange {
     }
 
     fn upgrade_node<'a>(&self, tree_state: &'a TreeState) -> Result<Node<'a>> {
-        let state = self.state.read();
+        let state = self.state.read().unwrap();
         upgrade_range_node(&state, tree_state)
     }
 
@@ -253,7 +252,7 @@ impl PlatformRange {
     }
 
     fn upgrade_for_read<'a>(&self, tree_state: &'a TreeState) -> Result<Range<'a>> {
-        let state = self.state.read();
+        let state = self.state.read().unwrap();
         upgrade_range(&state, tree_state)
     }
 
@@ -272,7 +271,7 @@ impl PlatformRange {
         F: FnOnce(&mut Range) -> Result<T>,
     {
         self.with_tree_state(|tree_state| {
-            let mut state = self.state.write();
+            let mut state = self.state.write().unwrap();
             let mut range = upgrade_range(&state, tree_state)?;
             let result = f(&mut range);
             *state = range.downgrade();
@@ -304,7 +303,7 @@ impl Clone for PlatformRange {
     fn clone(&self) -> Self {
         PlatformRange {
             tree: self.tree.clone(),
-            state: RwLock::new(self.state.read().clone()),
+            state: RwLock::new(self.state.read().unwrap().clone()),
             hwnd: self.hwnd,
         }
     }
@@ -322,7 +321,9 @@ impl ITextRangeProvider_Impl for PlatformRange {
 
     fn Compare(&self, other: &Option<ITextRangeProvider>) -> Result<BOOL> {
         let other = required_param(other)?.as_impl();
-        Ok((self.tree.ptr_eq(&other.tree) && *self.state.read() == *other.state.read()).into())
+        Ok((self.tree.ptr_eq(&other.tree)
+            && *self.state.read().unwrap() == *other.state.read().unwrap())
+        .into())
     }
 
     fn CompareEndpoints(
@@ -337,8 +338,8 @@ impl ITextRangeProvider_Impl for PlatformRange {
             // safely without upgrading the range. This allows ATs
             // to determine whether an old range is degenerate even if
             // that range is no longer valid.
-            let state = self.state.read();
-            let other_state = other.state.read();
+            let state = self.state.read().unwrap();
+            let other_state = other.state.read().unwrap();
             let pos = weak_comparable_position_from_endpoint(&state, endpoint)?;
             let other_pos = weak_comparable_position_from_endpoint(&other_state, other_endpoint)?;
             let result = pos.cmp(other_pos);
@@ -364,7 +365,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
             // range even if the current endpoints are now invalid.
             // Based on observed behavior, Narrator needs this ability.
             return self.with_tree_state(|tree_state| {
-                let mut state = self.state.write();
+                let mut state = self.state.write().unwrap();
                 let node = upgrade_range_node(&state, tree_state)?;
                 *state = node.document_range().downgrade();
                 Ok(())
@@ -530,7 +531,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
         // to avoid deadlock.
         self.with_tree_state(|tree_state| {
             let other_range = other.upgrade_for_read(tree_state)?;
-            let mut state = self.state.write();
+            let mut state = self.state.write().unwrap();
             let mut range = upgrade_range(&state, tree_state)?;
             if range.node().id() != other_range.node().id() {
                 return Err(invalid_arg());

@@ -67,7 +67,6 @@ dependencies = [
  "accesskit_consumer",
  "arrayvec",
  "once_cell",
- "parking_lot",
  "paste",
  "scopeguard",
  "windows",

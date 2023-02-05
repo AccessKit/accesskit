@@ -3,11 +3,12 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::{collections::HashSet, sync::Arc};
-
 use accesskit::{ActionHandler, Live, NodeId, Role, TreeUpdate};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
-use parking_lot::RwLock;
+use std::{
+    collections::HashSet,
+    sync::{Arc, RwLock},
+};
 use windows::Win32::{
     Foundation::*,
     UI::{Accessibility::*, WindowsAndMessaging::*},
@@ -157,13 +158,13 @@ impl Adapter {
             queue: Vec::new(),
             text_changed: HashSet::new(),
         };
-        let mut tree = self.tree.write();
+        let mut tree = self.tree.write().unwrap();
         tree.update_and_process_changes(update, &mut handler);
         QueuedEvents(handler.queue)
     }
 
     fn root_platform_node(&self) -> PlatformNode {
-        let tree = self.tree.read();
+        let tree = self.tree.read().unwrap();
         let node_id = tree.state().root_id();
         PlatformNode::new(&self.tree, node_id, self.hwnd)
     }
