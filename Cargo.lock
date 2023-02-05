@@ -78,7 +78,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_winit"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "accesskit",
  "accesskit_macos",
