@@ -3,7 +3,6 @@
 // the LICENSE-APACHE file).
 
 use accesskit::{ActionHandler, ActionRequest, TreeUpdate};
-use parking_lot::Mutex;
 use winit::{
     event::WindowEvent,
     event_loop::EventLoopProxy,
@@ -20,17 +19,16 @@ pub struct ActionRequestEvent {
 
 struct WinitActionHandler<T: From<ActionRequestEvent> + Send + 'static> {
     window_id: WindowId,
-    proxy: Mutex<EventLoopProxy<T>>,
+    proxy: EventLoopProxy<T>,
 }
 
 impl<T: From<ActionRequestEvent> + Send + 'static> ActionHandler for WinitActionHandler<T> {
     fn do_action(&self, request: ActionRequest) {
-        let proxy = self.proxy.lock();
         let event = ActionRequestEvent {
             window_id: self.window_id,
             request,
         };
-        proxy.send_event(event.into()).ok();
+        self.proxy.send_event(event.into()).ok();
     }
 }
 
@@ -46,9 +44,9 @@ impl Adapter {
     ) -> Self {
         let action_handler = WinitActionHandler {
             window_id: window.id(),
-            proxy: Mutex::new(event_loop_proxy),
+            proxy: event_loop_proxy,
         };
-        Self::with_action_handler(window, source, Box::new(action_handler))
+        Self::with_action_handler(window, source, action_handler)
     }
 
     /// Use this if you need to provide your own AccessKit action handler
@@ -58,7 +56,7 @@ impl Adapter {
     pub fn with_action_handler(
         window: &Window,
         source: impl 'static + FnOnce() -> TreeUpdate + Send,
-        action_handler: Box<dyn ActionHandler>,
+        action_handler: impl 'static + ActionHandler + Send,
     ) -> Self {
         let adapter = platform_impl::Adapter::new(window, source, action_handler);
         Self { adapter }

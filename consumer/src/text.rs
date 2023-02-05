@@ -3,7 +3,9 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{NodeId, Point, Rect, Role, TextDirection, TextPosition as WeakPosition};
+use accesskit::{
+    NodeId, Point, Rect, Role, TextDirection, TextPosition as WeakPosition, TextSelection,
+};
 use std::{cmp::Ordering, iter::FusedIterator};
 
 use crate::{FilterResult, Node, TreeState};
@@ -693,6 +695,13 @@ impl<'a> Range<'a> {
             self.start = self.end;
         }
         self.fix_start_bias();
+    }
+
+    pub fn to_text_selection(&self) -> TextSelection {
+        TextSelection {
+            anchor: self.start.downgrade(),
+            focus: self.end.downgrade(),
+        }
     }
 
     pub fn downgrade(&self) -> WeakRange {

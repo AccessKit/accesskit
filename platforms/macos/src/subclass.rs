@@ -104,13 +104,15 @@ pub struct SubclassingAdapter {
 impl SubclassingAdapter {
     /// Create an adapter that dynamically subclasses the specified view.
     ///
+    /// The action handler will always be called on the main thread.
+    ///
     /// # Safety
     ///
     /// `view` must be a valid, unreleased pointer to an `NSView`.
     pub unsafe fn new(
         view: *mut c_void,
         source: impl 'static + FnOnce() -> TreeUpdate,
-        action_handler: Box<dyn ActionHandler>,
+        action_handler: impl 'static + ActionHandler,
     ) -> Self {
         let view = view as *mut NSView;
         let retained_view = unsafe { Id::retain(view) }.unwrap();

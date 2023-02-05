@@ -12,7 +12,6 @@ edition = "2021"
 
 [dependencies]
 accesskit = { version = "0.9.0", path = "../../common" }
-parking_lot = "0.12.1"
 winit = { version = "0.28", default-features = false }
 
 [target.'cfg(target_os = "windows")'.dependencies]

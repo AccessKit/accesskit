@@ -27,20 +27,22 @@ impl Adapter {
     /// Create a new macOS adapter. This function must be called on
     /// the main thread.
     ///
+    /// The action handler will always be called on the main thread.
+    ///
     /// # Safety
     ///
     /// `view` must be a valid, unreleased pointer to an `NSView`.
     pub unsafe fn new(
         view: *mut c_void,
         initial_state: TreeUpdate,
-        action_handler: Box<dyn ActionHandler>,
+        action_handler: impl 'static + ActionHandler,
     ) -> Self {
         let view = unsafe { Id::retain(view as *mut NSView) }.unwrap();
         let view = WeakId::new(&view);
-        let tree = Tree::new(initial_state, action_handler);
+        let tree = Tree::new(initial_state);
         let mtm = MainThreadMarker::new().unwrap();
         Self {
-            context: Context::new(view, tree, mtm),
+            context: Context::new(view, tree, action_handler, mtm),
         }
     }
 
