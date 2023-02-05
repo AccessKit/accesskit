@@ -25,6 +25,13 @@
     * accesskit_macos bumped from 0.4.1 to 0.4.2
     * accesskit_unix bumped from 0.1.0 to 0.1.1
 
+## [0.9.1](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.9.0...accesskit_winit-v0.9.1) (2023-02-05)
+
+
+### Bug Fixes
+
+* Don't force winit's X11 and Wayland features to be enabled ([#209](https://github.com/AccessKit/accesskit/issues/209)) ([a3ed357](https://github.com/AccessKit/accesskit/commit/a3ed35754ad8f69a8ed54adacc30b6d57c19329a))
+
 ## [0.9.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.8.1...accesskit_winit-v0.9.0) (2023-02-02)
 
 
