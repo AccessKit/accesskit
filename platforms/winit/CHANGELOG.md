@@ -25,6 +25,27 @@
     * accesskit_macos bumped from 0.4.1 to 0.4.2
     * accesskit_unix bumped from 0.1.0 to 0.1.1
 
+## [0.10.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.9.1...accesskit_winit-v0.10.0) (2023-02-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* Make `Node` opaque and optimize it for size ([#205](https://github.com/AccessKit/accesskit/issues/205))
+
+### Code Refactoring
+
+* Make `Node` opaque and optimize it for size ([#205](https://github.com/AccessKit/accesskit/issues/205)) ([4811152](https://github.com/AccessKit/accesskit/commit/48111521439b76c1a8687418a4b20f9b705eac6d))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.8.1 to 0.9.0
+    * accesskit_windows bumped from 0.11.0 to 0.12.0
+    * accesskit_macos bumped from 0.4.2 to 0.5.0
+    * accesskit_unix bumped from 0.1.1 to 0.2.0
+
 ## [0.9.1](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.9.0...accesskit_winit-v0.9.1) (2023-02-05)
 
 
