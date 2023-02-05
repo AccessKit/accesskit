@@ -776,7 +776,8 @@ impl PlatformNode {
         F: FnOnce(&Node, &Rc<Context>) -> T,
     {
         let context = self.boxed.context.upgrade()?;
-        let state = context.tree.read();
+        let tree = context.tree.borrow();
+        let state = tree.state();
         let node = state.node_by_id(self.boxed.node_id)?;
         Some(f(&node, &context))
     }
@@ -792,7 +793,11 @@ impl PlatformNode {
     where
         F: FnOnce(&Node, &Tree) -> T,
     {
-        self.resolve_with_context(|node, context| f(node, &context.tree))
+        let context = self.boxed.context.upgrade()?;
+        let tree = context.tree.borrow();
+        let state = tree.state();
+        let node = state.node_by_id(self.boxed.node_id)?;
+        Some(f(&node, &tree))
     }
 
     fn children_internal(&self) -> *mut NSArray<PlatformNode> {

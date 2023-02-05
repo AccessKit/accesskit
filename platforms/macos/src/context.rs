@@ -15,7 +15,7 @@ use crate::{appkit::*, node::PlatformNode};
 
 pub(crate) struct Context {
     pub(crate) view: WeakId<NSView>,
-    pub(crate) tree: Tree,
+    pub(crate) tree: RefCell<Tree>,
     platform_nodes: RefCell<HashMap<NodeId, Id<PlatformNode, Shared>>>,
     _mtm: MainThreadMarker,
 }
@@ -24,7 +24,7 @@ impl Context {
     pub(crate) fn new(view: WeakId<NSView>, tree: Tree, mtm: MainThreadMarker) -> Rc<Self> {
         Rc::new(Self {
             view,
-            tree,
+            tree: RefCell::new(tree),
             platform_nodes: RefCell::new(HashMap::new()),
             _mtm: mtm,
         })

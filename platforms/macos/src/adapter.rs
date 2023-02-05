@@ -49,14 +49,14 @@ impl Adapter {
     /// The caller must call [`QueuedEvents::raise`] on the return value.
     pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
         let mut event_generator = EventGenerator::new(self.context.clone());
-        self.context
-            .tree
-            .update_and_process_changes(update, &mut event_generator);
+        let mut tree = self.context.tree.borrow_mut();
+        tree.update_and_process_changes(update, &mut event_generator);
         event_generator.into_result()
     }
 
     pub fn view_children(&self) -> *mut NSArray<NSObject> {
-        let state = self.context.tree.read();
+        let tree = self.context.tree.borrow();
+        let state = tree.state();
         let node = state.root();
         let platform_nodes = if filter(&node) == FilterResult::Include {
             vec![Id::into_super(Id::into_super(
@@ -76,7 +76,8 @@ impl Adapter {
     }
 
     pub fn focus(&self) -> *mut NSObject {
-        let state = self.context.tree.read();
+        let tree = self.context.tree.borrow();
+        let state = tree.state();
         if let Some(node) = state.focus() {
             if can_be_focused(&node) {
                 return Id::autorelease_return(self.context.get_or_create_platform_node(node.id()))
@@ -94,7 +95,8 @@ impl Adapter {
             }
         };
 
-        let state = self.context.tree.read();
+        let tree = self.context.tree.borrow();
+        let state = tree.state();
         let root = state.root();
         let point = from_ns_point(&view, &root, point);
         if let Some(node) = root.node_at_point(point, &filter) {

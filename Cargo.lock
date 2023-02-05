@@ -42,7 +42,6 @@ dependencies = [
  "accesskit_consumer",
  "objc2",
  "once_cell",
- "parking_lot",
 ]
 
 [[package]]
