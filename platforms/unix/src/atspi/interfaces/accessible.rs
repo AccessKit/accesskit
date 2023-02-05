@@ -115,7 +115,7 @@ impl AccessibleInterface<PlatformRootNode> {
         self.node
             .context
             .upgrade()
-            .map(|context| context.read().name.clone())
+            .map(|context| context.read().unwrap().name.clone())
             .unwrap_or_default()
     }
 
@@ -129,7 +129,7 @@ impl AccessibleInterface<PlatformRootNode> {
         self.node
             .context
             .upgrade()
-            .and_then(|context| context.read().desktop_address.clone())
+            .and_then(|context| context.read().unwrap().desktop_address.clone())
             .unwrap_or_else(|| OwnedObjectAddress::null(self.bus_name.clone()))
     }
 
@@ -162,7 +162,7 @@ impl AccessibleInterface<PlatformRootNode> {
             .node
             .tree
             .upgrade()
-            .map(|tree| ObjectRef::Managed(tree.read().root().id().into()));
+            .map(|tree| ObjectRef::Managed(tree.read().unwrap().state().root().id().into()));
         super::object_address(hdr.destination()?, child)
     }
 
@@ -174,7 +174,7 @@ impl AccessibleInterface<PlatformRootNode> {
             .map(|tree| {
                 vec![OwnedObjectAddress::accessible(
                     self.bus_name.clone(),
-                    tree.read().root().id().into(),
+                    tree.read().unwrap().state().root().id().into(),
                 )]
             })
             .ok_or_else(|| unknown_object(&ObjectId::root()))

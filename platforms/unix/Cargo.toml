@@ -16,6 +16,5 @@ accesskit_consumer = { version = "0.13.0", path = "../../consumer" }
 async-channel = "1.8.0"
 atspi = "0.8.7"
 futures-lite = "1.12.0"
-parking_lot = "0.12.1"
 serde = "1.0"
 zbus = "3.6"

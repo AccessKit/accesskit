@@ -22,10 +22,9 @@ use atspi::{
     accessible::Role as AtspiRole, component::Layer, CoordType, Interface, InterfaceSet, State,
     StateSet,
 };
-use parking_lot::RwLock;
 use std::{
     iter::FusedIterator,
-    sync::{Arc, Weak},
+    sync::{Arc, RwLock, Weak},
 };
 use zbus::fdo;
 
@@ -598,21 +597,25 @@ pub(crate) fn unknown_object(id: &ObjectId) -> fdo::Error {
 
 #[derive(Clone)]
 pub(crate) struct PlatformNode {
-    tree: Weak<Tree>,
+    tree: Weak<RwLock<Tree>>,
     node_id: NodeId,
 }
 
 impl PlatformNode {
-    pub(crate) fn new(tree: &Arc<Tree>, node_id: NodeId) -> Self {
+    pub(crate) fn new(tree: &Arc<RwLock<Tree>>, node_id: NodeId) -> Self {
         Self {
             tree: Arc::downgrade(tree),
             node_id,
         }
     }
 
-    fn upgrade_tree(&self) -> fdo::Result<Arc<Tree>> {
+    fn with_tree<F, T>(&self, f: F) -> fdo::Result<T>
+    where
+        F: FnOnce(&Tree) -> fdo::Result<T>,
+    {
         if let Some(tree) = self.tree.upgrade() {
-            Ok(tree)
+            let tree = tree.read().unwrap();
+            f(&tree)
         } else {
             Err(unknown_object(&self.accessible_id()))
         }
@@ -622,9 +625,7 @@ impl PlatformNode {
     where
         F: FnOnce(&TreeState) -> fdo::Result<T>,
     {
-        let tree = self.upgrade_tree()?;
-        let state = tree.read();
-        f(&state)
+        self.with_tree(|tree| f(tree.state()))
     }
 
     fn resolve<F, T>(&self, f: F) -> fdo::Result<T>
@@ -640,15 +641,17 @@ impl PlatformNode {
         })
     }
 
-    fn validate_for_action(&self) -> fdo::Result<Arc<Tree>> {
-        let tree = self.upgrade_tree()?;
-        let state = tree.read();
-        if state.has_node(self.node_id) {
-            drop(state);
-            Ok(tree)
-        } else {
-            Err(unknown_object(&self.accessible_id()))
-        }
+    fn validate_for_action<F, T>(&self, f: F) -> fdo::Result<T>
+    where
+        F: FnOnce(&Tree) -> fdo::Result<T>,
+    {
+        self.with_tree(|tree| {
+            if tree.state().has_node(self.node_id) {
+                f(tree)
+            } else {
+                Err(unknown_object(&self.accessible_id()))
+            }
+        })
     }
 
     pub fn name(&self) -> fdo::Result<String> {
@@ -767,9 +770,10 @@ impl PlatformNode {
         if index != 0 {
             return Ok(false);
         }
-        let tree = self.validate_for_action()?;
-        tree.do_default_action(self.node_id);
-        Ok(true)
+        self.validate_for_action(|tree| {
+            tree.do_default_action(self.node_id);
+            Ok(true)
+        })
     }
 
     pub fn contains(
@@ -854,9 +858,10 @@ impl PlatformNode {
     }
 
     pub fn grab_focus(&self) -> fdo::Result<bool> {
-        let tree = self.validate_for_action()?;
-        tree.set_focus(self.node_id);
-        Ok(true)
+        self.validate_for_action(|tree| {
+            tree.set_focus(self.node_id);
+            Ok(true)
+        })
     }
 
     pub fn scroll_to_point(
@@ -866,12 +871,13 @@ impl PlatformNode {
         x: i32,
         y: i32,
     ) -> fdo::Result<bool> {
-        let tree = self.validate_for_action()?;
-        let is_root = self.node_id == tree.read().root_id();
-        let top_left = window_bounds.top_left(coord_type, is_root);
-        let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
-        tree.scroll_to_point(self.node_id, point);
-        Ok(true)
+        self.validate_for_action(|tree| {
+            let is_root = self.node_id == tree.state().root_id();
+            let top_left = window_bounds.top_left(coord_type, is_root);
+            let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
+            tree.scroll_to_point(self.node_id, point);
+            Ok(true)
+        })
     }
 
     pub fn minimum_value(&self) -> fdo::Result<f64> {
@@ -894,20 +900,21 @@ impl PlatformNode {
     }
 
     pub fn set_current_value(&self, value: f64) -> fdo::Result<()> {
-        let tree = self.validate_for_action()?;
-        tree.set_numeric_value(self.node_id, value);
-        Ok(())
+        self.validate_for_action(|tree| {
+            tree.set_numeric_value(self.node_id, value);
+            Ok(())
+        })
     }
 }
 
 #[derive(Clone)]
 pub(crate) struct PlatformRootNode {
     pub(crate) context: Weak<RwLock<AppContext>>,
-    pub(crate) tree: Weak<Tree>,
+    pub(crate) tree: Weak<RwLock<Tree>>,
 }
 
 impl PlatformRootNode {
-    pub fn new(context: &Arc<RwLock<AppContext>>, tree: &Arc<Tree>) -> Self {
+    pub fn new(context: &Arc<RwLock<AppContext>>, tree: &Arc<RwLock<Tree>>) -> Self {
         Self {
             context: Arc::downgrade(context),
             tree: Arc::downgrade(tree),

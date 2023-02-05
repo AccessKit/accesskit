@@ -54,7 +54,6 @@ dependencies = [
  "async-channel",
  "atspi",
  "futures-lite",
- "parking_lot",
  "serde",
  "zbus",
 ]

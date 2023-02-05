@@ -10,8 +10,7 @@ use crate::{
     PlatformNode,
 };
 use atspi::{component::Layer, CoordType};
-use parking_lot::RwLock;
-use std::sync::{Arc, Weak};
+use std::sync::{Arc, RwLock, Weak};
 use zbus::{fdo, MessageHeader};
 
 pub(crate) struct ComponentInterface {
@@ -40,7 +39,9 @@ impl ComponentInterface {
 impl ComponentInterface {
     fn contains(&self, x: i32, y: i32, coord_type: CoordType) -> fdo::Result<bool> {
         let window_bounds = self.upgrade_bounds()?;
-        let contains = self.node.contains(&window_bounds.read(), x, y, coord_type);
+        let contains = self
+            .node
+            .contains(&window_bounds.read().unwrap(), x, y, coord_type);
         contains
     }
 
@@ -54,13 +55,15 @@ impl ComponentInterface {
         let window_bounds = self.upgrade_bounds()?;
         let accessible =
             self.node
-                .get_accessible_at_point(&window_bounds.read(), x, y, coord_type)?;
+                .get_accessible_at_point(&window_bounds.read().unwrap(), x, y, coord_type)?;
         super::object_address(hdr.destination()?, accessible)
     }
 
     fn get_extents(&self, coord_type: CoordType) -> fdo::Result<(Rect,)> {
         let window_bounds = self.upgrade_bounds()?;
-        let extents = self.node.get_extents(&window_bounds.read(), coord_type);
+        let extents = self
+            .node
+            .get_extents(&window_bounds.read().unwrap(), coord_type);
         extents
     }
 
@@ -76,7 +79,7 @@ impl ComponentInterface {
         let window_bounds = self.upgrade_bounds()?;
         let scrolled = self
             .node
-            .scroll_to_point(&window_bounds.read(), coord_type, x, y);
+            .scroll_to_point(&window_bounds.read().unwrap(), coord_type, x, y);
         scrolled
     }
 }
