@@ -9,7 +9,7 @@ use accesskit_consumer::{
     Node, TextPosition as Position, TextRange as Range, Tree, TreeState, WeakTextRange as WeakRange,
 };
 use parking_lot::RwLock;
-use std::sync::{Arc, Weak};
+use std::sync::Weak;
 use windows::{
     core::*,
     Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
@@ -204,13 +204,13 @@ fn move_position(
 
 #[implement(ITextRangeProvider)]
 pub(crate) struct PlatformRange {
-    tree: Weak<Tree>,
+    tree: Weak<RwLock<Tree>>,
     state: RwLock<WeakRange>,
     hwnd: HWND,
 }
 
 impl PlatformRange {
-    pub(crate) fn new(tree: &Weak<Tree>, range: Range, hwnd: HWND) -> Self {
+    pub(crate) fn new(tree: &Weak<RwLock<Tree>>, range: Range, hwnd: HWND) -> Self {
         Self {
             tree: tree.clone(),
             state: RwLock::new(range.downgrade()),
@@ -218,9 +218,13 @@ impl PlatformRange {
         }
     }
 
-    fn upgrade_tree(&self) -> Result<Arc<Tree>> {
+    fn with_tree<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(&Tree) -> Result<T>,
+    {
         if let Some(tree) = self.tree.upgrade() {
-            Ok(tree)
+            let tree = tree.read();
+            f(&tree)
         } else {
             Err(element_not_available())
         }
@@ -230,9 +234,7 @@ impl PlatformRange {
     where
         F: FnOnce(&TreeState) -> Result<T>,
     {
-        let tree = self.upgrade_tree()?;
-        let state = tree.read();
-        f(&state)
+        self.with_tree(|tree| f(tree.state()))
     }
 
     fn upgrade_node<'a>(&self, tree_state: &'a TreeState) -> Result<Node<'a>> {
@@ -282,10 +284,11 @@ impl PlatformRange {
     where
         for<'a> F: FnOnce(&'a Tree, Range<'a>) -> Result<()>,
     {
-        let tree = self.upgrade_tree()?;
-        let tree_state = tree.read();
-        let range = self.upgrade_for_read(&tree_state)?;
-        f(&tree, range)
+        self.with_tree(|tree| {
+            let tree_state = tree.state();
+            let range = self.upgrade_for_read(tree_state)?;
+            f(tree, range)
+        })
     }
 
     fn require_same_tree(&self, other: &PlatformRange) -> Result<()> {
@@ -572,4 +575,12 @@ impl ITextRangeProvider_Impl for PlatformRange {
         // We don't support embedded objects in text.
         Ok(safe_array_from_com_slice(&[]))
     }
+}
+
+// Ensures that `PlatformRange` is actually safe to use in the free-threaded
+// manner that we advertise via `ProviderOptions`.
+#[test]
+fn platform_range_impl_send_sync() {
+    fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<PlatformRange>();
 }

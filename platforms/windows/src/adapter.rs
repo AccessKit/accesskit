@@ -7,6 +7,7 @@ use std::{collections::HashSet, sync::Arc};
 
 use accesskit::{ActionHandler, Live, NodeId, Role, TreeUpdate};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
+use parking_lot::RwLock;
 use windows::Win32::{
     Foundation::*,
     UI::{Accessibility::*, WindowsAndMessaging::*},
@@ -20,7 +21,7 @@ use crate::{
 
 pub struct Adapter {
     hwnd: HWND,
-    tree: Arc<Tree>,
+    tree: Arc<RwLock<Tree>>,
 }
 
 impl Adapter {
@@ -32,7 +33,7 @@ impl Adapter {
     ) -> Self {
         Self {
             hwnd,
-            tree: Arc::new(Tree::new(initial_state, action_handler)),
+            tree: Arc::new(RwLock::new(Tree::new(initial_state, action_handler))),
         }
     }
 
@@ -45,7 +46,7 @@ impl Adapter {
     /// it should be called.
     pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
         struct Handler<'a> {
-            tree: &'a Arc<Tree>,
+            tree: &'a Arc<RwLock<Tree>>,
             hwnd: HWND,
             queue: Vec<QueuedEvent>,
             text_changed: HashSet<NodeId>,
@@ -156,13 +157,14 @@ impl Adapter {
             queue: Vec::new(),
             text_changed: HashSet::new(),
         };
-        self.tree.update_and_process_changes(update, &mut handler);
+        let mut tree = self.tree.write();
+        tree.update_and_process_changes(update, &mut handler);
         QueuedEvents(handler.queue)
     }
 
     fn root_platform_node(&self) -> PlatformNode {
-        let state = self.tree.read();
-        let node_id = state.root_id();
+        let tree = self.tree.read();
+        let node_id = tree.state().root_id();
         PlatformNode::new(&self.tree, node_id, self.hwnd)
     }
 

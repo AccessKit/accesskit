@@ -735,10 +735,10 @@ mod tests {
     #[test]
     fn parent_and_index() {
         let tree = test_tree();
-        assert!(tree.read().root().parent_and_index().is_none());
+        assert!(tree.state().root().parent_and_index().is_none());
         assert_eq!(
             Some((ROOT_ID, 0)),
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_0_ID)
                 .unwrap()
                 .parent_and_index()
@@ -746,7 +746,7 @@ mod tests {
         );
         assert_eq!(
             Some((PARAGRAPH_0_ID, 0)),
-            tree.read()
+            tree.state()
                 .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
                 .unwrap()
                 .parent_and_index()
@@ -754,7 +754,7 @@ mod tests {
         );
         assert_eq!(
             Some((ROOT_ID, 1)),
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_1_IGNORED_ID)
                 .unwrap()
                 .parent_and_index()
@@ -767,11 +767,11 @@ mod tests {
         let tree = test_tree();
         assert_eq!(
             STATIC_TEXT_0_0_IGNORED_ID,
-            tree.read().root().deepest_first_child().unwrap().id()
+            tree.state().root().deepest_first_child().unwrap().id()
         );
         assert_eq!(
             STATIC_TEXT_0_0_IGNORED_ID,
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_0_ID)
                 .unwrap()
                 .deepest_first_child()
@@ -779,7 +779,7 @@ mod tests {
                 .id()
         );
         assert!(tree
-            .read()
+            .state()
             .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
             .unwrap()
             .deepest_first_child()
@@ -791,7 +791,7 @@ mod tests {
         let tree = test_tree();
         assert_eq!(
             ROOT_ID,
-            tree.read()
+            tree.state()
                 .node_by_id(STATIC_TEXT_1_0_ID)
                 .unwrap()
                 .filtered_parent(&test_tree_filter)
@@ -799,7 +799,7 @@ mod tests {
                 .id()
         );
         assert!(tree
-            .read()
+            .state()
             .root()
             .filtered_parent(&test_tree_filter)
             .is_none());
@@ -810,20 +810,20 @@ mod tests {
         let tree = test_tree();
         assert_eq!(
             PARAGRAPH_0_ID,
-            tree.read()
+            tree.state()
                 .root()
                 .deepest_first_filtered_child(&test_tree_filter)
                 .unwrap()
                 .id()
         );
         assert!(tree
-            .read()
+            .state()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
             .deepest_first_filtered_child(&test_tree_filter)
             .is_none());
         assert!(tree
-            .read()
+            .state()
             .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
             .unwrap()
             .deepest_first_filtered_child(&test_tree_filter)
@@ -835,11 +835,11 @@ mod tests {
         let tree = test_tree();
         assert_eq!(
             EMPTY_CONTAINER_3_3_IGNORED_ID,
-            tree.read().root().deepest_last_child().unwrap().id()
+            tree.state().root().deepest_last_child().unwrap().id()
         );
         assert_eq!(
             EMPTY_CONTAINER_3_3_IGNORED_ID,
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
                 .deepest_last_child()
@@ -847,7 +847,7 @@ mod tests {
                 .id()
         );
         assert!(tree
-            .read()
+            .state()
             .node_by_id(BUTTON_3_2_ID)
             .unwrap()
             .deepest_last_child()
@@ -859,7 +859,7 @@ mod tests {
         let tree = test_tree();
         assert_eq!(
             BUTTON_3_2_ID,
-            tree.read()
+            tree.state()
                 .root()
                 .deepest_last_filtered_child(&test_tree_filter)
                 .unwrap()
@@ -867,7 +867,7 @@ mod tests {
         );
         assert_eq!(
             BUTTON_3_2_ID,
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
                 .deepest_last_filtered_child(&test_tree_filter)
@@ -875,13 +875,13 @@ mod tests {
                 .id()
         );
         assert!(tree
-            .read()
+            .state()
             .node_by_id(BUTTON_3_2_ID)
             .unwrap()
             .deepest_last_filtered_child(&test_tree_filter)
             .is_none());
         assert!(tree
-            .read()
+            .state()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
             .deepest_last_filtered_child(&test_tree_filter)
@@ -892,44 +892,44 @@ mod tests {
     fn is_descendant_of() {
         let tree = test_tree();
         assert!(tree
-            .read()
+            .state()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
-            .is_descendant_of(&tree.read().root()));
+            .is_descendant_of(&tree.state().root()));
         assert!(tree
-            .read()
+            .state()
             .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
             .unwrap()
-            .is_descendant_of(&tree.read().root()));
+            .is_descendant_of(&tree.state().root()));
         assert!(tree
-            .read()
+            .state()
             .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
             .unwrap()
-            .is_descendant_of(&tree.read().node_by_id(PARAGRAPH_0_ID).unwrap()));
+            .is_descendant_of(&tree.state().node_by_id(PARAGRAPH_0_ID).unwrap()));
         assert!(!tree
-            .read()
+            .state()
             .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
             .unwrap()
-            .is_descendant_of(&tree.read().node_by_id(PARAGRAPH_2_ID).unwrap()));
+            .is_descendant_of(&tree.state().node_by_id(PARAGRAPH_2_ID).unwrap()));
         assert!(!tree
-            .read()
+            .state()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
-            .is_descendant_of(&tree.read().node_by_id(PARAGRAPH_2_ID).unwrap()));
+            .is_descendant_of(&tree.state().node_by_id(PARAGRAPH_2_ID).unwrap()));
     }
 
     #[test]
     fn is_root() {
         let tree = test_tree();
-        assert!(tree.read().node_by_id(ROOT_ID).unwrap().is_root());
-        assert!(!tree.read().node_by_id(PARAGRAPH_0_ID).unwrap().is_root());
+        assert!(tree.state().node_by_id(ROOT_ID).unwrap().is_root());
+        assert!(!tree.state().node_by_id(PARAGRAPH_0_ID).unwrap().is_root());
     }
 
     #[test]
     fn bounding_box() {
         let tree = test_tree();
         assert!(tree
-            .read()
+            .state()
             .node_by_id(ROOT_ID)
             .unwrap()
             .bounding_box()
@@ -941,7 +941,7 @@ mod tests {
                 x1: 810.0,
                 y1: 80.0,
             }),
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_1_IGNORED_ID)
                 .unwrap()
                 .bounding_box()
@@ -953,7 +953,7 @@ mod tests {
                 x1: 100.0,
                 y1: 70.0,
             }),
-            tree.read()
+            tree.state()
                 .node_by_id(STATIC_TEXT_1_0_ID)
                 .unwrap()
                 .bounding_box()
@@ -964,26 +964,26 @@ mod tests {
     fn node_at_point() {
         let tree = test_tree();
         assert!(tree
-            .read()
+            .state()
             .root()
             .node_at_point(Point::new(10.0, 40.0), &test_tree_filter)
             .is_none());
         assert_eq!(
             Some(STATIC_TEXT_1_0_ID),
-            tree.read()
+            tree.state()
                 .root()
                 .node_at_point(Point::new(20.0, 50.0), &test_tree_filter)
                 .map(|node| node.id())
         );
         assert_eq!(
             Some(STATIC_TEXT_1_0_ID),
-            tree.read()
+            tree.state()
                 .root()
                 .node_at_point(Point::new(50.0, 60.0), &test_tree_filter)
                 .map(|node| node.id())
         );
         assert!(tree
-            .read()
+            .state()
             .root()
             .node_at_point(Point::new(100.0, 70.0), &test_tree_filter)
             .is_none());
@@ -1008,7 +1008,7 @@ mod tests {
             focus: None,
         };
         let tree = crate::Tree::new(update, Box::new(NullActionHandler {}));
-        assert_eq!(None, tree.read().node_by_id(NODE_ID_2).unwrap().name());
+        assert_eq!(None, tree.state().node_by_id(NODE_ID_2).unwrap().name());
     }
 
     #[test]
@@ -1053,11 +1053,11 @@ mod tests {
         let tree = crate::Tree::new(update, Box::new(NullActionHandler {}));
         assert_eq!(
             Some([LABEL_1, LABEL_2].join(" ")),
-            tree.read().node_by_id(NODE_ID_2).unwrap().name()
+            tree.state().node_by_id(NODE_ID_2).unwrap().name()
         );
         assert_eq!(
             Some(LABEL_2.into()),
-            tree.read().node_by_id(NODE_ID_4).unwrap().name()
+            tree.state().node_by_id(NODE_ID_4).unwrap().name()
         );
     }
 
@@ -1106,11 +1106,11 @@ mod tests {
         let tree = crate::Tree::new(update, Box::new(NullActionHandler {}));
         assert_eq!(
             Some(BUTTON_LABEL.into()),
-            tree.read().node_by_id(NODE_ID_2).unwrap().name()
+            tree.state().node_by_id(NODE_ID_2).unwrap().name()
         );
         assert_eq!(
             Some(LINK_LABEL.into()),
-            tree.read().node_by_id(NODE_ID_4).unwrap().name()
+            tree.state().node_by_id(NODE_ID_4).unwrap().name()
         );
     }
 }

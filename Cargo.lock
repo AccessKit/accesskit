@@ -32,7 +32,6 @@ name = "accesskit_consumer"
 version = "0.13.0"
 dependencies = [
  "accesskit",
- "parking_lot",
 ]
 
 [[package]]

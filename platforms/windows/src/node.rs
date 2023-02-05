@@ -13,6 +13,7 @@
 use accesskit::{CheckedState, Live, NodeId, NodeIdContent, Point, Role};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, Tree, TreeState};
 use arrayvec::ArrayVec;
+use parking_lot::RwLock;
 use paste::paste;
 use std::sync::{Arc, Weak};
 use windows::{
@@ -504,13 +505,13 @@ impl<'a> NodeWrapper<'a> {
     ITextProvider
 )]
 pub(crate) struct PlatformNode {
-    pub(crate) tree: Weak<Tree>,
+    pub(crate) tree: Weak<RwLock<Tree>>,
     pub(crate) node_id: NodeId,
     pub(crate) hwnd: HWND,
 }
 
 impl PlatformNode {
-    pub(crate) fn new(tree: &Arc<Tree>, node_id: NodeId, hwnd: HWND) -> Self {
+    pub(crate) fn new(tree: &Arc<RwLock<Tree>>, node_id: NodeId, hwnd: HWND) -> Self {
         Self {
             tree: Arc::downgrade(tree),
             node_id,
@@ -518,9 +519,13 @@ impl PlatformNode {
         }
     }
 
-    fn upgrade_tree(&self) -> Result<Arc<Tree>> {
+    fn with_tree<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(&Tree) -> Result<T>,
+    {
         if let Some(tree) = self.tree.upgrade() {
-            Ok(tree)
+            let tree = tree.read();
+            f(&tree)
         } else {
             Err(element_not_available())
         }
@@ -530,9 +535,7 @@ impl PlatformNode {
     where
         F: FnOnce(&TreeState) -> Result<T>,
     {
-        let tree = self.upgrade_tree()?;
-        let state = tree.read();
-        f(&state)
+        self.with_tree(|tree| f(tree.state()))
     }
 
     fn resolve<F, T>(&self, f: F) -> Result<T>
@@ -564,21 +567,24 @@ impl PlatformNode {
         })
     }
 
-    fn validate_for_action(&self) -> Result<Arc<Tree>> {
-        let tree = self.upgrade_tree()?;
-        let state = tree.read();
-        if state.has_node(self.node_id) {
-            drop(state);
-            Ok(tree)
-        } else {
-            Err(element_not_available())
-        }
+    fn validate_for_action<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(&Tree) -> Result<T>,
+    {
+        self.with_tree(|tree| {
+            if tree.state().has_node(self.node_id) {
+                f(tree)
+            } else {
+                Err(element_not_available())
+            }
+        })
     }
 
     fn do_default_action(&self) -> Result<()> {
-        let tree = self.validate_for_action()?;
-        tree.do_default_action(self.node_id);
-        Ok(())
+        self.validate_for_action(|tree| {
+            tree.do_default_action(self.node_id);
+            Ok(())
+        })
     }
 
     fn relative(&self, node_id: NodeId) -> Self {
@@ -678,9 +684,10 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
     }
 
     fn SetFocus(&self) -> Result<()> {
-        let tree = self.validate_for_action()?;
-        tree.set_focus(self.node_id);
-        Ok(())
+        self.validate_for_action(|tree| {
+            tree.set_focus(self.node_id);
+            Ok(())
+        })
     }
 
     fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
@@ -848,10 +855,11 @@ patterns! {
         (IsReadOnly, is_read_only, BOOL)
     ), (
         fn SetValue(&self, value: &PCWSTR) -> Result<()> {
-            let tree = self.validate_for_action()?;
-            let value = unsafe { value.to_string() }.unwrap();
-            tree.set_value(self.node_id, value);
-            Ok(())
+            self.validate_for_action(|tree| {
+                let value = unsafe { value.to_string() }.unwrap();
+                tree.set_value(self.node_id, value);
+                Ok(())
+            })
         }
     )),
     (RangeValue, is_range_value_pattern_supported, (
@@ -863,9 +871,10 @@ patterns! {
         (LargeChange, numeric_value_jump, f64)
     ), (
         fn SetValue(&self, value: f64) -> Result<()> {
-            let tree = self.validate_for_action()?;
-            tree.set_numeric_value(self.node_id, value);
-            Ok(())
+            self.validate_for_action(|tree| {
+                tree.set_numeric_value(self.node_id, value);
+                Ok(())
+            })
         }
     )),
     (SelectionItem, is_selection_item_pattern_supported, (
@@ -945,4 +954,12 @@ patterns! {
             })
         }
     ))
+}
+
+// Ensures that `PlatformNode` is actually safe to use in the free-threaded
+// manner that we advertise via `ProviderOptions`.
+#[test]
+fn platform_node_impl_send_sync() {
+    fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<PlatformNode>();
 }

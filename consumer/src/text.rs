@@ -1276,7 +1276,7 @@ mod tests {
     #[test]
     fn supports_text_ranges() {
         let tree = main_multiline_tree(None);
-        let state = tree.read();
+        let state = tree.state();
         assert!(!state.node_by_id(NODE_ID_1).unwrap().supports_text_ranges());
         assert!(state.node_by_id(NODE_ID_2).unwrap().supports_text_ranges());
     }
@@ -1284,7 +1284,7 @@ mod tests {
     #[test]
     fn multiline_document_range() {
         let tree = main_multiline_tree(None);
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
         let range = node.document_range();
         let start = range.start();
@@ -1343,7 +1343,7 @@ mod tests {
     #[test]
     fn multiline_end_degenerate_range() {
         let tree = main_multiline_tree(Some(multiline_end_selection()));
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
         let range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
@@ -1369,7 +1369,7 @@ mod tests {
     #[test]
     fn multiline_wrapped_line_end_range() {
         let tree = main_multiline_tree(Some(multiline_wrapped_line_end_selection()));
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
         let range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
@@ -1431,7 +1431,7 @@ mod tests {
     #[test]
     fn multiline_find_line_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
@@ -1463,7 +1463,7 @@ mod tests {
     #[test]
     fn multiline_find_wrapped_line_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_first_line_middle_selection()));
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
@@ -1495,7 +1495,7 @@ mod tests {
     #[test]
     fn multiline_find_paragraph_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
@@ -1539,7 +1539,7 @@ mod tests {
     #[test]
     fn multiline_find_word_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
@@ -1567,7 +1567,7 @@ mod tests {
     #[test]
     fn text_position_at_point() {
         let tree = main_multiline_tree(None);
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
 
         {
@@ -1659,7 +1659,7 @@ mod tests {
     #[test]
     fn to_global_utf16_index() {
         let tree = main_multiline_tree(None);
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
 
         {
@@ -1684,7 +1684,7 @@ mod tests {
     #[test]
     fn to_line_index() {
         let tree = main_multiline_tree(None);
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
 
         {
@@ -1710,7 +1710,7 @@ mod tests {
     #[test]
     fn line_range_from_index() {
         let tree = main_multiline_tree(None);
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
 
         {
@@ -1749,7 +1749,7 @@ mod tests {
     #[test]
     fn text_position_from_global_utf16_index() {
         let tree = main_multiline_tree(None);
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
 
         {

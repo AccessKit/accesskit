@@ -7,11 +7,7 @@ use accesskit::{
     Action, ActionData, ActionHandler, ActionRequest, Live, Node as NodeData, NodeId, Point,
     TextSelection, Tree as TreeData, TreeUpdate,
 };
-use parking_lot::{RwLock, RwLockWriteGuard};
-use std::{
-    collections::{HashMap, HashSet},
-    ops::Deref,
-};
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     node::{DetachedNode, Node, NodeState, ParentAndIndex},
@@ -269,8 +265,8 @@ pub trait ChangeHandler {
 }
 
 pub struct Tree {
-    state: RwLock<State>,
-    pub(crate) action_handler: Box<dyn ActionHandler>,
+    state: State,
+    action_handler: Box<dyn ActionHandler>,
 }
 
 impl Tree {
@@ -282,27 +278,28 @@ impl Tree {
         };
         state.update(initial_state, None);
         Self {
-            state: RwLock::new(state),
+            state,
             action_handler,
         }
     }
 
-    pub fn update(&self, update: TreeUpdate) {
-        let mut state = self.state.write();
-        state.update(update, None);
+    pub fn update(&mut self, update: TreeUpdate) {
+        self.state.update(update, None);
     }
 
-    pub fn update_and_process_changes(&self, update: TreeUpdate, handler: &mut impl ChangeHandler) {
+    pub fn update_and_process_changes(
+        &mut self,
+        update: TreeUpdate,
+        handler: &mut impl ChangeHandler,
+    ) {
         let mut changes = InternalChanges::default();
-        let mut state = self.state.write();
-        state.update(update, Some(&mut changes));
-        let state = RwLockWriteGuard::downgrade(state);
+        self.state.update(update, Some(&mut changes));
         for id in &changes.added_node_ids {
-            let node = state.node_by_id(*id).unwrap();
+            let node = self.state.node_by_id(*id).unwrap();
             handler.node_added(&node);
         }
         for (id, old_node) in &changes.updated_nodes {
-            let new_node = state.node_by_id(*id).unwrap();
+            let new_node = self.state.node_by_id(*id).unwrap();
             handler.node_updated(old_node, &new_node);
         }
         if let Some(focus_change) = changes.focus_change {
@@ -311,12 +308,12 @@ impl Tree {
                 if !changes.updated_nodes.contains_key(&id)
                     && !changes.removed_nodes.contains_key(&id)
                 {
-                    if let Some(old_node_new_version) = state.node_by_id(id) {
+                    if let Some(old_node_new_version) = self.state.node_by_id(id) {
                         handler.node_updated(old_node, &old_node_new_version);
                     }
                 }
             }
-            let new_node = state.focus();
+            let new_node = self.state.focus();
             if let Some(new_node) = new_node {
                 let id = new_node.id();
                 if !changes.added_node_ids.contains(&id) && !changes.updated_nodes.contains_key(&id)
@@ -329,12 +326,12 @@ impl Tree {
             handler.focus_moved(focus_change.old_focus.as_ref(), new_node.as_ref());
         }
         for node in changes.removed_nodes.values() {
-            handler.node_removed(node, &state);
+            handler.node_removed(node, &self.state);
         }
     }
 
-    pub fn read(&self) -> impl Deref<Target = State> + '_ {
-        self.state.read()
+    pub fn state(&self) -> &State {
+        &self.state
     }
 
     pub fn set_focus(&self, target: NodeId) {
@@ -445,9 +442,9 @@ mod tests {
             focus: None,
         };
         let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
-        assert_eq!(NODE_ID_1, tree.read().root().id());
-        assert_eq!(Role::Window, tree.read().root().role());
-        assert!(tree.read().root().parent().is_none());
+        assert_eq!(NODE_ID_1, tree.state().root().id());
+        assert_eq!(Role::Window, tree.state().root().role());
+        assert!(tree.state().root().parent().is_none());
     }
 
     #[test]
@@ -473,7 +470,7 @@ mod tests {
             focus: None,
         };
         let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
-        let state = tree.read();
+        let state = tree.state();
         assert_eq!(
             NODE_ID_1,
             state.node_by_id(NODE_ID_2).unwrap().parent().unwrap().id()
@@ -494,8 +491,8 @@ mod tests {
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
-        let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
-        assert_eq!(0, tree.read().root().children().count());
+        let mut tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
+        assert_eq!(0, tree.state().root().children().count());
         let second_update = TreeUpdate {
             nodes: vec![
                 (NODE_ID_1, {
@@ -558,7 +555,7 @@ mod tests {
         tree.update_and_process_changes(second_update, &mut handler);
         assert!(handler.got_new_child_node);
         assert!(handler.got_updated_root_node);
-        let state = tree.read();
+        let state = tree.state();
         assert_eq!(1, state.root().children().count());
         assert_eq!(NODE_ID_2, state.root().children().next().unwrap().id());
         assert_eq!(
@@ -586,8 +583,8 @@ mod tests {
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
-        let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
-        assert_eq!(1, tree.read().root().children().count());
+        let mut tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
+        assert_eq!(1, tree.state().root().children().count());
         let second_update = TreeUpdate {
             nodes: vec![(NODE_ID_1, root_builder.build(&mut classes))],
             tree: None,
@@ -640,8 +637,8 @@ mod tests {
         tree.update_and_process_changes(second_update, &mut handler);
         assert!(handler.got_updated_root_node);
         assert!(handler.got_removed_child_node);
-        assert_eq!(0, tree.read().root().children().count());
-        assert!(tree.read().node_by_id(NODE_ID_2).is_none());
+        assert_eq!(0, tree.state().root().children().count());
+        assert!(tree.state().node_by_id(NODE_ID_2).is_none());
     }
 
     #[test]
@@ -666,8 +663,8 @@ mod tests {
             tree: Some(Tree::new(NODE_ID_1)),
             focus: Some(NODE_ID_2),
         };
-        let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
-        assert!(tree.read().node_by_id(NODE_ID_2).unwrap().is_focused());
+        let mut tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
+        assert!(tree.state().node_by_id(NODE_ID_2).unwrap().is_focused());
         let second_update = TreeUpdate {
             nodes: vec![],
             tree: None,
@@ -734,8 +731,8 @@ mod tests {
         assert!(handler.got_old_focus_node_update);
         assert!(handler.got_new_focus_node_update);
         assert!(handler.got_focus_change);
-        assert!(tree.read().node_by_id(NODE_ID_3).unwrap().is_focused());
-        assert!(!tree.read().node_by_id(NODE_ID_2).unwrap().is_focused());
+        assert!(tree.state().node_by_id(NODE_ID_3).unwrap().is_focused());
+        assert!(!tree.state().node_by_id(NODE_ID_2).unwrap().is_focused());
     }
 
     #[test]
@@ -758,10 +755,10 @@ mod tests {
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
-        let tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
+        let mut tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
         assert_eq!(
             Some("foo".into()),
-            tree.read().node_by_id(NODE_ID_2).unwrap().name()
+            tree.state().node_by_id(NODE_ID_2).unwrap().name()
         );
         let second_update = TreeUpdate {
             nodes: vec![(NODE_ID_2, {
@@ -814,7 +811,7 @@ mod tests {
         assert!(handler.got_updated_child_node);
         assert_eq!(
             Some("bar".into()),
-            tree.read().node_by_id(NODE_ID_2).unwrap().name()
+            tree.state().node_by_id(NODE_ID_2).unwrap().name()
         );
     }
 }
