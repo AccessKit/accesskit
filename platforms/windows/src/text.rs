@@ -221,12 +221,9 @@ impl PlatformRange {
     where
         F: FnOnce(&Tree) -> Result<T>,
     {
-        if let Some(tree) = self.tree.upgrade() {
-            let tree = tree.read().unwrap();
-            f(&tree)
-        } else {
-            Err(element_not_available())
-        }
+        let tree = upgrade(&self.tree)?;
+        let tree = tree.read().unwrap();
+        f(&tree)
     }
 
     fn with_tree_state<F, T>(&self, f: F) -> Result<T>
