@@ -20,10 +20,11 @@ pub use text::{
 
 #[cfg(test)]
 mod tests {
-    use accesskit::kurbo::{Affine, Rect, Vec2};
-    use accesskit::{ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
+    use accesskit::{
+        ActionHandler, ActionRequest, Affine, NodeBuilder, NodeClassSet, NodeId, Rect, Role, Tree,
+        TreeUpdate, Vec2,
+    };
     use std::num::NonZeroU128;
-    use std::sync::Arc;
 
     use crate::FilterResult;
 
@@ -50,93 +51,90 @@ mod tests {
     }
 
     pub fn test_tree() -> crate::tree::Tree {
-        let root = Arc::new(Node {
-            role: Role::RootWebArea,
-            children: vec![
+        let mut classes = NodeClassSet::new();
+        let root = {
+            let mut builder = NodeBuilder::new(Role::RootWebArea);
+            builder.set_children(vec![
                 PARAGRAPH_0_ID,
                 PARAGRAPH_1_IGNORED_ID,
                 PARAGRAPH_2_ID,
                 PARAGRAPH_3_IGNORED_ID,
-            ],
-            ..Default::default()
-        });
-        let paragraph_0 = Arc::new(Node {
-            role: Role::Paragraph,
-            children: vec![STATIC_TEXT_0_0_IGNORED_ID],
-            ..Default::default()
-        });
-        let static_text_0_0_ignored = Arc::new(Node {
-            role: Role::StaticText,
-            name: Some("static_text_0_0_ignored".into()),
-            ..Default::default()
-        });
-        let paragraph_1_ignored = Arc::new(Node {
-            role: Role::Paragraph,
-            transform: Some(Box::new(Affine::translate(Vec2::new(10.0, 40.0)))),
-            bounds: Some(Rect {
+            ]);
+            builder.build(&mut classes)
+        };
+        let paragraph_0 = {
+            let mut builder = NodeBuilder::new(Role::Paragraph);
+            builder.set_children(vec![STATIC_TEXT_0_0_IGNORED_ID]);
+            builder.build(&mut classes)
+        };
+        let static_text_0_0_ignored = {
+            let mut builder = NodeBuilder::new(Role::StaticText);
+            builder.set_name("static_text_0_0_ignored");
+            builder.build(&mut classes)
+        };
+        let paragraph_1_ignored = {
+            let mut builder = NodeBuilder::new(Role::Paragraph);
+            builder.set_transform(Affine::translate(Vec2::new(10.0, 40.0)));
+            builder.set_bounds(Rect {
                 x0: 0.0,
                 y0: 0.0,
                 x1: 800.0,
                 y1: 40.0,
-            }),
-            children: vec![STATIC_TEXT_1_0_ID],
-            ..Default::default()
-        });
-        let static_text_1_0 = Arc::new(Node {
-            role: Role::StaticText,
-            bounds: Some(Rect {
+            });
+            builder.set_children(vec![STATIC_TEXT_1_0_ID]);
+            builder.build(&mut classes)
+        };
+        let static_text_1_0 = {
+            let mut builder = NodeBuilder::new(Role::StaticText);
+            builder.set_bounds(Rect {
                 x0: 10.0,
                 y0: 10.0,
                 x1: 90.0,
                 y1: 30.0,
-            }),
-            name: Some("static_text_1_0".into()),
-            ..Default::default()
-        });
-        let paragraph_2 = Arc::new(Node {
-            role: Role::Paragraph,
-            children: vec![STATIC_TEXT_2_0_ID],
-            ..Default::default()
-        });
-        let static_text_2_0 = Arc::new(Node {
-            role: Role::StaticText,
-            name: Some("static_text_2_0".into()),
-            ..Default::default()
-        });
-        let paragraph_3_ignored = Arc::new(Node {
-            role: Role::Paragraph,
-            children: vec![
+            });
+            builder.set_name("static_text_1_0");
+            builder.build(&mut classes)
+        };
+        let paragraph_2 = {
+            let mut builder = NodeBuilder::new(Role::Paragraph);
+            builder.set_children(vec![STATIC_TEXT_2_0_ID]);
+            builder.build(&mut classes)
+        };
+        let static_text_2_0 = {
+            let mut builder = NodeBuilder::new(Role::StaticText);
+            builder.set_name("static_text_2_0");
+            builder.build(&mut classes)
+        };
+        let paragraph_3_ignored = {
+            let mut builder = NodeBuilder::new(Role::Paragraph);
+            builder.set_children(vec![
                 EMPTY_CONTAINER_3_0_IGNORED_ID,
                 LINK_3_1_IGNORED_ID,
                 BUTTON_3_2_ID,
                 EMPTY_CONTAINER_3_3_IGNORED_ID,
-            ],
-            ..Default::default()
-        });
-        let empty_container_3_0_ignored = Arc::new(Node {
-            role: Role::GenericContainer,
-            ..Default::default()
-        });
-        let link_3_1_ignored = Arc::new(Node {
-            role: Role::Link,
-            children: vec![STATIC_TEXT_3_1_0_ID],
-            linked: true,
-            ..Default::default()
-        });
-        let static_text_3_1_0 = Arc::new(Node {
-            role: Role::StaticText,
-            name: Some("static_text_3_1_0".into()),
-            ..Default::default()
-        });
-        let button_3_2 = Arc::new(Node {
-            role: Role::Button,
-            name: Some("button_3_2".into()),
-            ..Default::default()
-        });
-        let empty_container_3_3_ignored = Arc::new(Node {
-            role: Role::GenericContainer,
-            ..Default::default()
-        });
+            ]);
+            builder.build(&mut classes)
+        };
+        let empty_container_3_0_ignored =
+            NodeBuilder::new(Role::GenericContainer).build(&mut classes);
+        let link_3_1_ignored = {
+            let mut builder = NodeBuilder::new(Role::Link);
+            builder.set_children(vec![STATIC_TEXT_3_1_0_ID]);
+            builder.set_linked();
+            builder.build(&mut classes)
+        };
+        let static_text_3_1_0 = {
+            let mut builder = NodeBuilder::new(Role::StaticText);
+            builder.set_name("static_text_3_1_0");
+            builder.build(&mut classes)
+        };
+        let button_3_2 = {
+            let mut builder = NodeBuilder::new(Role::Button);
+            builder.set_name("button_3_2");
+            builder.build(&mut classes)
+        };
+        let empty_container_3_3_ignored =
+            NodeBuilder::new(Role::GenericContainer).build(&mut classes);
         let initial_update = TreeUpdate {
             nodes: vec![
                 (ROOT_ID, root),

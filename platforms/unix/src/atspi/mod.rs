@@ -29,8 +29,8 @@ impl Rect {
     };
 }
 
-impl From<accesskit::kurbo::Rect> for Rect {
-    fn from(value: accesskit::kurbo::Rect) -> Rect {
+impl From<accesskit::Rect> for Rect {
+    fn from(value: accesskit::Rect) -> Rect {
         Rect {
             x: value.x0 as i32,
             y: value.y0 as i32,

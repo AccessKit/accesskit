@@ -3,9 +3,12 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::{convert::TryInto, num::NonZeroU128, sync::Arc};
+use std::{convert::TryInto, num::NonZeroU128};
 
-use accesskit::{ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
+use accesskit::{
+    Action, ActionHandler, ActionRequest, Node, NodeBuilder, NodeClassSet, NodeId, Role, Tree,
+    TreeUpdate,
+};
 use windows::{core::*, Win32::UI::Accessibility::*};
 
 use super::*;
@@ -16,23 +19,22 @@ const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
 const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
 
-fn make_button(name: &str) -> Arc<Node> {
-    Arc::new(Node {
-        role: Role::Button,
-        name: Some(name.into()),
-        focusable: true,
-        ..Default::default()
-    })
+fn make_button(name: &str, classes: &mut NodeClassSet) -> Node {
+    let mut builder = NodeBuilder::new(Role::Button);
+    builder.set_name(name);
+    builder.add_action(Action::Focus);
+    builder.build(classes)
 }
 
 fn get_initial_state() -> TreeUpdate {
-    let root = Arc::new(Node {
-        role: Role::Window,
-        children: vec![BUTTON_1_ID, BUTTON_2_ID],
-        ..Default::default()
-    });
-    let button_1 = make_button("Button 1");
-    let button_2 = make_button("Button 2");
+    let mut classes = NodeClassSet::new();
+    let root = {
+        let mut builder = NodeBuilder::new(Role::Window);
+        builder.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
+        builder.build(&mut classes)
+    };
+    let button_1 = make_button("Button 1", &mut classes);
+    let button_2 = make_button("Button 2", &mut classes);
     TreeUpdate {
         nodes: vec![
             (WINDOW_ID, root),

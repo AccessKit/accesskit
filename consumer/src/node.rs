@@ -8,11 +8,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use std::{iter::FusedIterator, ops::Deref, sync::Arc};
+use std::{iter::FusedIterator, ops::Deref};
 
-use accesskit::kurbo::{Affine, Point, Rect};
 use accesskit::{
-    Action, CheckedState, DefaultActionVerb, Live, Node as NodeData, NodeId, Role, TextSelection,
+    Action, Affine, CheckedState, DefaultActionVerb, Live, Node as NodeData, NodeId, Point, Rect,
+    Role, TextSelection,
 };
 
 use crate::iterators::{
@@ -28,7 +28,7 @@ pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
 pub struct NodeState {
     pub(crate) id: NodeId,
     pub(crate) parent_and_index: Option<ParentAndIndex>,
-    pub(crate) data: Arc<NodeData>,
+    pub(crate) data: NodeData,
 }
 
 #[derive(Copy, Clone)]
@@ -62,9 +62,7 @@ impl<'a> Node<'a> {
 
 impl NodeState {
     pub fn is_focusable(&self) -> bool {
-        // TBD: Is it ever safe to imply this on a node that doesn't explicitly
-        // specify it?
-        self.data().focusable
+        self.supports_action(Action::Focus)
     }
 }
 
@@ -118,7 +116,7 @@ impl NodeState {
            + FusedIterator<Item = NodeId>
            + '_ {
         let data = &self.data;
-        data.children.iter().copied()
+        data.children().iter().copied()
     }
 }
 
@@ -250,9 +248,8 @@ impl NodeState {
     /// transform, without taking into account transforms on ancestors.
     pub fn direct_transform(&self) -> Affine {
         self.data()
-            .transform
-            .as_ref()
-            .map_or(Affine::IDENTITY, |t| **t)
+            .transform()
+            .map_or(Affine::IDENTITY, |value| *value)
     }
 }
 
@@ -281,7 +278,7 @@ impl<'a> Node<'a> {
 
 impl NodeState {
     pub fn raw_bounds(&self) -> Option<Rect> {
-        self.data().bounds
+        self.data().bounds()
     }
 }
 
@@ -352,22 +349,22 @@ impl NodeState {
     }
 
     pub fn role(&self) -> Role {
-        self.data().role
+        self.data().role()
     }
 
     pub fn is_hidden(&self) -> bool {
-        self.data().hidden
+        self.data().is_hidden()
     }
 
     pub fn is_disabled(&self) -> bool {
-        self.data().disabled
+        self.data().is_disabled()
     }
 
     pub fn is_read_only(&self) -> bool {
         let data = self.data();
-        if data.read_only {
+        if data.is_read_only() {
             true
-        } else if !data.editable {
+        } else if !data.is_editable() {
             false
         } else {
             self.should_have_read_only_state_by_default() || !self.is_read_only_supported()
@@ -379,35 +376,35 @@ impl NodeState {
     }
 
     pub fn checked_state(&self) -> Option<CheckedState> {
-        self.data().checked_state
+        self.data().checked_state()
     }
 
     pub fn value(&self) -> Option<&str> {
-        self.data().value.as_deref()
+        self.data().value()
     }
 
     pub fn numeric_value(&self) -> Option<f64> {
-        self.data().numeric_value
+        self.data().numeric_value()
     }
 
     pub fn min_numeric_value(&self) -> Option<f64> {
-        self.data().min_numeric_value
+        self.data().min_numeric_value()
     }
 
     pub fn max_numeric_value(&self) -> Option<f64> {
-        self.data().max_numeric_value
+        self.data().max_numeric_value()
     }
 
     pub fn numeric_value_step(&self) -> Option<f64> {
-        self.data().numeric_value_step
+        self.data().numeric_value_step()
     }
 
     pub fn numeric_value_jump(&self) -> Option<f64> {
-        self.data().numeric_value_jump
+        self.data().numeric_value_jump()
     }
 
     pub fn is_text_field(&self) -> bool {
-        self.is_atomic_text_field() || self.data().nonatomic_text_field_root
+        self.is_atomic_text_field() || self.data().is_nonatomic_text_field_root()
     }
 
     pub fn is_atomic_text_field(&self) -> bool {
@@ -421,22 +418,22 @@ impl NodeState {
         // treat them as non-atomic.
         match self.role() {
             Role::SearchBox | Role::TextField | Role::TextFieldWithComboBox => {
-                !self.data().nonatomic_text_field_root
+                !self.data().is_nonatomic_text_field_root()
             }
             _ => false,
         }
     }
 
     pub fn is_multiline(&self) -> bool {
-        self.data().multiline
+        self.data().is_multiline()
     }
 
     pub fn is_protected(&self) -> bool {
-        self.data().protected
+        self.data().is_protected()
     }
 
     pub fn default_action_verb(&self) -> Option<DefaultActionVerb> {
-        self.data().default_action_verb
+        self.data().default_action_verb()
     }
 
     // When probing for supported actions as the next several functions do,
@@ -467,7 +464,7 @@ impl NodeState {
     }
 
     pub fn supports_expand_collapse(&self) -> bool {
-        self.data().expanded.is_some()
+        self.data().is_expanded().is_some()
     }
 
     pub fn is_invocable(&self) -> bool {
@@ -491,7 +488,7 @@ impl NodeState {
     // The future of the `Action` enum is undecided, so keep the following
     // function private for now.
     fn supports_action(&self, action: Action) -> bool {
-        self.data().actions.contains(action)
+        self.data().supports_action(action)
     }
 
     pub fn supports_increment(&self) -> bool {
@@ -515,7 +512,7 @@ impl<'a> Node<'a> {
     pub fn labelled_by(
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
-        let explicit = &self.state.data.labelled_by;
+        let explicit = &self.state.data.labelled_by();
         if explicit.is_empty() && matches!(self.role(), Role::Button | Role::Link) {
             LabelledBy::FromDescendants(FilteredChildren::new(*self, &descendant_label_filter))
         } else {
@@ -527,7 +524,7 @@ impl<'a> Node<'a> {
     }
 
     pub fn name(&self) -> Option<String> {
-        if let Some(name) = &self.data().name {
+        if let Some(name) = &self.data().name() {
             Some(name.to_string())
         } else {
             let names = self
@@ -596,18 +593,18 @@ impl NodeState {
 impl<'a> Node<'a> {
     pub fn live(&self) -> Live {
         self.data()
-            .live
+            .live()
             .unwrap_or_else(|| self.parent().map_or(Live::Off, |parent| parent.live()))
     }
 }
 
 impl NodeState {
     pub fn is_selected(&self) -> Option<bool> {
-        self.data().selected
+        self.data().is_selected()
     }
 
     pub fn raw_text_selection(&self) -> Option<&TextSelection> {
-        self.data().text_selection.as_ref()
+        self.data().text_selection()
     }
 }
 
@@ -723,9 +720,8 @@ impl Deref for DetachedNode {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::kurbo::{Point, Rect};
-    use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
-    use std::{num::NonZeroU128, sync::Arc};
+    use accesskit::{NodeBuilder, NodeClassSet, NodeId, Point, Rect, Role, Tree, TreeUpdate};
+    use std::num::NonZeroU128;
 
     use crate::tests::*;
 
@@ -995,22 +991,17 @@ mod tests {
 
     #[test]
     fn no_name_or_labelled_by() {
+        let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
             nodes: vec![
-                (
-                    NODE_ID_1,
-                    Arc::new(Node {
-                        role: Role::Window,
-                        children: vec![NODE_ID_2],
-                        ..Default::default()
-                    }),
-                ),
+                (NODE_ID_1, {
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_children(vec![NODE_ID_2]);
+                    builder.build(&mut classes)
+                }),
                 (
                     NODE_ID_2,
-                    Arc::new(Node {
-                        role: Role::Button,
-                        ..Default::default()
-                    }),
+                    NodeBuilder::new(Role::Button).build(&mut classes),
                 ),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
@@ -1027,48 +1018,34 @@ mod tests {
         const LABEL_1: &str = "Check email every";
         const LABEL_2: &str = "minutes";
 
+        let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
             nodes: vec![
-                (
-                    NODE_ID_1,
-                    Arc::new(Node {
-                        role: Role::Window,
-                        children: vec![NODE_ID_2, NODE_ID_3, NODE_ID_4, NODE_ID_5],
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_2,
-                    Arc::new(Node {
-                        role: Role::CheckBox,
-                        labelled_by: vec![NODE_ID_3, NODE_ID_5],
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_3,
-                    Arc::new(Node {
-                        role: Role::StaticText,
-                        name: Some(LABEL_1.into()),
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_4,
-                    Arc::new(Node {
-                        role: Role::CheckBox,
-                        labelled_by: vec![NODE_ID_5],
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_5,
-                    Arc::new(Node {
-                        role: Role::StaticText,
-                        name: Some(LABEL_2.into()),
-                        ..Default::default()
-                    }),
-                ),
+                (NODE_ID_1, {
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_children(vec![NODE_ID_2, NODE_ID_3, NODE_ID_4, NODE_ID_5]);
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_2, {
+                    let mut builder = NodeBuilder::new(Role::CheckBox);
+                    builder.set_labelled_by(vec![NODE_ID_3, NODE_ID_5]);
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_3, {
+                    let mut builder = NodeBuilder::new(Role::StaticText);
+                    builder.set_name(LABEL_1);
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_4, {
+                    let mut builder = NodeBuilder::new(Role::TextField);
+                    builder.push_labelled_by(NODE_ID_5);
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_5, {
+                    let mut builder = NodeBuilder::new(Role::StaticText);
+                    builder.set_name(LABEL_2);
+                    builder.build(&mut classes)
+                }),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
@@ -1089,56 +1066,39 @@ mod tests {
         const BUTTON_LABEL: &str = "Play";
         const LINK_LABEL: &str = "Watch in browser";
 
+        let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
             nodes: vec![
-                (
-                    NODE_ID_1,
-                    Arc::new(Node {
-                        role: Role::Window,
-                        children: vec![NODE_ID_2, NODE_ID_4],
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_2,
-                    Arc::new(Node {
-                        role: Role::Button,
-                        children: vec![NODE_ID_3],
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_3,
-                    Arc::new(Node {
-                        role: Role::Image,
-                        name: Some(BUTTON_LABEL.into()),
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_4,
-                    Arc::new(Node {
-                        role: Role::Link,
-                        children: vec![NODE_ID_5],
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_5,
-                    Arc::new(Node {
-                        role: Role::GenericContainer,
-                        children: vec![NODE_ID_6],
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_6,
-                    Arc::new(Node {
-                        role: Role::StaticText,
-                        name: Some(LINK_LABEL.into()),
-                        ..Default::default()
-                    }),
-                ),
+                (NODE_ID_1, {
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_children(vec![NODE_ID_2, NODE_ID_4]);
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_2, {
+                    let mut builder = NodeBuilder::new(Role::Button);
+                    builder.push_child(NODE_ID_3);
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_3, {
+                    let mut builder = NodeBuilder::new(Role::Image);
+                    builder.set_name(BUTTON_LABEL);
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_4, {
+                    let mut builder = NodeBuilder::new(Role::Link);
+                    builder.push_child(NODE_ID_5);
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_5, {
+                    let mut builder = NodeBuilder::new(Role::GenericContainer);
+                    builder.push_child(NODE_ID_6);
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_6, {
+                    let mut builder = NodeBuilder::new(Role::StaticText);
+                    builder.set_name(LINK_LABEL);
+                    builder.build(&mut classes)
+                }),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,

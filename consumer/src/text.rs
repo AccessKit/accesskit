@@ -3,8 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::kurbo::{Point, Rect};
-use accesskit::{NodeId, Role, TextDirection, TextPosition as WeakPosition};
+use accesskit::{NodeId, Point, Rect, Role, TextDirection, TextPosition as WeakPosition};
 use std::{cmp::Ordering, iter::FusedIterator};
 
 use crate::{FilterResult, Node, TreeState};
@@ -22,7 +21,7 @@ impl<'a> InnerPosition<'a> {
             return None;
         }
         let character_index = weak.character_index;
-        if character_index > node.data().character_lengths.len() {
+        if character_index > node.data().character_lengths().len() {
             return None;
         }
         Some(Self {
@@ -33,7 +32,7 @@ impl<'a> InnerPosition<'a> {
 
     fn is_word_start(&self) -> bool {
         let mut total_length = 0usize;
-        for length in self.node.data().word_lengths.iter() {
+        for length in self.node.data().word_lengths().iter() {
             if total_length == self.character_index {
                 return true;
             }
@@ -47,15 +46,15 @@ impl<'a> InnerPosition<'a> {
     }
 
     fn is_line_start(&self) -> bool {
-        self.is_box_start() && self.node.data().previous_on_line.is_none()
+        self.is_box_start() && self.node.data().previous_on_line().is_none()
     }
 
     fn is_box_end(&self) -> bool {
-        self.character_index == self.node.data().character_lengths.len()
+        self.character_index == self.node.data().character_lengths().len()
     }
 
     fn is_line_end(&self) -> bool {
-        self.is_box_end() && self.node.data().next_on_line.is_none()
+        self.is_box_end() && self.node.data().next_on_line().is_none()
     }
 
     fn is_paragraph_end(&self) -> bool {
@@ -97,7 +96,7 @@ impl<'a> InnerPosition<'a> {
             if let Some(node) = self.node.preceding_inline_text_boxes(root_node).next() {
                 return Self {
                     node,
-                    character_index: node.data().character_lengths.len(),
+                    character_index: node.data().character_lengths().len(),
                 };
             }
         }
@@ -114,7 +113,7 @@ impl<'a> InnerPosition<'a> {
 
     fn previous_word_start(&self) -> Self {
         let mut total_length_before = 0usize;
-        for length in self.node.data().word_lengths.iter() {
+        for length in self.node.data().word_lengths().iter() {
             let new_total_length = total_length_before + (*length as usize);
             if new_total_length >= self.character_index {
                 break;
@@ -129,7 +128,7 @@ impl<'a> InnerPosition<'a> {
 
     fn word_end(&self) -> Self {
         let mut total_length = 0usize;
-        for length in self.node.data().word_lengths.iter() {
+        for length in self.node.data().word_lengths().iter() {
             total_length += *length as usize;
             if total_length > self.character_index {
                 break;
@@ -143,7 +142,7 @@ impl<'a> InnerPosition<'a> {
 
     fn line_start(&self) -> Self {
         let mut node = self.node;
-        while let Some(id) = node.data().previous_on_line {
+        while let Some(id) = node.data().previous_on_line() {
             node = node.tree_state.node_by_id(id).unwrap();
         }
         Self {
@@ -154,12 +153,12 @@ impl<'a> InnerPosition<'a> {
 
     fn line_end(&self) -> Self {
         let mut node = self.node;
-        while let Some(id) = node.data().next_on_line {
+        while let Some(id) = node.data().next_on_line() {
             node = node.tree_state.node_by_id(id).unwrap();
         }
         Self {
             node,
-            character_index: node.data().character_lengths.len(),
+            character_index: node.data().character_lengths().len(),
         }
     }
 
@@ -234,7 +233,7 @@ impl<'a> Position<'a> {
         for node in self.root_node.inline_text_boxes() {
             let node_text = node.value().unwrap();
             if node.id() == self.inner.node.id() {
-                let character_lengths = &node.data().character_lengths;
+                let character_lengths = node.data().character_lengths();
                 let slice_end = character_lengths[..self.inner.character_index]
                     .iter()
                     .copied()
@@ -522,7 +521,7 @@ impl<'a> Range<'a> {
     pub fn text(&self) -> String {
         let mut result = String::new();
         self.walk::<_, ()>(|node| {
-            let character_lengths = &node.data().character_lengths;
+            let character_lengths = node.data().character_lengths();
             let start_index = if node.id() == self.start.node.id() {
                 self.start.character_index
             } else {
@@ -568,31 +567,31 @@ impl<'a> Range<'a> {
     pub fn bounding_boxes(&self) -> Vec<Rect> {
         let mut result = Vec::new();
         self.walk(|node| {
-            let mut rect = match &node.data().bounds {
-                Some(rect) => *rect,
+            let mut rect = match node.data().bounds() {
+                Some(rect) => rect,
                 None => {
                     return Some(Vec::new());
                 }
             };
-            let positions = match &node.data().character_positions {
+            let positions = match node.data().character_positions() {
                 Some(positions) => positions,
                 None => {
                     return Some(Vec::new());
                 }
             };
-            let widths = match &node.data().character_widths {
+            let widths = match node.data().character_widths() {
                 Some(widths) => widths,
                 None => {
                     return Some(Vec::new());
                 }
             };
-            let direction = match node.data().text_direction {
+            let direction = match node.data().text_direction() {
                 Some(direction) => direction,
                 None => {
                     return Some(Vec::new());
                 }
             };
-            let character_lengths = &node.data().character_lengths;
+            let character_lengths = node.data().character_lengths();
             let start_index = if node.id() == self.start.node.id() {
                 self.start.character_index
             } else {
@@ -762,21 +761,21 @@ fn text_node_filter(root_id: NodeId, node: &Node) -> FilterResult {
 fn character_index_at_point(node: &Node, point: Point) -> usize {
     // We know the node has a bounding rectangle because it was returned
     // by a hit test.
-    let rect = node.data().bounds.as_ref().unwrap();
-    let character_lengths = &node.data().character_lengths;
-    let positions = match &node.data().character_positions {
+    let rect = node.data().bounds().unwrap();
+    let character_lengths = node.data().character_lengths();
+    let positions = match node.data().character_positions() {
         Some(positions) => positions,
         None => {
             return 0;
         }
     };
-    let widths = match &node.data().character_widths {
+    let widths = match node.data().character_widths() {
         Some(widths) => widths,
         None => {
             return 0;
         }
     };
-    let direction = match node.data().text_direction {
+    let direction = match node.data().text_direction() {
         Some(direction) => direction,
         None => {
             return 0;
@@ -842,7 +841,7 @@ impl<'a> Node<'a> {
         let node = self.inline_text_boxes().next_back().unwrap();
         InnerPosition {
             node,
-            character_index: node.data().character_lengths.len(),
+            character_index: node.data().character_lengths().len(),
         }
     }
 
@@ -853,11 +852,11 @@ impl<'a> Node<'a> {
     }
 
     pub fn has_text_selection(&self) -> bool {
-        self.data().text_selection.is_some()
+        self.data().text_selection().is_some()
     }
 
     pub fn text_selection(&self) -> Option<Range> {
-        self.data().text_selection.map(|selection| {
+        self.data().text_selection().map(|selection| {
             let anchor = InnerPosition::upgrade(self.tree_state, selection.anchor).unwrap();
             let focus = InnerPosition::upgrade(self.tree_state, selection.focus).unwrap();
             Range::new(*self, anchor, focus)
@@ -865,7 +864,7 @@ impl<'a> Node<'a> {
     }
 
     pub fn text_selection_focus(&self) -> Option<Position> {
-        self.data().text_selection.map(|selection| {
+        self.data().text_selection().map(|selection| {
             let focus = InnerPosition::upgrade(self.tree_state, selection.focus).unwrap();
             Position {
                 root_node: *self,
@@ -908,7 +907,7 @@ impl<'a> Node<'a> {
 
         for node in self.inline_text_boxes().rev() {
             if let Some(rect) = node.bounding_box_in_coordinate_space(self) {
-                if let Some(direction) = node.data().text_direction {
+                if let Some(direction) = node.data().text_direction() {
                     let is_past_end = match direction {
                         TextDirection::LeftToRight => {
                             point.y >= rect.y0 && point.y < rect.y1 && point.x >= rect.x1
@@ -931,7 +930,7 @@ impl<'a> Node<'a> {
                             root_node: *self,
                             inner: InnerPosition {
                                 node,
-                                character_index: node.data().character_lengths.len(),
+                                character_index: node.data().character_lengths().len(),
                             },
                         };
                     }
@@ -979,7 +978,7 @@ impl<'a> Node<'a> {
                 let mut utf8_length = 0usize;
                 let mut utf16_length = 0usize;
                 for (character_index, utf8_char_length) in
-                    node.data().character_lengths.iter().enumerate()
+                    node.data().character_lengths().iter().enumerate()
                 {
                     let new_utf8_length = utf8_length + (*utf8_char_length as usize);
                     let char_str = &node_text[utf8_length..new_utf8_length];
@@ -1013,9 +1012,8 @@ impl<'a> Node<'a> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::kurbo::{Point, Rect};
-    use accesskit::{NodeId, TextSelection};
-    use std::{num::NonZeroU128, sync::Arc};
+    use accesskit::{NodeId, Point, Rect, TextSelection};
+    use std::num::NonZeroU128;
 
     use crate::tests::NullActionHandler;
 
@@ -1030,233 +1028,183 @@ mod tests {
 
     // This is based on an actual tree produced by egui.
     fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {
-        use accesskit::kurbo::Affine;
-        use accesskit::{Node, Role, TextDirection, Tree, TreeUpdate};
+        use accesskit::{
+            Action, Affine, NodeBuilder, NodeClassSet, Role, TextDirection, Tree, TreeUpdate,
+        };
 
+        let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
             nodes: vec![
-                (
-                    NODE_ID_1,
-                    Arc::new(Node {
-                        role: Role::Window,
-                        transform: Some(Box::new(Affine::scale(1.5))),
-                        children: vec![NODE_ID_2],
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_2,
-                    Arc::new(Node {
-                        role: Role::TextField,
-                        bounds: Some(Rect {
-                            x0: 8.0,
-                            y0: 31.666664123535156,
-                            x1: 296.0,
-                            y1: 123.66666412353516,
-                        }),
-                        children: vec![
-                            NODE_ID_3, NODE_ID_4, NODE_ID_5, NODE_ID_6, NODE_ID_7, NODE_ID_8,
-                        ],
-                        focusable: true,
-                        text_selection: selection,
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_3,
-                    Arc::new(Node {
-                        role: Role::InlineTextBox,
-                        bounds: Some(Rect {
-                            x0: 12.0,
-                            y0: 33.666664123535156,
-                            x1: 290.9189147949219,
-                            y1: 48.33333206176758,
-                        }),
-                        // The non-breaking space in the following text
-                        // is in an arbitrary spot; its only purpose
-                        // is to test conversion between UTF-8 and UTF-16
-                        // indices.
-                        value: Some("This paragraph is\u{a0}long enough to wrap ".into()),
-                        text_direction: Some(TextDirection::LeftToRight),
-                        character_lengths: vec![
-                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1,
-                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                        ]
-                        .into(),
-                        character_positions: Some(
-                            vec![
-                                0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0,
-                                51.333332, 58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336,
-                                102.666664, 110.0, 117.333336, 124.666664, 132.0, 139.33333,
-                                146.66667, 154.0, 161.33333, 168.66667, 176.0, 183.33333,
-                                190.66667, 198.0, 205.33333, 212.66667, 220.0, 227.33333,
-                                234.66667, 242.0, 249.33333, 256.66666, 264.0, 271.33334,
-                            ]
-                            .into(),
-                        ),
-                        character_widths: Some(
-                            vec![
-                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                                7.58557, 7.58557, 7.58557,
-                            ]
-                            .into(),
-                        ),
-                        word_lengths: vec![5, 10, 3, 5, 7, 3, 5].into(),
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_4,
-                    Arc::new(Node {
-                        role: Role::InlineTextBox,
-                        bounds: Some(Rect {
-                            x0: 12.0,
-                            y0: 48.33333206176758,
-                            x1: 129.5855712890625,
-                            y1: 63.0,
-                        }),
-                        value: Some("to another line.\n".into()),
-                        text_direction: Some(TextDirection::LeftToRight),
-                        character_lengths: vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-                            .into(),
-                        character_positions: Some(
-                            vec![
-                                0.0, 7.3333435, 14.666687, 22.0, 29.333344, 36.666687, 44.0,
-                                51.333344, 58.666687, 66.0, 73.33334, 80.66669, 88.0, 95.33334,
-                                102.66669, 110.0, 117.58557,
-                            ]
-                            .into(),
-                        ),
-                        character_widths: Some(
-                            vec![
-                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                                7.58557, 7.58557, 0.0,
-                            ]
-                            .into(),
-                        ),
-                        word_lengths: vec![3, 8, 6].into(),
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_5,
-                    Arc::new(Node {
-                        role: Role::InlineTextBox,
-                        bounds: Some(Rect {
-                            x0: 12.0,
-                            y0: 63.0,
-                            x1: 144.25222778320313,
-                            y1: 77.66666412353516,
-                        }),
-                        value: Some("Another paragraph.\n".into()),
-                        text_direction: Some(TextDirection::LeftToRight),
-                        character_lengths: vec![
-                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                        ]
-                        .into(),
-                        character_positions: Some(
-                            vec![
-                                0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0,
-                                51.333332, 58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336,
-                                102.666664, 110.0, 117.333336, 124.666664, 132.25223,
-                            ]
-                            .into(),
-                        ),
-                        character_widths: Some(
-                            vec![
-                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                                7.58557, 7.58557, 7.58557, 7.58557, 0.0,
-                            ]
-                            .into(),
-                        ),
-                        word_lengths: vec![8, 11].into(),
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_6,
-                    Arc::new(Node {
-                        role: Role::InlineTextBox,
-                        bounds: Some(Rect {
-                            x0: 12.0,
-                            y0: 77.66666412353516,
-                            x1: 12.0,
-                            y1: 92.33332824707031,
-                        }),
-                        value: Some("\n".into()),
-                        text_direction: Some(TextDirection::LeftToRight),
-                        character_lengths: vec![1].into(),
-                        character_positions: Some(vec![0.0].into()),
-                        character_widths: Some(vec![0.0].into()),
-                        word_lengths: vec![1].into(),
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_7,
-                    Arc::new(Node {
-                        role: Role::InlineTextBox,
-                        bounds: Some(Rect {
-                            x0: 12.0,
-                            y0: 92.33332824707031,
-                            x1: 158.9188995361328,
-                            y1: 107.0,
-                        }),
-                        // Use an arbitrary emoji that encodes to two
-                        // UTF-16 code units to fully test conversion between
-                        // UTF-8, UTF-16, and character indices.
-                        value: Some("Last non-blank line\u{1f60a}\n".into()),
-                        text_direction: Some(TextDirection::LeftToRight),
-                        character_lengths: vec![
-                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 1,
-                        ]
-                        .into(),
-                        character_positions: Some(
-                            vec![
-                                0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0,
-                                51.333332, 58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336,
-                                102.666664, 110.0, 117.333336, 124.666664, 132.0, 139.33333,
-                                146.9189,
-                            ]
-                            .into(),
-                        ),
-                        character_widths: Some(
-                            vec![
-                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                                7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 0.0,
-                            ]
-                            .into(),
-                        ),
-                        word_lengths: vec![5, 4, 6, 6].into(),
-                        ..Default::default()
-                    }),
-                ),
-                (
-                    NODE_ID_8,
-                    Arc::new(Node {
-                        role: Role::InlineTextBox,
-                        bounds: Some(Rect {
-                            x0: 12.0,
-                            y0: 107.0,
-                            x1: 12.0,
-                            y1: 121.66666412353516,
-                        }),
-                        value: Some("".into()),
-                        text_direction: Some(TextDirection::LeftToRight),
-                        character_lengths: vec![].into(),
-                        character_positions: Some(vec![].into()),
-                        character_widths: Some(vec![].into()),
-                        word_lengths: vec![0].into(),
-                        ..Default::default()
-                    }),
-                ),
+                (NODE_ID_1, {
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_transform(Affine::scale(1.5));
+                    builder.set_children(vec![NODE_ID_2]);
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_2, {
+                    let mut builder = NodeBuilder::new(Role::TextField);
+                    builder.set_bounds(Rect {
+                        x0: 8.0,
+                        y0: 31.666664123535156,
+                        x1: 296.0,
+                        y1: 123.66666412353516,
+                    });
+                    builder.set_children(vec![
+                        NODE_ID_3, NODE_ID_4, NODE_ID_5, NODE_ID_6, NODE_ID_7, NODE_ID_8,
+                    ]);
+                    builder.add_action(Action::Focus);
+                    if let Some(selection) = selection {
+                        builder.set_text_selection(selection);
+                    }
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_3, {
+                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    builder.set_bounds(Rect {
+                        x0: 12.0,
+                        y0: 33.666664123535156,
+                        x1: 290.9189147949219,
+                        y1: 48.33333206176758,
+                    });
+                    // The non-breaking space in the following text
+                    // is in an arbitrary spot; its only purpose
+                    // is to test conversion between UTF-8 and UTF-16
+                    // indices.
+                    builder.set_value("This paragraph is\u{a0}long enough to wrap ");
+                    builder.set_text_direction(TextDirection::LeftToRight);
+                    builder.set_character_lengths([
+                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                    ]);
+                    builder.set_character_positions([
+                        0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
+                        58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
+                        117.333336, 124.666664, 132.0, 139.33333, 146.66667, 154.0, 161.33333,
+                        168.66667, 176.0, 183.33333, 190.66667, 198.0, 205.33333, 212.66667, 220.0,
+                        227.33333, 234.66667, 242.0, 249.33333, 256.66666, 264.0, 271.33334,
+                    ]);
+                    builder.set_character_widths([
+                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    ]);
+                    builder.set_word_lengths([5, 10, 3, 5, 7, 3, 5]);
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_4, {
+                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    builder.set_bounds(Rect {
+                        x0: 12.0,
+                        y0: 48.33333206176758,
+                        x1: 129.5855712890625,
+                        y1: 63.0,
+                    });
+                    builder.set_value("to another line.\n");
+                    builder.set_text_direction(TextDirection::LeftToRight);
+                    builder
+                        .set_character_lengths([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+                    builder.set_character_positions([
+                        0.0, 7.3333435, 14.666687, 22.0, 29.333344, 36.666687, 44.0, 51.333344,
+                        58.666687, 66.0, 73.33334, 80.66669, 88.0, 95.33334, 102.66669, 110.0,
+                        117.58557,
+                    ]);
+                    builder.set_character_widths([
+                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                        0.0,
+                    ]);
+                    builder.set_word_lengths([3, 8, 6]);
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_5, {
+                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    builder.set_bounds(Rect {
+                        x0: 12.0,
+                        y0: 63.0,
+                        x1: 144.25222778320313,
+                        y1: 77.66666412353516,
+                    });
+                    builder.set_value("Another paragraph.\n");
+                    builder.set_text_direction(TextDirection::LeftToRight);
+                    builder.set_character_lengths([
+                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                    ]);
+                    builder.set_character_positions([
+                        0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
+                        58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
+                        117.333336, 124.666664, 132.25223,
+                    ]);
+                    builder.set_character_widths([
+                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                        7.58557, 7.58557, 0.0,
+                    ]);
+                    builder.set_word_lengths([8, 11]);
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_6, {
+                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    builder.set_bounds(Rect {
+                        x0: 12.0,
+                        y0: 77.66666412353516,
+                        x1: 12.0,
+                        y1: 92.33332824707031,
+                    });
+                    builder.set_value("\n");
+                    builder.set_text_direction(TextDirection::LeftToRight);
+                    builder.set_character_lengths([1]);
+                    builder.set_character_positions([0.0]);
+                    builder.set_character_widths([0.0]);
+                    builder.set_word_lengths([1]);
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_7, {
+                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    builder.set_bounds(Rect {
+                        x0: 12.0,
+                        y0: 92.33332824707031,
+                        x1: 158.9188995361328,
+                        y1: 107.0,
+                    });
+                    // Use an arbitrary emoji that encodes to two
+                    // UTF-16 code units to fully test conversion between
+                    // UTF-8, UTF-16, and character indices.
+                    builder.set_value("Last non-blank line\u{1f60a}\n");
+                    builder.set_text_direction(TextDirection::LeftToRight);
+                    builder.set_character_lengths([
+                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 1,
+                    ]);
+                    builder.set_character_positions([
+                        0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
+                        58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
+                        117.333336, 124.666664, 132.0, 139.33333, 146.9189,
+                    ]);
+                    builder.set_character_widths([
+                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                        7.58557, 7.58557, 7.58557, 7.58557, 0.0,
+                    ]);
+                    builder.set_word_lengths([5, 4, 6, 6]);
+                    builder.build(&mut classes)
+                }),
+                (NODE_ID_8, {
+                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    builder.set_bounds(Rect {
+                        x0: 12.0,
+                        y0: 107.0,
+                        x1: 12.0,
+                        y1: 121.66666412353516,
+                    });
+                    builder.set_value("");
+                    builder.set_text_direction(TextDirection::LeftToRight);
+                    builder.set_character_lengths([]);
+                    builder.set_character_positions([]);
+                    builder.set_character_widths([]);
+                    builder.set_word_lengths([0]);
+                    builder.build(&mut classes)
+                }),
             ],
             tree: Some(Tree::new(NODE_ID_1)),
             focus: Some(NODE_ID_2),

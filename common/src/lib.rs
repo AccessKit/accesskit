@@ -8,21 +8,29 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use enumset::{EnumSet, EnumSetType};
-pub use kurbo;
-use kurbo::{Affine, Point, Rect};
 #[cfg(feature = "schemars")]
-use schemars_lib as schemars;
-#[cfg(feature = "schemars")]
-use schemars_lib::JsonSchema;
+use schemars::{
+    gen::SchemaGenerator,
+    schema::{ArrayValidation, InstanceType, ObjectValidation, Schema, SchemaObject},
+    JsonSchema, Map as SchemaMap,
+};
 #[cfg(feature = "serde")]
-use serde_lib as serde;
-#[cfg(feature = "serde")]
-use serde_lib::{Deserialize, Serialize};
+use serde::{
+    de::{Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeMap, SerializeSeq, Serializer},
+    Deserialize, Serialize,
+};
 use std::{
+    collections::BTreeSet,
     num::{NonZeroU128, NonZeroU64},
+    ops::DerefMut,
     sync::Arc,
 };
+#[cfg(feature = "serde")]
+use std::{fmt, mem::size_of_val};
+
+mod geometry;
+pub use geometry::{Affine, Point, Rect, Size, Vec2};
 
 /// The type of an accessibility node.
 ///
@@ -34,10 +42,9 @@ use std::{
 /// is ordered roughly by expected usage frequency (with the notable exception
 /// of [`Role::Unknown`]). This is more efficient in serialization formats
 /// where integers use a variable-length encoding.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum Role {
     Unknown,
@@ -245,6 +252,7 @@ pub enum Role {
 }
 
 impl Default for Role {
+    #[inline]
     fn default() -> Self {
         Self::Unknown
     }
@@ -254,12 +262,11 @@ impl Default for Role {
 ///
 /// In contrast to [`DefaultActionVerb`], these describe what happens to the
 /// object, e.g. "focus".
-#[derive(EnumSetType, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, enumn::N))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-#[cfg_attr(feature = "serde", enumset(serialize_as_list))]
+#[repr(u8)]
 pub enum Action {
     /// Do the default action for an object, typically this means "click".
     Default,
@@ -334,10 +341,100 @@ pub enum Action {
     ShowContextMenu,
 }
 
+impl Action {
+    fn mask(self) -> u32 {
+        1 << (self as u8)
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(transparent)]
+struct Actions(u32);
+
+#[cfg(feature = "serde")]
+impl Serialize for Actions {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(None)?;
+        for i in 0..((size_of_val(&self.0) as u8) * 8) {
+            if let Some(action) = Action::n(i) {
+                if (self.0 & action.mask()) != 0 {
+                    seq.serialize_element(&action)?;
+                }
+            }
+        }
+        seq.end()
+    }
+}
+
+#[cfg(feature = "serde")]
+struct ActionsVisitor;
+
+#[cfg(feature = "serde")]
+impl<'de> Visitor<'de> for ActionsVisitor {
+    type Value = Actions;
+
+    #[inline]
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("action set")
+    }
+
+    fn visit_seq<V>(self, mut seq: V) -> Result<Actions, V::Error>
+    where
+        V: SeqAccess<'de>,
+    {
+        let mut actions = Actions::default();
+        while let Some(action) = seq.next_element::<Action>()? {
+            actions.0 |= action.mask();
+        }
+        Ok(actions)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for Actions {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(ActionsVisitor)
+    }
+}
+
+#[cfg(feature = "schemars")]
+impl JsonSchema for Actions {
+    #[inline]
+    fn schema_name() -> String {
+        "Actions".into()
+    }
+
+    #[inline]
+    fn is_referenceable() -> bool {
+        false
+    }
+
+    fn json_schema(gen: &mut SchemaGenerator) -> Schema {
+        SchemaObject {
+            instance_type: Some(InstanceType::Array.into()),
+            array: Some(
+                ArrayValidation {
+                    unique_items: Some(true),
+                    items: Some(gen.subschema_for::<Action>().into()),
+                    ..Default::default()
+                }
+                .into(),
+            ),
+            ..Default::default()
+        }
+        .into()
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum Orientation {
     /// E.g. most toolbars and separators.
@@ -349,7 +446,6 @@ pub enum Orientation {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum NameFrom {
     /// E.g. [`aria-label`].
@@ -373,7 +469,6 @@ pub enum NameFrom {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum DescriptionFrom {
     AriaDescription,
@@ -388,30 +483,9 @@ pub enum DescriptionFrom {
     Title,
 }
 
-/// Function that can be performed when a dragged object is released
-/// on a drop target.
-///
-/// Note: [`aria-dropeffect`] is deprecated in WAI-ARIA 1.1.
-///
-/// [`aria-dropeffect`]: https://www.w3.org/TR/wai-aria-1.1/#aria-dropeffect
-#[derive(EnumSetType, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-#[cfg_attr(feature = "serde", enumset(serialize_as_list))]
-pub enum DropEffect {
-    Copy,
-    Execute,
-    Link,
-    Move,
-    Popup,
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum TextDirection {
     LeftToRight,
@@ -424,21 +498,19 @@ pub enum TextDirection {
 /// [`aria-invalid`] attribute.
 ///
 /// [`aria-invalid`]: https://www.w3.org/TR/wai-aria-1.1/#aria-invalid
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-pub enum InvalidState {
-    False,
+pub enum Invalid {
     True,
-    Other(Box<str>),
+    Grammar,
+    Spelling,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum CheckedState {
     False,
@@ -455,7 +527,6 @@ pub enum CheckedState {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum DefaultActionVerb {
     Click,
@@ -476,7 +547,6 @@ pub enum DefaultActionVerb {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum SortDirection {
     Unsorted,
@@ -488,7 +558,6 @@ pub enum SortDirection {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum AriaCurrent {
     False,
@@ -503,7 +572,6 @@ pub enum AriaCurrent {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum Live {
     Off,
@@ -514,7 +582,6 @@ pub enum Live {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum HasPopup {
     True,
@@ -528,7 +595,6 @@ pub enum HasPopup {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum ListStyle {
     Circle,
@@ -543,7 +609,6 @@ pub enum ListStyle {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum TextAlign {
     Left,
@@ -555,7 +620,6 @@ pub enum TextAlign {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum VerticalOffset {
     Subscript,
@@ -565,7 +629,6 @@ pub enum VerticalOffset {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum TextDecoration {
     Solid,
@@ -583,10 +646,10 @@ pub type NodeIdContent = NonZeroU128;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 pub struct NodeId(pub NodeIdContent);
 
 impl From<NonZeroU64> for NodeId {
+    #[inline]
     fn from(inner: NonZeroU64) -> Self {
         Self(inner.into())
     }
@@ -599,7 +662,6 @@ impl From<NonZeroU64> for NodeId {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct CustomAction {
@@ -607,22 +669,9 @@ pub struct CustomAction {
     pub description: Box<str>,
 }
 
-// Helper for skipping false values in serialization.
-#[cfg(feature = "serde")]
-fn is_false(b: &bool) -> bool {
-    !b
-}
-
-// Helper for skipping empty slices in serialization.
-#[cfg(feature = "serde")]
-fn is_empty<T>(slice: &[T]) -> bool {
-    slice.is_empty()
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TextPosition {
@@ -636,7 +685,6 @@ pub struct TextPosition {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TextSelection {
@@ -651,283 +699,932 @@ pub struct TextSelection {
     pub focus: TextPosition,
 }
 
-/// A single accessible object. A complete UI is represented as a tree of these.
-#[derive(Clone, Debug, Default, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, enumn::N))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
+enum Flag {
+    AutofillAvailable,
+    Default,
+    Editable,
+    Hovered,
+    Hidden,
+    Linked,
+    Multiline,
+    Multiselectable,
+    Protected,
+    Required,
+    Visited,
+    Busy,
+    LiveAtomic,
+    Modal,
+    Scrollable,
+    SelectedFromFocus,
+    TouchPassThrough,
+    ReadOnly,
+    Disabled,
+    Bold,
+    Italic,
+    CanvasHasFallback,
+    ClipsChildren,
+    IsLineBreakingObject,
+    IsPageBreakingObject,
+    IsSpellingError,
+    IsGrammarError,
+    IsSearchMatch,
+    IsSuggestion,
+    IsNonatomicTextFieldRoot,
+}
+
+impl Flag {
+    fn mask(self) -> u32 {
+        1 << (self as u8)
+    }
+}
+
+// The following is based on the technique described here:
+// https://viruta.org/reducing-memory-consumption-in-librsvg-2.html
+
+#[derive(Clone, Debug, PartialEq)]
+enum PropertyValue {
+    None,
+    NodeIdVec(Vec<NodeId>),
+    NodeId(NodeId),
+    String(Box<str>),
+    F64(f64),
+    Usize(usize),
+    Color(u32),
+    TextDecoration(TextDecoration),
+    LengthSlice(Box<[u8]>),
+    CoordSlice(Box<[f32]>),
+    Bool(bool),
+    NameFrom(NameFrom),
+    DescriptionFrom(DescriptionFrom),
+    Invalid(Invalid),
+    CheckedState(CheckedState),
+    Live(Live),
+    DefaultActionVerb(DefaultActionVerb),
+    TextDirection(TextDirection),
+    Orientation(Orientation),
+    SortDirection(SortDirection),
+    AriaCurrent(AriaCurrent),
+    HasPopup(HasPopup),
+    ListStyle(ListStyle),
+    TextAlign(TextAlign),
+    VerticalOffset(VerticalOffset),
+    Affine(Box<Affine>),
+    Rect(Rect),
+    TextSelection(Box<TextSelection>),
+    CustomActionVec(Vec<CustomAction>),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, enumn::N))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
+enum PropertyId {
+    // NodeIdVec
+    Children,
+    IndirectChildren,
+    Controls,
+    Details,
+    DescribedBy,
+    FlowTo,
+    LabelledBy,
+    RadioGroup,
+
+    // NodeId
+    ActiveDescendant,
+    ErrorMessage,
+    InPageLinkTarget,
+    MemberOf,
+    NextOnLine,
+    PreviousOnLine,
+    PopupFor,
+    TableHeader,
+    TableRowHeader,
+    TableColumnHeader,
+    NextFocus,
+    PreviousFocus,
+
+    // String
+    Name,
+    Description,
+    Value,
+    AccessKey,
+    AutoComplete,
+    CheckedStateDescription,
+    ClassName,
+    CssDisplay,
+    FontFamily,
+    HtmlTag,
+    InnerHtml,
+    InputType,
+    KeyShortcuts,
+    Language,
+    LiveRelevant,
+    Placeholder,
+    AriaRole,
+    RoleDescription,
+    Tooltip,
+    Url,
+
+    // f64
+    ScrollX,
+    ScrollXMin,
+    ScrollXMax,
+    ScrollY,
+    ScrollYMin,
+    ScrollYMax,
+    NumericValue,
+    MinNumericValue,
+    MaxNumericValue,
+    NumericValueStep,
+    NumericValueJump,
+    FontSize,
+    FontWeight,
+    TextIndent,
+
+    // usize
+    TableRowCount,
+    TableColumnCount,
+    TableRowIndex,
+    TableColumnIndex,
+    TableCellColumnIndex,
+    TableCellColumnSpan,
+    TableCellRowIndex,
+    TableCellRowSpan,
+    HierarchicalLevel,
+    SizeOfSet,
+    PositionInSet,
+
+    // Color
+    ColorValue,
+    BackgroundColor,
+    ForegroundColor,
+
+    // TextDecoration
+    Overline,
+    Strikethrough,
+    Underline,
+
+    // LengthSlice
+    CharacterLengths,
+    WordLengths,
+
+    // CoordSlice
+    CharacterPositions,
+    CharacterWidths,
+
+    // bool
+    Expanded,
+    Selected,
+
+    // Unique enums
+    NameFrom,
+    DescriptionFrom,
+    Invalid,
+    CheckedState,
+    Live,
+    DefaultActionVerb,
+    TextDirection,
+    Orientation,
+    SortDirection,
+    AriaCurrent,
+    HasPopup,
+    ListStyle,
+    TextAlign,
+    VerticalOffset,
+
+    // Other
+    Transform,
+    Bounds,
+    TextSelection,
+    CustomActions,
+
+    // This MUST be last.
+    Unset,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+struct PropertyIndices([u8; PropertyId::Unset as usize]);
+
+impl Default for PropertyIndices {
+    fn default() -> Self {
+        Self([PropertyId::Unset as u8; PropertyId::Unset as usize])
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+struct NodeClass {
+    role: Role,
+    actions: Actions,
+    indices: PropertyIndices,
+}
+
+/// Allows nodes that have the same role, actions, and set of defined properties
+/// to share metadata. Each node has a class which is created by [`NodeBuilder`],
+/// and when [`NodeBuilder::build`] is called, the node's class is added
+/// to the provided instance of this struct if an identical class isn't
+/// in that set already. Once a class is added to a class set, it currently
+/// remains in that set for the life of that set, whether or not any nodes
+/// are still using the class.
+///
+/// It's not an error for different nodes in the same tree, or even subsequent
+/// versions of the same node, to be built from different class sets;
+/// it's merely suboptimal.
+///
+/// Note: This struct's `Default` implementation doesn't provide access to
+/// a shared set, as one might assume; it creates a new set. For a shared set,
+/// use [`NodeClassSet::lock_global`].
+#[derive(Clone, Default)]
+#[repr(transparent)]
+pub struct NodeClassSet(BTreeSet<Arc<NodeClass>>);
+
+impl NodeClassSet {
+    #[inline]
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    /// Accesses a shared class set guarded by a mutex.
+    pub fn lock_global() -> impl DerefMut<Target = Self> {
+        use std::{
+            ops::Deref,
+            sync::{Mutex, MutexGuard},
+        };
+
+        // We don't want to add a dependency like once_cell just like this, and
+        // once_cell would add a second level of synchronization anyway. We could
+        // use const initialization of BTreeSet, but that wasn't stabilized until
+        // Rust 1.66. So we just use Option.
+        static INSTANCE: Mutex<Option<NodeClassSet>> = Mutex::new(None);
+
+        struct Guard<'a>(MutexGuard<'a, Option<NodeClassSet>>);
+
+        impl<'a> Deref for Guard<'a> {
+            type Target = NodeClassSet;
+
+            #[inline]
+            fn deref(&self) -> &Self::Target {
+                self.0.as_ref().unwrap()
+            }
+        }
+
+        impl<'a> DerefMut for Guard<'a> {
+            #[inline]
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                self.0.as_mut().unwrap()
+            }
+        }
+
+        let mut instance = INSTANCE.lock().unwrap();
+        instance.get_or_insert_with(Default::default);
+        Guard(instance)
+    }
+}
+
+/// A single accessible object. A complete UI is represented as a tree of these.
+///
+/// For brevity, and to make more of the documentation usable in bindings
+/// to other languages, documentation of getter methods is written as if
+/// documenting fields in a struct, and such methods are referred to
+/// as properties.
+#[derive(Clone, Debug, PartialEq)]
 pub struct Node {
-    pub role: Role,
-    /// An affine transform to apply to any coordinates within this node
-    /// and its descendants, including the [`bounds`] field of this node.
-    /// The combined transforms of this node and its ancestors define
-    /// the coordinate space of this node. This field should be `None`
-    /// if it would be set to the identity transform, which should be
-    /// the case for most nodes.
-    ///
-    /// AccessKit expects the final transformed coordinates to be relative
-    /// to the origin of the tree's container (e.g. window), in physical
-    /// pixels, with the y coordinate being top-down.
-    ///
-    /// [`bounds`]: Node::bounds
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub transform: Option<Box<Affine>>,
-    /// The bounding box of this node, in the node's coordinate space.
-    /// This field does not affect the coordinate space of either this node
-    /// or its descendants; only the [`transform`] field affects that.
-    /// This, along with the recommendation that most nodes should have `None`
-    /// in their [`transform`] field, implies that the `bounds` field
-    /// of most nodes should be in the coordinate space of the nearest ancestor
-    /// with a non-`None` [`transform`] field, or if there is no such ancestor,
-    /// the tree's container (e.g. window).
-    ///
-    /// [`transform`]: Node::transform
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub bounds: Option<Rect>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub children: Vec<NodeId>,
+    class: Arc<NodeClass>,
+    flags: u32,
+    props: Arc<[PropertyValue]>,
+}
 
-    /// Unordered set of actions supported by this node.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "EnumSet::is_empty"))]
-    pub actions: EnumSet<Action>,
+/// Builds a [`Node`].
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct NodeBuilder {
+    class: NodeClass,
+    flags: u32,
+    props: Vec<PropertyValue>,
+}
 
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub name: Option<Box<str>>,
-    /// What information was used to compute the object's name.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub name_from: Option<NameFrom>,
+impl NodeClass {
+    fn get_property<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> &'a PropertyValue {
+        let index = self.indices.0[id as usize];
+        if index == PropertyId::Unset as u8 {
+            &PropertyValue::None
+        } else {
+            &props[index as usize]
+        }
+    }
+}
 
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub description: Option<Box<str>>,
-    /// What information was used to compute the object's description.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub description_from: Option<DescriptionFrom>,
+fn unexpected_property_type() -> ! {
+    panic!();
+}
 
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub value: Option<Box<str>>,
+impl NodeBuilder {
+    fn get_property_mut(&mut self, id: PropertyId, default: PropertyValue) -> &mut PropertyValue {
+        let index = self.class.indices.0[id as usize] as usize;
+        if index == PropertyId::Unset as usize {
+            self.props.push(default);
+            let index = self.props.len() - 1;
+            self.class.indices.0[id as usize] = index as u8;
+            &mut self.props[index]
+        } else {
+            if matches!(self.props[index], PropertyValue::None) {
+                self.props[index] = default;
+            }
+            &mut self.props[index]
+        }
+    }
 
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub autofill_available: bool,
-    /// Whether this node is expanded, collapsed, or neither.
-    ///
-    /// Setting this to `false` means the node is collapsed; omitting it means this state
-    /// isn't applicable.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub expanded: Option<bool>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub default: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub editable: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub focusable: bool,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub orientation: Option<Orientation>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub hovered: bool,
+    fn set_property(&mut self, id: PropertyId, value: PropertyValue) {
+        let index = self.class.indices.0[id as usize];
+        if index == PropertyId::Unset as u8 {
+            self.props.push(value);
+            self.class.indices.0[id as usize] = (self.props.len() - 1) as u8;
+        } else {
+            self.props[index as usize] = value;
+        }
+    }
+
+    fn clear_property(&mut self, id: PropertyId) {
+        let index = self.class.indices.0[id as usize];
+        if index != PropertyId::Unset as u8 {
+            self.props[index as usize] = PropertyValue::None;
+        }
+    }
+}
+
+macro_rules! flag_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        impl Node {
+            $($(#[$doc])*
+            #[inline]
+            pub fn $getter(&self) -> bool {
+                (self.flags & (Flag::$id).mask()) != 0
+            })*
+        }
+        impl NodeBuilder {
+            $($(#[$doc])*
+            #[inline]
+            pub fn $getter(&self) -> bool {
+                (self.flags & (Flag::$id).mask()) != 0
+            }
+            #[inline]
+            pub fn $setter(&mut self) {
+                self.flags |= (Flag::$id).mask();
+            }
+            #[inline]
+            pub fn $clearer(&mut self) {
+                self.flags &= !((Flag::$id).mask());
+            })*
+        }
+    }
+}
+
+macro_rules! option_ref_type_getters {
+    ($(($method:ident, $type:ty, $variant:ident)),+) => {
+        impl NodeClass {
+            $(fn $method<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> Option<&'a $type> {
+                match self.get_property(props, id) {
+                    PropertyValue::None => None,
+                    PropertyValue::$variant(value) => Some(value),
+                    _ => unexpected_property_type(),
+                }
+            })*
+        }
+    }
+}
+
+macro_rules! slice_type_getters {
+    ($(($method:ident, $type:ty, $variant:ident)),+) => {
+        impl NodeClass {
+            $(fn $method<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> &'a [$type] {
+                match self.get_property(props, id) {
+                    PropertyValue::None => &[],
+                    PropertyValue::$variant(value) => value,
+                    _ => unexpected_property_type(),
+                }
+            })*
+        }
+    }
+}
+
+macro_rules! copy_type_getters {
+    ($(($method:ident, $type:ty, $variant:ident)),+) => {
+        impl NodeClass {
+            $(fn $method(&self, props: &[PropertyValue], id: PropertyId) -> Option<$type> {
+                match self.get_property(props, id) {
+                    PropertyValue::None => None,
+                    PropertyValue::$variant(value) => Some(*value),
+                    _ => unexpected_property_type(),
+                }
+            })*
+        }
+    }
+}
+
+macro_rules! box_type_setters {
+    ($(($method:ident, $type:ty, $variant:ident)),+) => {
+        impl NodeBuilder {
+            $(fn $method(&mut self, id: PropertyId, value: impl Into<Box<$type>>) {
+                self.set_property(id, PropertyValue::$variant(value.into()));
+            })*
+        }
+    }
+}
+
+macro_rules! copy_type_setters {
+    ($(($method:ident, $type:ty, $variant:ident)),+) => {
+        impl NodeBuilder {
+            $(fn $method(&mut self, id: PropertyId, value: $type) {
+                self.set_property(id, PropertyValue::$variant(value));
+            })*
+        }
+    }
+}
+
+macro_rules! vec_type_methods {
+    ($(($type:ty, $variant:ident, $getter:ident, $setter:ident, $pusher:ident)),+) => {
+        $(slice_type_getters! {
+            ($getter, $type, $variant)
+        })*
+        impl NodeBuilder {
+            $(fn $setter(&mut self, id: PropertyId, value: impl Into<Vec<$type>>) {
+                self.set_property(id, PropertyValue::$variant(value.into()));
+            }
+            fn $pusher(&mut self, id: PropertyId, item: $type) {
+                match self.get_property_mut(id, PropertyValue::$variant(Vec::new())) {
+                    PropertyValue::$variant(v) => {
+                        v.push(item);
+                    }
+                    _ => unexpected_property_type(),
+                }
+            })*
+        }
+    }
+}
+
+macro_rules! property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $type_getter:ident, $getter_result:ty, $setter:ident, $type_setter:ident, $setter_param:ty, $clearer:ident)),+) => {
+        impl Node {
+            $($(#[$doc])*
+            #[inline]
+            pub fn $getter(&self) -> $getter_result {
+                self.class.$type_getter(&self.props, PropertyId::$id)
+            })*
+        }
+        impl NodeBuilder {
+            $($(#[$doc])*
+            #[inline]
+            pub fn $getter(&self) -> $getter_result {
+                self.class.$type_getter(&self.props, PropertyId::$id)
+            }
+            #[inline]
+            pub fn $setter(&mut self, value: $setter_param) {
+                self.$type_setter(PropertyId::$id, value);
+            }
+            #[inline]
+            pub fn $clearer(&mut self) {
+                self.clear_property(PropertyId::$id);
+            })*
+        }
+    }
+}
+
+macro_rules! vec_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $item_type:ty, $getter:ident, $type_getter:ident, $setter:ident, $type_setter:ident, $pusher:ident, $type_pusher:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, $type_getter, &[$item_type], $setter, $type_setter, impl Into<Vec<$item_type>>, $clearer)
+        }
+        impl NodeBuilder {
+            #[inline]
+            pub fn $pusher(&mut self, item: $item_type) {
+                self.$type_pusher(PropertyId::$id, item);
+            }
+        })*
+    }
+}
+
+macro_rules! node_id_vec_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $pusher:ident, $clearer:ident)),+) => {
+        $(vec_property_methods! {
+            $(#[$doc])*
+            ($id, NodeId, $getter, get_node_id_vec, $setter, set_node_id_vec, $pusher, push_to_node_id_vec, $clearer)
+        })*
+    }
+}
+
+macro_rules! node_id_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_node_id_property, Option<NodeId>, $setter, set_node_id_property, NodeId, $clearer)
+        })*
+    }
+}
+
+macro_rules! string_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_string_property, Option<&str>, $setter, set_string_property, impl Into<Box<str>>, $clearer)
+        })*
+    }
+}
+
+macro_rules! f64_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_f64_property, Option<f64>, $setter, set_f64_property, f64, $clearer)
+        })*
+    }
+}
+
+macro_rules! usize_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_usize_property, Option<usize>, $setter, set_usize_property, usize, $clearer)
+        })*
+    }
+}
+
+macro_rules! color_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_color_property, Option<u32>, $setter, set_color_property, u32, $clearer)
+        })*
+    }
+}
+
+macro_rules! text_decoration_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_text_decoration_property, Option<TextDecoration>, $setter, set_text_decoration_property, TextDecoration, $clearer)
+        })*
+    }
+}
+
+macro_rules! length_slice_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_length_slice_property, &[u8], $setter, set_length_slice_property, impl Into<Box<[u8]>>, $clearer)
+        })*
+    }
+}
+
+macro_rules! coord_slice_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_coord_slice_property, Option<&[f32]>, $setter, set_coord_slice_property, impl Into<Box<[f32]>>, $clearer)
+        })*
+    }
+}
+
+macro_rules! bool_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_bool_property, Option<bool>, $setter, set_bool_property, bool, $clearer)
+        })*
+    }
+}
+
+macro_rules! unique_enum_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        impl Node {
+            $($(#[$doc])*
+            #[inline]
+            pub fn $getter(&self) -> Option<$id> {
+                match self.class.get_property(&self.props, PropertyId::$id) {
+                    PropertyValue::None => None,
+                    PropertyValue::$id(value) => Some(*value),
+                    _ => unexpected_property_type(),
+                }
+            })*
+        }
+        impl NodeBuilder {
+            $($(#[$doc])*
+            #[inline]
+            pub fn $getter(&self) -> Option<$id> {
+                match self.class.get_property(&self.props, PropertyId::$id) {
+                    PropertyValue::None => None,
+                    PropertyValue::$id(value) => Some(*value),
+                    _ => unexpected_property_type(),
+                }
+            }
+            #[inline]
+            pub fn $setter(&mut self, value: $id) {
+                self.set_property(PropertyId::$id, PropertyValue::$id(value));
+            }
+            #[inline]
+            pub fn $clearer(&mut self) {
+                self.clear_property(PropertyId::$id);
+            })*
+        }
+    }
+}
+
+impl NodeBuilder {
+    #[inline]
+    pub fn new(role: Role) -> Self {
+        Self {
+            class: NodeClass {
+                role,
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
+    pub fn build(self, classes: &mut NodeClassSet) -> Node {
+        let class = if let Some(class) = classes.0.get(&self.class) {
+            Arc::clone(class)
+        } else {
+            let class = Arc::new(self.class);
+            classes.0.insert(Arc::clone(&class));
+            class
+        };
+        Node {
+            class,
+            flags: self.flags,
+            props: self.props.into(),
+        }
+    }
+}
+
+impl Node {
+    #[inline]
+    pub fn role(&self) -> Role {
+        self.class.role
+    }
+}
+
+impl NodeBuilder {
+    #[inline]
+    pub fn role(&self) -> Role {
+        self.class.role
+    }
+    #[inline]
+    pub fn set_role(&mut self, value: Role) {
+        self.class.role = value;
+    }
+}
+
+impl Node {
+    #[inline]
+    pub fn supports_action(&self, action: Action) -> bool {
+        (self.class.actions.0 & action.mask()) != 0
+    }
+}
+
+impl NodeBuilder {
+    #[inline]
+    pub fn supports_action(&self, action: Action) -> bool {
+        (self.class.actions.0 & action.mask()) != 0
+    }
+    #[inline]
+    pub fn add_action(&mut self, action: Action) {
+        self.class.actions.0 |= action.mask();
+    }
+    #[inline]
+    pub fn remove_action(&mut self, action: Action) {
+        self.class.actions.0 &= !(action.mask());
+    }
+    #[inline]
+    pub fn clear_actions(&mut self) {
+        self.class.actions.0 = 0;
+    }
+}
+
+flag_methods! {
+    (AutofillAvailable, is_autofill_available, set_autofill_available, clear_autofill_available),
+    (Default, is_default, set_default, clear_default),
+    (Editable, is_editable, set_editable, clear_editable),
+    (Hovered, is_hovered, set_hovered, clear_hovered),
     /// Exclude this node and its descendants from the tree presented to
     /// assistive technologies, and from hit testing.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub hidden: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub linked: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub multiline: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub multiselectable: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub protected: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub required: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub visited: bool,
-
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub busy: bool,
-
+    (Hidden, is_hidden, set_hidden, clear_hidden),
+    (Linked, is_linked, set_linked, clear_linked),
+    (Multiline, is_multiline, set_multiline, clear_multiline),
+    (Multiselectable, is_multiselectable, set_multiselectable, clear_multiselectable),
+    (Protected, is_protected, set_protected, clear_protected),
+    (Required, is_required, set_required, clear_required),
+    (Visited, is_visited, set_visited, clear_visited),
+    (Busy, is_busy, set_busy, clear_busy),
+    (LiveAtomic, is_live_atomic, set_live_atomic, clear_live_atomic),
+    /// If a dialog box is marked as explicitly modal.
+    (Modal, is_modal, set_modal, clear_modal),
+    /// Indicates this node is user-scrollable, e.g. `overflow: scroll|auto`, as
+    /// opposed to only programmatically scrollable, like `overflow: hidden`, or
+    /// not scrollable at all, e.g. `overflow: visible`.
+    (Scrollable, is_scrollable, set_scrollable, clear_scrollable),
+    /// Indicates whether this node is selected due to selection follows focus.
+    (SelectedFromFocus, is_selected_from_focus, set_selected_from_focus, clear_selected_from_focus),
+    /// This element allows touches to be passed through when a screen reader
+    /// is in touch exploration mode, e.g. a virtual keyboard normally
+    /// behaves this way.
+    (TouchPassThrough, is_touch_pass_through, set_touch_pass_through, clear_touch_pass_through),
+    /// Use for a textbox that allows focus/selection but not input.
+    (ReadOnly, is_read_only, set_read_only, clear_read_only),
+    /// Use for a control or group of controls that disallows input.
+    (Disabled, is_disabled, set_disabled, clear_disabled),
+    (Bold, is_bold, set_bold, clear_bold),
+    (Italic, is_italic, set_italic, clear_italic),
+    /// Set on a canvas element if it has fallback content.
+    (CanvasHasFallback, canvas_has_fallback, set_canvas_has_fallback, clear_canvas_has_fallback),
+    /// Indicates that this node clips its children, i.e. may have
+    /// `overflow: hidden` or clip children by default.
+    (ClipsChildren, clips_children, set_clips_children, clear_clips_children),
+    /// Indicates whether this node causes a hard line-break
+    /// (e.g. block level elements, or `<br>`).
+    (IsLineBreakingObject, is_line_breaking_object, set_is_line_breaking_object, clear_is_line_breaking_object),
+    /// Indicates whether this node causes a page break.
+    (IsPageBreakingObject, is_page_breaking_object, set_is_page_breaking_object, clear_is_page_breaking_object),
+    (IsSpellingError, is_spelling_error, set_is_spelling_error, clear_is_spelling_error),
+    (IsGrammarError, is_grammar_error, set_is_grammar_error, clear_is_grammar_error),
+    (IsSearchMatch, is_search_match, set_is_search_match, clear_is_search_match),
+    (IsSuggestion, is_suggestion, set_is_suggestion, clear_is_suggestion),
     /// The object functions as a text field which exposes its descendants.
     ///
     /// Use cases include the root of a content-editable region, an ARIA
     /// textbox which isn't currently editable and which has interactive
     /// descendants, and a `<body>` element that has "design-mode" set to "on".
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub nonatomic_text_field_root: bool,
+    (IsNonatomicTextFieldRoot, is_nonatomic_text_field_root, set_is_nonatomic_text_field_root, clear_is_nonatomic_text_field_root)
+}
 
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub live_atomic: bool,
+option_ref_type_getters! {
+    (get_affine_property, Affine, Affine),
+    (get_string_property, str, String),
+    (get_coord_slice_property, [f32], CoordSlice),
+    (get_text_selection_property, TextSelection, TextSelection)
+}
 
-    /// If a dialog box is marked as explicitly modal.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub modal: bool,
+slice_type_getters! {
+    (get_length_slice_property, u8, LengthSlice)
+}
 
-    /// Set on a canvas element if it has fallback content.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub canvas_has_fallback: bool,
+copy_type_getters! {
+    (get_rect_property, Rect, Rect),
+    (get_node_id_property, NodeId, NodeId),
+    (get_f64_property, f64, F64),
+    (get_usize_property, usize, Usize),
+    (get_color_property, u32, Color),
+    (get_text_decoration_property, TextDecoration, TextDecoration),
+    (get_bool_property, bool, Bool)
+}
 
-    /// Indicates this node is user-scrollable, e.g. `overflow: scroll|auto`, as
-    /// opposed to only programmatically scrollable, like `overflow: hidden`, or
-    /// not scrollable at all, e.g. `overflow: visible`.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub scrollable: bool,
+box_type_setters! {
+    (set_affine_property, Affine, Affine),
+    (set_string_property, str, String),
+    (set_length_slice_property, [u8], LengthSlice),
+    (set_coord_slice_property, [f32], CoordSlice),
+    (set_text_selection_property, TextSelection, TextSelection)
+}
 
-    /// A hint to clients that the node is clickable.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub clickable: bool,
+copy_type_setters! {
+    (set_rect_property, Rect, Rect),
+    (set_node_id_property, NodeId, NodeId),
+    (set_f64_property, f64, F64),
+    (set_usize_property, usize, Usize),
+    (set_color_property, u32, Color),
+    (set_text_decoration_property, TextDecoration, TextDecoration),
+    (set_bool_property, bool, Bool)
+}
 
-    /// Indicates that this node clips its children, i.e. may have
-    /// `overflow: hidden` or clip children by default.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub clips_children: bool,
+vec_type_methods! {
+    (NodeId, NodeIdVec, get_node_id_vec, set_node_id_vec, push_to_node_id_vec),
+    (CustomAction, CustomActionVec, get_custom_action_vec, set_custom_action_vec, push_to_custom_action_vec)
+}
 
-    /// Indicates that this node is not selectable because the style has
-    /// `user-select: none`. Note that there may be other reasons why a node is
-    /// not selectable - for example, bullets in a list. However, this attribute
-    /// is only set on `user-select: none`.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub not_user_selectable_style: bool,
-
-    /// Indicates whether this node is selected or unselected.
-    ///
-    /// The absence of this flag (as opposed to a `false` setting)
-    /// means that the concept of "selected" doesn't apply.
-    /// When deciding whether to set the flag to false or omit it,
-    /// consider whether it would be appropriate for a screen reader
-    /// to announce "not selected". The ambiguity of this flag
-    /// in platform accessibility APIs has made extraneous
-    /// "not selected" announcements a common annoyance.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub selected: Option<bool>,
-    /// Indicates whether this node is selected due to selection follows focus.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub selected_from_focus: bool,
-
-    /// Indicates whether this node can be grabbed for drag-and-drop operation.
-    ///
-    /// Setting this flag to `false` rather than omitting it means that
-    /// this node is not currently grabbed but it can be.
-    ///
-    /// Note: [`aria-grabbed`] is deprecated in WAI-ARIA 1.1.
-    ///
-    /// [`aria-grabbed`]: https://www.w3.org/TR/wai-aria-1.1/#aria-grabbed
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub grabbed: Option<bool>,
-    /// Note: [`aria-dropeffect`] is deprecated in WAI-ARIA 1.1.
-    ///
-    /// [`aria-dropeffect`]: https://www.w3.org/TR/wai-aria-1.1/#aria-dropeffect
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "EnumSet::is_empty"))]
-    pub drop_effects: EnumSet<DropEffect>,
-
-    /// Indicates whether this node causes a hard line-break
-    /// (e.g. block level elements, or `<br>`).
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub is_line_breaking_object: bool,
-    /// Indicates whether this node causes a page break.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub is_page_breaking_object: bool,
-
-    /// True if the node has any ARIA attributes set.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub has_aria_attribute: bool,
-
-    /// This element allows touches to be passed through when a screen reader
-    /// is in touch exploration mode, e.g. a virtual keyboard normally
-    /// behaves this way.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub touch_pass_through: bool,
-
+node_id_vec_property_methods! {
+    (Children, children, set_children, push_child, clear_children),
     /// Ids of nodes that are children of this node logically, but are
     /// not children of this node in the tree structure. As an example,
     /// a table cell is a child of a row, and an 'indirect' child of a
     /// column.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub indirect_children: Vec<NodeId>,
-
-    // Relationships between this node and other nodes.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub active_descendant: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub error_message: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub in_page_link_target: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub member_of: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub next_on_line: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub previous_on_line: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub popup_for: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub controls: Vec<NodeId>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub details: Vec<NodeId>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub described_by: Vec<NodeId>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub flow_to: Vec<NodeId>,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub labelled_by: Vec<NodeId>,
+    (IndirectChildren, indirect_children, set_indirect_children, push_indirect_child, clear_indirect_children),
+    (Controls, controls, set_controls, push_controlled, clear_controls),
+    (Details, details, set_details, push_detail, clear_details),
+    (DescribedBy, described_by, set_described_by, push_described_by, clear_described_by),
+    (FlowTo, flow_to, set_flow_to, push_flow_to, clear_flow_to),
+    (LabelledBy, labelled_by, set_labelled_by, push_labelled_by, clear_labelled_by),
     /// On radio buttons this should be set to a list of all of the buttons
     /// in the same group as this one, including this radio button itself.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub radio_group: Vec<NodeId>,
+    (RadioGroup, radio_group, set_radio_group, push_to_radio_group, clear_radio_group)
+}
 
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub is_spelling_error: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub is_grammar_error: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub is_search_match: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub is_suggestion: bool,
+node_id_property_methods! {
+    (ActiveDescendant, active_descendant, set_active_descendant, clear_active_descendant),
+    (ErrorMessage, error_message, set_error_message, clear_error_message),
+    (InPageLinkTarget, in_page_link_target, set_in_page_link_target, clear_in_page_link_target),
+    (MemberOf, member_of, set_member_of, clear_member_of),
+    (NextOnLine, next_on_line, set_next_on_line, clear_next_on_line),
+    (PreviousOnLine, previous_on_line, set_previous_on_line, clear_previous_on_line),
+    (PopupFor, popup_for, set_popup_for, clear_popup_for),
+    (TableHeader, table_header, set_table_header, clear_table_header),
+    (TableRowHeader, table_row_header, set_table_row_header, clear_table_row_header),
+    (TableColumnHeader, table_column_header, set_table_column_header, clear_table_column_header),
+    (NextFocus, next_focus, set_next_focus, clear_next_focus),
+    (PreviousFocus, previous_focus, set_previous_focus, clear_previous_focus)
+}
 
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub text_direction: Option<TextDirection>,
+string_property_methods! {
+    (Name, name, set_name, clear_name),
+    (Description, description, set_description, clear_description),
+    (Value, value, set_value, clear_value),
+    (AccessKey, access_key, set_access_key, clear_access_key),
+    (AutoComplete, auto_complete, set_auto_complete, clear_auto_complete),
+    (CheckedStateDescription, checked_state_description, set_checked_state_description, clear_checked_state_description),
+    (ClassName, class_name, set_class_name, clear_class_name),
+    (CssDisplay, css_display, set_css_display, clear_css_display),
+    /// Only present when different from parent.
+    (FontFamily, font_family, set_font_family, clear_font_family),
+    (HtmlTag, html_tag, set_html_tag, clear_html_tag),
+    /// Inner HTML of an element. Only used for a top-level math element,
+    /// to support third-party math accessibility products that parse MathML.
+    (InnerHtml, inner_html, set_inner_html, clear_inner_html),
+    (InputType, input_type, set_input_type, clear_input_type),
+    (KeyShortcuts, key_shortcuts, set_key_shortcuts, clear_key_shortcuts),
+    /// Only present when different from parent.
+    (Language, language, set_language, clear_language),
+    (LiveRelevant, live_relevant, set_live_relevant, clear_live_relevant),
+    /// Only if not already exposed in [`name`] ([`NameFrom::Placeholder`]).
+    ///
+    /// [`name`]: Node::name
+    (Placeholder, placeholder, set_placeholder, clear_placeholder),
+    (AriaRole, aria_role, set_aria_role, clear_aria_role),
+    (RoleDescription, role_description, set_role_description, clear_role_description),
+    /// Only if not already exposed in [`name`] ([`NameFrom::Title`]).
+    ///
+    /// [`name`]: Node::name
+    (Tooltip, tooltip, set_tooltip, clear_tooltip),
+    (Url, url, set_url, clear_url)
+}
 
+f64_property_methods! {
+    (ScrollX, scroll_x, set_scroll_x, clear_scroll_x),
+    (ScrollXMin, scroll_x_min, set_scroll_x_min, clear_scroll_x_min),
+    (ScrollXMax, scroll_x_max, set_scroll_x_max, clear_scroll_x_max),
+    (ScrollY, scroll_y, set_scroll_y, clear_scroll_y),
+    (ScrollYMin, scroll_y_min, set_scroll_y_min, clear_scroll_y_min),
+    (ScrollYMax, scroll_y_max, set_scroll_y_max, clear_scroll_y_max),
+    (NumericValue, numeric_value, set_numeric_value, clear_numeric_value),
+    (MinNumericValue, min_numeric_value, set_min_numeric_value, clear_min_numeric_value),
+    (MaxNumericValue, max_numeric_value, set_max_numeric_value, clear_max_numeric_value),
+    (NumericValueStep, numeric_value_step, set_numeric_value_step, clear_numeric_value_step),
+    (NumericValueJump, numeric_value_jump, set_numeric_value_jump, clear_numeric_value_jump),
+    /// Font size is in pixels.
+    (FontSize, font_size, set_font_size, clear_font_size),
+    /// Font weight can take on any arbitrary numeric value. Increments of 100 in
+    /// range `[0, 900]` represent keywords such as light, normal, bold, etc.
+    (FontWeight, font_weight, set_font_weight, clear_font_weight),
+    /// The indentation of the text, in mm.
+    (TextIndent, text_indent, set_text_indent, clear_text_indent)
+}
+
+usize_property_methods! {
+    (TableRowCount, table_row_count, set_table_row_count, clear_table_row_count),
+    (TableColumnCount, table_column_count, set_table_column_count, clear_table_column_count),
+    (TableRowIndex, table_row_index, set_table_row_index, clear_table_row_index),
+    (TableColumnIndex, table_column_index, set_table_column_index, clear_table_column_index),
+    (TableCellColumnIndex, table_cell_column_index, set_table_cell_column_index, clear_table_cell_column_index),
+    (TableCellColumnSpan, table_cell_column_span, set_table_cell_column_span, clear_table_cell_column_span),
+    (TableCellRowIndex, table_cell_row_index, set_table_cell_row_index, clear_table_cell_row_index),
+    (TableCellRowSpan, table_cell_row_span, set_table_cell_row_span, clear_table_cell_row_span),
+    (HierarchicalLevel, hierarchical_level, set_hierarchical_level, clear_hierarchical_level),
+    (SizeOfSet, size_of_set, set_size_of_set, clear_size_of_set),
+    (PositionInSet, position_in_set, set_position_in_set, clear_position_in_set)
+}
+
+color_property_methods! {
+    /// For [`Role::ColorWell`], specifies the selected color in RGBA.
+    (ColorValue, color_value, set_color_value, clear_color_value),
+    /// Background color in RGBA.
+    (BackgroundColor, background_color, set_background_color, clear_background_color),
+    /// Foreground color in RGBA.
+    (ForegroundColor, foreground_color, set_foreground_color, clear_foreground_color)
+}
+
+text_decoration_property_methods! {
+    (Overline, overline, set_overline, clear_overline),
+    (Strikethrough, strikethrough, set_strikethrough, clear_strikethrough),
+    (Underline, underline, set_underline, clear_underline)
+}
+
+length_slice_property_methods! {
     /// For inline text. The length (non-inclusive) of each character
     /// in UTF-8 code units (bytes). The sum of these lengths must equal
-    /// the length of [`Node::value`], also in bytes.
+    /// the length of [`value`], also in bytes.
     ///
     /// A character is defined as the smallest unit of text that
     /// can be selected. This isn't necessarily a single Unicode
@@ -941,45 +1638,13 @@ pub struct Node {
     /// should be counted as a single character for the sake of this slice.
     /// When the caret is at the end of such a line, the focus of the text
     /// selection should be on the line break, not after it.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub character_lengths: Box<[u8]>,
-    /// For inline text. This is the position of each character within
-    /// the node's bounding box, in the direction given by
-    /// [`Node::text_direction`], in the coordinate space of this node.
     ///
-    /// When present, the length of this slice should be the same as the length
-    /// of [`Node::character_lengths`], including for lines that end
-    /// with a hard line break. The position of such a line break should
-    /// be the position where an end-of-paragraph marker would be rendered.
-    ///
-    /// This field is optional. Without it, AccessKit can't support some
-    /// use cases, such as screen magnifiers that track the caret position
-    /// or screen readers that display a highlight cursor. However,
-    /// most text functionality still works without this information.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub character_positions: Option<Box<[f32]>>,
-    /// For inline text. This is the advance width of each character,
-    /// in the direction given by [`Node::text_direction`], in the coordinate
-    /// space of this node.
-    ///
-    /// When present, the length of this slice should be the same as the length
-    /// of [`Node::character_lengths`], including for lines that end
-    /// with a hard line break. The width of such a line break should
-    /// be non-zero if selecting the line break by itself results in
-    /// a visible highlight (as in Microsoft Word), or zero if not
-    /// (as in Windows Notepad).
-    ///
-    /// This field is optional. Without it, AccessKit can't support some
-    /// use cases, such as screen magnifiers that track the caret position
-    /// or screen readers that display a highlight cursor. However,
-    /// most text functionality still works without this information.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub character_widths: Option<Box<[f32]>>,
+    /// [`value`]: Node::value
+    (CharacterLengths, character_lengths, set_character_lengths, clear_character_lengths),
 
     /// For inline text. The length of each word in characters, as defined
-    /// in [`Node::character_lengths`]. The sum of these lengths must equal
-    /// the length of [`Node::character_lengths`].
+    /// in [`character_lengths`]. The sum of these lengths must equal
+    /// the length of [`character_lengths`].
     ///
     /// The end of each word is the beginning of the next word; there are no
     /// characters that are not considered part of a word. Trailing whitespace
@@ -997,229 +1662,616 @@ pub struct Node {
     /// boundaries exposed by the accessibility tree don't match
     /// the editor's behavior. This is why AccessKit does not determine
     /// word boundaries itself.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub word_lengths: Box<[u8]>,
+    ///
+    /// [`character_lengths`]: Node::character_lengths
+    (WordLengths, word_lengths, set_word_lengths, clear_word_lengths)
+}
 
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_empty"))]
-    pub custom_actions: Box<[CustomAction]>,
+coord_slice_property_methods! {
+    /// For inline text. This is the position of each character within
+    /// the node's bounding box, in the direction given by
+    /// [`text_direction`], in the coordinate space of this node.
+    ///
+    /// When present, the length of this slice should be the same as the length
+    /// of [`character_lengths`], including for lines that end
+    /// with a hard line break. The position of such a line break should
+    /// be the position where an end-of-paragraph marker would be rendered.
+    ///
+    /// This property is optional. Without it, AccessKit can't support some
+    /// use cases, such as screen magnifiers that track the caret position
+    /// or screen readers that display a highlight cursor. However,
+    /// most text functionality still works without this information.
+    ///
+    /// [`text_direction`]: Node::text_direction
+    /// [`character_lengths`]: Node::character_lengths
+    (CharacterPositions, character_positions, set_character_positions, clear_character_positions),
 
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub access_key: Option<Box<str>>,
+    /// For inline text. This is the advance width of each character,
+    /// in the direction given by [`text_direction`], in the coordinate
+    /// space of this node.
+    ///
+    /// When present, the length of this slice should be the same as the length
+    /// of [`character_lengths`], including for lines that end
+    /// with a hard line break. The width of such a line break should
+    /// be non-zero if selecting the line break by itself results in
+    /// a visible highlight (as in Microsoft Word), or zero if not
+    /// (as in Windows Notepad).
+    ///
+    /// This property is optional. Without it, AccessKit can't support some
+    /// use cases, such as screen magnifiers that track the caret position
+    /// or screen readers that display a highlight cursor. However,
+    /// most text functionality still works without this information.
+    ///
+    /// [`text_direction`]: Node::text_direction
+    /// [`character_lengths`]: Node::character_lengths
+    (CharacterWidths, character_widths, set_character_widths, clear_character_widths)
+}
 
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub invalid_state: Option<InvalidState>,
+bool_property_methods! {
+    /// Whether this node is expanded, collapsed, or neither.
+    ///
+    /// Setting this to `false` means the node is collapsed; omitting it means this state
+    /// isn't applicable.
+    (Expanded, is_expanded, set_expanded, clear_expanded),
 
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub auto_complete: Option<Box<str>>,
+    /// Indicates whether this node is selected or unselected.
+    ///
+    /// The absence of this flag (as opposed to a `false` setting)
+    /// means that the concept of "selected" doesn't apply.
+    /// When deciding whether to set the flag to false or omit it,
+    /// consider whether it would be appropriate for a screen reader
+    /// to announce "not selected". The ambiguity of this flag
+    /// in platform accessibility APIs has made extraneous
+    /// "not selected" announcements a common annoyance.
+    (Selected, is_selected, set_selected, clear_selected)
+}
 
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub checked_state: Option<CheckedState>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub checked_state_description: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub class_name: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub css_display: Option<Box<str>>,
-
-    /// Only present when different from parent.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub font_family: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub html_tag: Option<Box<str>>,
-
-    /// Inner HTML of an element. Only used for a top-level math element,
-    /// to support third-party math accessibility products that parse MathML.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub inner_html: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub input_type: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub key_shortcuts: Option<Box<str>>,
-
-    /// Only present when different from parent.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub language: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub live_relevant: Option<Box<str>>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub live: Option<Live>,
-
-    /// Only if not already exposed in [`Node::name`] ([`NameFrom::Placeholder`]).
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub placeholder: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub aria_role: Option<Box<str>>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub role_description: Option<Box<str>>,
-
-    /// Only if not already exposed in [`Node::name`] ([`NameFrom::Title`]).
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub tooltip: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub url: Option<Box<str>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub default_action_verb: Option<DefaultActionVerb>,
-
-    // Scrollable container attributes.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub scroll_x: Option<f32>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub scroll_x_min: Option<f32>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub scroll_x_max: Option<f32>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub scroll_y: Option<f32>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub scroll_y_min: Option<f32>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub scroll_y_max: Option<f32>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub text_selection: Option<TextSelection>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub aria_column_count: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub aria_cell_column_index: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub aria_cell_column_span: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub aria_row_count: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub aria_cell_row_index: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub aria_cell_row_span: Option<usize>,
-
-    // Table attributes.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub table_row_count: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub table_column_count: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub table_header: Option<NodeId>,
-
-    // Table row attributes.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub table_row_index: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub table_row_header: Option<NodeId>,
-
-    // Table column attributes.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub table_column_index: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub table_column_header: Option<NodeId>,
-
-    // Table cell attributes.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub table_cell_column_index: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub table_cell_column_span: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub table_cell_row_index: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub table_cell_row_span: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub sort_direction: Option<SortDirection>,
-
-    /// Tree control attributes.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub hierarchical_level: Option<usize>,
-
-    /// Use for a textbox that allows focus/selection but not input.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub read_only: bool,
-    /// Use for a control or group of controls that disallows input.
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub disabled: bool,
-
-    // Position or Number of items in current set of listitems or treeitems
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub set_size: Option<usize>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub pos_in_set: Option<usize>,
-
-    /// For [`Role::ColorWell`], specifies the selected color in RGBA.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub color_value: Option<u32>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub aria_current: Option<AriaCurrent>,
-
-    /// Background color in RGBA.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub background_color: Option<u32>,
-    /// Foreground color in RGBA.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub foreground_color: Option<u32>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub has_popup: Option<HasPopup>,
-
+unique_enum_property_methods! {
+    /// What information was used to compute the object's name.
+    (NameFrom, name_from, set_name_from, clear_name_from),
+    /// What information was used to compute the object's description.
+    (DescriptionFrom, description_from, set_description_from, clear_description_from),
+    (Invalid, invalid, set_invalid, clear_invalid),
+    (CheckedState, checked_state, set_checked_state, clear_checked_state),
+    (Live, live, set_live, clear_live),
+    (DefaultActionVerb, default_action_verb, set_default_action_verb, clear_default_action_verb),
+    (TextDirection, text_direction, set_text_direction, clear_text_direction),
+    (Orientation, orientation, set_orientation, clear_orientation),
+    (SortDirection, sort_direction, set_sort_direction, clear_sort_direction),
+    (AriaCurrent, aria_current, set_aria_current, clear_aria_current),
+    (HasPopup, has_popup, set_has_popup, clear_has_popup),
     /// The list style type. Only available on list items.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub list_style: Option<ListStyle>,
+    (ListStyle, list_style, set_list_style, clear_list_style),
+    (TextAlign, text_align, set_text_align, clear_text_align),
+    (VerticalOffset, vertical_offset, set_vertical_offset, clear_vertical_offset)
+}
 
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub text_align: Option<TextAlign>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub vertical_offset: Option<VerticalOffset>,
+property_methods! {
+    /// An affine transform to apply to any coordinates within this node
+    /// and its descendants, including the [`bounds`] property of this node.
+    /// The combined transforms of this node and its ancestors define
+    /// the coordinate space of this node. /// This should be `None` if
+    /// it would be set to the identity transform, which should be the case
+    /// for most nodes.
+    ///
+    /// AccessKit expects the final transformed coordinates to be relative
+    /// to the origin of the tree's container (e.g. window), in physical
+    /// pixels, with the y coordinate being top-down.
+    ///
+    /// [`bounds`]: Node::bounds
+    (Transform, transform, get_affine_property, Option<&Affine>, set_transform, set_affine_property, impl Into<Box<Affine>>, clear_transform),
 
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub bold: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "is_false"))]
-    pub italic: bool,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub overline: Option<TextDecoration>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub strikethrough: Option<TextDecoration>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub underline: Option<TextDecoration>,
+    /// The bounding box of this node, in the node's coordinate space.
+    /// This property does not affect the coordinate space of either this node
+    /// or its descendants; only the [`transform`] property affects that.
+    /// This, along with the recommendation that most nodes should have
+    /// a [`transform`] of `None`, implies that the `bounds` property
+    /// of most nodes should be in the coordinate space of the nearest ancestor
+    /// with a non-`None` [`transform`], or if there is no such ancestor,
+    /// the tree's container (e.g. window).
+    ///
+    /// [`transform`]: Node::transform
+    (Bounds, bounds, get_rect_property, Option<Rect>, set_bounds, set_rect_property, Rect, clear_bounds),
 
-    // Focus traversal order.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub previous_focus: Option<NodeId>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub next_focus: Option<NodeId>,
+    (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, impl Into<Box<TextSelection>>, clear_text_selection)
+}
 
-    // Numeric value attributes.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub numeric_value: Option<f64>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub min_numeric_value: Option<f64>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub max_numeric_value: Option<f64>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub numeric_value_step: Option<f64>,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub numeric_value_jump: Option<f64>,
+vec_property_methods! {
+    (CustomActions, CustomAction, custom_actions, get_custom_action_vec, set_custom_actions, set_custom_action_vec, push_custom_action, push_to_custom_action_vec, clear_custom_actions)
+}
 
-    // Text attributes.
-    /// Font size is in pixels.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub font_size: Option<f32>,
-    /// Font weight can take on any arbitrary numeric value. Increments of 100 in
-    /// range `[0, 900]` represent keywords such as light, normal, bold, etc.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub font_weight: Option<f32>,
-    /// The text indent of the text, in mm.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub text_indent: Option<f32>,
+#[cfg(feature = "serde")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+enum ClassFieldId {
+    Role,
+    Actions,
+}
+
+#[cfg(feature = "serde")]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(untagged)]
+enum DeserializeKey {
+    ClassField(ClassFieldId),
+    Flag(Flag),
+    Property(PropertyId),
+    Unknown(String),
+}
+
+#[cfg(feature = "serde")]
+macro_rules! serialize_class_fields {
+    ($self:ident, $map:ident, { $(($name:ident, $id:ident)),+ }) => {
+        $($map.serialize_entry(&ClassFieldId::$id, &$self.class.$name)?;)*
+    }
+}
+
+#[cfg(feature = "serde")]
+macro_rules! serialize_property {
+    ($self:ident, $map:ident, $index:ident, $id:ident, { $($variant:ident),+ }) => {
+        match &$self.props[$index as usize] {
+            PropertyValue::None => (),
+            $(PropertyValue::$variant(value) => {
+                $map.serialize_entry(&$id, &Some(value))?;
+            })*
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+macro_rules! deserialize_class_field {
+    ($builder:ident, $map:ident, $key:ident, { $(($name:ident, $id:ident)),+ }) => {
+        match $key {
+            $(ClassFieldId::$id => {
+                $builder.class.$name = $map.next_value()?;
+            })*
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+macro_rules! deserialize_property {
+    ($builder:ident, $map:ident, $key:ident, { $($type:ident { $($id:ident),+ }),+ }) => {
+        match $key {
+            $($(PropertyId::$id => {
+                if let Some(value) = $map.next_value()? {
+                    $builder.set_property(PropertyId::$id, PropertyValue::$type(value));
+                } else {
+                    $builder.clear_property(PropertyId::$id);
+                }
+            })*)*
+            PropertyId::Unset => {
+                let _ = $map.next_value::<IgnoredAny>()?;
+            }
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl Serialize for Node {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(None)?;
+        serialize_class_fields!(self, map, {
+            (role, Role),
+            (actions, Actions)
+        });
+        for i in 0..((size_of_val(&self.flags) as u8) * 8) {
+            if let Some(flag) = Flag::n(i) {
+                if (self.flags & flag.mask()) != 0 {
+                    map.serialize_entry(&flag, &true)?;
+                }
+            }
+        }
+        for (id, index) in self.class.indices.0.iter().copied().enumerate() {
+            if index == PropertyId::Unset as u8 {
+                continue;
+            }
+            let id = PropertyId::n(id as _).unwrap();
+            serialize_property!(self, map, index, id, {
+                NodeIdVec,
+                NodeId,
+                String,
+                F64,
+                Usize,
+                Color,
+                TextDecoration,
+                LengthSlice,
+                CoordSlice,
+                Bool,
+                NameFrom,
+                DescriptionFrom,
+                Invalid,
+                CheckedState,
+                Live,
+                DefaultActionVerb,
+                TextDirection,
+                Orientation,
+                SortDirection,
+                AriaCurrent,
+                HasPopup,
+                ListStyle,
+                TextAlign,
+                VerticalOffset,
+                Affine,
+                Rect,
+                TextSelection,
+                CustomActionVec
+            });
+        }
+        map.end()
+    }
+}
+
+#[cfg(feature = "serde")]
+struct NodeVisitor;
+
+#[cfg(feature = "serde")]
+impl<'de> Visitor<'de> for NodeVisitor {
+    type Value = Node;
+
+    #[inline]
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("struct Node")
+    }
+
+    fn visit_map<V>(self, mut map: V) -> Result<Node, V::Error>
+    where
+        V: MapAccess<'de>,
+    {
+        let mut builder = NodeBuilder::default();
+        while let Some(key) = map.next_key()? {
+            match key {
+                DeserializeKey::ClassField(id) => {
+                    deserialize_class_field!(builder, map, id, {
+                       (role, Role),
+                       (actions, Actions)
+                    });
+                }
+                DeserializeKey::Flag(flag) => {
+                    if map.next_value()? {
+                        builder.flags |= flag.mask();
+                    } else {
+                        builder.flags &= !(flag.mask());
+                    }
+                }
+                DeserializeKey::Property(id) => {
+                    deserialize_property!(builder, map, id, {
+                        NodeIdVec {
+                            Children,
+                            IndirectChildren,
+                            Controls,
+                            Details,
+                            DescribedBy,
+                            FlowTo,
+                            LabelledBy,
+                            RadioGroup
+                        },
+                        NodeId {
+                            ActiveDescendant,
+                            ErrorMessage,
+                            InPageLinkTarget,
+                            MemberOf,
+                            NextOnLine,
+                            PreviousOnLine,
+                            PopupFor,
+                            TableHeader,
+                            TableRowHeader,
+                            TableColumnHeader,
+                            NextFocus,
+                            PreviousFocus
+                        },
+                        String {
+                            Name,
+                            Description,
+                            Value,
+                            AccessKey,
+                            AutoComplete,
+                            CheckedStateDescription,
+                            ClassName,
+                            CssDisplay,
+                            FontFamily,
+                            HtmlTag,
+                            InnerHtml,
+                            InputType,
+                            KeyShortcuts,
+                            Language,
+                            LiveRelevant,
+                            Placeholder,
+                            AriaRole,
+                            RoleDescription,
+                            Tooltip,
+                            Url
+                        },
+                        F64 {
+                            ScrollX,
+                            ScrollXMin,
+                            ScrollXMax,
+                            ScrollY,
+                            ScrollYMin,
+                            ScrollYMax,
+                            NumericValue,
+                            MinNumericValue,
+                            MaxNumericValue,
+                            NumericValueStep,
+                            NumericValueJump,
+                            FontSize,
+                            FontWeight,
+                            TextIndent
+                        },
+                        Usize {
+                            TableRowCount,
+                            TableColumnCount,
+                            TableRowIndex,
+                            TableColumnIndex,
+                            TableCellColumnIndex,
+                            TableCellColumnSpan,
+                            TableCellRowIndex,
+                            TableCellRowSpan,
+                            HierarchicalLevel,
+                            SizeOfSet,
+                            PositionInSet
+                        },
+                        Color {
+                            ColorValue,
+                            BackgroundColor,
+                            ForegroundColor
+                        },
+                        TextDecoration {
+                            Overline,
+                            Strikethrough,
+                            Underline
+                        },
+                        LengthSlice {
+                            CharacterLengths,
+                            WordLengths
+                        },
+                        CoordSlice {
+                            CharacterPositions,
+                            CharacterWidths
+                        },
+                        Bool {
+                            Expanded,
+                            Selected
+                        },
+                        NameFrom { NameFrom },
+                        DescriptionFrom { DescriptionFrom },
+                        Invalid { Invalid },
+                        CheckedState { CheckedState },
+                        Live { Live },
+                        DefaultActionVerb { DefaultActionVerb },
+                        TextDirection { TextDirection },
+                        Orientation { Orientation },
+                        SortDirection { SortDirection },
+                        AriaCurrent { AriaCurrent },
+                        HasPopup { HasPopup },
+                        ListStyle { ListStyle },
+                        TextAlign { TextAlign },
+                        VerticalOffset { VerticalOffset },
+                        Affine { Transform },
+                        Rect { Bounds },
+                        TextSelection { TextSelection },
+                        CustomActionVec { CustomActions }
+                    });
+                }
+                DeserializeKey::Unknown(_) => {
+                    let _ = map.next_value::<IgnoredAny>()?;
+                }
+            }
+        }
+
+        Ok(builder.build(&mut NodeClassSet::lock_global()))
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for Node {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_map(NodeVisitor)
+    }
+}
+
+#[cfg(feature = "schemars")]
+macro_rules! add_schema_property {
+    ($gen:ident, $properties:ident, $enum_value:expr, $type:ty) => {{
+        let name = format!("{:?}", $enum_value);
+        let name = name[..1].to_ascii_lowercase() + &name[1..];
+        let subschema = $gen.subschema_for::<$type>();
+        $properties.insert(name, subschema);
+    }};
+}
+
+#[cfg(feature = "schemars")]
+macro_rules! add_flags_to_schema {
+    ($gen:ident, $properties:ident, { $($variant:ident),+ }) => {
+        $(add_schema_property!($gen, $properties, Flag::$variant, bool);)*
+    }
+}
+
+#[cfg(feature = "schemars")]
+macro_rules! add_properties_to_schema {
+    ($gen:ident, $properties:ident, { $($type:ty { $($id:ident),+ }),+ }) => {
+        $($(add_schema_property!($gen, $properties, PropertyId::$id, Option<$type>);)*)*
+    }
+}
+
+#[cfg(feature = "schemars")]
+impl JsonSchema for Node {
+    #[inline]
+    fn schema_name() -> String {
+        "Node".into()
+    }
+
+    fn json_schema(gen: &mut SchemaGenerator) -> Schema {
+        let mut properties = SchemaMap::<String, Schema>::new();
+        add_schema_property!(gen, properties, ClassFieldId::Role, Role);
+        add_schema_property!(gen, properties, ClassFieldId::Actions, Actions);
+        add_flags_to_schema!(gen, properties, {
+            AutofillAvailable,
+            Default,
+            Editable,
+            Hovered,
+            Hidden,
+            Linked,
+            Multiline,
+            Multiselectable,
+            Protected,
+            Required,
+            Visited,
+            Busy,
+            LiveAtomic,
+            Modal,
+            Scrollable,
+            SelectedFromFocus,
+            TouchPassThrough,
+            ReadOnly,
+            Disabled,
+            Bold,
+            Italic,
+            CanvasHasFallback,
+            ClipsChildren,
+            IsLineBreakingObject,
+            IsPageBreakingObject,
+            IsSpellingError,
+            IsGrammarError,
+            IsSearchMatch,
+            IsSuggestion,
+            IsNonatomicTextFieldRoot
+        });
+        add_properties_to_schema!(gen, properties, {
+            Vec<NodeId> {
+                Children,
+                IndirectChildren,
+                Controls,
+                Details,
+                DescribedBy,
+                FlowTo,
+                LabelledBy,
+                RadioGroup
+            },
+            NodeId {
+                ActiveDescendant,
+                ErrorMessage,
+                InPageLinkTarget,
+                MemberOf,
+                NextOnLine,
+                PreviousOnLine,
+                PopupFor,
+                TableHeader,
+                TableRowHeader,
+                TableColumnHeader,
+                NextFocus,
+                PreviousFocus
+            },
+            Box<str> {
+                Name,
+                Description,
+                Value,
+                AccessKey,
+                AutoComplete,
+                CheckedStateDescription,
+                ClassName,
+                CssDisplay,
+                FontFamily,
+                HtmlTag,
+                InnerHtml,
+                InputType,
+                KeyShortcuts,
+                Language,
+                LiveRelevant,
+                Placeholder,
+                AriaRole,
+                RoleDescription,
+                Tooltip,
+                Url
+            },
+            f64 {
+                ScrollX,
+                ScrollXMin,
+                ScrollXMax,
+                ScrollY,
+                ScrollYMin,
+                ScrollYMax,
+                NumericValue,
+                MinNumericValue,
+                MaxNumericValue,
+                NumericValueStep,
+                NumericValueJump,
+                FontSize,
+                FontWeight,
+                TextIndent
+            },
+            usize {
+                TableRowCount,
+                TableColumnCount,
+                TableRowIndex,
+                TableColumnIndex,
+                TableCellColumnIndex,
+                TableCellColumnSpan,
+                TableCellRowIndex,
+                TableCellRowSpan,
+                HierarchicalLevel,
+                SizeOfSet,
+                PositionInSet
+            },
+            u32 {
+                ColorValue,
+                BackgroundColor,
+                ForegroundColor
+            },
+            TextDecoration {
+                Overline,
+                Strikethrough,
+                Underline
+            },
+            Box<[u8]> {
+                CharacterLengths,
+                WordLengths
+            },
+            Box<[f32]> {
+                CharacterPositions,
+                CharacterWidths
+            },
+            bool {
+                Expanded,
+                Selected
+            },
+            NameFrom { NameFrom },
+            DescriptionFrom { DescriptionFrom },
+            Invalid { Invalid },
+            CheckedState { CheckedState },
+            Live { Live },
+            DefaultActionVerb { DefaultActionVerb },
+            TextDirection { TextDirection },
+            Orientation { Orientation },
+            SortDirection { SortDirection },
+            AriaCurrent { AriaCurrent },
+            HasPopup { HasPopup },
+            ListStyle { ListStyle },
+            TextAlign { TextAlign },
+            VerticalOffset { VerticalOffset },
+            Affine { Transform },
+            Rect { Bounds },
+            TextSelection { TextSelection },
+            Vec<CustomAction> { CustomActions }
+        });
+        SchemaObject {
+            instance_type: Some(InstanceType::Object.into()),
+            object: Some(
+                ObjectValidation {
+                    properties,
+                    ..Default::default()
+                }
+                .into(),
+            ),
+            ..Default::default()
+        }
+        .into()
+    }
 }
 
 /// The data associated with an accessibility tree that's global to the
@@ -1227,7 +2279,6 @@ pub struct Node {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct Tree {
@@ -1236,11 +2287,11 @@ pub struct Tree {
     /// The node that's used as the root scroller, if any. On some platforms
     /// like Android we need to ignore accessibility scroll offsets for
     /// that node and get them from the viewport instead.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub root_scroller: Option<NodeId>,
 }
 
 impl Tree {
+    #[inline]
     pub fn new(root: NodeId) -> Tree {
         Tree {
             root,
@@ -1263,7 +2314,6 @@ impl Tree {
 #[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TreeUpdate {
@@ -1287,13 +2337,12 @@ pub struct TreeUpdate {
     /// an updated version of the parent node with the child's ID removed
     /// from [`Node::children`]. Neither the child nor any of its descendants
     /// may be included in this list.
-    pub nodes: Vec<(NodeId, Arc<Node>)>,
+    pub nodes: Vec<(NodeId, Node)>,
 
     /// Rarely updated information about the tree as a whole. This may be omitted
     /// if it has not changed since the previous update, but providing the same
     /// information again is also allowed. This is required when initializing
     /// a tree.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub tree: Option<Tree>,
 
     /// The node with keyboard focus within this tree, if any.
@@ -1307,7 +2356,6 @@ pub struct TreeUpdate {
     /// render widgets (e.g. to draw or not draw a focus rectangle),
     /// so this focus tracking should not be duplicated between the toolkit
     /// and the AccessKit platform adapters.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub focus: Option<NodeId>,
 }
 
@@ -1320,7 +2368,6 @@ impl<T: FnOnce() -> TreeUpdate> From<T> for TreeUpdate {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub enum ActionData {
     CustomAction(i32),
@@ -1341,13 +2388,11 @@ pub enum ActionData {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(crate = "serde"))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct ActionRequest {
     pub action: Action,
     pub target: NodeId,
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub data: Option<ActionData>,
 }
 

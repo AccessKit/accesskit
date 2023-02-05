@@ -1,6 +1,6 @@
-use accesskit::kurbo::Rect;
 use accesskit::{
-    Action, ActionRequest, DefaultActionVerb, Live, Node, NodeId, Role, Tree, TreeUpdate,
+    Action, ActionRequest, DefaultActionVerb, Live, Node, NodeBuilder, NodeClassSet, NodeId, Rect,
+    Role, Tree, TreeUpdate,
 };
 use accesskit_winit::{ActionRequestEvent, Adapter};
 use std::{
@@ -18,7 +18,7 @@ const WINDOW_TITLE: &str = "Hello world";
 const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
 const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
 const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
-const PRESSED_TEXT_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(4) });
+const ANNOUNCEMENT_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(4) });
 const INITIAL_FOCUS: NodeId = BUTTON_1_ID;
 
 const BUTTON_1_RECT: Rect = Rect {
@@ -35,27 +35,33 @@ const BUTTON_2_RECT: Rect = Rect {
     y1: 100.0,
 };
 
-fn make_button(id: NodeId, name: &str) -> Arc<Node> {
+fn build_button(id: NodeId, name: &str, classes: &mut NodeClassSet) -> Node {
     let rect = match id {
         BUTTON_1_ID => BUTTON_1_RECT,
         BUTTON_2_ID => BUTTON_2_RECT,
         _ => unreachable!(),
     };
 
-    Arc::new(Node {
-        role: Role::Button,
-        bounds: Some(rect),
-        name: Some(name.into()),
-        focusable: true,
-        default_action_verb: Some(DefaultActionVerb::Click),
-        ..Default::default()
-    })
+    let mut builder = NodeBuilder::new(Role::Button);
+    builder.set_bounds(rect);
+    builder.set_name(name);
+    builder.add_action(Action::Focus);
+    builder.set_default_action_verb(DefaultActionVerb::Click);
+    builder.build(classes)
 }
 
-#[derive(Debug)]
+fn build_announcement(text: &str, classes: &mut NodeClassSet) -> Node {
+    let mut builder = NodeBuilder::new(Role::StaticText);
+    builder.set_name(text);
+    builder.set_live(Live::Polite);
+    builder.build(classes)
+}
+
 struct State {
     focus: NodeId,
     is_window_focused: bool,
+    announcement: Option<String>,
+    node_classes: NodeClassSet,
 }
 
 impl State {
@@ -63,71 +69,71 @@ impl State {
         Arc::new(Mutex::new(Self {
             focus: INITIAL_FOCUS,
             is_window_focused: false,
+            announcement: None,
+            node_classes: NodeClassSet::new(),
         }))
+    }
+
+    fn focus(&self) -> Option<NodeId> {
+        self.is_window_focused.then_some(self.focus)
+    }
+
+    fn build_root(&mut self) -> Node {
+        let mut builder = NodeBuilder::new(Role::Window);
+        builder.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
+        if self.announcement.is_some() {
+            builder.push_child(ANNOUNCEMENT_ID);
+        }
+        builder.set_name(WINDOW_TITLE);
+        builder.build(&mut self.node_classes)
+    }
+
+    fn build_initial_tree(&mut self) -> TreeUpdate {
+        let root = self.build_root();
+        let button_1 = build_button(BUTTON_1_ID, "Button 1", &mut self.node_classes);
+        let button_2 = build_button(BUTTON_2_ID, "Button 2", &mut self.node_classes);
+        let mut result = TreeUpdate {
+            nodes: vec![
+                (WINDOW_ID, root),
+                (BUTTON_1_ID, button_1),
+                (BUTTON_2_ID, button_2),
+            ],
+            tree: Some(Tree::new(WINDOW_ID)),
+            focus: self.focus(),
+        };
+        if let Some(announcement) = &self.announcement {
+            result.nodes.push((
+                ANNOUNCEMENT_ID,
+                build_announcement(announcement, &mut self.node_classes),
+            ));
+        }
+        result
     }
 
     fn update_focus(&mut self, adapter: &Adapter) {
         adapter.update_if_active(|| TreeUpdate {
             nodes: vec![],
             tree: None,
-            focus: self.is_window_focused.then_some(self.focus),
+            focus: self.focus(),
         });
     }
 
-    fn press_button(&self, adapter: &Adapter, id: NodeId) {
-        // This is a pretty hacky way of adding or updating a node.
-        // A real GUI framework would have a consistent way
-        // of building nodes from underlying data.
-        // Also, this update isn't as lazy as it could be;
-        // we force the AccessKit tree to be initialized.
-        // This is expedient in this case, because that tree
-        // is the only place where the state of the announcement
-        // is stored. It's not a problem because we're really
-        // only concerned with testing lazy updates in the context
-        // of focus changes.
-        let name = if id == BUTTON_1_ID {
+    fn press_button(&mut self, adapter: &Adapter, id: NodeId) {
+        let text = if id == BUTTON_1_ID {
             "You pressed button 1"
         } else {
             "You pressed button 2"
         };
-        let node = Arc::new(Node {
-            role: Role::StaticText,
-            name: Some(name.into()),
-            live: Some(Live::Polite),
-            ..Default::default()
+        self.announcement = Some(text.into());
+        adapter.update_if_active(|| {
+            let announcement = build_announcement(text, &mut self.node_classes);
+            let root = self.build_root();
+            TreeUpdate {
+                nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],
+                tree: None,
+                focus: self.focus(),
+            }
         });
-        let root = Arc::new(Node {
-            role: Role::Window,
-            children: vec![BUTTON_1_ID, BUTTON_2_ID, PRESSED_TEXT_ID],
-            name: Some(WINDOW_TITLE.into()),
-            ..Default::default()
-        });
-        let update = TreeUpdate {
-            nodes: vec![(PRESSED_TEXT_ID, node), (WINDOW_ID, root)],
-            tree: None,
-            focus: self.is_window_focused.then_some(self.focus),
-        };
-        adapter.update(update);
-    }
-}
-
-fn initial_tree_update(state: &State) -> TreeUpdate {
-    let root = Arc::new(Node {
-        role: Role::Window,
-        children: vec![BUTTON_1_ID, BUTTON_2_ID],
-        name: Some(WINDOW_TITLE.into()),
-        ..Default::default()
-    });
-    let button_1 = make_button(BUTTON_1_ID, "Button 1");
-    let button_2 = make_button(BUTTON_2_ID, "Button 2");
-    TreeUpdate {
-        nodes: vec![
-            (WINDOW_ID, root),
-            (BUTTON_1_ID, button_1),
-            (BUTTON_2_ID, button_2),
-        ],
-        tree: Some(Tree::new(WINDOW_ID)),
-        focus: state.is_window_focused.then_some(state.focus),
     }
 }
 
@@ -161,8 +167,8 @@ fn main() {
         Adapter::new(
             &window,
             move || {
-                let state = state.lock().unwrap();
-                initial_tree_update(&state)
+                let mut state = state.lock().unwrap();
+                state.build_initial_tree()
             },
             event_loop.create_proxy(),
         )
@@ -202,8 +208,9 @@ fn main() {
                         state.update_focus(&adapter);
                     }
                     VirtualKeyCode::Space => {
-                        let state = state.lock().unwrap();
-                        state.press_button(&adapter, state.focus);
+                        let mut state = state.lock().unwrap();
+                        let id = state.focus;
+                        state.press_button(&adapter, id);
                     }
                     _ => (),
                 },
