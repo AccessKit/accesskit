@@ -3,16 +3,10 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{
-    Action, ActionData, ActionHandler, ActionRequest, Live, Node as NodeData, NodeId, Point,
-    TextSelection, Tree as TreeData, TreeUpdate,
-};
+use accesskit::{Live, Node as NodeData, NodeId, Tree as TreeData, TreeUpdate};
 use std::collections::{HashMap, HashSet};
 
-use crate::{
-    node::{DetachedNode, Node, NodeState, ParentAndIndex},
-    text::{Position as TextPosition, Range as TextRange},
-};
+use crate::node::{DetachedNode, Node, NodeState, ParentAndIndex};
 
 #[derive(Clone)]
 pub struct State {
@@ -266,21 +260,17 @@ pub trait ChangeHandler {
 
 pub struct Tree {
     state: State,
-    action_handler: Box<dyn ActionHandler>,
 }
 
 impl Tree {
-    pub fn new(mut initial_state: TreeUpdate, action_handler: Box<dyn ActionHandler>) -> Self {
+    pub fn new(mut initial_state: TreeUpdate) -> Self {
         let mut state = State {
             nodes: HashMap::new(),
             data: initial_state.tree.take().unwrap(),
             focus: None,
         };
         state.update(initial_state, None);
-        Self {
-            state,
-            action_handler,
-        }
+        Self { state }
     }
 
     pub fn update(&mut self, update: TreeUpdate) {
@@ -333,98 +323,12 @@ impl Tree {
     pub fn state(&self) -> &State {
         &self.state
     }
-
-    pub fn set_focus(&self, target: NodeId) {
-        self.action_handler.do_action(ActionRequest {
-            action: Action::Focus,
-            target,
-            data: None,
-        })
-    }
-
-    pub fn do_default_action(&self, target: NodeId) {
-        self.action_handler.do_action(ActionRequest {
-            action: Action::Default,
-            target,
-            data: None,
-        })
-    }
-
-    pub fn set_value(&self, target: NodeId, value: impl Into<Box<str>>) {
-        self.action_handler.do_action(ActionRequest {
-            action: Action::SetValue,
-            target,
-            data: Some(ActionData::Value(value.into())),
-        })
-    }
-
-    pub fn set_numeric_value(&self, target: NodeId, value: f64) {
-        self.action_handler.do_action(ActionRequest {
-            action: Action::SetValue,
-            target,
-            data: Some(ActionData::NumericValue(value)),
-        })
-    }
-
-    pub fn scroll_into_view(&self, target: NodeId) {
-        self.action_handler.do_action(ActionRequest {
-            action: Action::ScrollIntoView,
-            target,
-            data: None,
-        })
-    }
-
-    pub fn scroll_text_position_into_view(&self, target: &TextPosition) {
-        self.action_handler.do_action(ActionRequest {
-            action: Action::ScrollIntoView,
-            target: target.inner.node.id(),
-            data: None,
-        })
-    }
-
-    pub fn scroll_to_point(&self, target: NodeId, point: Point) {
-        self.action_handler.do_action(ActionRequest {
-            action: Action::ScrollToPoint,
-            target,
-            data: Some(ActionData::ScrollToPoint(point)),
-        })
-    }
-
-    pub fn select_text_range(&self, range: &TextRange) {
-        let selection = TextSelection {
-            anchor: range.start.downgrade(),
-            focus: range.end.downgrade(),
-        };
-        self.action_handler.do_action(ActionRequest {
-            action: Action::SetTextSelection,
-            target: range.node.id(),
-            data: Some(ActionData::SetTextSelection(selection)),
-        })
-    }
-
-    pub fn increment(&self, target: NodeId) {
-        self.action_handler.do_action(ActionRequest {
-            action: Action::Increment,
-            target,
-            data: None,
-        })
-    }
-
-    pub fn decrement(&self, target: NodeId) {
-        self.action_handler.do_action(ActionRequest {
-            action: Action::Decrement,
-            target,
-            data: None,
-        })
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use accesskit::{NodeBuilder, NodeClassSet, NodeId, Role, Tree, TreeUpdate};
     use std::num::NonZeroU128;
-
-    use crate::tests::NullActionHandler;
 
     const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
     const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
@@ -441,7 +345,7 @@ mod tests {
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
-        let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
+        let tree = super::Tree::new(update);
         assert_eq!(NODE_ID_1, tree.state().root().id());
         assert_eq!(Role::Window, tree.state().root().role());
         assert!(tree.state().root().parent().is_none());
@@ -469,7 +373,7 @@ mod tests {
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
-        let tree = super::Tree::new(update, Box::new(NullActionHandler {}));
+        let tree = super::Tree::new(update);
         let state = tree.state();
         assert_eq!(
             NODE_ID_1,
@@ -491,7 +395,7 @@ mod tests {
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
-        let mut tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
+        let mut tree = super::Tree::new(first_update);
         assert_eq!(0, tree.state().root().children().count());
         let second_update = TreeUpdate {
             nodes: vec![
@@ -583,7 +487,7 @@ mod tests {
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
-        let mut tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
+        let mut tree = super::Tree::new(first_update);
         assert_eq!(1, tree.state().root().children().count());
         let second_update = TreeUpdate {
             nodes: vec![(NODE_ID_1, root_builder.build(&mut classes))],
@@ -663,7 +567,7 @@ mod tests {
             tree: Some(Tree::new(NODE_ID_1)),
             focus: Some(NODE_ID_2),
         };
-        let mut tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
+        let mut tree = super::Tree::new(first_update);
         assert!(tree.state().node_by_id(NODE_ID_2).unwrap().is_focused());
         let second_update = TreeUpdate {
             nodes: vec![],
@@ -755,7 +659,7 @@ mod tests {
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
-        let mut tree = super::Tree::new(first_update, Box::new(NullActionHandler {}));
+        let mut tree = super::Tree::new(first_update);
         assert_eq!(
             Some("foo".into()),
             tree.state().node_by_id(NODE_ID_2).unwrap().name()

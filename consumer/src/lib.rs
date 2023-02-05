@@ -21,8 +21,7 @@ pub use text::{
 #[cfg(test)]
 mod tests {
     use accesskit::{
-        ActionHandler, ActionRequest, Affine, NodeBuilder, NodeClassSet, NodeId, Rect, Role, Tree,
-        TreeUpdate, Vec2,
+        Affine, NodeBuilder, NodeClassSet, NodeId, Rect, Role, Tree, TreeUpdate, Vec2,
     };
     use std::num::NonZeroU128;
 
@@ -43,12 +42,6 @@ mod tests {
     pub const BUTTON_3_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(12) });
     pub const EMPTY_CONTAINER_3_3_IGNORED_ID: NodeId =
         NodeId(unsafe { NonZeroU128::new_unchecked(13) });
-
-    pub struct NullActionHandler;
-
-    impl ActionHandler for NullActionHandler {
-        fn do_action(&self, _request: ActionRequest) {}
-    }
 
     pub fn test_tree() -> crate::tree::Tree {
         let mut classes = NodeClassSet::new();
@@ -154,7 +147,7 @@ mod tests {
             tree: Some(Tree::new(ROOT_ID)),
             focus: None,
         };
-        crate::tree::Tree::new(initial_update, Box::new(NullActionHandler {}))
+        crate::tree::Tree::new(initial_update)
     }
 
     pub fn test_tree_filter(node: &crate::Node) -> FilterResult {

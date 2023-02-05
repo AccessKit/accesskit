@@ -1007,7 +1007,7 @@ mod tests {
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
-        let tree = crate::Tree::new(update, Box::new(NullActionHandler {}));
+        let tree = crate::Tree::new(update);
         assert_eq!(None, tree.state().node_by_id(NODE_ID_2).unwrap().name());
     }
 
@@ -1050,7 +1050,7 @@ mod tests {
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
-        let tree = crate::Tree::new(update, Box::new(NullActionHandler {}));
+        let tree = crate::Tree::new(update);
         assert_eq!(
             Some([LABEL_1, LABEL_2].join(" ")),
             tree.state().node_by_id(NODE_ID_2).unwrap().name()
@@ -1103,7 +1103,7 @@ mod tests {
             tree: Some(Tree::new(NODE_ID_1)),
             focus: None,
         };
-        let tree = crate::Tree::new(update, Box::new(NullActionHandler {}));
+        let tree = crate::Tree::new(update);
         assert_eq!(
             Some(BUTTON_LABEL.into()),
             tree.state().node_by_id(NODE_ID_2).unwrap().name()

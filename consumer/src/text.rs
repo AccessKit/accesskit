@@ -1015,8 +1015,6 @@ mod tests {
     use accesskit::{NodeId, Point, Rect, TextSelection};
     use std::num::NonZeroU128;
 
-    use crate::tests::NullActionHandler;
-
     const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
     const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
     const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
@@ -1210,7 +1208,7 @@ mod tests {
             focus: Some(NODE_ID_2),
         };
 
-        crate::Tree::new(update, Box::new(NullActionHandler {}))
+        crate::Tree::new(update)
     }
 
     fn multiline_end_selection() -> TextSelection {
