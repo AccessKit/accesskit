@@ -187,6 +187,10 @@ pub struct Position<'a> {
 }
 
 impl<'a> Position<'a> {
+    pub fn inner_node(&self) -> &Node {
+        &self.inner.node
+    }
+
     pub fn is_format_start(&self) -> bool {
         // TODO: support variable text formatting (part of rich text)
         self.is_document_start()

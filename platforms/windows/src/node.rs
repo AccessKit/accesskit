@@ -10,17 +10,19 @@
 
 #![allow(non_upper_case_globals)]
 
-use accesskit::{CheckedState, Live, NodeId, NodeIdContent, Point, Role};
-use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, Tree, TreeState};
+use accesskit::{
+    Action, ActionData, ActionRequest, CheckedState, Live, NodeId, NodeIdContent, Point, Role,
+};
+use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
 use arrayvec::ArrayVec;
 use paste::paste;
-use std::sync::{Arc, RwLock, Weak};
+use std::sync::{Arc, Weak};
 use windows::{
     core::*,
     Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
 };
 
-use crate::{text::PlatformRange as PlatformTextRange, util::*};
+use crate::{context::Context, text::PlatformRange as PlatformTextRange, util::*};
 
 fn runtime_id_from_node_id(id: NodeId) -> impl std::ops::Deref<Target = [i32]> {
     let mut result = ArrayVec::<i32, { std::mem::size_of::<NodeIdContent>() + 1 }>::new();
@@ -504,43 +506,68 @@ impl<'a> NodeWrapper<'a> {
     ITextProvider
 )]
 pub(crate) struct PlatformNode {
-    pub(crate) tree: Weak<RwLock<Tree>>,
+    pub(crate) context: Weak<Context>,
     pub(crate) node_id: NodeId,
-    pub(crate) hwnd: HWND,
 }
 
 impl PlatformNode {
-    pub(crate) fn new(tree: &Arc<RwLock<Tree>>, node_id: NodeId, hwnd: HWND) -> Self {
+    pub(crate) fn new(context: &Arc<Context>, node_id: NodeId) -> Self {
         Self {
-            tree: Arc::downgrade(tree),
+            context: Arc::downgrade(context),
             node_id,
-            hwnd,
         }
     }
 
-    fn with_tree<F, T>(&self, f: F) -> Result<T>
+    fn upgrade_context(&self) -> Result<Arc<Context>> {
+        upgrade(&self.context)
+    }
+
+    fn with_tree_state_and_context<F, T>(&self, f: F) -> Result<T>
     where
-        F: FnOnce(&Tree) -> Result<T>,
+        F: FnOnce(&TreeState, &Context) -> Result<T>,
     {
-        let tree = upgrade(&self.tree)?;
-        let tree = tree.read().unwrap();
-        f(&tree)
+        let context = self.upgrade_context()?;
+        let tree = context.read_tree();
+        f(tree.state(), &context)
     }
 
     fn with_tree_state<F, T>(&self, f: F) -> Result<T>
     where
         F: FnOnce(&TreeState) -> Result<T>,
     {
-        self.with_tree(|tree| f(tree.state()))
+        self.with_tree_state_and_context(|state, _| f(state))
+    }
+
+    fn resolve_with_context<F, T>(&self, f: F) -> Result<T>
+    where
+        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
+    {
+        self.with_tree_state_and_context(|state, context| {
+            if let Some(node) = state.node_by_id(self.node_id) {
+                f(node, context)
+            } else {
+                Err(element_not_available())
+            }
+        })
     }
 
     fn resolve<F, T>(&self, f: F) -> Result<T>
     where
         for<'a> F: FnOnce(Node<'a>) -> Result<T>,
     {
-        self.with_tree_state(|state| {
-            if let Some(node) = state.node_by_id(self.node_id) {
-                f(node)
+        self.resolve_with_context(|node, _| f(node))
+    }
+
+    fn resolve_with_context_for_text_pattern<F, T>(&self, f: F) -> Result<T>
+    where
+        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
+    {
+        self.with_tree_state_and_context(|state, context| {
+            if let Some(node) = state
+                .node_by_id(self.node_id)
+                .filter(Node::supports_text_ranges)
+            {
+                f(node, context)
             } else {
                 Err(element_not_available())
             }
@@ -551,48 +578,38 @@ impl PlatformNode {
     where
         for<'a> F: FnOnce(Node<'a>) -> Result<T>,
     {
-        self.with_tree_state(|state| {
-            if let Some(node) = state
-                .node_by_id(self.node_id)
-                .filter(Node::supports_text_ranges)
-            {
-                f(node)
-            } else {
-                Err(element_not_available())
-            }
-        })
+        self.resolve_with_context_for_text_pattern(|node, _| f(node))
     }
 
-    fn validate_for_action<F, T>(&self, f: F) -> Result<T>
+    fn do_action<F>(&self, f: F) -> Result<()>
     where
-        F: FnOnce(&Tree) -> Result<T>,
+        F: FnOnce() -> ActionRequest,
     {
-        self.with_tree(|tree| {
-            if tree.state().has_node(self.node_id) {
-                f(tree)
-            } else {
-                Err(element_not_available())
-            }
-        })
+        let context = self.upgrade_context()?;
+        let tree = context.read_tree();
+        if tree.state().has_node(self.node_id) {
+            drop(tree);
+            let request = f();
+            context.do_action(request);
+            Ok(())
+        } else {
+            Err(element_not_available())
+        }
     }
 
     fn do_default_action(&self) -> Result<()> {
-        self.validate_for_action(|tree| {
-            tree.do_default_action(self.node_id);
-            Ok(())
+        self.do_action(|| ActionRequest {
+            action: Action::Default,
+            target: self.node_id,
+            data: None,
         })
     }
 
     fn relative(&self, node_id: NodeId) -> Self {
         Self {
-            tree: self.tree.clone(),
+            context: self.context.clone(),
             node_id,
-            hwnd: self.hwnd,
         }
-    }
-
-    fn client_top_left(&self) -> Point {
-        client_top_left(self.hwnd)
     }
 }
 
@@ -606,16 +623,16 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
     }
 
     fn GetPropertyValue(&self, property_id: UIA_PROPERTY_ID) -> Result<VARIANT> {
-        self.resolve(|node| {
+        self.resolve_with_context(|node, context| {
             let wrapper = NodeWrapper::Node(&node);
             let mut result = wrapper.get_property_value(property_id);
             if result.is_empty() && node.is_root() {
                 match property_id {
                     UIA_NamePropertyId => {
-                        result = window_title(self.hwnd).into();
+                        result = window_title(context.hwnd).into();
                     }
                     UIA_NativeWindowHandlePropertyId => {
-                        result = (self.hwnd.0 as i32).into();
+                        result = (context.hwnd.0 as i32).into();
                     }
                     _ => (),
                 }
@@ -625,9 +642,9 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
     }
 
     fn HostRawElementProvider(&self) -> Result<IRawElementProviderSimple> {
-        self.with_tree_state(|state| {
+        self.with_tree_state_and_context(|state, context| {
             if self.node_id == state.root_id() {
-                unsafe { UiaHostProviderFromHwnd(self.hwnd) }
+                unsafe { UiaHostProviderFromHwnd(context.hwnd) }
             } else {
                 Err(Error::OK)
             }
@@ -661,9 +678,9 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
     }
 
     fn BoundingRectangle(&self) -> Result<UiaRect> {
-        self.resolve(|node| {
+        self.resolve_with_context(|node, context| {
             let rect = node.bounding_box().map_or(UiaRect::default(), |rect| {
-                let client_top_left = self.client_top_left();
+                let client_top_left = context.client_top_left();
                 UiaRect {
                     left: rect.x0 + client_top_left.x,
                     top: rect.y0 + client_top_left.y,
@@ -680,9 +697,10 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
     }
 
     fn SetFocus(&self) -> Result<()> {
-        self.validate_for_action(|tree| {
-            tree.set_focus(self.node_id);
-            Ok(())
+        self.do_action(|| ActionRequest {
+            action: Action::Focus,
+            target: self.node_id,
+            data: None,
         })
     }
 
@@ -701,8 +719,8 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
 
 impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
     fn ElementProviderFromPoint(&self, x: f64, y: f64) -> Result<IRawElementProviderFragment> {
-        self.resolve(|node| {
-            let client_top_left = self.client_top_left();
+        self.resolve_with_context(|node, context| {
+            let client_top_left = context.client_top_left();
             let point = Point::new(x - client_top_left.x, y - client_top_left.y);
             let point = node.transform().inverse() * point;
             node.node_at_point(point, &filter).map_or_else(
@@ -851,10 +869,13 @@ patterns! {
         (IsReadOnly, is_read_only, BOOL)
     ), (
         fn SetValue(&self, value: &PCWSTR) -> Result<()> {
-            self.validate_for_action(|tree| {
+            self.do_action(|| {
                 let value = unsafe { value.to_string() }.unwrap();
-                tree.set_value(self.node_id, value);
-                Ok(())
+                ActionRequest {
+                    action: Action::SetValue,
+                    target: self.node_id,
+                    data: Some(ActionData::Value(value.into())),
+                }
             })
         }
     )),
@@ -867,9 +888,12 @@ patterns! {
         (LargeChange, numeric_value_jump, f64)
     ), (
         fn SetValue(&self, value: f64) -> Result<()> {
-            self.validate_for_action(|tree| {
-                tree.set_numeric_value(self.node_id, value);
-                Ok(())
+            self.do_action(|| {
+                ActionRequest {
+                    action: Action::SetValue,
+                    target: self.node_id,
+                    data: Some(ActionData::NumericValue(value)),
+                }
             })
         }
     )),
@@ -901,7 +925,7 @@ patterns! {
         fn GetSelection(&self) -> Result<*mut SAFEARRAY> {
             self.resolve_for_text_pattern(|node| {
                 if let Some(range) = node.text_selection() {
-                    let platform_range: ITextRangeProvider = PlatformTextRange::new(&self.tree, range, self.hwnd).into();
+                    let platform_range: ITextRangeProvider = PlatformTextRange::new(&self.context, range).into();
                     let iunknown: IUnknown = platform_range.into();
                     Ok(safe_array_from_com_slice(&[iunknown]))
                 } else {
@@ -923,20 +947,20 @@ patterns! {
         },
 
         fn RangeFromPoint(&self, point: &UiaPoint) -> Result<ITextRangeProvider> {
-            self.resolve_for_text_pattern(|node| {
-                let client_top_left = self.client_top_left();
+            self.resolve_with_context_for_text_pattern(|node, context| {
+                let client_top_left = context.client_top_left();
                 let point = Point::new(point.x - client_top_left.x, point.y - client_top_left.y);
                 let point = node.transform().inverse() * point;
                 let pos = node.text_position_at_point(point);
                 let range = pos.to_degenerate_range();
-                Ok(PlatformTextRange::new(&self.tree, range, self.hwnd).into())
+                Ok(PlatformTextRange::new(&self.context, range).into())
             })
         },
 
         fn DocumentRange(&self) -> Result<ITextRangeProvider> {
             self.resolve_for_text_pattern(|node| {
                 let range = node.document_range();
-                Ok(PlatformTextRange::new(&self.tree, range, self.hwnd).into())
+                Ok(PlatformTextRange::new(&self.context, range).into())
             })
         },
 

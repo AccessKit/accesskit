@@ -42,6 +42,10 @@ extern "system" fn wnd_proc(window: HWND, message: u32, wparam: WPARAM, lparam: 
 }
 
 impl SubclassImpl {
+    /// Creates a new Windows platform adapter using window subclassing.
+    ///
+    /// The action handler may or may not be called on the thread that owns
+    /// the window.
     fn new(hwnd: HWND, adapter: LazyAdapter) -> Box<Self> {
         Box::new(Self {
             hwnd,
@@ -98,7 +102,7 @@ impl SubclassingAdapter {
     pub fn new(
         hwnd: HWND,
         source: impl 'static + FnOnce() -> TreeUpdate,
-        action_handler: Box<dyn ActionHandler>,
+        action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
         let uia_init_marker = UiaInitMarker::new();
         let adapter: LazyAdapter = Lazy::new(Box::new(move || {

@@ -79,7 +79,7 @@ fn update_focus(window: HWND, is_window_focused: bool) {
     }
 }
 
-struct WindowCreateParams(TreeUpdate, NodeId, Box<dyn ActionHandler>);
+struct WindowCreateParams(TreeUpdate, NodeId, Box<dyn ActionHandler + Send>);
 
 extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     match message {
@@ -150,7 +150,7 @@ fn create_window(
     title: &str,
     initial_state: TreeUpdate,
     initial_focus: NodeId,
-    action_handler: Box<dyn ActionHandler>,
+    action_handler: Box<dyn ActionHandler + Send>,
 ) -> Result<HWND> {
     let create_params = Box::new(WindowCreateParams(
         initial_state,
@@ -200,7 +200,7 @@ pub(crate) fn scope<F>(
     window_title: &str,
     initial_state: TreeUpdate,
     initial_focus: NodeId,
-    action_handler: Box<dyn ActionHandler>,
+    action_handler: Box<dyn ActionHandler + Send>,
     f: F,
 ) -> Result<()>
 where
