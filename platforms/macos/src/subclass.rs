@@ -112,7 +112,7 @@ impl SubclassingAdapter {
     pub unsafe fn new(
         view: *mut c_void,
         source: impl 'static + FnOnce() -> TreeUpdate,
-        action_handler: impl 'static + ActionHandler,
+        action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let view = view as *mut NSView;
         let retained_view = unsafe { Id::retain(view) }.unwrap();

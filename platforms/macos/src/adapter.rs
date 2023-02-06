@@ -35,7 +35,7 @@ impl Adapter {
     pub unsafe fn new(
         view: *mut c_void,
         initial_state: TreeUpdate,
-        action_handler: impl 'static + ActionHandler,
+        action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let view = unsafe { Id::retain(view as *mut NSView) }.unwrap();
         let view = WeakId::new(&view);

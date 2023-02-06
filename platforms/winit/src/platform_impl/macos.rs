@@ -14,7 +14,7 @@ impl Adapter {
     pub fn new(
         window: &Window,
         source: impl 'static + FnOnce() -> TreeUpdate,
-        action_handler: impl 'static + ActionHandler,
+        action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let view = window.ns_view();
         let adapter = unsafe { SubclassingAdapter::new(view, source, action_handler) };

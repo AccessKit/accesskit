@@ -46,7 +46,7 @@ impl Adapter {
             window_id: window.id(),
             proxy: event_loop_proxy,
         };
-        Self::with_action_handler(window, source, action_handler)
+        Self::with_action_handler(window, source, Box::new(action_handler))
     }
 
     /// Use this if you need to provide your own AccessKit action handler
@@ -56,7 +56,7 @@ impl Adapter {
     pub fn with_action_handler(
         window: &Window,
         source: impl 'static + FnOnce() -> TreeUpdate + Send,
-        action_handler: impl 'static + ActionHandler + Send,
+        action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
         let adapter = platform_impl::Adapter::new(window, source, action_handler);
         Self { adapter }

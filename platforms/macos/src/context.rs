@@ -25,13 +25,13 @@ impl Context {
     pub(crate) fn new(
         view: WeakId<NSView>,
         tree: Tree,
-        action_handler: impl 'static + ActionHandler,
+        action_handler: Box<dyn ActionHandler>,
         mtm: MainThreadMarker,
     ) -> Rc<Self> {
         Rc::new(Self {
             view,
             tree: RefCell::new(tree),
-            action_handler: Box::new(action_handler),
+            action_handler,
             platform_nodes: RefCell::new(HashMap::new()),
             _mtm: mtm,
         })
