@@ -201,7 +201,12 @@ impl TreeChangeHandler for EventGenerator {
         }
     }
 
-    fn focus_moved(&mut self, _old_node: Option<&DetachedNode>, new_node: Option<&Node>) {
+    fn focus_moved(
+        &mut self,
+        _old_node: Option<&DetachedNode>,
+        new_node: Option<&Node>,
+        _current_state: &TreeState,
+    ) {
         if let Some(new_node) = new_node {
             if filter(new_node) != FilterResult::Include {
                 return;

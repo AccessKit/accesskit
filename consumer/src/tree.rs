@@ -247,7 +247,12 @@ impl State {
 pub trait ChangeHandler {
     fn node_added(&mut self, node: &Node);
     fn node_updated(&mut self, old_node: &DetachedNode, new_node: &Node);
-    fn focus_moved(&mut self, old_node: Option<&DetachedNode>, new_node: Option<&Node>);
+    fn focus_moved(
+        &mut self,
+        old_node: Option<&DetachedNode>,
+        new_node: Option<&Node>,
+        current_state: &State,
+    );
     /// The tree update process doesn't currently collect all possible information
     /// about removed nodes. The following methods don't accurately reflect
     /// the full state of the old node:
@@ -313,7 +318,11 @@ impl Tree {
                     }
                 }
             }
-            handler.focus_moved(focus_change.old_focus.as_ref(), new_node.as_ref());
+            handler.focus_moved(
+                focus_change.old_focus.as_ref(),
+                new_node.as_ref(),
+                &self.state,
+            );
         }
         for node in changes.removed_nodes.values() {
             handler.node_removed(node, &self.state);
@@ -441,6 +450,7 @@ mod tests {
                 &mut self,
                 _old_node: Option<&crate::DetachedNode>,
                 _new_node: Option<&crate::Node>,
+                _current_state: &crate::TreeState,
             ) {
                 unexpected_change();
             }
@@ -519,6 +529,7 @@ mod tests {
                 &mut self,
                 _old_node: Option<&crate::DetachedNode>,
                 _new_node: Option<&crate::Node>,
+                _current_state: &crate::TreeState,
             ) {
                 unexpected_change();
             }
@@ -609,6 +620,7 @@ mod tests {
                 &mut self,
                 old_node: Option<&crate::DetachedNode>,
                 new_node: Option<&crate::Node>,
+                _current_state: &crate::TreeState,
             ) {
                 if let (Some(old_node), Some(new_node)) = (old_node, new_node) {
                     if old_node.id() == NODE_ID_2 && new_node.id() == NODE_ID_3 {
@@ -697,6 +709,7 @@ mod tests {
                 &mut self,
                 _old_node: Option<&crate::DetachedNode>,
                 _new_node: Option<&crate::Node>,
+                _current_state: &crate::TreeState,
             ) {
                 unexpected_change();
             }

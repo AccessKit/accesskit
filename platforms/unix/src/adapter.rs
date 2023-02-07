@@ -220,7 +220,12 @@ impl Adapter {
                     );
                 }
             }
-            fn focus_moved(&mut self, old_node: Option<&DetachedNode>, new_node: Option<&Node>) {
+            fn focus_moved(
+                &mut self,
+                old_node: Option<&DetachedNode>,
+                new_node: Option<&Node>,
+                current_state: &TreeState,
+            ) {
                 let tree = self.tree.read().unwrap();
                 if let Some(root_window) = root_window(tree.state()) {
                     if old_node.is_none() && new_node.is_some() {
