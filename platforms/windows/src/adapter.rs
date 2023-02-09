@@ -30,7 +30,7 @@ impl Adapter {
     pub fn new(
         hwnd: HWND,
         initial_state: TreeUpdate,
-        action_handler: Box<dyn ActionHandler + Send>,
+        action_handler: Box<dyn ActionHandler + Send + Sync>,
         _uia_init_marker: UiaInitMarker,
     ) -> Self {
         let context = Context::new(hwnd, Tree::new(initial_state), action_handler);

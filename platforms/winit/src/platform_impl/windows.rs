@@ -6,7 +6,7 @@ use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_windows::{SubclassingAdapter, HWND};
 use winit::{platform::windows::WindowExtWindows, window::Window};
 
-pub type ActionHandlerBox = Box<dyn ActionHandler + Send>;
+pub type ActionHandlerBox = Box<dyn ActionHandler + Send + Sync>;
 
 pub struct Adapter {
     adapter: SubclassingAdapter,

@@ -8,7 +8,8 @@ use accesskit::{ActionHandler, ActionRequest, TreeUpdate};
     target_os = "dragonfly",
     target_os = "freebsd",
     target_os = "netbsd",
-    target_os = "openbsd"
+    target_os = "openbsd",
+    target_os = "windows"
 ))]
 use std::sync::{Mutex, MutexGuard};
 use winit::{
@@ -32,7 +33,8 @@ struct WinitActionHandler<T: From<ActionRequestEvent> + Send + 'static> {
         target_os = "dragonfly",
         target_os = "freebsd",
         target_os = "netbsd",
-        target_os = "openbsd"
+        target_os = "openbsd",
+        target_os = "windows"
     ))]
     proxy: Mutex<EventLoopProxy<T>>,
     #[cfg(not(any(
@@ -40,7 +42,8 @@ struct WinitActionHandler<T: From<ActionRequestEvent> + Send + 'static> {
         target_os = "dragonfly",
         target_os = "freebsd",
         target_os = "netbsd",
-        target_os = "openbsd"
+        target_os = "openbsd",
+        target_os = "windows"
     )))]
     proxy: EventLoopProxy<T>,
 }
@@ -51,7 +54,8 @@ impl<T: From<ActionRequestEvent> + Send + 'static> WinitActionHandler<T> {
         target_os = "dragonfly",
         target_os = "freebsd",
         target_os = "netbsd",
-        target_os = "openbsd"
+        target_os = "openbsd",
+        target_os = "windows"
     ))]
     fn new(window_id: WindowId, proxy: EventLoopProxy<T>) -> Self {
         Self {
@@ -64,7 +68,8 @@ impl<T: From<ActionRequestEvent> + Send + 'static> WinitActionHandler<T> {
         target_os = "dragonfly",
         target_os = "freebsd",
         target_os = "netbsd",
-        target_os = "openbsd"
+        target_os = "openbsd",
+        target_os = "windows"
     )))]
     fn new(window_id: WindowId, proxy: EventLoopProxy<T>) -> Self {
         Self { window_id, proxy }
@@ -75,7 +80,8 @@ impl<T: From<ActionRequestEvent> + Send + 'static> WinitActionHandler<T> {
         target_os = "dragonfly",
         target_os = "freebsd",
         target_os = "netbsd",
-        target_os = "openbsd"
+        target_os = "openbsd",
+        target_os = "windows"
     ))]
     fn proxy(&self) -> MutexGuard<'_, EventLoopProxy<T>> {
         self.proxy.lock().unwrap()
@@ -85,7 +91,8 @@ impl<T: From<ActionRequestEvent> + Send + 'static> WinitActionHandler<T> {
         target_os = "dragonfly",
         target_os = "freebsd",
         target_os = "netbsd",
-        target_os = "openbsd"
+        target_os = "openbsd",
+        target_os = "windows"
     )))]
     fn proxy(&self) -> &EventLoopProxy<T> {
         &self.proxy

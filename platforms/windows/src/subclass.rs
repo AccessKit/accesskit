@@ -102,7 +102,7 @@ impl SubclassingAdapter {
     pub fn new(
         hwnd: HWND,
         source: impl 'static + FnOnce() -> TreeUpdate,
-        action_handler: Box<dyn ActionHandler + Send>,
+        action_handler: Box<dyn ActionHandler + Send + Sync>,
     ) -> Self {
         let uia_init_marker = UiaInitMarker::new();
         let adapter: LazyAdapter = Lazy::new(Box::new(move || {
