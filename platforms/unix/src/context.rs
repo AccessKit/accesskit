@@ -5,13 +5,13 @@
 
 use accesskit::{ActionHandler, ActionRequest};
 use accesskit_consumer::Tree;
-use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard};
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 use crate::util::{AppContext, WindowBounds};
 
 pub(crate) struct Context {
     pub(crate) tree: RwLock<Tree>,
-    pub(crate) action_handler: Mutex<Box<dyn ActionHandler + Send>>,
+    action_handler: Box<dyn ActionHandler + Send + Sync>,
     pub(crate) app_context: RwLock<AppContext>,
     pub(crate) root_window_bounds: RwLock<WindowBounds>,
 }
@@ -19,12 +19,12 @@ pub(crate) struct Context {
 impl Context {
     pub(crate) fn new(
         tree: Tree,
-        action_handler: Box<dyn ActionHandler + Send>,
+        action_handler: Box<dyn ActionHandler + Send + Sync>,
         app_context: AppContext,
     ) -> Arc<Self> {
         Arc::new(Self {
             tree: RwLock::new(tree),
-            action_handler: Mutex::new(action_handler),
+            action_handler,
             app_context: RwLock::new(app_context),
             root_window_bounds: RwLock::new(Default::default()),
         })
@@ -43,6 +43,6 @@ impl Context {
     }
 
     pub(crate) fn do_action(&self, request: ActionRequest) {
-        self.action_handler.lock().unwrap().do_action(request);
+        self.action_handler.do_action(request);
     }
 }

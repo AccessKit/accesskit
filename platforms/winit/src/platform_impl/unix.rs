@@ -6,6 +6,8 @@ use accesskit::{ActionHandler, Rect, TreeUpdate};
 use accesskit_unix::Adapter as UnixAdapter;
 use winit::window::Window;
 
+pub type ActionHandlerBox = Box<dyn ActionHandler + Send + Sync>;
+
 pub struct Adapter {
     adapter: Option<UnixAdapter>,
 }
@@ -14,7 +16,7 @@ impl Adapter {
     pub fn new(
         _: &Window,
         source: impl 'static + FnOnce() -> TreeUpdate,
-        action_handler: Box<dyn ActionHandler + Send>,
+        action_handler: ActionHandlerBox,
     ) -> Self {
         let adapter = UnixAdapter::new(
             String::new(),

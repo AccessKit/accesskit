@@ -37,7 +37,7 @@ impl Adapter {
         toolkit_name: String,
         toolkit_version: String,
         initial_state: impl 'static + FnOnce() -> TreeUpdate,
-        action_handler: Box<dyn ActionHandler + Send>,
+        action_handler: Box<dyn ActionHandler + Send + Sync>,
     ) -> Option<Self> {
         let mut atspi_bus = Bus::a11y_bus()?;
         let (event_sender, event_receiver) = async_channel::unbounded();

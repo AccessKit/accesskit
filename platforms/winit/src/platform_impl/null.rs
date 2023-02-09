@@ -5,13 +5,15 @@
 use accesskit::{ActionHandler, TreeUpdate};
 use winit::window::Window;
 
+pub type ActionHandlerBox = Box<dyn ActionHandler>;
+
 pub struct Adapter;
 
 impl Adapter {
     pub fn new(
         _window: &Window,
         _source: impl 'static + FnOnce() -> TreeUpdate,
-        _action_handler: Box<dyn ActionHandler>,
+        _action_handler: ActionHandlerBox,
     ) -> Self {
         Self {}
     }
