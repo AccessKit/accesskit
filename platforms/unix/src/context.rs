@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, ActionRequest};
+use accesskit::ActionHandler;
 use accesskit_consumer::Tree;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 
@@ -11,7 +11,7 @@ use crate::util::{AppContext, WindowBounds};
 
 pub(crate) struct Context {
     pub(crate) tree: RwLock<Tree>,
-    action_handler: Box<dyn ActionHandler + Send + Sync>,
+    pub(crate) action_handler: Box<dyn ActionHandler + Send + Sync>,
     pub(crate) app_context: RwLock<AppContext>,
     pub(crate) root_window_bounds: RwLock<WindowBounds>,
 }
@@ -40,9 +40,5 @@ impl Context {
 
     pub(crate) fn read_root_window_bounds(&self) -> RwLockReadGuard<'_, WindowBounds> {
         self.root_window_bounds.read().unwrap()
-    }
-
-    pub(crate) fn do_action(&self, request: ActionRequest) {
-        self.action_handler.do_action(request);
     }
 }

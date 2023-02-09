@@ -659,7 +659,7 @@ impl PlatformNode {
         if tree.state().has_node(self.node_id) {
             let request = f(tree.state(), &context);
             drop(tree);
-            context.do_action(request);
+            context.action_handler.do_action(request);
             Ok(())
         } else {
             Err(unknown_object(&self.accessible_id()))
