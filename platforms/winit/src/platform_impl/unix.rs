@@ -14,7 +14,7 @@ impl Adapter {
     pub fn new(
         _: &Window,
         source: impl 'static + FnOnce() -> TreeUpdate,
-        action_handler: Box<dyn ActionHandler>,
+        action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
         let adapter = UnixAdapter::new(
             String::new(),

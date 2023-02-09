@@ -10,13 +10,17 @@
 
 use crate::{
     atspi::{
-        interfaces::{Action, Event, ObjectEvent, Property},
+        interfaces::{Action as AtspiAction, Event, ObjectEvent, Property},
         ObjectId, ObjectRef, Rect as AtspiRect, ACCESSIBLE_PATH_PREFIX,
     },
-    util::{AppContext, WindowBounds},
+    context::Context,
+    util::WindowBounds,
 };
-use accesskit::{Affine, CheckedState, DefaultActionVerb, NodeId, Point, Rect, Role};
-use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, Tree, TreeState};
+use accesskit::{
+    Action, ActionData, ActionRequest, Affine, CheckedState, DefaultActionVerb, NodeId, Point,
+    Rect, Role,
+};
+use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
 use async_channel::Sender;
 use atspi::{
     accessible::Role as AtspiRole, component::Layer, CoordType, Interface, InterfaceSet, State,
@@ -24,7 +28,7 @@ use atspi::{
 };
 use std::{
     iter::FusedIterator,
-    sync::{Arc, RwLock, Weak},
+    sync::{Arc, Weak},
 };
 use zbus::fdo;
 
@@ -597,61 +601,69 @@ pub(crate) fn unknown_object(id: &ObjectId) -> fdo::Error {
 
 #[derive(Clone)]
 pub(crate) struct PlatformNode {
-    tree: Weak<RwLock<Tree>>,
+    context: Weak<Context>,
     node_id: NodeId,
 }
 
 impl PlatformNode {
-    pub(crate) fn new(tree: &Arc<RwLock<Tree>>, node_id: NodeId) -> Self {
+    pub(crate) fn new(context: &Arc<Context>, node_id: NodeId) -> Self {
         Self {
-            tree: Arc::downgrade(tree),
+            context: Arc::downgrade(context),
             node_id,
         }
     }
 
-    fn with_tree<F, T>(&self, f: F) -> fdo::Result<T>
-    where
-        F: FnOnce(&Tree) -> fdo::Result<T>,
-    {
-        if let Some(tree) = self.tree.upgrade() {
-            let tree = tree.read().unwrap();
-            f(&tree)
+    fn upgrade_context(&self) -> fdo::Result<Arc<Context>> {
+        if let Some(context) = self.context.upgrade() {
+            Ok(context)
         } else {
             Err(unknown_object(&self.accessible_id()))
         }
     }
 
-    fn with_tree_state<F, T>(&self, f: F) -> fdo::Result<T>
+    fn with_tree_state_and_context<F, T>(&self, f: F) -> fdo::Result<T>
     where
-        F: FnOnce(&TreeState) -> fdo::Result<T>,
+        F: FnOnce(&TreeState, &Context) -> fdo::Result<T>,
     {
-        self.with_tree(|tree| f(tree.state()))
+        let context = self.upgrade_context()?;
+        let tree = context.read_tree();
+        f(tree.state(), &context)
+    }
+
+    fn resolve_with_context<F, T>(&self, f: F) -> fdo::Result<T>
+    where
+        for<'a> F: FnOnce(Node<'a>, &Context) -> fdo::Result<T>,
+    {
+        self.with_tree_state_and_context(|state, context| {
+            if let Some(node) = state.node_by_id(self.node_id) {
+                f(node, context)
+            } else {
+                Err(unknown_object(&self.accessible_id()))
+            }
+        })
     }
 
     fn resolve<F, T>(&self, f: F) -> fdo::Result<T>
     where
         for<'a> F: FnOnce(Node<'a>) -> fdo::Result<T>,
     {
-        self.with_tree_state(|state| {
-            if let Some(node) = state.node_by_id(self.node_id) {
-                f(node)
-            } else {
-                Err(unknown_object(&self.accessible_id()))
-            }
-        })
+        self.resolve_with_context(|node, _| f(node))
     }
 
-    fn validate_for_action<F, T>(&self, f: F) -> fdo::Result<T>
+    fn do_action_internal<F>(&self, f: F) -> fdo::Result<()>
     where
-        F: FnOnce(&Tree) -> fdo::Result<T>,
+        F: FnOnce(&TreeState, &Context) -> ActionRequest,
     {
-        self.with_tree(|tree| {
-            if tree.state().has_node(self.node_id) {
-                f(tree)
-            } else {
-                Err(unknown_object(&self.accessible_id()))
-            }
-        })
+        let context = self.upgrade_context()?;
+        let tree = context.read_tree();
+        if tree.state().has_node(self.node_id) {
+            let request = f(tree.state(), &context);
+            drop(tree);
+            context.do_action(request);
+            Ok(())
+        } else {
+            Err(unknown_object(&self.accessible_id()))
+        }
     }
 
     pub fn name(&self) -> fdo::Result<String> {
@@ -750,13 +762,13 @@ impl PlatformNode {
         })
     }
 
-    pub fn get_actions(&self) -> fdo::Result<Vec<Action>> {
+    pub fn get_actions(&self) -> fdo::Result<Vec<AtspiAction>> {
         self.resolve(|node| {
             let wrapper = NodeWrapper::Node(&node);
             let n_actions = wrapper.n_actions() as usize;
             let mut actions = Vec::with_capacity(n_actions);
             for i in 0..n_actions {
-                actions.push(Action {
+                actions.push(AtspiAction {
                     localized_name: wrapper.get_action_name(i as i32),
                     description: "".into(),
                     key_binding: "".into(),
@@ -770,20 +782,17 @@ impl PlatformNode {
         if index != 0 {
             return Ok(false);
         }
-        self.validate_for_action(|tree| {
-            tree.do_default_action(self.node_id);
-            Ok(true)
-        })
+        self.do_action_internal(|_, _| ActionRequest {
+            action: Action::Default,
+            target: self.node_id,
+            data: None,
+        })?;
+        Ok(true)
     }
 
-    pub fn contains(
-        &self,
-        window_bounds: &WindowBounds,
-        x: i32,
-        y: i32,
-        coord_type: CoordType,
-    ) -> fdo::Result<bool> {
-        self.resolve(|node| {
+    pub fn contains(&self, x: i32, y: i32, coord_type: CoordType) -> fdo::Result<bool> {
+        self.resolve_with_context(|node, context| {
+            let window_bounds = context.read_root_window_bounds();
             let bounds = match node.bounding_box() {
                 Some(node_bounds) => {
                     let top_left = window_bounds.top_left(coord_type, node.is_root());
@@ -807,12 +816,12 @@ impl PlatformNode {
 
     pub fn get_accessible_at_point(
         &self,
-        window_bounds: &WindowBounds,
         x: i32,
         y: i32,
         coord_type: CoordType,
     ) -> fdo::Result<Option<ObjectRef>> {
-        self.resolve(|node| {
+        self.resolve_with_context(|node, context| {
+            let window_bounds = context.read_root_window_bounds();
             let top_left = window_bounds.top_left(coord_type, node.is_root());
             let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
             let point = node.transform().inverse() * point;
@@ -822,27 +831,26 @@ impl PlatformNode {
         })
     }
 
-    pub fn get_extents(
-        &self,
-        window_bounds: &WindowBounds,
-        coord_type: CoordType,
-    ) -> fdo::Result<(AtspiRect,)> {
-        self.resolve(|node| match node.bounding_box() {
-            Some(node_bounds) => {
-                let top_left = window_bounds.top_left(coord_type, node.is_root());
-                let new_origin =
-                    Point::new(top_left.x + node_bounds.x0, top_left.y + node_bounds.y0);
-                Ok((node_bounds.with_origin(new_origin).into(),))
+    pub fn get_extents(&self, coord_type: CoordType) -> fdo::Result<(AtspiRect,)> {
+        self.resolve_with_context(|node, context| {
+            let window_bounds = context.read_root_window_bounds();
+            match node.bounding_box() {
+                Some(node_bounds) => {
+                    let top_left = window_bounds.top_left(coord_type, node.is_root());
+                    let new_origin =
+                        Point::new(top_left.x + node_bounds.x0, top_left.y + node_bounds.y0);
+                    Ok((node_bounds.with_origin(new_origin).into(),))
+                }
+                None if node.is_root() => {
+                    let bounds = window_bounds.outer;
+                    Ok((match coord_type {
+                        CoordType::Screen => bounds.into(),
+                        CoordType::Window => bounds.with_origin(Point::ZERO).into(),
+                        _ => unimplemented!(),
+                    },))
+                }
+                _ => Err(unknown_object(&self.accessible_id())),
             }
-            None if node.is_root() => {
-                let bounds = window_bounds.outer;
-                Ok((match coord_type {
-                    CoordType::Screen => bounds.into(),
-                    CoordType::Window => bounds.with_origin(Point::ZERO).into(),
-                    _ => unimplemented!(),
-                },))
-            }
-            _ => Err(unknown_object(&self.accessible_id())),
         })
     }
 
@@ -858,26 +866,27 @@ impl PlatformNode {
     }
 
     pub fn grab_focus(&self) -> fdo::Result<bool> {
-        self.validate_for_action(|tree| {
-            tree.set_focus(self.node_id);
-            Ok(true)
-        })
+        self.do_action_internal(|_, _| ActionRequest {
+            action: Action::Focus,
+            target: self.node_id,
+            data: None,
+        })?;
+        Ok(true)
     }
 
-    pub fn scroll_to_point(
-        &self,
-        window_bounds: &WindowBounds,
-        coord_type: CoordType,
-        x: i32,
-        y: i32,
-    ) -> fdo::Result<bool> {
-        self.validate_for_action(|tree| {
-            let is_root = self.node_id == tree.state().root_id();
+    pub fn scroll_to_point(&self, coord_type: CoordType, x: i32, y: i32) -> fdo::Result<bool> {
+        self.do_action_internal(|tree_state, context| {
+            let window_bounds = context.read_root_window_bounds();
+            let is_root = self.node_id == tree_state.root_id();
             let top_left = window_bounds.top_left(coord_type, is_root);
             let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
-            tree.scroll_to_point(self.node_id, point);
-            Ok(true)
-        })
+            ActionRequest {
+                action: Action::ScrollToPoint,
+                target: self.node_id,
+                data: Some(ActionData::ScrollToPoint(point)),
+            }
+        })?;
+        Ok(true)
     }
 
     pub fn minimum_value(&self) -> fdo::Result<f64> {
@@ -900,24 +909,23 @@ impl PlatformNode {
     }
 
     pub fn set_current_value(&self, value: f64) -> fdo::Result<()> {
-        self.validate_for_action(|tree| {
-            tree.set_numeric_value(self.node_id, value);
-            Ok(())
+        self.do_action_internal(|_, _| ActionRequest {
+            action: Action::SetValue,
+            target: self.node_id,
+            data: Some(ActionData::NumericValue(value)),
         })
     }
 }
 
 #[derive(Clone)]
 pub(crate) struct PlatformRootNode {
-    pub(crate) context: Weak<RwLock<AppContext>>,
-    pub(crate) tree: Weak<RwLock<Tree>>,
+    pub(crate) context: Weak<Context>,
 }
 
 impl PlatformRootNode {
-    pub fn new(context: &Arc<RwLock<AppContext>>, tree: &Arc<RwLock<Tree>>) -> Self {
+    pub fn new(context: &Arc<Context>) -> Self {
         Self {
             context: Arc::downgrade(context),
-            tree: Arc::downgrade(tree),
         }
     }
 }

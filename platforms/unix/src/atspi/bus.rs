@@ -5,11 +5,12 @@
 
 use crate::{
     atspi::{interfaces::*, object_address::*, ObjectId},
+    context::Context,
     PlatformRootNode,
 };
 use atspi::{bus::BusProxyBlocking, socket::SocketProxyBlocking, EventBody};
 use serde::Serialize;
-use std::{collections::HashMap, env::var};
+use std::{collections::HashMap, env::var, sync::Arc};
 use zbus::{
     blocking::{Connection, ConnectionBuilder},
     names::{BusName, InterfaceName, MemberName, OwnedUniqueName},
@@ -52,7 +53,8 @@ impl Bus {
         self.conn.object_server().remove::<T, _>(path)
     }
 
-    pub fn register_root_node(&mut self, node: PlatformRootNode) -> Result<bool> {
+    pub fn register_root_node(&mut self, context: &Arc<Context>) -> Result<bool> {
+        let node = PlatformRootNode::new(context);
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, ObjectId::root().as_str());
         let registered = self
             .conn
@@ -60,16 +62,14 @@ impl Bus {
             .at(path.clone(), ApplicationInterface(node.clone()))?
             && self.conn.object_server().at(
                 path,
-                AccessibleInterface::new(self.unique_name().to_owned(), node.clone()),
+                AccessibleInterface::new(self.unique_name().to_owned(), node),
             )?;
         if registered {
             let desktop = self.socket_proxy.embed(&(
                 self.unique_name().as_str(),
                 ObjectPath::from_str_unchecked(ROOT_PATH),
             ))?;
-            if let Some(context) = node.context.upgrade() {
-                context.write().unwrap().desktop_address = Some(desktop.into());
-            }
+            context.app_context.write().unwrap().desktop_address = Some(desktop.into());
             Ok(true)
         } else {
             Ok(false)

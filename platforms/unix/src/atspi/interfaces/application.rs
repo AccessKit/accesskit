@@ -15,7 +15,7 @@ impl ApplicationInterface {
         self.0
             .context
             .upgrade()
-            .map(|context| context.read().unwrap().toolkit_name.clone())
+            .map(|context| context.read_app_context().toolkit_name.clone())
             .unwrap_or_default()
     }
 
@@ -24,7 +24,7 @@ impl ApplicationInterface {
         self.0
             .context
             .upgrade()
-            .map(|context| context.read().unwrap().toolkit_version.clone())
+            .map(|context| context.read_app_context().toolkit_version.clone())
             .unwrap_or_default()
     }
 
@@ -38,7 +38,7 @@ impl ApplicationInterface {
         self.0
             .context
             .upgrade()
-            .and_then(|context| context.read().unwrap().id)
+            .and_then(|context| context.read_app_context().id)
             .unwrap_or(-1)
     }
 
@@ -47,7 +47,7 @@ impl ApplicationInterface {
         self.0
             .context
             .upgrade()
-            .map(|context| context.write().unwrap().id = Some(id))
+            .map(|context| context.app_context.write().unwrap().id = Some(id))
             .ok_or_else(|| unknown_object(&ObjectId::root()))
     }
 }
