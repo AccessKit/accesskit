@@ -3,37 +3,38 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::{collections::HashSet, sync::Arc};
-
 use accesskit::{ActionHandler, Live, NodeId, Role, TreeUpdate};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
+use std::{collections::HashSet, sync::Arc};
 use windows::Win32::{
     Foundation::*,
     UI::{Accessibility::*, WindowsAndMessaging::*},
 };
 
 use crate::{
+    context::Context,
     init::UiaInitMarker,
     node::{filter, filter_detached, NodeWrapper, PlatformNode},
     util::QueuedEvent,
 };
 
 pub struct Adapter {
-    hwnd: HWND,
-    tree: Arc<Tree>,
+    context: Arc<Context>,
 }
 
 impl Adapter {
+    /// Creates a new Windows platform adapter.
+    ///
+    /// The action handler may or may not be called on the thread that owns
+    /// the window.
     pub fn new(
         hwnd: HWND,
         initial_state: TreeUpdate,
-        action_handler: Box<dyn ActionHandler>,
+        action_handler: Box<dyn ActionHandler + Send + Sync>,
         _uia_init_marker: UiaInitMarker,
     ) -> Self {
-        Self {
-            hwnd,
-            tree: Arc::new(Tree::new(initial_state, action_handler)),
-        }
+        let context = Context::new(hwnd, Tree::new(initial_state), action_handler);
+        Self { context }
     }
 
     /// Apply the provided update to the tree.
@@ -45,8 +46,7 @@ impl Adapter {
     /// it should be called.
     pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
         struct Handler<'a> {
-            tree: &'a Arc<Tree>,
-            hwnd: HWND,
+            context: &'a Arc<Context>,
             queue: Vec<QueuedEvent>,
             text_changed: HashSet<NodeId>,
         }
@@ -59,7 +59,7 @@ impl Adapter {
                 if self.text_changed.contains(&id) {
                     return;
                 }
-                let platform_node = PlatformNode::new(self.tree, node.id(), self.hwnd);
+                let platform_node = PlatformNode::new(self.context, node.id());
                 let element: IRawElementProviderSimple = platform_node.into();
                 // Text change events must come before selection change
                 // events. It doesn't matter if text change events come
@@ -103,7 +103,7 @@ impl Adapter {
                     return;
                 }
                 if node.name().is_some() && node.live() != Live::Off {
-                    let platform_node = PlatformNode::new(self.tree, node.id(), self.hwnd);
+                    let platform_node = PlatformNode::new(self.context, node.id());
                     let element: IRawElementProviderSimple = platform_node.into();
                     self.queue.push(QueuedEvent::Simple {
                         element,
@@ -118,7 +118,7 @@ impl Adapter {
                 if filter(new_node) != FilterResult::Include {
                     return;
                 }
-                let platform_node = PlatformNode::new(self.tree, new_node.id(), self.hwnd);
+                let platform_node = PlatformNode::new(self.context, new_node.id());
                 let element: IRawElementProviderSimple = platform_node.into();
                 let old_wrapper = NodeWrapper::DetachedNode(old_node);
                 let new_wrapper = NodeWrapper::Node(new_node);
@@ -135,9 +135,14 @@ impl Adapter {
                     });
                 }
             }
-            fn focus_moved(&mut self, _old_node: Option<&DetachedNode>, new_node: Option<&Node>) {
+            fn focus_moved(
+                &mut self,
+                _old_node: Option<&DetachedNode>,
+                new_node: Option<&Node>,
+                _current_state: &TreeState,
+            ) {
                 if let Some(new_node) = new_node {
-                    let platform_node = PlatformNode::new(self.tree, new_node.id(), self.hwnd);
+                    let platform_node = PlatformNode::new(self.context, new_node.id());
                     let element: IRawElementProviderSimple = platform_node.into();
                     self.queue.push(QueuedEvent::Simple {
                         element,
@@ -151,19 +156,19 @@ impl Adapter {
             // TODO: handle other events (#20)
         }
         let mut handler = Handler {
-            tree: &self.tree,
-            hwnd: self.hwnd,
+            context: &self.context,
             queue: Vec::new(),
             text_changed: HashSet::new(),
         };
-        self.tree.update_and_process_changes(update, &mut handler);
+        let mut tree = self.context.tree.write().unwrap();
+        tree.update_and_process_changes(update, &mut handler);
         QueuedEvents(handler.queue)
     }
 
     fn root_platform_node(&self) -> PlatformNode {
-        let state = self.tree.read();
-        let node_id = state.root_id();
-        PlatformNode::new(&self.tree, node_id, self.hwnd)
+        let tree = self.context.read_tree();
+        let node_id = tree.state().root_id();
+        PlatformNode::new(&self.context, node_id)
     }
 
     /// Handle the `WM_GETOBJECT` window message.
@@ -197,7 +202,7 @@ impl Adapter {
 
         let el: IRawElementProviderSimple = self.root_platform_node().into();
         Some(WmGetObjectResult {
-            hwnd: self.hwnd,
+            hwnd: self.context.hwnd,
             wparam,
             lparam,
             el,

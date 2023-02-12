@@ -4,7 +4,11 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::Point;
-use std::{convert::TryInto, mem::ManuallyDrop};
+use std::{
+    convert::TryInto,
+    mem::ManuallyDrop,
+    sync::{Arc, Weak},
+};
 use windows::{
     core::*,
     Win32::{
@@ -237,4 +241,12 @@ pub(crate) fn window_title(hwnd: HWND) -> Option<BSTR> {
     let len = result.0 as usize;
     unsafe { buffer.set_len(len) };
     Some(BSTR::from_wide(&buffer))
+}
+
+pub(crate) fn upgrade<T>(weak: &Weak<T>) -> Result<Arc<T>> {
+    if let Some(strong) = weak.upgrade() {
+        Ok(strong)
+    } else {
+        Err(element_not_available())
+    }
 }

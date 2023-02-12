@@ -32,7 +32,6 @@ name = "accesskit_consumer"
 version = "0.13.0"
 dependencies = [
  "accesskit",
- "parking_lot",
 ]
 
 [[package]]
@@ -43,7 +42,6 @@ dependencies = [
  "accesskit_consumer",
  "objc2",
  "once_cell",
- "parking_lot",
 ]
 
 [[package]]
@@ -55,7 +53,6 @@ dependencies = [
  "async-channel",
  "atspi",
  "futures-lite",
- "parking_lot",
  "serde",
  "zbus",
 ]
@@ -68,7 +65,6 @@ dependencies = [
  "accesskit_consumer",
  "arrayvec",
  "once_cell",
- "parking_lot",
  "paste",
  "scopeguard",
  "windows",
@@ -83,7 +79,6 @@ dependencies = [
  "accesskit_macos",
  "accesskit_unix",
  "accesskit_windows",
- "parking_lot",
  "winit",
 ]
 

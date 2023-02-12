@@ -5,17 +5,17 @@
 
 #![allow(non_upper_case_globals)]
 
+use accesskit::{Action, ActionData, ActionRequest};
 use accesskit_consumer::{
-    Node, TextPosition as Position, TextRange as Range, Tree, TreeState, WeakTextRange as WeakRange,
+    Node, TextPosition as Position, TextRange as Range, TreeState, WeakTextRange as WeakRange,
 };
-use parking_lot::RwLock;
-use std::sync::{Arc, Weak};
+use std::sync::{Arc, RwLock, Weak};
 use windows::{
     core::*,
     Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
 };
 
-use crate::{node::PlatformNode, util::*};
+use crate::{context::Context, node::PlatformNode, util::*};
 
 fn upgrade_range<'a>(weak: &WeakRange, tree_state: &'a TreeState) -> Result<Range<'a>> {
     if let Some(range) = weak.upgrade(tree_state) {
@@ -204,39 +204,40 @@ fn move_position(
 
 #[implement(ITextRangeProvider)]
 pub(crate) struct PlatformRange {
-    tree: Weak<Tree>,
+    context: Weak<Context>,
     state: RwLock<WeakRange>,
-    hwnd: HWND,
 }
 
 impl PlatformRange {
-    pub(crate) fn new(tree: &Weak<Tree>, range: Range, hwnd: HWND) -> Self {
+    pub(crate) fn new(context: &Weak<Context>, range: Range) -> Self {
         Self {
-            tree: tree.clone(),
+            context: context.clone(),
             state: RwLock::new(range.downgrade()),
-            hwnd,
         }
     }
 
-    fn upgrade_tree(&self) -> Result<Arc<Tree>> {
-        if let Some(tree) = self.tree.upgrade() {
-            Ok(tree)
-        } else {
-            Err(element_not_available())
-        }
+    fn upgrade_context(&self) -> Result<Arc<Context>> {
+        upgrade(&self.context)
+    }
+
+    fn with_tree_state_and_context<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(&TreeState, &Context) -> Result<T>,
+    {
+        let context = self.upgrade_context()?;
+        let tree = context.read_tree();
+        f(tree.state(), &context)
     }
 
     fn with_tree_state<F, T>(&self, f: F) -> Result<T>
     where
         F: FnOnce(&TreeState) -> Result<T>,
     {
-        let tree = self.upgrade_tree()?;
-        let state = tree.read();
-        f(&state)
+        self.with_tree_state_and_context(|state, _| f(state))
     }
 
     fn upgrade_node<'a>(&self, tree_state: &'a TreeState) -> Result<Node<'a>> {
-        let state = self.state.read();
+        let state = self.state.read().unwrap();
         upgrade_range_node(&state, tree_state)
     }
 
@@ -251,18 +252,25 @@ impl PlatformRange {
     }
 
     fn upgrade_for_read<'a>(&self, tree_state: &'a TreeState) -> Result<Range<'a>> {
-        let state = self.state.read();
+        let state = self.state.read().unwrap();
         upgrade_range(&state, tree_state)
+    }
+
+    fn read_with_context<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(Range, &Context) -> Result<T>,
+    {
+        self.with_tree_state_and_context(|tree_state, context| {
+            let range = self.upgrade_for_read(tree_state)?;
+            f(range, context)
+        })
     }
 
     fn read<F, T>(&self, f: F) -> Result<T>
     where
         F: FnOnce(Range) -> Result<T>,
     {
-        self.with_tree_state(|tree_state| {
-            let range = self.upgrade_for_read(tree_state)?;
-            f(range)
-        })
+        self.read_with_context(|range, _| f(range))
     }
 
     fn write<F, T>(&self, f: F) -> Result<T>
@@ -270,7 +278,7 @@ impl PlatformRange {
         F: FnOnce(&mut Range) -> Result<T>,
     {
         self.with_tree_state(|tree_state| {
-            let mut state = self.state.write();
+            let mut state = self.state.write().unwrap();
             let mut range = upgrade_range(&state, tree_state)?;
             let result = f(&mut range);
             *state = range.downgrade();
@@ -278,18 +286,21 @@ impl PlatformRange {
         })
     }
 
-    fn action<F>(&self, f: F) -> Result<()>
+    fn do_action<F>(&self, f: F) -> Result<()>
     where
-        for<'a> F: FnOnce(&'a Tree, Range<'a>) -> Result<()>,
+        for<'a> F: FnOnce(Range<'a>) -> ActionRequest,
     {
-        let tree = self.upgrade_tree()?;
-        let tree_state = tree.read();
-        let range = self.upgrade_for_read(&tree_state)?;
-        f(&tree, range)
+        let context = self.upgrade_context()?;
+        let tree = context.read_tree();
+        let range = self.upgrade_for_read(tree.state())?;
+        let request = f(range);
+        drop(tree);
+        context.action_handler.do_action(request);
+        Ok(())
     }
 
-    fn require_same_tree(&self, other: &PlatformRange) -> Result<()> {
-        if self.tree.ptr_eq(&other.tree) {
+    fn require_same_context(&self, other: &PlatformRange) -> Result<()> {
+        if self.context.ptr_eq(&other.context) {
             Ok(())
         } else {
             Err(invalid_arg())
@@ -300,9 +311,8 @@ impl PlatformRange {
 impl Clone for PlatformRange {
     fn clone(&self) -> Self {
         PlatformRange {
-            tree: self.tree.clone(),
-            state: RwLock::new(self.state.read().clone()),
-            hwnd: self.hwnd,
+            context: self.context.clone(),
+            state: RwLock::new(self.state.read().unwrap().clone()),
         }
     }
 }
@@ -319,7 +329,9 @@ impl ITextRangeProvider_Impl for PlatformRange {
 
     fn Compare(&self, other: &Option<ITextRangeProvider>) -> Result<BOOL> {
         let other = required_param(other)?.as_impl();
-        Ok((self.tree.ptr_eq(&other.tree) && *self.state.read() == *other.state.read()).into())
+        Ok((self.context.ptr_eq(&other.context)
+            && *self.state.read().unwrap() == *other.state.read().unwrap())
+        .into())
     }
 
     fn CompareEndpoints(
@@ -334,14 +346,14 @@ impl ITextRangeProvider_Impl for PlatformRange {
             // safely without upgrading the range. This allows ATs
             // to determine whether an old range is degenerate even if
             // that range is no longer valid.
-            let state = self.state.read();
-            let other_state = other.state.read();
+            let state = self.state.read().unwrap();
+            let other_state = other.state.read().unwrap();
             let pos = weak_comparable_position_from_endpoint(&state, endpoint)?;
             let other_pos = weak_comparable_position_from_endpoint(&other_state, other_endpoint)?;
             let result = pos.cmp(other_pos);
             return Ok(result as i32);
         }
-        self.require_same_tree(other)?;
+        self.require_same_context(other)?;
         self.with_tree_state(|tree_state| {
             let range = self.upgrade_for_read(tree_state)?;
             let other_range = other.upgrade_for_read(tree_state)?;
@@ -361,7 +373,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
             // range even if the current endpoints are now invalid.
             // Based on observed behavior, Narrator needs this ability.
             return self.with_tree_state(|tree_state| {
-                let mut state = self.state.write();
+                let mut state = self.state.write().unwrap();
                 let node = upgrade_range_node(&state, tree_state)?;
                 *state = node.document_range().downgrade();
                 Ok(())
@@ -440,12 +452,12 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn GetBoundingRectangles(&self) -> Result<*mut SAFEARRAY> {
-        self.read(|range| {
+        self.read_with_context(|range, context| {
             let rects = range.bounding_boxes();
             if rects.is_empty() {
                 return Ok(std::ptr::null_mut());
             }
-            let client_top_left = client_top_left(self.hwnd);
+            let client_top_left = context.client_top_left();
             let mut result = Vec::<f64>::new();
             result.reserve(rects.len() * 4);
             for rect in rects {
@@ -462,9 +474,8 @@ impl ITextRangeProvider_Impl for PlatformRange {
         self.with_node(|node| {
             // Revisit this if we eventually support embedded objects.
             Ok(PlatformNode {
-                tree: self.tree.clone(),
+                context: self.context.clone(),
                 node_id: node.id(),
-                hwnd: self.hwnd,
             }
             .into())
         })
@@ -521,13 +532,13 @@ impl ITextRangeProvider_Impl for PlatformRange {
         other_endpoint: TextPatternRangeEndpoint,
     ) -> Result<()> {
         let other = required_param(other)?.as_impl();
-        self.require_same_tree(other)?;
+        self.require_same_context(other)?;
         // We have to obtain the tree state and ranges manually to avoid
         // lifetime issues, and work with the two locks in a specific order
         // to avoid deadlock.
         self.with_tree_state(|tree_state| {
             let other_range = other.upgrade_for_read(tree_state)?;
-            let mut state = self.state.write();
+            let mut state = self.state.write().unwrap();
             let mut range = upgrade_range(&state, tree_state)?;
             if range.node().id() != other_range.node().id() {
                 return Err(invalid_arg());
@@ -540,9 +551,10 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn Select(&self) -> Result<()> {
-        self.action(|tree, range| {
-            tree.select_text_range(&range);
-            Ok(())
+        self.do_action(|range| ActionRequest {
+            action: Action::SetTextSelection,
+            target: range.node().id(),
+            data: Some(ActionData::SetTextSelection(range.to_text_selection())),
         })
     }
 
@@ -557,14 +569,17 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn ScrollIntoView(&self, align_to_top: BOOL) -> Result<()> {
-        self.action(|tree, range| {
+        self.do_action(|range| {
             let position = if align_to_top.into() {
                 range.start()
             } else {
                 range.end()
             };
-            tree.scroll_text_position_into_view(&position);
-            Ok(())
+            ActionRequest {
+                action: Action::ScrollIntoView,
+                target: position.inner_node().id(),
+                data: None,
+            }
         })
     }
 
@@ -572,4 +587,12 @@ impl ITextRangeProvider_Impl for PlatformRange {
         // We don't support embedded objects in text.
         Ok(safe_array_from_com_slice(&[]))
     }
+}
+
+// Ensures that `PlatformRange` is actually safe to use in the free-threaded
+// manner that we advertise via `ProviderOptions`.
+#[test]
+fn platform_range_impl_send_sync() {
+    fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<PlatformRange>();
 }

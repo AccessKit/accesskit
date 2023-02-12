@@ -486,15 +486,15 @@ mod tests {
     #[test]
     fn following_siblings() {
         let tree = test_tree();
-        assert!(tree.read().root().following_siblings().next().is_none());
-        assert_eq!(0, tree.read().root().following_siblings().len());
+        assert!(tree.state().root().following_siblings().next().is_none());
+        assert_eq!(0, tree.state().root().following_siblings().len());
         assert_eq!(
             [
                 PARAGRAPH_1_IGNORED_ID,
                 PARAGRAPH_2_ID,
                 PARAGRAPH_3_IGNORED_ID
             ],
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_0_ID)
                 .unwrap()
                 .following_siblings()
@@ -503,14 +503,14 @@ mod tests {
         );
         assert_eq!(
             3,
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_0_ID)
                 .unwrap()
                 .following_siblings()
                 .len()
         );
         assert!(tree
-            .read()
+            .state()
             .node_by_id(PARAGRAPH_3_IGNORED_ID)
             .unwrap()
             .following_siblings()
@@ -518,7 +518,7 @@ mod tests {
             .is_none());
         assert_eq!(
             0,
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
                 .following_siblings()
@@ -530,7 +530,7 @@ mod tests {
     fn following_siblings_reversed() {
         let tree = test_tree();
         assert!(tree
-            .read()
+            .state()
             .root()
             .following_siblings()
             .next_back()
@@ -541,7 +541,7 @@ mod tests {
                 PARAGRAPH_2_ID,
                 PARAGRAPH_1_IGNORED_ID
             ],
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_0_ID)
                 .unwrap()
                 .following_siblings()
@@ -550,7 +550,7 @@ mod tests {
                 .collect::<Vec<NodeId>>()[..]
         );
         assert!(tree
-            .read()
+            .state()
             .node_by_id(PARAGRAPH_3_IGNORED_ID)
             .unwrap()
             .following_siblings()
@@ -561,11 +561,11 @@ mod tests {
     #[test]
     fn preceding_siblings() {
         let tree = test_tree();
-        assert!(tree.read().root().preceding_siblings().next().is_none());
-        assert_eq!(0, tree.read().root().preceding_siblings().len());
+        assert!(tree.state().root().preceding_siblings().next().is_none());
+        assert_eq!(0, tree.state().root().preceding_siblings().len());
         assert_eq!(
             [PARAGRAPH_2_ID, PARAGRAPH_1_IGNORED_ID, PARAGRAPH_0_ID],
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
                 .preceding_siblings()
@@ -574,14 +574,14 @@ mod tests {
         );
         assert_eq!(
             3,
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
                 .preceding_siblings()
                 .len()
         );
         assert!(tree
-            .read()
+            .state()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
             .preceding_siblings()
@@ -589,7 +589,7 @@ mod tests {
             .is_none());
         assert_eq!(
             0,
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_0_ID)
                 .unwrap()
                 .preceding_siblings()
@@ -601,14 +601,14 @@ mod tests {
     fn preceding_siblings_reversed() {
         let tree = test_tree();
         assert!(tree
-            .read()
+            .state()
             .root()
             .preceding_siblings()
             .next_back()
             .is_none());
         assert_eq!(
             [PARAGRAPH_0_ID, PARAGRAPH_1_IGNORED_ID, PARAGRAPH_2_ID],
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
                 .preceding_siblings()
@@ -617,7 +617,7 @@ mod tests {
                 .collect::<Vec<NodeId>>()[..]
         );
         assert!(tree
-            .read()
+            .state()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
             .preceding_siblings()
@@ -629,7 +629,7 @@ mod tests {
     fn following_filtered_siblings() {
         let tree = test_tree();
         assert!(tree
-            .read()
+            .state()
             .root()
             .following_filtered_siblings(test_tree_filter)
             .next()
@@ -641,7 +641,7 @@ mod tests {
                 STATIC_TEXT_3_1_0_ID,
                 BUTTON_3_2_ID
             ],
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_0_ID)
                 .unwrap()
                 .following_filtered_siblings(test_tree_filter)
@@ -649,7 +649,7 @@ mod tests {
                 .collect::<Vec<NodeId>>()[..]
         );
         assert!(tree
-            .read()
+            .state()
             .node_by_id(PARAGRAPH_3_IGNORED_ID)
             .unwrap()
             .following_filtered_siblings(test_tree_filter)
@@ -661,7 +661,7 @@ mod tests {
     fn following_filtered_siblings_reversed() {
         let tree = test_tree();
         assert!(tree
-            .read()
+            .state()
             .root()
             .following_filtered_siblings(test_tree_filter)
             .next_back()
@@ -673,7 +673,7 @@ mod tests {
                 PARAGRAPH_2_ID,
                 STATIC_TEXT_1_0_ID
             ],
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_0_ID)
                 .unwrap()
                 .following_filtered_siblings(test_tree_filter)
@@ -682,7 +682,7 @@ mod tests {
                 .collect::<Vec<NodeId>>()[..]
         );
         assert!(tree
-            .read()
+            .state()
             .node_by_id(PARAGRAPH_3_IGNORED_ID)
             .unwrap()
             .following_filtered_siblings(test_tree_filter)
@@ -694,14 +694,14 @@ mod tests {
     fn preceding_filtered_siblings() {
         let tree = test_tree();
         assert!(tree
-            .read()
+            .state()
             .root()
             .preceding_filtered_siblings(test_tree_filter)
             .next()
             .is_none());
         assert_eq!(
             [PARAGRAPH_2_ID, STATIC_TEXT_1_0_ID, PARAGRAPH_0_ID],
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
                 .preceding_filtered_siblings(test_tree_filter)
@@ -709,7 +709,7 @@ mod tests {
                 .collect::<Vec<NodeId>>()[..]
         );
         assert!(tree
-            .read()
+            .state()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
             .preceding_filtered_siblings(test_tree_filter)
@@ -721,14 +721,14 @@ mod tests {
     fn preceding_filtered_siblings_reversed() {
         let tree = test_tree();
         assert!(tree
-            .read()
+            .state()
             .root()
             .preceding_filtered_siblings(test_tree_filter)
             .next_back()
             .is_none());
         assert_eq!(
             [PARAGRAPH_0_ID, STATIC_TEXT_1_0_ID, PARAGRAPH_2_ID],
-            tree.read()
+            tree.state()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
                 .preceding_filtered_siblings(test_tree_filter)
@@ -737,7 +737,7 @@ mod tests {
                 .collect::<Vec<NodeId>>()[..]
         );
         assert!(tree
-            .read()
+            .state()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
             .preceding_filtered_siblings(test_tree_filter)
@@ -756,21 +756,21 @@ mod tests {
                 STATIC_TEXT_3_1_0_ID,
                 BUTTON_3_2_ID
             ],
-            tree.read()
+            tree.state()
                 .root()
                 .filtered_children(test_tree_filter)
                 .map(|node| node.id())
                 .collect::<Vec<NodeId>>()[..]
         );
         assert!(tree
-            .read()
+            .state()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
             .filtered_children(test_tree_filter)
             .next()
             .is_none());
         assert!(tree
-            .read()
+            .state()
             .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
             .unwrap()
             .filtered_children(test_tree_filter)
@@ -789,7 +789,7 @@ mod tests {
                 STATIC_TEXT_1_0_ID,
                 PARAGRAPH_0_ID
             ],
-            tree.read()
+            tree.state()
                 .root()
                 .filtered_children(test_tree_filter)
                 .rev()
@@ -797,14 +797,14 @@ mod tests {
                 .collect::<Vec<NodeId>>()[..]
         );
         assert!(tree
-            .read()
+            .state()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
             .filtered_children(test_tree_filter)
             .next_back()
             .is_none());
         assert!(tree
-            .read()
+            .state()
             .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
             .unwrap()
             .filtered_children(test_tree_filter)

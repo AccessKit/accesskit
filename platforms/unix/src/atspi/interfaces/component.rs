@@ -5,43 +5,25 @@
 
 use crate::{
     atspi::{OwnedObjectAddress, Rect},
-    unknown_object,
-    util::WindowBounds,
     PlatformNode,
 };
 use atspi::{component::Layer, CoordType};
-use parking_lot::RwLock;
-use std::sync::{Arc, Weak};
 use zbus::{fdo, MessageHeader};
 
 pub(crate) struct ComponentInterface {
     node: PlatformNode,
-    root_window_bounds: Weak<RwLock<WindowBounds>>,
 }
 
 impl ComponentInterface {
-    pub(crate) fn new(node: PlatformNode, root_window_bounds: &Arc<RwLock<WindowBounds>>) -> Self {
-        Self {
-            node,
-            root_window_bounds: Arc::downgrade(root_window_bounds),
-        }
-    }
-
-    fn upgrade_bounds(&self) -> fdo::Result<Arc<RwLock<WindowBounds>>> {
-        if let Some(bounds) = self.root_window_bounds.upgrade() {
-            Ok(bounds)
-        } else {
-            Err(unknown_object(&self.node.accessible_id()))
-        }
+    pub(crate) fn new(node: PlatformNode) -> Self {
+        Self { node }
     }
 }
 
 #[dbus_interface(name = "org.a11y.atspi.Component")]
 impl ComponentInterface {
     fn contains(&self, x: i32, y: i32, coord_type: CoordType) -> fdo::Result<bool> {
-        let window_bounds = self.upgrade_bounds()?;
-        let contains = self.node.contains(&window_bounds.read(), x, y, coord_type);
-        contains
+        self.node.contains(x, y, coord_type)
     }
 
     fn get_accessible_at_point(
@@ -51,17 +33,12 @@ impl ComponentInterface {
         y: i32,
         coord_type: CoordType,
     ) -> fdo::Result<(OwnedObjectAddress,)> {
-        let window_bounds = self.upgrade_bounds()?;
-        let accessible =
-            self.node
-                .get_accessible_at_point(&window_bounds.read(), x, y, coord_type)?;
+        let accessible = self.node.get_accessible_at_point(x, y, coord_type)?;
         super::object_address(hdr.destination()?, accessible)
     }
 
     fn get_extents(&self, coord_type: CoordType) -> fdo::Result<(Rect,)> {
-        let window_bounds = self.upgrade_bounds()?;
-        let extents = self.node.get_extents(&window_bounds.read(), coord_type);
-        extents
+        self.node.get_extents(coord_type)
     }
 
     fn get_layer(&self) -> fdo::Result<Layer> {
@@ -73,10 +50,6 @@ impl ComponentInterface {
     }
 
     fn scroll_to_point(&self, coord_type: CoordType, x: i32, y: i32) -> fdo::Result<bool> {
-        let window_bounds = self.upgrade_bounds()?;
-        let scrolled = self
-            .node
-            .scroll_to_point(&window_bounds.read(), coord_type, x, y);
-        scrolled
+        self.node.scroll_to_point(coord_type, x, y)
     }
 }

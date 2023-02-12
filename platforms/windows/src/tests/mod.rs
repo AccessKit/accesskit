@@ -5,8 +5,13 @@
 
 use accesskit::{ActionHandler, NodeId, TreeUpdate};
 use once_cell::{sync::Lazy as SyncLazy, unsync::Lazy};
-use parking_lot::{const_mutex, Condvar, Mutex};
-use std::{cell::RefCell, rc::Rc, sync::Arc, thread, time::Duration};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Condvar, Mutex},
+    thread,
+    time::Duration,
+};
 use windows as Windows;
 use windows::{
     core::*,
@@ -74,7 +79,7 @@ fn update_focus(window: HWND, is_window_focused: bool) {
     }
 }
 
-struct WindowCreateParams(TreeUpdate, NodeId, Box<dyn ActionHandler>);
+struct WindowCreateParams(TreeUpdate, NodeId, Box<dyn ActionHandler + Send + Sync>);
 
 extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     match message {
@@ -145,7 +150,7 @@ fn create_window(
     title: &str,
     initial_state: TreeUpdate,
     initial_focus: NodeId,
-    action_handler: Box<dyn ActionHandler>,
+    action_handler: Box<dyn ActionHandler + Send + Sync>,
 ) -> Result<HWND> {
     let create_params = Box::new(WindowCreateParams(
         initial_state,
@@ -189,19 +194,19 @@ impl Scope {
 }
 
 // It's not safe to run these UI-related tests concurrently.
-static MUTEX: Mutex<()> = const_mutex(());
+static MUTEX: Mutex<()> = Mutex::new(());
 
 pub(crate) fn scope<F>(
     window_title: &str,
     initial_state: TreeUpdate,
     initial_focus: NodeId,
-    action_handler: Box<dyn ActionHandler>,
+    action_handler: Box<dyn ActionHandler + Send + Sync>,
     f: F,
 ) -> Result<()>
 where
     F: FnOnce(&Scope) -> Result<()>,
 {
-    let _lock_guard = MUTEX.lock();
+    let _lock_guard = MUTEX.lock().unwrap();
 
     let window_mutex: Mutex<Option<HWND>> = Mutex::new(None);
     let window_cv = Condvar::new();
@@ -219,7 +224,7 @@ where
                 create_window(window_title, initial_state, initial_focus, action_handler).unwrap();
 
             {
-                let mut state = window_mutex.lock();
+                let mut state = window_mutex.lock().unwrap();
                 *state = Some(window);
                 window_cv.notify_one();
             }
@@ -232,10 +237,12 @@ where
         });
 
         let window = {
-            let mut state = window_mutex.lock();
-            if state.is_none() {
-                window_cv.wait(&mut state);
-            }
+            let state = window_mutex.lock().unwrap();
+            let mut state = if state.is_none() {
+                window_cv.wait(state).unwrap()
+            } else {
+                state
+            };
             state.take().unwrap()
         };
 
@@ -283,20 +290,21 @@ impl ReceivedFocusEvent {
     where
         F: Fn(&IUIAutomationElement) -> bool,
     {
-        let mut received = self.mutex.lock();
+        let mut received = self.mutex.lock().unwrap();
         loop {
             if let Some(element) = received.take() {
                 if f(&element) {
                     return element;
                 }
             }
-            let result = self.cv.wait_for(&mut received, DEFAULT_TIMEOUT);
+            let (lock, result) = self.cv.wait_timeout(received, DEFAULT_TIMEOUT).unwrap();
             assert!(!result.timed_out());
+            received = lock;
         }
     }
 
     fn put(&self, element: IUIAutomationElement) {
-        let mut received = self.mutex.lock();
+        let mut received = self.mutex.lock().unwrap();
         *received = Some(element);
         self.cv.notify_one();
     }

@@ -3,6 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+mod context;
 mod node;
 mod text;
 mod util;

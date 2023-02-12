@@ -3,7 +3,15 @@
 // the LICENSE-APACHE file).
 
 use accesskit::{ActionHandler, ActionRequest, TreeUpdate};
-use parking_lot::Mutex;
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_os = "windows"
+))]
+use std::sync::{Mutex, MutexGuard};
 use winit::{
     event::WindowEvent,
     event_loop::EventLoopProxy,
@@ -20,17 +28,84 @@ pub struct ActionRequestEvent {
 
 struct WinitActionHandler<T: From<ActionRequestEvent> + Send + 'static> {
     window_id: WindowId,
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "windows"
+    ))]
     proxy: Mutex<EventLoopProxy<T>>,
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "windows"
+    )))]
+    proxy: EventLoopProxy<T>,
+}
+
+impl<T: From<ActionRequestEvent> + Send + 'static> WinitActionHandler<T> {
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "windows"
+    ))]
+    fn new(window_id: WindowId, proxy: EventLoopProxy<T>) -> Self {
+        Self {
+            window_id,
+            proxy: Mutex::new(proxy),
+        }
+    }
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "windows"
+    )))]
+    fn new(window_id: WindowId, proxy: EventLoopProxy<T>) -> Self {
+        Self { window_id, proxy }
+    }
+
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "windows"
+    ))]
+    fn proxy(&self) -> MutexGuard<'_, EventLoopProxy<T>> {
+        self.proxy.lock().unwrap()
+    }
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "windows"
+    )))]
+    fn proxy(&self) -> &EventLoopProxy<T> {
+        &self.proxy
+    }
 }
 
 impl<T: From<ActionRequestEvent> + Send + 'static> ActionHandler for WinitActionHandler<T> {
     fn do_action(&self, request: ActionRequest) {
-        let proxy = self.proxy.lock();
         let event = ActionRequestEvent {
             window_id: self.window_id,
             request,
         };
-        proxy.send_event(event.into()).ok();
+        self.proxy().send_event(event.into()).ok();
     }
 }
 
@@ -44,10 +119,7 @@ impl Adapter {
         source: impl 'static + FnOnce() -> TreeUpdate + Send,
         event_loop_proxy: EventLoopProxy<T>,
     ) -> Self {
-        let action_handler = WinitActionHandler {
-            window_id: window.id(),
-            proxy: Mutex::new(event_loop_proxy),
-        };
+        let action_handler = WinitActionHandler::new(window.id(), event_loop_proxy);
         Self::with_action_handler(window, source, Box::new(action_handler))
     }
 
@@ -58,7 +130,7 @@ impl Adapter {
     pub fn with_action_handler(
         window: &Window,
         source: impl 'static + FnOnce() -> TreeUpdate + Send,
-        action_handler: Box<dyn ActionHandler>,
+        action_handler: platform_impl::ActionHandlerBox,
     ) -> Self {
         let adapter = platform_impl::Adapter::new(window, source, action_handler);
         Self { adapter }

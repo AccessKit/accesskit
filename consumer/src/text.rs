@@ -3,7 +3,9 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{NodeId, Point, Rect, Role, TextDirection, TextPosition as WeakPosition};
+use accesskit::{
+    NodeId, Point, Rect, Role, TextDirection, TextPosition as WeakPosition, TextSelection,
+};
 use std::{cmp::Ordering, iter::FusedIterator};
 
 use crate::{FilterResult, Node, TreeState};
@@ -185,6 +187,10 @@ pub struct Position<'a> {
 }
 
 impl<'a> Position<'a> {
+    pub fn inner_node(&self) -> &Node {
+        &self.inner.node
+    }
+
     pub fn is_format_start(&self) -> bool {
         // TODO: support variable text formatting (part of rich text)
         self.is_document_start()
@@ -695,6 +701,13 @@ impl<'a> Range<'a> {
         self.fix_start_bias();
     }
 
+    pub fn to_text_selection(&self) -> TextSelection {
+        TextSelection {
+            anchor: self.start.downgrade(),
+            focus: self.end.downgrade(),
+        }
+    }
+
     pub fn downgrade(&self) -> WeakRange {
         WeakRange {
             node_id: self.node.id(),
@@ -1015,8 +1028,6 @@ mod tests {
     use accesskit::{NodeId, Point, Rect, TextSelection};
     use std::num::NonZeroU128;
 
-    use crate::tests::NullActionHandler;
-
     const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
     const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
     const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
@@ -1210,7 +1221,7 @@ mod tests {
             focus: Some(NODE_ID_2),
         };
 
-        crate::Tree::new(update, Box::new(NullActionHandler {}))
+        crate::Tree::new(update)
     }
 
     fn multiline_end_selection() -> TextSelection {
@@ -1276,7 +1287,7 @@ mod tests {
     #[test]
     fn supports_text_ranges() {
         let tree = main_multiline_tree(None);
-        let state = tree.read();
+        let state = tree.state();
         assert!(!state.node_by_id(NODE_ID_1).unwrap().supports_text_ranges());
         assert!(state.node_by_id(NODE_ID_2).unwrap().supports_text_ranges());
     }
@@ -1284,7 +1295,7 @@ mod tests {
     #[test]
     fn multiline_document_range() {
         let tree = main_multiline_tree(None);
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
         let range = node.document_range();
         let start = range.start();
@@ -1343,7 +1354,7 @@ mod tests {
     #[test]
     fn multiline_end_degenerate_range() {
         let tree = main_multiline_tree(Some(multiline_end_selection()));
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
         let range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
@@ -1369,7 +1380,7 @@ mod tests {
     #[test]
     fn multiline_wrapped_line_end_range() {
         let tree = main_multiline_tree(Some(multiline_wrapped_line_end_selection()));
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
         let range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
@@ -1431,7 +1442,7 @@ mod tests {
     #[test]
     fn multiline_find_line_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
@@ -1463,7 +1474,7 @@ mod tests {
     #[test]
     fn multiline_find_wrapped_line_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_first_line_middle_selection()));
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
@@ -1495,7 +1506,7 @@ mod tests {
     #[test]
     fn multiline_find_paragraph_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
@@ -1539,7 +1550,7 @@ mod tests {
     #[test]
     fn multiline_find_word_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
@@ -1567,7 +1578,7 @@ mod tests {
     #[test]
     fn text_position_at_point() {
         let tree = main_multiline_tree(None);
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
 
         {
@@ -1659,7 +1670,7 @@ mod tests {
     #[test]
     fn to_global_utf16_index() {
         let tree = main_multiline_tree(None);
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
 
         {
@@ -1684,7 +1695,7 @@ mod tests {
     #[test]
     fn to_line_index() {
         let tree = main_multiline_tree(None);
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
 
         {
@@ -1710,7 +1721,7 @@ mod tests {
     #[test]
     fn line_range_from_index() {
         let tree = main_multiline_tree(None);
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
 
         {
@@ -1749,7 +1760,7 @@ mod tests {
     #[test]
     fn text_position_from_global_utf16_index() {
         let tree = main_multiline_tree(None);
-        let state = tree.read();
+        let state = tree.state();
         let node = state.node_by_id(NODE_ID_2).unwrap();
 
         {

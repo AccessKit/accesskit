@@ -2397,13 +2397,12 @@ pub struct ActionRequest {
 }
 
 /// Handles requests from assistive technologies or other clients.
-pub trait ActionHandler: Send + Sync {
+pub trait ActionHandler {
     /// Perform the requested action. If the requested action is not supported,
     /// this method must do nothing.
     ///
-    /// This method may be called on any thread. In particular, on platforms
-    /// with a designated UI thread, this method may or may not be called
-    /// on that thread. Implementations must correctly handle both cases.
+    /// The thread on which this method is called is platform-dependent.
+    /// Refer to the platform adapter documentation for more details.
     ///
     /// This method may queue the request and handle it asynchronously.
     /// This behavior is preferred over blocking, e.g. when dispatching

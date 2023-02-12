@@ -6,6 +6,8 @@ use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_macos::SubclassingAdapter;
 use winit::{platform::macos::WindowExtMacOS, window::Window};
 
+pub type ActionHandlerBox = Box<dyn ActionHandler>;
+
 pub struct Adapter {
     adapter: SubclassingAdapter,
 }
@@ -14,7 +16,7 @@ impl Adapter {
     pub fn new(
         window: &Window,
         source: impl 'static + FnOnce() -> TreeUpdate,
-        action_handler: Box<dyn ActionHandler>,
+        action_handler: ActionHandlerBox,
     ) -> Self {
         let view = window.ns_view();
         let adapter = unsafe { SubclassingAdapter::new(view, source, action_handler) };

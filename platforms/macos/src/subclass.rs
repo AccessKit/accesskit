@@ -18,8 +18,7 @@ use objc2::{
     sel, ClassType,
 };
 use once_cell::{sync::Lazy as SyncLazy, unsync::Lazy};
-use parking_lot::Mutex;
-use std::{collections::HashMap, ffi::c_void};
+use std::{collections::HashMap, ffi::c_void, sync::Mutex};
 
 use crate::{appkit::NSView, event::QueuedEvents, Adapter};
 
@@ -105,6 +104,8 @@ pub struct SubclassingAdapter {
 impl SubclassingAdapter {
     /// Create an adapter that dynamically subclasses the specified view.
     ///
+    /// The action handler will always be called on the main thread.
+    ///
     /// # Safety
     ///
     /// `view` must be a valid, unreleased pointer to an `NSView`.
@@ -135,7 +136,7 @@ impl SubclassingAdapter {
                 OBJC_ASSOCIATION_RETAIN_NONATOMIC,
             )
         };
-        let mut subclasses = SUBCLASSES.lock();
+        let mut subclasses = SUBCLASSES.lock().unwrap();
         let entry = subclasses.entry(prev_class);
         let subclass = entry.or_insert_with(|| {
             let name = format!("AccessKitSubclassOf{}", prev_class.name());

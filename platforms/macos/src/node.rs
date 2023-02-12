@@ -10,8 +10,8 @@
 
 #![allow(non_upper_case_globals)]
 
-use accesskit::{CheckedState, NodeId, Role, TextSelection};
-use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, Tree};
+use accesskit::{Action, ActionData, ActionRequest, CheckedState, NodeId, Role, TextSelection};
+use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState};
 use objc2::{
     declare::{Ivar, IvarDrop},
     declare_class,
@@ -489,15 +489,23 @@ declare_class!(
 
         #[sel(setAccessibilityFocused:)]
         fn set_focused(&self, focused: bool) {
-            self.resolve_with_tree(|node, tree| {
+            self.resolve_with_context(|node, context| {
                 if focused {
                     if node.is_focusable() {
-                        tree.set_focus(node.id());
+                        context.action_handler.do_action(ActionRequest {
+                            action: Action::Focus,
+                            target: node.id(),
+                            data: None,
+                        });
                     }
                 } else {
                     let root = node.tree_state.root();
                     if root.is_focusable() {
-                        tree.set_focus(root.id());
+                        context.action_handler.do_action(ActionRequest {
+                            action: Action::Focus,
+                            target: root.id(),
+                            data: None,
+                        });
                     }
                 }
             });
@@ -505,10 +513,14 @@ declare_class!(
 
         #[sel(accessibilityPerformPress)]
         fn press(&self) -> bool {
-            self.resolve_with_tree(|node, tree| {
+            self.resolve_with_context(|node, context| {
                 let clickable = node.is_clickable();
                 if clickable {
-                    tree.do_default_action(node.id());
+                    context.action_handler.do_action(ActionRequest {
+                        action: Action::Default,
+                        target: node.id(),
+                        data: None,
+                    });
                 }
                 clickable
             })
@@ -517,10 +529,14 @@ declare_class!(
 
         #[sel(accessibilityPerformIncrement)]
         fn increment(&self) -> bool {
-            self.resolve_with_tree(|node, tree| {
+            self.resolve_with_context(|node, context| {
                 let supports_increment = node.supports_increment();
                 if supports_increment {
-                    tree.increment(node.id());
+                    context.action_handler.do_action(ActionRequest {
+                        action: Action::Increment,
+                        target: node.id(),
+                        data: None,
+                    });
                 }
                 supports_increment
             })
@@ -529,10 +545,14 @@ declare_class!(
 
         #[sel(accessibilityPerformDecrement)]
         fn decrement(&self) -> bool {
-            self.resolve_with_tree(|node, tree| {
+            self.resolve_with_context(|node, context| {
                 let supports_decrement = node.supports_decrement();
                 if supports_decrement {
-                    tree.decrement(node.id());
+                    context.action_handler.do_action(ActionRequest {
+                        action: Action::Decrement,
+                        target: node.id(),
+                        data: None,
+                    });
                 }
                 supports_decrement
             })
@@ -696,10 +716,14 @@ declare_class!(
 
         #[sel(setAccessibilitySelectedTextRange:)]
         fn set_selected_text_range(&self, range: NSRange) {
-            self.resolve_with_tree(|node, tree| {
+            self.resolve_with_context(|node, context| {
                 if node.supports_text_ranges() {
                     if let Some(range) = from_ns_range(node, range) {
-                        tree.select_text_range(&range);
+                        context.action_handler.do_action(ActionRequest {
+                            action: Action::SetTextSelection,
+                            target: node.id(),
+                            data: Some(ActionData::SetTextSelection(range.to_text_selection())),
+                        });
                     }
                 }
             });
@@ -776,7 +800,8 @@ impl PlatformNode {
         F: FnOnce(&Node, &Rc<Context>) -> T,
     {
         let context = self.boxed.context.upgrade()?;
-        let state = context.tree.read();
+        let tree = context.tree.borrow();
+        let state = tree.state();
         let node = state.node_by_id(self.boxed.node_id)?;
         Some(f(&node, &context))
     }
@@ -786,13 +811,6 @@ impl PlatformNode {
         F: FnOnce(&Node) -> T,
     {
         self.resolve_with_context(|node, _| f(node))
-    }
-
-    fn resolve_with_tree<F, T>(&self, f: F) -> Option<T>
-    where
-        F: FnOnce(&Node, &Tree) -> T,
-    {
-        self.resolve_with_context(|node, context| f(node, &context.tree))
     }
 
     fn children_internal(&self) -> *mut NSArray<PlatformNode> {
