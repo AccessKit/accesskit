@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.14.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.13.0...accesskit_consumer-v0.14.0) (2023-02-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* Move thread synchronization into platform adapters; drop parking_lot ([#212](https://github.com/AccessKit/accesskit/issues/212))
+
+### Code Refactoring
+
+* Move thread synchronization into platform adapters; drop parking_lot ([#212](https://github.com/AccessKit/accesskit/issues/212)) ([5df52e5](https://github.com/AccessKit/accesskit/commit/5df52e5545faddf6a51905409013c2f5be23981e))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.9.0 to 0.10.0
+
 ## [0.13.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.12.1...accesskit_consumer-v0.13.0) (2023-02-05)
 
 
