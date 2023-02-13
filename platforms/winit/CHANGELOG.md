@@ -25,6 +25,27 @@
     * accesskit_macos bumped from 0.4.1 to 0.4.2
     * accesskit_unix bumped from 0.1.0 to 0.1.1
 
+## [0.11.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.10.0...accesskit_winit-v0.11.0) (2023-02-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* Move thread synchronization into platform adapters; drop parking_lot ([#212](https://github.com/AccessKit/accesskit/issues/212))
+
+### Code Refactoring
+
+* Move thread synchronization into platform adapters; drop parking_lot ([#212](https://github.com/AccessKit/accesskit/issues/212)) ([5df52e5](https://github.com/AccessKit/accesskit/commit/5df52e5545faddf6a51905409013c2f5be23981e))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.9.0 to 0.10.0
+    * accesskit_windows bumped from 0.12.0 to 0.13.0
+    * accesskit_macos bumped from 0.5.0 to 0.6.0
+    * accesskit_unix bumped from 0.2.0 to 0.3.0
+
 ## [0.10.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.9.1...accesskit_winit-v0.10.0) (2023-02-05)
 
 
