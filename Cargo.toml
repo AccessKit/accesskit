@@ -6,6 +6,7 @@ members = [
     "platforms/unix",
     "platforms/windows",
     "platforms/winit",
+    "bindings/c",
 ]
 default-members = [
     "common",

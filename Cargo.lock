@@ -28,6 +28,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "accesskit_c"
+version = "0.1.0"
+dependencies = [
+ "accesskit",
+]
+
+[[package]]
 name = "accesskit_consumer"
 version = "0.14.1"
 dependencies = [

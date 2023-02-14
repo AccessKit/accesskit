@@ -9,6 +9,7 @@
     "platforms/macos": {},
     "platforms/unix": {},
     "platforms/windows": {},
-    "platforms/winit": {}
+    "platforms/winit": {},
+    "bindings/c": {}
   }
 }

@@ -1,0 +1,7 @@
+include_guard = "ACCESSKIT_H"
+
+usize_is_size_t = true
+
+[enum]
+prefix_with_name = true
+rename_variants = "ScreamingSnakeCase"
