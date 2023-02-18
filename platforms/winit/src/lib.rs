@@ -4,11 +4,16 @@
 
 use accesskit::{ActionHandler, ActionRequest, TreeUpdate};
 #[cfg(any(
-    target_os = "linux",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "netbsd",
-    target_os = "openbsd",
+    all(
+        feature = "accesskit_unix",
+        any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        )
+    ),
     target_os = "windows"
 ))]
 use std::sync::{Mutex, MutexGuard};
@@ -29,20 +34,30 @@ pub struct ActionRequestEvent {
 struct WinitActionHandler<T: From<ActionRequestEvent> + Send + 'static> {
     window_id: WindowId,
     #[cfg(any(
-        target_os = "linux",
-        target_os = "dragonfly",
-        target_os = "freebsd",
-        target_os = "netbsd",
-        target_os = "openbsd",
+        all(
+            feature = "accesskit_unix",
+            any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            )
+        ),
         target_os = "windows"
     ))]
     proxy: Mutex<EventLoopProxy<T>>,
     #[cfg(not(any(
-        target_os = "linux",
-        target_os = "dragonfly",
-        target_os = "freebsd",
-        target_os = "netbsd",
-        target_os = "openbsd",
+        all(
+            feature = "accesskit_unix",
+            any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            )
+        ),
         target_os = "windows"
     )))]
     proxy: EventLoopProxy<T>,
@@ -50,11 +65,16 @@ struct WinitActionHandler<T: From<ActionRequestEvent> + Send + 'static> {
 
 impl<T: From<ActionRequestEvent> + Send + 'static> WinitActionHandler<T> {
     #[cfg(any(
-        target_os = "linux",
-        target_os = "dragonfly",
-        target_os = "freebsd",
-        target_os = "netbsd",
-        target_os = "openbsd",
+        all(
+            feature = "accesskit_unix",
+            any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            )
+        ),
         target_os = "windows"
     ))]
     fn new(window_id: WindowId, proxy: EventLoopProxy<T>) -> Self {
@@ -64,11 +84,16 @@ impl<T: From<ActionRequestEvent> + Send + 'static> WinitActionHandler<T> {
         }
     }
     #[cfg(not(any(
-        target_os = "linux",
-        target_os = "dragonfly",
-        target_os = "freebsd",
-        target_os = "netbsd",
-        target_os = "openbsd",
+        all(
+            feature = "accesskit_unix",
+            any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            )
+        ),
         target_os = "windows"
     )))]
     fn new(window_id: WindowId, proxy: EventLoopProxy<T>) -> Self {
@@ -76,22 +101,32 @@ impl<T: From<ActionRequestEvent> + Send + 'static> WinitActionHandler<T> {
     }
 
     #[cfg(any(
-        target_os = "linux",
-        target_os = "dragonfly",
-        target_os = "freebsd",
-        target_os = "netbsd",
-        target_os = "openbsd",
+        all(
+            feature = "accesskit_unix",
+            any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            )
+        ),
         target_os = "windows"
     ))]
     fn proxy(&self) -> MutexGuard<'_, EventLoopProxy<T>> {
         self.proxy.lock().unwrap()
     }
     #[cfg(not(any(
-        target_os = "linux",
-        target_os = "dragonfly",
-        target_os = "freebsd",
-        target_os = "netbsd",
-        target_os = "openbsd",
+        all(
+            feature = "accesskit_unix",
+            any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            )
+        ),
         target_os = "windows"
     )))]
     fn proxy(&self) -> &EventLoopProxy<T> {
@@ -136,23 +171,29 @@ impl Adapter {
         Self { adapter }
     }
 
-    #[cfg(all(
-        not(target_os = "linux"),
-        not(target_os = "dragonfly"),
-        not(target_os = "freebsd"),
-        not(target_os = "netbsd"),
-        not(target_os = "openbsd")
-    ))]
+    #[cfg(not(all(
+        feature = "accesskit_unix",
+        any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        )
+    )))]
     #[must_use]
     pub fn on_event(&self, _window: &Window, _event: &WindowEvent) -> bool {
         true
     }
-    #[cfg(any(
-        target_os = "linux",
-        target_os = "dragonfly",
-        target_os = "freebsd",
-        target_os = "netbsd",
-        target_os = "openbsd"
+    #[cfg(all(
+        feature = "accesskit_unix",
+        any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        )
     ))]
     #[must_use]
     pub fn on_event(&self, window: &Window, event: &WindowEvent) -> bool {
