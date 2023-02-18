@@ -25,6 +25,13 @@
     * accesskit_macos bumped from 0.4.1 to 0.4.2
     * accesskit_unix bumped from 0.1.0 to 0.1.1
 
+## [0.12.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.11.0...accesskit_winit-v0.12.0) (2023-02-18)
+
+
+### Features
+
+* Feature-gate the Unix adapter in accesskit_winit ([#214](https://github.com/AccessKit/accesskit/issues/214)) ([be95807](https://github.com/AccessKit/accesskit/commit/be95807dda64f2a49b4d20cc9084b14a7aa2844e))
+
 ## [0.11.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.10.0...accesskit_winit-v0.11.0) (2023-02-12)
 
 
