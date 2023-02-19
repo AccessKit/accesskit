@@ -644,6 +644,7 @@ pub type NodeIdContent = NonZeroU128;
 
 /// The stable identity of a [`Node`], unique within the node's tree.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 pub struct NodeId(pub NodeIdContent);
