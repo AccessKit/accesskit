@@ -18,6 +18,7 @@ use std::{
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[repr(C)]
 pub struct Affine([f64; 6]);
 
 impl Affine {
@@ -221,6 +222,7 @@ impl Mul<Affine> for f64 {
 #[derive(Clone, Copy, Default, PartialEq)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[repr(C)]
 pub struct Point {
     /// The x coordinate.
     pub x: f64,
@@ -345,6 +347,7 @@ impl fmt::Debug for Point {
 #[derive(Clone, Copy, Default, PartialEq)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[repr(C)]
 pub struct Rect {
     /// The minimum x coordinate (left edge).
     pub x0: f64,
@@ -578,6 +581,7 @@ impl Rect {
 #[derive(Clone, Copy, Default, PartialEq)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[repr(C)]
 pub struct Size {
     /// The width.
     pub width: f64,
@@ -723,6 +727,7 @@ impl From<Size> for (f64, f64) {
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[repr(C)]
 pub struct Vec2 {
     /// The x-coordinate.
     pub x: f64,

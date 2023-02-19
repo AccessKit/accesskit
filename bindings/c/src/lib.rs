@@ -1,14 +1,143 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+// Copyright 2023 The AccessKit Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (found in
+// the LICENSE-APACHE file) or the MIT license (found in
+// the LICENSE-MIT file), at your option.
+
+// Derived from rustls-ffi.
+// Copyright (c) 2021, Jacob Hoffman-Andrews <jsha@letsencrypt.org>
+// Licensed under the Apache License, Version 2.0 (found in
+// the LICENSE-APACHE file), the ISC license (found in
+// the LICENSE-ISC file), or the MIT license (found in
+// the LICENSE-MIT file), at your option.
+
+#![allow(non_camel_case_types)]
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
+
+mod common;
+mod geometry;
+mod panic;
+
+pub use common::*;
+pub use geometry::*;
+
+/// CastPtr represents the relationship between a snake case type (like node_class_set)
+/// and the corresponding Rust type (like NodeClassSet). For each matched pair of types, there
+/// should be an `impl CastPtr for foo_bar { RustType = FooBar }`.
+///
+/// This allows us to avoid using `as` in most places, and ensure that when we cast, we're
+/// preserving const-ness, and casting between the correct types.
+/// Implementing this is required in order to use `try_ref_from_ptr!` or
+/// `try_mut_from_ptr!`.
+pub(crate) trait CastPtr {
+    type RustType;
+
+    fn cast_mut_ptr(ptr: *mut Self) -> *mut Self::RustType {
+        ptr as *mut _
+    }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/// CastConstPtr represents a subset of CastPtr, for when we can only treat
+/// something as a const (for instance when dealing with Arc).
+pub(crate) trait CastConstPtr {
+    type RustType;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    fn cast_const_ptr(ptr: *const Self) -> *const Self::RustType {
+        ptr as *const _
     }
+}
+
+/// Anything that qualifies for CastPtr also automatically qualifies for
+/// CastConstPtr. Splitting out CastPtr vs CastConstPtr allows us to ensure
+/// that Arcs are never cast to a mutable pointer.
+impl<T, R> CastConstPtr for T
+where
+    T: CastPtr<RustType = R>,
+{
+    type RustType = R;
+}
+
+// An implementation of BoxCastPtr means that when we give C code a pointer to the relevant type,
+// it is actually a Box.
+pub(crate) trait BoxCastPtr: CastPtr + Sized {
+    fn to_box(ptr: *mut Self) -> Option<Box<Self::RustType>> {
+        if ptr.is_null() {
+            return None;
+        }
+        let rs_typed = Self::cast_mut_ptr(ptr);
+        unsafe { Some(Box::from_raw(rs_typed)) }
+    }
+
+    fn to_mut_ptr(src: Self::RustType) -> *mut Self {
+        Box::into_raw(Box::new(src)) as *mut _
+    }
+
+    fn set_mut_ptr(dst: *mut *mut Self, src: Self::RustType) {
+        unsafe {
+            *dst = Self::to_mut_ptr(src);
+        }
+    }
+}
+
+/// Turn a raw const pointer into a reference. This is a generic function
+/// rather than part of the CastPtr trait because (a) const pointers can't act
+/// as "self" for trait methods, and (b) we want to rely on type inference
+/// against T (the cast-to type) rather than across F (the from type).
+pub(crate) fn try_from<'a, F, T>(from: *const F) -> Option<&'a T>
+where
+    F: CastConstPtr<RustType = T>,
+{
+    unsafe { F::cast_const_ptr(from).as_ref() }
+}
+
+/// Turn a raw mut pointer into a mutable reference.
+pub(crate) fn try_from_mut<'a, F, T>(from: *mut F) -> Option<&'a mut T>
+where
+    F: CastPtr<RustType = T>,
+{
+    unsafe { F::cast_mut_ptr(from).as_mut() }
+}
+
+pub(crate) fn try_box_from<F, T>(from: *mut F) -> Option<Box<T>>
+where
+    F: BoxCastPtr<RustType = T>,
+{
+    F::to_box(from)
+}
+
+/// If the provided pointer is non-null, convert it to a reference.
+/// Otherwise, return NullParameter, or an appropriate default (false, 0, NULL)
+/// based on the context;
+/// Example:
+///   let config: &mut ClientConfig = try_ref_from_ptr!(builder);
+#[doc(hidden)]
+#[macro_export]
+macro_rules! try_ref_from_ptr {
+    ( $var:ident ) => {
+        match $crate::try_from($var) {
+            Some(c) => c,
+            None => return $crate::panic::NullParameterOrDefault::value(),
+        }
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! try_mut_from_ptr {
+    ( $var:ident ) => {
+        match $crate::try_from_mut($var) {
+            Some(c) => c,
+            None => return $crate::panic::NullParameterOrDefault::value(),
+        }
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! try_box_from_ptr {
+    ( $var:ident ) => {
+        match $crate::try_box_from($var) {
+            Some(c) => c,
+            None => return $crate::panic::NullParameterOrDefault::value(),
+        }
+    };
 }

@@ -5,7 +5,8 @@ edition = "2021"
 
 [lib]
 name = "accesskit"
-crate-type = ["staticlib"]
+crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 accesskit = { version = "0.10.1", path = "../../common" }
+paste = "1.0"
