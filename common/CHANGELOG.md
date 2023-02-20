@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.10.0...accesskit-v0.10.1) (2023-02-20)
+
+
+### Bug Fixes
+
+* Set appropriate representations on all public types that will be exposed via FFI ([54e82f6](https://github.com/AccessKit/accesskit/commit/54e82f673f5c7b46d9077fe5f946305800862bf0))
+
 ## [0.10.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.9.0...accesskit-v0.10.0) (2023-02-12)
 
 
