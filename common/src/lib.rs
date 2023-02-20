@@ -46,6 +46,7 @@ pub use geometry::{Affine, Point, Rect, Size, Vec2};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum Role {
     Unknown,
     InlineTextBox,
@@ -436,6 +437,7 @@ impl JsonSchema for Actions {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum Orientation {
     /// E.g. most toolbars and separators.
     Horizontal,
@@ -447,6 +449,7 @@ pub enum Orientation {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum NameFrom {
     /// E.g. [`aria-label`].
     ///
@@ -470,6 +473,7 @@ pub enum NameFrom {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum DescriptionFrom {
     AriaDescription,
     /// HTML-AAM 5.2.2
@@ -487,6 +491,7 @@ pub enum DescriptionFrom {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum TextDirection {
     LeftToRight,
     RightToLeft,
@@ -502,6 +507,7 @@ pub enum TextDirection {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum Invalid {
     True,
     Grammar,
@@ -512,6 +518,7 @@ pub enum Invalid {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum CheckedState {
     False,
     True,
@@ -528,6 +535,7 @@ pub enum CheckedState {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum DefaultActionVerb {
     Click,
     Focus,
@@ -548,6 +556,7 @@ pub enum DefaultActionVerb {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum SortDirection {
     Unsorted,
     Ascending,
@@ -559,6 +568,7 @@ pub enum SortDirection {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum AriaCurrent {
     False,
     True,
@@ -573,6 +583,7 @@ pub enum AriaCurrent {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum Live {
     Off,
     Polite,
@@ -583,6 +594,7 @@ pub enum Live {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum HasPopup {
     True,
     Menu,
@@ -596,6 +608,7 @@ pub enum HasPopup {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum ListStyle {
     Circle,
     Disc,
@@ -610,6 +623,7 @@ pub enum ListStyle {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum TextAlign {
     Left,
     Right,
@@ -621,6 +635,7 @@ pub enum TextAlign {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum VerticalOffset {
     Subscript,
     Superscript,
@@ -630,6 +645,7 @@ pub enum VerticalOffset {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum TextDecoration {
     Solid,
     Dotted,
