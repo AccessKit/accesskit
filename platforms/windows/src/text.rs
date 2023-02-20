@@ -400,7 +400,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
 
     fn FindAttribute(
         &self,
-        _id: i32,
+        _id: UIA_TEXTATTRIBUTE_ID,
         _value: &VARIANT,
         _backward: BOOL,
     ) -> Result<ITextRangeProvider> {
@@ -421,8 +421,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
         Err(Error::OK)
     }
 
-    fn GetAttributeValue(&self, id: i32) -> Result<VARIANT> {
-        let id = UIA_TEXTATTRIBUTE_ID(id as _);
+    fn GetAttributeValue(&self, id: UIA_TEXTATTRIBUTE_ID) -> Result<VARIANT> {
         match id {
             UIA_IsReadOnlyAttributeId => {
                 // TBD: do we ever want to support mixed read-only/editable text?

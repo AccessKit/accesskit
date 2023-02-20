@@ -130,7 +130,7 @@ impl From<bool> for VariantFactory {
         Self(
             VT_BOOL,
             VARIANT_0_0_0 {
-                boolVal: if value { VARIANT_TRUE } else { VARIANT_FALSE },
+                boolVal: VARIANT_BOOL(if value { VARIANT_TRUE } else { VARIANT_FALSE }),
             },
         )
     }
@@ -240,7 +240,7 @@ pub(crate) fn window_title(hwnd: HWND) -> Option<BSTR> {
     }
     let len = result.0 as usize;
     unsafe { buffer.set_len(len) };
-    Some(BSTR::from_wide(&buffer))
+    Some(BSTR::from_wide(&buffer).unwrap())
 }
 
 pub(crate) fn upgrade<T>(weak: &Weak<T>) -> Result<Arc<T>> {

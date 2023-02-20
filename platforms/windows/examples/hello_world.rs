@@ -23,7 +23,7 @@ static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
     let wc = WNDCLASSW {
         hCursor: unsafe { LoadCursorW(None, IDC_ARROW) }.unwrap(),
         hInstance: unsafe { GetModuleHandleW(None) }.unwrap(),
-        lpszClassName: class_name.into(),
+        lpszClassName: class_name,
         style: CS_HREDRAW | CS_VREDRAW,
         lpfnWndProc: Some(wndproc),
         ..Default::default()

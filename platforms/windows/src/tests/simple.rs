@@ -78,7 +78,7 @@ fn is_button_named(element: &IUIAutomationElement, expected_name: &str) -> bool 
     let control_type = unsafe { element.CurrentControlType() }.unwrap();
     let name = unsafe { element.CurrentName() }.unwrap();
     let name: String = name.try_into().unwrap();
-    control_type == (UIA_ButtonControlTypeId.0 as i32) && name == expected_name
+    control_type == UIA_ButtonControlTypeId && name == expected_name
 }
 
 fn is_button_1(element: &IUIAutomationElement) -> bool {

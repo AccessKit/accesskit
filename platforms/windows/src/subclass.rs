@@ -13,7 +13,7 @@ use windows::{
 
 use crate::{Adapter, QueuedEvents, UiaInitMarker};
 
-const PROP_NAME: &HSTRING = w!("AccessKitAdapter");
+const PROP_NAME: PCWSTR = w!("AccessKitAdapter");
 
 type LazyAdapter = Lazy<Adapter, Box<dyn FnOnce() -> Adapter>>;
 
