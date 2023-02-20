@@ -2386,6 +2386,7 @@ impl<T: FnOnce() -> TreeUpdate> From<T> for TreeUpdate {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(C)]
 pub enum ActionData {
     CustomAction(i32),
     Value(Box<str>),
