@@ -254,8 +254,8 @@ impl QueuedEvents {
                         UiaRaiseAutomationPropertyChangedEvent(
                             &element,
                             property_id,
-                            &old_value,
-                            &new_value,
+                            old_value,
+                            new_value,
                         )
                     }
                     .unwrap();
