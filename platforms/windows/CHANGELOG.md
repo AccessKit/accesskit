@@ -13,6 +13,21 @@
   * dependencies
     * accesskit_consumer bumped from 0.12.0 to 0.12.1
 
+## [0.13.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.13.0...accesskit_windows-v0.13.1) (2023-02-20)
+
+
+### Bug Fixes
+
+* Update windows-rs to 0.44 ([#220](https://github.com/AccessKit/accesskit/issues/220)) ([a6b0a12](https://github.com/AccessKit/accesskit/commit/a6b0a124e7511e37760d769b517fd5fc9050160b))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.10.0 to 0.10.1
+    * accesskit_consumer bumped from 0.14.0 to 0.14.1
+
 ## [0.13.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.12.0...accesskit_windows-v0.13.0) (2023-02-12)
 
 
