@@ -4,6 +4,13 @@
   * dependencies
     * accesskit_consumer bumped from 0.12.0 to 0.12.1
 
+## [0.3.1](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.3.0...accesskit_unix-v0.3.1) (2023-02-20)
+
+
+### Bug Fixes
+
+* Update atspi dependency ([#217](https://github.com/AccessKit/accesskit/issues/217)) ([93f2dc9](https://github.com/AccessKit/accesskit/commit/93f2dc9bf0a57a8b7592c3a4cf4aa3885a3356f2))
+
 ## [0.3.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.2.0...accesskit_unix-v0.3.0) (2023-02-12)
 
 
