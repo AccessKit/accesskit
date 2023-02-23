@@ -13,6 +13,13 @@
   * dependencies
     * accesskit_consumer bumped from 0.12.0 to 0.12.1
 
+## [0.13.2](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.13.1...accesskit_windows-v0.13.2) (2023-02-23)
+
+
+### Bug Fixes
+
+* Fix Windows 32-bit build errors ([#223](https://github.com/AccessKit/accesskit/issues/223)) ([41f28b6](https://github.com/AccessKit/accesskit/commit/41f28b670ac457b2d067bbc4ba40aa0fc8842e4d))
+
 ## [0.13.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.13.0...accesskit_windows-v0.13.1) (2023-02-20)
 
 
