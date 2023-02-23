@@ -195,7 +195,7 @@ impl Adapter {
         // than the client area of the window. DefWindowProc can handle those.
         // First, cast the lparam to i32, to handle inconsistent conversion
         // behavior in senders.
-        let objid: i32 = (lparam.0 & 0xFFFFFFFF) as _;
+        let objid = normalize_objid(lparam);
         if objid < 0 && objid != UiaRootObjectId && objid != OBJID_CLIENT.0 {
             return None;
         }
@@ -208,6 +208,15 @@ impl Adapter {
             el,
         })
     }
+}
+
+#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
+fn normalize_objid(lparam: LPARAM) -> i32 {
+    (lparam.0 & 0xFFFFFFFF) as _
+}
+#[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+fn normalize_objid(lparam: LPARAM) -> i32 {
+    lparam.0 as _
 }
 
 struct WmGetObjectResult {

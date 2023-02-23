@@ -13,6 +13,13 @@ use windows::{
 
 use crate::{Adapter, QueuedEvents, UiaInitMarker};
 
+// Work around a difference between the SetWindowLongPtrW API definition
+// in windows-rs on 32-bit and 64-bit Windows.
+#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
+type LongPtr = isize;
+#[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+type LongPtr = i32;
+
 const PROP_NAME: PCWSTR = w!("AccessKitAdapter");
 
 type LazyAdapter = Lazy<Adapter, Box<dyn FnOnce() -> Adapter>>;
@@ -70,7 +77,7 @@ impl SubclassImpl {
             let result: Result<()> = Err(Error::from_win32());
             result.unwrap();
         }
-        self.prev_wnd_proc = unsafe { transmute::<isize, WNDPROC>(result) };
+        self.prev_wnd_proc = unsafe { transmute::<LongPtr, WNDPROC>(result) };
     }
 
     fn uninstall(&self) {
@@ -81,7 +88,7 @@ impl SubclassImpl {
             SetWindowLongPtrW(
                 self.hwnd,
                 GWLP_WNDPROC,
-                transmute::<WNDPROC, isize>(self.prev_wnd_proc),
+                transmute::<WNDPROC, LongPtr>(self.prev_wnd_proc),
             )
         };
         if result == 0 {
