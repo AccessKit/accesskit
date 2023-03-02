@@ -17,8 +17,27 @@ mod common;
 mod geometry;
 mod panic;
 
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    feature = "cbindgen"
+))]
+mod unix;
+
 pub use common::*;
 pub use geometry::*;
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    feature = "cbindgen"
+))]
+pub use unix::*;
 
 /// CastPtr represents the relationship between a snake case type (like node_class_set)
 /// and the corresponding Rust type (like NodeClassSet). For each matched pair of types, there

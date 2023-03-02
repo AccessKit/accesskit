@@ -32,6 +32,7 @@ name = "accesskit_c"
 version = "0.1.0"
 dependencies = [
  "accesskit",
+ "accesskit_unix",
  "paste",
 ]
 

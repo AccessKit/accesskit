@@ -7,6 +7,12 @@ edition = "2021"
 name = "accesskit"
 crate-type = ["cdylib", "staticlib"]
 
+[features]
+cbindgen = []
+
 [dependencies]
 accesskit = { version = "0.10.1", path = "../../common" }
 paste = "1.0"
+
+[target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
+accesskit_unix = { version = "0.3.2", path = "../../platforms/unix" }

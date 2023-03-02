@@ -14,6 +14,13 @@ include = ["Size", "tree_update", "Vec2"]
 prefix = "accesskit_"
 renaming_overrides_prefixing = true
 
+[defines]
+"target_os = linux" = "__linux__"
+"target_os = dragonfly" = "__DragonFly__"
+"target_os = freebsd" = "__FreeBSD__"
+"target_os = netbsd" = "__NetBSD__"
+"target_os = openbsd" = "__OpenBSD__"
+
 [export.rename]
 "Action" = "accesskit_action"
 "ActionHandlerCallback" = "accesskit_action_handler_callback"
@@ -64,3 +71,4 @@ include = ["accesskit"]
 
 [parse.expand]
 crates = ["accesskit_c"]
+features = ["cbindgen"]
