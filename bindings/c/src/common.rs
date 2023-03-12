@@ -1076,5 +1076,5 @@ impl ActionHandler for FfiActionHandler {
 }
 
 /// This function can't return a null pointer. Ownership of the returned value will be transfered to the caller.
-#[cfg(any(target_os = "windows", feature = "cbindgen"))]
+#[cfg(any(target_os = "windows", target_os = "macos", feature = "cbindgen"))]
 pub type tree_update_factory = Option<extern "C" fn(*mut c_void) -> *mut tree_update>;

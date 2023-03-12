@@ -17,6 +17,8 @@ mod common;
 mod geometry;
 mod panic;
 
+#[cfg(any(target_os = "macos", feature = "cbindgen"))]
+mod macos;
 #[cfg(any(
     target_os = "linux",
     target_os = "dragonfly",
@@ -31,6 +33,8 @@ mod windows;
 
 pub use common::*;
 pub use geometry::*;
+#[cfg(any(target_os = "macos", feature = "cbindgen"))]
+pub use macos::*;
 #[cfg(any(
     target_os = "linux",
     target_os = "dragonfly",
