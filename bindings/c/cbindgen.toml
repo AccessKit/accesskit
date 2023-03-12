@@ -6,6 +6,9 @@ header = """/**
  */"""
 
 include_guard = "ACCESSKIT_H"
+after_includes = """#ifdef _WIN32
+#include <windows.h>
+#endif"""
 
 usize_is_size_t = true
 
@@ -20,6 +23,7 @@ renaming_overrides_prefixing = true
 "target_os = freebsd" = "__FreeBSD__"
 "target_os = netbsd" = "__NetBSD__"
 "target_os = openbsd" = "__OpenBSD__"
+"target_os = windows" = "_WIN32"
 
 [export.rename]
 "Action" = "accesskit_action"
@@ -29,8 +33,11 @@ renaming_overrides_prefixing = true
 "CheckedState" = "accesskit_checked_state"
 "DefaultActionVerb" = "accesskit_default_action_verb"
 "DescriptionFrom" = "accesskit_description_from"
+"HWND" = "HWND"
 "HasPopup" = "accesskit_has_popup"
 "Invalid" = "accesskit_invalid"
+"LPARAM" = "LPARAM"
+"LRESULT" = "LRESULT"
 "ListStyle" = "accesskit_list_style"
 "Live" = "accesskit_live"
 "NameFrom" = "accesskit_name_from"
@@ -45,6 +52,7 @@ renaming_overrides_prefixing = true
 "TextDirection" = "accesskit_text_direction"
 "Vec2" = "accesskit_vec2"
 "VerticalOffset" = "accesskit_vertical_offset"
+"WPARAM" = "WPARAM"
 "opt_AriaCurrent" = "accesskit_opt_aria_current"
 "opt_CheckedState" = "accesskit_opt_checked_state"
 "opt_DefaultActionVerb" = "accesskit_opt_default_action_verb"

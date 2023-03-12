@@ -4,13 +4,14 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    panic::Defaultable, try_box_from_ptr, try_mut_from_ptr, try_ref_from_ptr, BoxCastPtr, CastPtr,
+    opt_struct, panic::Defaultable, try_box_from_ptr, try_mut_from_ptr, try_ref_from_ptr,
+    BoxCastPtr, CastPtr,
 };
 use accesskit::*;
 use paste::paste;
 use std::{
     ffi::{CStr, CString},
-    mem::{self, MaybeUninit},
+    mem,
     num::NonZeroU128,
     os::raw::{c_char, c_void},
     ptr, slice,
@@ -105,53 +106,6 @@ macro_rules! flag_methods {
             clearer! { $clearer })*
         }
     }
-}
-
-macro_rules! opt_struct {
-    ($struct_name:ident, $prop_type:ty) => {
-        /// Represents an optional value.
-        ///
-        /// If `has_value` is false, do not read the `value` field.
-        #[repr(C)]
-        pub struct $struct_name {
-            pub has_value: bool,
-            pub value: MaybeUninit<$prop_type>,
-        }
-        impl<T> From<Option<T>> for $struct_name
-        where
-            T: Into<$prop_type>,
-        {
-            fn from(value: Option<T>) -> $struct_name {
-                match value {
-                    None => $struct_name::default(),
-                    Some(value) => $struct_name {
-                        has_value: true,
-                        value: MaybeUninit::new(value.into()),
-                    },
-                }
-            }
-        }
-        impl<T> From<$struct_name> for Option<T>
-        where
-            T: From<$prop_type>,
-        {
-            fn from(value: $struct_name) -> Self {
-                match value.has_value {
-                    true => Some(unsafe { T::from(value.value.assume_init()) }),
-                    false => None,
-                }
-            }
-        }
-        impl Default for $struct_name {
-            fn default() -> $struct_name {
-                $struct_name {
-                    has_value: false,
-                    value: MaybeUninit::uninit(),
-                }
-            }
-        }
-        impl Defaultable for $struct_name {}
-    };
 }
 
 macro_rules! property_getters {
@@ -1120,3 +1074,7 @@ impl ActionHandler for FfiActionHandler {
         }
     }
 }
+
+/// This function can't return a null pointer. Ownership of the returned value will be transfered to the caller.
+#[cfg(any(target_os = "windows", feature = "cbindgen"))]
+pub type tree_update_factory = Option<extern "C" fn(*mut c_void) -> *mut tree_update>;

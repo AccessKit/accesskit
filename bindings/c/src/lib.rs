@@ -26,6 +26,8 @@ mod panic;
     feature = "cbindgen"
 ))]
 mod unix;
+#[cfg(any(target_os = "windows", feature = "cbindgen"))]
+mod windows;
 
 pub use common::*;
 pub use geometry::*;
@@ -38,6 +40,8 @@ pub use geometry::*;
     feature = "cbindgen"
 ))]
 pub use unix::*;
+#[cfg(any(target_os = "windows", feature = "cbindgen"))]
+pub use windows::*;
 
 /// CastPtr represents the relationship between a snake case type (like node_class_set)
 /// and the corresponding Rust type (like NodeClassSet). For each matched pair of types, there
@@ -158,5 +162,54 @@ macro_rules! try_box_from_ptr {
             Some(c) => c,
             None => return $crate::panic::NullParameterOrDefault::value(),
         }
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! opt_struct {
+    ($struct_name:ident, $prop_type:ty) => {
+        /// Represents an optional value.
+        ///
+        /// If `has_value` is false, do not read the `value` field.
+        #[repr(C)]
+        pub struct $struct_name {
+            pub has_value: bool,
+            pub value: std::mem::MaybeUninit<$prop_type>,
+        }
+        impl<T> From<Option<T>> for $struct_name
+        where
+            T: Into<$prop_type>,
+        {
+            fn from(value: Option<T>) -> $struct_name {
+                match value {
+                    None => $struct_name::default(),
+                    Some(value) => $struct_name {
+                        has_value: true,
+                        value: std::mem::MaybeUninit::new(value.into()),
+                    },
+                }
+            }
+        }
+        impl<T> From<$struct_name> for Option<T>
+        where
+            T: From<$prop_type>,
+        {
+            fn from(value: $struct_name) -> Self {
+                match value.has_value {
+                    true => Some(unsafe { T::from(value.value.assume_init()) }),
+                    false => None,
+                }
+            }
+        }
+        impl Default for $struct_name {
+            fn default() -> $struct_name {
+                $struct_name {
+                    has_value: false,
+                    value: std::mem::MaybeUninit::uninit(),
+                }
+            }
+        }
+        impl $crate::panic::Defaultable for $struct_name {}
     };
 }

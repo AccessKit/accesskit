@@ -33,6 +33,7 @@ version = "0.1.0"
 dependencies = [
  "accesskit",
  "accesskit_unix",
+ "accesskit_windows",
  "paste",
 ]
 
