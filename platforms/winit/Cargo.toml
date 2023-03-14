@@ -11,7 +11,9 @@ readme = "README.md"
 edition = "2021"
 
 [features]
-default = ["accesskit_unix"]
+default = ["accesskit_unix", "async-io"]
+async-io = ["accesskit_unix/async-io"]
+tokio = ["accesskit_unix/tokio"]
 
 [dependencies]
 accesskit = { version = "0.11.0", path = "../../common" }
@@ -24,8 +26,8 @@ accesskit_windows = { version = "0.14.0", path = "../windows" }
 accesskit_macos = { version = "0.7.0", path = "../macos" }
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
-accesskit_unix = { version = "0.4.0", path = "../unix", optional = true }
+accesskit_unix = { version = "0.4.0", path = "../unix", optional = true, default-features = false }
 
 [dev-dependencies]
+tokio = { version = "1", features = ["full"] }
 winit = "0.28"
-
