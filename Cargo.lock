@@ -36,7 +36,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_macos"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -73,7 +73,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_winit"
-version = "0.12.3"
+version = "0.12.4"
 dependencies = [
  "accesskit",
  "accesskit_macos",

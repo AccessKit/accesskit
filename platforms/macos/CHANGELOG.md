@@ -13,6 +13,13 @@
     * accesskit bumped from 0.10.0 to 0.10.1
     * accesskit_consumer bumped from 0.14.0 to 0.14.1
 
+## [0.6.2](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.6.1...accesskit_macos-v0.6.2) (2023-03-14)
+
+
+### Bug Fixes
+
+* Fix macOS leaks ([e8537fc](https://github.com/AccessKit/accesskit/commit/e8537fcbdf4a68f39c9bc51cf9fe6960903e26f2))
+
 ## [0.6.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.5.0...accesskit_macos-v0.6.0) (2023-02-12)
 
 
