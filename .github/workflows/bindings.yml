@@ -1,0 +1,100 @@
+on:
+  release:
+    types:
+      - published
+name: Publish bindings
+jobs:
+  build-binaries:
+    if: startsWith(github.ref_name, 'accesskit_c-v')
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macOS-latest
+            target: aarch64-apple-darwin
+            path: macos-arm64
+          - os: macOS-latest
+            target: x86_64-apple-darwin
+            path: macos-x86_64
+          - os: windows-2019
+            target: aarch64-pc-windows-msvc
+            path: win-arm64-msvc
+          - os: windows-2019
+            target: i686-pc-windows-msvc
+            path: win-x86-msvc
+          - os: windows-2019
+            target: x86_64-pc-windows-msvc
+            path: win-x86_64-msvc
+          - os: ubuntu-latest
+            target: i686-pc-windows-gnu
+            use-cross: true
+            path: win-x86-mingw
+          - os: ubuntu-latest
+            target: x86_64-pc-windows-gnu
+            use-cross: true
+            path: win-x86_64-mingw
+          - os: ubuntu-latest
+            target: i686-unknown-linux-gnu
+            use-cross: true
+            path: linux-x86
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            path: linux-x86_64
+    name: cargo build
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          profile: minimal
+          override: true
+
+      - name: cargo build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          use-cross: ${{ matrix.use-cross || false }}
+          args: --package accesskit_c --release --target ${{ matrix.target }}
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.path }}
+          path: |
+            target/${{ matrix.target }}/release/*.a
+            target/${{ matrix.target }}/release/*.dll
+            target/${{ matrix.target }}/release/*.dylib
+            target/${{ matrix.target }}/release/*.lib
+            target/${{ matrix.target }}/release/*.pdb
+            target/${{ matrix.target }}/release/*.so
+
+  generate-headers:
+    if: startsWith(github.ref_name, 'accesskit_c-v')
+    uses: AccessKit/accesskit/.github/workflows/generate-headers.yml@main
+
+  publish:
+    needs: [build-binaries, generate-headers]
+    runs-on: ubuntu-latest
+    name: Publish
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v3
+        with:
+          path: accesskit_c/lib
+
+      - run: mv accesskit_c/lib/headers accesskit_c/include
+      - run: cp -r bindings/c/examples accesskit_c/
+      - run: cp bindings/c/*.md accesskit_c/
+      - run: cp LICENSE* accesskit_c/
+      - run: mv accesskit_c ${{ github.ref_name }}
+      - run: zip -r ${{ github.ref_name }}.zip ${{ github.ref_name }}
+
+      - uses: AButler/upload-release-assets@v2.0
+        with:
+          files: ${{ github.ref_name }}.zip
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: ${{ github.ref_name }}
