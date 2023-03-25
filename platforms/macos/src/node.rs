@@ -376,7 +376,7 @@ declare_class!(
                     context
                         .view
                         .load()
-                        .map_or_else(null_mut, |view| Id::autorelease_return(view) as *mut _)
+                        .map_or_else(null_mut, |view| view.accessibility_parent())
                 }
             })
             .unwrap_or_else(null_mut)
