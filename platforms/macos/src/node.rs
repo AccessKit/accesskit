@@ -403,8 +403,16 @@ declare_class!(
                     }
                 };
 
-                node.bounding_box()
-                    .map_or(NSRect::ZERO, |rect| to_ns_rect(&view, rect))
+                node.bounding_box().map_or_else(
+                    || {
+                        if node.is_root() {
+                            view.accessibility_frame()
+                        } else {
+                            NSRect::ZERO
+                        }
+                    },
+                    |rect| to_ns_rect(&view, rect),
+                )
             })
             .unwrap_or(NSRect::ZERO)
         }
