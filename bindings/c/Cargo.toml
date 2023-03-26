@@ -1,6 +1,9 @@
 [package]
 name = "accesskit_c"
 version = "0.1.0"
+authors = ["Arnold Loubriat <datatriny@gmail.com>"]
+license = "MIT/Apache-2.0"
+publish = false
 edition = "2021"
 
 [lib]
@@ -12,7 +15,6 @@ cbindgen = []
 
 [dependencies]
 accesskit = { version = "0.10.1", path = "../../common" }
-# Keep in sync with platforms/macos
 paste = "1.0"
 
 [target.'cfg(target_os = "windows")'.dependencies]
