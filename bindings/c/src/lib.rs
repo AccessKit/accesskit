@@ -31,8 +31,6 @@ mod unix;
 #[cfg(any(target_os = "windows", feature = "cbindgen"))]
 mod windows;
 
-use crate::panic::PanicOrDefault;
-
 pub use common::*;
 pub use geometry::*;
 #[cfg(any(target_os = "macos", feature = "cbindgen"))]

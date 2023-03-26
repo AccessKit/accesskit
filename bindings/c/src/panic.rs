@@ -76,16 +76,3 @@ impl<T> NullParameterOrDefault for *const T {
         null()
     }
 }
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! ffi_panic_boundary {
-    ( $($tt:tt)* ) => {
-        match ::std::panic::catch_unwind(|| {
-            $($tt)*
-        }) {
-            Ok(ret) => ret,
-            Err(_) => return $crate::PanicOrDefault::value(),
-        }
-    }
-}
