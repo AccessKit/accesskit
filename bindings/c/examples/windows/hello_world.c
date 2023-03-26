@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <windows.h>
 
-#include "../../include/accesskit.h"
+#include "accesskit.h"
 
-const char CLASS_NAME[] = "AccessKitTest";
+const WCHAR CLASS_NAME[] = L"AccessKitTest";
 
-const char WINDOW_TITLE[] = "Hello world";
+const WCHAR WINDOW_TITLE[] = L"Hello world";
 
 static accesskit_node_id WINDOW_ID;
 static accesskit_node_id BUTTON_1_ID;
@@ -25,7 +25,13 @@ const bool node_id_cmp(const accesskit_node_id *id1,
   return memcmp(id1, id2, sizeof(accesskit_node_id)) == 0;
 }
 
-accesskit_node *build_button(accesskit_node_id id, char *name,
+accesskit_node_id *node_id_dup(const accesskit_node_id *src) {
+  accesskit_node_id *result = malloc(sizeof(accesskit_node_id));
+  memcpy(result, src, sizeof(accesskit_node_id));
+  return result;
+}
+
+accesskit_node *build_button(accesskit_node_id id, const char *name,
                              accesskit_node_class_set *classes) {
   accesskit_rect rect;
   if (node_id_cmp(&id, &BUTTON_1_ID)) {
@@ -44,7 +50,7 @@ accesskit_node *build_button(accesskit_node_id id, char *name,
   return accesskit_node_builder_build(builder, classes);
 }
 
-accesskit_node *build_announcement(char *text,
+accesskit_node *build_announcement(const char *text,
                                    accesskit_node_class_set *classes) {
   accesskit_node_builder *builder =
       accesskit_node_builder_new(ACCESSKIT_ROLE_STATIC_TEXT);
@@ -53,15 +59,23 @@ accesskit_node *build_announcement(char *text,
   return accesskit_node_builder_build(builder, classes);
 }
 
-struct inner_window_state {
+struct window_state {
+  accesskit_windows_uia_init_marker *uia_init_marker;
+  accesskit_windows_adapter *adapter;
   accesskit_node_id focus;
   bool is_window_focused;
-  char *announcement;
+  const char *announcement;
   accesskit_node_class_set *node_classes;
 };
 
-accesskit_opt_node_id inner_window_state_focus(
-    struct inner_window_state *state) {
+void window_state_free(struct window_state *state) {
+  accesskit_windows_uia_init_marker_free(state->uia_init_marker);
+  accesskit_windows_adapter_free(state->adapter);
+  accesskit_node_class_set_free(state->node_classes);
+  free(state);
+}
+
+accesskit_opt_node_id window_state_focus(struct window_state *state) {
   accesskit_opt_node_id result;
   result.has_value = state->is_window_focused;
   if (result.has_value) {
@@ -70,8 +84,7 @@ accesskit_opt_node_id inner_window_state_focus(
   return result;
 }
 
-accesskit_node *inner_window_state_build_root(
-    struct inner_window_state *state) {
+accesskit_node *window_state_build_root(struct window_state *state) {
   accesskit_node_builder *builder =
       accesskit_node_builder_new(ACCESSKIT_ROLE_WINDOW);
   accesskit_node_builder_push_child(builder, BUTTON_1_ID);
@@ -82,9 +95,9 @@ accesskit_node *inner_window_state_build_root(
   return accesskit_node_builder_build(builder, state->node_classes);
 }
 
-accesskit_tree_update *inner_window_state_build_initial_tree(
-    struct inner_window_state *state) {
-  accesskit_node *root = inner_window_state_build_root(state);
+accesskit_tree_update *window_state_build_initial_tree(
+    struct window_state *state) {
+  accesskit_node *root = window_state_build_root(state);
   accesskit_node *button_1 =
       build_button(BUTTON_1_ID, "Button 1", state->node_classes);
   accesskit_node *button_2 =
@@ -93,7 +106,7 @@ accesskit_tree_update *inner_window_state_build_initial_tree(
       accesskit_tree_update_new((state->announcement != NULL) ? 4 : 3);
   result->tree.has_value = true;
   result->tree.value = accesskit_tree_new(WINDOW_ID);
-  result->focus = inner_window_state_focus(state);
+  result->focus = window_state_focus(state);
   result->ids[0] = WINDOW_ID;
   result->nodes[0] = root;
   result->ids[1] = BUTTON_1_ID;
@@ -108,28 +121,13 @@ accesskit_tree_update *inner_window_state_build_initial_tree(
   return result;
 }
 
-struct window_state {
-  accesskit_windows_uia_init_marker *uia_init_marker;
-  accesskit_windows_adapter *adapter;
-  struct inner_window_state *inner_state;
-};
-
-void window_state_free(struct window_state *state) {
-  accesskit_windows_uia_init_marker_free(state->uia_init_marker);
-  accesskit_windows_adapter_free(state->adapter);
-  if (state->inner_state != NULL) {
-    accesskit_node_class_set_free(state->inner_state->node_classes);
-    free(state->inner_state);
-  }
-  free(state);
-}
-
 void do_action(const accesskit_action_request *request, void *userdata) {
   HWND window = userdata;
-  LPARAM lparam = (LPARAM)&request->target;
   if (request->action == ACCESSKIT_ACTION_FOCUS) {
+    LPARAM lparam = (LPARAM)node_id_dup(&request->target);
     PostMessage((HWND)window, SET_FOCUS_MSG, 0, lparam);
   } else if (request->action == ACCESSKIT_ACTION_DEFAULT) {
+    LPARAM lparam = (LPARAM)node_id_dup(&request->target);
     PostMessage((HWND)window, DO_DEFAULT_ACTION_MSG, 0, lparam);
   }
 }
@@ -139,9 +137,8 @@ accesskit_windows_adapter *window_state_get_or_init_accesskit_adapter(
   if (state->adapter != NULL) {
     return state->adapter;
   } else {
-    struct inner_window_state *inner_state = state->inner_state;
     accesskit_tree_update *initial_tree =
-        inner_window_state_build_initial_tree(inner_state);
+        window_state_build_initial_tree(state);
     accesskit_action_handler *action_handler =
         accesskit_action_handler_new(do_action, (void *)window);
     state->adapter = accesskit_windows_adapter_new(
@@ -152,24 +149,23 @@ accesskit_windows_adapter *window_state_get_or_init_accesskit_adapter(
 
 void window_state_press_button(struct window_state *state,
                                accesskit_node_id id) {
-  struct inner_window_state *inner_state = state->inner_state;
-  char *text;
+  const char *text;
   if (node_id_cmp(&id, &BUTTON_1_ID)) {
     text = "You pressed button 1";
   } else {
     text = "You pressed button 2";
   }
-  inner_state->announcement = text;
+  state->announcement = text;
   if (state->adapter != NULL) {
     accesskit_node *announcement =
-        build_announcement(text, inner_state->node_classes);
-    accesskit_node *root = inner_window_state_build_root(inner_state);
+        build_announcement(text, state->node_classes);
+    accesskit_node *root = window_state_build_root(state);
     accesskit_tree_update *update = accesskit_tree_update_new(2);
     update->ids[0] = ANNOUNCEMENT_ID;
     update->nodes[0] = announcement;
     update->ids[1] = WINDOW_ID;
     update->nodes[1] = root;
-    update->focus = inner_window_state_focus(inner_state);
+    update->focus = window_state_focus(state);
     accesskit_windows_queued_events *events =
         accesskit_windows_adapter_update(state->adapter, update);
     accesskit_windows_queued_events_raise(events);
@@ -181,15 +177,14 @@ struct window_state *get_window_state(HWND window) {
 }
 
 void update_focus(HWND window, bool is_window_focused) {
-  const struct window_state *window_state = get_window_state(window);
-  struct inner_window_state *inner_state = window_state->inner_state;
-  inner_state->is_window_focused = is_window_focused;
-  accesskit_opt_node_id focus = inner_window_state_focus(inner_state);
-  if (window_state->adapter != NULL) {
+  struct window_state *state = get_window_state(window);
+  state->is_window_focused = is_window_focused;
+  accesskit_opt_node_id focus = window_state_focus(state);
+  if (state->adapter != NULL) {
     accesskit_tree_update *update = accesskit_tree_update_new(0);
     update->focus = focus;
     accesskit_windows_queued_events *events =
-        accesskit_windows_adapter_update(window_state->adapter, update);
+        accesskit_windows_adapter_update(state->adapter, update);
     accesskit_windows_queued_events_raise(events);
   }
 }
@@ -203,16 +198,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     CREATESTRUCT *create_struct = (CREATESTRUCT *)lParam;
     struct window_create_params *create_params =
         (struct window_create_params *)create_struct->lpCreateParams;
-    struct inner_window_state *inner_state =
-        malloc(sizeof(struct inner_window_state));
-    inner_state->focus = create_params->initial_focus;
-    inner_state->is_window_focused = false;
-    inner_state->announcement = NULL;
-    inner_state->node_classes = accesskit_node_class_set_new();
     struct window_state *state = malloc(sizeof(struct window_state));
     state->uia_init_marker = accesskit_windows_uia_init_marker_new();
     state->adapter = NULL;
-    state->inner_state = inner_state;
+    state->focus = create_params->initial_focus;
+    state->is_window_focused = false;
+    state->announcement = NULL;
+    state->node_classes = accesskit_node_class_set_new();
     SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)state);
     return DefWindowProc(hwnd, msg, wParam, lParam);
   } else if (msg == WM_PAINT) {
@@ -249,17 +241,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     update_focus(hwnd, false);
   } else if (msg == WM_KEYDOWN) {
     if (wParam == VK_TAB) {
-      struct window_state *window_state = get_window_state(hwnd);
-      struct inner_window_state *inner_state = window_state->inner_state;
-      if (node_id_cmp(&inner_state->focus, &BUTTON_1_ID)) {
-        inner_state->focus = BUTTON_2_ID;
+      struct window_state *state = get_window_state(hwnd);
+      if (node_id_cmp(&state->focus, &BUTTON_1_ID)) {
+        state->focus = BUTTON_2_ID;
       } else {
-        inner_state->focus = BUTTON_1_ID;
+        state->focus = BUTTON_1_ID;
       }
       update_focus(hwnd, true);
     } else if (wParam == VK_SPACE) {
       struct window_state *window_state = get_window_state(hwnd);
-      accesskit_node_id id = window_state->inner_state->focus;
+      accesskit_node_id id = window_state->focus;
       window_state_press_button(window_state, id);
     } else {
       return DefWindowProc(hwnd, msg, wParam, lParam);
@@ -267,33 +258,33 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   } else if (msg == SET_FOCUS_MSG) {
     accesskit_node_id *id = (accesskit_node_id *)lParam;
     if (node_id_cmp(id, &BUTTON_1_ID) || node_id_cmp(id, &BUTTON_2_ID)) {
-      struct window_state *window_state = get_window_state(hwnd);
-      struct inner_window_state *inner_state = window_state->inner_state;
-      inner_state->focus = *id;
-      bool is_window_focused = inner_state->is_window_focused;
+      struct window_state *state = get_window_state(hwnd);
+      state->focus = *id;
+      bool is_window_focused = state->is_window_focused;
       update_focus(hwnd, is_window_focused);
     }
+    free(id);
   } else if (msg == DO_DEFAULT_ACTION_MSG) {
     accesskit_node_id *id = (accesskit_node_id *)lParam;
     if (node_id_cmp(id, &BUTTON_1_ID) || node_id_cmp(id, &BUTTON_2_ID)) {
       struct window_state *window_state = get_window_state(hwnd);
       window_state_press_button(window_state, *id);
     }
+    free(id);
   } else {
     return DefWindowProc(hwnd, msg, wParam, lParam);
   }
   return 0;
 }
 
-HWND create_window(const char *title, accesskit_node_id initial_focus) {
-  struct window_create_params *create_params =
-      malloc(sizeof(struct window_create_params));
-  create_params->initial_focus = initial_focus;
+HWND create_window(const WCHAR *title, accesskit_node_id initial_focus) {
+  struct window_create_params create_params;
+  create_params.initial_focus = initial_focus;
 
   return CreateWindowEx(WS_EX_CLIENTEDGE, CLASS_NAME, title,
                         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
                         CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL,
-                        GetModuleHandle(NULL), create_params);
+                        GetModuleHandle(NULL), &create_params);
 }
 
 int main() {

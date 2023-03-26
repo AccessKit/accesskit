@@ -1,3 +1,6 @@
+SHELL = /usr/bin/env bash
+.SHELLFLAGS = -o pipefail -c
+
 CFLAGS := -Werror -Wall -Wextra -Wpedantic -g -I src/
 
 PROFILE := release
@@ -13,15 +16,14 @@ ifeq ($(PROFILE), release)
 	CARGOFLAGS += --release
 endif
 
-../../target/$(PROFILE):
+include:
 	mkdir -p $@
 
-include/accesskit.h: src/*.rs cbindgen.toml
-	mkdir -p include
-	cbindgen --lang C | clang-format --assume-filename=*.c > $@
+include/accesskit.h: src/*.rs cbindgen.toml include
+	cbindgen --lang C --cpp-compat | clang-format '--assume-filename=*.c' > $@
 
 ../../target/$(PROFILE)/libaccesskit.a: src/*.rs Cargo.toml
-	RUSTFLAGS="-C metadata=accesskit" cargo build $(CARGOFLAGS)
+	cargo build $(CARGOFLAGS)
 
 install: ../../target/$(PROFILE)/libaccesskit.a
 	mkdir -p $(DESTDIR)/lib
