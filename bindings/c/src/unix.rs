@@ -3,7 +3,9 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::{action_handler, tree_update, try_ref_from_ptr, BoxCastPtr, CastPtr};
+use crate::{
+    action_handler, ffi_panic_boundary, tree_update, try_ref_from_ptr, BoxCastPtr, CastPtr,
+};
 use accesskit::Rect;
 use accesskit_unix::Adapter;
 use std::{
@@ -45,18 +47,20 @@ impl unix_adapter {
             Some(handler) => handler,
             None => return ptr::null_mut(),
         };
-        let adapter = Adapter::new(
-            app_name,
-            toolkit_name,
-            toolkit_version,
-            move || {
-                tree_update::to_box(initial_state(initial_state_userdata))
-                    .unwrap()
-                    .into()
-            },
-            handler,
-        );
-        adapter.map_or_else(ptr::null_mut, BoxCastPtr::to_mut_ptr)
+        ffi_panic_boundary! {
+            let adapter = Adapter::new(
+                app_name,
+                toolkit_name,
+                toolkit_version,
+                move || {
+                    tree_update::to_box(initial_state(initial_state_userdata))
+                        .unwrap()
+                        .into()
+                },
+                handler,
+            );
+            adapter.map_or_else(ptr::null_mut, BoxCastPtr::to_mut_ptr)
+        }
     }
 
     #[no_mangle]
@@ -79,10 +83,15 @@ impl unix_adapter {
     pub extern "C" fn accesskit_unix_adapter_update(
         adapter: *const unix_adapter,
         update: *mut tree_update,
-    ) {
-        let adapter = try_ref_from_ptr!(adapter);
-        if let Some(update) = tree_update::to_box(update) {
-            adapter.update(update.into());
+    ) -> bool {
+        ffi_panic_boundary! {
+            let adapter = try_ref_from_ptr!(adapter);
+            if let Some(update) = tree_update::to_box(update) {
+                adapter.update(update.into());
+                true
+            } else {
+                false
+            }
         }
     }
 }
