@@ -16,8 +16,8 @@ endif
 ../../target/$(PROFILE):
 	mkdir -p $@
 
-../../target/$(PROFILE)/include/accesskit.h: src/*.rs cbindgen.toml ../../target/$(PROFILE)
-	mkdir -p ../../target/$(PROFILE)/include
+include/accesskit.h: src/*.rs cbindgen.toml
+	mkdir -p include
 	cbindgen --lang C | clang-format --assume-filename=*.c > $@
 
 ../../target/$(PROFILE)/libaccesskit.a: src/*.rs Cargo.toml
@@ -27,7 +27,8 @@ install: ../../target/$(PROFILE)/libaccesskit.a
 	mkdir -p $(DESTDIR)/lib
 	install target/$(PROFILE)/libaccesskit.a $(DESTDIR)/lib/libaccesskit.a
 	mkdir -p $(DESTDIR)/include
-	install ../../target/$(PROFILE)/include/accesskit.h $(DESTDIR)/include/
+	install include/accesskit.h $(DESTDIR)/include/
 
 clean:
+	rm -rf include
 	rm -rf ../../target
