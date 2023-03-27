@@ -4,8 +4,8 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    action_handler, opt_struct, tree_update, tree_update_factory, try_ref_from_ptr, BoxCastPtr,
-    CastPtr,
+    action_handler, box_from_ptr, opt_struct, ref_from_ptr, tree_update, tree_update_factory,
+    BoxCastPtr, CastPtr,
 };
 use accesskit_windows::*;
 use std::{os::raw::c_void, ptr};
@@ -30,7 +30,7 @@ impl windows_uia_init_marker {
     /// You don't need to call this if you use `accesskit_windows_adapter_new`.
     #[no_mangle]
     pub extern "C" fn accesskit_windows_uia_init_marker_free(marker: *mut windows_uia_init_marker) {
-        windows_uia_init_marker::to_box(marker);
+        drop(box_from_ptr(marker));
     }
 }
 
@@ -48,9 +48,8 @@ impl windows_queued_events {
     /// Memory is also freed when calling this function.
     #[no_mangle]
     pub extern "C" fn accesskit_windows_queued_events_raise(events: *mut windows_queued_events) {
-        if let Some(events) = windows_queued_events::to_box(events) {
-            events.raise();
-        }
+        let events = box_from_ptr(events);
+        events.raise();
     }
 }
 
@@ -75,25 +74,16 @@ impl windows_adapter {
         handler: *mut action_handler,
         uia_init_marker: *mut windows_uia_init_marker,
     ) -> *mut windows_adapter {
-        let initial_state = match tree_update::to_box(initial_state) {
-            Some(initial_state) => initial_state,
-            _ => return ptr::null_mut(),
-        };
-        let handler = match action_handler::to_box(handler) {
-            Some(handler) => handler,
-            None => return ptr::null_mut(),
-        };
-        let uia_init_marker = match windows_uia_init_marker::to_box(uia_init_marker) {
-            Some(marker) => *marker,
-            None => return ptr::null_mut(),
-        };
+        let initial_state = box_from_ptr(initial_state);
+        let handler = box_from_ptr(handler);
+        let uia_init_marker = *box_from_ptr(uia_init_marker);
         let adapter = Adapter::new(hwnd, initial_state.into(), handler, uia_init_marker);
         BoxCastPtr::to_mut_ptr(adapter)
     }
 
     #[no_mangle]
     pub extern "C" fn accesskit_windows_adapter_free(adapter: *mut windows_adapter) {
-        windows_adapter::to_box(adapter);
+        drop(box_from_ptr(adapter));
     }
 
     /// This function takes ownership of `update`.
@@ -103,13 +93,10 @@ impl windows_adapter {
         adapter: *const windows_adapter,
         update: *mut tree_update,
     ) -> *mut windows_queued_events {
-        let adapter = try_ref_from_ptr!(adapter);
-        if let Some(update) = tree_update::to_box(update) {
-            let events = adapter.update(update.into());
-            BoxCastPtr::to_mut_ptr(events)
-        } else {
-            ptr::null_mut()
-        }
+        let adapter = ref_from_ptr(adapter);
+        let update = box_from_ptr(update);
+        let events = adapter.update(update.into());
+        BoxCastPtr::to_mut_ptr(events)
     }
 
     #[no_mangle]
@@ -118,7 +105,7 @@ impl windows_adapter {
         wparam: WPARAM,
         lparam: LPARAM,
     ) -> opt_lresult {
-        let adapter = try_ref_from_ptr!(adapter);
+        let adapter = ref_from_ptr(adapter);
         let lresult = adapter.handle_wm_getobject(wparam, lparam);
         opt_lresult::from(lresult)
     }
@@ -143,17 +130,11 @@ impl windows_subclassing_adapter {
         source_userdata: *mut c_void,
         handler: *mut action_handler,
     ) -> *mut windows_subclassing_adapter {
-        let source = match source {
-            Some(source) => source,
-            None => return ptr::null_mut(),
-        };
-        let handler = match action_handler::to_box(handler) {
-            Some(handler) => handler,
-            None => return ptr::null_mut(),
-        };
+        let source = source.unwrap();
+        let handler = box_from_ptr(handler);
         let adapter = SubclassingAdapter::new(
             hwnd,
-            move || tree_update::to_box(source(source_userdata)).unwrap().into(),
+            move || box_from_ptr(source(source_userdata)).into(),
             handler,
         );
         BoxCastPtr::to_mut_ptr(adapter)
@@ -163,7 +144,7 @@ impl windows_subclassing_adapter {
     pub extern "C" fn accesskit_windows_subclassing_adapter_free(
         adapter: *mut windows_subclassing_adapter,
     ) {
-        windows_subclassing_adapter::to_box(adapter);
+        drop(box_from_ptr(adapter));
     }
 
     /// This function takes ownership of `update`.
@@ -173,13 +154,10 @@ impl windows_subclassing_adapter {
         adapter: *const windows_subclassing_adapter,
         update: *mut tree_update,
     ) -> *mut windows_queued_events {
-        let adapter = try_ref_from_ptr!(adapter);
-        if let Some(update) = tree_update::to_box(update) {
-            let events = adapter.update(update.into());
-            BoxCastPtr::to_mut_ptr(events)
-        } else {
-            ptr::null_mut()
-        }
+        let adapter = ref_from_ptr(adapter);
+        let update = box_from_ptr(update);
+        let events = adapter.update(update.into());
+        BoxCastPtr::to_mut_ptr(events)
     }
 
     /// You must call `accesskit_windows_queued_events_raise` on the returned pointer. It can be null in case of error or if the window is not active.
@@ -189,16 +167,10 @@ impl windows_subclassing_adapter {
         update_factory: tree_update_factory,
         update_factory_userdata: *mut c_void,
     ) -> *mut windows_queued_events {
-        let update_factory = match update_factory {
-            Some(update_factory) => update_factory,
-            None => return ptr::null_mut(),
-        };
-        let adapter = try_ref_from_ptr!(adapter);
-        let events = adapter.update_if_active(|| {
-            tree_update::to_box(update_factory(update_factory_userdata))
-                .unwrap()
-                .into()
-        });
+        let update_factory = update_factory.unwrap();
+        let adapter = ref_from_ptr(adapter);
+        let events = adapter
+            .update_if_active(|| box_from_ptr(update_factory(update_factory_userdata)).into());
         match events {
             Some(events) => BoxCastPtr::to_mut_ptr(events),
             None => ptr::null_mut(),

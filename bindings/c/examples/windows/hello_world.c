@@ -69,8 +69,12 @@ struct window_state {
 };
 
 void window_state_free(struct window_state *state) {
-  accesskit_windows_uia_init_marker_free(state->uia_init_marker);
-  accesskit_windows_adapter_free(state->adapter);
+  if (state->uia_init_marker != NULL) {
+    accesskit_windows_uia_init_marker_free(state->uia_init_marker);
+  }
+  if (state->adapter != NULL) {
+    accesskit_windows_adapter_free(state->adapter);
+  }
   accesskit_node_class_set_free(state->node_classes);
   free(state);
 }
@@ -143,6 +147,7 @@ accesskit_windows_adapter *window_state_get_or_init_accesskit_adapter(
         accesskit_action_handler_new(do_action, (void *)window);
     state->adapter = accesskit_windows_adapter_new(
         window, initial_tree, action_handler, state->uia_init_marker);
+    state->uia_init_marker = NULL;
     return state->adapter;
   }
 }

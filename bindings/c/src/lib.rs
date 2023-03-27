@@ -15,7 +15,6 @@
 
 mod common;
 mod geometry;
-mod panic;
 
 #[cfg(any(target_os = "macos", feature = "cbindgen"))]
 mod macos;
@@ -53,8 +52,8 @@ pub use windows::*;
 ///
 /// This allows us to avoid using `as` in most places, and ensure that when we cast, we're
 /// preserving const-ness, and casting between the correct types.
-/// Implementing this is required in order to use `try_ref_from_ptr!` or
-/// `try_mut_from_ptr!`.
+/// Implementing this is required in order to use `ref_from_ptr!` or
+/// `mut_from_ptr!`.
 pub(crate) trait CastPtr {
     type RustType;
 
@@ -86,12 +85,10 @@ where
 // An implementation of BoxCastPtr means that when we give C code a pointer to the relevant type,
 // it is actually a Box.
 pub(crate) trait BoxCastPtr: CastPtr + Sized {
-    fn to_box(ptr: *mut Self) -> Option<Box<Self::RustType>> {
-        if ptr.is_null() {
-            return None;
-        }
+    fn to_box(ptr: *mut Self) -> Box<Self::RustType> {
+        assert!(!ptr.is_null());
         let rs_typed = Self::cast_mut_ptr(ptr);
-        unsafe { Some(Box::from_raw(rs_typed)) }
+        unsafe { Box::from_raw(rs_typed) }
     }
 
     fn to_mut_ptr(src: Self::RustType) -> *mut Self {
@@ -109,64 +106,26 @@ pub(crate) trait BoxCastPtr: CastPtr + Sized {
 /// rather than part of the CastPtr trait because (a) const pointers can't act
 /// as "self" for trait methods, and (b) we want to rely on type inference
 /// against T (the cast-to type) rather than across F (the from type).
-pub(crate) fn try_from<'a, F, T>(from: *const F) -> Option<&'a T>
+pub(crate) fn ref_from_ptr<'a, F, T>(from: *const F) -> &'a T
 where
     F: CastConstPtr<RustType = T>,
 {
-    unsafe { F::cast_const_ptr(from).as_ref() }
+    unsafe { F::cast_const_ptr(from).as_ref() }.unwrap()
 }
 
 /// Turn a raw mut pointer into a mutable reference.
-pub(crate) fn try_from_mut<'a, F, T>(from: *mut F) -> Option<&'a mut T>
+pub(crate) fn mut_from_ptr<'a, F, T>(from: *mut F) -> &'a mut T
 where
     F: CastPtr<RustType = T>,
 {
-    unsafe { F::cast_mut_ptr(from).as_mut() }
+    unsafe { F::cast_mut_ptr(from).as_mut() }.unwrap()
 }
 
-pub(crate) fn try_box_from<F, T>(from: *mut F) -> Option<Box<T>>
+pub(crate) fn box_from_ptr<F, T>(from: *mut F) -> Box<T>
 where
     F: BoxCastPtr<RustType = T>,
 {
     F::to_box(from)
-}
-
-/// If the provided pointer is non-null, convert it to a reference.
-/// Otherwise, return NullParameter, or an appropriate default (false, 0, NULL)
-/// based on the context;
-/// Example:
-///   let config: &mut ClientConfig = try_ref_from_ptr!(builder);
-#[doc(hidden)]
-#[macro_export]
-macro_rules! try_ref_from_ptr {
-    ( $var:ident ) => {
-        match $crate::try_from($var) {
-            Some(c) => c,
-            None => return $crate::panic::NullParameterOrDefault::value(),
-        }
-    };
-}
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! try_mut_from_ptr {
-    ( $var:ident ) => {
-        match $crate::try_from_mut($var) {
-            Some(c) => c,
-            None => return $crate::panic::NullParameterOrDefault::value(),
-        }
-    };
-}
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! try_box_from_ptr {
-    ( $var:ident ) => {
-        match $crate::try_box_from($var) {
-            Some(c) => c,
-            None => return $crate::panic::NullParameterOrDefault::value(),
-        }
-    };
 }
 
 #[doc(hidden)]
@@ -214,6 +173,5 @@ macro_rules! opt_struct {
                 }
             }
         }
-        impl $crate::panic::Defaultable for $struct_name {}
     };
 }

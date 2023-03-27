@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::{action_handler, tree_update, try_ref_from_ptr, BoxCastPtr, CastPtr};
+use crate::{action_handler, box_from_ptr, ref_from_ptr, tree_update, BoxCastPtr, CastPtr};
 use accesskit::Rect;
 use accesskit_unix::Adapter;
 use std::{
@@ -37,23 +37,13 @@ impl unix_adapter {
         let app_name = unsafe { CStr::from_ptr(app_name).to_string_lossy().into() };
         let toolkit_name = unsafe { CStr::from_ptr(toolkit_name).to_string_lossy().into() };
         let toolkit_version = unsafe { CStr::from_ptr(toolkit_version).to_string_lossy().into() };
-        let initial_state = match initial_state {
-            Some(initial_state) => initial_state,
-            None => return ptr::null_mut(),
-        };
-        let handler = match action_handler::to_box(handler) {
-            Some(handler) => handler,
-            None => return ptr::null_mut(),
-        };
+        let initial_state = initial_state.unwrap();
+        let handler = box_from_ptr(handler);
         let adapter = Adapter::new(
             app_name,
             toolkit_name,
             toolkit_version,
-            move || {
-                tree_update::to_box(initial_state(initial_state_userdata))
-                    .unwrap()
-                    .into()
-            },
+            move || box_from_ptr(initial_state(initial_state_userdata)).into(),
             handler,
         );
         adapter.map_or_else(ptr::null_mut, BoxCastPtr::to_mut_ptr)
@@ -61,7 +51,7 @@ impl unix_adapter {
 
     #[no_mangle]
     pub extern "C" fn accesskit_unix_adapter_free(adapter: *mut unix_adapter) {
-        unix_adapter::to_box(adapter);
+        drop(box_from_ptr(adapter));
     }
 
     #[no_mangle]
@@ -70,7 +60,7 @@ impl unix_adapter {
         outer: Rect,
         inner: Rect,
     ) {
-        let adapter = try_ref_from_ptr!(adapter);
+        let adapter = ref_from_ptr(adapter);
         adapter.set_root_window_bounds(outer, inner);
     }
 
@@ -80,9 +70,8 @@ impl unix_adapter {
         adapter: *const unix_adapter,
         update: *mut tree_update,
     ) {
-        let adapter = try_ref_from_ptr!(adapter);
-        if let Some(update) = tree_update::to_box(update) {
-            adapter.update(update.into());
-        }
+        let adapter = ref_from_ptr(adapter);
+        let update = box_from_ptr(update);
+        adapter.update(update.into());
     }
 }

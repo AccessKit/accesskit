@@ -4,7 +4,8 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    action_handler, tree_update, tree_update_factory, try_ref_from_ptr, BoxCastPtr, CastPtr,
+    action_handler, box_from_ptr, ref_from_ptr, tree_update, tree_update_factory, BoxCastPtr,
+    CastPtr,
 };
 use accesskit_macos::{Adapter, NSObject, NSPoint, QueuedEvents, SubclassingAdapter};
 use std::{os::raw::c_void, ptr};
@@ -26,9 +27,8 @@ impl macos_queued_events {
     /// Memory is also freed when calling this function.
     #[no_mangle]
     pub extern "C" fn accesskit_macos_queued_events_raise(events: *mut macos_queued_events) {
-        if let Some(events) = macos_queued_events::to_box(events) {
-            events.raise();
-        }
+        let events = box_from_ptr(events);
+        events.raise();
     }
 }
 
@@ -50,21 +50,15 @@ impl macos_adapter {
         initial_state: *mut tree_update,
         handler: *mut action_handler,
     ) -> *mut macos_adapter {
-        let initial_state = match tree_update::to_box(initial_state) {
-            Some(initial_state) => initial_state,
-            None => return ptr::null_mut(),
-        };
-        let handler = match action_handler::to_box(handler) {
-            Some(handler) => handler,
-            None => return ptr::null_mut(),
-        };
+        let initial_state = box_from_ptr(initial_state);
+        let handler = box_from_ptr(handler);
         let adapter = Adapter::new(view, initial_state.into(), handler);
         BoxCastPtr::to_mut_ptr(adapter)
     }
 
     #[no_mangle]
     pub extern "C" fn accesskit_macos_adapter_free(adapter: *mut macos_adapter) {
-        macos_adapter::to_box(adapter);
+        drop(box_from_ptr(adapter));
     }
 
     /// This function takes ownership of `update`.
@@ -74,20 +68,17 @@ impl macos_adapter {
         adapter: *const macos_adapter,
         update: *mut tree_update,
     ) -> *mut macos_queued_events {
-        let adapter = try_ref_from_ptr!(adapter);
-        if let Some(update) = tree_update::to_box(update) {
-            let events = adapter.update(update.into());
-            BoxCastPtr::to_mut_ptr(events)
-        } else {
-            ptr::null_mut()
-        }
+        let adapter = ref_from_ptr(adapter);
+        let update = box_from_ptr(update);
+        let events = adapter.update(update.into());
+        BoxCastPtr::to_mut_ptr(events)
     }
 
     #[no_mangle]
     pub extern "C" fn accesskit_macos_adapter_view_children(
         adapter: *const macos_adapter,
     ) -> *mut NSArray {
-        let adapter = try_ref_from_ptr!(adapter);
+        let adapter = ref_from_ptr(adapter);
         adapter.view_children() as *mut _
     }
 
@@ -95,7 +86,7 @@ impl macos_adapter {
     pub extern "C" fn accesskit_macos_adapter_focus(
         adapter: *const macos_adapter,
     ) -> *mut NSObject {
-        let adapter = try_ref_from_ptr!(adapter);
+        let adapter = ref_from_ptr(adapter);
         adapter.focus()
     }
 
@@ -104,7 +95,7 @@ impl macos_adapter {
         adapter: *const macos_adapter,
         point: NSPoint,
     ) -> *mut NSObject {
-        let adapter = try_ref_from_ptr!(adapter);
+        let adapter = ref_from_ptr(adapter);
         adapter.hit_test(point)
     }
 }
@@ -128,17 +119,11 @@ impl macos_subclassing_adapter {
         source_userdata: *mut c_void,
         handler: *mut action_handler,
     ) -> *mut macos_subclassing_adapter {
-        let source = match source {
-            Some(source) => source,
-            None => return ptr::null_mut(),
-        };
-        let handler = match action_handler::to_box(handler) {
-            Some(handler) => handler,
-            None => return ptr::null_mut(),
-        };
+        let source = source.unwrap();
+        let handler = box_from_ptr(handler);
         let adapter = SubclassingAdapter::new(
             view,
-            move || tree_update::to_box(source(source_userdata)).unwrap().into(),
+            move || box_from_ptr(source(source_userdata)).into(),
             handler,
         );
         BoxCastPtr::to_mut_ptr(adapter)
@@ -148,7 +133,7 @@ impl macos_subclassing_adapter {
     pub extern "C" fn accesskit_macos_subclassing_adapter_free(
         adapter: *mut macos_subclassing_adapter,
     ) {
-        macos_subclassing_adapter::to_box(adapter);
+        drop(box_from_ptr(adapter));
     }
 
     /// This function takes ownership of `update`.
@@ -158,13 +143,10 @@ impl macos_subclassing_adapter {
         adapter: *const macos_subclassing_adapter,
         update: *mut tree_update,
     ) -> *mut macos_queued_events {
-        let adapter = try_ref_from_ptr!(adapter);
-        if let Some(update) = tree_update::to_box(update) {
-            let events = adapter.update(update.into());
-            BoxCastPtr::to_mut_ptr(events)
-        } else {
-            ptr::null_mut()
-        }
+        let adapter = ref_from_ptr(adapter);
+        let update = box_from_ptr(update);
+        let events = adapter.update(update.into());
+        BoxCastPtr::to_mut_ptr(events)
     }
 
     /// You must call `accesskit_macos_queued_events_raise` on the returned pointer. It can be null in case of error or if the window is not active.
@@ -174,16 +156,10 @@ impl macos_subclassing_adapter {
         update_factory: tree_update_factory,
         update_factory_userdata: *mut c_void,
     ) -> *mut macos_queued_events {
-        let update_factory = match update_factory {
-            Some(update_factory) => update_factory,
-            None => return ptr::null_mut(),
-        };
-        let adapter = try_ref_from_ptr!(adapter);
-        let events = adapter.update_if_active(|| {
-            tree_update::to_box(update_factory(update_factory_userdata))
-                .unwrap()
-                .into()
-        });
+        let update_factory = update_factory.unwrap();
+        let adapter = ref_from_ptr(adapter);
+        let events = adapter
+            .update_if_active(|| box_from_ptr(update_factory(update_factory_userdata)).into());
         match events {
             Some(events) => BoxCastPtr::to_mut_ptr(events),
             None => ptr::null_mut(),

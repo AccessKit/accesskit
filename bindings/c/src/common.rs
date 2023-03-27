@@ -3,10 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::{
-    opt_struct, panic::Defaultable, try_box_from_ptr, try_mut_from_ptr, try_ref_from_ptr,
-    BoxCastPtr, CastPtr,
-};
+use crate::{box_from_ptr, mut_from_ptr, opt_struct, ref_from_ptr, BoxCastPtr, CastPtr};
 use accesskit::*;
 use paste::paste;
 use std::{
@@ -36,7 +33,7 @@ impl node_class_set {
 
     #[no_mangle]
     pub extern "C" fn accesskit_node_class_set_free(set: *mut node_class_set) {
-        let _ = try_box_from_ptr!(set);
+        drop(box_from_ptr(set));
     }
 }
 
@@ -53,7 +50,7 @@ impl BoxCastPtr for node {}
 impl node {
     #[no_mangle]
     pub extern "C" fn accesskit_node_free(node: *mut node) {
-        let _ = try_box_from_ptr!(node);
+        drop(box_from_ptr(node));
     }
 }
 
@@ -73,7 +70,7 @@ macro_rules! clearer {
             impl node_builder {
                 #[no_mangle]
                 pub extern "C" fn [<accesskit_node_builder_ $clearer>](builder: *mut node_builder) {
-                    let builder = try_mut_from_ptr!(builder);
+                    let builder = mut_from_ptr(builder);
                     builder.$clearer()
                 }
             }
@@ -87,19 +84,19 @@ macro_rules! flag_methods {
             impl node {
                 $(#[no_mangle]
                 pub extern "C" fn [<accesskit_node_ $getter>](node: *const node) -> bool {
-                    let node = try_ref_from_ptr!(node);
+                    let node = ref_from_ptr(node);
                     node.$getter()
                 })*
             }
             $(impl node_builder {
                 #[no_mangle]
                 pub extern "C" fn [<accesskit_node_builder_ $getter>](builder: *const node_builder) -> bool {
-                    let builder = try_ref_from_ptr!(builder);
+                    let builder = ref_from_ptr(builder);
                     builder.$getter()
                 }
                 #[no_mangle]
                 pub extern "C" fn [<accesskit_node_builder_ $setter>](builder: *mut node_builder) {
-                    let builder = try_mut_from_ptr!(builder);
+                    let builder = mut_from_ptr(builder);
                     builder.$setter()
                 }
             }
@@ -114,7 +111,7 @@ macro_rules! property_getters {
             impl node {
                 #[no_mangle]
                 pub extern "C" fn [<accesskit_node_ $getter>](node: *const node) -> *const $getter_result {
-                    let node = try_ref_from_ptr!(node);
+                    let node = ref_from_ptr(node);
                     match node.$getter() {
                         Some(value) => value as *const _,
                         None => ptr::null(),
@@ -124,7 +121,7 @@ macro_rules! property_getters {
             impl node_builder {
                 #[no_mangle]
                 pub extern "C" fn [<accesskit_node_builder_ $getter>](builder: *const node_builder) -> *const $getter_result {
-                    let builder = try_ref_from_ptr!(builder);
+                    let builder = ref_from_ptr(builder);
                     match builder.$getter() {
                         Some(value) => value as *const _,
                         None => ptr::null(),
@@ -138,14 +135,14 @@ macro_rules! property_getters {
             impl node {
                 #[no_mangle]
                 pub extern "C" fn [<accesskit_node_ $getter>](node: *const node) -> $getter_result {
-                    let node = try_ref_from_ptr!(node);
+                    let node = ref_from_ptr(node);
                     node.$getter().into()
                 }
             }
             impl node_builder {
                 #[no_mangle]
                 pub extern "C" fn [<accesskit_node_builder_ $getter>](builder: *const node_builder) -> $getter_result {
-                    let builder = try_ref_from_ptr!(builder);
+                    let builder = ref_from_ptr(builder);
                     builder.$getter().into()
                 }
             }
@@ -160,7 +157,7 @@ macro_rules! simple_property_methods {
             impl node_builder {
                 #[no_mangle]
                 pub extern "C" fn [<accesskit_node_builder_ $setter>](builder: *mut node_builder, value: $setter_param) {
-                    let builder = try_mut_from_ptr!(builder);
+                    let builder = mut_from_ptr(builder);
                     builder.$setter(value.into());
                 }
             }
@@ -173,7 +170,7 @@ macro_rules! simple_property_methods {
             impl node_builder {
                 #[no_mangle]
                 pub extern "C" fn [<accesskit_node_builder_ $setter>](builder: *mut node_builder, value: $setter_param) {
-                    let builder = try_mut_from_ptr!(builder);
+                    let builder = mut_from_ptr(builder);
                     builder.$setter(Box::new(value));
                 }
             }
@@ -187,7 +184,7 @@ macro_rules! simple_property_methods {
                 /// The caller is responsible for freeing `value`.
                 #[no_mangle]
                 pub extern "C" fn [<accesskit_node_builder_ $setter>](builder: *mut node_builder, length: usize, values: *const $setter_param) {
-                    let builder = try_mut_from_ptr!(builder);
+                    let builder = mut_from_ptr(builder);
                     let values = unsafe {
                         slice::from_raw_parts(values, length)
                     };
@@ -229,7 +226,6 @@ macro_rules! slice_struct {
                 }
             }
         }
-        impl Defaultable for $struct_name {}
     };
 }
 
@@ -267,7 +263,6 @@ macro_rules! array_struct {
                 }
             }
         }
-        impl Defaultable for $struct_name {}
     };
 }
 
@@ -278,7 +273,7 @@ macro_rules! vec_property_methods {
             impl node_builder {
                 #[no_mangle]
                 pub extern "C" fn [<accesskit_node_builder_ $setter>](builder: *mut node_builder, length: usize, values: *mut $setter_param) {
-                    let builder = try_mut_from_ptr!(builder);
+                    let builder = mut_from_ptr(builder);
                     let values = $getter_result {
                         length,
                         values,
@@ -287,7 +282,7 @@ macro_rules! vec_property_methods {
                 }
                 #[no_mangle]
                 pub extern "C" fn [<accesskit_node_builder_ $pusher>](builder: *mut node_builder, item: $setter_param) {
-                    let builder = try_mut_from_ptr!(builder);
+                    let builder = mut_from_ptr(builder);
                     builder.$pusher(item.into());
                 }
             }
@@ -341,14 +336,9 @@ macro_rules! string_property_methods {
                 /// Caller must call `accesskit_string_free` with the return value.
                 $(#[no_mangle]
                 pub extern "C" fn [<accesskit_node_ $getter>](node: *const node) -> *mut c_char {
-                    let node = try_ref_from_ptr!(node);
+                    let node = ref_from_ptr(node);
                     match node.$getter() {
-                        Some(value) => {
-                            match CString::new(value) {
-                                Ok(value) => value.into_raw(),
-                                _ => ptr::null_mut()
-                            }
-                        }
+                        Some(value) => CString::new(value).unwrap().into_raw(),
                         None => ptr::null_mut()
                     }
                 })*
@@ -357,21 +347,16 @@ macro_rules! string_property_methods {
                 /// Caller must call `accesskit_string_free` with the return value.
                 #[no_mangle]
                 pub extern "C" fn [<accesskit_node_builder_ $getter>](builder: *const node_builder) -> *mut c_char {
-                    let builder = try_ref_from_ptr!(builder);
+                    let builder = ref_from_ptr(builder);
                     match builder.$getter() {
-                        Some(value) => {
-                            match CString::new(value) {
-                                Ok(value) => value.into_raw(),
-                                _ => ptr::null_mut()
-                            }
-                        }
+                        Some(value) => CString::new(value).unwrap().into_raw(),
                         None => ptr::null_mut()
                     }
                 }
                 /// Caller is responsible for freeing the memory pointed by `value`.
                 #[no_mangle]
                 pub extern "C" fn [<accesskit_node_builder_ $setter>](builder: *mut node_builder, value: *const c_char) {
-                    let builder = try_mut_from_ptr!(builder);
+                    let builder = mut_from_ptr(builder);
                     let value = unsafe { CStr::from_ptr(value) };
                     builder.$setter(value.to_string_lossy());
                 }
@@ -446,7 +431,6 @@ macro_rules! opt_slice_struct {
                 }
             }
         }
-        impl Defaultable for $struct_name {}
     };
 }
 
@@ -492,7 +476,7 @@ property_getters! { role, Role }
 impl node_builder {
     #[no_mangle]
     pub extern "C" fn accesskit_node_builder_set_role(builder: *mut node_builder, value: Role) {
-        let builder = try_mut_from_ptr!(builder);
+        let builder = mut_from_ptr(builder);
         builder.set_role(value);
     }
 }
@@ -500,7 +484,7 @@ impl node_builder {
 impl node {
     #[no_mangle]
     pub extern "C" fn accesskit_node_supports_action(node: *const node, action: Action) -> bool {
-        let node = try_ref_from_ptr!(node);
+        let node = ref_from_ptr(node);
         node.supports_action(action)
     }
 }
@@ -511,7 +495,7 @@ impl node_builder {
         builder: *const node_builder,
         action: Action,
     ) -> bool {
-        let builder = try_ref_from_ptr!(builder);
+        let builder = ref_from_ptr(builder);
         builder.supports_action(action)
     }
 
@@ -520,7 +504,7 @@ impl node_builder {
         builder: *mut node_builder,
         action: Action,
     ) {
-        let builder = try_mut_from_ptr!(builder);
+        let builder = mut_from_ptr(builder);
         builder.add_action(action);
     }
 
@@ -529,13 +513,13 @@ impl node_builder {
         builder: *mut node_builder,
         action: Action,
     ) {
-        let builder = try_mut_from_ptr!(builder);
+        let builder = mut_from_ptr(builder);
         builder.remove_action(action);
     }
 
     #[no_mangle]
     pub extern "C" fn accesskit_node_builder_clear_actions(builder: *mut node_builder) {
-        let builder = try_mut_from_ptr!(builder);
+        let builder = mut_from_ptr(builder);
         builder.clear_actions();
     }
 }
@@ -602,7 +586,8 @@ node_id_property_methods! {
 /// Only call this function with a string that originated from AccessKit.
 #[no_mangle]
 pub extern "C" fn accesskit_string_free(string: *mut c_char) {
-    let _ = unsafe { CString::from_raw(string) };
+    assert!(!string.is_null());
+    drop(unsafe { CString::from_raw(string) });
 }
 
 string_property_methods! {
@@ -776,7 +761,7 @@ impl node_builder {
         builder: *mut node_builder,
         value: text_selection,
     ) {
-        let builder = try_mut_from_ptr!(builder);
+        let builder = mut_from_ptr(builder);
         builder.set_text_selection(Box::new(value.into()));
     }
 }
@@ -830,10 +815,7 @@ impl From<&CustomAction> for custom_action {
     fn from(action: &CustomAction) -> Self {
         Self {
             id: action.id,
-            description: match CString::new(&*action.description) {
-                Ok(description) => description.into_raw(),
-                _ => ptr::null_mut(),
-            },
+            description: CString::new(&*action.description).unwrap().into_raw(),
         }
     }
 }
@@ -864,8 +846,8 @@ impl node_builder {
         builder: *mut node_builder,
         classes: *mut node_class_set,
     ) -> *mut node {
-        let builder = try_box_from_ptr!(builder);
-        let classes = try_mut_from_ptr!(classes);
+        let builder = box_from_ptr(builder);
+        let classes = mut_from_ptr(classes);
         let node = builder.build(classes);
         BoxCastPtr::to_mut_ptr(node)
     }
@@ -875,7 +857,7 @@ impl node_builder {
     /// If you called `accesskit_node_builder_build`, don't call this function.
     #[no_mangle]
     pub extern "C" fn accesskit_node_builder_free(builder: *mut node_builder) {
-        let _ = try_box_from_ptr!(builder);
+        drop(box_from_ptr(builder));
     }
 }
 
@@ -941,7 +923,7 @@ impl tree_update {
 
     #[no_mangle]
     pub extern "C" fn accesskit_tree_update_free(update: *mut tree_update) {
-        tree_update::to_box(update).map(TreeUpdate::from);
+        drop(TreeUpdate::from(box_from_ptr(update)));
     }
 }
 
@@ -959,11 +941,8 @@ impl From<Box<tree_update>> for TreeUpdate {
         Self {
             nodes: ids
                 .into_iter()
-                .zip(nodes.into_iter().map(node::to_box))
-                .filter_map(|id_and_node| match id_and_node {
-                    (id, Some(node)) => Some((id, *node)),
-                    _ => None,
-                })
+                .zip(nodes.into_iter().map(box_from_ptr))
+                .map(|(id, node)| (id, *node))
                 .collect::<Vec<(NodeId, Node)>>(),
             tree: update.tree.into(),
             focus: update.focus.into(),
@@ -996,10 +975,7 @@ impl From<ActionData> for action_data {
     fn from(data: ActionData) -> Self {
         match data {
             ActionData::CustomAction(action) => Self::CustomAction(action),
-            ActionData::Value(value) => match CString::new(&*value) {
-                Ok(value) => Self::Value(value.into_raw()),
-                _ => Self::Value(ptr::null_mut()),
-            },
+            ActionData::Value(value) => Self::Value(CString::new(&*value).unwrap().into_raw()),
             ActionData::NumericValue(value) => Self::NumericValue(value),
             ActionData::ScrollTargetRect(rect) => Self::ScrollTargetRect(rect),
             ActionData::ScrollToPoint(point) => Self::ScrollToPoint(point),
@@ -1062,7 +1038,7 @@ impl action_handler {
 
     #[no_mangle]
     pub extern "C" fn accesskit_action_handler_free(handler: *mut action_handler) {
-        action_handler::to_box(handler);
+        drop(box_from_ptr(handler));
     }
 }
 
