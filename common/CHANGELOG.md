@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.10.1...accesskit-v0.11.0) (2023-03-29)
+
+
+### Features
+
+* Add C bindings ([#230](https://github.com/AccessKit/accesskit/issues/230)) ([7f7f4c7](https://github.com/AccessKit/accesskit/commit/7f7f4c755890ab8210a5a8bf8e237ba6a51dd205))
+
 ## [0.10.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.10.0...accesskit-v0.10.1) (2023-02-20)
 
 
