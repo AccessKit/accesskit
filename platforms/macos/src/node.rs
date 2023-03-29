@@ -376,7 +376,7 @@ declare_class!(
                     context
                         .view
                         .load()
-                        .map_or_else(null_mut, |view| Id::autorelease_return(view) as *mut _)
+                        .map_or_else(null_mut, |view| view.accessibility_parent())
                 }
             })
             .unwrap_or_else(null_mut)
@@ -403,8 +403,16 @@ declare_class!(
                     }
                 };
 
-                node.bounding_box()
-                    .map_or(NSRect::ZERO, |rect| to_ns_rect(&view, rect))
+                node.bounding_box().map_or_else(
+                    || {
+                        if node.is_root() {
+                            view.accessibility_frame()
+                        } else {
+                            NSRect::ZERO
+                        }
+                    },
+                    |rect| to_ns_rect(&view, rect),
+                )
             })
             .unwrap_or(NSRect::ZERO)
         }

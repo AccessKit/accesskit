@@ -47,5 +47,13 @@ extern_methods!(
 
         #[sel(backingScaleFactor)]
         pub(crate) fn backing_scale_factor(&self) -> CGFloat;
+
+        // NSView actually implements the full NSAccessibility protocol,
+        // but since we don't have complete metadata for that, it's easier
+        // to just expose the needed methods here.
+        #[sel(accessibilityFrame)]
+        pub(crate) fn accessibility_frame(&self) -> NSRect;
+        #[sel(accessibilityParent)]
+        pub(crate) fn accessibility_parent(&self) -> *mut NSObject;
     }
 );
