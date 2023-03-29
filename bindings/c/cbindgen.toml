@@ -1,3 +1,4 @@
+language = "C"
 header = """/**
  * Copyright 2023 The AccessKit Authors. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (found in
@@ -6,6 +7,7 @@ header = """/**
  */"""
 
 include_guard = "ACCESSKIT_H"
+cpp_compat = true
 after_includes = """#ifdef _WIN32
 #include <windows.h>
 #endif

@@ -20,7 +20,7 @@ include:
 	mkdir -p $@
 
 include/accesskit.h: src/*.rs cbindgen.toml include
-	cbindgen --lang C --cpp-compat | clang-format '--assume-filename=*.c' > $@
+	rustup run nightly cbindgen | clang-format '--assume-filename=*.c' > $@
 
 ../../target/$(PROFILE)/libaccesskit.a: src/*.rs Cargo.toml
 	cargo build $(CARGOFLAGS)
