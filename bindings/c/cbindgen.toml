@@ -1,0 +1,92 @@
+language = "C"
+header = """/**
+ * Copyright 2023 The AccessKit Authors. All rights reserved.
+ * Licensed under the Apache License, Version 2.0 (found in
+ * the LICENSE-APACHE file) or the MIT license (found in
+ * the LICENSE-MIT file), at your option.
+ */"""
+
+include_guard = "ACCESSKIT_H"
+cpp_compat = true
+after_includes = """#ifdef _WIN32
+#include <windows.h>
+#endif
+#ifdef __APPLE__
+#include <Foundation/NSObjCRuntime.h>
+#include <CoreGraphics/CGGeometry.h>
+#endif"""
+
+usize_is_size_t = true
+
+[export]
+include = ["Size", "tree_update", "Vec2"]
+prefix = "accesskit_"
+renaming_overrides_prefixing = true
+
+[defines]
+"target_os = linux" = "__linux__"
+"target_os = dragonfly" = "__DragonFly__"
+"target_os = freebsd" = "__FreeBSD__"
+"target_os = netbsd" = "__NetBSD__"
+"target_os = openbsd" = "__OpenBSD__"
+"target_os = macos" = "__APPLE__"
+"target_os = windows" = "_WIN32"
+
+[export.rename]
+"Action" = "accesskit_action"
+"ActionHandlerCallback" = "accesskit_action_handler_callback"
+"Affine" = "accesskit_affine"
+"AriaCurrent" = "accesskit_aria_current"
+"CheckedState" = "accesskit_checked_state"
+"DefaultActionVerb" = "accesskit_default_action_verb"
+"DescriptionFrom" = "accesskit_description_from"
+"HWND" = "HWND"
+"HasPopup" = "accesskit_has_popup"
+"Invalid" = "accesskit_invalid"
+"LPARAM" = "LPARAM"
+"LRESULT" = "LRESULT"
+"ListStyle" = "accesskit_list_style"
+"Live" = "accesskit_live"
+"NSArray" = "NSArray"
+"NSObject" = "NSObject"
+"NSPoint" = "CGPoint"
+"NameFrom" = "accesskit_name_from"
+"Orientation" = "accesskit_orientation"
+"Point" = "accesskit_point"
+"Rect" = "accesskit_rect"
+"Role" = "accesskit_role"
+"Size" = "accesskit_size"
+"SortDirection" = "accesskit_sort_direction"
+"TextAlign" = "accesskit_text_align"
+"TextDecoration" = "accesskit_text_decoration"
+"TextDirection" = "accesskit_text_direction"
+"Vec2" = "accesskit_vec2"
+"VerticalOffset" = "accesskit_vertical_offset"
+"WPARAM" = "WPARAM"
+"opt_AriaCurrent" = "accesskit_opt_aria_current"
+"opt_CheckedState" = "accesskit_opt_checked_state"
+"opt_DefaultActionVerb" = "accesskit_opt_default_action_verb"
+"opt_DescriptionFrom" = "accesskit_opt_description_from"
+"opt_HasPopup" = "accesskit_opt_has_popup"
+"opt_Invalid" = "accesskit_opt_invalid"
+"opt_ListStyle" = "accesskit_opt_list_style"
+"opt_Live" = "accesskit_opt_live"
+"opt_NameFrom" = "accesskit_opt_name_from"
+"opt_Orientation" = "accesskit_opt_orientation"
+"opt_SortDirection" = "accesskit_opt_sort_direction"
+"opt_TextAlign" = "accesskit_opt_text_align"
+"opt_TextDecoration" = "accesskit_opt_text_decoration"
+"opt_TextDirection" = "accesskit_opt_text_direction"
+"opt_VerticalOffset" = "accesskit_opt_vertical_offset"
+
+[enum]
+rename_variants = "ScreamingSnakeCase"
+prefix_with_name = true
+
+[parse]
+parse_deps = true
+include = ["accesskit"]
+
+[parse.expand]
+crates = ["accesskit_c"]
+features = ["cbindgen"]

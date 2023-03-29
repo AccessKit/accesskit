@@ -7,9 +7,9 @@ on:
 name: CI
 
 jobs:
-  rustfmt:
+  fmt:
     runs-on: ubuntu-latest
-    name: cargo fmt
+    name: Check formatting
     steps:
       - uses: actions/checkout@v2
 
@@ -26,6 +26,12 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
+
+      - name: clang-format
+        uses: jidicula/clang-format-action@v4.11.0
+        with:
+          clang-format-version: 15
+          check-path: bindings/c
 
   test:
     runs-on: ${{ matrix.os }}
@@ -57,3 +63,6 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+
+  generate-headers:
+    uses: AccessKit/accesskit/.github/workflows/generate-headers.yml@main

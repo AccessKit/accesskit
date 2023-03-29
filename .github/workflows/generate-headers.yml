@@ -1,0 +1,27 @@
+on:
+  workflow_call:
+
+jobs:
+  generate-headers:
+    runs-on: ubuntu-latest
+    name: Generate headers
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: install nightly toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        override: true
+
+    - uses: dtolnay/install@master
+      with:
+        crate: cbindgen
+    - run: make -C bindings/c include/accesskit.h
+
+    - name: Upload header file
+      uses: actions/upload-artifact@v3
+      with:
+        name: headers
+        path: bindings/c/include/accesskit.h
