@@ -13,6 +13,21 @@
     * accesskit bumped from 0.10.0 to 0.10.1
     * accesskit_consumer bumped from 0.14.0 to 0.14.1
 
+## [0.6.3](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.6.2...accesskit_macos-v0.6.3) (2023-03-29)
+
+
+### Bug Fixes
+
+* Fix problems related to the root node ([#231](https://github.com/AccessKit/accesskit/issues/231)) ([7228494](https://github.com/AccessKit/accesskit/commit/7228494361c4f131af6a7fc2af8a98406cd9a63e))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.10.1 to 0.11.0
+    * accesskit_consumer bumped from 0.14.1 to 0.14.2
+
 ## [0.6.2](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.6.1...accesskit_macos-v0.6.2) (2023-03-14)
 
 
