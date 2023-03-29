@@ -105,6 +105,28 @@ macro_rules! flag_methods {
     }
 }
 
+macro_rules! array_setter {
+    ($setter:ident, $ffi_type:ty, $rust_type:ty) => {
+        paste! {
+            impl node_builder {
+                /// Caller is responsible for freeing `values`.
+                #[no_mangle]
+                pub extern "C" fn [<accesskit_node_builder_ $setter>](builder: *mut node_builder, length: usize, values: *const $ffi_type) {
+                    let builder = mut_from_ptr(builder);
+                    let values = unsafe {
+                        slice::from_raw_parts(values, length)
+                            .iter()
+                            .cloned()
+                            .map(From::from)
+                            .collect::<Vec<$rust_type>>()
+                    };
+                    builder.$setter(values);
+                }
+            }
+        }
+    }
+}
+
 macro_rules! property_getters {
     ($getter:ident, *const $getter_result:tt) => {
         paste! {
@@ -126,6 +148,26 @@ macro_rules! property_getters {
                         Some(value) => value as *const _,
                         None => ptr::null(),
                     }
+                }
+            }
+        }
+    };
+    ($getter:ident, *mut $getter_result:tt) => {
+        paste! {
+            impl node {
+                /// Caller is responsible for freeing the returned value.
+                #[no_mangle]
+                pub extern "C" fn [<accesskit_node_ $getter>](node: *const node) -> *mut $getter_result {
+                    let node = ref_from_ptr(node);
+                    BoxCastPtr::to_mut_ptr(node.$getter().into())
+                }
+            }
+            impl node_builder {
+                /// Caller is responsible for freeing the returned value.
+                #[no_mangle]
+                pub extern "C" fn [<accesskit_node_builder_ $getter>](builder: *const node_builder) -> *const $getter_result {
+                    let builder = ref_from_ptr(builder);
+                    BoxCastPtr::to_mut_ptr(builder.$getter().into())
                 }
             }
         }
@@ -178,21 +220,9 @@ macro_rules! simple_property_methods {
         }
     };
     ($getter:ident, $getter_result:tt, $setter:ident, *const $setter_param:tt, $clearer:ident) => {
-        paste! {
-            property_getters! { $getter, $getter_result }
-            impl node_builder {
-                /// The caller is responsible for freeing `value`.
-                #[no_mangle]
-                pub extern "C" fn [<accesskit_node_builder_ $setter>](builder: *mut node_builder, length: usize, values: *const $setter_param) {
-                    let builder = mut_from_ptr(builder);
-                    let values = unsafe {
-                        slice::from_raw_parts(values, length)
-                    };
-                    builder.$setter(Box::<[$setter_param]>::from(values));
-                }
-            }
-            clearer! { $clearer }
-        }
+        property_getters! { $getter, $getter_result }
+        array_setter! { $setter, $setter_param, $setter_param }
+        clearer! { $clearer }
     }
 }
 
@@ -218,14 +248,6 @@ macro_rules! slice_struct {
                 }
             }
         }
-        impl Default for $struct_name {
-            fn default() -> $struct_name {
-                $struct_name {
-                    length: 0,
-                    values: ptr::null(),
-                }
-            }
-        }
     };
 }
 
@@ -234,52 +256,57 @@ macro_rules! array_struct {
         #[repr(C)]
         pub struct $struct_name {
             pub length: usize,
-            pub values: *const $ffi_type,
+            pub values: *mut $ffi_type,
+        }
+        impl CastPtr for $struct_name {
+            type RustType = $struct_name;
+        }
+        impl BoxCastPtr for $struct_name {}
+        paste! {
+            impl $struct_name {
+                #[no_mangle]
+                pub extern "C" fn [<accesskit_ $struct_name _free>](value: *mut $struct_name) {
+                    let array = box_from_ptr(value);
+                    unsafe { Vec::from_raw_parts(array.values, array.length, array.length) };
+                    drop(array);
+                }
+            }
         }
         impl From<&[$rust_type]> for $struct_name {
             fn from(values: &[$rust_type]) -> Self {
                 let length = values.len();
-                let ffi_values = values.iter().map(From::from).collect::<Vec<$ffi_type>>();
-                let values = ffi_values.as_ptr();
+                let mut ffi_values = values.iter().map(From::from).collect::<Vec<$ffi_type>>();
+                let array = Self {
+                    length,
+                    values: ffi_values.as_mut_ptr(),
+                };
                 mem::forget(ffi_values);
-                Self { length, values }
-            }
-        }
-        impl From<$struct_name> for Vec<$rust_type> {
-            fn from(values: $struct_name) -> Self {
-                unsafe {
-                    slice::from_raw_parts(values.values, values.length)
-                        .iter()
-                        .map(From::from)
-                        .collect::<Vec<$rust_type>>()
-                }
-            }
-        }
-        impl Default for $struct_name {
-            fn default() -> $struct_name {
-                $struct_name {
-                    length: 0,
-                    values: ptr::null(),
-                }
+                array
             }
         }
     };
 }
 
 macro_rules! vec_property_methods {
+    ($(($item_type:ty, $getter:ident, *mut $getter_result:ty, $setter:ident, $setter_param:ty, $pusher:ident, $clearer:ident)),+) => {
+        paste! {
+            $(property_getters! { $getter, *mut $getter_result }
+            array_setter! { $setter, $setter_param, $item_type }
+            impl node_builder {
+                #[no_mangle]
+                pub extern "C" fn [<accesskit_node_builder_ $pusher>](builder: *mut node_builder, item: $setter_param) {
+                    let builder = mut_from_ptr(builder);
+                    builder.$pusher(item.into());
+                }
+            }
+            clearer! { $clearer })*
+        }
+    };
     ($(($item_type:ty, $getter:ident, $getter_result:ty, $setter:ident, $setter_param:ty, $pusher:ident, $clearer:ident)),+) => {
         paste! {
             $(property_getters! { $getter, $getter_result }
+            array_setter! { $setter, $setter_param, $item_type }
             impl node_builder {
-                #[no_mangle]
-                pub extern "C" fn [<accesskit_node_builder_ $setter>](builder: *mut node_builder, length: usize, values: *mut $setter_param) {
-                    let builder = mut_from_ptr(builder);
-                    let values = $getter_result {
-                        length,
-                        values,
-                    };
-                    builder.$setter(Vec::from(values));
-                }
                 #[no_mangle]
                 pub extern "C" fn [<accesskit_node_builder_ $pusher>](builder: *mut node_builder, item: $setter_param) {
                     let builder = mut_from_ptr(builder);
@@ -770,6 +797,7 @@ clearer! { clear_text_selection }
 /// Use `accesskit_custom_action_new` to create this struct. Do not reallocate `description`.
 ///
 /// When you get this struct, you are responsible for freeing `description`.
+#[derive(Clone)]
 #[repr(C)]
 pub struct custom_action {
     pub id: i32,
@@ -790,6 +818,12 @@ impl custom_action {
             id,
             description: description.into_raw(),
         }
+    }
+}
+
+impl Drop for custom_action {
+    fn drop(&mut self) {
+        accesskit_string_free(self.description);
     }
 }
 
@@ -823,7 +857,7 @@ impl From<&CustomAction> for custom_action {
 array_struct! { custom_actions, CustomAction, custom_action }
 
 vec_property_methods! {
-    (CustomAction, custom_actions, custom_actions, set_custom_actions, custom_action, push_custom_action, clear_custom_actions)
+    (CustomAction, custom_actions, *mut custom_actions, set_custom_actions, custom_action, push_custom_action, clear_custom_actions)
 }
 
 impl node_id {
