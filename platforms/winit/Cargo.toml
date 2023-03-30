@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_winit"
-version = "0.12.5"
+version = "0.13.0"
 authors = ["Matt Campbell <mattcampbell@pobox.com>"]
 license = "Apache-2.0"
 description = "AccessKit UI accessibility infrastructure: winit adapter"
@@ -18,13 +18,13 @@ accesskit = { version = "0.11.0", path = "../../common" }
 winit = { version = "0.28", default-features = false }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-accesskit_windows = { version = "0.13.3", path = "../windows" }
+accesskit_windows = { version = "0.14.0", path = "../windows" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-accesskit_macos = { version = "0.6.3", path = "../macos" }
+accesskit_macos = { version = "0.7.0", path = "../macos" }
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
-accesskit_unix = { version = "0.3.3", path = "../unix", optional = true }
+accesskit_unix = { version = "0.4.0", path = "../unix", optional = true }
 
 [dev-dependencies]
 winit = "0.28"

@@ -51,6 +51,26 @@
     * accesskit_macos bumped from 0.6.2 to 0.6.3
     * accesskit_unix bumped from 0.3.2 to 0.3.3
 
+## [0.13.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.12.5...accesskit_winit-v0.13.0) (2023-03-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* Force a semver-breaking version bump in downstream crates ([#234](https://github.com/AccessKit/accesskit/issues/234))
+
+### Bug Fixes
+
+* Force a semver-breaking version bump in downstream crates ([#234](https://github.com/AccessKit/accesskit/issues/234)) ([773389b](https://github.com/AccessKit/accesskit/commit/773389bff857fa18edf15de426e029251fc34591))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_windows bumped from 0.13.3 to 0.14.0
+    * accesskit_macos bumped from 0.6.3 to 0.7.0
+    * accesskit_unix bumped from 0.3.3 to 0.4.0
+
 ## [0.12.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.11.0...accesskit_winit-v0.12.0) (2023-02-18)
 
 
