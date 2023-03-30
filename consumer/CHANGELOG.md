@@ -8,6 +8,17 @@
   * dependencies
     * accesskit bumped from 0.10.1 to 0.11.0
 
+## [0.15.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.14.2...accesskit_consumer-v0.15.0) (2023-03-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* Force a semver-breaking version bump in downstream crates ([#234](https://github.com/AccessKit/accesskit/issues/234))
+
+### Bug Fixes
+
+* Force a semver-breaking version bump in downstream crates ([#234](https://github.com/AccessKit/accesskit/issues/234)) ([773389b](https://github.com/AccessKit/accesskit/commit/773389bff857fa18edf15de426e029251fc34591))
+
 ## [0.14.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.13.0...accesskit_consumer-v0.14.0) (2023-02-12)
 
 

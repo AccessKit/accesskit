@@ -1,5 +1,11 @@
 # Changelog
 
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_windows bumped from 0.13.3 to 0.14.0
+    * accesskit_macos bumped from 0.6.3 to 0.7.0
+    * accesskit_unix bumped from 0.3.3 to 0.4.0
+
 ## 0.1.0 (2023-03-29)
 
 

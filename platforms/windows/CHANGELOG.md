@@ -18,6 +18,24 @@
     * accesskit bumped from 0.10.1 to 0.11.0
     * accesskit_consumer bumped from 0.14.1 to 0.14.2
 
+## [0.14.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.13.3...accesskit_windows-v0.14.0) (2023-03-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* Force a semver-breaking version bump in downstream crates ([#234](https://github.com/AccessKit/accesskit/issues/234))
+
+### Bug Fixes
+
+* Force a semver-breaking version bump in downstream crates ([#234](https://github.com/AccessKit/accesskit/issues/234)) ([773389b](https://github.com/AccessKit/accesskit/commit/773389bff857fa18edf15de426e029251fc34591))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.14.2 to 0.15.0
+
 ## [0.13.2](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.13.1...accesskit_windows-v0.13.2) (2023-02-23)
 
 
