@@ -16,25 +16,19 @@ There are numerous UI toolkits, and new ones continue to proliferate. So far, on
 
 It has often been said that data structures are more important than code. This is certainly the case with AccessKit. The heart of AccessKit is a schema that defines all of the data required to make a UI accessible to screen readers and other assistive technologies. This schema represents a tree structure, in which each node is either a UI element such as a button or text box, or a grouping of elements such as a document, pane, or window. Each node has an integer ID, a role (e.g. button or window), and a variety of optional attributes. The schema also defines actions that can be requested by assistive technologies, such as moving the keyboard focus, invoking a button, or selecting text. The schema is based largely on Chromium's cross-platform accessibility abstraction.
 
-The canonical definition of the schema is in the Rust programming language. Rust was chosen for its combination of efficiency and an expressive type system. Representations of the schema in other programming languages and schema definition languages (such as JSON Schema or Protocol Buffers) can be generated from the Rust code.
+The canonical definition of the schema is in the Rust programming language. Rust was chosen for its combination of efficiency and an expressive type system.
 
-When both the toolkit and the platform adapter (see below) are written in Rust or another language that can efficiently access Rust data structures (such as C++), the data defined in the schema can be passed back and forth with no serialization overhead. In other cases, serialization will be required to minimize the overhead of language interoperability. Because the schema supports [serde](https://serde.rs/), each language binding can choose its own serialization format.
+When both the toolkit and the platform adapter (see below) are written in Rust or another language that can efficiently call functions defined in Rust (such as C or C++), the data defined in the schema can be passed back and forth with no serialization overhead. In other cases, serialization will be required to minimize the overhead of language interoperability. Because the schema supports [serde](https://serde.rs/), each language binding of this type can choose its own serialization format.
 
-The schema is defined in [the `accesskit` crate](https://crates.io/crates/accesskit), in [the `common` directory](https://github.com/AccessKit/accesskit/tree/main/common). It has not yet been stabilized, but it is reasonably complete. The following known issues remain:
-
-* The schema doesn't yet define any events. While some events in platform accessibility APIs, such as focus change and property changes, can be implied from tree updates, other events, such as ad-hoc announcements meant for screen reader users, cannot.
-* The in-memory representation of a node has not yet been optimized.
+The schema is defined in [the `accesskit` crate](https://crates.io/crates/accesskit), in [the `common` directory](https://github.com/AccessKit/accesskit/tree/main/common). It has not yet been stabilized, but it is reasonably complete. At this point there is just one known issue: the schema doesn't yet define any events. While some events in platform accessibility APIs, such as focus change and property changes, can be implied from tree updates, other events, such as ad-hoc announcements meant for screen reader users, cannot.
 
 ### Platform adapters
 
-These are the libraries that implement platform accessibility APIs.
+These are the libraries that implement platform accessibility APIs. The following platform adapters are currently implemented:
 
-So far, the Windows adapter, which implements the UI Automation API, is available in [the `accesskit_windows` crate](https://crates.io/crates/accesskit_windows), in [the `platforms/windows` directory](https://github.com/AccessKit/accesskit/tree/main/platforms/windows). It doesn't yet support all possible widget types, but it can now be used to make real, non-trivial applications accessible. In particular, it supports both single-line and multi-line text edit controls, but not yet rich text.
-
-The following adapters are under development in their respective Git branches:
-
-* [macOS](https://github.com/AccessKit/accesskit/tree/macos-basics)
-* [Unix desktop environments (e.g. GNOME) based on AT-SPI](https://github.com/DataTriny/accesskit/tree/atspi_basics)
+* The Windows adapter, which implements the UI Automation API, is available in [the `accesskit_windows` crate](https://crates.io/crates/accesskit_windows), in [the `platforms/windows` directory](https://github.com/AccessKit/accesskit/tree/main/platforms/windows). It doesn't yet support all possible widget types, but it can now be used to make real, non-trivial applications accessible. In particular, it supports both single-line and multi-line text edit controls, but not yet rich text.
+* The macOS adapter, which implements the Cocoa NSAccessibility protocol, is available in [the `accesskit_macos` crate](https://crates.io/crates/accesskit_macos), in [the `platforms/macos` directory](https://github.com/AccessKit/accesskit/tree/main/platforms/macos). It is roughly at feature parity with the Windows adapter, including support for text edit controls.
+* The Unix adapter, which implements the D-Bus-based AT-SPI protocol, is available in [the `accesskit_unix` crate](https://crates.io/crates/accesskit_unix), in [the `platforms/unix` directory](https://github.com/AccessKit/accesskit/tree/main/platforms/unix). This adapter doesn't yet fully support text edit controls. It is also not yet usable with the Orca screen reader, due to a keyboard input handling issue that we are working with the appropriate GNOME development teams to solve.
 
 The following adapters are planned:
 
@@ -54,17 +48,17 @@ Some of the code required by the platform adapters is platform-independent. This
 
 ### Adapters for cross-platform windowing layers
 
-In the Rust ecosystem, [the `winit` crate](https://crates.io/crates/winit) is a popular cross-platform abstraction for windowing and user input. [The `accesskit_winit` crate](https://crates.io/crates/accesskit_winit), in [the `platforms/winit` directory](https://github.com/AccessKit/accesskit/tree/main/platforms/winit), provides a cross-platform way of integrating AccessKit into `winit`-based toolkits and applications. We may later implement similar adapters for other cross-platform abstractions such as GLFW and SDL.
+In the Rust ecosystem, [the `winit` crate](https://crates.io/crates/winit) is a popular cross-platform abstraction for windowing and user input. [The `accesskit_winit` crate](https://crates.io/crates/accesskit_winit), in [the `platforms/winit` directory](https://github.com/AccessKit/accesskit/tree/main/platforms/winit), provides a cross-platform way of integrating AccessKit into `winit`-based toolkits and applications. AccessKit is also directly integrated into the similar [glazier](https://github.com/linebender/glazier) crate. We may later implement similar adapters for other cross-platform abstractions such as GLFW and SDL.
 
 ### GUI toolkit integrations
 
-While we expect GUI toolkit developers to eventually integrate AccessKit into their own projects, we are directly working on integration with some GUI toolkits at this stage in the project, so we can test our work on AccessKit in realistic environments. So far, we are most actively working on integration into [the `egui` toolkit for Rust](https://github.com/emilk/egui). This integration is now in a [pull request](https://github.com/emilk/egui/pull/2294). We also have a [proof-of-concept integration with the Unity game engine](https://github.com/AccessKit/the-intercept), which demonstrates the ability to expose AccessKit to a language other than Rust.
+While we expect GUI toolkit developers to eventually integrate AccessKit into their own projects, we are directly working on integration with some GUI toolkits at this stage in the project, so we can test our work on AccessKit in realistic environments. So far, we have integrated AccessKit into [the `egui` toolkit for Rust](https://github.com/emilk/egui). We also have a [proof-of-concept integration with the Unity game engine](https://github.com/AccessKit/the-intercept), which demonstrates the ability to expose AccessKit to a language other than Rust.
 
 ### Language bindings
 
-UI toolkit developers who merely want to use AccessKit should not be required to use Rust directly. In addition to a direct Rust API, the platform adapters will also provide C APIs, which can be used from a variety of languages. The AccessKit project will provide pre-built binaries, including both dynamic and static libraries, for these platform adapters using the C APIs, so toolkit developers won't need to deal with Rust at all.
+UI toolkit developers who merely want to use AccessKit should not be required to use Rust directly. In addition to a direct Rust API, AccessKit provides a C API covering both the core data structures and all platform adapters. This C API can be used from a variety of languages. The Rust source for the C bindings is in [the `bindings/c directory`](https://github.com/AccessKit/accesskit/tree/main/bindings/c). The AccessKit project also provides a pre-built package, including a header file, both dynamic and static libraries, and sample code, for the C API, so toolkit developers won't need to deal with Rust at all. The latest pre-built package can be found in [AccessKit's GitHub releases](https://github.com/AccessKit/accesskit/releases); search for the name "accesskit_c".
 
-While many languages can use a C API, we also plan to provide libraries that make it easier to use AccessKit from languages other than Rust and C. In particular, we're planning to provide such a library for Java and other JVM-based languages.
+While many languages can use a C API, we also plan to provide libraries that make it easier to safely use AccessKit from languages other than Rust and C. In particular, we're planning to provide such a library for Java and other JVM-based languages.
 
 ### Documentation
 
