@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_c"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Arnold Loubriat <datatriny@gmail.com>"]
 license = "MIT/Apache-2.0"
 publish = false
