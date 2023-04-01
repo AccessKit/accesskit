@@ -12,34 +12,52 @@ jobs:
         include:
           - os: macOS-latest
             target: aarch64-apple-darwin
-            path: macos-arm64
+            path: macos/arm64
+            shared-ext: dylib
+            static-ext: a
           - os: macOS-latest
             target: x86_64-apple-darwin
-            path: macos-x86_64
+            path: macos/x86_64
+            shared-ext: dylib
+            static-ext: a
           - os: windows-2019
             target: aarch64-pc-windows-msvc
-            path: win-arm64-msvc
+            path: windows/arm64/msvc
+            shared-ext: dll
+            static-ext: lib
           - os: windows-2019
             target: i686-pc-windows-msvc
-            path: win-x86-msvc
+            path: windows/x86/msvc
+            shared-ext: dll
+            static-ext: lib
           - os: windows-2019
             target: x86_64-pc-windows-msvc
-            path: win-x86_64-msvc
+            path: windows/x86_64/msvc
+            shared-ext: dll
+            static-ext: lib
           - os: ubuntu-latest
             target: i686-pc-windows-gnu
             use-cross: true
-            path: win-x86-mingw
+            path: windows/x86/mingw
+            shared-ext: dll
+            static-ext: a
           - os: ubuntu-latest
             target: x86_64-pc-windows-gnu
             use-cross: true
-            path: win-x86_64-mingw
+            path: windows/x86_64/mingw
+            shared-ext: dll
+            static-ext: a
           - os: ubuntu-latest
             target: i686-unknown-linux-gnu
             use-cross: true
-            path: linux-x86
+            path: linux/x86
+            shared-ext: so
+            static-ext: a
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            path: linux-x86_64
+            path: linux/x86_64
+            shared-ext: so
+            static-ext: a
     name: cargo build
     steps:
       - uses: actions/checkout@v3
@@ -59,17 +77,27 @@ jobs:
           use-cross: ${{ matrix.use-cross || false }}
           args: --package accesskit_c --release --target ${{ matrix.target }}
 
+      - shell: bash
+        run: |
+          mkdir -p artifacts/${{ matrix.path }}/shared
+          mkdir -p artifacts/${{ matrix.path }}/static
+
+      - if: startsWith(matrix.os, 'windows')
+        run: |
+          mv target/${{ matrix.target }}/release/accesskit.dll.lib artifacts/${{ matrix.path }}/shared/accesskit.lib
+          mv target/${{ matrix.target }}/release/*.pdb artifacts/${{ matrix.path }}/shared
+      - if: contains(matrix.path, 'mingw')
+        run: mv target/${{ matrix.target }}/release/libaccesskit.dll.a artifacts/${{ matrix.path }}/shared/libaccesskit.a
+
+      - run: |
+          mv target/${{ matrix.target }}/release/*.${{ matrix.shared-ext }} artifacts/${{ matrix.path }}/shared
+          mv target/${{ matrix.target }}/release/*.${{ matrix.static-ext }} artifacts/${{ matrix.path }}/static
+
       - name: Upload binaries
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.path }}
-          path: |
-            target/${{ matrix.target }}/release/*.a
-            target/${{ matrix.target }}/release/*.dll
-            target/${{ matrix.target }}/release/*.dylib
-            target/${{ matrix.target }}/release/*.lib
-            target/${{ matrix.target }}/release/*.pdb
-            target/${{ matrix.target }}/release/*.so
+          name: ${{ matrix.target }}
+          path: artifacts
 
   generate-headers:
     if: startsWith(github.ref_name, 'accesskit_c-v')
@@ -84,14 +112,17 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
-          path: accesskit_c/lib
+          path: artifacts
 
-      - run: mv accesskit_c/lib/headers accesskit_c/include
-      - run: cp -r bindings/c/examples accesskit_c/
-      - run: cp bindings/c/*.md accesskit_c/
-      - run: cp LICENSE* accesskit_c/
-      - run: mv accesskit_c ${{ github.ref_name }}
-      - run: zip -r ${{ github.ref_name }}.zip ${{ github.ref_name }}
+      - run: |
+          mkdir -p accesskit_c/lib
+          mv artifacts/headers accesskit_c/include
+          cp -r artifacts/*/* accesskit_c/lib
+          cp -r bindings/c/examples accesskit_c/
+          cp bindings/c/*.md accesskit_c/
+          cp LICENSE* accesskit_c/
+          mv accesskit_c ${{ github.ref_name }}
+          zip -r ${{ github.ref_name }}.zip ${{ github.ref_name }}
 
       - uses: AButler/upload-release-assets@v2.0
         with:
