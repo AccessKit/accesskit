@@ -87,14 +87,15 @@ impl macos_adapter {
         adapter.focus() as *mut _
     }
 
+    /// Returns a pointer to an `NSObject`. Ownership of the pointer is not transfered.
     #[no_mangle]
     pub extern "C" fn accesskit_macos_adapter_hit_test(
         adapter: *const macos_adapter,
         x: f64,
         y: f64,
-    ) -> *mut NSObject {
+    ) -> *mut c_void {
         let adapter = ref_from_ptr(adapter);
-        adapter.hit_test(NSPoint::new(x, y))
+        adapter.hit_test(NSPoint::new(x, y)) as *mut _
     }
 }
 
