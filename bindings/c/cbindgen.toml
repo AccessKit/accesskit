@@ -10,10 +10,6 @@ include_guard = "ACCESSKIT_H"
 cpp_compat = true
 after_includes = """#ifdef _WIN32
 #include <windows.h>
-#endif
-#ifdef __APPLE__
-#include <Foundation/NSObjCRuntime.h>
-#include <CoreGraphics/CGGeometry.h>
 #endif"""
 
 usize_is_size_t = true
@@ -47,9 +43,6 @@ renaming_overrides_prefixing = true
 "LRESULT" = "LRESULT"
 "ListStyle" = "accesskit_list_style"
 "Live" = "accesskit_live"
-"NSArray" = "NSArray"
-"NSObject" = "NSObject"
-"NSPoint" = "CGPoint"
 "NameFrom" = "accesskit_name_from"
 "Orientation" = "accesskit_orientation"
 "Point" = "accesskit_point"
