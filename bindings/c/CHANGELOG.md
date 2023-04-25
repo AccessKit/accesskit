@@ -6,6 +6,17 @@
     * accesskit_macos bumped from 0.6.3 to 0.7.0
     * accesskit_unix bumped from 0.3.3 to 0.4.0
 
+## [0.3.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.2.0...accesskit_c-v0.3.0) (2023-04-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* Remove objc and Core Foundation types from C bindings public API ([#243](https://github.com/AccessKit/accesskit/issues/243))
+
+### Bug Fixes
+
+* Remove objc and Core Foundation types from C bindings public API ([#243](https://github.com/AccessKit/accesskit/issues/243)) ([3ae1c11](https://github.com/AccessKit/accesskit/commit/3ae1c116abcf4593c8540f0d25d154828a69a388))
+
 ## [0.2.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.1.1...accesskit_c-v0.2.0) (2023-04-01)
 
 
