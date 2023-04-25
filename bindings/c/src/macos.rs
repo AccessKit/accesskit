@@ -10,9 +10,6 @@ use crate::{
 use accesskit_macos::{Adapter, NSObject, NSPoint, QueuedEvents, SubclassingAdapter};
 use std::{os::raw::c_void, ptr};
 
-#[cfg(not(feature = "cbindgen"))]
-pub type NSArray = c_void;
-
 pub struct macos_queued_events {
     _private: [u8; 0],
 }
@@ -74,29 +71,31 @@ impl macos_adapter {
         BoxCastPtr::to_mut_ptr(events)
     }
 
+    /// Returns a pointer to an `NSArray`. Ownership of the pointer is not transfered.
     #[no_mangle]
     pub extern "C" fn accesskit_macos_adapter_view_children(
         adapter: *const macos_adapter,
-    ) -> *mut NSArray {
+    ) -> *mut c_void {
         let adapter = ref_from_ptr(adapter);
         adapter.view_children() as *mut _
     }
 
+    /// Returns a pointer to an `NSObject`. Ownership of the pointer is not transfered.
     #[no_mangle]
-    pub extern "C" fn accesskit_macos_adapter_focus(
-        adapter: *const macos_adapter,
-    ) -> *mut NSObject {
+    pub extern "C" fn accesskit_macos_adapter_focus(adapter: *const macos_adapter) -> *mut c_void {
         let adapter = ref_from_ptr(adapter);
-        adapter.focus()
+        adapter.focus() as *mut _
     }
 
+    /// Returns a pointer to an `NSObject`. Ownership of the pointer is not transfered.
     #[no_mangle]
     pub extern "C" fn accesskit_macos_adapter_hit_test(
         adapter: *const macos_adapter,
-        point: NSPoint,
-    ) -> *mut NSObject {
+        x: f64,
+        y: f64,
+    ) -> *mut c_void {
         let adapter = ref_from_ptr(adapter);
-        adapter.hit_test(point)
+        adapter.hit_test(NSPoint::new(x, y)) as *mut _
     }
 }
 
