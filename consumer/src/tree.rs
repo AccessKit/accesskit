@@ -85,6 +85,13 @@ impl State {
             }
         }
 
+        // node ids tracks the ids of all nodes in the update.
+        // none of these nodes are orphans.
+        let node_ids = update
+            .nodes
+            .iter()
+            .map(|(id, _)| *id)
+            .collect::<HashSet<_>>();
         for (node_id, node_data) in update.nodes {
             orphans.remove(&node_id);
 
@@ -116,7 +123,7 @@ impl State {
                     node_state.parent_and_index = None
                 }
                 for child_id in node_state.data.children().iter() {
-                    if !seen_child_ids.contains(child_id) {
+                    if !seen_child_ids.contains(child_id) && !node_ids.contains(child_id) {
                         orphans.insert(*child_id);
                     }
                 }
@@ -175,6 +182,9 @@ impl State {
             }
 
             for id in to_remove {
+                if node_ids.contains(&id) {
+                    continue;
+                }
                 if let Some(old_node_state) = self.nodes.remove(&id) {
                     if let Some(changes) = &mut changes {
                         let old_node = DetachedNode {
