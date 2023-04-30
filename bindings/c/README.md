@@ -14,8 +14,8 @@ These are the bindings to use AccessKit from other languages through FFI such as
 
 Once inside the `bindings/c` directory, CMake can be used like so:
 
-```
-cmake -S . -B build # See below for available configuration options.
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=ON # See below for available configuration options.
 cd build
 cmake --build .
 ```
