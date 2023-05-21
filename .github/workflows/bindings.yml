@@ -118,7 +118,9 @@ jobs:
           mkdir -p accesskit_c/lib
           mv artifacts/headers accesskit_c/include
           cp -r artifacts/*/* accesskit_c/lib
+          cp -r bindings/c/corrosion accesskit_c/
           cp -r bindings/c/examples accesskit_c/
+          cp bindings/c/CMakeLists.txt accesskit_c/
           cp bindings/c/*.md accesskit_c/
           cp LICENSE* accesskit_c/
           mv accesskit_c ${{ github.ref_name }}
