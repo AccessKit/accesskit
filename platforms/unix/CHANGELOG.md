@@ -14,6 +14,13 @@
     * accesskit bumped from 0.10.1 to 0.11.0
     * accesskit_consumer bumped from 0.14.1 to 0.14.2
 
+## [0.5.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.4.0...accesskit_unix-v0.5.0) (2023-05-21)
+
+
+### Features
+
+* Add features for async runtimes on Unix ([#248](https://github.com/AccessKit/accesskit/issues/248)) ([b56b4ea](https://github.com/AccessKit/accesskit/commit/b56b4ea7c967ee5a1dae21a2fa0dcd385346031e))
+
 ## [0.4.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.3.3...accesskit_unix-v0.4.0) (2023-03-30)
 
 

@@ -51,6 +51,20 @@
     * accesskit_macos bumped from 0.6.2 to 0.6.3
     * accesskit_unix bumped from 0.3.2 to 0.3.3
 
+## [0.14.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.13.0...accesskit_winit-v0.14.0) (2023-05-21)
+
+
+### Features
+
+* Add features for async runtimes on Unix ([#248](https://github.com/AccessKit/accesskit/issues/248)) ([b56b4ea](https://github.com/AccessKit/accesskit/commit/b56b4ea7c967ee5a1dae21a2fa0dcd385346031e))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_unix bumped from 0.4.0 to 0.5.0
+
 ## [0.13.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.12.5...accesskit_winit-v0.13.0) (2023-03-30)
 
 
