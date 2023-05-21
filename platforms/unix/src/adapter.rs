@@ -13,7 +13,7 @@ use crate::{
     },
     context::Context,
     node::{filter, filter_detached, NodeWrapper, PlatformNode},
-    util::AppContext,
+    util::{block_on, AppContext},
 };
 use accesskit::{ActionHandler, NodeId, Rect, Role, TreeUpdate};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
@@ -39,10 +39,12 @@ impl Adapter {
         initial_state: impl 'static + FnOnce() -> TreeUpdate,
         action_handler: Box<dyn ActionHandler + Send + Sync>,
     ) -> Option<Self> {
-        let mut atspi_bus = Bus::a11y_bus()?;
+        let mut atspi_bus = block_on(async { Bus::a11y_bus().await })?;
         let (event_sender, event_receiver) = async_channel::unbounded();
         let atspi_bus_copy = atspi_bus.clone();
-        let event_task = atspi_bus.connection().inner().executor().spawn(
+        #[cfg(feature = "tokio")]
+        let _guard = crate::util::TOKIO_RT.enter();
+        let event_task = atspi_bus.connection().executor().spawn(
             async move {
                 handle_events(atspi_bus_copy, event_receiver).await;
             },
@@ -51,7 +53,7 @@ impl Adapter {
         let tree = Tree::new(initial_state());
         let app_context = AppContext::new(app_name, toolkit_name, toolkit_version);
         let context = Context::new(tree, action_handler, app_context);
-        atspi_bus.register_root_node(&context).ok()?;
+        block_on(async { atspi_bus.register_root_node(&context).await.ok() })?;
         let adapter = Adapter {
             atspi_bus,
             _event_task: event_task,
@@ -85,31 +87,47 @@ impl Adapter {
     fn register_interfaces(&self, id: NodeId, new_interfaces: InterfaceSet) -> zbus::Result<bool> {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, ObjectId::from(id).as_str());
         if new_interfaces.contains(Interface::Accessible) {
-            self.atspi_bus.register_interface(
-                &path,
-                AccessibleInterface::new(
-                    self.atspi_bus.unique_name().to_owned(),
-                    PlatformNode::new(&self.context, id),
-                ),
-            )?;
+            block_on(async {
+                self.atspi_bus
+                    .register_interface(
+                        &path,
+                        AccessibleInterface::new(
+                            self.atspi_bus.unique_name().to_owned(),
+                            PlatformNode::new(&self.context, id),
+                        ),
+                    )
+                    .await
+            })?;
         }
         if new_interfaces.contains(Interface::Action) {
-            self.atspi_bus.register_interface(
-                &path,
-                ActionInterface::new(PlatformNode::new(&self.context, id)),
-            )?;
+            block_on(async {
+                self.atspi_bus
+                    .register_interface(
+                        &path,
+                        ActionInterface::new(PlatformNode::new(&self.context, id)),
+                    )
+                    .await
+            })?;
         }
         if new_interfaces.contains(Interface::Component) {
-            self.atspi_bus.register_interface(
-                &path,
-                ComponentInterface::new(PlatformNode::new(&self.context, id)),
-            )?;
+            block_on(async {
+                self.atspi_bus
+                    .register_interface(
+                        &path,
+                        ComponentInterface::new(PlatformNode::new(&self.context, id)),
+                    )
+                    .await
+            })?;
         }
         if new_interfaces.contains(Interface::Value) {
-            self.atspi_bus.register_interface(
-                &path,
-                ValueInterface::new(PlatformNode::new(&self.context, id)),
-            )?;
+            block_on(async {
+                self.atspi_bus
+                    .register_interface(
+                        &path,
+                        ValueInterface::new(PlatformNode::new(&self.context, id)),
+                    )
+                    .await
+            })?;
         }
         Ok(true)
     }
@@ -119,24 +137,30 @@ impl Adapter {
         id: &ObjectId,
         old_interfaces: InterfaceSet,
     ) -> zbus::Result<bool> {
-        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, id.as_str());
-        if old_interfaces.contains(Interface::Accessible) {
-            self.atspi_bus
-                .unregister_interface::<AccessibleInterface<PlatformNode>>(&path)?;
-        }
-        if old_interfaces.contains(Interface::Action) {
-            self.atspi_bus
-                .unregister_interface::<ActionInterface>(&path)?;
-        }
-        if old_interfaces.contains(Interface::Component) {
-            self.atspi_bus
-                .unregister_interface::<ComponentInterface>(&path)?;
-        }
-        if old_interfaces.contains(Interface::Value) {
-            self.atspi_bus
-                .unregister_interface::<ValueInterface>(&path)?;
-        }
-        Ok(true)
+        block_on(async {
+            let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, id.as_str());
+            if old_interfaces.contains(Interface::Accessible) {
+                self.atspi_bus
+                    .unregister_interface::<AccessibleInterface<PlatformNode>>(&path)
+                    .await?;
+            }
+            if old_interfaces.contains(Interface::Action) {
+                self.atspi_bus
+                    .unregister_interface::<ActionInterface>(&path)
+                    .await?;
+            }
+            if old_interfaces.contains(Interface::Component) {
+                self.atspi_bus
+                    .unregister_interface::<ComponentInterface>(&path)
+                    .await?;
+            }
+            if old_interfaces.contains(Interface::Value) {
+                self.atspi_bus
+                    .unregister_interface::<ValueInterface>(&path)
+                    .await?;
+            }
+            Ok(true)
+        })
     }
 
     pub fn set_root_window_bounds(&self, outer: Rect, inner: Rect) {

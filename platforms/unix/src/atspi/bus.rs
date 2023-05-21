@@ -8,26 +8,25 @@ use crate::{
     context::Context,
     PlatformRootNode,
 };
-use atspi::{bus::BusProxyBlocking, socket::SocketProxyBlocking, EventBody};
+use atspi::{bus::BusProxy, socket::SocketProxy, EventBody};
 use serde::Serialize;
 use std::{collections::HashMap, env::var, sync::Arc};
 use zbus::{
-    blocking::{Connection, ConnectionBuilder},
     names::{BusName, InterfaceName, MemberName, OwnedUniqueName},
     zvariant::{ObjectPath, Str, Value},
-    Address, Result,
+    Address, Connection, ConnectionBuilder, Result,
 };
 
 #[derive(Clone)]
 pub(crate) struct Bus {
     conn: Connection,
-    socket_proxy: SocketProxyBlocking<'static>,
+    socket_proxy: SocketProxy<'static>,
 }
 
 impl Bus {
-    pub fn a11y_bus() -> Option<Self> {
-        let conn = a11y_bus()?;
-        let socket_proxy = SocketProxyBlocking::new(&conn).ok()?;
+    pub async fn a11y_bus() -> Option<Self> {
+        let conn = a11y_bus().await?;
+        let socket_proxy = SocketProxy::new(&conn).await.ok()?;
         Some(Bus { conn, socket_proxy })
     }
 
@@ -39,36 +38,44 @@ impl Bus {
         self.conn.unique_name().unwrap()
     }
 
-    pub fn register_interface<T>(&self, path: &str, interface: T) -> Result<bool>
+    pub async fn register_interface<T>(&self, path: &str, interface: T) -> Result<bool>
     where
         T: zbus::Interface,
     {
-        self.conn.object_server().at(path, interface)
+        self.conn.object_server().at(path, interface).await
     }
 
-    pub fn unregister_interface<T>(&self, path: &str) -> Result<bool>
+    pub async fn unregister_interface<T>(&self, path: &str) -> Result<bool>
     where
         T: zbus::Interface,
     {
-        self.conn.object_server().remove::<T, _>(path)
+        self.conn.object_server().remove::<T, _>(path).await
     }
 
-    pub fn register_root_node(&mut self, context: &Arc<Context>) -> Result<bool> {
+    pub async fn register_root_node(&mut self, context: &Arc<Context>) -> Result<bool> {
         let node = PlatformRootNode::new(context);
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, ObjectId::root().as_str());
         let registered = self
             .conn
             .object_server()
-            .at(path.clone(), ApplicationInterface(node.clone()))?
-            && self.conn.object_server().at(
-                path,
-                AccessibleInterface::new(self.unique_name().to_owned(), node),
-            )?;
+            .at(path.clone(), ApplicationInterface(node.clone()))
+            .await?
+            && self
+                .conn
+                .object_server()
+                .at(
+                    path,
+                    AccessibleInterface::new(self.unique_name().to_owned(), node),
+                )
+                .await?;
         if registered {
-            let desktop = self.socket_proxy.embed(&(
-                self.unique_name().as_str(),
-                ObjectPath::from_str_unchecked(ROOT_PATH),
-            ))?;
+            let desktop = self
+                .socket_proxy
+                .embed(&(
+                    self.unique_name().as_str(),
+                    ObjectPath::from_str_unchecked(ROOT_PATH),
+                ))
+                .await?;
             context.app_context.write().unwrap().desktop_address = Some(desktop.into());
             Ok(true)
         } else {
@@ -219,7 +226,6 @@ impl Bus {
     ) -> Result<()> {
         let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, id.as_str());
         self.conn
-            .inner()
             .emit_signal(
                 Option::<BusName>::None,
                 path,
@@ -231,17 +237,19 @@ impl Bus {
     }
 }
 
-fn a11y_bus() -> Option<Connection> {
+async fn a11y_bus() -> Option<Connection> {
     let address = match var("AT_SPI_BUS_ADDRESS") {
         Ok(address) if !address.is_empty() => address,
         _ => {
-            let session_bus = Connection::session().ok()?;
-            BusProxyBlocking::new(&session_bus)
+            let session_bus = Connection::session().await.ok()?;
+            BusProxy::new(&session_bus)
+                .await
                 .ok()?
                 .get_address()
+                .await
                 .ok()?
         }
     };
     let address: Address = address.as_str().try_into().ok()?;
-    ConnectionBuilder::address(address).ok()?.build().ok()
+    ConnectionBuilder::address(address).ok()?.build().await.ok()
 }
