@@ -6,6 +6,8 @@
 use crate::atspi::OwnedObjectAddress;
 use accesskit::{Point, Rect};
 use atspi::CoordType;
+#[cfg(feature = "tokio")]
+use once_cell::sync::Lazy;
 
 #[cfg(not(feature = "tokio"))]
 pub(crate) fn block_on<F: std::future::Future>(future: F) -> F::Output {
@@ -13,16 +15,14 @@ pub(crate) fn block_on<F: std::future::Future>(future: F) -> F::Output {
 }
 
 #[cfg(feature = "tokio")]
-lazy_static::lazy_static! {
-    pub(crate) static ref TOKIO_RT: tokio::runtime::Runtime = {
-        tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(1)
-            .enable_io()
-            .enable_time()
-            .build()
-            .expect("launch of single-threaded tokio runtime")
-    };
-}
+pub(crate) static TOKIO_RT: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
+    tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(1)
+        .enable_io()
+        .enable_time()
+        .build()
+        .expect("launch of single-threaded tokio runtime")
+});
 
 #[cfg(feature = "tokio")]
 pub(crate) fn block_on<F: std::future::Future>(future: F) -> F::Output {

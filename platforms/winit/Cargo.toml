@@ -29,5 +29,4 @@ accesskit_macos = { version = "0.7.0", path = "../macos" }
 accesskit_unix = { version = "0.4.0", path = "../unix", optional = true, default-features = false }
 
 [dev-dependencies]
-tokio = { version = "1", features = ["full"] }
 winit = "0.28"
