@@ -4,7 +4,7 @@ These are the bindings to use AccessKit from other languages through FFI such as
 
 ## How to use in a CMake project
 
-Decompress an accesskit_c release and place the resulting folder somewhere:
+Decompress an accesskit_c release and place the resulting folder somewhere either:
 
 - already known by CMake,
 - listed in your `CMAKE_PREFIX_PATH`,
@@ -45,4 +45,18 @@ Once inside the `bindings/c` directory, CMake can be used like this to build the
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
+```
+
+### Notes on cross-compiling
+
+On Windows, you will need to pass the `-A` flag when configuring the project. For instance, to target ARM64:
+
+```
+cmake -S . -B build -A ARM64
+```
+
+On other platforms you will have to specify which Rust target to use, as well as tell CMake for which architecture to compile. Here is how you would cross-compile for Linux X86 from Linux AMD64:
+
+```
+cmake -S . -B build -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=x86 -DRust_CARGO_TARGET=i686-unknown-linux-gnu
 ```
