@@ -25,7 +25,7 @@ include_directories(YourProject ${ACCESSKIT_INCLUDE_DIR})
 Finally, link the library to your executable:
 
 ```cmake
-target_link_libraries(YourExecutable PUBLIC ${ACCESSKIT_LIBRARIES})
+target_link_libraries(hello_world PUBLIC accesskit)
 ```
 
 See [the `examples` directory](https://github.com/AccessKit/accesskit/tree/main/bindings/c/examples) for project integration examples.
@@ -45,6 +45,7 @@ Once inside the `bindings/c` directory, CMake can be used like this to build the
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
+cmake --install build
 ```
 
 ### Notes on cross-compiling

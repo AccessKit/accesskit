@@ -1,37 +1,52 @@
-set(ACCESSKIT_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/include")
-if (APPLE)
-    set(_ACCESSKIT_OS "macos")
-elseif (UNIX)
-    set(_ACCESSKIT_OS "linux")
-elseif (WIN32)
-    set(_ACCESSKIT_OS "windows")
-    if (MINGW)
-        set(_ACCESSKIT_TOOLCHAIN "mingw/")
-    else()
-        set(_ACCESSKIT_TOOLCHAIN "msvc/")
-    endif()
-    if (CMAKE_VS_PLATFORM_NAME)
-        string(TOLOWER "${CMAKE_VS_PLATFORM_NAME}" LOWER_VS_PLATFORM_NAME)
-        if ("${LOWER_VS_PLATFORM_NAME}" STREQUAL "win32")
-            set(_ACCESSKIT_ARCH x86)
-        elseif("${LOWER_VS_PLATFORM_NAME}" STREQUAL "x64")
-            set(_ACCESSKIT_ARCH x86_64)
-        elseif ("${LOWER_VS_PLATFORM_NAME}" STREQUAL "arm64")
-            set(_ACCESSKIT_ARCH "arm64")
-        endif()
-    endif()
+include("${CMAKE_CURRENT_LIST_DIR}/accesskit.cmake")
+
+add_library(accesskit INTERFACE)
+
+add_library(accesskit-static STATIC IMPORTED GLOBAL)
+find_library(_accesskit_static_lib accesskit "${ACCESSKIT_LIBRARIES_DIR}/static")
+set_property(
+    TARGET accesskit-static
+    PROPERTY IMPORTED_LOCATION "${_accesskit_static_lib}"
+)
+if (_accesskit_os STREQUAL "macos")
+    set_property(
+        TARGET accesskit-static
+        PROPERTY INTERFACE_LINK_DIRECTORIES "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib"
+    )
+elseif (_accesskit_os STREQUAL "windows")
+    set_property(
+        TARGET accesskit-static
+        PROPERTY INTERFACE_LINK_LIBRARIES bcrypt uiautomationcore userenv ws2_32
+    )
 endif()
-if (NOT _ACCESSKIT_TOOLCHAIN)
-    set(_ACCESSKIT_TOOLCHAIN "")
+
+add_library(accesskit-shared SHARED IMPORTED GLOBAL)
+find_library(_accesskit_implib accesskit "${ACCESSKIT_LIBRARIES_DIR}/shared")
+if (_accesskit_os STREQUAL "macos")
+    set_property(
+        TARGET accesskit-shared
+        PROPERTY INTERFACE_LINK_DIRECTORIES "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib"
+    )
+elseif (_accesskit_os STREQUAL "windows")
+    set_property(
+        TARGET accesskit-shared
+        PROPERTY IMPORTED_IMPLIB "${_accesskit_implib}"
+    )
 endif()
-if (NOT _ACCESSKIT_ARCH)
-   if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|amd64|x86_64)$")
-        set(_ACCESSKIT_ARCH x86_64)
-    elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
-        set(_ACCESSKIT_ARCH arm64)
-    elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^(X86|x86|i686)$")
-        set(_ACCESSKIT_ARCH x86)
-    endif()
+if (_accesskit_os STREQUAL "linux")
+    set(_accesskit_shared_lib "libaccesskit.so")
+elseif (_accesskit_os STREQUAL "macos")
+    set(_accesskit_shared_lib "libaccesskit.dylib")
+elseif (_accesskit_os STREQUAL "windows")
+    set(_accesskit_shared_lib "accesskit.dll")
 endif()
-set(ACCESSKIT_LIBRARIES_DIR "${CMAKE_CURRENT_LIST_DIR}/lib/${_ACCESSKIT_OS}/${_ACCESSKIT_ARCH}/${_ACCESSKIT_TOOLCHAIN}")
-find_library(ACCESSKIT_LIBRARIES accesskit ${ACCESSKIT_LIBRARIES_DIR}/static)
+set_property(
+    TARGET accesskit-shared
+    PROPERTY IMPORTED_LOCATION "${ACCESSKIT_LIBRARIES_DIR}/shared/${_accesskit_shared_lib}"
+)
+
+if (BUILD_SHARED_LIBS)
+    target_link_libraries(accesskit INTERFACE accesskit-shared)
+else()
+    target_link_libraries(accesskit INTERFACE accesskit-static)
+endif()

@@ -84,7 +84,7 @@ jobs:
 
       - if: startsWith(matrix.os, 'windows')
         run: |
-          mv target/${{ matrix.target }}/release/accesskit.dll.lib artifacts/${{ matrix.path }}/static
+          mv target/${{ matrix.target }}/release/accesskit.dll.lib artifacts/${{ matrix.path }}/shared/accesskit.lib
           mv target/${{ matrix.target }}/release/*.pdb artifacts/${{ matrix.path }}/shared
       - if: contains(matrix.path, 'mingw')
         run: mv target/${{ matrix.target }}/release/libaccesskit.dll.a artifacts/${{ matrix.path }}/shared/libaccesskit.a
@@ -119,7 +119,7 @@ jobs:
           mv artifacts/headers accesskit_c/include
           cp -r artifacts/*/* accesskit_c/lib
           cp -r bindings/c/examples accesskit_c/
-          cp bindings/c/accesskit-config.cmake accesskit_c/
+          cp bindings/c/accesskit*.cmake accesskit_c/
           cp bindings/c/*.md accesskit_c/
           cp LICENSE* accesskit_c/
           mv accesskit_c ${{ github.ref_name }}
