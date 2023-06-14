@@ -43,7 +43,7 @@ install(FILES
 
 install(FILES
     "$<TARGET_PROPERTY:accesskit-shared,IMPORTED_LOCATION>"
-    "$<$<NOT:$<STREQUAL:$<TARGET_PROPERTY:accesskit-shared,IMPORTED_IMPLIB>,>>:${CMAKE_CURRENT_BINARY_DIR}/accesskit.pdb>"
+    "$<$<STREQUAL:${_accesskit_toolchain},msvc>:${CMAKE_CURRENT_BINARY_DIR}/accesskit.pdb>"
     DESTINATION "${ACCESSKIT_LIBRARIES_DIR}/shared"
 )
 install(FILES
