@@ -18,7 +18,9 @@ jobs:
     - uses: dtolnay/install@master
       with:
         crate: cbindgen
-    - run: make -C bindings/c include/accesskit.h
+    - run: cmake -S bindings/c -B build -DACCESSKIT_BUILD_LIBRARIES=OFF
+    - run: cmake --build build
+    - run: cmake --install build
 
     - name: Upload header file
       uses: actions/upload-artifact@v3

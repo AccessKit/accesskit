@@ -12,6 +12,7 @@ default-members = [
     "common",
     "consumer",
     "platforms/winit",
+    "bindings/c",
 ]
 
 [profile.release]

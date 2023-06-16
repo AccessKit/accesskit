@@ -16,7 +16,7 @@ if (_accesskit_os STREQUAL "macos")
 elseif (_accesskit_os STREQUAL "windows")
     set_property(
         TARGET accesskit-static
-        PROPERTY INTERFACE_LINK_LIBRARIES bcrypt uiautomationcore userenv ws2_32
+        PROPERTY INTERFACE_LINK_LIBRARIES bcrypt ntdll uiautomationcore userenv ws2_32
     )
 endif()
 
