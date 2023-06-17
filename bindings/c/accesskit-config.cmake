@@ -21,22 +21,22 @@ elseif (_accesskit_os STREQUAL "windows")
 endif()
 
 add_library(accesskit-shared SHARED IMPORTED GLOBAL)
-find_library(_accesskit_implib accesskit "${ACCESSKIT_LIBRARIES_DIR}/shared")
 if (_accesskit_os STREQUAL "macos")
     set_property(
         TARGET accesskit-shared
         PROPERTY INTERFACE_LINK_DIRECTORIES "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib"
     )
 elseif (_accesskit_os STREQUAL "windows")
+    find_library(_accesskit_implib accesskit "${ACCESSKIT_LIBRARIES_DIR}/shared")
     set_property(
         TARGET accesskit-shared
         PROPERTY IMPORTED_IMPLIB "${_accesskit_implib}"
     )
 endif()
-if (_accesskit_os STREQUAL "linux")
-    set(_accesskit_shared_lib "libaccesskit.so")
-elseif (_accesskit_os STREQUAL "macos")
+if (_accesskit_os STREQUAL "macos")
     set(_accesskit_shared_lib "libaccesskit.dylib")
+elseif (_accesskit_os STREQUAL "linux")
+    set(_accesskit_shared_lib "libaccesskit.so")
 elseif (_accesskit_os STREQUAL "windows")
     set(_accesskit_shared_lib "accesskit.dll")
 endif()
