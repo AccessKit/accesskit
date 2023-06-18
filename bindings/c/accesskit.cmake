@@ -38,4 +38,7 @@ if (NOT _accesskit_arch)
     endif()
 endif()
 
-set(ACCESSKIT_LIBRARIES_DIR "${CMAKE_CURRENT_LIST_DIR}/lib/${_accesskit_os}/${_accesskit_arch}/${_accesskit_toolchain}")
+set(ACCESSKIT_LIBRARIES_DIR "${CMAKE_CURRENT_LIST_DIR}/lib/${_accesskit_os}/${_accesskit_arch}")
+if (_accesskit_toolchain)
+    string(APPEND ACCESSKIT_LIBRARIES_DIR "/${_accesskit_toolchain}")
+endif()

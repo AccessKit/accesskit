@@ -9,23 +9,16 @@ set_property(
     PROPERTY IMPORTED_LOCATION "${_accesskit_static_lib}"
 )
 if (_accesskit_os STREQUAL "macos")
-    set_property(
-        TARGET accesskit-static
-        PROPERTY INTERFACE_LINK_DIRECTORIES "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib"
-    )
+    target_link_directories(accesskit-static INTERFACE "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib")
+elseif (_accesskit_os STREQUAL "linux")
+    target_link_libraries(accesskit-static INTERFACE -static-libgcc m)
 elseif (_accesskit_os STREQUAL "windows")
-    set_property(
-        TARGET accesskit-static
-        PROPERTY INTERFACE_LINK_LIBRARIES bcrypt ntdll uiautomationcore userenv ws2_32
-    )
+    target_link_libraries(accesskit-static INTERFACE bcrypt ntdll uiautomationcore userenv ws2_32)
 endif()
 
 add_library(accesskit-shared SHARED IMPORTED GLOBAL)
 if (_accesskit_os STREQUAL "macos")
-    set_property(
-        TARGET accesskit-shared
-        PROPERTY INTERFACE_LINK_DIRECTORIES "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib"
-    )
+    target_link_directories(accesskit-shared INTERFACE "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib")
 elseif (_accesskit_os STREQUAL "windows")
     find_library(_accesskit_implib accesskit "${ACCESSKIT_LIBRARIES_DIR}/shared")
     set_property(
