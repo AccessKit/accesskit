@@ -19,6 +19,7 @@ endif()
 add_library(accesskit-shared SHARED IMPORTED GLOBAL)
 if (_accesskit_os STREQUAL "macos")
     target_link_directories(accesskit-shared INTERFACE "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib")
+    target_link_libraries(accesskit-shared "-framework CoreFoundation")
 elseif (_accesskit_os STREQUAL "windows")
     find_library(_accesskit_implib accesskit "${ACCESSKIT_LIBRARIES_DIR}/shared")
     set_property(
