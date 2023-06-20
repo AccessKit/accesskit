@@ -128,6 +128,24 @@ impl macos_subclassing_adapter {
         BoxCastPtr::to_mut_ptr(adapter)
     }
 
+    /// This function takes ownership of `handler`.
+    #[no_mangle]
+    pub unsafe extern "C" fn accesskit_macos_subclassing_adapter_for_window(
+        window: *mut c_void,
+        source: tree_update_factory,
+        source_userdata: *mut c_void,
+        handler: *mut action_handler,
+    ) -> *mut macos_subclassing_adapter {
+        let source = source.unwrap();
+        let handler = box_from_ptr(handler);
+        let adapter = SubclassingAdapter::for_window(
+            window,
+            move || box_from_ptr(source(source_userdata)).into(),
+            handler,
+        );
+        BoxCastPtr::to_mut_ptr(adapter)
+    }
+
     #[no_mangle]
     pub extern "C" fn accesskit_macos_subclassing_adapter_free(
         adapter: *mut macos_subclassing_adapter,
