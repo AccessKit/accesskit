@@ -13,6 +13,13 @@
     * accesskit bumped from 0.10.0 to 0.10.1
     * accesskit_consumer bumped from 0.14.0 to 0.14.1
 
+## [0.7.1](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.7.0...accesskit_macos-v0.7.1) (2023-06-20)
+
+
+### Bug Fixes
+
+* Set proper target to build accesskit_macos documentation ([#226](https://github.com/AccessKit/accesskit/issues/226)) ([9cd6bb1](https://github.com/AccessKit/accesskit/commit/9cd6bb14d60bf85027b330a51afe912c37723902))
+
 ## [0.7.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.6.3...accesskit_macos-v0.7.0) (2023-03-30)
 
 
