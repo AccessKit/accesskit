@@ -10,6 +10,9 @@ repository = "https://github.com/AccessKit/accesskit"
 readme = "README.md"
 edition = "2021"
 
+[package.metadata.docs.rs]
+default-target = "x86_64-apple-darwin"
+
 [dependencies]
 accesskit = { version = "0.11.0", path = "../../common" }
 accesskit_consumer = { version = "0.15.0", path = "../../consumer" }
