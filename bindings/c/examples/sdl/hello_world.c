@@ -66,7 +66,7 @@ accesskit_node *build_announcement(const char *text,
 
 struct accesskit_sdl_adapter {
 #if defined(__APPLE__)
-  accesskit_macos_subclassing_adapter adapter;
+  accesskit_macos_subclassing_adapter *adapter;
 #elif defined(UNIX)
   accesskit_unix_adapter *adapter;
 #elif defined(_WIN32)
@@ -83,9 +83,8 @@ void accesskit_sdl_adapter_init(struct accesskit_sdl_adapter *adapter,
   SDL_SysWMinfo wmInfo;
   SDL_VERSION(&wmInfo.version);
   SDL_GetWindowWMInfo(window, &wmInfo);
-  adapter->adapter = accesskit_macos_subclassing_adapter_new(
-      (void *)wmInfo.info.cocoa.window->contentView(), source, source_userdata,
-      handler);
+  adapter->adapter = accesskit_macos_subclassing_adapter_for_window(
+      (void *)wmInfo.info.cocoa.window, source, source_userdata, handler);
 #elif defined(UNIX)
   adapter->adapter = accesskit_unix_adapter_new(app_name, "SDL", "2.0", source,
                                                 source_userdata, handler);
