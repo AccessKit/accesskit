@@ -185,14 +185,18 @@ impl SubclassingAdapter {
     }
 
     /// Create an adapter that dynamically subclasses the content view
-    /// of the specified window. Panics if the specified window doesn't
-    /// currently have a content view.
+    /// of the specified window.
     ///
     /// The action handler will always be called on the main thread.
     ///
     /// # Safety
     ///
     /// `window` must be a valid, unreleased pointer to an `NSWindow`.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the specified window doesn't currently have
+    /// a content view.
     pub unsafe fn for_window(
         window: *mut c_void,
         source: impl 'static + FnOnce() -> TreeUpdate,
