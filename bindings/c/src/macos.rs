@@ -137,6 +137,15 @@ impl macos_subclassing_adapter {
     }
 
     /// This function takes ownership of `handler`.
+    ///
+    /// # Safety
+    ///
+    /// `window` must be a valid, unreleased pointer to an `NSWindow`.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the specified window doesn't currently have
+    /// a content view.
     #[no_mangle]
     pub unsafe extern "C" fn accesskit_macos_subclassing_adapter_for_window(
         window: *mut c_void,
