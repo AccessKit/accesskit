@@ -52,12 +52,12 @@ cmake --install build
 
 On Windows, you will need to pass the `-A` flag when configuring the project. For instance, to target ARM64:
 
-```
+```bash
 cmake -S . -B build -A ARM64
 ```
 
 On other platforms you will have to specify which Rust target to use, as well as tell CMake for which architecture to compile. Here is how you would cross-compile for Linux X86 from Linux AMD64:
 
-```
+```bash
 cmake -S . -B build -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=x86 -DRust_CARGO_TARGET=i686-unknown-linux-gnu
 ```
