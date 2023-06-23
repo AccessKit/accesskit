@@ -20,7 +20,11 @@ use objc2::{
 use once_cell::{sync::Lazy as SyncLazy, unsync::Lazy};
 use std::{collections::HashMap, ffi::c_void, sync::Mutex};
 
-use crate::{appkit::NSView, event::QueuedEvents, Adapter};
+use crate::{
+    appkit::{NSView, NSWindow},
+    event::QueuedEvents,
+    Adapter,
+};
 
 static SUBCLASSES: SyncLazy<Mutex<HashMap<&'static Class, &'static Class>>> =
     SyncLazy::new(|| Mutex::new(HashMap::new()));
@@ -116,6 +120,14 @@ impl SubclassingAdapter {
     ) -> Self {
         let view = view as *mut NSView;
         let retained_view = unsafe { Id::retain(view) }.unwrap();
+        Self::new_internal(retained_view, source, action_handler)
+    }
+
+    fn new_internal(
+        retained_view: Id<NSView, Shared>,
+        source: impl 'static + FnOnce() -> TreeUpdate,
+        action_handler: Box<dyn ActionHandler>,
+    ) -> Self {
         let adapter: LazyAdapter = {
             let retained_view = retained_view.clone();
             Lazy::new(Box::new(move || {
@@ -123,6 +135,7 @@ impl SubclassingAdapter {
                 unsafe { Adapter::new(view, source(), action_handler) }
             }))
         };
+        let view = Id::as_ptr(&retained_view) as *mut NSView;
         // Cast to a pointer and back to force the lifetime to 'static
         // SAFETY: We know the class will live as long as the instance,
         // and we only use this reference while the instance is alive.
@@ -169,6 +182,29 @@ impl SubclassingAdapter {
             view: retained_view,
             associated,
         }
+    }
+
+    /// Create an adapter that dynamically subclasses the content view
+    /// of the specified window.
+    ///
+    /// The action handler will always be called on the main thread.
+    ///
+    /// # Safety
+    ///
+    /// `window` must be a valid, unreleased pointer to an `NSWindow`.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the specified window doesn't currently have
+    /// a content view.
+    pub unsafe fn for_window(
+        window: *mut c_void,
+        source: impl 'static + FnOnce() -> TreeUpdate,
+        action_handler: Box<dyn ActionHandler>,
+    ) -> Self {
+        let window = unsafe { &*(window as *const NSWindow) };
+        let retained_view = window.content_view().unwrap();
+        Self::new_internal(retained_view, source, action_handler)
     }
 
     /// Initialize the tree if it hasn't been initialized already, then apply

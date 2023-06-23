@@ -6,10 +6,12 @@
 use objc2::{
     extern_class, extern_methods,
     foundation::{NSObject, NSPoint, NSRect},
+    msg_send_id,
+    rc::{Id, Shared},
     ClassType,
 };
 
-use super::NSResponder;
+use super::{NSResponder, NSView};
 
 extern_class!(
     #[derive(Debug)]
@@ -28,5 +30,9 @@ extern_methods!(
 
         #[sel(convertPointFromScreen:)]
         pub(crate) fn convert_point_from_screen(&self, point: NSPoint) -> NSPoint;
+
+        pub(crate) fn content_view(&self) -> Option<Id<NSView, Shared>> {
+            unsafe { msg_send_id![self, contentView] }
+        }
     }
 );
