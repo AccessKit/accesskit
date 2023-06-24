@@ -9,7 +9,7 @@ set_property(
     PROPERTY IMPORTED_LOCATION "${_accesskit_static_lib}"
 )
 if (_accesskit_os STREQUAL "macos")
-    target_link_directories(accesskit-static INTERFACE "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib")
+    target_link_libraries(accesskit-static INTERFACE "-framework AppKit" "-framework Foundation" "-framework CoreFoundation" objc c++)
 elseif (_accesskit_os STREQUAL "linux")
     target_link_libraries(accesskit-static INTERFACE -static-libgcc m)
 elseif (_accesskit_os STREQUAL "windows")
@@ -17,10 +17,7 @@ elseif (_accesskit_os STREQUAL "windows")
 endif()
 
 add_library(accesskit-shared SHARED IMPORTED GLOBAL)
-if (_accesskit_os STREQUAL "macos")
-    target_link_directories(accesskit-shared INTERFACE "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib")
-    target_link_libraries(accesskit-shared "-framework CoreFoundation")
-elseif (_accesskit_os STREQUAL "windows")
+if (_accesskit_os STREQUAL "windows")
     find_library(_accesskit_implib accesskit "${ACCESSKIT_LIBRARIES_DIR}/shared")
     set_property(
         TARGET accesskit-shared
