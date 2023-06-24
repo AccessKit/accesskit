@@ -12,53 +12,44 @@ jobs:
         include:
           - os: macOS-latest
             target: aarch64-apple-darwin
+            cmake-options: -DCMAKE_OSX_ARCHITECTURES=arm64
             path: macos/arm64
-            shared-ext: dylib
-            static-ext: a
           - os: macOS-latest
             target: x86_64-apple-darwin
             path: macos/x86_64
-            shared-ext: dylib
-            static-ext: a
           - os: windows-2019
             target: aarch64-pc-windows-msvc
+            setup-step: 'cmd.exe /k "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsamd64_x86.bat" `& powershell'
+            cmake-options: -A ARM64
             path: windows/arm64/msvc
-            shared-ext: dll
-            static-ext: lib
           - os: windows-2019
             target: i686-pc-windows-msvc
+            setup-step: 'cmd.exe /k "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars32.bat" `& powershell'
+            cmake-options: -A Win32
             path: windows/x86/msvc
-            shared-ext: dll
-            static-ext: lib
           - os: windows-2019
             target: x86_64-pc-windows-msvc
+            setup-step: 'cmd.exe /k "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat" `& powershell'
             path: windows/x86_64/msvc
-            shared-ext: dll
-            static-ext: lib
           - os: ubuntu-latest
             target: i686-pc-windows-gnu
-            use-cross: true
+            setup-step: sudo apt update && sudo apt install -y mingw-w64
+            cmake-options: -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_SYSTEM_PROCESSOR=x86 -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++
             path: windows/x86/mingw
-            shared-ext: dll
-            static-ext: a
           - os: ubuntu-latest
             target: x86_64-pc-windows-gnu
-            use-cross: true
+            setup-step: sudo apt update && sudo apt install -y mingw-w64
+            cmake-options: -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_SYSTEM_PROCESSOR=x86_64 -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++
             path: windows/x86_64/mingw
-            shared-ext: dll
-            static-ext: a
           - os: ubuntu-latest
             target: i686-unknown-linux-gnu
-            use-cross: true
+            setup-step: sudo apt update && sudo apt install -y gcc-multilib g++-multilib
+            cmake-options: -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=x86
             path: linux/x86
-            shared-ext: so
-            static-ext: a
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             path: linux/x86_64
-            shared-ext: so
-            static-ext: a
-    name: cargo build
+    name: Build
     steps:
       - uses: actions/checkout@v3
 
@@ -70,34 +61,18 @@ jobs:
           profile: minimal
           override: true
 
-      - name: cargo build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          use-cross: ${{ matrix.use-cross || false }}
-          args: --package accesskit_c --release --target ${{ matrix.target }}
-
-      - shell: bash
+      - name: build libraries
         run: |
-          mkdir -p artifacts/${{ matrix.path }}/shared
-          mkdir -p artifacts/${{ matrix.path }}/static
-
-      - if: startsWith(matrix.os, 'windows')
-        run: |
-          mv target/${{ matrix.target }}/release/accesskit.dll.lib artifacts/${{ matrix.path }}/shared/accesskit.lib
-          mv target/${{ matrix.target }}/release/*.pdb artifacts/${{ matrix.path }}/shared
-      - if: contains(matrix.path, 'mingw')
-        run: mv target/${{ matrix.target }}/release/libaccesskit.dll.a artifacts/${{ matrix.path }}/shared/libaccesskit.a
-
-      - run: |
-          mv target/${{ matrix.target }}/release/*.${{ matrix.shared-ext }} artifacts/${{ matrix.path }}/shared
-          mv target/${{ matrix.target }}/release/*.${{ matrix.static-ext }} artifacts/${{ matrix.path }}/static
+          ${{ matrix.setup-step || '' }}
+          cmake -S bindings/c -B build -DACCESSKIT_BUILD_HEADERS=OFF -DRust_CARGO_TARGET=${{ matrix.target }} ${{ matrix.cmake-options || '' }} ${{ !contains(matrix.target, 'msvc') && '-DCMAKE_BUILD_TYPE=Release' || '' }}
+          cmake --build build ${{ contains(matrix.target, 'msvc') && '--config Release' || '' }}
+          cmake --install build ${{ contains(matrix.target, 'msvc') && '--config Release' || '' }}
 
       - name: Upload binaries
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.target }}
-          path: artifacts
+          path: bindings/c/lib
 
   generate-headers:
     if: startsWith(github.ref_name, 'accesskit_c-v')
@@ -119,6 +94,7 @@ jobs:
           mv artifacts/headers accesskit_c/include
           cp -r artifacts/*/* accesskit_c/lib
           cp -r bindings/c/examples accesskit_c/
+          cp bindings/c/accesskit*.cmake accesskit_c/
           cp bindings/c/*.md accesskit_c/
           cp LICENSE* accesskit_c/
           mv accesskit_c ${{ github.ref_name }}

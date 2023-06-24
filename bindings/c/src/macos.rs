@@ -7,7 +7,7 @@ use crate::{
     action_handler, box_from_ptr, ref_from_ptr, tree_update, tree_update_factory, BoxCastPtr,
     CastPtr,
 };
-use accesskit_macos::{Adapter, NSObject, NSPoint, QueuedEvents, SubclassingAdapter};
+use accesskit_macos::{Adapter, NSPoint, QueuedEvents, SubclassingAdapter};
 use std::{os::raw::c_void, ptr};
 
 pub struct macos_queued_events {
@@ -41,6 +41,10 @@ impl BoxCastPtr for macos_adapter {}
 
 impl macos_adapter {
     /// This function takes ownership of `initial_state` and `handler`.
+    ///
+    /// # Safety
+    ///
+    /// `view` must be a valid, unreleased pointer to an `NSView`.
     #[no_mangle]
     pub unsafe extern "C" fn accesskit_macos_adapter_new(
         view: *mut c_void,
@@ -111,6 +115,10 @@ impl BoxCastPtr for macos_subclassing_adapter {}
 
 impl macos_subclassing_adapter {
     /// This function takes ownership of `handler`.
+    ///
+    /// # Safety
+    ///
+    /// `view` must be a valid, unreleased pointer to an `NSView`.
     #[no_mangle]
     pub unsafe extern "C" fn accesskit_macos_subclassing_adapter_new(
         view: *mut c_void,
@@ -129,6 +137,15 @@ impl macos_subclassing_adapter {
     }
 
     /// This function takes ownership of `handler`.
+    ///
+    /// # Safety
+    ///
+    /// `window` must be a valid, unreleased pointer to an `NSWindow`.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the specified window doesn't currently have
+    /// a content view.
     #[no_mangle]
     pub unsafe extern "C" fn accesskit_macos_subclassing_adapter_for_window(
         window: *mut c_void,

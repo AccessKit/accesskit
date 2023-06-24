@@ -1,0 +1,9 @@
+[target.aarch64-apple-darwin]
+rustflags = [
+  "-C", "link-arg=-Wl,-install_name,@rpath/libaccesskit.dylib",
+]
+
+[target.x86_64-apple-darwin]
+rustflags = [
+  "-C", "link-arg=-Wl,-install_name,@rpath/libaccesskit.dylib",
+]
