@@ -1,5 +1,7 @@
 # Changelog
 
+* windows dependency updated from 0.44 to 0.48
+
 * The following workspace dependencies were updated
   * dependencies
     * accesskit bumped from 0.8.0 to 0.8.1
