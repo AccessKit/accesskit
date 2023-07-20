@@ -793,7 +793,7 @@ macro_rules! patterns {
                                 // SAFETY: We know we're running inside a full COM implementation.
                                 let intermediate: paste! { [< I $base_pattern_id Provider>] } =
                                     unsafe { self.cast() }?;
-                                return Ok(intermediate.into());
+                                return intermediate.cast();
                             }
                         })*
                         _ => (),
@@ -926,7 +926,7 @@ patterns! {
             self.resolve_for_text_pattern(|node| {
                 if let Some(range) = node.text_selection() {
                     let platform_range: ITextRangeProvider = PlatformTextRange::new(&self.context, range).into();
-                    let iunknown: IUnknown = platform_range.into();
+                    let iunknown: IUnknown = platform_range.cast()?;
                     Ok(safe_array_from_com_slice(&[iunknown]))
                 } else {
                     Ok(std::ptr::null_mut())
@@ -941,7 +941,7 @@ patterns! {
             Ok(std::ptr::null_mut())
         },
 
-        fn RangeFromChild(&self, _child: &Option<IRawElementProviderSimple>) -> Result<ITextRangeProvider> {
+        fn RangeFromChild(&self, _child: Option<&IRawElementProviderSimple>) -> Result<ITextRangeProvider> {
             // We don't support embedded objects in text.
             Err(not_implemented())
         },
