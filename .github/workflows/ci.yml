@@ -44,7 +44,7 @@ jobs:
           components: clippy
 
       - name: restore cache
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
 
       - name: cargo clippy
         run: cargo clippy --all-targets -- -D warnings
