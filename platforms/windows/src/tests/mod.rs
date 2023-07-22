@@ -334,8 +334,8 @@ impl FocusEventHandler {
 }
 
 impl IUIAutomationFocusChangedEventHandler_Impl for FocusEventHandler {
-    fn HandleFocusChangedEvent(&self, sender: &Option<IUIAutomationElement>) -> Result<()> {
-        self.received.put(sender.as_ref().unwrap().clone());
+    fn HandleFocusChangedEvent(&self, sender: Option<&IUIAutomationElement>) -> Result<()> {
+        self.received.put(sender.unwrap().clone());
         Ok(())
     }
 }
