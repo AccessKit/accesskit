@@ -77,7 +77,7 @@ impl windows_adapter {
         let initial_state = box_from_ptr(initial_state);
         let handler = box_from_ptr(handler);
         let uia_init_marker = *box_from_ptr(uia_init_marker);
-        let adapter = Adapter::new(hwnd, initial_state.into(), handler, uia_init_marker);
+        let adapter = Adapter::new(hwnd, *initial_state, handler, uia_init_marker);
         BoxCastPtr::to_mut_ptr(adapter)
     }
 
@@ -95,7 +95,7 @@ impl windows_adapter {
     ) -> *mut windows_queued_events {
         let adapter = ref_from_ptr(adapter);
         let update = box_from_ptr(update);
-        let events = adapter.update(update.into());
+        let events = adapter.update(*update);
         BoxCastPtr::to_mut_ptr(events)
     }
 
@@ -134,7 +134,7 @@ impl windows_subclassing_adapter {
         let handler = box_from_ptr(handler);
         let adapter = SubclassingAdapter::new(
             hwnd,
-            move || box_from_ptr(source(source_userdata)).into(),
+            move || *box_from_ptr(source(source_userdata)),
             handler,
         );
         BoxCastPtr::to_mut_ptr(adapter)
@@ -156,7 +156,7 @@ impl windows_subclassing_adapter {
     ) -> *mut windows_queued_events {
         let adapter = ref_from_ptr(adapter);
         let update = box_from_ptr(update);
-        let events = adapter.update(update.into());
+        let events = adapter.update(*update);
         BoxCastPtr::to_mut_ptr(events)
     }
 
@@ -169,8 +169,8 @@ impl windows_subclassing_adapter {
     ) -> *mut windows_queued_events {
         let update_factory = update_factory.unwrap();
         let adapter = ref_from_ptr(adapter);
-        let events = adapter
-            .update_if_active(|| box_from_ptr(update_factory(update_factory_userdata)).into());
+        let events =
+            adapter.update_if_active(|| *box_from_ptr(update_factory(update_factory_userdata)));
         match events {
             Some(events) => BoxCastPtr::to_mut_ptr(events),
             None => ptr::null_mut(),

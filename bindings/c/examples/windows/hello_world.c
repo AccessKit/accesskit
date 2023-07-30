@@ -79,13 +79,11 @@ void window_state_free(struct window_state *state) {
   free(state);
 }
 
-accesskit_opt_node_id window_state_focus(struct window_state *state) {
-  accesskit_opt_node_id result;
-  result.has_value = state->is_window_focused;
-  if (result.has_value) {
-    result.value = state->focus;
+void window_state_set_tree_update_focus(struct window_state *state,
+                                        accesskit_tree_update *update) {
+  if (state->is_window_focused) {
+    accesskit_tree_update_set_focus(update, state->focus);
   }
-  return result;
 }
 
 accesskit_node *window_state_build_root(struct window_state *state) {
@@ -106,21 +104,17 @@ accesskit_tree_update *window_state_build_initial_tree(
       build_button(BUTTON_1_ID, "Button 1", state->node_classes);
   accesskit_node *button_2 =
       build_button(BUTTON_2_ID, "Button 2", state->node_classes);
-  accesskit_tree_update *result =
-      accesskit_tree_update_new((state->announcement != NULL) ? 4 : 3);
-  result->tree.has_value = true;
-  result->tree.value = accesskit_tree_new(WINDOW_ID);
-  result->focus = window_state_focus(state);
-  result->ids[0] = WINDOW_ID;
-  result->nodes[0] = root;
-  result->ids[1] = BUTTON_1_ID;
-  result->nodes[1] = button_1;
-  result->ids[2] = BUTTON_2_ID;
-  result->nodes[2] = button_2;
+  accesskit_tree_update *result = accesskit_tree_update_with_capacity(
+      (state->announcement != NULL) ? 4 : 3);
+  accesskit_tree_update_set_tree(result, accesskit_tree_new(WINDOW_ID));
+  window_state_set_tree_update_focus(state, result);
+  accesskit_tree_update_push_node(result, WINDOW_ID, root);
+  accesskit_tree_update_push_node(result, BUTTON_1_ID, button_1);
+  accesskit_tree_update_push_node(result, BUTTON_2_ID, button_2);
   if (state->announcement != NULL) {
-    result->ids[3] = ANNOUNCEMENT_ID;
-    result->nodes[3] =
+    accesskit_node *announcement =
         build_announcement(state->announcement, state->node_classes);
+    accesskit_tree_update_push_node(result, ANNOUNCEMENT_ID, announcement);
   }
   return result;
 }
@@ -165,12 +159,10 @@ void window_state_press_button(struct window_state *state,
     accesskit_node *announcement =
         build_announcement(text, state->node_classes);
     accesskit_node *root = window_state_build_root(state);
-    accesskit_tree_update *update = accesskit_tree_update_new(2);
-    update->ids[0] = ANNOUNCEMENT_ID;
-    update->nodes[0] = announcement;
-    update->ids[1] = WINDOW_ID;
-    update->nodes[1] = root;
-    update->focus = window_state_focus(state);
+    accesskit_tree_update *update = accesskit_tree_update_with_capacity(2);
+    accesskit_tree_update_push_node(update, ANNOUNCEMENT_ID, announcement);
+    accesskit_tree_update_push_node(update, WINDOW_ID, root);
+    window_state_set_tree_update_focus(state, update);
     accesskit_windows_queued_events *events =
         accesskit_windows_adapter_update(state->adapter, update);
     accesskit_windows_queued_events_raise(events);
@@ -184,10 +176,9 @@ struct window_state *get_window_state(HWND window) {
 void update_focus(HWND window, bool is_window_focused) {
   struct window_state *state = get_window_state(window);
   state->is_window_focused = is_window_focused;
-  accesskit_opt_node_id focus = window_state_focus(state);
   if (state->adapter != NULL) {
-    accesskit_tree_update *update = accesskit_tree_update_new(0);
-    update->focus = focus;
+    accesskit_tree_update *update = accesskit_tree_update_new();
+    window_state_set_tree_update_focus(state, update);
     accesskit_windows_queued_events *events =
         accesskit_windows_adapter_update(state->adapter, update);
     accesskit_windows_queued_events_raise(events);
