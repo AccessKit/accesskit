@@ -53,7 +53,7 @@ impl macos_adapter {
     ) -> *mut macos_adapter {
         let initial_state = box_from_ptr(initial_state);
         let handler = box_from_ptr(handler);
-        let adapter = Adapter::new(view, initial_state.into(), handler);
+        let adapter = Adapter::new(view, *initial_state, handler);
         BoxCastPtr::to_mut_ptr(adapter)
     }
 
@@ -71,7 +71,7 @@ impl macos_adapter {
     ) -> *mut macos_queued_events {
         let adapter = ref_from_ptr(adapter);
         let update = box_from_ptr(update);
-        let events = adapter.update(update.into());
+        let events = adapter.update(*update);
         BoxCastPtr::to_mut_ptr(events)
     }
 
@@ -130,7 +130,7 @@ impl macos_subclassing_adapter {
         let handler = box_from_ptr(handler);
         let adapter = SubclassingAdapter::new(
             view,
-            move || box_from_ptr(source(source_userdata)).into(),
+            move || *box_from_ptr(source(source_userdata)),
             handler,
         );
         BoxCastPtr::to_mut_ptr(adapter)
@@ -157,7 +157,7 @@ impl macos_subclassing_adapter {
         let handler = box_from_ptr(handler);
         let adapter = SubclassingAdapter::for_window(
             window,
-            move || box_from_ptr(source(source_userdata)).into(),
+            move || *box_from_ptr(source(source_userdata)),
             handler,
         );
         BoxCastPtr::to_mut_ptr(adapter)
@@ -179,7 +179,7 @@ impl macos_subclassing_adapter {
     ) -> *mut macos_queued_events {
         let adapter = ref_from_ptr(adapter);
         let update = box_from_ptr(update);
-        let events = adapter.update(update.into());
+        let events = adapter.update(*update);
         BoxCastPtr::to_mut_ptr(events)
     }
 
@@ -192,8 +192,8 @@ impl macos_subclassing_adapter {
     ) -> *mut macos_queued_events {
         let update_factory = update_factory.unwrap();
         let adapter = ref_from_ptr(adapter);
-        let events = adapter
-            .update_if_active(|| box_from_ptr(update_factory(update_factory_userdata)).into());
+        let events =
+            adapter.update_if_active(|| *box_from_ptr(update_factory(update_factory_userdata)));
         match events {
             Some(events) => BoxCastPtr::to_mut_ptr(events),
             None => ptr::null_mut(),

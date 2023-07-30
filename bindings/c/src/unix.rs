@@ -43,7 +43,7 @@ impl unix_adapter {
             app_name,
             toolkit_name,
             toolkit_version,
-            move || box_from_ptr(initial_state(initial_state_userdata)).into(),
+            move || *box_from_ptr(initial_state(initial_state_userdata)),
             handler,
         );
         adapter.map_or_else(ptr::null_mut, BoxCastPtr::to_mut_ptr)
@@ -72,6 +72,6 @@ impl unix_adapter {
     ) {
         let adapter = ref_from_ptr(adapter);
         let update = box_from_ptr(update);
-        adapter.update(update.into());
+        adapter.update(*update);
     }
 }

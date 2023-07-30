@@ -911,8 +911,6 @@ impl tree {
     }
 }
 
-opt_struct! { opt_tree, tree }
-
 impl From<tree> for Tree {
     fn from(tree: tree) -> Self {
         Self {
@@ -922,65 +920,72 @@ impl From<tree> for Tree {
     }
 }
 
-/// Use `accesskit_tree_update_new` to create this struct. Do not reallocate `ids` and `nodes`.
-#[repr(C)]
 pub struct tree_update {
-    pub node_count: usize,
-    pub ids: *mut node_id,
-    pub nodes: *mut *mut node,
-    pub tree: opt_tree,
-    pub focus: opt_node_id,
+    _private: [u8; 0],
 }
 
 impl CastPtr for tree_update {
-    type RustType = tree_update;
+    type RustType = TreeUpdate;
 }
 
 impl BoxCastPtr for tree_update {}
 
 impl tree_update {
     #[no_mangle]
-    pub extern "C" fn accesskit_tree_update_new(node_count: usize) -> *mut tree_update {
-        let mut ids = Vec::with_capacity(node_count);
-        let mut nodes = Vec::with_capacity(node_count);
-        let update = tree_update {
-            node_count,
-            ids: ids.as_mut_ptr(),
-            nodes: nodes.as_mut_ptr(),
-            tree: opt_tree::default(),
-            focus: opt_node_id::default(),
+    pub extern "C" fn accesskit_tree_update_new() -> *mut tree_update {
+        let update = TreeUpdate::default();
+        BoxCastPtr::to_mut_ptr(update)
+    }
+
+    #[no_mangle]
+    pub extern "C" fn accesskit_tree_update_with_capacity(capacity: usize) -> *mut tree_update {
+        let update = TreeUpdate {
+            nodes: Vec::with_capacity(capacity),
+            ..Default::default()
         };
-        mem::forget(ids);
-        mem::forget(nodes);
         BoxCastPtr::to_mut_ptr(update)
     }
 
     #[no_mangle]
     pub extern "C" fn accesskit_tree_update_free(update: *mut tree_update) {
-        drop(TreeUpdate::from(box_from_ptr(update)));
+        drop(box_from_ptr(update));
     }
-}
 
-impl From<Box<tree_update>> for TreeUpdate {
-    fn from(update: Box<tree_update>) -> Self {
-        let ids = unsafe {
-            Vec::from_raw_parts(
-                update.ids as *mut NodeId,
-                update.node_count,
-                update.node_count,
-            )
-        };
-        let nodes =
-            unsafe { Vec::from_raw_parts(update.nodes, update.node_count, update.node_count) };
-        Self {
-            nodes: ids
-                .into_iter()
-                .zip(nodes.into_iter().map(box_from_ptr))
-                .map(|(id, node)| (id, *node))
-                .collect::<Vec<(NodeId, Node)>>(),
-            tree: update.tree.into(),
-            focus: update.focus.into(),
-        }
+    /// Appends the provided node to the tree update's list of nodes.
+    /// Takes ownership of `node`.
+    #[no_mangle]
+    pub extern "C" fn accesskit_tree_update_push_node(
+        update: *mut tree_update,
+        id: node_id,
+        node: *mut node,
+    ) {
+        let update = mut_from_ptr(update);
+        let node = box_from_ptr(node);
+        update.nodes.push((id.into(), *node));
+    }
+
+    #[no_mangle]
+    pub extern "C" fn accesskit_tree_update_set_tree(update: *mut tree_update, tree: tree) {
+        let update = mut_from_ptr(update);
+        update.tree = Some(tree.into());
+    }
+
+    #[no_mangle]
+    pub extern "C" fn accesskit_tree_update_clear_tree(update: *mut tree_update) {
+        let update = mut_from_ptr(update);
+        update.tree = None;
+    }
+
+    #[no_mangle]
+    pub extern "C" fn accesskit_tree_update_set_focus(update: *mut tree_update, focus: node_id) {
+        let update = mut_from_ptr(update);
+        update.focus = Some(focus.into());
+    }
+
+    #[no_mangle]
+    pub extern "C" fn accesskit_tree_update_clear_focus(update: *mut tree_update) {
+        let update = mut_from_ptr(update);
+        update.focus = None;
     }
 }
 
