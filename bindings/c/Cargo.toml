@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_c"
-version = "0.3.2"
+version = "0.4.0"
 authors = ["Arnold Loubriat <datatriny@gmail.com>"]
 license = "MIT/Apache-2.0"
 publish = false
@@ -14,14 +14,14 @@ crate-type = ["cdylib", "staticlib"]
 cbindgen = []
 
 [dependencies]
-accesskit = { version = "0.11.0", path = "../../common" }
+accesskit = { version = "0.11.1", path = "../../common" }
 paste = "1.0"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-accesskit_windows = { version = "0.14.0", path = "../../platforms/windows" }
+accesskit_windows = { version = "0.14.1", path = "../../platforms/windows" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-accesskit_macos = { version = "0.7.1", path = "../../platforms/macos" }
+accesskit_macos = { version = "0.8.0", path = "../../platforms/macos" }
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
-accesskit_unix = { version = "0.5.0", path = "../../platforms/unix" }
+accesskit_unix = { version = "0.5.1", path = "../../platforms/unix" }
