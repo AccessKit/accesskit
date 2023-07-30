@@ -707,8 +707,8 @@ pub struct TextPosition {
 pub struct TextSelection {
     /// The position where the selection started, and which does not change
     /// as the selection is expanded or contracted. If there is no selection
-    /// but only a caret, this must be equal to [`focus`]. This is also known
-    /// as a degenerate selection.
+    /// but only a caret, this must be equal to the value of [`TextSelection::focus`].
+    /// This is also known as a degenerate selection.
     pub anchor: TextPosition,
     /// The active end of the selection, which changes as the selection
     /// is expanded or contracted, or the position of the caret if there is
