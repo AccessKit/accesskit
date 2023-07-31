@@ -118,7 +118,8 @@ void accesskit_sdl_adapter_update(const struct accesskit_sdl_adapter *adapter,
     accesskit_macos_queued_events_raise(events);
   }
 #elif defined(UNIX)
-  accesskit_unix_adapter_update(adapter->adapter, update);
+  if (adapter->adapter != NULL)
+    accesskit_unix_adapter_update(adapter->adapter, update);
 #elif defined(_WIN32)
   accesskit_windows_queued_events *events =
       accesskit_windows_subclassing_adapter_update(adapter->adapter, update);
@@ -140,8 +141,10 @@ void accesskit_sdl_adapter_update_if_active(
     accesskit_macos_queued_events_raise(events);
   }
 #elif defined(UNIX)
-  accesskit_unix_adapter_update(adapter->adapter,
-                                update_factory(update_factory_userdata));
+  if (adapter->adapter != NULL) {
+    accesskit_unix_adapter_update(adapter->adapter,
+                                  update_factory(update_factory_userdata));
+  }
 #elif defined(_WIN32)
   accesskit_windows_queued_events *events =
       accesskit_windows_subclassing_adapter_update_if_active(
@@ -155,16 +158,18 @@ void accesskit_sdl_adapter_update_if_active(
 void accesskit_sdl_adapter_update_root_window_bounds(
     const struct accesskit_sdl_adapter *adapter, SDL_Window *window) {
 #if defined(UNIX)
-  int x, y, width, height;
-  SDL_GetWindowPosition(window, &x, &y);
-  SDL_GetWindowSize(window, &width, &height);
-  int top, left, bottom, right;
-  SDL_GetWindowBordersSize(window, &top, &left, &bottom, &right);
-  accesskit_rect outer_bounds = {x - left, y - top, x + width + right,
-                                 y + height + bottom};
-  accesskit_rect inner_bounds = {x, y, x + width, y + height};
-  accesskit_unix_adapter_set_root_window_bounds(adapter->adapter, outer_bounds,
-                                                inner_bounds);
+  if (adapter->adapter != NULL) {
+    int x, y, width, height;
+    SDL_GetWindowPosition(window, &x, &y);
+    SDL_GetWindowSize(window, &width, &height);
+    int top, left, bottom, right;
+    SDL_GetWindowBordersSize(window, &top, &left, &bottom, &right);
+    accesskit_rect outer_bounds = {x - left, y - top, x + width + right,
+                                   y + height + bottom};
+    accesskit_rect inner_bounds = {x, y, x + width, y + height};
+    accesskit_unix_adapter_set_root_window_bounds(adapter->adapter,
+                                                  outer_bounds, inner_bounds);
+  }
 #endif
 }
 
