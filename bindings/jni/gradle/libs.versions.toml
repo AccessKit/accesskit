@@ -1,0 +1,13 @@
+[versions]
+plugin-android = "7.4.2"
+plugin-kotlin = "1.8.10"
+desugar-jdk-libs = "2.0.2"
+
+[libraries]
+plugin-android = { module = "com.android.tools.build:gradle", version.ref = "plugin-android" }
+plugin-kotlin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "plugin-kotlin" }
+plugin-kotlin-serialization = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "plugin-kotlin" }
+desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar-jdk-libs" }
+
+[bundles]
+plugins = ["plugin-android", "plugin-kotlin",  "plugin-kotlin-serialization"]

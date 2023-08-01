@@ -8,6 +8,7 @@ members = [
     "platforms/windows",
     "platforms/winit",
     "bindings/c",
+    "bindings/jni",
 ]
 default-members = [
     "common",
