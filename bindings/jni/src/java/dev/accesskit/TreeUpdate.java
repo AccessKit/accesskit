@@ -19,8 +19,4 @@ public final class TreeUpdate {
      * takes ownership of the tree update once you push it.
      */
     public native void drop();
-
-    static {
-        Library.load();
-    }
 }
