@@ -9,7 +9,7 @@ import java.util.function.Supplier;
 
 public final class WindowsSubclassingAdapter implements AutoCloseable {
     // TODO: action handler
-    WindowsSubclassingAdapter(long hwnd, Supplier<TreeUpdate> initialStateSupplier) {
+    public WindowsSubclassingAdapter(long hwnd, Supplier<TreeUpdate> initialStateSupplier) {
         NativePointerSupplier nativeSupplier = TreeUpdate.makeNativeSupplier(initialStateSupplier);
         ptr = nativeNew(hwnd, nativeSupplier);
     }
