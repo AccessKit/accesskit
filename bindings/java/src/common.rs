@@ -6,7 +6,7 @@
 use accesskit::*;
 use jni::{
     objects::{JByteArray, JClass},
-    sys::{jint, jlong},
+    sys::{jdouble, jint, jlong},
     JNIEnv,
 };
 
@@ -60,6 +60,20 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetName(
     let builder = mut_from_jptr::<NodeBuilder>(ptr);
     let value = box_str_from_utf8_jbytes(&mut env, value);
     builder.set_name(value);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetBounds(
+    mut env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    x0: jdouble,
+    y0: jdouble,
+    x1: jdouble,
+    y1: jdouble,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    builder.set_bounds(Rect { x0, y0, x1, y1 })
 }
 
 #[no_mangle]

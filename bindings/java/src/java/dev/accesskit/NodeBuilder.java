@@ -27,6 +27,11 @@ public final class NodeBuilder {
         nativeSetName(ptr, Util.bytesFromString(value));
     }
 
+    public void setBounds(Rect value) {
+        checkActive();
+        nativeSetBounds(ptr, value.x0, value.y0, value.x1, value.y1);
+    }
+
     public void addChild(NodeId id) {
         checkActive();
         nativeAddChild(ptr, id.low, id.high);
@@ -55,6 +60,7 @@ public final class NodeBuilder {
     private static native long nativeNew(int role);
     private static native void nativeDrop(long ptr);
     private static native void nativeSetName(long ptr, byte[] value);
+    private static native void nativeSetBounds(long ptr, double x0, double y0, double x1, double y1);
     private static native void nativeAddChild(long ptr, long idLow, long idHigh);
     private static native void nativeClearChildren(long ptr);
     private static native long nativeBuild(long ptr);
