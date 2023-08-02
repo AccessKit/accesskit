@@ -64,7 +64,7 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetName(
 
 #[no_mangle]
 pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetBounds(
-    mut env: JNIEnv,
+    _env: JNIEnv,
     _class: JClass,
     ptr: jlong,
     x0: jdouble,

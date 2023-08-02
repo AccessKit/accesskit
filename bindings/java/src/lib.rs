@@ -15,10 +15,14 @@ use jni::{objects::JByteArray, sys::jlong, JNIEnv};
 mod common;
 #[cfg(target_os = "windows")]
 mod windows;
+#[cfg(target_os = "macos")]
+mod macos;
 
 pub use common::*;
 #[cfg(target_os = "windows")]
 pub use windows::*;
+#[cfg(target_os = "macos")]
+pub use macos::*;
 
 pub(crate) fn into_jptr<T>(source: T) -> jlong {
     Box::into_raw(Box::new(source)) as jlong
