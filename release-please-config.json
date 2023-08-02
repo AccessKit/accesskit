@@ -11,6 +11,6 @@
     "platforms/windows": {},
     "platforms/winit": {},
     "bindings/c": {},
-    "bindings/jni": {}
+    "bindings/java": {}
   }
 }

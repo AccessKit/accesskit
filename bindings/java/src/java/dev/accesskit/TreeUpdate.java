@@ -7,16 +7,22 @@ package dev.accesskit;
 
 public final class TreeUpdate {
     public TreeUpdate() {
-        init();
+        ptr = nativeNew();
     }
-
-    private long ptr = 0;
-    private native void init();
 
     /**
      * Releases resources associated with this object. In normal usage,
-     * you don't need to call this function, since the platform adapter
+     * you don't need to call this method, since the platform adapter
      * takes ownership of the tree update once you push it.
      */
-    public native void drop();
+    public void drop() {
+        if (ptr != 0) {
+            nativeDrop(ptr);
+            ptr = 0;
+        }
+    }
+
+    private long ptr;
+    private static native long nativeNew();
+    private static native void nativeDrop(long ptr);
 }
