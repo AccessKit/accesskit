@@ -10,7 +10,7 @@ use jni::{
     JNIEnv,
 };
 
-use crate::{box_from_jptr, box_str_from_utf8_jbytes, into_jptr, mut_from_jptr, ref_from_jptr};
+use crate::{box_from_jptr, box_str_from_utf8_jbytes, into_jptr, mut_from_jptr};
 
 fn node_id_from_parts(low: jlong, high: jlong) -> NodeId {
     let num = ((high as u128) << 64) | (low as u128);

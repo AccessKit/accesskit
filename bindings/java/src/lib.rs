@@ -13,8 +13,12 @@
 use jni::{objects::JByteArray, sys::jlong, JNIEnv};
 
 mod common;
+#[cfg(target_os = "windows")]
+mod windows;
 
 pub use common::*;
+#[cfg(target_os = "windows")]
+pub use windows::*;
 
 pub(crate) fn into_jptr<T>(source: T) -> jlong {
     Box::into_raw(Box::new(source)) as jlong

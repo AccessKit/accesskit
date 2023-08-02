@@ -5,6 +5,8 @@
 
 package dev.accesskit;
 
+import java.util.function.Supplier;
+
 public final class TreeUpdate {
     public TreeUpdate() {
         ptr = nativeNew();
@@ -68,5 +70,15 @@ public final class TreeUpdate {
 
     void checkActive() {
         Util.checkActive(ptr);
+    }
+
+    static NativePointerSupplier makeNativeSupplier(Supplier<TreeUpdate> supplier) {
+        return () -> {
+            TreeUpdate update = supplier.get();
+            update.checkActive();
+            long ptr = update.ptr;
+            update.ptr = 0;
+            return ptr;
+        };
     }
 }
