@@ -11,7 +11,7 @@ name = "accesskit_jni"
 crate-type = ["cdylib"]
 
 [dependencies]
-accesskit = { version = "0.11.1", path = "../../common" }
+accesskit = { version = "0.11.1", path = "../../common", features = ["enumn"] }
 jni = "0.21.1"
 paste = "1.0"
 

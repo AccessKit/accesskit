@@ -22,7 +22,24 @@ public final class NodeBuilder {
         }
     }
 
-    private long ptr;
+    public void setName(String value) {
+        nativeSetName(ptr, Util.bytesFromString(value));
+    }
+
+    public Node build() {
+        checkActive();
+        long nodePtr = nativeBuild(ptr);
+        ptr = 0;
+        return new Node(nodePtr);
+    }
+
+    long ptr;
     private static native long nativeNew(int role);
     private static native void nativeDrop(long ptr);
+    private static native void nativeSetName(long ptr, byte[] value);
+    private static native long nativeBuild(long ptr);
+
+    void checkActive() {
+        Util.checkActive(ptr);
+    }
 }

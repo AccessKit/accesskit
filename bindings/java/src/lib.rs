@@ -10,7 +10,7 @@
 // the LICENSE-ISC file), or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use jni::sys::jlong;
+use jni::{objects::JByteArray, sys::jlong, JNIEnv};
 
 mod common;
 
@@ -30,4 +30,9 @@ pub(crate) fn mut_from_jptr<'a, T>(ptr: jlong) -> &'a mut T {
 
 pub(crate) fn box_from_jptr<T>(ptr: jlong) -> Box<T> {
     unsafe { Box::from_raw(ptr as *mut T) }
+}
+
+pub(crate) fn box_str_from_utf8_jbytes(env: &mut JNIEnv, bytes: JByteArray) -> Box<str> {
+    let bytes = env.convert_byte_array(bytes).unwrap();
+    unsafe { String::from_utf8_unchecked(bytes) }.into()
 }

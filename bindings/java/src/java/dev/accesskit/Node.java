@@ -5,15 +5,15 @@
 
 package dev.accesskit;
 
-public final class TreeUpdate {
-    public TreeUpdate() {
-        ptr = nativeNew();
+public final class Node {
+    Node(long ptr) {
+        this.ptr = ptr;
     }
 
     /**
      * Releases resources associated with this object. In normal usage,
-     * you don't need to call this method, since the platform adapter
-     * takes ownership of the tree update once you push it.
+     * you don't need to call this method, since the tree update
+     * takes ownership of each node that is added.
      */
     public void drop() {
         if (ptr != 0) {
@@ -22,17 +22,8 @@ public final class TreeUpdate {
         }
     }
 
-    public void add(NodeId id, Node node) {
-        checkActive();
-        node.checkActive();
-        nativeAddNode(id.low, id.high, node.ptr);
-        node.ptr = 0;
-    }
-
     long ptr;
-    private static native long nativeNew();
     private static native void nativeDrop(long ptr);
-    private static native void nativeAddNode(long idLow, long idHigh, long nodePtr);
 
     void checkActive() {
         Util.checkActive(ptr);
