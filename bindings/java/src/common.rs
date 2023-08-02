@@ -17,6 +17,10 @@ fn node_id_from_parts(low: jlong, high: jlong) -> NodeId {
     NodeId(unsafe { std::num::NonZeroU128::new_unchecked(num) })
 }
 
+fn optional_node_id_from_parts(low: jlong, high: jlong) -> Option<NodeId> {
+    (low != 0 || high != 0).then(|| node_id_from_parts(low, high))
+}
+
 #[no_mangle]
 pub extern "system" fn Java_dev_accesskit_Node_nativeDrop(
     _env: JNIEnv,
@@ -124,4 +128,56 @@ pub extern "system" fn Java_dev_accesskit_TreeUpdate_nativeAddNode(
     let id = node_id_from_parts(id_low, id_high);
     let node = box_from_jptr::<Node>(node_ptr);
     update.nodes.push((id, *node));
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_TreeUpdate_nativeSetTree(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    root_low: jlong,
+    root_high: jlong,
+    root_scroller_low: jlong,
+    root_scroller_high: jlong,
+) {
+    let update = mut_from_jptr::<TreeUpdate>(ptr);
+    let root = node_id_from_parts(root_low, root_high);
+    let root_scroller = optional_node_id_from_parts(root_scroller_low, root_scroller_high);
+    update.tree = Some(Tree {
+        root,
+        root_scroller,
+    });
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_TreeUpdate_nativeClearTree(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+) {
+    let update = mut_from_jptr::<TreeUpdate>(ptr);
+    update.tree = None;
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_TreeUpdate_nativeSetFocus(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    id_low: jlong,
+    id_high: jlong,
+) {
+    let update = mut_from_jptr::<TreeUpdate>(ptr);
+    let id = node_id_from_parts(id_low, id_high);
+    update.focus = Some(id);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_TreeUpdate_nativeClearFocus(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+) {
+    let update = mut_from_jptr::<TreeUpdate>(ptr);
+    update.focus = None;
 }
