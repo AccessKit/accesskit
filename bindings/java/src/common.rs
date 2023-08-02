@@ -59,6 +59,29 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetName(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeAddChild(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    id_low: jlong,
+    id_high: jlong,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    let id = node_id_from_parts(id_low, id_high);
+    builder.push_child(id);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeClearChildren(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    builder.clear_children();
+}
+
+#[no_mangle]
 pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeBuild(
     _env: JNIEnv,
     _class: JClass,
