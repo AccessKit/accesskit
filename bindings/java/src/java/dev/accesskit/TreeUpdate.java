@@ -5,8 +5,6 @@
 
 package dev.accesskit;
 
-import java.util.function.Supplier;
-
 public final class TreeUpdate {
     public TreeUpdate() {
         ptr = nativeNew();
@@ -72,7 +70,7 @@ public final class TreeUpdate {
         Util.checkActive(ptr);
     }
 
-    static NativePointerSupplier makeNativeSupplier(Supplier<TreeUpdate> supplier) {
+    static NativePointerSupplier makeNativeSupplier(TreeUpdate.Supplier supplier) {
         return () -> {
             TreeUpdate update = supplier.get();
             update.checkActive();
@@ -80,5 +78,10 @@ public final class TreeUpdate {
             update.ptr = 0;
             return ptr;
         };
+    }
+
+    @FunctionalInterface
+    public interface Supplier {
+        TreeUpdate get();
     }
 }
