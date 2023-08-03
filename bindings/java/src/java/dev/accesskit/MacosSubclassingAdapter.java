@@ -7,7 +7,7 @@ package dev.accesskit;
 
 public final class MacosSubclassingAdapter implements AutoCloseable {
     // TODO: action handler
-    public MacosSubclassingAdapter(long view, TreeUpdate.Supplier initialStateSupplier) {
+    public MacosSubclassingAdapter(long view, TreeUpdateSupplier initialStateSupplier) {
         NativePointerSupplier nativeSupplier = TreeUpdate.makeNativeSupplier(initialStateSupplier);
         ptr = nativeNew(view, nativeSupplier);
     }
@@ -17,7 +17,7 @@ public final class MacosSubclassingAdapter implements AutoCloseable {
     }
 
     // TODO: action handler
-    public static MacosSubclassingAdapter forWindow(long window, TreeUpdate.Supplier initialStateSupplier) {
+    public static MacosSubclassingAdapter forWindow(long window, TreeUpdateSupplier initialStateSupplier) {
         NativePointerSupplier nativeSupplier = TreeUpdate.makeNativeSupplier(initialStateSupplier);
         return new MacosSubclassingAdapter(nativeForWindow(window, nativeSupplier));
     }
@@ -30,7 +30,7 @@ public final class MacosSubclassingAdapter implements AutoCloseable {
         }
     }
 
-    public void updateIfActive(TreeUpdate.Supplier updateSupplier) {
+    public void updateIfActive(TreeUpdateSupplier updateSupplier) {
         checkActive();
         NativePointerSupplier nativeSupplier = TreeUpdate.makeNativeSupplier(updateSupplier);
         nativeUpdateIfActive(ptr, nativeSupplier);

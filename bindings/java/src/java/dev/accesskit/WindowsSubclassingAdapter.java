@@ -7,7 +7,7 @@ package dev.accesskit;
 
 public final class WindowsSubclassingAdapter implements AutoCloseable {
     // TODO: action handler
-    public WindowsSubclassingAdapter(long hwnd, TreeUpdate.Supplier initialStateSupplier) {
+    public WindowsSubclassingAdapter(long hwnd, TreeUpdateSupplier initialStateSupplier) {
         NativePointerSupplier nativeSupplier = TreeUpdate.makeNativeSupplier(initialStateSupplier);
         ptr = nativeNew(hwnd, nativeSupplier);
     }
@@ -20,7 +20,7 @@ public final class WindowsSubclassingAdapter implements AutoCloseable {
         }
     }
 
-    public void updateIfActive(TreeUpdate.Supplier updateSupplier) {
+    public void updateIfActive(TreeUpdateSupplier updateSupplier) {
         checkActive();
         NativePointerSupplier nativeSupplier = TreeUpdate.makeNativeSupplier(updateSupplier);
         nativeUpdateIfActive(ptr, nativeSupplier);
