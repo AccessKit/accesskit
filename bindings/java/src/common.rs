@@ -51,6 +51,30 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeDrop(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeAddAction(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    action: jint,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    let action = Action::n(action as u8).unwrap();
+    builder.add_action(action);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetDefaultActionVerb(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    value: jint,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    let value = DefaultActionVerb::n(value as u8).unwrap();
+    builder.set_default_action_verb(value);
+}
+
+#[no_mangle]
 pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetName(
     mut env: JNIEnv,
     _class: JClass,
@@ -60,6 +84,18 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetName(
     let builder = mut_from_jptr::<NodeBuilder>(ptr);
     let value = box_str_from_utf8_jbytes(&mut env, value);
     builder.set_name(value);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetValue(
+    mut env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    value: JByteArray,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    let value = box_str_from_utf8_jbytes(&mut env, value);
+    builder.set_value(value);
 }
 
 #[no_mangle]
@@ -97,6 +133,85 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeClearChildren(
 ) {
     let builder = mut_from_jptr::<NodeBuilder>(ptr);
     builder.clear_children();
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetCheckedState(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    value: jint,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    let value = CheckedState::n(value as u8).unwrap();
+    builder.set_checked_state(value);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetLive(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    value: jint,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    let value = Live::n(value as u8).unwrap();
+    builder.set_live(value);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetNumericValue(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    value: jdouble,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    builder.set_numeric_value(value);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetMinNumericValue(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    value: jdouble,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    builder.set_min_numeric_value(value);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetMaxNumericValue(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    value: jdouble,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    builder.set_max_numeric_value(value);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetNumericValueStep(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    value: jdouble,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    builder.set_numeric_value_step(value);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetNumericValueJump(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    value: jdouble,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    builder.set_numeric_value_jump(value);
 }
 
 #[no_mangle]
