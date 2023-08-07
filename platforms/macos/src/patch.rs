@@ -33,6 +33,8 @@ extern "C" fn focus_forwarder(this: &NSWindow, _cmd: Sel) -> *mut Object {
 /// code for this crate is never unloaded from the application process,
 /// since it's not possible to reverse this operation. It's safest
 /// if this crate is statically linked into the application's main executable.
+/// Also, this function assumes that the specified class is a subclass
+/// of `NSWindow`.
 pub unsafe fn add_focus_forwarder_to_window_class(class_name: &str) {
     let class = Class::get(class_name).unwrap();
     unsafe {

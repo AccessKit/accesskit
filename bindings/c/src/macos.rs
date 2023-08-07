@@ -219,6 +219,8 @@ impl macos_subclassing_adapter {
 /// code for this library is never unloaded from the application process,
 /// since it's not possible to reverse this operation. It's safest
 /// if this library is statically linked into the application's main executable.
+/// Also, this function assumes that the specified class is a subclass
+/// of `NSWindow`.
 #[no_mangle]
 pub unsafe extern "C" fn accesskit_macos_add_focus_forwarder_to_window_class(
     class_name: *const c_char,
