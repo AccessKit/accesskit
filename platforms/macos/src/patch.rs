@@ -15,7 +15,7 @@ use std::{ffi::CString, ptr::null_mut};
 
 use crate::appkit::NSWindow;
 
-unsafe extern "C" fn focus_forwarder(this: &NSWindow, _cmd: Sel) -> *mut Object {
+extern "C" fn focus_forwarder(this: &NSWindow, _cmd: Sel) -> *mut Object {
     this.content_view().map_or_else(null_mut, |view| unsafe {
         msg_send![&*view, accessibilityFocusedUIElement]
     })
