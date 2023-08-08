@@ -80,6 +80,7 @@ void accesskit_sdl_adapter_init(struct accesskit_sdl_adapter *adapter,
                                 void *source_userdata,
                                 accesskit_action_handler *handler) {
 #if defined(__APPLE__)
+  accesskit_macos_add_focus_forwarder_to_window_class("SDLWindow");
   SDL_SysWMinfo wmInfo;
   SDL_VERSION(&wmInfo.version);
   SDL_GetWindowWMInfo(window, &wmInfo);
