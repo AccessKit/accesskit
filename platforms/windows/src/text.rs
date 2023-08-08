@@ -327,7 +327,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
         Ok(self.clone().into())
     }
 
-    fn Compare(&self, other: &Option<ITextRangeProvider>) -> Result<BOOL> {
+    fn Compare(&self, other: Option<&ITextRangeProvider>) -> Result<BOOL> {
         let other = required_param(other)?.as_impl();
         Ok((self.context.ptr_eq(&other.context)
             && *self.state.read().unwrap() == *other.state.read().unwrap())
@@ -337,7 +337,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
     fn CompareEndpoints(
         &self,
         endpoint: TextPatternRangeEndpoint,
-        other: &Option<ITextRangeProvider>,
+        other: Option<&ITextRangeProvider>,
         other_endpoint: TextPatternRangeEndpoint,
     ) -> Result<i32> {
         let other = required_param(other)?.as_impl();
@@ -527,7 +527,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
     fn MoveEndpointByRange(
         &self,
         endpoint: TextPatternRangeEndpoint,
-        other: &Option<ITextRangeProvider>,
+        other: Option<&ITextRangeProvider>,
         other_endpoint: TextPatternRangeEndpoint,
     ) -> Result<()> {
         let other = required_param(other)?.as_impl();
