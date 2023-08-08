@@ -274,6 +274,30 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetTextSelection(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetCharacterLengths(
+    env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    value: JByteArray,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    let value = env.convert_byte_array(value).unwrap();
+    builder.set_character_lengths(value);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetWordLengths(
+    env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    value: JByteArray,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    let value = env.convert_byte_array(value).unwrap();
+    builder.set_word_lengths(value);
+}
+
+#[no_mangle]
 pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeBuild(
     _env: JNIEnv,
     _class: JClass,
