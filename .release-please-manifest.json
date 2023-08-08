@@ -1,1 +1,1 @@
-{"common":"0.11.1","consumer":"0.15.1","platforms/macos":"0.8.0","platforms/windows":"0.14.1","platforms/winit":"0.14.2","platforms/unix":"0.5.1","bindings/c":"0.4.0"}
+{"common":"0.11.2","consumer":"0.15.2","platforms/macos":"0.9.0","platforms/windows":"0.14.2","platforms/winit":"0.14.3","platforms/unix":"0.5.2","bindings/c":"0.5.0"}
