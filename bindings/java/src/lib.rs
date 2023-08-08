@@ -40,7 +40,7 @@ pub(crate) fn box_from_jptr<T>(ptr: jlong) -> Box<T> {
     unsafe { Box::from_raw(ptr as *mut T) }
 }
 
-pub(crate) fn box_str_from_utf8_jbytes(env: &mut JNIEnv, bytes: JByteArray) -> Box<str> {
+pub(crate) fn box_str_from_utf8_jbytes(env: &JNIEnv, bytes: JByteArray) -> Box<str> {
     let bytes = env.convert_byte_array(bytes).unwrap();
     unsafe { String::from_utf8_unchecked(bytes) }.into()
 }
