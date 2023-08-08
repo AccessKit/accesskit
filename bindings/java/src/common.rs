@@ -88,13 +88,13 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetName(
 
 #[no_mangle]
 pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetValue(
-    mut env: JNIEnv,
+    env: JNIEnv,
     _class: JClass,
     ptr: jlong,
     value: JByteArray,
 ) {
     let builder = mut_from_jptr::<NodeBuilder>(ptr);
-    let value = box_str_from_utf8_jbytes(&mut env, value);
+    let value = box_str_from_utf8_jbytes(&env, value);
     builder.set_value(value);
 }
 
