@@ -136,6 +136,26 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeClearChildren(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetMultiline(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    builder.set_multiline();
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeClearMultiline(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    builder.clear_multiline();
+}
+
+#[no_mangle]
 pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetCheckedState(
     _env: JNIEnv,
     _class: JClass,

@@ -64,6 +64,16 @@ public final class NodeBuilder {
         }
     }
 
+    public void setMultiline() {
+        checkActive();
+        nativeSetMultiline(ptr);
+    }
+
+    public void clearMultiline() {
+        checkActive();
+        nativeClearMultiline(ptr);
+    }
+
     public void setCheckedState(CheckedState value) {
         checkActive();
         nativeSetCheckedState(ptr, value.ordinal());
@@ -121,6 +131,8 @@ public final class NodeBuilder {
     private static native void nativeSetBounds(long ptr, double x0, double y0, double x1, double y1);
     private static native void nativeAddChild(long ptr, long idLow, long idHigh);
     private static native void nativeClearChildren(long ptr);
+    private static native void nativeSetMultiline(long ptr);
+    private static native void nativeClearMultiline(long ptr);
     private static native void nativeSetCheckedState(long ptr, int value);
     private static native void nativeSetLive(long ptr, int value);
     private static native void nativeSetNumericValue(long ptr, double value);
