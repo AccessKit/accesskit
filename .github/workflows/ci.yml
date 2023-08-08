@@ -54,10 +54,7 @@ jobs:
 
       - name: cargo test -p accesskit_windows
         if: matrix.os == 'windows-2019'
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: -p accesskit_windows
+        run: cargo test -p accesskit_windows
 
   generate-headers:
     uses: AccessKit/accesskit/.github/workflows/generate-headers.yml@main
