@@ -215,6 +215,33 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetNumericValueJump(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetTextSelection(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    anchor_id_low: jlong,
+    anchor_id_high: jlong,
+    anchor_character_index: jint,
+    focus_id_low: jlong,
+    focus_id_high: jlong,
+    focus_character_index: jint,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    let anchor_id = node_id_from_parts(anchor_id_low, anchor_id_high);
+    let focus_id = node_id_from_parts(focus_id_low, focus_id_high);
+    builder.set_text_selection(TextSelection {
+        anchor: TextPosition {
+            node: anchor_id,
+            character_index: anchor_character_index as usize,
+        },
+        focus: TextPosition {
+            node: focus_id,
+            character_index: focus_character_index as usize,
+        },
+    });
+}
+
+#[no_mangle]
 pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeBuild(
     _env: JNIEnv,
     _class: JClass,

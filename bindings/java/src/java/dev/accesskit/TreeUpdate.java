@@ -72,11 +72,17 @@ public final class TreeUpdate {
 
     static NativePointerSupplier makeNativeSupplier(TreeUpdateSupplier supplier) {
         return () -> {
-            TreeUpdate update = supplier.get();
-            update.checkActive();
-            long ptr = update.ptr;
-            update.ptr = 0;
-            return ptr;
+            try {
+                TreeUpdate update = supplier.get();
+                update.checkActive();
+                long ptr = update.ptr;
+                update.ptr = 0;
+                return ptr;
+            } catch (Exception e) {
+                // Don't make the native side print the stack trace.
+                e.printStackTrace();
+                throw e;
+            }
         };
     }
 }

@@ -99,6 +99,11 @@ public final class NodeBuilder {
         nativeSetNumericValueJump(ptr, value);
     }
 
+    public void setTextSelection(TextSelection value) {
+        checkActive();
+        nativeSetTextSelection(ptr, value.anchor.node.low, value.anchor.node.high, value.anchor.characterIndex, value.focus.node.low, value.focus.node.high, value.focus.characterIndex);
+    }
+
     public Node build() {
         checkActive();
         long nodePtr = nativeBuild(ptr);
@@ -123,6 +128,7 @@ public final class NodeBuilder {
     private static native void nativeSetMaxNumericValue(long ptr, double value);
     private static native void nativeSetNumericValueStep(long ptr, double value);
     private static native void nativeSetNumericValueJump(long ptr, double value);
+    private static native void nativeSetTextSelection(long ptr, long anchorNodeIdLow, long anchorNodeIdHigh, int anchorCharacterIndex, long focusNodeIdLow, long focusNodeIdHigh, int focusCharacterIndex);
     private static native long nativeBuild(long ptr);
 
     void checkActive() {

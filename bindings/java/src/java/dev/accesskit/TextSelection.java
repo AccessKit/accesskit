@@ -1,0 +1,16 @@
+// Copyright 2023 The AccessKit Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (found in
+// the LICENSE-APACHE file) or the MIT license (found in
+// the LICENSE-MIT file), at your option.
+
+package dev.accesskit;
+
+public final class TextSelection {
+    public TextSelection(TextPosition anchor, TextPosition focus) {
+        this.anchor = anchor;
+        this.focus = focus;
+    }
+
+    public TextPosition anchor;
+    public TextPosition focus;
+}
