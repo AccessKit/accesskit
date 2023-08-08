@@ -50,11 +50,7 @@ jobs:
         run: cargo clippy --all-targets -- -D warnings
 
       - name: cargo test
-        run: cargo test
-
-      - name: cargo test -p accesskit_windows
-        if: matrix.os == 'windows-2019'
-        run: cargo test -p accesskit_windows
+        run: cargo test --workspace
 
   generate-headers:
     uses: AccessKit/accesskit/.github/workflows/generate-headers.yml@main
