@@ -84,6 +84,11 @@ public final class NodeBuilder {
         nativeSetLive(ptr, value.ordinal());
     }
 
+    public void setTextDirection(TextDirection value) {
+        checkActive();
+        nativeSetTextDirection(ptr, value.ordinal());
+    }
+
     public void setNumericValue(double value) {
         checkActive();
         nativeSetNumericValue(ptr, value);
@@ -135,6 +140,7 @@ public final class NodeBuilder {
     private static native void nativeClearMultiline(long ptr);
     private static native void nativeSetCheckedState(long ptr, int value);
     private static native void nativeSetLive(long ptr, int value);
+    private static native void nativeSetTextDirection(long ptr, int value);
     private static native void nativeSetNumericValue(long ptr, double value);
     private static native void nativeSetMinNumericValue(long ptr, double value);
     private static native void nativeSetMaxNumericValue(long ptr, double value);

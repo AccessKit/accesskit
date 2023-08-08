@@ -180,6 +180,18 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetLive(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetTextDirection(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    value: jint,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    let value = TextDirection::n(value as u8).unwrap();
+    builder.set_text_direction(value);
+}
+
+#[no_mangle]
 pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetNumericValue(
     _env: JNIEnv,
     _class: JClass,
