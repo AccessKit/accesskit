@@ -3,7 +3,10 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::{action_handler, box_from_ptr, ref_from_ptr, tree_update, BoxCastPtr, CastPtr};
+use crate::{
+    action_handler, box_from_ptr, ref_from_ptr, tree_update, tree_update_factory, BoxCastPtr,
+    CastPtr,
+};
 use accesskit::Rect;
 use accesskit_unix::Adapter;
 use std::{
@@ -30,7 +33,7 @@ impl unix_adapter {
         app_name: *const c_char,
         toolkit_name: *const c_char,
         toolkit_version: *const c_char,
-        initial_state: Option<extern "C" fn(*mut c_void) -> *mut tree_update>,
+        initial_state: tree_update_factory,
         initial_state_userdata: *mut c_void,
         handler: *mut action_handler,
     ) -> *mut unix_adapter {
