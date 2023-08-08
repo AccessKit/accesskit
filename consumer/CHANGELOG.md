@@ -12,6 +12,10 @@
   * dependencies
     * accesskit bumped from 0.11.0 to 0.11.1
 
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.11.1 to 0.11.2
+
 ## [0.15.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.14.2...accesskit_consumer-v0.15.0) (2023-03-30)
 
 
