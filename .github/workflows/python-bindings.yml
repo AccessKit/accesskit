@@ -1,0 +1,76 @@
+on:
+  push:
+    tags:
+      - 'accesskit_python-v*'
+
+name: Publish Python bindings
+
+jobs:
+  build-wheels:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            python-arch: x64
+            rust-target: x86_64
+          - os: macos-latest
+            python-arch: x64
+            rust-target: universal2-apple-darwin
+          - os: ubuntu-latest
+            python-arch: x64
+            rust-target: x86_64
+          - os: ubuntu-latest
+            python-arch: x64
+            rust-target: i686
+            skip-wheel-installation: true
+          - os: windows-latest
+            python-arch: x64
+            rust-target: x64
+          - os: windows-latest
+            python-arch: x86
+            rust-target: x86
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.7
+          architecture: ${{ matrix.python-arch }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.rust-target }}
+          manylinux: auto
+          args: --release --out dist --sdist
+      - name: Test wheel installation
+        if: matrix.skip-wheel-installation != true
+        run: |
+          pip install accesskit --no-index --find-links dist --force-reinstall
+          python -c "import accesskit"
+      - name: Upload wheel
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: dist
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: "startsWith(github.ref, 'refs/tags/')"
+    needs: [build-wheels]
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: wheels
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          pip install --upgrade twine
+          twine upload --skip-existing *

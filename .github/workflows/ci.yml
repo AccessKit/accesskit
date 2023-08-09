@@ -28,6 +28,9 @@ jobs:
           clang-format-version: 15
           check-path: bindings/c
 
+      - name: black --check
+        uses: psf/black@stable
+  
   test:
     runs-on: ${{ matrix.os }}
     strategy:

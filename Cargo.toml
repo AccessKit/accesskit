@@ -8,12 +8,14 @@ members = [
     "platforms/windows",
     "platforms/winit",
     "bindings/c",
+    "bindings/python",
 ]
 default-members = [
     "common",
     "consumer",
     "platforms/winit",
     "bindings/c",
+    "bindings/python",
 ]
 
 [profile.release]
