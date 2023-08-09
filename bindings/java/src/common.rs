@@ -5,12 +5,14 @@
 
 use accesskit::*;
 use jni::{
-    objects::{JByteArray, JClass},
+    objects::{JByteArray, JClass, JFloatArray},
     sys::{jdouble, jint, jlong},
     JNIEnv,
 };
 
-use crate::{box_from_jptr, box_str_from_utf8_jbytes, into_jptr, mut_from_jptr};
+use crate::{
+    box_from_jptr, box_str_from_utf8_jbytes, convert_float_array, into_jptr, mut_from_jptr,
+};
 
 fn node_id_from_parts(low: jlong, high: jlong) -> NodeId {
     let num = ((high as u128) << 64) | (low as u128);
@@ -295,6 +297,30 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetWordLengths(
     let builder = mut_from_jptr::<NodeBuilder>(ptr);
     let value = env.convert_byte_array(value).unwrap();
     builder.set_word_lengths(value);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetCharacterPositions(
+    env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    value: JFloatArray,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    let value = convert_float_array(&env, value).unwrap();
+    builder.set_character_positions(value);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetCharacterWidths(
+    env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    value: JFloatArray,
+) {
+    let builder = mut_from_jptr::<NodeBuilder>(ptr);
+    let value = convert_float_array(&env, value).unwrap();
+    builder.set_character_widths(value);
 }
 
 #[no_mangle]

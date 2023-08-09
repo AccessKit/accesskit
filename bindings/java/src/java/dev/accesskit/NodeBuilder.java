@@ -129,6 +129,16 @@ public final class NodeBuilder {
         nativeSetWordLengths(ptr, value);
     }
 
+    public void setCharacterPositions(float[] value) {
+        checkActive();
+        nativeSetCharacterPositions(ptr, value);
+    }
+
+    public void setCharacterWidths(float[] value) {
+        checkActive();
+        nativeSetCharacterWidths(ptr, value);
+    }
+
     public Node build() {
         checkActive();
         long nodePtr = nativeBuild(ptr);
@@ -159,6 +169,8 @@ public final class NodeBuilder {
     private static native void nativeSetTextSelection(long ptr, long anchorNodeIdLow, long anchorNodeIdHigh, int anchorCharacterIndex, long focusNodeIdLow, long focusNodeIdHigh, int focusCharacterIndex);
     private static native void nativeSetCharacterLengths(long ptr, byte[] value);
     private static native void nativeSetWordLengths(long ptr, byte[] value);
+    private static native void nativeSetCharacterPositions(long ptr, float[] value);
+    private static native void nativeSetCharacterWidths(long ptr, float[] value);
     private static native long nativeBuild(long ptr);
 
     void checkActive() {

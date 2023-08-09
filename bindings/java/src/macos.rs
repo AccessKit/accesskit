@@ -39,8 +39,13 @@ pub extern "system" fn Java_dev_accesskit_MacosSubclassingAdapter_nativeNew(
         *box_from_jptr::<TreeUpdate>(ptr)
     };
     // TODO: real action handler
-    let adapter =
-        unsafe { SubclassingAdapter::new(view as _, initial_state_source, Box::new(NullActionHandler {})) };
+    let adapter = unsafe {
+        SubclassingAdapter::new(
+            view as _,
+            initial_state_source,
+            Box::new(NullActionHandler {}),
+        )
+    };
     into_jptr(adapter)
 }
 
@@ -63,8 +68,13 @@ pub extern "system" fn Java_dev_accesskit_MacosSubclassingAdapter_nativeForWindo
         *box_from_jptr::<TreeUpdate>(ptr)
     };
     // TODO: real action handler
-    let adapter =
-        unsafe { SubclassingAdapter::for_window(window as _, initial_state_source, Box::new(NullActionHandler {})) };
+    let adapter = unsafe {
+        SubclassingAdapter::for_window(
+            window as _,
+            initial_state_source,
+            Box::new(NullActionHandler {}),
+        )
+    };
     into_jptr(adapter)
 }
 

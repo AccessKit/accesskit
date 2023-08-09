@@ -10,19 +10,23 @@
 // the LICENSE-ISC file), or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use jni::{objects::JByteArray, sys::jlong, JNIEnv};
+use jni::{
+    objects::{JByteArray, JFloatArray},
+    sys::{jfloat, jlong},
+    JNIEnv,
+};
 
 mod common;
-#[cfg(target_os = "windows")]
-mod windows;
 #[cfg(target_os = "macos")]
 mod macos;
+#[cfg(target_os = "windows")]
+mod windows;
 
 pub use common::*;
-#[cfg(target_os = "windows")]
-pub use windows::*;
 #[cfg(target_os = "macos")]
 pub use macos::*;
+#[cfg(target_os = "windows")]
+pub use windows::*;
 
 pub(crate) fn into_jptr<T>(source: T) -> jlong {
     Box::into_raw(Box::new(source)) as jlong
@@ -43,4 +47,14 @@ pub(crate) fn box_from_jptr<T>(ptr: jlong) -> Box<T> {
 pub(crate) fn box_str_from_utf8_jbytes(env: &JNIEnv, bytes: JByteArray) -> Box<str> {
     let bytes = env.convert_byte_array(bytes).unwrap();
     unsafe { String::from_utf8_unchecked(bytes) }.into()
+}
+
+pub(crate) fn convert_float_array(
+    env: &JNIEnv,
+    value: JFloatArray,
+) -> jni::errors::Result<Vec<jfloat>> {
+    let len = env.get_array_length(&value)? as usize;
+    let mut buf = vec![0.0; len];
+    env.get_float_array_region(value, 0, &mut buf)?;
+    Ok(buf)
 }
