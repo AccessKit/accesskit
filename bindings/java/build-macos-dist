@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+./gradlew build
+cargo build --release --target aarch64-apple-darwin
+cargo build --release --target x86_64-apple-darwin
+rm -rf dist
+mkdir -p dist/contents
+cd dist/contents
+cp ../../build/libs/accesskit.jar .
+lipo -create -output libaccesskit_jni.dylib ../../../../target/aarch64-apple-darwin/release/libaccesskit_jni.dylib ../../../../target/x86_64-apple-darwin/release/libaccesskit_jni.dylib
+zip -9r ../accesskit-jni.zip .
