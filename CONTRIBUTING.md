@@ -12,8 +12,6 @@ Simply building the library should update the `Cargo.lock` file with the minimal
 
 > [!NOTE]
 > This is not normal / best practice for most libraries.
-> If you are writing your own library, your `Cargo.lock` file is not used when the library is included in another project.
-> This means your CI will be testing with an out of date set of dependencies compared to your users, missing potential problems.
 > See the [official documentation](https://doc.rust-lang.org/cargo/faq.html#why-do-binaries-have-cargolock-in-version-control-but-not-libraries) for more information. 
 
 ### CHANGELOG.md
