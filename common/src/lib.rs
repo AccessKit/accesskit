@@ -8,6 +8,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
+#[cfg(feature = "pyo3")]
+use pyo3::pyclass;
 #[cfg(feature = "schemars")]
 use schemars::{
     gen::SchemaGenerator,
@@ -47,6 +49,7 @@ pub use geometry::{Affine, Point, Rect, Size, Vec2};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum Role {
     Unknown,
@@ -269,6 +272,7 @@ impl Default for Role {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum Action {
     /// Do the default action for an object, typically this means "click".
@@ -440,6 +444,7 @@ impl JsonSchema for Actions {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum Orientation {
     /// E.g. most toolbars and separators.
@@ -453,6 +458,7 @@ pub enum Orientation {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum NameFrom {
     /// E.g. [`aria-label`].
@@ -478,6 +484,7 @@ pub enum NameFrom {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum DescriptionFrom {
     AriaDescription,
@@ -497,6 +504,7 @@ pub enum DescriptionFrom {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum TextDirection {
     LeftToRight,
@@ -514,6 +522,7 @@ pub enum TextDirection {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum Invalid {
     True,
@@ -526,6 +535,7 @@ pub enum Invalid {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum CheckedState {
     False,
@@ -544,6 +554,7 @@ pub enum CheckedState {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum DefaultActionVerb {
     Click,
@@ -566,6 +577,7 @@ pub enum DefaultActionVerb {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum SortDirection {
     Unsorted,
@@ -579,6 +591,7 @@ pub enum SortDirection {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum AriaCurrent {
     False,
@@ -595,6 +608,7 @@ pub enum AriaCurrent {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum Live {
     Off,
@@ -607,6 +621,7 @@ pub enum Live {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum HasPopup {
     True,
@@ -622,6 +637,7 @@ pub enum HasPopup {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum ListStyle {
     Circle,
@@ -638,6 +654,7 @@ pub enum ListStyle {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum TextAlign {
     Left,
@@ -651,6 +668,7 @@ pub enum TextAlign {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum VerticalOffset {
     Subscript,
@@ -662,6 +680,7 @@ pub enum VerticalOffset {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum TextDecoration {
     Solid,
