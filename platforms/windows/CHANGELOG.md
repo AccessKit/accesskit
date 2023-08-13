@@ -18,6 +18,23 @@
     * accesskit bumped from 0.10.1 to 0.11.0
     * accesskit_consumer bumped from 0.14.1 to 0.14.2
 
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.11.0 to 0.11.1
+    * accesskit_consumer bumped from 0.15.0 to 0.15.1
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.11.1 to 0.11.2
+    * accesskit_consumer bumped from 0.15.1 to 0.15.2
+
+## [0.14.3](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.14.2...accesskit_windows-v0.14.3) (2023-08-08)
+
+
+### Bug Fixes
+
+* Update windows crate to v0.48 ([#257](https://github.com/AccessKit/accesskit/issues/257)) ([cc703ed](https://github.com/AccessKit/accesskit/commit/cc703ed33d535aa1803e423a53beff9354b5b0df))
+
 ## [0.14.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.13.3...accesskit_windows-v0.14.0) (2023-03-30)
 
 

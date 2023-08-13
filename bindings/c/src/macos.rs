@@ -7,8 +7,14 @@ use crate::{
     action_handler, box_from_ptr, ref_from_ptr, tree_update, tree_update_factory, BoxCastPtr,
     CastPtr,
 };
-use accesskit_macos::{Adapter, NSPoint, QueuedEvents, SubclassingAdapter};
-use std::{os::raw::c_void, ptr};
+use accesskit_macos::{
+    add_focus_forwarder_to_window_class, Adapter, NSPoint, QueuedEvents, SubclassingAdapter,
+};
+use std::{
+    ffi::CStr,
+    os::raw::{c_char, c_void},
+    ptr,
+};
 
 pub struct macos_queued_events {
     _private: [u8; 0],
@@ -53,7 +59,7 @@ impl macos_adapter {
     ) -> *mut macos_adapter {
         let initial_state = box_from_ptr(initial_state);
         let handler = box_from_ptr(handler);
-        let adapter = Adapter::new(view, initial_state.into(), handler);
+        let adapter = Adapter::new(view, *initial_state, handler);
         BoxCastPtr::to_mut_ptr(adapter)
     }
 
@@ -71,7 +77,7 @@ impl macos_adapter {
     ) -> *mut macos_queued_events {
         let adapter = ref_from_ptr(adapter);
         let update = box_from_ptr(update);
-        let events = adapter.update(update.into());
+        let events = adapter.update(*update);
         BoxCastPtr::to_mut_ptr(events)
     }
 
@@ -130,7 +136,7 @@ impl macos_subclassing_adapter {
         let handler = box_from_ptr(handler);
         let adapter = SubclassingAdapter::new(
             view,
-            move || box_from_ptr(source(source_userdata)).into(),
+            move || *box_from_ptr(source(source_userdata)),
             handler,
         );
         BoxCastPtr::to_mut_ptr(adapter)
@@ -157,7 +163,7 @@ impl macos_subclassing_adapter {
         let handler = box_from_ptr(handler);
         let adapter = SubclassingAdapter::for_window(
             window,
-            move || box_from_ptr(source(source_userdata)).into(),
+            move || *box_from_ptr(source(source_userdata)),
             handler,
         );
         BoxCastPtr::to_mut_ptr(adapter)
@@ -179,7 +185,7 @@ impl macos_subclassing_adapter {
     ) -> *mut macos_queued_events {
         let adapter = ref_from_ptr(adapter);
         let update = box_from_ptr(update);
-        let events = adapter.update(update.into());
+        let events = adapter.update(*update);
         BoxCastPtr::to_mut_ptr(events)
     }
 
@@ -192,11 +198,33 @@ impl macos_subclassing_adapter {
     ) -> *mut macos_queued_events {
         let update_factory = update_factory.unwrap();
         let adapter = ref_from_ptr(adapter);
-        let events = adapter
-            .update_if_active(|| box_from_ptr(update_factory(update_factory_userdata)).into());
+        let events =
+            adapter.update_if_active(|| *box_from_ptr(update_factory(update_factory_userdata)));
         match events {
             Some(events) => BoxCastPtr::to_mut_ptr(events),
             None => ptr::null_mut(),
         }
     }
+}
+
+/// Modifies the specified class, which must be a subclass of `NSWindow`,
+/// to include an `accessibilityFocusedUIElement` method that calls
+/// the corresponding method on the window's content view. This is needed
+/// for windowing libraries such as SDL that place the keyboard focus
+/// directly on the window rather than the content view.
+///
+/// # Safety
+///
+/// This function is declared unsafe because the caller must ensure that the
+/// code for this library is never unloaded from the application process,
+/// since it's not possible to reverse this operation. It's safest
+/// if this library is statically linked into the application's main executable.
+/// Also, this function assumes that the specified class is a subclass
+/// of `NSWindow`.
+#[no_mangle]
+pub unsafe extern "C" fn accesskit_macos_add_focus_forwarder_to_window_class(
+    class_name: *const c_char,
+) {
+    let class_name = unsafe { CStr::from_ptr(class_name).to_string_lossy() };
+    add_focus_forwarder_to_window_class(&class_name);
 }

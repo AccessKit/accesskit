@@ -195,8 +195,8 @@ pub(crate) fn invalid_arg() -> Error {
     Error::new(E_INVALIDARG, "".into())
 }
 
-pub(crate) fn required_param<T>(param: &Option<T>) -> Result<&T> {
-    param.as_ref().map_or_else(|| Err(invalid_arg()), Ok)
+pub(crate) fn required_param<T>(param: Option<&T>) -> Result<&T> {
+    param.map_or_else(|| Err(invalid_arg()), Ok)
 }
 
 pub(crate) fn element_not_available() -> Error {

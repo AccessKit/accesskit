@@ -8,6 +8,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
+#[cfg(feature = "pyo3")]
+use pyo3::pyclass;
 #[cfg(feature = "schemars")]
 use schemars::{
     gen::SchemaGenerator,
@@ -43,9 +45,11 @@ pub use geometry::{Affine, Point, Rect, Size, Vec2};
 /// of [`Role::Unknown`]). This is more efficient in serialization formats
 /// where integers use a variable-length encoding.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum Role {
     Unknown,
@@ -264,9 +268,11 @@ impl Default for Role {
 /// In contrast to [`DefaultActionVerb`], these describe what happens to the
 /// object, e.g. "focus".
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, enumn::N))]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum Action {
     /// Do the default action for an object, typically this means "click".
@@ -434,9 +440,11 @@ impl JsonSchema for Actions {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum Orientation {
     /// E.g. most toolbars and separators.
@@ -446,9 +454,11 @@ pub enum Orientation {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum NameFrom {
     /// E.g. [`aria-label`].
@@ -470,9 +480,11 @@ pub enum NameFrom {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum DescriptionFrom {
     AriaDescription,
@@ -488,9 +500,11 @@ pub enum DescriptionFrom {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum TextDirection {
     LeftToRight,
@@ -504,9 +518,11 @@ pub enum TextDirection {
 ///
 /// [`aria-invalid`]: https://www.w3.org/TR/wai-aria-1.1/#aria-invalid
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum Invalid {
     True,
@@ -515,9 +531,11 @@ pub enum Invalid {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum CheckedState {
     False,
@@ -532,9 +550,11 @@ pub enum CheckedState {
 /// object, e.g. "press", not what happens to the object as a result.
 /// Only one verb can be used at a time to describe the default action.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum DefaultActionVerb {
     Click,
@@ -553,9 +573,11 @@ pub enum DefaultActionVerb {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum SortDirection {
     Unsorted,
@@ -565,9 +587,11 @@ pub enum SortDirection {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum AriaCurrent {
     False,
@@ -580,9 +604,11 @@ pub enum AriaCurrent {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum Live {
     Off,
@@ -591,9 +617,11 @@ pub enum Live {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum HasPopup {
     True,
@@ -605,9 +633,11 @@ pub enum HasPopup {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum ListStyle {
     Circle,
@@ -620,9 +650,11 @@ pub enum ListStyle {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum TextAlign {
     Left,
@@ -632,9 +664,11 @@ pub enum TextAlign {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum VerticalOffset {
     Subscript,
@@ -642,9 +676,11 @@ pub enum VerticalOffset {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
 pub enum TextDecoration {
     Solid,
@@ -707,8 +743,8 @@ pub struct TextPosition {
 pub struct TextSelection {
     /// The position where the selection started, and which does not change
     /// as the selection is expanded or contracted. If there is no selection
-    /// but only a caret, this must be equal to [`focus`]. This is also known
-    /// as a degenerate selection.
+    /// but only a caret, this must be equal to the value of [`TextSelection::focus`].
+    /// This is also known as a degenerate selection.
     pub anchor: TextPosition,
     /// The active end of the selection, which changes as the selection
     /// is expanded or contracted, or the position of the caret if there is

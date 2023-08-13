@@ -16,6 +16,9 @@ pub use adapter::Adapter;
 mod event;
 pub use event::QueuedEvents;
 
+mod patch;
+pub use patch::add_focus_forwarder_to_window_class;
+
 mod subclass;
 pub use subclass::SubclassingAdapter;
 

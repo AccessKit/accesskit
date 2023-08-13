@@ -15,7 +15,7 @@ after_includes = """#ifdef _WIN32
 usize_is_size_t = true
 
 [export]
-include = ["Size", "tree_update", "Vec2"]
+include = ["Size", "Vec2"]
 prefix = "accesskit_"
 renaming_overrides_prefixing = true
 

@@ -14,6 +14,55 @@
   * dependencies
     * accesskit_macos bumped from 0.7.0 to 0.7.1
 
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_windows bumped from 0.14.2 to 0.14.3
+
+## [0.5.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.4.0...accesskit_c-v0.5.0) (2023-08-08)
+
+
+### Features
+
+* Add an SDL example to the C bindings ([#250](https://github.com/AccessKit/accesskit/issues/250)) ([1f5cd1f](https://github.com/AccessKit/accesskit/commit/1f5cd1f7a94a762edeb73188f0ab4fd352c36b3d))
+* Workaround for libraries that put the macOS keyboard focus on the window rather than the content view ([#266](https://github.com/AccessKit/accesskit/issues/266)) ([c2db1b0](https://github.com/AccessKit/accesskit/commit/c2db1b0424e905d87691f8148f28b77405f29926))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.11.1 to 0.11.2
+    * accesskit_windows bumped from 0.14.1 to 0.14.2
+    * accesskit_macos bumped from 0.8.0 to 0.9.0
+    * accesskit_unix bumped from 0.5.1 to 0.5.2
+
+## [0.4.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.3.2...accesskit_c-v0.4.0) (2023-07-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* New C API for tree updates ([#263](https://github.com/AccessKit/accesskit/issues/263))
+
+### Features
+
+* Add CMake support to C bindings ([#247](https://github.com/AccessKit/accesskit/issues/247)) ([3f556c9](https://github.com/AccessKit/accesskit/commit/3f556c995e8c5eae6831a89b0173809134c1b4e7))
+* Add window-based constructor to macOS subclassing adapter ([#253](https://github.com/AccessKit/accesskit/issues/253)) ([022ef04](https://github.com/AccessKit/accesskit/commit/022ef045b9f28262b738ee1ca29a4c7303061fb3))
+
+
+### Code Refactoring
+
+* New C API for tree updates ([#263](https://github.com/AccessKit/accesskit/issues/263)) ([b260a86](https://github.com/AccessKit/accesskit/commit/b260a860e6f47cf7ef4e10c407123d91c5b35297))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.11.0 to 0.11.1
+    * accesskit_windows bumped from 0.14.0 to 0.14.1
+    * accesskit_macos bumped from 0.7.1 to 0.8.0
+    * accesskit_unix bumped from 0.5.0 to 0.5.1
+
 ## [0.3.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.2.0...accesskit_c-v0.3.0) (2023-04-25)
 
 

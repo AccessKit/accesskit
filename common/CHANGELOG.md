@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.11.2](https://github.com/AccessKit/accesskit/compare/accesskit-v0.11.1...accesskit-v0.11.2) (2023-08-08)
+
+
+### Bug Fixes
+
+* Support the enumn crate in all public enums ([#264](https://github.com/AccessKit/accesskit/issues/264)) ([b9b3cd1](https://github.com/AccessKit/accesskit/commit/b9b3cd18fccdd6526fb4f58c13eb91599452a3d6))
+
+## [0.11.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.11.0...accesskit-v0.11.1) (2023-07-30)
+
+
+### Bug Fixes
+
+* Fix broken intra-doc-link. ([#262](https://github.com/AccessKit/accesskit/issues/262)) ([63c1715](https://github.com/AccessKit/accesskit/commit/63c17152d1eb8ae6ff19c2bc4a6756372bc490c2))
+
 ## [0.11.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.10.1...accesskit-v0.11.0) (2023-03-29)
 
 
