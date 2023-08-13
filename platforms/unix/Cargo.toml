@@ -2,7 +2,7 @@
 name = "accesskit_unix"
 version = "0.5.2"
 authors = ["Arnold Loubriat <datatriny@gmail.com>"]
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 description = "AccessKit UI accessibility infrastructure: Linux adapter"
 categories = ["gui"]
 keywords = ["gui", "ui", "accessibility"]

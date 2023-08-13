@@ -2,7 +2,7 @@
 name = "accesskit_macos"
 version = "0.9.0"
 authors = ["Matt Campbell <mattcampbell@pobox.com>"]
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 description = "AccessKit UI accessibility infrastructure: macOS adapter"
 categories = ["gui"]
 keywords = ["gui", "ui", "accessibility"]

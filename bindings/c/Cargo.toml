@@ -2,7 +2,7 @@
 name = "accesskit_c"
 version = "0.5.1"
 authors = ["Arnold Loubriat <datatriny@gmail.com>"]
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 publish = false
 edition = "2021"
 
