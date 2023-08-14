@@ -51,19 +51,3 @@ We have some platform specific tests that are not run with `cargo test` from the
 
 > [!WARNING]
 > **Windows**: Some tests may fail if the created window looses focus while testing. This can also happen when using the terminal built into your IDE. Try running them from your native terminal if you get failures. 
-
-### Common issues
-
-#### CI Errors
-
-If you get an error in the CI step `Run cmake --build build` that includes near the end of the error: 
-```
-ERROR: Couldn't generate bindings for /home/runner/work/accesskit/accesskit/bindings/c.
-```
-Somewhere in the big block of text in the error message it also says:
-```
-unknown feature `proc_macro_span_shrink`
-```
-
-This is likely not an issue with your PR and just means `proc-macro2` needs to be updated in our Cargo.lock file. 
-You probably want to make this change in a separate PR as `proc-macro2` can update often and your PR could become out of date if it takes a while to be reviewed.
