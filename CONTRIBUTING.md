@@ -18,7 +18,7 @@ Simply building the library should update the `Cargo.lock` file with the minimal
 
 Our CHANGELOG.md files are auto generated using [Release Please](https://github.com/googleapis/release-please) and should not be edited manually.
 
-To control what is in the CHANGELOG.md for your change, use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) when writing your commit messages.
+To control what is in the CHANGELOG.md for your change, use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) when writing your PR title.
 
 #### Example Commit Messages
 Taken from [Conventional Commits documentation](https://www.conventionalcommits.org/en/v1.0.0/#summary):
