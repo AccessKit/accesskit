@@ -64,6 +64,10 @@ While many languages can use a C API, we also plan to provide libraries that mak
 
 We realize that most developers who might use AccessKit are not experts in accessibility. So this project will need to include comprehensive documentation, including a conceptual overview for developers that are learning about accessibility for the first time.
 
+## Contributing
+
+Contributions to AccessKit are welcome. Please see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 ## License
 
 AccessKit is licensed under the [Apache License, Version 2.0](LICENSE-APACHE) or the [MIT license](LICENSE-MIT), at your option.
