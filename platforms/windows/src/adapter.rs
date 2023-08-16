@@ -112,7 +112,7 @@ impl Adapter {
                 }
             }
             fn node_updated(&mut self, old_node: &DetachedNode, new_node: &Node) {
-                if old_node.value() != new_node.value() {
+                if old_node.raw_value() != new_node.raw_value() {
                     self.insert_text_change_if_needed(new_node);
                 }
                 if filter(new_node) != FilterResult::Include {
