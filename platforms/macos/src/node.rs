@@ -303,13 +303,20 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
+    fn node_value(&self) -> Option<String> {
+        match self {
+            Self::Node(node) => node.value(),
+            Self::DetachedNode(node) => node.value(),
+        }
+    }
+
     // TODO: implement proper logic for title, description, and value;
     // see Chromium's content/browser/accessibility/browser_accessibility_cocoa.mm
     // and figure out how this is different in the macOS 10.10+ protocol
 
     pub(crate) fn title(&self) -> Option<String> {
         let state = self.node_state();
-        if state.role() == Role::StaticText && state.value().is_none() {
+        if state.role() == Role::StaticText && state.raw_value().is_none() {
             // In this case, macOS wants the text to be the value, not title.
             return None;
         }
@@ -321,8 +328,8 @@ impl<'a> NodeWrapper<'a> {
         if let Some(state) = state.checked_state() {
             return Some(Value::Bool(state != CheckedState::False));
         }
-        if let Some(value) = state.value() {
-            return Some(Value::String(value.into()));
+        if let Some(value) = self.node_value() {
+            return Some(Value::String(value));
         }
         if let Some(value) = state.numeric_value() {
             return Some(Value::Number(value));
