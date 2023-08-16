@@ -322,6 +322,7 @@ impl Clone for PlatformRange {
 // implementations. We assume that AccessKit is the only UIA provider
 // within this process. This seems a safe assumption for most AccessKit users.
 
+#[allow(non_snake_case)]
 impl ITextRangeProvider_Impl for PlatformRange {
     fn Clone(&self) -> Result<ITextRangeProvider> {
         Ok(self.clone().into())
