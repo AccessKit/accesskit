@@ -60,7 +60,7 @@ impl<'a> InnerPosition<'a> {
     }
 
     fn is_paragraph_end(&self) -> bool {
-        self.is_line_end() && self.node.value().unwrap().ends_with('\n')
+        self.is_line_end() && self.node.data().value().unwrap().ends_with('\n')
     }
 
     fn is_document_start(&self, root_node: &Node) -> bool {
@@ -237,7 +237,7 @@ impl<'a> Position<'a> {
     pub fn to_global_utf16_index(&self) -> usize {
         let mut total_length = 0usize;
         for node in self.root_node.inline_text_boxes() {
-            let node_text = node.value().unwrap();
+            let node_text = node.data().value().unwrap();
             if node.id() == self.inner.node.id() {
                 let character_lengths = node.data().character_lengths();
                 let slice_end = character_lengths[..self.inner.character_index]
@@ -538,7 +538,7 @@ impl<'a> Range<'a> {
             } else {
                 character_lengths.len()
             };
-            let value = node.value().unwrap();
+            let value = node.data().value().unwrap();
             let s = if start_index == end_index {
                 ""
             } else if start_index == 0 && end_index == character_lengths.len() {
@@ -983,7 +983,7 @@ impl<'a> Node<'a> {
     pub fn text_position_from_global_utf16_index(&self, index: usize) -> Option<Position> {
         let mut total_length = 0usize;
         for node in self.inline_text_boxes() {
-            let node_text = node.value().unwrap();
+            let node_text = node.data().value().unwrap();
             let node_text_length = node_text.chars().map(char::len_utf16).sum::<usize>();
             let new_total_length = total_length + node_text_length;
             if index >= total_length && index < new_total_length {

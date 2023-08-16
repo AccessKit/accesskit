@@ -358,15 +358,21 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn is_value_pattern_supported(&self) -> bool {
-        self.node_state().value().is_some()
+        match self {
+            Self::Node(node) => node.has_value(),
+            Self::DetachedNode(node) => node.has_value(),
+        }
     }
 
     fn is_range_value_pattern_supported(&self) -> bool {
         self.node_state().numeric_value().is_some()
     }
 
-    fn value(&self) -> &str {
-        self.node_state().value().unwrap()
+    fn value(&self) -> String {
+        match self {
+            Self::Node(node) => node.value().unwrap(),
+            Self::DetachedNode(node) => node.value().unwrap(),
+        }
     }
 
     fn is_read_only(&self) -> bool {

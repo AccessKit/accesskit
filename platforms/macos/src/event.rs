@@ -3,13 +3,13 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{Live, NodeId};
+use accesskit::{Live, NodeId, Role};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, TreeChangeHandler, TreeState};
 use objc2::{
     foundation::{NSInteger, NSMutableDictionary, NSNumber, NSObject, NSString},
     msg_send, Message,
 };
-use std::rc::Rc;
+use std::{collections::HashSet, rc::Rc};
 
 use crate::{
     appkit::*,
@@ -132,6 +132,7 @@ impl QueuedEvents {
 pub(crate) struct EventGenerator {
     context: Rc<Context>,
     events: Vec<QueuedEvent>,
+    text_changed: HashSet<NodeId>,
 }
 
 impl EventGenerator {
@@ -139,6 +140,7 @@ impl EventGenerator {
         Self {
             context,
             events: Vec::new(),
+            text_changed: HashSet::new(),
         }
     }
 
@@ -148,10 +150,56 @@ impl EventGenerator {
             events: self.events,
         }
     }
+
+    fn insert_text_change_if_needed_parent(&mut self, node: Node) {
+        if !node.supports_text_ranges() {
+            return;
+        }
+        let id = node.id();
+        if self.text_changed.contains(&id) {
+            return;
+        }
+        // Text change events must come before selection change
+        // events. It doesn't matter if text change events come
+        // before other events.
+        self.events.insert(
+            0,
+            QueuedEvent::Generic {
+                node_id: id,
+                notification: unsafe { NSAccessibilityValueChangedNotification },
+            },
+        );
+        self.text_changed.insert(id);
+    }
+
+    fn insert_text_change_if_needed(&mut self, node: &Node) {
+        if node.role() != Role::InlineTextBox {
+            return;
+        }
+        if let Some(node) = node.filtered_parent(&filter) {
+            self.insert_text_change_if_needed_parent(node);
+        }
+    }
+
+    fn insert_text_change_if_needed_for_removed_node(
+        &mut self,
+        node: &DetachedNode,
+        current_state: &TreeState,
+    ) {
+        if node.role() != Role::InlineTextBox {
+            return;
+        }
+        if let Some(id) = node.parent_id() {
+            if let Some(node) = current_state.node_by_id(id) {
+                self.insert_text_change_if_needed_parent(node);
+            }
+        }
+    }
 }
 
 impl TreeChangeHandler for EventGenerator {
     fn node_added(&mut self, node: &Node) {
+        self.insert_text_change_if_needed(node);
         if filter(node) != FilterResult::Include {
             return;
         }
@@ -162,7 +210,9 @@ impl TreeChangeHandler for EventGenerator {
     }
 
     fn node_updated(&mut self, old_node: &DetachedNode, new_node: &Node) {
-        // TODO: text changes, live regions
+        if old_node.raw_value() != new_node.raw_value() {
+            self.insert_text_change_if_needed(new_node);
+        }
         if filter(new_node) != FilterResult::Include {
             return;
         }
@@ -218,7 +268,8 @@ impl TreeChangeHandler for EventGenerator {
         }
     }
 
-    fn node_removed(&mut self, node: &DetachedNode, _current_state: &TreeState) {
+    fn node_removed(&mut self, node: &DetachedNode, current_state: &TreeState) {
+        self.insert_text_change_if_needed_for_removed_node(node, current_state);
         self.events.push(QueuedEvent::NodeDestroyed(node.id()));
     }
 }

@@ -50,6 +50,7 @@ impl<'a> Node<'a> {
             is_focused: self.is_focused(),
             is_root: self.is_root(),
             name: self.name(),
+            value: self.value(),
             live: self.live(),
             supports_text_ranges: self.supports_text_ranges(),
         }
@@ -379,10 +380,6 @@ impl NodeState {
         self.data().checked_state()
     }
 
-    pub fn value(&self) -> Option<&str> {
-        self.data().value()
-    }
-
     pub fn numeric_value(&self) -> Option<f64> {
         self.data().numeric_value()
     }
@@ -534,6 +531,20 @@ impl<'a> Node<'a> {
             (!names.is_empty()).then(move || names.join(" "))
         }
     }
+
+    pub fn value(&self) -> Option<String> {
+        if let Some(value) = &self.data().value() {
+            Some(value.to_string())
+        } else if self.supports_text_ranges() && !self.is_multiline() {
+            Some(self.document_range().text())
+        } else {
+            None
+        }
+    }
+
+    pub fn has_value(&self) -> bool {
+        self.data().value().is_some() || (self.supports_text_ranges() && !self.is_multiline())
+    }
 }
 
 impl NodeState {
@@ -605,6 +616,10 @@ impl NodeState {
 
     pub fn raw_text_selection(&self) -> Option<&TextSelection> {
         self.data().text_selection()
+    }
+
+    pub fn raw_value(&self) -> Option<&str> {
+        self.data().value()
     }
 }
 
@@ -680,6 +695,7 @@ pub struct DetachedNode {
     pub(crate) is_focused: bool,
     pub(crate) is_root: bool,
     pub(crate) name: Option<String>,
+    pub(crate) value: Option<String>,
     pub(crate) live: Live,
     pub(crate) supports_text_ranges: bool,
 }
@@ -695,6 +711,14 @@ impl DetachedNode {
 
     pub fn name(&self) -> Option<String> {
         self.name.clone()
+    }
+
+    pub fn value(&self) -> Option<String> {
+        self.value.clone()
+    }
+
+    pub fn has_value(&self) -> bool {
+        self.value.is_some()
     }
 
     pub fn live(&self) -> Live {
