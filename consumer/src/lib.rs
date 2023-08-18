@@ -26,19 +26,19 @@ mod tests {
 
     use crate::FilterResult;
 
-    pub const ROOT_ID: NodeId = NodeId(1);
-    pub const PARAGRAPH_0_ID: NodeId = NodeId(2);
-    pub const STATIC_TEXT_0_0_IGNORED_ID: NodeId = NodeId(3);
-    pub const PARAGRAPH_1_IGNORED_ID: NodeId = NodeId(4);
-    pub const STATIC_TEXT_1_0_ID: NodeId = NodeId(5);
-    pub const PARAGRAPH_2_ID: NodeId = NodeId(6);
-    pub const STATIC_TEXT_2_0_ID: NodeId = NodeId(7);
-    pub const PARAGRAPH_3_IGNORED_ID: NodeId = NodeId(8);
-    pub const EMPTY_CONTAINER_3_0_IGNORED_ID: NodeId = NodeId(9);
-    pub const LINK_3_1_IGNORED_ID: NodeId = NodeId(10);
-    pub const STATIC_TEXT_3_1_0_ID: NodeId = NodeId(11);
-    pub const BUTTON_3_2_ID: NodeId = NodeId(12);
-    pub const EMPTY_CONTAINER_3_3_IGNORED_ID: NodeId = NodeId(13);
+    pub const ROOT_ID: NodeId = NodeId(0);
+    pub const PARAGRAPH_0_ID: NodeId = NodeId(1);
+    pub const STATIC_TEXT_0_0_IGNORED_ID: NodeId = NodeId(2);
+    pub const PARAGRAPH_1_IGNORED_ID: NodeId = NodeId(3);
+    pub const STATIC_TEXT_1_0_ID: NodeId = NodeId(4);
+    pub const PARAGRAPH_2_ID: NodeId = NodeId(5);
+    pub const STATIC_TEXT_2_0_ID: NodeId = NodeId(6);
+    pub const PARAGRAPH_3_IGNORED_ID: NodeId = NodeId(7);
+    pub const EMPTY_CONTAINER_3_0_IGNORED_ID: NodeId = NodeId(8);
+    pub const LINK_3_1_IGNORED_ID: NodeId = NodeId(9);
+    pub const STATIC_TEXT_3_1_0_ID: NodeId = NodeId(10);
+    pub const BUTTON_3_2_ID: NodeId = NodeId(11);
+    pub const EMPTY_CONTAINER_3_3_IGNORED_ID: NodeId = NodeId(12);
 
     pub fn test_tree() -> crate::tree::Tree {
         let mut classes = NodeClassSet::new();
