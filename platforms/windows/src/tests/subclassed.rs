@@ -18,9 +18,9 @@ use crate::SubclassingAdapter;
 
 const WINDOW_TITLE: &str = "Simple test";
 
-const WINDOW_ID: NodeId = NodeId(1);
-const BUTTON_1_ID: NodeId = NodeId(2);
-const BUTTON_2_ID: NodeId = NodeId(3);
+const WINDOW_ID: NodeId = NodeId(0);
+const BUTTON_1_ID: NodeId = NodeId(1);
+const BUTTON_2_ID: NodeId = NodeId(2);
 
 fn make_button(name: &str, classes: &mut NodeClassSet) -> Node {
     let mut builder = NodeBuilder::new(Role::Button);
