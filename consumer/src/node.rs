@@ -745,16 +745,8 @@ impl Deref for DetachedNode {
 #[cfg(test)]
 mod tests {
     use accesskit::{NodeBuilder, NodeClassSet, NodeId, Point, Rect, Role, Tree, TreeUpdate};
-    use std::num::NonZeroU128;
 
     use crate::tests::*;
-
-    const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
-    const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
-    const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
-    const NODE_ID_4: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(4) });
-    const NODE_ID_5: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(5) });
-    const NODE_ID_6: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(6) });
 
     #[test]
     fn parent_and_index() {
@@ -1018,21 +1010,21 @@ mod tests {
         let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
             nodes: vec![
-                (NODE_ID_1, {
+                (NodeId(0), {
                     let mut builder = NodeBuilder::new(Role::Window);
-                    builder.set_children(vec![NODE_ID_2]);
+                    builder.set_children(vec![NodeId(1)]);
                     builder.build(&mut classes)
                 }),
                 (
-                    NODE_ID_2,
+                    NodeId(1),
                     NodeBuilder::new(Role::Button).build(&mut classes),
                 ),
             ],
-            tree: Some(Tree::new(NODE_ID_1)),
+            tree: Some(Tree::new(NodeId(0))),
             focus: None,
         };
         let tree = crate::Tree::new(update);
-        assert_eq!(None, tree.state().node_by_id(NODE_ID_2).unwrap().name());
+        assert_eq!(None, tree.state().node_by_id(NodeId(1)).unwrap().name());
     }
 
     #[test]
@@ -1045,43 +1037,43 @@ mod tests {
         let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
             nodes: vec![
-                (NODE_ID_1, {
+                (NodeId(0), {
                     let mut builder = NodeBuilder::new(Role::Window);
-                    builder.set_children(vec![NODE_ID_2, NODE_ID_3, NODE_ID_4, NODE_ID_5]);
+                    builder.set_children(vec![NodeId(1), NodeId(2), NodeId(3), NodeId(4)]);
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_2, {
+                (NodeId(1), {
                     let mut builder = NodeBuilder::new(Role::CheckBox);
-                    builder.set_labelled_by(vec![NODE_ID_3, NODE_ID_5]);
+                    builder.set_labelled_by(vec![NodeId(2), NodeId(4)]);
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_3, {
+                (NodeId(2), {
                     let mut builder = NodeBuilder::new(Role::StaticText);
                     builder.set_name(LABEL_1);
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_4, {
+                (NodeId(3), {
                     let mut builder = NodeBuilder::new(Role::TextField);
-                    builder.push_labelled_by(NODE_ID_5);
+                    builder.push_labelled_by(NodeId(4));
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_5, {
+                (NodeId(4), {
                     let mut builder = NodeBuilder::new(Role::StaticText);
                     builder.set_name(LABEL_2);
                     builder.build(&mut classes)
                 }),
             ],
-            tree: Some(Tree::new(NODE_ID_1)),
+            tree: Some(Tree::new(NodeId(0))),
             focus: None,
         };
         let tree = crate::Tree::new(update);
         assert_eq!(
             Some([LABEL_1, LABEL_2].join(" ")),
-            tree.state().node_by_id(NODE_ID_2).unwrap().name()
+            tree.state().node_by_id(NodeId(1)).unwrap().name()
         );
         assert_eq!(
             Some(LABEL_2.into()),
-            tree.state().node_by_id(NODE_ID_4).unwrap().name()
+            tree.state().node_by_id(NodeId(3)).unwrap().name()
         );
     }
 
@@ -1093,48 +1085,48 @@ mod tests {
         let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
             nodes: vec![
-                (NODE_ID_1, {
+                (NodeId(0), {
                     let mut builder = NodeBuilder::new(Role::Window);
-                    builder.set_children(vec![NODE_ID_2, NODE_ID_4]);
+                    builder.set_children(vec![NodeId(1), NodeId(3)]);
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_2, {
+                (NodeId(1), {
                     let mut builder = NodeBuilder::new(Role::Button);
-                    builder.push_child(NODE_ID_3);
+                    builder.push_child(NodeId(2));
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_3, {
+                (NodeId(2), {
                     let mut builder = NodeBuilder::new(Role::Image);
                     builder.set_name(BUTTON_LABEL);
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_4, {
+                (NodeId(3), {
                     let mut builder = NodeBuilder::new(Role::Link);
-                    builder.push_child(NODE_ID_5);
+                    builder.push_child(NodeId(4));
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_5, {
+                (NodeId(4), {
                     let mut builder = NodeBuilder::new(Role::GenericContainer);
-                    builder.push_child(NODE_ID_6);
+                    builder.push_child(NodeId(5));
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_6, {
+                (NodeId(5), {
                     let mut builder = NodeBuilder::new(Role::StaticText);
                     builder.set_name(LINK_LABEL);
                     builder.build(&mut classes)
                 }),
             ],
-            tree: Some(Tree::new(NODE_ID_1)),
+            tree: Some(Tree::new(NodeId(0))),
             focus: None,
         };
         let tree = crate::Tree::new(update);
         assert_eq!(
             Some(BUTTON_LABEL.into()),
-            tree.state().node_by_id(NODE_ID_2).unwrap().name()
+            tree.state().node_by_id(NodeId(1)).unwrap().name()
         );
         assert_eq!(
             Some(LINK_LABEL.into()),
-            tree.state().node_by_id(NODE_ID_4).unwrap().name()
+            tree.state().node_by_id(NodeId(3)).unwrap().name()
         );
     }
 }

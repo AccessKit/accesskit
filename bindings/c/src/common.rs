@@ -9,7 +9,6 @@ use paste::paste;
 use std::{
     ffi::{CStr, CString},
     mem,
-    num::NonZeroU128,
     os::raw::{c_char, c_void},
     ptr, slice,
 };
@@ -318,24 +317,7 @@ macro_rules! vec_property_methods {
     }
 }
 
-/// Call `accesskit_node_id_new` to create this struct.
-///
-/// If you have to manually populate this, ensure it is not filled up only with zeroes.
-#[derive(Clone, Copy)]
-#[repr(C)]
-pub struct node_id([u8; 16]);
-
-impl From<NodeId> for node_id {
-    fn from(id: NodeId) -> Self {
-        Self(id.0.get().to_le_bytes())
-    }
-}
-
-impl From<node_id> for NodeId {
-    fn from(id: node_id) -> Self {
-        Self(unsafe { NonZeroU128::new_unchecked(u128::from_le_bytes(id.0)) })
-    }
-}
+pub type node_id = u64;
 
 slice_struct! { node_ids, NodeId, node_id }
 
@@ -858,13 +840,6 @@ array_struct! { custom_actions, CustomAction, custom_action }
 
 vec_property_methods! {
     (CustomAction, custom_actions, *mut custom_actions, set_custom_actions, custom_action, push_custom_action, clear_custom_actions)
-}
-
-impl node_id {
-    #[no_mangle]
-    pub extern "C" fn accesskit_node_id_new(id: u64) -> opt_node_id {
-        NonZeroU128::new(id as u128).map(NodeId).into()
-    }
 }
 
 impl node_builder {

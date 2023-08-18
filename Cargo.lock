@@ -77,10 +77,10 @@ version = "0.14.3"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
- "arrayvec",
  "once_cell",
  "paste",
  "scopeguard",
+ "static_assertions",
  "windows",
  "winit",
 ]

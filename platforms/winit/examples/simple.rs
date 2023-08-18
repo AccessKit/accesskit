@@ -3,10 +3,7 @@ use accesskit::{
     Role, Tree, TreeUpdate,
 };
 use accesskit_winit::{ActionRequestEvent, Adapter};
-use std::{
-    num::NonZeroU128,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoopBuilder},
@@ -15,10 +12,10 @@ use winit::{
 
 const WINDOW_TITLE: &str = "Hello world";
 
-const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
-const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
-const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
-const ANNOUNCEMENT_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(4) });
+const WINDOW_ID: NodeId = NodeId(0);
+const BUTTON_1_ID: NodeId = NodeId(1);
+const BUTTON_2_ID: NodeId = NodeId(2);
+const ANNOUNCEMENT_ID: NodeId = NodeId(3);
 const INITIAL_FOCUS: NodeId = BUTTON_1_ID;
 
 const BUTTON_1_RECT: Rect = Rect {

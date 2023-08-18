@@ -22,12 +22,7 @@ use serde::{
     ser::{SerializeMap, SerializeSeq, Serializer},
     Deserialize, Serialize,
 };
-use std::{
-    collections::BTreeSet,
-    num::{NonZeroU128, NonZeroU64},
-    ops::DerefMut,
-    sync::Arc,
-};
+use std::{collections::BTreeSet, ops::DerefMut, sync::Arc};
 #[cfg(feature = "serde")]
 use std::{fmt, mem::size_of_val};
 
@@ -690,9 +685,7 @@ pub enum TextDecoration {
     Wavy,
 }
 
-// This is NonZeroU128 because we regularly store Option<NodeId>.
-// 128-bit to handle UUIDs.
-pub type NodeIdContent = NonZeroU128;
+pub type NodeIdContent = u64;
 
 /// The stable identity of a [`Node`], unique within the node's tree.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -701,10 +694,17 @@ pub type NodeIdContent = NonZeroU128;
 #[repr(transparent)]
 pub struct NodeId(pub NodeIdContent);
 
-impl From<NonZeroU64> for NodeId {
+impl From<NodeIdContent> for NodeId {
     #[inline]
-    fn from(inner: NonZeroU64) -> Self {
-        Self(inner.into())
+    fn from(inner: NodeIdContent) -> Self {
+        Self(inner)
+    }
+}
+
+impl From<NodeId> for NodeIdContent {
+    #[inline]
+    fn from(outer: NodeId) -> Self {
+        outer.0
     }
 }
 

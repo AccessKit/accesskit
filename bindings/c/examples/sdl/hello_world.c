@@ -12,11 +12,11 @@
 
 const char WINDOW_TITLE[] = "Hello world";
 
-static accesskit_node_id WINDOW_ID;
-static accesskit_node_id BUTTON_1_ID;
-static accesskit_node_id BUTTON_2_ID;
-static accesskit_node_id ANNOUNCEMENT_ID;
-static accesskit_node_id INITIAL_FOCUS;
+const accesskit_node_id WINDOW_ID = 0;
+const accesskit_node_id BUTTON_1_ID = 1;
+const accesskit_node_id BUTTON_2_ID = 2;
+const accesskit_node_id ANNOUNCEMENT_ID = 3;
+const accesskit_node_id INITIAL_FOCUS = BUTTON_1_ID;
 
 const accesskit_rect BUTTON_1_RECT = {20.0, 20.0, 100.0, 60.0};
 
@@ -25,21 +25,10 @@ const accesskit_rect BUTTON_2_RECT = {20.0, 60.0, 100.0, 100.0};
 const Sint32 SET_FOCUS_MSG = 0;
 const Sint32 DO_DEFAULT_ACTION_MSG = 1;
 
-const bool node_id_cmp(const accesskit_node_id *id1,
-                       const accesskit_node_id *id2) {
-  return memcmp(id1, id2, sizeof(accesskit_node_id)) == 0;
-}
-
-accesskit_node_id *node_id_dup(const accesskit_node_id *src) {
-  accesskit_node_id *result = malloc(sizeof(accesskit_node_id));
-  memcpy(result, src, sizeof(accesskit_node_id));
-  return result;
-}
-
 accesskit_node *build_button(accesskit_node_id id, const char *name,
                              accesskit_node_class_set *classes) {
   accesskit_rect rect;
-  if (node_id_cmp(&id, &BUTTON_1_ID)) {
+  if (id == BUTTON_1_ID) {
     rect = BUTTON_1_RECT;
   } else {
     rect = BUTTON_2_RECT;
@@ -260,7 +249,7 @@ void window_state_press_button(struct window_state *state,
                                const struct accesskit_sdl_adapter *adapter,
                                accesskit_node_id id) {
   const char *text;
-  if (node_id_cmp(&id, &BUTTON_1_ID)) {
+  if (id == BUTTON_1_ID) {
     text = "You pressed button 1";
   } else {
     text = "You pressed button 2";
@@ -294,7 +283,7 @@ void do_action(const accesskit_action_request *request, void *userdata) {
   SDL_zero(event);
   event.type = state->event_type;
   event.user.windowID = state->window_id;
-  event.user.data1 = node_id_dup(&request->target);
+  event.user.data1 = (void *)((uintptr_t)(request->target));
   if (request->action == ACCESSKIT_ACTION_FOCUS) {
     event.user.code = SET_FOCUS_MSG;
     SDL_PushEvent(&event);
@@ -334,11 +323,6 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Couldn't register user event: (%s)\n", SDL_GetError());
     return -1;
   }
-  WINDOW_ID = accesskit_node_id_new(1).value;
-  BUTTON_1_ID = accesskit_node_id_new(2).value;
-  BUTTON_2_ID = accesskit_node_id_new(3).value;
-  ANNOUNCEMENT_ID = accesskit_node_id_new(4).value;
-  INITIAL_FOCUS = BUTTON_1_ID;
 
   struct window_state state;
   window_state_init(&state);
@@ -386,7 +370,7 @@ int main(int argc, char *argv[]) {
       switch (event.key.keysym.sym) {
         case SDLK_TAB:
           window_state_lock(&state);
-          if (node_id_cmp(&state.focus, &BUTTON_1_ID)) {
+          if (state.focus == BUTTON_1_ID) {
             state.focus = BUTTON_2_ID;
           } else {
             state.focus = BUTTON_1_ID;
@@ -401,18 +385,19 @@ int main(int argc, char *argv[]) {
           window_state_unlock(&state);
           break;
       }
-    } else if (event.type == user_event && event.user.windowID == window_id &&
-               (node_id_cmp(event.user.data1, &BUTTON_1_ID) ||
-                node_id_cmp(event.user.data1, &BUTTON_2_ID))) {
-      window_state_lock(&state);
-      accesskit_node_id *target = event.user.data1;
-      if (event.user.code == SET_FOCUS_MSG) {
-        state.focus = *target;
-        window_state_update_focus(&state, &adapter);
-      } else if (event.user.code == DO_DEFAULT_ACTION_MSG) {
-        window_state_press_button(&state, &adapter, *target);
+    } else if (event.type == user_event && event.user.windowID == window_id) {
+      accesskit_node_id target =
+          (accesskit_node_id)((uintptr_t)(event.user.data1));
+      if (target == BUTTON_1_ID || target == BUTTON_2_ID) {
+        window_state_lock(&state);
+        if (event.user.code == SET_FOCUS_MSG) {
+          state.focus = target;
+          window_state_update_focus(&state, &adapter);
+        } else if (event.user.code == DO_DEFAULT_ACTION_MSG) {
+          window_state_press_button(&state, &adapter, target);
+        }
+        window_state_unlock(&state);
       }
-      window_state_unlock(&state);
     }
   }
 

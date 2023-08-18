@@ -1026,16 +1026,6 @@ impl<'a> Node<'a> {
 #[cfg(test)]
 mod tests {
     use accesskit::{NodeId, Point, Rect, TextSelection};
-    use std::num::NonZeroU128;
-
-    const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
-    const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
-    const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
-    const NODE_ID_4: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(4) });
-    const NODE_ID_5: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(5) });
-    const NODE_ID_6: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(6) });
-    const NODE_ID_7: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(7) });
-    const NODE_ID_8: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(8) });
 
     // This is based on an actual tree produced by egui.
     fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {
@@ -1046,13 +1036,13 @@ mod tests {
         let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
             nodes: vec![
-                (NODE_ID_1, {
+                (NodeId(0), {
                     let mut builder = NodeBuilder::new(Role::Window);
                     builder.set_transform(Affine::scale(1.5));
-                    builder.set_children(vec![NODE_ID_2]);
+                    builder.set_children(vec![NodeId(1)]);
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_2, {
+                (NodeId(1), {
                     let mut builder = NodeBuilder::new(Role::TextField);
                     builder.set_bounds(Rect {
                         x0: 8.0,
@@ -1061,7 +1051,12 @@ mod tests {
                         y1: 123.66666412353516,
                     });
                     builder.set_children(vec![
-                        NODE_ID_3, NODE_ID_4, NODE_ID_5, NODE_ID_6, NODE_ID_7, NODE_ID_8,
+                        NodeId(2),
+                        NodeId(3),
+                        NodeId(4),
+                        NodeId(5),
+                        NodeId(6),
+                        NodeId(7),
                     ]);
                     builder.add_action(Action::Focus);
                     if let Some(selection) = selection {
@@ -1069,7 +1064,7 @@ mod tests {
                     }
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_3, {
+                (NodeId(2), {
                     let mut builder = NodeBuilder::new(Role::InlineTextBox);
                     builder.set_bounds(Rect {
                         x0: 12.0,
@@ -1104,7 +1099,7 @@ mod tests {
                     builder.set_word_lengths([5, 10, 3, 5, 7, 3, 5]);
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_4, {
+                (NodeId(3), {
                     let mut builder = NodeBuilder::new(Role::InlineTextBox);
                     builder.set_bounds(Rect {
                         x0: 12.0,
@@ -1129,7 +1124,7 @@ mod tests {
                     builder.set_word_lengths([3, 8, 6]);
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_5, {
+                (NodeId(4), {
                     let mut builder = NodeBuilder::new(Role::InlineTextBox);
                     builder.set_bounds(Rect {
                         x0: 12.0,
@@ -1155,7 +1150,7 @@ mod tests {
                     builder.set_word_lengths([8, 11]);
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_6, {
+                (NodeId(5), {
                     let mut builder = NodeBuilder::new(Role::InlineTextBox);
                     builder.set_bounds(Rect {
                         x0: 12.0,
@@ -1171,7 +1166,7 @@ mod tests {
                     builder.set_word_lengths([1]);
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_7, {
+                (NodeId(6), {
                     let mut builder = NodeBuilder::new(Role::InlineTextBox);
                     builder.set_bounds(Rect {
                         x0: 12.0,
@@ -1200,7 +1195,7 @@ mod tests {
                     builder.set_word_lengths([5, 4, 6, 6]);
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_8, {
+                (NodeId(7), {
                     let mut builder = NodeBuilder::new(Role::InlineTextBox);
                     builder.set_bounds(Rect {
                         x0: 12.0,
@@ -1217,8 +1212,8 @@ mod tests {
                     builder.build(&mut classes)
                 }),
             ],
-            tree: Some(Tree::new(NODE_ID_1)),
-            focus: Some(NODE_ID_2),
+            tree: Some(Tree::new(NodeId(0))),
+            focus: Some(NodeId(1)),
         };
 
         crate::Tree::new(update)
@@ -1229,11 +1224,11 @@ mod tests {
 
         TextSelection {
             anchor: TextPosition {
-                node: NODE_ID_8,
+                node: NodeId(7),
                 character_index: 0,
             },
             focus: TextPosition {
-                node: NODE_ID_8,
+                node: NodeId(7),
                 character_index: 0,
             },
         }
@@ -1244,11 +1239,11 @@ mod tests {
 
         TextSelection {
             anchor: TextPosition {
-                node: NODE_ID_3,
+                node: NodeId(2),
                 character_index: 38,
             },
             focus: TextPosition {
-                node: NODE_ID_3,
+                node: NodeId(2),
                 character_index: 38,
             },
         }
@@ -1259,11 +1254,11 @@ mod tests {
 
         TextSelection {
             anchor: TextPosition {
-                node: NODE_ID_3,
+                node: NodeId(2),
                 character_index: 5,
             },
             focus: TextPosition {
-                node: NODE_ID_3,
+                node: NodeId(2),
                 character_index: 5,
             },
         }
@@ -1274,11 +1269,11 @@ mod tests {
 
         TextSelection {
             anchor: TextPosition {
-                node: NODE_ID_4,
+                node: NodeId(3),
                 character_index: 5,
             },
             focus: TextPosition {
-                node: NODE_ID_4,
+                node: NodeId(3),
                 character_index: 5,
             },
         }
@@ -1288,15 +1283,15 @@ mod tests {
     fn supports_text_ranges() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        assert!(!state.node_by_id(NODE_ID_1).unwrap().supports_text_ranges());
-        assert!(state.node_by_id(NODE_ID_2).unwrap().supports_text_ranges());
+        assert!(!state.node_by_id(NodeId(0)).unwrap().supports_text_ranges());
+        assert!(state.node_by_id(NodeId(1)).unwrap().supports_text_ranges());
     }
 
     #[test]
     fn multiline_document_range() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let node = state.node_by_id(NodeId(1)).unwrap();
         let range = node.document_range();
         let start = range.start();
         assert!(start.is_word_start());
@@ -1355,7 +1350,7 @@ mod tests {
     fn multiline_end_degenerate_range() {
         let tree = main_multiline_tree(Some(multiline_end_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let node = state.node_by_id(NodeId(1)).unwrap();
         let range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -1381,7 +1376,7 @@ mod tests {
     fn multiline_wrapped_line_end_range() {
         let tree = main_multiline_tree(Some(multiline_wrapped_line_end_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let node = state.node_by_id(NodeId(1)).unwrap();
         let range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -1443,7 +1438,7 @@ mod tests {
     fn multiline_find_line_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let node = state.node_by_id(NodeId(1)).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -1475,7 +1470,7 @@ mod tests {
     fn multiline_find_wrapped_line_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_first_line_middle_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let node = state.node_by_id(NodeId(1)).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -1507,7 +1502,7 @@ mod tests {
     fn multiline_find_paragraph_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let node = state.node_by_id(NodeId(1)).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -1551,7 +1546,7 @@ mod tests {
     fn multiline_find_word_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let node = state.node_by_id(NodeId(1)).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -1579,7 +1574,7 @@ mod tests {
     fn text_position_at_point() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let node = state.node_by_id(NodeId(1)).unwrap();
 
         {
             let pos = node.text_position_at_point(Point::new(8.0, 31.666664123535156));
@@ -1671,7 +1666,7 @@ mod tests {
     fn to_global_utf16_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let node = state.node_by_id(NodeId(1)).unwrap();
 
         {
             let range = node.document_range();
@@ -1696,7 +1691,7 @@ mod tests {
     fn to_line_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let node = state.node_by_id(NodeId(1)).unwrap();
 
         {
             let range = node.document_range();
@@ -1722,7 +1717,7 @@ mod tests {
     fn line_range_from_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let node = state.node_by_id(NodeId(1)).unwrap();
 
         {
             let range = node.line_range_from_index(0).unwrap();
@@ -1761,7 +1756,7 @@ mod tests {
     fn text_position_from_global_utf16_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NODE_ID_2).unwrap();
+        let node = state.node_by_id(NodeId(1)).unwrap();
 
         {
             let pos = node.text_position_from_global_utf16_index(0).unwrap();

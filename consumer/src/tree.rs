@@ -338,25 +338,20 @@ impl Tree {
 #[cfg(test)]
 mod tests {
     use accesskit::{NodeBuilder, NodeClassSet, NodeId, Role, Tree, TreeUpdate};
-    use std::num::NonZeroU128;
-
-    const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
-    const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
-    const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
 
     #[test]
     fn init_tree_with_root_node() {
         let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
             nodes: vec![(
-                NODE_ID_1,
+                NodeId(0),
                 NodeBuilder::new(Role::Window).build(&mut classes),
             )],
-            tree: Some(Tree::new(NODE_ID_1)),
+            tree: Some(Tree::new(NodeId(0))),
             focus: None,
         };
         let tree = super::Tree::new(update);
-        assert_eq!(NODE_ID_1, tree.state().root().id());
+        assert_eq!(NodeId(0), tree.state().root().id());
         assert_eq!(Role::Window, tree.state().root().role());
         assert!(tree.state().root().parent().is_none());
     }
@@ -366,32 +361,32 @@ mod tests {
         let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
             nodes: vec![
-                (NODE_ID_1, {
+                (NodeId(0), {
                     let mut builder = NodeBuilder::new(Role::Window);
-                    builder.set_children(vec![NODE_ID_2, NODE_ID_3]);
+                    builder.set_children(vec![NodeId(1), NodeId(2)]);
                     builder.build(&mut classes)
                 }),
                 (
-                    NODE_ID_2,
+                    NodeId(1),
                     NodeBuilder::new(Role::Button).build(&mut classes),
                 ),
                 (
-                    NODE_ID_3,
+                    NodeId(2),
                     NodeBuilder::new(Role::Button).build(&mut classes),
                 ),
             ],
-            tree: Some(Tree::new(NODE_ID_1)),
+            tree: Some(Tree::new(NodeId(0))),
             focus: None,
         };
         let tree = super::Tree::new(update);
         let state = tree.state();
         assert_eq!(
-            NODE_ID_1,
-            state.node_by_id(NODE_ID_2).unwrap().parent().unwrap().id()
+            NodeId(0),
+            state.node_by_id(NodeId(1)).unwrap().parent().unwrap().id()
         );
         assert_eq!(
-            NODE_ID_1,
-            state.node_by_id(NODE_ID_3).unwrap().parent().unwrap().id()
+            NodeId(0),
+            state.node_by_id(NodeId(2)).unwrap().parent().unwrap().id()
         );
         assert_eq!(2, state.root().children().count());
     }
@@ -401,21 +396,21 @@ mod tests {
         let mut classes = NodeClassSet::new();
         let root_builder = NodeBuilder::new(Role::Window);
         let first_update = TreeUpdate {
-            nodes: vec![(NODE_ID_1, root_builder.clone().build(&mut classes))],
-            tree: Some(Tree::new(NODE_ID_1)),
+            nodes: vec![(NodeId(0), root_builder.clone().build(&mut classes))],
+            tree: Some(Tree::new(NodeId(0))),
             focus: None,
         };
         let mut tree = super::Tree::new(first_update);
         assert_eq!(0, tree.state().root().children().count());
         let second_update = TreeUpdate {
             nodes: vec![
-                (NODE_ID_1, {
+                (NodeId(0), {
                     let mut builder = root_builder;
-                    builder.push_child(NODE_ID_2);
+                    builder.push_child(NodeId(1));
                     builder.build(&mut classes)
                 }),
                 (
-                    NODE_ID_2,
+                    NodeId(1),
                     NodeBuilder::new(Role::RootWebArea).build(&mut classes),
                 ),
             ],
@@ -431,16 +426,16 @@ mod tests {
         }
         impl super::ChangeHandler for Handler {
             fn node_added(&mut self, node: &crate::Node) {
-                if node.id() == NODE_ID_2 {
+                if node.id() == NodeId(1) {
                     self.got_new_child_node = true;
                     return;
                 }
                 unexpected_change();
             }
             fn node_updated(&mut self, old_node: &crate::DetachedNode, new_node: &crate::Node) {
-                if new_node.id() == NODE_ID_1
+                if new_node.id() == NodeId(0)
                     && old_node.data().children().is_empty()
-                    && new_node.data().children() == [NODE_ID_2]
+                    && new_node.data().children() == [NodeId(1)]
                 {
                     self.got_updated_root_node = true;
                     return;
@@ -472,10 +467,10 @@ mod tests {
         assert!(handler.got_updated_root_node);
         let state = tree.state();
         assert_eq!(1, state.root().children().count());
-        assert_eq!(NODE_ID_2, state.root().children().next().unwrap().id());
+        assert_eq!(NodeId(1), state.root().children().next().unwrap().id());
         assert_eq!(
-            NODE_ID_1,
-            state.node_by_id(NODE_ID_2).unwrap().parent().unwrap().id()
+            NodeId(0),
+            state.node_by_id(NodeId(1)).unwrap().parent().unwrap().id()
         );
     }
 
@@ -485,23 +480,23 @@ mod tests {
         let root_builder = NodeBuilder::new(Role::Window);
         let first_update = TreeUpdate {
             nodes: vec![
-                (NODE_ID_1, {
+                (NodeId(0), {
                     let mut builder = root_builder.clone();
-                    builder.push_child(NODE_ID_2);
+                    builder.push_child(NodeId(1));
                     builder.build(&mut classes)
                 }),
                 (
-                    NODE_ID_2,
+                    NodeId(1),
                     NodeBuilder::new(Role::RootWebArea).build(&mut classes),
                 ),
             ],
-            tree: Some(Tree::new(NODE_ID_1)),
+            tree: Some(Tree::new(NodeId(0))),
             focus: None,
         };
         let mut tree = super::Tree::new(first_update);
         assert_eq!(1, tree.state().root().children().count());
         let second_update = TreeUpdate {
-            nodes: vec![(NODE_ID_1, root_builder.build(&mut classes))],
+            nodes: vec![(NodeId(0), root_builder.build(&mut classes))],
             tree: None,
             focus: None,
         };
@@ -517,8 +512,8 @@ mod tests {
                 unexpected_change();
             }
             fn node_updated(&mut self, old_node: &crate::DetachedNode, new_node: &crate::Node) {
-                if new_node.id() == NODE_ID_1
-                    && old_node.data().children() == [NODE_ID_2]
+                if new_node.id() == NodeId(0)
+                    && old_node.data().children() == [NodeId(1)]
                     && new_node.data().children().is_empty()
                 {
                     self.got_updated_root_node = true;
@@ -539,7 +534,7 @@ mod tests {
                 node: &crate::DetachedNode,
                 _current_state: &crate::TreeState,
             ) {
-                if node.id() == NODE_ID_2 {
+                if node.id() == NodeId(1) {
                     self.got_removed_child_node = true;
                     return;
                 }
@@ -554,7 +549,7 @@ mod tests {
         assert!(handler.got_updated_root_node);
         assert!(handler.got_removed_child_node);
         assert_eq!(0, tree.state().root().children().count());
-        assert!(tree.state().node_by_id(NODE_ID_2).is_none());
+        assert!(tree.state().node_by_id(NodeId(1)).is_none());
     }
 
     #[test]
@@ -562,29 +557,29 @@ mod tests {
         let mut classes = NodeClassSet::new();
         let first_update = TreeUpdate {
             nodes: vec![
-                (NODE_ID_1, {
+                (NodeId(0), {
                     let mut builder = NodeBuilder::new(Role::Window);
-                    builder.set_children(vec![NODE_ID_2, NODE_ID_3]);
+                    builder.set_children(vec![NodeId(1), NodeId(2)]);
                     builder.build(&mut classes)
                 }),
                 (
-                    NODE_ID_2,
+                    NodeId(1),
                     NodeBuilder::new(Role::Button).build(&mut classes),
                 ),
                 (
-                    NODE_ID_3,
+                    NodeId(2),
                     NodeBuilder::new(Role::Button).build(&mut classes),
                 ),
             ],
-            tree: Some(Tree::new(NODE_ID_1)),
-            focus: Some(NODE_ID_2),
+            tree: Some(Tree::new(NodeId(0))),
+            focus: Some(NodeId(1)),
         };
         let mut tree = super::Tree::new(first_update);
-        assert!(tree.state().node_by_id(NODE_ID_2).unwrap().is_focused());
+        assert!(tree.state().node_by_id(NodeId(1)).unwrap().is_focused());
         let second_update = TreeUpdate {
             nodes: vec![],
             tree: None,
-            focus: Some(NODE_ID_3),
+            focus: Some(NodeId(2)),
         };
         struct Handler {
             got_old_focus_node_update: bool,
@@ -599,16 +594,16 @@ mod tests {
                 unexpected_change();
             }
             fn node_updated(&mut self, old_node: &crate::DetachedNode, new_node: &crate::Node) {
-                if old_node.id() == NODE_ID_2
-                    && new_node.id() == NODE_ID_2
+                if old_node.id() == NodeId(1)
+                    && new_node.id() == NodeId(1)
                     && old_node.is_focused()
                     && !new_node.is_focused()
                 {
                     self.got_old_focus_node_update = true;
                     return;
                 }
-                if old_node.id() == NODE_ID_3
-                    && new_node.id() == NODE_ID_3
+                if old_node.id() == NodeId(2)
+                    && new_node.id() == NodeId(2)
                     && !old_node.is_focused()
                     && new_node.is_focused()
                 {
@@ -624,7 +619,7 @@ mod tests {
                 _current_state: &crate::TreeState,
             ) {
                 if let (Some(old_node), Some(new_node)) = (old_node, new_node) {
-                    if old_node.id() == NODE_ID_2 && new_node.id() == NODE_ID_3 {
+                    if old_node.id() == NodeId(1) && new_node.id() == NodeId(2) {
                         self.got_focus_change = true;
                         return;
                     }
@@ -648,8 +643,8 @@ mod tests {
         assert!(handler.got_old_focus_node_update);
         assert!(handler.got_new_focus_node_update);
         assert!(handler.got_focus_change);
-        assert!(tree.state().node_by_id(NODE_ID_3).unwrap().is_focused());
-        assert!(!tree.state().node_by_id(NODE_ID_2).unwrap().is_focused());
+        assert!(tree.state().node_by_id(NodeId(2)).unwrap().is_focused());
+        assert!(!tree.state().node_by_id(NodeId(1)).unwrap().is_focused());
     }
 
     #[test]
@@ -658,27 +653,27 @@ mod tests {
         let child_builder = NodeBuilder::new(Role::Button);
         let first_update = TreeUpdate {
             nodes: vec![
-                (NODE_ID_1, {
+                (NodeId(0), {
                     let mut builder = NodeBuilder::new(Role::Window);
-                    builder.set_children(vec![NODE_ID_2]);
+                    builder.set_children(vec![NodeId(1)]);
                     builder.build(&mut classes)
                 }),
-                (NODE_ID_2, {
+                (NodeId(1), {
                     let mut builder = child_builder.clone();
                     builder.set_name("foo");
                     builder.build(&mut classes)
                 }),
             ],
-            tree: Some(Tree::new(NODE_ID_1)),
+            tree: Some(Tree::new(NodeId(0))),
             focus: None,
         };
         let mut tree = super::Tree::new(first_update);
         assert_eq!(
             Some("foo".into()),
-            tree.state().node_by_id(NODE_ID_2).unwrap().name()
+            tree.state().node_by_id(NodeId(1)).unwrap().name()
         );
         let second_update = TreeUpdate {
-            nodes: vec![(NODE_ID_2, {
+            nodes: vec![(NodeId(1), {
                 let mut builder = child_builder;
                 builder.set_name("bar");
                 builder.build(&mut classes)
@@ -697,7 +692,7 @@ mod tests {
                 unexpected_change();
             }
             fn node_updated(&mut self, old_node: &crate::DetachedNode, new_node: &crate::Node) {
-                if new_node.id() == NODE_ID_2
+                if new_node.id() == NodeId(1)
                     && old_node.name() == Some("foo".into())
                     && new_node.name() == Some("bar".into())
                 {
@@ -729,7 +724,7 @@ mod tests {
         assert!(handler.got_updated_child_node);
         assert_eq!(
             Some("bar".into()),
-            tree.state().node_by_id(NODE_ID_2).unwrap().name()
+            tree.state().node_by_id(NodeId(1)).unwrap().name()
         );
     }
 }

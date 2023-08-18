@@ -7,11 +7,11 @@ const WCHAR CLASS_NAME[] = L"AccessKitTest";
 
 const WCHAR WINDOW_TITLE[] = L"Hello world";
 
-static accesskit_node_id WINDOW_ID;
-static accesskit_node_id BUTTON_1_ID;
-static accesskit_node_id BUTTON_2_ID;
-static accesskit_node_id ANNOUNCEMENT_ID;
-static accesskit_node_id INITIAL_FOCUS;
+const accesskit_node_id WINDOW_ID = 0;
+const accesskit_node_id BUTTON_1_ID = 1;
+const accesskit_node_id BUTTON_2_ID = 2;
+const accesskit_node_id ANNOUNCEMENT_ID = 3;
+const accesskit_node_id INITIAL_FOCUS = BUTTON_1_ID;
 
 const accesskit_rect BUTTON_1_RECT = {20.0, 20.0, 100.0, 60.0};
 
@@ -20,21 +20,10 @@ const accesskit_rect BUTTON_2_RECT = {20.0, 60.0, 100.0, 100.0};
 const uint32_t SET_FOCUS_MSG = WM_USER;
 const uint32_t DO_DEFAULT_ACTION_MSG = WM_USER + 1;
 
-const bool node_id_cmp(const accesskit_node_id *id1,
-                       const accesskit_node_id *id2) {
-  return memcmp(id1, id2, sizeof(accesskit_node_id)) == 0;
-}
-
-accesskit_node_id *node_id_dup(const accesskit_node_id *src) {
-  accesskit_node_id *result = malloc(sizeof(accesskit_node_id));
-  memcpy(result, src, sizeof(accesskit_node_id));
-  return result;
-}
-
 accesskit_node *build_button(accesskit_node_id id, const char *name,
                              accesskit_node_class_set *classes) {
   accesskit_rect rect;
-  if (node_id_cmp(&id, &BUTTON_1_ID)) {
+  if (id == BUTTON_1_ID) {
     rect = BUTTON_1_RECT;
   } else {
     rect = BUTTON_2_RECT;
@@ -122,10 +111,10 @@ accesskit_tree_update *window_state_build_initial_tree(
 void do_action(const accesskit_action_request *request, void *userdata) {
   HWND window = userdata;
   if (request->action == ACCESSKIT_ACTION_FOCUS) {
-    LPARAM lparam = (LPARAM)node_id_dup(&request->target);
+    LPARAM lparam = (LPARAM)(request->target);
     PostMessage((HWND)window, SET_FOCUS_MSG, 0, lparam);
   } else if (request->action == ACCESSKIT_ACTION_DEFAULT) {
-    LPARAM lparam = (LPARAM)node_id_dup(&request->target);
+    LPARAM lparam = (LPARAM)(request->target);
     PostMessage((HWND)window, DO_DEFAULT_ACTION_MSG, 0, lparam);
   }
 }
@@ -149,7 +138,7 @@ accesskit_windows_adapter *window_state_get_or_init_accesskit_adapter(
 void window_state_press_button(struct window_state *state,
                                accesskit_node_id id) {
   const char *text;
-  if (node_id_cmp(&id, &BUTTON_1_ID)) {
+  if (id == BUTTON_1_ID) {
     text = "You pressed button 1";
   } else {
     text = "You pressed button 2";
@@ -238,7 +227,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   } else if (msg == WM_KEYDOWN) {
     if (wParam == VK_TAB) {
       struct window_state *state = get_window_state(hwnd);
-      if (node_id_cmp(&state->focus, &BUTTON_1_ID)) {
+      if (state->focus == BUTTON_1_ID) {
         state->focus = BUTTON_2_ID;
       } else {
         state->focus = BUTTON_1_ID;
@@ -252,21 +241,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
       return DefWindowProc(hwnd, msg, wParam, lParam);
     }
   } else if (msg == SET_FOCUS_MSG) {
-    accesskit_node_id *id = (accesskit_node_id *)lParam;
-    if (node_id_cmp(id, &BUTTON_1_ID) || node_id_cmp(id, &BUTTON_2_ID)) {
+    accesskit_node_id id = (accesskit_node_id)lParam;
+    if (id == BUTTON_1_ID || id == BUTTON_2_ID) {
       struct window_state *state = get_window_state(hwnd);
-      state->focus = *id;
+      state->focus = id;
       bool is_window_focused = state->is_window_focused;
       update_focus(hwnd, is_window_focused);
     }
-    free(id);
   } else if (msg == DO_DEFAULT_ACTION_MSG) {
-    accesskit_node_id *id = (accesskit_node_id *)lParam;
-    if (node_id_cmp(id, &BUTTON_1_ID) || node_id_cmp(id, &BUTTON_2_ID)) {
+    accesskit_node_id id = (accesskit_node_id)lParam;
+    if (id == BUTTON_1_ID || id == BUTTON_2_ID) {
       struct window_state *window_state = get_window_state(hwnd);
-      window_state_press_button(window_state, *id);
+      window_state_press_button(window_state, id);
     }
-    free(id);
   } else {
     return DefWindowProc(hwnd, msg, wParam, lParam);
   }
@@ -313,12 +300,6 @@ int main() {
   if (!RegisterClassEx(&wc)) {
     return 0;
   }
-
-  WINDOW_ID = accesskit_node_id_new(1).value;
-  BUTTON_1_ID = accesskit_node_id_new(2).value;
-  BUTTON_2_ID = accesskit_node_id_new(3).value;
-  ANNOUNCEMENT_ID = accesskit_node_id_new(4).value;
-  INITIAL_FOCUS = BUTTON_1_ID;
 
   hwnd = create_window(WINDOW_TITLE, INITIAL_FOCUS);
 

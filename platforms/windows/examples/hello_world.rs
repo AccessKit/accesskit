@@ -6,7 +6,7 @@ use accesskit::{
 };
 use accesskit_windows::UiaInitMarker;
 use once_cell::{sync::Lazy, unsync::OnceCell};
-use std::{cell::RefCell, convert::TryInto, num::NonZeroU128};
+use std::cell::RefCell;
 use windows::{
     core::*,
     Win32::{
@@ -39,10 +39,10 @@ static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
 
 const WINDOW_TITLE: &str = "Hello world";
 
-const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
-const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
-const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
-const ANNOUNCEMENT_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(4) });
+const WINDOW_ID: NodeId = NodeId(0);
+const BUTTON_1_ID: NodeId = NodeId(1);
+const BUTTON_2_ID: NodeId = NodeId(2);
+const ANNOUNCEMENT_ID: NodeId = NodeId(3);
 const INITIAL_FOCUS: NodeId = BUTTON_1_ID;
 
 const BUTTON_1_RECT: Rect = Rect {
@@ -207,7 +207,7 @@ impl ActionHandler for SimpleActionHandler {
                         self.window,
                         SET_FOCUS_MSG,
                         WPARAM(0),
-                        LPARAM(request.target.0.get().try_into().unwrap()),
+                        LPARAM(request.target.0 as _),
                     )
                 };
             }
@@ -217,7 +217,7 @@ impl ActionHandler for SimpleActionHandler {
                         self.window,
                         DO_DEFAULT_ACTION_MSG,
                         WPARAM(0),
-                        LPARAM(request.target.0.get().try_into().unwrap()),
+                        LPARAM(request.target.0 as _),
                     )
                 };
             }
@@ -305,26 +305,22 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
         },
         SET_FOCUS_MSG => {
-            if let Some(id) = lparam.0.try_into().ok().and_then(NonZeroU128::new) {
-                let id = NodeId(id);
-                if id == BUTTON_1_ID || id == BUTTON_2_ID {
-                    let window_state = unsafe { &*get_window_state(window) };
-                    let mut inner_state = window_state.inner_state.borrow_mut();
-                    inner_state.focus = id;
-                    let is_window_focused = inner_state.is_window_focused;
-                    drop(inner_state);
-                    update_focus(window, is_window_focused);
-                }
+            let id = NodeId(lparam.0 as _);
+            if id == BUTTON_1_ID || id == BUTTON_2_ID {
+                let window_state = unsafe { &*get_window_state(window) };
+                let mut inner_state = window_state.inner_state.borrow_mut();
+                inner_state.focus = id;
+                let is_window_focused = inner_state.is_window_focused;
+                drop(inner_state);
+                update_focus(window, is_window_focused);
             }
             LRESULT(0)
         }
         DO_DEFAULT_ACTION_MSG => {
-            if let Some(id) = lparam.0.try_into().ok().and_then(NonZeroU128::new) {
-                let id = NodeId(id);
-                if id == BUTTON_1_ID || id == BUTTON_2_ID {
-                    let window_state = unsafe { &*get_window_state(window) };
-                    window_state.press_button(id);
-                }
+            let id = NodeId(lparam.0 as _);
+            if id == BUTTON_1_ID || id == BUTTON_2_ID {
+                let window_state = unsafe { &*get_window_state(window) };
+                window_state.press_button(id);
             }
             LRESULT(0)
         }

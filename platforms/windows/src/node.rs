@@ -14,7 +14,6 @@ use accesskit::{
     Action, ActionData, ActionRequest, CheckedState, Live, NodeId, NodeIdContent, Point, Role,
 };
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
-use arrayvec::ArrayVec;
 use paste::paste;
 use std::sync::{Arc, Weak};
 use windows::{
@@ -24,16 +23,16 @@ use windows::{
 
 use crate::{context::Context, text::PlatformRange as PlatformTextRange, util::*};
 
-fn runtime_id_from_node_id(id: NodeId) -> impl std::ops::Deref<Target = [i32]> {
-    let mut result = ArrayVec::<i32, { std::mem::size_of::<NodeIdContent>() + 1 }>::new();
-    result.push(UiaAppendRuntimeId as i32);
+const RUNTIME_ID_SIZE: usize = 3;
+
+fn runtime_id_from_node_id(id: NodeId) -> [i32; RUNTIME_ID_SIZE] {
+    static_assertions::assert_eq_size!(NodeIdContent, u64);
     let id = id.0;
-    let id_bytes = id.get().to_be_bytes();
-    let start_index: usize = (id.leading_zeros() / 8) as usize;
-    for byte in &id_bytes[start_index..] {
-        result.push((*byte).into());
-    }
-    result
+    [
+        UiaAppendRuntimeId as _,
+        ((id >> 32) & 0xFFFFFFFF) as _,
+        (id & 0xFFFFFFFF) as _,
+    ]
 }
 
 fn filter_common(node: &NodeState) -> FilterResult {
