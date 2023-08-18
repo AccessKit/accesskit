@@ -3,8 +3,6 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::convert::TryInto;
-
 use accesskit::{
     Action, ActionHandler, ActionRequest, Node, NodeBuilder, NodeClassSet, NodeId, Role, Tree,
     TreeUpdate,

@@ -5,7 +5,6 @@
 
 use accesskit::Point;
 use std::{
-    convert::TryInto,
     mem::ManuallyDrop,
     sync::{Arc, Weak},
 };
