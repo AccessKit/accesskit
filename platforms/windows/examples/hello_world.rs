@@ -39,10 +39,10 @@ static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
 
 const WINDOW_TITLE: &str = "Hello world";
 
-const WINDOW_ID: NodeId = NodeId(1);
-const BUTTON_1_ID: NodeId = NodeId(2);
-const BUTTON_2_ID: NodeId = NodeId(3);
-const ANNOUNCEMENT_ID: NodeId = NodeId(4);
+const WINDOW_ID: NodeId = NodeId(0);
+const BUTTON_1_ID: NodeId = NodeId(1);
+const BUTTON_2_ID: NodeId = NodeId(2);
+const ANNOUNCEMENT_ID: NodeId = NodeId(3);
 const INITIAL_FOCUS: NodeId = BUTTON_1_ID;
 
 const BUTTON_1_RECT: Rect = Rect {

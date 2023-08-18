@@ -7,10 +7,10 @@ const WCHAR CLASS_NAME[] = L"AccessKitTest";
 
 const WCHAR WINDOW_TITLE[] = L"Hello world";
 
-const accesskit_node_id WINDOW_ID = 1;
-const accesskit_node_id BUTTON_1_ID = 2;
-const accesskit_node_id BUTTON_2_ID = 3;
-const accesskit_node_id ANNOUNCEMENT_ID = 4;
+const accesskit_node_id WINDOW_ID = 0;
+const accesskit_node_id BUTTON_1_ID = 1;
+const accesskit_node_id BUTTON_2_ID = 2;
+const accesskit_node_id ANNOUNCEMENT_ID = 3;
 const accesskit_node_id INITIAL_FOCUS = BUTTON_1_ID;
 
 const accesskit_rect BUTTON_1_RECT = {20.0, 20.0, 100.0, 60.0};
