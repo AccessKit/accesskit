@@ -338,11 +338,10 @@ impl Tree {
 #[cfg(test)]
 mod tests {
     use accesskit::{NodeBuilder, NodeClassSet, NodeId, Role, Tree, TreeUpdate};
-    use std::num::NonZeroU128;
 
-    const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
-    const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
-    const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
+    const NODE_ID_1: NodeId = NodeId(1);
+    const NODE_ID_2: NodeId = NodeId(2);
+    const NODE_ID_3: NodeId = NodeId(3);
 
     #[test]
     fn init_tree_with_root_node() {

@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::{convert::TryInto, num::NonZeroU128};
+use std::convert::TryInto;
 
 use accesskit::{
     Action, ActionHandler, ActionRequest, Node, NodeBuilder, NodeClassSet, NodeId, Role, Tree,
@@ -15,9 +15,9 @@ use super::*;
 
 const WINDOW_TITLE: &str = "Simple test";
 
-const WINDOW_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
-const BUTTON_1_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
-const BUTTON_2_ID: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
+const WINDOW_ID: NodeId = NodeId(1);
+const BUTTON_1_ID: NodeId = NodeId(2);
+const BUTTON_2_ID: NodeId = NodeId(3);
 
 fn make_button(name: &str, classes: &mut NodeClassSet) -> Node {
     let mut builder = NodeBuilder::new(Role::Button);

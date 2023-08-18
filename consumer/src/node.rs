@@ -745,16 +745,15 @@ impl Deref for DetachedNode {
 #[cfg(test)]
 mod tests {
     use accesskit::{NodeBuilder, NodeClassSet, NodeId, Point, Rect, Role, Tree, TreeUpdate};
-    use std::num::NonZeroU128;
 
     use crate::tests::*;
 
-    const NODE_ID_1: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(1) });
-    const NODE_ID_2: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(2) });
-    const NODE_ID_3: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(3) });
-    const NODE_ID_4: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(4) });
-    const NODE_ID_5: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(5) });
-    const NODE_ID_6: NodeId = NodeId(unsafe { NonZeroU128::new_unchecked(6) });
+    const NODE_ID_1: NodeId = NodeId(1);
+    const NODE_ID_2: NodeId = NodeId(2);
+    const NODE_ID_3: NodeId = NodeId(3);
+    const NODE_ID_4: NodeId = NodeId(4);
+    const NODE_ID_5: NodeId = NodeId(5);
+    const NODE_ID_6: NodeId = NodeId(6);
 
     #[test]
     fn parent_and_index() {
