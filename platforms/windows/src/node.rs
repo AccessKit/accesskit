@@ -25,13 +25,15 @@ use windows::{
 use crate::{context::Context, text::PlatformRange as PlatformTextRange, util::*};
 
 fn runtime_id_from_node_id(id: NodeId) -> impl std::ops::Deref<Target = [i32]> {
-    let mut result = ArrayVec::<i32, { std::mem::size_of::<NodeIdContent>() + 1 }>::new();
+    let mut result = ArrayVec::<i32, { ((NodeIdContent::BITS / 32) + 1) as usize }>::new();
     result.push(UiaAppendRuntimeId as i32);
-    let id = id.0;
-    let id_bytes = id.to_be_bytes();
-    let start_index: usize = (id.leading_zeros() / 8) as usize;
-    for byte in &id_bytes[start_index..] {
-        result.push((*byte).into());
+    let mut id = id.0;
+    for _ in 0..(NodeIdContent::BITS / 32) {
+        result.insert(1, (id & 0xFFFFFFFF) as _);
+        id >>= 32;
+        if id == 0 {
+            break;
+        }
     }
     result
 }
