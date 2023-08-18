@@ -1051,7 +1051,12 @@ mod tests {
                         y1: 123.66666412353516,
                     });
                     builder.set_children(vec![
-                        NodeId(2), NodeId(3), NodeId(4), NodeId(5), NodeId(6), NodeId(7),
+                        NodeId(2),
+                        NodeId(3),
+                        NodeId(4),
+                        NodeId(5),
+                        NodeId(6),
+                        NodeId(7),
                     ]);
                     builder.add_action(Action::Focus);
                     if let Some(selection) = selection {
