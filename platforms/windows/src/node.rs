@@ -14,7 +14,6 @@ use accesskit::{
     Action, ActionData, ActionRequest, CheckedState, Live, NodeId, NodeIdContent, Point, Role,
 };
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
-use arrayvec::ArrayVec;
 use paste::paste;
 use std::sync::{Arc, Weak};
 use windows::{
@@ -24,16 +23,15 @@ use windows::{
 
 use crate::{context::Context, text::PlatformRange as PlatformTextRange, util::*};
 
-fn runtime_id_from_node_id(id: NodeId) -> impl std::ops::Deref<Target = [i32]> {
-    let mut result = ArrayVec::<i32, { ((NodeIdContent::BITS / 32) + 1) as usize }>::new();
-    result.push(UiaAppendRuntimeId as i32);
+const RUNTIME_ID_SIZE: usize = ((NodeIdContent::BITS / 32) + 1) as usize;
+
+fn runtime_id_from_node_id(id: NodeId) -> [i32; RUNTIME_ID_SIZE] {
+    let mut result = [0i32; RUNTIME_ID_SIZE];
+    result[0] = UiaAppendRuntimeId as _;
     let mut id = id.0;
-    for _ in 0..(NodeIdContent::BITS / 32) {
-        result.insert(1, (id & 0xFFFFFFFF) as _);
+    for i in 0..(NodeIdContent::BITS / 32) as usize {
+        result[RUNTIME_ID_SIZE - i - 1] = (id & 0xFFFFFFFF) as _;
         id >>= 32;
-        if id == 0 {
-            break;
-        }
     }
     result
 }
