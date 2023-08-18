@@ -80,6 +80,7 @@ dependencies = [
  "once_cell",
  "paste",
  "scopeguard",
+ "static_assertions",
  "windows",
  "winit",
 ]

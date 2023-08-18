@@ -23,17 +23,16 @@ use windows::{
 
 use crate::{context::Context, text::PlatformRange as PlatformTextRange, util::*};
 
-const RUNTIME_ID_SIZE: usize = ((NodeIdContent::BITS / 32) + 1) as usize;
+const RUNTIME_ID_SIZE: usize = 3;
 
 fn runtime_id_from_node_id(id: NodeId) -> [i32; RUNTIME_ID_SIZE] {
-    let mut result = [0i32; RUNTIME_ID_SIZE];
-    result[0] = UiaAppendRuntimeId as _;
-    let mut id = id.0;
-    for i in 0..(NodeIdContent::BITS / 32) as usize {
-        result[RUNTIME_ID_SIZE - i - 1] = (id & 0xFFFFFFFF) as _;
-        id >>= 32;
-    }
-    result
+    static_assertions::assert_eq_size!(NodeIdContent, u64);
+    let id = id.0;
+    [
+        UiaAppendRuntimeId as _,
+        ((id >> 32) & 0xFFFFFFFF) as _,
+        (id & 0xFFFFFFFF) as _,
+    ]
 }
 
 fn filter_common(node: &NodeState) -> FilterResult {
