@@ -19,20 +19,10 @@ Remember to commit these changes as part of your pull request.
 
 ### CHANGELOG.md
 
-Our CHANGELOG.md files are auto generated using [Release Please](https://github.com/googleapis/release-please) and should not be edited manually.
+Our `CHANGELOG.md` files are auto generated using [Release Please](https://github.com/googleapis/release-please) and should not be edited manually.
 
-To control what is in the CHANGELOG.md for your change, use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) when writing your PR title.
-
-#### Example Commit Messages
-Taken from [Conventional Commits documentation](https://www.conventionalcommits.org/en/v1.0.0/#summary):
-> feat: allow provided config object to extend other configs
->
-> BREAKING CHANGE: `extends` key in config file is now used for extending other config files
-
-> fix: prevent racing of requests
->
-> Introduce a request id and a reference to latest request. Dismiss
-incoming responses other than from latest request.
+To control how your work will be described in the changelog, use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) when writing the title of your pull request.
+If you think one line is not enough, mention it in your pull request so that maintainers can update the description of the merge commit.
 
 ### Testing Locally
 
