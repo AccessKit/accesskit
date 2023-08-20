@@ -9,6 +9,14 @@ When reporting an issue, in order to help the maintainers understand what the pr
 
 ## Making a Pull Request
 
+When making a code contribution to AccessKit, before opening your pull request please make sure that:
+
+- your patch builds with AccessKit's minimal supported rust version - Rust 1.64
+- you added tests where applicable
+- you tested your modifications on all impacted platforms (see below)
+- you updated any relevant documentation
+- you left comments in your code explaining any part that is not straightforward, so that the maintainers and future contributors don't have to guess what your code is supposed to do
+
 ### Cargo.lock File
 
 AccessKit intentionally includes the `Cargo.lock` file in the git repository.
