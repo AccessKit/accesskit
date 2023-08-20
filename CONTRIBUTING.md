@@ -26,21 +26,18 @@ If you think one line is not enough, mention it in your pull request so that mai
 
 ### Testing Locally
 
-We have some platform specific tests that are not run with `cargo test` from the project root by default.
+We have platform-specific tests that do not run when doing `cargo test` from the project root directory.
 
-1. Run test that work on all platforms
+1. Run cross-platform tests:
    ``` shell
    cargo test
    ```
-2. Run platform specific tests.
-
-   Run the appropriate command for your platform
+2. Run platform-specific tests by issuing the appropriate command for your platform:
    ``` shell
-   cargo test -p accesskit_windows
-   cargo test -p accesskit_unix
    cargo test -p accesskit_macos
+   cargo test -p accesskit_unix
+   cargo test -p accesskit_windows
    ```
-   Not all platforms have tests at this time, but they may in the future.
 
 > [!WARNING]
-> **Windows**: Some tests may fail if the created window looses focus while testing. This can also happen when using the terminal built into your IDE. Try running them from your native terminal if you get failures. 
+> **Windows**: Some end-to-end tests may fail if the created window loses focus. This can happen when using the terminal built into your IDE. Try running them from Powershell or the Command Prompt instead.
