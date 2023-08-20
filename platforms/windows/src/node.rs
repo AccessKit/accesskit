@@ -618,6 +618,7 @@ impl PlatformNode {
     }
 }
 
+#[allow(non_snake_case)]
 impl IRawElementProviderSimple_Impl for PlatformNode {
     fn ProviderOptions(&self) -> Result<ProviderOptions> {
         Ok(ProviderOptions_ServerSideProvider)
@@ -657,6 +658,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
     }
 }
 
+#[allow(non_snake_case)]
 impl IRawElementProviderFragment_Impl for PlatformNode {
     fn Navigate(&self, direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
         self.resolve(|node| {
@@ -722,6 +724,7 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
     }
 }
 
+#[allow(non_snake_case)]
 impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
     fn ElementProviderFromPoint(&self, x: f64, y: f64) -> Result<IRawElementProviderFragment> {
         self.resolve_with_context(|node, context| {
@@ -832,7 +835,8 @@ macro_rules! patterns {
             }
         }
         paste! {
-            $(impl [< I $base_pattern_id Provider_Impl>] for PlatformNode {
+            $(#[allow(non_snake_case)]
+            impl [< I $base_pattern_id Provider_Impl>] for PlatformNode {
                 $(fn $base_property_id(&self) -> Result<$com_type> {
                     self.resolve(|node| {
                         let wrapper = NodeWrapper::Node(&node);

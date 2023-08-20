@@ -315,7 +315,6 @@ pub(crate) struct FocusEventHandler {
     received: Arc<ReceivedFocusEvent>,
 }
 
-#[allow(non_snake_case)]
 impl FocusEventHandler {
     #[allow(clippy::new_ret_no_self)] // it does return self, but wrapped
     pub(crate) fn new() -> (
@@ -333,6 +332,7 @@ impl FocusEventHandler {
     }
 }
 
+#[allow(non_snake_case)]
 impl IUIAutomationFocusChangedEventHandler_Impl for FocusEventHandler {
     fn HandleFocusChangedEvent(&self, sender: Option<&IUIAutomationElement>) -> Result<()> {
         self.received.put(sender.unwrap().clone());
