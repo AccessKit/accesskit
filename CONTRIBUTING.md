@@ -1,5 +1,12 @@
 # Contributing to AccessKit
 
+## Reporting an issue
+
+When reporting an issue, in order to help the maintainers understand what the problem is, please make your description of the issue as detailed as possible:
+
+- if it is a bug, please provide clear explanation of what happens, what should happen, and how to reproduce the issue, ideally by providing a minimal program exhibiting the problem
+- if it is a feature request, please provide a clear argumentation about why you believe this feature should be supported by AccessKit
+
 ## Making a Pull Request
 
 ### Cargo.lock File
