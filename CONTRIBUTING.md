@@ -11,15 +11,11 @@ When reporting an issue, in order to help the maintainers understand what the pr
 
 ### Cargo.lock File
 
-AccessKit intentionally includes the `Cargo.lock` file in our git repository.
-This is mainly due to our bindings to other languages.
+AccessKit intentionally includes the `Cargo.lock` file in the git repository.
 
-Usually you should not run cargo update when creating a pull request even when adding/changing a dependency.
-Simply building the library should update the `Cargo.lock` file with the minimal changes needed.
-
-> [!NOTE]
-> This is not normal / best practice for most libraries.
-> See the [official documentation](https://doc.rust-lang.org/cargo/faq.html#why-do-binaries-have-cargolock-in-version-control-but-not-libraries) for more information. 
+You should not run `cargo update` when creating a pull request even when adding or changing a dependency.
+Simply building the library will update the `Cargo.lock` file with the minimal changes needed.
+Remember to commit these changes as part of your pull request.
 
 ### CHANGELOG.md
 
