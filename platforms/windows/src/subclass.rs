@@ -5,7 +5,7 @@
 
 use accesskit::{ActionHandler, TreeUpdate};
 use once_cell::unsync::Lazy;
-use std::{cell::Cell, ffi::c_void, mem::transmute};
+use std::{cell::Cell, ffi::c_void, mem::transmute, rc::Rc};
 use windows::{
     core::*,
     Win32::{Foundation::*, UI::WindowsAndMessaging::*},
@@ -26,6 +26,7 @@ type LazyAdapter = Lazy<Adapter, Box<dyn FnOnce() -> Adapter>>;
 
 struct SubclassImpl {
     hwnd: HWND,
+    is_window_focused: Rc<Cell<bool>>,
     adapter: LazyAdapter,
     prev_wnd_proc: WNDPROC,
     window_destroyed: Cell<bool>,
@@ -36,26 +37,50 @@ extern "system" fn wnd_proc(window: HWND, message: u32, wparam: WPARAM, lparam: 
     let impl_ptr = handle.0 as *const SubclassImpl;
     assert!(!impl_ptr.is_null());
     let r#impl = unsafe { &*impl_ptr };
-    if message == WM_GETOBJECT {
-        let adapter = Lazy::force(&r#impl.adapter);
-        if let Some(result) = adapter.handle_wm_getobject(wparam, lparam) {
-            return result.into();
+    match message {
+        WM_GETOBJECT => {
+            let adapter = Lazy::force(&r#impl.adapter);
+            if let Some(result) = adapter.handle_wm_getobject(wparam, lparam) {
+                return result.into();
+            }
         }
-    }
-    if message == WM_NCDESTROY {
-        r#impl.window_destroyed.set(true);
+        WM_SETFOCUS | WM_EXITMENULOOP | WM_EXITSIZEMOVE => {
+            r#impl.update_window_focus_state(true);
+        }
+        WM_KILLFOCUS | WM_ENTERMENULOOP | WM_ENTERSIZEMOVE => {
+            r#impl.update_window_focus_state(false);
+        }
+        WM_NCDESTROY => {
+            r#impl.window_destroyed.set(true);
+        }
+        _ => (),
     }
     unsafe { CallWindowProcW(r#impl.prev_wnd_proc, window, message, wparam, lparam) }
 }
 
 impl SubclassImpl {
-    /// Creates a new Windows platform adapter using window subclassing.
-    ///
-    /// The action handler may or may not be called on the thread that owns
-    /// the window.
-    fn new(hwnd: HWND, adapter: LazyAdapter) -> Box<Self> {
+    fn new(
+        hwnd: HWND,
+        source: impl 'static + FnOnce() -> TreeUpdate,
+        action_handler: Box<dyn ActionHandler + Send + Sync>,
+    ) -> Box<Self> {
+        let is_window_focused = Rc::new(Cell::new(false));
+        let uia_init_marker = UiaInitMarker::new();
+        let adapter: LazyAdapter = Lazy::new(Box::new({
+            let is_window_focused = Rc::clone(&is_window_focused);
+            move || {
+                Adapter::new(
+                    hwnd,
+                    source(),
+                    is_window_focused.get(),
+                    action_handler,
+                    uia_init_marker,
+                )
+            }
+        }));
         Box::new(Self {
             hwnd,
+            is_window_focused,
             adapter,
             prev_wnd_proc: None,
             window_destroyed: Cell::new(false),
@@ -78,6 +103,14 @@ impl SubclassImpl {
             result.unwrap();
         }
         self.prev_wnd_proc = unsafe { transmute::<LongPtr, WNDPROC>(result) };
+    }
+
+    fn update_window_focus_state(&self, is_focused: bool) {
+        self.is_window_focused.set(is_focused);
+        if let Some(adapter) = Lazy::get(&self.adapter) {
+            let events = adapter.update_window_focus_state(is_focused);
+            events.raise();
+        }
     }
 
     fn uninstall(&self) {
@@ -106,16 +139,18 @@ impl SubclassImpl {
 pub struct SubclassingAdapter(Box<SubclassImpl>);
 
 impl SubclassingAdapter {
+    /// Creates a new Windows platform adapter using window subclassing.
+    /// This must be done before the window is shown or focused
+    /// for the first time.
+    ///
+    /// The action handler may or may not be called on the thread that owns
+    /// the window.
     pub fn new(
         hwnd: HWND,
         source: impl 'static + FnOnce() -> TreeUpdate,
         action_handler: Box<dyn ActionHandler + Send + Sync>,
     ) -> Self {
-        let uia_init_marker = UiaInitMarker::new();
-        let adapter: LazyAdapter = Lazy::new(Box::new(move || {
-            Adapter::new(hwnd, source(), action_handler, uia_init_marker)
-        }));
-        let mut r#impl = SubclassImpl::new(hwnd, adapter);
+        let mut r#impl = SubclassImpl::new(hwnd, source, action_handler);
         r#impl.install();
         Self(r#impl)
     }

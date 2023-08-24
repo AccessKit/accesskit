@@ -142,9 +142,9 @@ mod tests {
                 (EMPTY_CONTAINER_3_3_IGNORED_ID, empty_container_3_3_ignored),
             ],
             tree: Some(Tree::new(ROOT_ID)),
-            focus: None,
+            focus: ROOT_ID,
         };
-        crate::tree::Tree::new(initial_update)
+        crate::tree::Tree::new(initial_update, false)
     }
 
     pub fn test_tree_filter(node: &crate::Node) -> FilterResult {

@@ -56,7 +56,6 @@ fn build_announcement(text: &str, classes: &mut NodeClassSet) -> Node {
 
 struct State {
     focus: NodeId,
-    is_window_focused: bool,
     announcement: Option<String>,
     node_classes: NodeClassSet,
 }
@@ -65,14 +64,9 @@ impl State {
     fn new() -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
             focus: INITIAL_FOCUS,
-            is_window_focused: false,
             announcement: None,
             node_classes: NodeClassSet::new(),
         }))
-    }
-
-    fn focus(&self) -> Option<NodeId> {
-        self.is_window_focused.then_some(self.focus)
     }
 
     fn build_root(&mut self) -> Node {
@@ -96,7 +90,7 @@ impl State {
                 (BUTTON_2_ID, button_2),
             ],
             tree: Some(Tree::new(WINDOW_ID)),
-            focus: self.focus(),
+            focus: self.focus,
         };
         if let Some(announcement) = &self.announcement {
             result.nodes.push((
@@ -107,11 +101,12 @@ impl State {
         result
     }
 
-    fn update_focus(&mut self, adapter: &Adapter) {
+    fn set_focus(&mut self, adapter: &Adapter, focus: NodeId) {
+        self.focus = focus;
         adapter.update_if_active(|| TreeUpdate {
             nodes: vec![],
             tree: None,
-            focus: self.focus(),
+            focus,
         });
     }
 
@@ -128,7 +123,7 @@ impl State {
             TreeUpdate {
                 nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],
                 tree: None,
-                focus: self.focus(),
+                focus: self.focus,
             }
         });
     }
@@ -184,11 +179,6 @@ fn main() {
                 WindowEvent::CloseRequested => {
                     *control_flow = ControlFlow::ExitWithCode(0);
                 }
-                WindowEvent::Focused(is_window_focused) => {
-                    let mut state = state.lock().unwrap();
-                    state.is_window_focused = is_window_focused;
-                    state.update_focus(&adapter);
-                }
                 WindowEvent::KeyboardInput {
                     input:
                         KeyboardInput {
@@ -200,12 +190,12 @@ fn main() {
                 } => match virtual_code {
                     VirtualKeyCode::Tab => {
                         let mut state = state.lock().unwrap();
-                        state.focus = if state.focus == BUTTON_1_ID {
+                        let new_focus = if state.focus == BUTTON_1_ID {
                             BUTTON_2_ID
                         } else {
                             BUTTON_1_ID
                         };
-                        state.update_focus(&adapter);
+                        state.set_focus(&adapter, new_focus);
                     }
                     VirtualKeyCode::Space => {
                         let mut state = state.lock().unwrap();
@@ -228,8 +218,7 @@ fn main() {
                 let mut state = state.lock().unwrap();
                 match action {
                     Action::Focus => {
-                        state.focus = target;
-                        state.update_focus(&adapter);
+                        state.set_focus(&adapter, target);
                     }
                     Action::Default => {
                         state.press_button(&adapter, target);

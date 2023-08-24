@@ -2364,7 +2364,7 @@ impl Tree {
 /// events for nodes that have not changed since the previous update,
 /// but there is still a cost in processing these nodes and replacing
 /// the previous instances.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
@@ -2398,18 +2398,12 @@ pub struct TreeUpdate {
     /// a tree.
     pub tree: Option<Tree>,
 
-    /// The node with keyboard focus within this tree, if any.
-    /// The most recent focus, if any,must be provided with every tree update.
-    ///
-    /// This field must contain a value if and only if the native host
-    /// (e.g. window) currently has the keyboard focus. This implies
-    /// that the AccessKit provider must track the native focus state
-    /// and send matching tree updates. Rationale: A robust GUI toolkit
-    /// must do this native focus tracking anyway in order to correctly
-    /// render widgets (e.g. to draw or not draw a focus rectangle),
-    /// so this focus tracking should not be duplicated between the toolkit
-    /// and the AccessKit platform adapters.
-    pub focus: Option<NodeId>,
+    /// The node within this tree that has keyboard focus when the native
+    /// host (e.g. window) has focus. If no specific node within the tree
+    /// has keyboard focus, this must be set to the root. The latest focus state
+    /// must be provided with every tree update, even if the focus state
+    /// didn't change in a given update.
+    pub focus: NodeId,
 }
 
 impl<T: FnOnce() -> TreeUpdate> From<T> for TreeUpdate {
