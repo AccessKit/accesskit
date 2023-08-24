@@ -23,6 +23,7 @@ impl Adapter {
             String::new(),
             String::new(),
             source,
+            false,
             action_handler,
         );
         Self { adapter }
@@ -43,6 +44,12 @@ impl Adapter {
     pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
         if let Some(adapter) = &self.adapter {
             adapter.update(updater());
+        }
+    }
+
+    pub fn update_window_focus_state(&self, is_focused: bool) {
+        if let Some(adapter) = &self.adapter {
+            adapter.update_window_focus_state(is_focused);
         }
     }
 }

@@ -23,6 +23,111 @@ use futures_lite::StreamExt;
 use std::sync::Arc;
 use zbus::Task;
 
+struct AdapterChangeHandler<'a> {
+    adapter: &'a Adapter,
+}
+
+impl AdapterChangeHandler<'_> {
+    fn add_node(&mut self, node: &Node) {
+        let interfaces = NodeWrapper::Node(node).interfaces();
+        self.adapter
+            .register_interfaces(node.id(), interfaces)
+            .unwrap();
+    }
+
+    fn remove_node(&mut self, node: &DetachedNode) {
+        let node = NodeWrapper::DetachedNode(node);
+        self.adapter
+            .events
+            .send_blocking(Event::Object {
+                target: node.id(),
+                event: ObjectEvent::StateChanged(State::Defunct, true),
+            })
+            .unwrap();
+        self.adapter
+            .unregister_interfaces(&node.id(), node.interfaces())
+            .unwrap();
+    }
+}
+
+impl TreeChangeHandler for AdapterChangeHandler<'_> {
+    fn node_added(&mut self, node: &Node) {
+        if filter(node) == FilterResult::Include {
+            self.add_node(node);
+        }
+    }
+
+    fn node_updated(&mut self, old_node: &DetachedNode, new_node: &Node) {
+        let filter_old = filter_detached(old_node);
+        let filter_new = filter(new_node);
+        if filter_new != filter_old {
+            if filter_new == FilterResult::Include {
+                self.add_node(new_node);
+            } else if filter_old == FilterResult::Include {
+                self.remove_node(old_node);
+            }
+        } else if filter_new == FilterResult::Include {
+            let old_wrapper = NodeWrapper::DetachedNode(old_node);
+            let new_wrapper = NodeWrapper::Node(new_node);
+            let old_interfaces = old_wrapper.interfaces();
+            let new_interfaces = new_wrapper.interfaces();
+            let kept_interfaces = old_interfaces & new_interfaces;
+            self.adapter
+                .unregister_interfaces(&new_wrapper.id(), old_interfaces ^ kept_interfaces)
+                .unwrap();
+            self.adapter
+                .register_interfaces(new_node.id(), new_interfaces ^ kept_interfaces)
+                .unwrap();
+            new_wrapper.notify_changes(
+                &self.adapter.context.read_root_window_bounds(),
+                &self.adapter.events,
+                &old_wrapper,
+            );
+        }
+    }
+
+    fn focus_moved(
+        &mut self,
+        old_node: Option<&DetachedNode>,
+        new_node: Option<&Node>,
+        current_state: &TreeState,
+    ) {
+        if let Some(root_window) = root_window(current_state) {
+            if old_node.is_none() && new_node.is_some() {
+                self.adapter
+                    .window_activated(&NodeWrapper::Node(&root_window), &self.adapter.events);
+            } else if old_node.is_some() && new_node.is_none() {
+                self.adapter
+                    .window_deactivated(&NodeWrapper::Node(&root_window), &self.adapter.events);
+            }
+        }
+        if let Some(node) = new_node.map(NodeWrapper::Node) {
+            self.adapter
+                .events
+                .send_blocking(Event::Object {
+                    target: node.id(),
+                    event: ObjectEvent::StateChanged(State::Focused, true),
+                })
+                .unwrap();
+        }
+        if let Some(node) = old_node.map(NodeWrapper::DetachedNode) {
+            self.adapter
+                .events
+                .send_blocking(Event::Object {
+                    target: node.id(),
+                    event: ObjectEvent::StateChanged(State::Focused, false),
+                })
+                .unwrap();
+        }
+    }
+
+    fn node_removed(&mut self, node: &DetachedNode, _: &TreeState) {
+        if filter_detached(node) == FilterResult::Include {
+            self.remove_node(node);
+        }
+    }
+}
+
 pub struct Adapter {
     atspi_bus: Bus,
     _event_task: Task<()>,
@@ -37,6 +142,7 @@ impl Adapter {
         toolkit_name: String,
         toolkit_version: String,
         initial_state: impl 'static + FnOnce() -> TreeUpdate,
+        is_window_focused: bool,
         action_handler: Box<dyn ActionHandler + Send + Sync>,
     ) -> Option<Self> {
         let mut atspi_bus = block_on(async { Bus::a11y_bus().await })?;
@@ -50,7 +156,7 @@ impl Adapter {
             },
             "accesskit_event_task",
         );
-        let tree = Tree::new(initial_state());
+        let tree = Tree::new(initial_state(), is_window_focused);
         let app_context = AppContext::new(app_name, toolkit_name, toolkit_version);
         let context = Context::new(tree, action_handler, app_context);
         block_on(async { atspi_bus.register_root_node(&context).await.ok() })?;
@@ -171,111 +277,16 @@ impl Adapter {
 
     /// Apply the provided update to the tree.
     pub fn update(&self, update: TreeUpdate) {
-        struct Handler<'a> {
-            adapter: &'a Adapter,
-        }
-        impl Handler<'_> {
-            fn add_node(&mut self, node: &Node) {
-                let interfaces = NodeWrapper::Node(node).interfaces();
-                self.adapter
-                    .register_interfaces(node.id(), interfaces)
-                    .unwrap();
-            }
-            fn remove_node(&mut self, node: &DetachedNode) {
-                let node = NodeWrapper::DetachedNode(node);
-                self.adapter
-                    .events
-                    .send_blocking(Event::Object {
-                        target: node.id(),
-                        event: ObjectEvent::StateChanged(State::Defunct, true),
-                    })
-                    .unwrap();
-                self.adapter
-                    .unregister_interfaces(&node.id(), node.interfaces())
-                    .unwrap();
-            }
-        }
-        impl TreeChangeHandler for Handler<'_> {
-            fn node_added(&mut self, node: &Node) {
-                if filter(node) == FilterResult::Include {
-                    self.add_node(node);
-                }
-            }
-            fn node_updated(&mut self, old_node: &DetachedNode, new_node: &Node) {
-                let filter_old = filter_detached(old_node);
-                let filter_new = filter(new_node);
-                if filter_new != filter_old {
-                    if filter_new == FilterResult::Include {
-                        self.add_node(new_node);
-                    } else if filter_old == FilterResult::Include {
-                        self.remove_node(old_node);
-                    }
-                } else if filter_new == FilterResult::Include {
-                    let old_wrapper = NodeWrapper::DetachedNode(old_node);
-                    let new_wrapper = NodeWrapper::Node(new_node);
-                    let old_interfaces = old_wrapper.interfaces();
-                    let new_interfaces = new_wrapper.interfaces();
-                    let kept_interfaces = old_interfaces & new_interfaces;
-                    self.adapter
-                        .unregister_interfaces(&new_wrapper.id(), old_interfaces ^ kept_interfaces)
-                        .unwrap();
-                    self.adapter
-                        .register_interfaces(new_node.id(), new_interfaces ^ kept_interfaces)
-                        .unwrap();
-                    new_wrapper.notify_changes(
-                        &self.adapter.context.read_root_window_bounds(),
-                        &self.adapter.events,
-                        &old_wrapper,
-                    );
-                }
-            }
-            fn focus_moved(
-                &mut self,
-                old_node: Option<&DetachedNode>,
-                new_node: Option<&Node>,
-                current_state: &TreeState,
-            ) {
-                if let Some(root_window) = root_window(current_state) {
-                    if old_node.is_none() && new_node.is_some() {
-                        self.adapter.window_activated(
-                            &NodeWrapper::Node(&root_window),
-                            &self.adapter.events,
-                        );
-                    } else if old_node.is_some() && new_node.is_none() {
-                        self.adapter.window_deactivated(
-                            &NodeWrapper::Node(&root_window),
-                            &self.adapter.events,
-                        );
-                    }
-                }
-                if let Some(node) = new_node.map(NodeWrapper::Node) {
-                    self.adapter
-                        .events
-                        .send_blocking(Event::Object {
-                            target: node.id(),
-                            event: ObjectEvent::StateChanged(State::Focused, true),
-                        })
-                        .unwrap();
-                }
-                if let Some(node) = old_node.map(NodeWrapper::DetachedNode) {
-                    self.adapter
-                        .events
-                        .send_blocking(Event::Object {
-                            target: node.id(),
-                            event: ObjectEvent::StateChanged(State::Focused, false),
-                        })
-                        .unwrap();
-                }
-            }
-            fn node_removed(&mut self, node: &DetachedNode, _: &TreeState) {
-                if filter_detached(node) == FilterResult::Include {
-                    self.remove_node(node);
-                }
-            }
-        }
-        let mut handler = Handler { adapter: self };
+        let mut handler = AdapterChangeHandler { adapter: self };
         let mut tree = self.context.tree.write().unwrap();
         tree.update_and_process_changes(update, &mut handler);
+    }
+
+    /// Update the tree state based on whether the window is focused.
+    pub fn update_window_focus_state(&self, is_focused: bool) {
+        let mut handler = AdapterChangeHandler { adapter: self };
+        let mut tree = self.context.tree.write().unwrap();
+        tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
     }
 
     fn window_activated(&self, window: &NodeWrapper, events: &Sender<Event>) {

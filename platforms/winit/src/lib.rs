@@ -232,6 +232,9 @@ impl Adapter {
                     Rect::from_origin_size(inner_position, inner_size),
                 )
             }
+            WindowEvent::Focused(is_focused) => {
+                self.adapter.update_window_focus_state(*is_focused);
+            }
             _ => (),
         }
         true
