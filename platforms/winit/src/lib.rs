@@ -149,6 +149,10 @@ pub struct Adapter {
 }
 
 impl Adapter {
+    /// Creates a new AccessKit adapter for a winit window. This must be done
+    /// before the window is shown for the first time. This means that you must
+    /// use [`winit::window::WindowBuilder::with_visible`] to make the window
+    /// initially invisible, then create the adapter, then show the window.
     pub fn new<T: From<ActionRequestEvent> + Send + 'static>(
         window: &Window,
         source: impl 'static + FnOnce() -> TreeUpdate + Send,
@@ -158,6 +162,11 @@ impl Adapter {
         Self::with_action_handler(window, source, Box::new(action_handler))
     }
 
+    /// Creates a new AccessKit adapter for a winit window. This must be done
+    /// before the window is shown for the first time. This means that you must
+    /// use [`winit::window::WindowBuilder::with_visible`] to make the window
+    /// initially invisible, then create the adapter, then show the window.
+    ///
     /// Use this if you need to provide your own AccessKit action handler
     /// rather than dispatching action requests through the winit event loop.
     /// Remember that an AccessKit action handler can be called on any thread,
