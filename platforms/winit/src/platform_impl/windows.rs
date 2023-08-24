@@ -4,7 +4,7 @@
 
 use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_windows::{SubclassingAdapter, HWND};
-use winit::{platform::windows::WindowExtWindows, window::Window};
+use winit::{event::WindowEvent, platform::windows::WindowExtWindows, window::Window};
 
 pub type ActionHandlerBox = Box<dyn ActionHandler + Send + Sync>;
 
@@ -31,5 +31,9 @@ impl Adapter {
         if let Some(events) = self.adapter.update_if_active(updater) {
             events.raise();
         }
+    }
+
+    pub fn on_event(&self, _window: &Window, _event: &WindowEvent) -> bool {
+        true
     }
 }

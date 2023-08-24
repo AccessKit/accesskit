@@ -29,7 +29,7 @@ impl Adapter {
         Self { adapter }
     }
 
-    pub fn set_root_window_bounds(&self, outer: Rect, inner: Rect) {
+    fn set_root_window_bounds(&self, outer: Rect, inner: Rect) {
         if let Some(adapter) = &self.adapter {
             adapter.set_root_window_bounds(outer, inner);
         }
@@ -47,9 +47,54 @@ impl Adapter {
         }
     }
 
-    pub fn update_window_focus_state(&self, is_focused: bool) {
+    fn update_window_focus_state(&self, is_focused: bool) {
         if let Some(adapter) = &self.adapter {
             adapter.update_window_focus_state(is_focused);
         }
+    }
+
+    pub fn on_event(&self, window: &Window, event: &WindowEvent) -> bool {
+        use accesskit::Rect;
+
+        match event {
+            WindowEvent::Moved(outer_position) => {
+                let outer_position: (_, _) = outer_position.cast::<f64>().into();
+                let outer_size: (_, _) = window.outer_size().cast::<f64>().into();
+                let inner_position: (_, _) = window
+                    .inner_position()
+                    .unwrap_or_default()
+                    .cast::<f64>()
+                    .into();
+                let inner_size: (_, _) = window.inner_size().cast::<f64>().into();
+                self.set_root_window_bounds(
+                    Rect::from_origin_size(outer_position, outer_size),
+                    Rect::from_origin_size(inner_position, inner_size),
+                )
+            }
+            WindowEvent::Resized(outer_size) => {
+                let outer_position: (_, _) = window
+                    .outer_position()
+                    .unwrap_or_default()
+                    .cast::<f64>()
+                    .into();
+                let outer_size: (_, _) = outer_size.cast::<f64>().into();
+                let inner_position: (_, _) = window
+                    .inner_position()
+                    .unwrap_or_default()
+                    .cast::<f64>()
+                    .into();
+                let inner_size: (_, _) = window.inner_size().cast::<f64>().into();
+                self.set_root_window_bounds(
+                    Rect::from_origin_size(outer_position, outer_size),
+                    Rect::from_origin_size(inner_position, inner_size),
+                )
+            }
+            WindowEvent::Focused(is_focused) => {
+                self.update_window_focus_state(*is_focused);
+            }
+            _ => (),
+        }
+
+        true
     }
 }

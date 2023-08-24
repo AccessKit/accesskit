@@ -171,73 +171,9 @@ impl Adapter {
         Self { adapter }
     }
 
-    #[cfg(not(all(
-        feature = "accesskit_unix",
-        any(
-            target_os = "linux",
-            target_os = "dragonfly",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "openbsd"
-        )
-    )))]
-    #[must_use]
-    pub fn on_event(&self, _window: &Window, _event: &WindowEvent) -> bool {
-        true
-    }
-    #[cfg(all(
-        feature = "accesskit_unix",
-        any(
-            target_os = "linux",
-            target_os = "dragonfly",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "openbsd"
-        )
-    ))]
     #[must_use]
     pub fn on_event(&self, window: &Window, event: &WindowEvent) -> bool {
-        use accesskit::Rect;
-
-        match event {
-            WindowEvent::Moved(outer_position) => {
-                let outer_position: (_, _) = outer_position.cast::<f64>().into();
-                let outer_size: (_, _) = window.outer_size().cast::<f64>().into();
-                let inner_position: (_, _) = window
-                    .inner_position()
-                    .unwrap_or_default()
-                    .cast::<f64>()
-                    .into();
-                let inner_size: (_, _) = window.inner_size().cast::<f64>().into();
-                self.adapter.set_root_window_bounds(
-                    Rect::from_origin_size(outer_position, outer_size),
-                    Rect::from_origin_size(inner_position, inner_size),
-                )
-            }
-            WindowEvent::Resized(outer_size) => {
-                let outer_position: (_, _) = window
-                    .outer_position()
-                    .unwrap_or_default()
-                    .cast::<f64>()
-                    .into();
-                let outer_size: (_, _) = outer_size.cast::<f64>().into();
-                let inner_position: (_, _) = window
-                    .inner_position()
-                    .unwrap_or_default()
-                    .cast::<f64>()
-                    .into();
-                let inner_size: (_, _) = window.inner_size().cast::<f64>().into();
-                self.adapter.set_root_window_bounds(
-                    Rect::from_origin_size(outer_position, outer_size),
-                    Rect::from_origin_size(inner_position, inner_size),
-                )
-            }
-            WindowEvent::Focused(is_focused) => {
-                self.adapter.update_window_focus_state(*is_focused);
-            }
-            _ => (),
-        }
-        true
+        self.adapter.on_event(window, event)
     }
 
     pub fn update(&self, update: TreeUpdate) {
