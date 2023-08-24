@@ -4,7 +4,7 @@
 
 use accesskit::{ActionHandler, Rect, TreeUpdate};
 use accesskit_unix::Adapter as UnixAdapter;
-use winit::window::Window;
+use winit::{event::WindowEvent, window::Window};
 
 pub type ActionHandlerBox = Box<dyn ActionHandler + Send + Sync>;
 
@@ -54,8 +54,6 @@ impl Adapter {
     }
 
     pub fn on_event(&self, window: &Window, event: &WindowEvent) -> bool {
-        use accesskit::Rect;
-
         match event {
             WindowEvent::Moved(outer_position) => {
                 let outer_position: (_, _) = outer_position.cast::<f64>().into();
