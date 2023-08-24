@@ -55,11 +55,12 @@ impl macos_adapter {
     pub unsafe extern "C" fn accesskit_macos_adapter_new(
         view: *mut c_void,
         initial_state: *mut tree_update,
+        is_view_focused: bool,
         handler: *mut action_handler,
     ) -> *mut macos_adapter {
         let initial_state = box_from_ptr(initial_state);
         let handler = box_from_ptr(handler);
-        let adapter = Adapter::new(view, *initial_state, handler);
+        let adapter = Adapter::new(view, *initial_state, is_view_focused, handler);
         BoxCastPtr::to_mut_ptr(adapter)
     }
 
@@ -69,7 +70,7 @@ impl macos_adapter {
     }
 
     /// This function takes ownership of `update`.
-    /// You must call `accesskit_macos_queued_events_raise` on the returned pointer. It can be null in case of error.
+    /// You must call `accesskit_macos_queued_events_raise` on the returned pointer.
     #[no_mangle]
     pub extern "C" fn accesskit_macos_adapter_update(
         adapter: *const macos_adapter,
@@ -78,6 +79,19 @@ impl macos_adapter {
         let adapter = ref_from_ptr(adapter);
         let update = box_from_ptr(update);
         let events = adapter.update(*update);
+        BoxCastPtr::to_mut_ptr(events)
+    }
+
+    /// Update the tree state based on whether the window is focused.
+    ///
+    /// You must call `accesskit_macos_queued_events_raise` on the returned pointer.
+    #[no_mangle]
+    pub extern "C" fn accesskit_macos_adapter_update_view_focus_state(
+        adapter: *const macos_adapter,
+        is_focused: bool,
+    ) -> *mut macos_queued_events {
+        let adapter = ref_from_ptr(adapter);
+        let events = adapter.update_view_focus_state(is_focused);
         BoxCastPtr::to_mut_ptr(events)
     }
 
@@ -177,7 +191,7 @@ impl macos_subclassing_adapter {
     }
 
     /// This function takes ownership of `update`.
-    /// You must call `accesskit_macos_queued_events_raise` on the returned pointer. It can be null in case of error.
+    /// You must call `accesskit_macos_queued_events_raise` on the returned pointer.
     #[no_mangle]
     pub extern "C" fn accesskit_macos_subclassing_adapter_update(
         adapter: *const macos_subclassing_adapter,
@@ -189,7 +203,7 @@ impl macos_subclassing_adapter {
         BoxCastPtr::to_mut_ptr(events)
     }
 
-    /// You must call `accesskit_macos_queued_events_raise` on the returned pointer. It can be null in case of error or if the window is not active.
+    /// You must call `accesskit_macos_queued_events_raise` on the returned pointer. It can be null if the adapter is not active.
     #[no_mangle]
     pub extern "C" fn accesskit_macos_subclassing_adapter_update_if_active(
         adapter: *const macos_subclassing_adapter,
@@ -200,6 +214,22 @@ impl macos_subclassing_adapter {
         let adapter = ref_from_ptr(adapter);
         let events =
             adapter.update_if_active(|| *box_from_ptr(update_factory(update_factory_userdata)));
+        match events {
+            Some(events) => BoxCastPtr::to_mut_ptr(events),
+            None => ptr::null_mut(),
+        }
+    }
+
+    /// Update the tree state based on whether the window is focused.
+    ///
+    /// You must call `accesskit_macos_queued_events_raise` on the returned pointer. It can be null if the adapter is not active.
+    #[no_mangle]
+    pub extern "C" fn accesskit_macos_subclassing_adapter_update_view_focus_state(
+        adapter: *const macos_subclassing_adapter,
+        is_focused: bool,
+    ) -> *mut macos_queued_events {
+        let adapter = ref_from_ptr(adapter);
+        let events = adapter.update_view_focus_state(is_focused);
         match events {
             Some(events) => BoxCastPtr::to_mut_ptr(events),
             None => ptr::null_mut(),

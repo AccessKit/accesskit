@@ -76,8 +76,8 @@ void accesskit_sdl_adapter_init(struct accesskit_sdl_adapter *adapter,
   adapter->adapter = accesskit_macos_subclassing_adapter_for_window(
       (void *)wmInfo.info.cocoa.window, source, source_userdata, handler);
 #elif defined(UNIX)
-  adapter->adapter = accesskit_unix_adapter_new(app_name, "SDL", "2.0", source,
-                                                source_userdata, handler);
+  adapter->adapter = accesskit_unix_adapter_new(
+      app_name, "SDL", "2.0", source, source_userdata, false, handler);
 #elif defined(_WIN32)
   SDL_SysWMinfo wmInfo;
   SDL_VERSION(&wmInfo.version);
@@ -145,6 +145,24 @@ void accesskit_sdl_adapter_update_if_active(
 #endif
 }
 
+void accesskit_sdl_adapter_update_window_focus_state(
+    const struct accesskit_sdl_adapter *adapter, bool is_focused) {
+#if defined(__APPLE__)
+  accesskit_macos_queued_events *events =
+      accesskit_macos_subclassing_adapter_update_view_focus_state(
+          adapter->adapter, is_focused);
+  if (events != NULL) {
+    accesskit_macos_queued_events_raise(events);
+  }
+#elif defined(UNIX)
+  if (adapter->adapter != NULL) {
+    accesskit_unix_adapter_update_window_focus_state(adapter->adapter,
+                                                     is_focused);
+  }
+#endif
+  /* On Windows, the subclassing adapter takes care of this. */
+}
+
 void accesskit_sdl_adapter_update_root_window_bounds(
     const struct accesskit_sdl_adapter *adapter, SDL_Window *window) {
 #if defined(UNIX)
@@ -165,7 +183,6 @@ void accesskit_sdl_adapter_update_root_window_bounds(
 
 struct window_state {
   accesskit_node_id focus;
-  bool is_window_focused;
   const char *announcement;
   accesskit_node_class_set *node_classes;
   SDL_mutex *mutex;
@@ -173,7 +190,6 @@ struct window_state {
 
 void window_state_init(struct window_state *state) {
   state->focus = INITIAL_FOCUS;
-  state->is_window_focused = false;
   state->announcement = NULL;
   state->node_classes = accesskit_node_class_set_new();
   state->mutex = SDL_CreateMutex();
@@ -190,13 +206,6 @@ void window_state_lock(struct window_state *state) {
 
 void window_state_unlock(struct window_state *state) {
   SDL_UnlockMutex(state->mutex);
-}
-
-void window_state_set_tree_update_focus(const struct window_state *state,
-                                        accesskit_tree_update *update) {
-  if (state->is_window_focused) {
-    accesskit_tree_update_set_focus(update, state->focus);
-  }
 }
 
 accesskit_node *window_state_build_root(const struct window_state *state) {
@@ -218,10 +227,9 @@ accesskit_tree_update *window_state_build_initial_tree(
       build_button(BUTTON_1_ID, "Button 1", state->node_classes);
   accesskit_node *button_2 =
       build_button(BUTTON_2_ID, "Button 2", state->node_classes);
-  accesskit_tree_update *result = accesskit_tree_update_with_capacity(
-      (state->announcement != NULL) ? 4 : 3);
+  accesskit_tree_update *result = accesskit_tree_update_with_capacity_and_focus(
+      (state->announcement != NULL) ? 4 : 3, state->focus);
   accesskit_tree_update_set_tree(result, accesskit_tree_new(WINDOW_ID));
-  window_state_set_tree_update_focus(state, result);
   accesskit_tree_update_push_node(result, WINDOW_ID, root);
   accesskit_tree_update_push_node(result, BUTTON_1_ID, button_1);
   accesskit_tree_update_push_node(result, BUTTON_2_ID, button_2);
@@ -238,10 +246,10 @@ accesskit_tree_update *build_tree_update_for_button_press(void *userdata) {
   accesskit_node *announcement =
       build_announcement(state->announcement, state->node_classes);
   accesskit_node *root = window_state_build_root(state);
-  accesskit_tree_update *update = accesskit_tree_update_with_capacity(2);
+  accesskit_tree_update *update =
+      accesskit_tree_update_with_capacity_and_focus(2, state->focus);
   accesskit_tree_update_push_node(update, ANNOUNCEMENT_ID, announcement);
   accesskit_tree_update_push_node(update, WINDOW_ID, root);
-  accesskit_tree_update_set_focus(update, state->focus);
   return update;
 }
 
@@ -261,13 +269,15 @@ void window_state_press_button(struct window_state *state,
 
 accesskit_tree_update *build_tree_update_for_focus_update(void *userdata) {
   struct window_state *state = userdata;
-  accesskit_tree_update *update = accesskit_tree_update_new();
-  accesskit_tree_update_set_focus(update, state->focus);
+  accesskit_tree_update *update =
+      accesskit_tree_update_with_focus(state->focus);
   return update;
 }
 
-void window_state_update_focus(struct window_state *state,
-                               const struct accesskit_sdl_adapter *adapter) {
+void window_state_set_focus(struct window_state *state,
+                            const struct accesskit_sdl_adapter *adapter,
+                            accesskit_node_id focus) {
+  state->focus = focus;
   accesskit_sdl_adapter_update_if_active(
       adapter, build_tree_update_for_focus_update, state);
 }
@@ -345,17 +355,10 @@ int main(int argc, char *argv[]) {
                event.window.windowID == window_id) {
       switch (event.window.event) {
         case SDL_WINDOWEVENT_FOCUS_GAINED:
-          window_state_lock(&state);
-          state.is_window_focused = true;
-          window_state_update_focus(&state, &adapter);
-          window_state_unlock(&state);
-          continue;
+          accesskit_sdl_adapter_update_window_focus_state(&adapter, true);
           break;
         case SDL_WINDOWEVENT_FOCUS_LOST:
-          window_state_lock(&state);
-          state.is_window_focused = false;
-          window_state_update_focus(&state, &adapter);
-          window_state_unlock(&state);
+          accesskit_sdl_adapter_update_window_focus_state(&adapter, false);
           break;
         case SDL_WINDOWEVENT_MAXIMIZED:
         case SDL_WINDOWEVENT_MOVED:
@@ -370,12 +373,9 @@ int main(int argc, char *argv[]) {
       switch (event.key.keysym.sym) {
         case SDLK_TAB:
           window_state_lock(&state);
-          if (state.focus == BUTTON_1_ID) {
-            state.focus = BUTTON_2_ID;
-          } else {
-            state.focus = BUTTON_1_ID;
-          }
-          window_state_update_focus(&state, &adapter);
+          accesskit_node_id new_focus =
+              (state.focus == BUTTON_1_ID) ? BUTTON_2_ID : BUTTON_1_ID;
+          window_state_set_focus(&state, &adapter, new_focus);
           window_state_unlock(&state);
           break;
         case SDLK_SPACE:
@@ -391,8 +391,7 @@ int main(int argc, char *argv[]) {
       if (target == BUTTON_1_ID || target == BUTTON_2_ID) {
         window_state_lock(&state);
         if (event.user.code == SET_FOCUS_MSG) {
-          state.focus = target;
-          window_state_update_focus(&state, &adapter);
+          window_state_set_focus(&state, &adapter, target);
         } else if (event.user.code == DO_DEFAULT_ACTION_MSG) {
           window_state_press_button(&state, &adapter, target);
         }

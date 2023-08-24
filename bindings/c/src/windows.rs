@@ -71,13 +71,20 @@ impl windows_adapter {
     pub extern "C" fn accesskit_windows_adapter_new(
         hwnd: HWND,
         initial_state: *mut tree_update,
+        is_window_focused: bool,
         handler: *mut action_handler,
         uia_init_marker: *mut windows_uia_init_marker,
     ) -> *mut windows_adapter {
         let initial_state = box_from_ptr(initial_state);
         let handler = box_from_ptr(handler);
         let uia_init_marker = *box_from_ptr(uia_init_marker);
-        let adapter = Adapter::new(hwnd, *initial_state, handler, uia_init_marker);
+        let adapter = Adapter::new(
+            hwnd,
+            *initial_state,
+            is_window_focused,
+            handler,
+            uia_init_marker,
+        );
         BoxCastPtr::to_mut_ptr(adapter)
     }
 
@@ -87,7 +94,7 @@ impl windows_adapter {
     }
 
     /// This function takes ownership of `update`.
-    /// You must call `accesskit_windows_queued_events_raise` on the returned pointer. It can be null in case of error.
+    /// You must call `accesskit_windows_queued_events_raise` on the returned pointer.
     #[no_mangle]
     pub extern "C" fn accesskit_windows_adapter_update(
         adapter: *const windows_adapter,
@@ -96,6 +103,19 @@ impl windows_adapter {
         let adapter = ref_from_ptr(adapter);
         let update = box_from_ptr(update);
         let events = adapter.update(*update);
+        BoxCastPtr::to_mut_ptr(events)
+    }
+
+    /// Update the tree state based on whether the window is focused.
+    ///
+    /// You must call `accesskit_windows_queued_events_raise` on the returned pointer.
+    #[no_mangle]
+    pub extern "C" fn accesskit_windows_adapter_update_window_focus_state(
+        adapter: *const windows_adapter,
+        is_focused: bool,
+    ) -> *mut windows_queued_events {
+        let adapter = ref_from_ptr(adapter);
+        let events = adapter.update_window_focus_state(is_focused);
         BoxCastPtr::to_mut_ptr(events)
     }
 
@@ -148,7 +168,7 @@ impl windows_subclassing_adapter {
     }
 
     /// This function takes ownership of `update`.
-    /// You must call `accesskit_windows_queued_events_raise` on the returned pointer. It can be null in case of error.
+    /// You must call `accesskit_windows_queued_events_raise` on the returned pointer.
     #[no_mangle]
     pub extern "C" fn accesskit_windows_subclassing_adapter_update(
         adapter: *const windows_subclassing_adapter,
@@ -160,7 +180,7 @@ impl windows_subclassing_adapter {
         BoxCastPtr::to_mut_ptr(events)
     }
 
-    /// You must call `accesskit_windows_queued_events_raise` on the returned pointer. It can be null in case of error or if the window is not active.
+    /// You must call `accesskit_windows_queued_events_raise` on the returned pointer. It can be null if the adapter is not active.
     #[no_mangle]
     pub extern "C" fn accesskit_windows_subclassing_adapter_update_if_active(
         adapter: *const windows_subclassing_adapter,
