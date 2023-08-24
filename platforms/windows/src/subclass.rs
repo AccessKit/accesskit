@@ -98,6 +98,7 @@ impl SubclassImpl {
         .unwrap();
         let result =
             unsafe { SetWindowLongPtrW(self.hwnd, GWLP_WNDPROC, wnd_proc as *const c_void as _) };
+        #[allow(clippy::unnecessary_literal_unwrap)]
         if result == 0 {
             let result: Result<()> = Err(Error::from_win32());
             result.unwrap();
@@ -124,6 +125,7 @@ impl SubclassImpl {
                 transmute::<WNDPROC, LongPtr>(self.prev_wnd_proc),
             )
         };
+        #[allow(clippy::unnecessary_literal_unwrap)]
         if result == 0 {
             let result: Result<()> = Err(Error::from_win32());
             result.unwrap();
