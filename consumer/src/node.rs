@@ -57,7 +57,7 @@ impl<'a> Node<'a> {
     }
 
     pub fn is_focused(&self) -> bool {
-        self.tree_state.focus == Some(self.id())
+        self.tree_state.focus_id() == Some(self.id())
     }
 }
 
@@ -1021,9 +1021,9 @@ mod tests {
                 ),
             ],
             tree: Some(Tree::new(NodeId(0))),
-            focus: None,
+            focus: NodeId(0),
         };
-        let tree = crate::Tree::new(update);
+        let tree = crate::Tree::new(update, false);
         assert_eq!(None, tree.state().node_by_id(NodeId(1)).unwrap().name());
     }
 
@@ -1064,9 +1064,9 @@ mod tests {
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
-            focus: None,
+            focus: NodeId(0),
         };
-        let tree = crate::Tree::new(update);
+        let tree = crate::Tree::new(update, false);
         assert_eq!(
             Some([LABEL_1, LABEL_2].join(" ")),
             tree.state().node_by_id(NodeId(1)).unwrap().name()
@@ -1117,9 +1117,9 @@ mod tests {
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
-            focus: None,
+            focus: NodeId(0),
         };
-        let tree = crate::Tree::new(update);
+        let tree = crate::Tree::new(update, false);
         assert_eq!(
             Some(BUTTON_LABEL.into()),
             tree.state().node_by_id(NodeId(1)).unwrap().name()

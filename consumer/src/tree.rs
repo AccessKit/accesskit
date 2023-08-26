@@ -12,7 +12,8 @@ use crate::node::{DetachedNode, Node, NodeState, ParentAndIndex};
 pub struct State {
     pub(crate) nodes: HashMap<NodeId, NodeState>,
     pub(crate) data: TreeData,
-    pub(crate) focus: Option<NodeId>,
+    focus: NodeId,
+    is_host_focused: bool,
 }
 
 struct InternalFocusChange {
@@ -31,15 +32,18 @@ struct InternalChanges {
 impl State {
     fn validate_global(&self) {
         assert!(self.nodes.contains_key(&self.data.root));
-        if let Some(id) = self.focus {
-            assert!(self.nodes.contains_key(&id));
-        }
+        assert!(self.nodes.contains_key(&self.focus));
         if let Some(id) = self.data.root_scroller {
             assert!(self.nodes.contains_key(&id));
         }
     }
 
-    fn update(&mut self, update: TreeUpdate, mut changes: Option<&mut InternalChanges>) {
+    fn update(
+        &mut self,
+        update: TreeUpdate,
+        is_host_focused: bool,
+        mut changes: Option<&mut InternalChanges>,
+    ) {
         // First, if we're collecting changes, get the accurate state
         // of any updated nodes.
         if let Some(changes) = &mut changes {
@@ -52,8 +56,7 @@ impl State {
         }
 
         let mut orphans = HashSet::new();
-        let old_focus_id = self.focus;
-        let old_focus = self.focus.map(|id| self.node_by_id(id).unwrap().detached());
+        let old_focus_id = self.is_host_focused.then_some(self.focus);
         let old_root_id = self.data.root;
 
         if let Some(tree) = update.tree {
@@ -139,12 +142,13 @@ impl State {
         assert_eq!(pending_nodes.len(), 0);
         assert_eq!(pending_children.len(), 0);
 
-        if update.focus != self.focus {
+        if update.focus != self.focus || is_host_focused != self.is_host_focused {
+            let old_focus = old_focus_id.map(|id| self.node_by_id(id).unwrap().detached());
+            let new_focus = is_host_focused.then_some(update.focus);
             if let Some(changes) = &mut changes {
                 changes.focus_change = Some(InternalFocusChange {
                     old_focus,
-                    new_focus_old_node: update
-                        .focus
+                    new_focus_old_node: new_focus
                         .and_then(|id| {
                             (!changes.updated_nodes.contains_key(&id))
                                 .then(|| self.node_by_id(id).map(|node| node.detached()))
@@ -153,6 +157,7 @@ impl State {
                 });
             }
             self.focus = update.focus;
+            self.is_host_focused = is_host_focused;
         }
 
         if !orphans.is_empty() {
@@ -193,6 +198,19 @@ impl State {
         }
 
         self.validate_global();
+    }
+
+    fn update_host_focus_state(
+        &mut self,
+        is_host_focused: bool,
+        changes: Option<&mut InternalChanges>,
+    ) {
+        let update = TreeUpdate {
+            nodes: vec![],
+            tree: None,
+            focus: self.focus,
+        };
+        self.update(update, is_host_focused, changes);
     }
 
     pub fn serialize(&self) -> TreeUpdate {
@@ -237,11 +255,11 @@ impl State {
     }
 
     pub fn focus_id(&self) -> Option<NodeId> {
-        self.focus
+        self.is_host_focused.then_some(self.focus)
     }
 
     pub fn focus(&self) -> Option<Node<'_>> {
-        self.focus.map(|id| self.node_by_id(id).unwrap())
+        self.focus_id().map(|id| self.node_by_id(id).unwrap())
     }
 }
 
@@ -269,18 +287,19 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub fn new(mut initial_state: TreeUpdate) -> Self {
+    pub fn new(mut initial_state: TreeUpdate, is_host_focused: bool) -> Self {
         let mut state = State {
             nodes: HashMap::new(),
             data: initial_state.tree.take().unwrap(),
-            focus: None,
+            focus: initial_state.focus,
+            is_host_focused,
         };
-        state.update(initial_state, None);
+        state.update(initial_state, is_host_focused, None);
         Self { state }
     }
 
     pub fn update(&mut self, update: TreeUpdate) {
-        self.state.update(update, None);
+        self.state.update(update, self.state.is_host_focused, None);
     }
 
     pub fn update_and_process_changes(
@@ -289,7 +308,27 @@ impl Tree {
         handler: &mut impl ChangeHandler,
     ) {
         let mut changes = InternalChanges::default();
-        self.state.update(update, Some(&mut changes));
+        self.state
+            .update(update, self.state.is_host_focused, Some(&mut changes));
+        self.process_changes(changes, handler);
+    }
+
+    pub fn update_host_focus_state(&mut self, is_host_focused: bool) {
+        self.state.update_host_focus_state(is_host_focused, None);
+    }
+
+    pub fn update_host_focus_state_and_process_changes(
+        &mut self,
+        is_host_focused: bool,
+        handler: &mut impl ChangeHandler,
+    ) {
+        let mut changes = InternalChanges::default();
+        self.state
+            .update_host_focus_state(is_host_focused, Some(&mut changes));
+        self.process_changes(changes, handler);
+    }
+
+    fn process_changes(&self, changes: InternalChanges, handler: &mut impl ChangeHandler) {
         for id in &changes.added_node_ids {
             let node = self.state.node_by_id(*id).unwrap();
             handler.node_added(&node);
@@ -348,9 +387,9 @@ mod tests {
                 NodeBuilder::new(Role::Window).build(&mut classes),
             )],
             tree: Some(Tree::new(NodeId(0))),
-            focus: None,
+            focus: NodeId(0),
         };
-        let tree = super::Tree::new(update);
+        let tree = super::Tree::new(update, false);
         assert_eq!(NodeId(0), tree.state().root().id());
         assert_eq!(Role::Window, tree.state().root().role());
         assert!(tree.state().root().parent().is_none());
@@ -376,9 +415,9 @@ mod tests {
                 ),
             ],
             tree: Some(Tree::new(NodeId(0))),
-            focus: None,
+            focus: NodeId(0),
         };
-        let tree = super::Tree::new(update);
+        let tree = super::Tree::new(update, false);
         let state = tree.state();
         assert_eq!(
             NodeId(0),
@@ -398,9 +437,9 @@ mod tests {
         let first_update = TreeUpdate {
             nodes: vec![(NodeId(0), root_builder.clone().build(&mut classes))],
             tree: Some(Tree::new(NodeId(0))),
-            focus: None,
+            focus: NodeId(0),
         };
-        let mut tree = super::Tree::new(first_update);
+        let mut tree = super::Tree::new(first_update, false);
         assert_eq!(0, tree.state().root().children().count());
         let second_update = TreeUpdate {
             nodes: vec![
@@ -415,7 +454,7 @@ mod tests {
                 ),
             ],
             tree: None,
-            focus: None,
+            focus: NodeId(0),
         };
         struct Handler {
             got_new_child_node: bool,
@@ -491,14 +530,14 @@ mod tests {
                 ),
             ],
             tree: Some(Tree::new(NodeId(0))),
-            focus: None,
+            focus: NodeId(0),
         };
-        let mut tree = super::Tree::new(first_update);
+        let mut tree = super::Tree::new(first_update, false);
         assert_eq!(1, tree.state().root().children().count());
         let second_update = TreeUpdate {
             nodes: vec![(NodeId(0), root_builder.build(&mut classes))],
             tree: None,
-            focus: None,
+            focus: NodeId(0),
         };
         struct Handler {
             got_updated_root_node: bool,
@@ -572,14 +611,14 @@ mod tests {
                 ),
             ],
             tree: Some(Tree::new(NodeId(0))),
-            focus: Some(NodeId(1)),
+            focus: NodeId(1),
         };
-        let mut tree = super::Tree::new(first_update);
+        let mut tree = super::Tree::new(first_update, true);
         assert!(tree.state().node_by_id(NodeId(1)).unwrap().is_focused());
         let second_update = TreeUpdate {
             nodes: vec![],
             tree: None,
-            focus: Some(NodeId(2)),
+            focus: NodeId(2),
         };
         struct Handler {
             got_old_focus_node_update: bool,
@@ -665,9 +704,9 @@ mod tests {
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
-            focus: None,
+            focus: NodeId(0),
         };
-        let mut tree = super::Tree::new(first_update);
+        let mut tree = super::Tree::new(first_update, false);
         assert_eq!(
             Some("foo".into()),
             tree.state().node_by_id(NodeId(1)).unwrap().name()
@@ -679,7 +718,7 @@ mod tests {
                 builder.build(&mut classes)
             })],
             tree: None,
-            focus: None,
+            focus: NodeId(0),
         };
         struct Handler {
             got_updated_child_node: bool,

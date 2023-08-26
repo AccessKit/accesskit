@@ -18,7 +18,7 @@ use objc2::{
     sel, ClassType,
 };
 use once_cell::{sync::Lazy as SyncLazy, unsync::Lazy};
-use std::{collections::HashMap, ffi::c_void, sync::Mutex};
+use std::{cell::Cell, collections::HashMap, ffi::c_void, rc::Rc, sync::Mutex};
 
 use crate::{
     appkit::{NSView, NSWindow},
@@ -102,11 +102,14 @@ unsafe extern "C" fn hit_test(this: &NSView, _cmd: Sel, point: NSPoint) -> *mut 
 /// accessibility methods when normal subclassing isn't an option.
 pub struct SubclassingAdapter {
     view: Id<NSView, Shared>,
+    is_view_focused: Rc<Cell<bool>>,
     associated: Id<AssociatedObject, Shared>,
 }
 
 impl SubclassingAdapter {
     /// Create an adapter that dynamically subclasses the specified view.
+    /// This must be done before the view is shown or focused for
+    /// the first time.
     ///
     /// The action handler will always be called on the main thread.
     ///
@@ -128,11 +131,13 @@ impl SubclassingAdapter {
         source: impl 'static + FnOnce() -> TreeUpdate,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
+        let is_view_focused = Rc::new(Cell::new(false));
         let adapter: LazyAdapter = {
             let retained_view = retained_view.clone();
+            let is_view_focused = Rc::clone(&is_view_focused);
             Lazy::new(Box::new(move || {
                 let view = Id::as_ptr(&retained_view) as *mut c_void;
-                unsafe { Adapter::new(view, source(), action_handler) }
+                unsafe { Adapter::new(view, source(), is_view_focused.get(), action_handler) }
             }))
         };
         let view = Id::as_ptr(&retained_view) as *mut NSView;
@@ -180,6 +185,7 @@ impl SubclassingAdapter {
         unsafe { object_setClass(view as *mut _, (*subclass as *const Class).cast()) };
         Self {
             view: retained_view,
+            is_view_focused,
             associated,
         }
     }
@@ -226,6 +232,16 @@ impl SubclassingAdapter {
         update_factory: impl FnOnce() -> TreeUpdate,
     ) -> Option<QueuedEvents> {
         Lazy::get(&self.associated.adapter).map(|adapter| adapter.update(update_factory()))
+    }
+
+    /// Update the tree state based on whether the window is focused.
+    ///
+    /// If a [`QueuedEvents`] instance is returned, the caller must call
+    /// [`QueuedEvents::raise`] on it.
+    pub fn update_view_focus_state(&self, is_focused: bool) -> Option<QueuedEvents> {
+        self.is_view_focused.set(is_focused);
+        Lazy::get(&self.associated.adapter)
+            .map(|adapter| adapter.update_view_focus_state(is_focused))
     }
 }
 

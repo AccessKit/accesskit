@@ -35,11 +35,12 @@ impl Adapter {
     pub unsafe fn new(
         view: *mut c_void,
         initial_state: TreeUpdate,
+        is_view_focused: bool,
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let view = unsafe { Id::retain(view as *mut NSView) }.unwrap();
         let view = WeakId::new(&view);
-        let tree = Tree::new(initial_state);
+        let tree = Tree::new(initial_state, is_view_focused);
         let mtm = MainThreadMarker::new().unwrap();
         Self {
             context: Context::new(view, tree, action_handler, mtm),
@@ -53,6 +54,16 @@ impl Adapter {
         let mut event_generator = EventGenerator::new(self.context.clone());
         let mut tree = self.context.tree.borrow_mut();
         tree.update_and_process_changes(update, &mut event_generator);
+        event_generator.into_result()
+    }
+
+    /// Update the tree state based on whether the window is focused.
+    ///
+    /// The caller must call [`QueuedEvents::raise`] on the return value.
+    pub fn update_view_focus_state(&self, is_focused: bool) -> QueuedEvents {
+        let mut event_generator = EventGenerator::new(self.context.clone());
+        let mut tree = self.context.tree.borrow_mut();
+        tree.update_host_focus_state_and_process_changes(is_focused, &mut event_generator);
         event_generator.into_result()
     }
 

@@ -4,7 +4,7 @@
 
 use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_macos::SubclassingAdapter;
-use winit::{platform::macos::WindowExtMacOS, window::Window};
+use winit::{event::WindowEvent, platform::macos::WindowExtMacOS, window::Window};
 
 pub type ActionHandlerBox = Box<dyn ActionHandler>;
 
@@ -32,5 +32,15 @@ impl Adapter {
         if let Some(events) = self.adapter.update_if_active(updater) {
             events.raise();
         }
+    }
+
+    pub fn on_event(&self, _window: &Window, event: &WindowEvent) -> bool {
+        if let WindowEvent::Focused(is_focused) = event {
+            if let Some(events) = self.adapter.update_view_focus_state(*is_focused) {
+                events.raise();
+            }
+        }
+
+        true
     }
 }

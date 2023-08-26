@@ -46,7 +46,7 @@ fn get_initial_state() -> TreeUpdate {
             (BUTTON_2_ID, button_2),
         ],
         tree: Some(Tree::new(WINDOW_ID)),
-        focus: None,
+        focus: BUTTON_1_ID,
     }
 }
 

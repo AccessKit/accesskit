@@ -907,16 +907,24 @@ impl BoxCastPtr for tree_update {}
 
 impl tree_update {
     #[no_mangle]
-    pub extern "C" fn accesskit_tree_update_new() -> *mut tree_update {
-        let update = TreeUpdate::default();
+    pub extern "C" fn accesskit_tree_update_with_focus(focus: node_id) -> *mut tree_update {
+        let update = TreeUpdate {
+            nodes: vec![],
+            tree: None,
+            focus: focus.into(),
+        };
         BoxCastPtr::to_mut_ptr(update)
     }
 
     #[no_mangle]
-    pub extern "C" fn accesskit_tree_update_with_capacity(capacity: usize) -> *mut tree_update {
+    pub extern "C" fn accesskit_tree_update_with_capacity_and_focus(
+        capacity: usize,
+        focus: node_id,
+    ) -> *mut tree_update {
         let update = TreeUpdate {
             nodes: Vec::with_capacity(capacity),
-            ..Default::default()
+            tree: None,
+            focus: focus.into(),
         };
         BoxCastPtr::to_mut_ptr(update)
     }
@@ -954,13 +962,7 @@ impl tree_update {
     #[no_mangle]
     pub extern "C" fn accesskit_tree_update_set_focus(update: *mut tree_update, focus: node_id) {
         let update = mut_from_ptr(update);
-        update.focus = Some(focus.into());
-    }
-
-    #[no_mangle]
-    pub extern "C" fn accesskit_tree_update_clear_focus(update: *mut tree_update) {
-        let update = mut_from_ptr(update);
-        update.focus = None;
+        update.focus = focus.into();
     }
 }
 

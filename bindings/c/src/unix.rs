@@ -35,6 +35,7 @@ impl unix_adapter {
         toolkit_version: *const c_char,
         initial_state: tree_update_factory,
         initial_state_userdata: *mut c_void,
+        is_window_focused: bool,
         handler: *mut action_handler,
     ) -> *mut unix_adapter {
         let app_name = unsafe { CStr::from_ptr(app_name).to_string_lossy().into() };
@@ -47,6 +48,7 @@ impl unix_adapter {
             toolkit_name,
             toolkit_version,
             move || *box_from_ptr(initial_state(initial_state_userdata)),
+            is_window_focused,
             handler,
         );
         adapter.map_or_else(ptr::null_mut, BoxCastPtr::to_mut_ptr)
@@ -76,5 +78,15 @@ impl unix_adapter {
         let adapter = ref_from_ptr(adapter);
         let update = box_from_ptr(update);
         adapter.update(*update);
+    }
+
+    /// Update the tree state based on whether the window is focused.
+    #[no_mangle]
+    pub extern "C" fn accesskit_unix_adapter_update_window_focus_state(
+        adapter: *const unix_adapter,
+        is_focused: bool,
+    ) {
+        let adapter = ref_from_ptr(adapter);
+        adapter.update_window_focus_state(is_focused);
     }
 }

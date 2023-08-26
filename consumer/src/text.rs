@@ -1213,10 +1213,10 @@ mod tests {
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
-            focus: Some(NodeId(1)),
+            focus: NodeId(1),
         };
 
-        crate::Tree::new(update)
+        crate::Tree::new(update, true)
     }
 
     fn multiline_end_selection() -> TextSelection {

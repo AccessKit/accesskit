@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file).
 
 use accesskit::{ActionHandler, TreeUpdate};
-use winit::window::Window;
+use winit::{event::WindowEvent, window::Window};
 
 pub type ActionHandlerBox = Box<dyn ActionHandler>;
 
@@ -21,4 +21,8 @@ impl Adapter {
     pub fn update(&self, _update: TreeUpdate) {}
 
     pub fn update_if_active(&self, _updater: impl FnOnce() -> TreeUpdate) {}
+
+    pub fn on_event(&self, _window: &Window, _event: &WindowEvent) -> bool {
+        true
+    }
 }
