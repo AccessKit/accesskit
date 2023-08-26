@@ -33,9 +33,6 @@ impl State {
     fn validate_global(&self) {
         assert!(self.nodes.contains_key(&self.data.root));
         assert!(self.nodes.contains_key(&self.focus));
-        if let Some(id) = self.data.root_scroller {
-            assert!(self.nodes.contains_key(&id));
-        }
     }
 
     fn update(

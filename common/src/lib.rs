@@ -2336,20 +2336,12 @@ impl JsonSchema for Node {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct Tree {
     pub root: NodeId,
-
-    /// The node that's used as the root scroller, if any. On some platforms
-    /// like Android we need to ignore accessibility scroll offsets for
-    /// that node and get them from the viewport instead.
-    pub root_scroller: Option<NodeId>,
 }
 
 impl Tree {
     #[inline]
     pub fn new(root: NodeId) -> Tree {
-        Tree {
-            root,
-            root_scroller: None,
-        }
+        Tree { root }
     }
 }
 
