@@ -160,7 +160,7 @@ impl<'a> NodeWrapper<'a> {
             Role::Dialog => UIA_PaneControlTypeId,
             Role::Directory => UIA_ListControlTypeId,
             Role::DisclosureTriangle => UIA_ButtonControlTypeId,
-            Role::Document => UIA_DocumentControlTypeId,
+            Role::Document | Role::Terminal => UIA_DocumentControlTypeId,
             Role::EmbeddedObject => UIA_PaneControlTypeId,
             Role::Emphasis => UIA_TextControlTypeId,
             Role::Feed => UIA_GroupControlTypeId,

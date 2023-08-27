@@ -249,6 +249,11 @@ pub enum Role {
     /// `TableView` and its subclasses, so they can be exposed correctly
     /// on certain platforms.
     ListGrid,
+
+    /// This is just like a multi-line document, but signals that assistive
+    /// technologies should implement behavior specific to a VT-100-style
+    /// terminal.
+    Terminal,
 }
 
 impl Default for Role {

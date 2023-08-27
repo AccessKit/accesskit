@@ -227,6 +227,7 @@ fn ns_role(node_state: &NodeState) -> &'static NSString {
             Role::DocTip => NSAccessibilityGroupRole,
             Role::DocToc => NSAccessibilityGroupRole,
             Role::ListGrid => NSAccessibilityUnknownRole,
+            Role::Terminal => NSAccessibilityTextAreaRole,
         }
     }
 }
