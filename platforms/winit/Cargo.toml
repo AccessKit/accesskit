@@ -10,6 +10,9 @@ repository = "https://github.com/AccessKit/accesskit"
 readme = "README.md"
 edition = "2021"
 
+[package.metadata.docs.rs]
+features = ["winit/x11", "winit/wayland"]
+
 [features]
 default = ["accesskit_unix", "async-io"]
 async-io = ["accesskit_unix/async-io"]
