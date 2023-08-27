@@ -873,16 +873,12 @@ impl node_builder {
 #[repr(C)]
 pub struct tree {
     pub root: node_id,
-    pub root_scroller: opt_node_id,
 }
 
 impl tree {
     #[no_mangle]
     pub extern "C" fn accesskit_tree_new(root: node_id) -> tree {
-        tree {
-            root,
-            root_scroller: opt_node_id::default(),
-        }
+        tree { root }
     }
 }
 
@@ -890,7 +886,6 @@ impl From<tree> for Tree {
     fn from(tree: tree) -> Self {
         Self {
             root: tree.root.into(),
-            root_scroller: tree.root_scroller.into(),
         }
     }
 }
