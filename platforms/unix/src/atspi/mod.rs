@@ -10,7 +10,6 @@ mod bus;
 pub(crate) mod interfaces;
 mod object_address;
 mod object_id;
-mod object_ref;
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, OwnedValue, Type, Value)]
 pub(crate) struct Rect {
@@ -41,6 +40,5 @@ impl From<accesskit::Rect> for Rect {
 }
 
 pub(crate) use bus::Bus;
-pub(crate) use object_address::*;
-pub(crate) use object_id::*;
-pub(crate) use object_ref::*;
+pub(crate) use object_address::OwnedObjectAddress;
+pub(crate) use object_id::ObjectId;

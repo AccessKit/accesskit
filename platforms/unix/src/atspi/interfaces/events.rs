@@ -3,16 +3,16 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::atspi::{ObjectId, ObjectRef, Rect};
+use crate::atspi::{ObjectId, Rect};
 use atspi::{accessible::Role, State};
 
 pub(crate) enum Event {
     Object {
-        target: ObjectId<'static>,
+        target: ObjectId,
         event: ObjectEvent,
     },
     Window {
-        target: ObjectId<'static>,
+        target: ObjectId,
         name: String,
         event: WindowEvent,
     },
@@ -21,16 +21,17 @@ pub(crate) enum Event {
 pub(crate) enum Property {
     Name(String),
     Description(String),
-    Parent(Option<ObjectRef>),
+    Parent(ObjectId),
     Role(Role),
     Value(f64),
 }
 
 #[allow(clippy::enum_variant_names)]
 pub(crate) enum ObjectEvent {
+    ActiveDescendantChanged(ObjectId),
     BoundsChanged(Rect),
-    ChildAdded(usize, ObjectRef),
-    ChildRemoved(ObjectRef),
+    ChildAdded(usize, ObjectId),
+    ChildRemoved(ObjectId),
     PropertyChanged(Property),
     StateChanged(State, bool),
 }

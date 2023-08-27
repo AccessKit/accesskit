@@ -4,16 +4,21 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    atspi::{interfaces::*, object_address::*, ObjectId},
-    context::Context,
+    atspi::{interfaces::*, ObjectId},
+    context::AppContext,
     PlatformRootNode,
 };
+use async_once_cell::OnceCell;
 use atspi::{bus::BusProxy, socket::SocketProxy, EventBody};
 use serde::Serialize;
-use std::{collections::HashMap, env::var, sync::Arc};
+use std::{
+    collections::HashMap,
+    env::var,
+    sync::{Arc, RwLock},
+};
 use zbus::{
     names::{BusName, InterfaceName, MemberName, OwnedUniqueName},
-    zvariant::{ObjectPath, Str, Value},
+    zvariant::{Str, Value},
     Address, Connection, ConnectionBuilder, Result,
 };
 
@@ -52,10 +57,14 @@ impl Bus {
         self.conn.object_server().remove::<T, _>(path).await
     }
 
-    pub async fn register_root_node(&mut self, context: &Arc<Context>) -> Result<bool> {
-        let node = PlatformRootNode::new(context);
-        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, ObjectId::root().as_str());
-        let registered = self
+    pub async fn register_root_node(
+        &mut self,
+        app_context: &Arc<RwLock<AppContext>>,
+    ) -> Result<bool> {
+        let node = PlatformRootNode::new(app_context);
+        let path = ObjectId::Root.path();
+
+        let app_node_added = self
             .conn
             .object_server()
             .at(path.clone(), ApplicationInterface(node.clone()))
@@ -68,15 +77,13 @@ impl Bus {
                     AccessibleInterface::new(self.unique_name().to_owned(), node),
                 )
                 .await?;
-        if registered {
+
+        if app_node_added {
             let desktop = self
                 .socket_proxy
-                .embed(&(
-                    self.unique_name().as_str(),
-                    ObjectPath::from_str_unchecked(ROOT_PATH),
-                ))
+                .embed(&(self.unique_name().as_str(), ObjectId::Root.path().into()))
                 .await?;
-            context.app_context.write().unwrap().desktop_address = Some(desktop.into());
+            app_context.write().unwrap().desktop_address = Some(desktop.into());
             Ok(true)
         } else {
             Ok(false)
@@ -85,11 +92,12 @@ impl Bus {
 
     pub(crate) async fn emit_object_event(
         &self,
-        target: ObjectId<'_>,
+        target: ObjectId,
         event: ObjectEvent,
     ) -> Result<()> {
         let interface = "org.a11y.atspi.Event.Object";
         let signal = match event {
+            ObjectEvent::ActiveDescendantChanged(_) => "ActiveDescendantChanged",
             ObjectEvent::BoundsChanged(_) => "BoundsChanged",
             ObjectEvent::ChildAdded(_, _) | ObjectEvent::ChildRemoved(_) => "ChildrenChanged",
             ObjectEvent::PropertyChanged(_) => "PropertyChange",
@@ -97,6 +105,21 @@ impl Bus {
         };
         let properties = HashMap::new();
         match event {
+            ObjectEvent::ActiveDescendantChanged(child) => {
+                self.emit_event(
+                    target,
+                    interface,
+                    signal,
+                    EventBody {
+                        kind: "",
+                        detail1: 0,
+                        detail2: 0,
+                        any_data: child.to_address(self.unique_name().clone()).into(),
+                        properties,
+                    },
+                )
+                .await
+            }
             ObjectEvent::BoundsChanged(bounds) => {
                 self.emit_event(
                     target,
@@ -121,7 +144,7 @@ impl Bus {
                         kind: "add",
                         detail1: index as i32,
                         detail2: 0,
-                        any_data: child.into_value(self.unique_name().clone()),
+                        any_data: child.to_address(self.unique_name().clone()).into(),
                         properties,
                     },
                 )
@@ -136,7 +159,7 @@ impl Bus {
                         kind: "remove",
                         detail1: -1,
                         detail2: 0,
-                        any_data: child.into_value(self.unique_name().clone()),
+                        any_data: child.to_address(self.unique_name().clone()).into(),
                         properties,
                     },
                 )
@@ -160,11 +183,8 @@ impl Bus {
                         any_data: match property {
                             Property::Name(value) => Str::from(value).into(),
                             Property::Description(value) => Str::from(value).into(),
-                            Property::Parent(Some(parent)) => {
-                                parent.into_value(self.unique_name().clone())
-                            }
-                            Property::Parent(None) => {
-                                OwnedObjectAddress::root(self.unique_name().clone()).into()
+                            Property::Parent(parent) => {
+                                parent.to_address(self.unique_name().clone()).into()
                             }
                             Property::Role(value) => Value::U32(value as u32),
                             Property::Value(value) => Value::F64(value),
@@ -194,7 +214,7 @@ impl Bus {
 
     pub(crate) async fn emit_window_event(
         &self,
-        target: ObjectId<'_>,
+        target: ObjectId,
         window_name: String,
         event: WindowEvent,
     ) -> Result<()> {
@@ -219,16 +239,15 @@ impl Bus {
 
     async fn emit_event<T: Serialize>(
         &self,
-        id: ObjectId<'_>,
+        target: ObjectId,
         interface: &str,
         signal_name: &str,
         body: EventBody<'_, T>,
     ) -> Result<()> {
-        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, id.as_str());
         self.conn
             .emit_signal(
                 Option::<BusName>::None,
-                path,
+                target.path(),
                 InterfaceName::from_str_unchecked(interface),
                 MemberName::from_str_unchecked(signal_name),
                 &body,
@@ -237,19 +256,26 @@ impl Bus {
     }
 }
 
+static A11Y_BUS: OnceCell<Option<Connection>> = OnceCell::new();
+
 async fn a11y_bus() -> Option<Connection> {
-    let address = match var("AT_SPI_BUS_ADDRESS") {
-        Ok(address) if !address.is_empty() => address,
-        _ => {
-            let session_bus = Connection::session().await.ok()?;
-            BusProxy::new(&session_bus)
-                .await
-                .ok()?
-                .get_address()
-                .await
-                .ok()?
-        }
-    };
-    let address: Address = address.as_str().try_into().ok()?;
-    ConnectionBuilder::address(address).ok()?.build().await.ok()
+    A11Y_BUS
+        .get_or_init(async {
+            let address = match var("AT_SPI_BUS_ADDRESS") {
+                Ok(address) if !address.is_empty() => address,
+                _ => {
+                    let session_bus = Connection::session().await.ok()?;
+                    BusProxy::new(&session_bus)
+                        .await
+                        .ok()?
+                        .get_address()
+                        .await
+                        .ok()?
+                }
+            };
+            let address: Address = address.as_str().try_into().ok()?;
+            ConnectionBuilder::address(address).ok()?.build().await.ok()
+        })
+        .await
+        .clone()
 }

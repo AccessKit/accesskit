@@ -4,8 +4,8 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    atspi::{ObjectId, ObjectRef, OwnedObjectAddress},
-    unknown_object, PlatformNode, PlatformRootNode,
+    atspi::{ObjectId, OwnedObjectAddress},
+    PlatformNode, PlatformRootNode,
 };
 use atspi::{accessible::Role, Interface, InterfaceSet, StateSet};
 use std::convert::TryInto;
@@ -37,8 +37,7 @@ impl AccessibleInterface<PlatformNode> {
     #[dbus_interface(property)]
     fn parent(&self) -> OwnedObjectAddress {
         match self.node.parent() {
-            Ok(ObjectRef::Managed(id)) => OwnedObjectAddress::accessible(self.bus_name.clone(), id),
-            Ok(ObjectRef::Unmanaged(address)) => address,
+            Ok(parent) => parent.to_address(self.bus_name.clone()),
             _ => OwnedObjectAddress::null(self.bus_name.clone()),
         }
     }
@@ -74,10 +73,7 @@ impl AccessibleInterface<PlatformNode> {
             .node
             .children()?
             .into_iter()
-            .map(|child| match child {
-                ObjectRef::Managed(id) => OwnedObjectAddress::accessible(self.bus_name.clone(), id),
-                ObjectRef::Unmanaged(address) => address,
-            })
+            .map(|child| child.to_address(self.bus_name.clone()))
             .collect())
     }
 
@@ -97,10 +93,7 @@ impl AccessibleInterface<PlatformNode> {
         &self,
         #[zbus(header)] hdr: MessageHeader<'_>,
     ) -> fdo::Result<(OwnedObjectAddress,)> {
-        super::object_address(
-            hdr.destination()?,
-            Some(ObjectRef::Managed(ObjectId::root())),
-        )
+        super::object_address(hdr.destination()?, Some(ObjectId::Root))
     }
 
     fn get_interfaces(&self) -> fdo::Result<InterfaceSet> {
@@ -112,11 +105,7 @@ impl AccessibleInterface<PlatformNode> {
 impl AccessibleInterface<PlatformRootNode> {
     #[dbus_interface(property)]
     fn name(&self) -> String {
-        self.node
-            .context
-            .upgrade()
-            .map(|context| context.read_app_context().name.clone())
-            .unwrap_or_default()
+        self.node.name()
     }
 
     #[dbus_interface(property)]
@@ -127,16 +116,13 @@ impl AccessibleInterface<PlatformRootNode> {
     #[dbus_interface(property)]
     fn parent(&self) -> OwnedObjectAddress {
         self.node
-            .context
-            .upgrade()
-            .and_then(|context| context.read_app_context().desktop_address.clone())
+            .parent()
             .unwrap_or_else(|| OwnedObjectAddress::null(self.bus_name.clone()))
     }
 
     #[dbus_interface(property)]
     fn child_count(&self) -> i32 {
-        // TODO: Handle multiple top-level windows.
-        1
+        self.node.child_count()
     }
 
     #[dbus_interface(property)]
@@ -146,7 +132,7 @@ impl AccessibleInterface<PlatformRootNode> {
 
     #[dbus_interface(property)]
     fn accessible_id(&self) -> ObjectId {
-        ObjectId::root()
+        self.node.accessible_id()
     }
 
     fn get_child_at_index(
@@ -154,30 +140,21 @@ impl AccessibleInterface<PlatformRootNode> {
         #[zbus(header)] hdr: MessageHeader<'_>,
         index: i32,
     ) -> fdo::Result<(OwnedObjectAddress,)> {
-        // TODO: Handle multiple top-level windows.
-        if index != 0 {
-            return super::object_address(hdr.destination()?, None);
-        }
-        let child = self
-            .node
-            .context
-            .upgrade()
-            .map(|context| ObjectRef::Managed(context.read_tree().state().root().id().into()));
+        let index = index
+            .try_into()
+            .map_err(|_| fdo::Error::InvalidArgs("Index can't be negative.".into()))?;
+        let child = self.node.child_at_index(index)?;
         super::object_address(hdr.destination()?, child)
     }
 
     fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
-        // TODO: Handle multiple top-level windows.
-        self.node
-            .context
-            .upgrade()
-            .map(|context| {
-                vec![OwnedObjectAddress::accessible(
-                    self.bus_name.clone(),
-                    context.read_tree().state().root().id().into(),
-                )]
-            })
-            .ok_or_else(|| unknown_object(&ObjectId::root()))
+        let children = self
+            .node
+            .children()?
+            .drain(..)
+            .map(|child| child.to_address(self.bus_name.clone()))
+            .collect();
+        Ok(children)
     }
 
     fn get_index_in_parent(&self) -> i32 {
@@ -196,10 +173,7 @@ impl AccessibleInterface<PlatformRootNode> {
         &self,
         #[zbus(header)] hdr: MessageHeader<'_>,
     ) -> fdo::Result<(OwnedObjectAddress,)> {
-        super::object_address(
-            hdr.destination()?,
-            Some(ObjectRef::Managed(ObjectId::root())),
-        )
+        super::object_address(hdr.destination()?, Some(ObjectId::Root))
     }
 
     fn get_interfaces(&self) -> InterfaceSet {

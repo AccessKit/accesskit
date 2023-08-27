@@ -9,19 +9,22 @@ use crate::{
             AccessibleInterface, ActionInterface, ComponentInterface, Event, ObjectEvent,
             ValueInterface, WindowEvent,
         },
-        Bus, ObjectId, ACCESSIBLE_PATH_PREFIX,
+        Bus, ObjectId,
     },
-    context::Context,
+    context::{AppContext, Context},
     filters::{filter, filter_detached},
     node::{NodeWrapper, PlatformNode},
-    util::{block_on, AppContext},
+    util::block_on,
 };
 use accesskit::{ActionHandler, NodeId, Rect, Role, TreeUpdate};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use async_channel::{Receiver, Sender};
 use atspi::{Interface, InterfaceSet, State};
 use futures_lite::StreamExt;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 use zbus::Task;
 
 struct AdapterChangeHandler<'a> {
@@ -30,23 +33,49 @@ struct AdapterChangeHandler<'a> {
 
 impl AdapterChangeHandler<'_> {
     fn add_node(&mut self, node: &Node) {
-        let interfaces = NodeWrapper::Node(node).interfaces();
+        let role = node.role();
+        let is_root = node.is_root();
+        let node = NodeWrapper::Node {
+            adapter: self.adapter.id,
+            node,
+        };
+        let interfaces = node.interfaces();
         self.adapter
             .register_interfaces(node.id(), interfaces)
             .unwrap();
+        if is_root && role == Role::Window {
+            let adapter_index = self
+                .adapter
+                .context
+                .read_app_context()
+                .adapter_index(self.adapter.id)
+                .unwrap();
+            self.adapter.window_created(adapter_index, node.id());
+        }
     }
 
     fn remove_node(&mut self, node: &DetachedNode) {
-        let node = NodeWrapper::DetachedNode(node);
+        let role = node.role();
+        let is_root = node.is_root();
+        let node = NodeWrapper::DetachedNode {
+            adapter: self.adapter.id,
+            node,
+        };
+        if is_root && role == Role::Window {
+            self.adapter.window_destroyed(node.id());
+        }
         self.adapter
             .events
             .send_blocking(Event::Object {
-                target: node.id(),
+                target: ObjectId::Node {
+                    adapter: self.adapter.id,
+                    node: node.id(),
+                },
                 event: ObjectEvent::StateChanged(State::Defunct, true),
             })
             .unwrap();
         self.adapter
-            .unregister_interfaces(&node.id(), node.interfaces())
+            .unregister_interfaces(node.id(), node.interfaces())
             .unwrap();
     }
 }
@@ -68,13 +97,19 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 self.remove_node(old_node);
             }
         } else if filter_new == FilterResult::Include {
-            let old_wrapper = NodeWrapper::DetachedNode(old_node);
-            let new_wrapper = NodeWrapper::Node(new_node);
+            let old_wrapper = NodeWrapper::DetachedNode {
+                adapter: self.adapter.id,
+                node: old_node,
+            };
+            let new_wrapper = NodeWrapper::Node {
+                adapter: self.adapter.id,
+                node: new_node,
+            };
             let old_interfaces = old_wrapper.interfaces();
             let new_interfaces = new_wrapper.interfaces();
             let kept_interfaces = old_interfaces & new_interfaces;
             self.adapter
-                .unregister_interfaces(&new_wrapper.id(), old_interfaces ^ kept_interfaces)
+                .unregister_interfaces(new_wrapper.id(), old_interfaces ^ kept_interfaces)
                 .unwrap();
             self.adapter
                 .register_interfaces(new_node.id(), new_interfaces ^ kept_interfaces)
@@ -95,27 +130,43 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
     ) {
         if let Some(root_window) = root_window(current_state) {
             if old_node.is_none() && new_node.is_some() {
-                self.adapter
-                    .window_activated(&NodeWrapper::Node(&root_window), &self.adapter.events);
+                self.adapter.window_activated(&NodeWrapper::Node {
+                    adapter: self.adapter.id,
+                    node: &root_window,
+                });
             } else if old_node.is_some() && new_node.is_none() {
-                self.adapter
-                    .window_deactivated(&NodeWrapper::Node(&root_window), &self.adapter.events);
+                self.adapter.window_deactivated(&NodeWrapper::Node {
+                    adapter: self.adapter.id,
+                    node: &root_window,
+                });
             }
         }
-        if let Some(node) = new_node.map(NodeWrapper::Node) {
+        if let Some(node) = new_node.map(|node| NodeWrapper::Node {
+            adapter: self.adapter.id,
+            node,
+        }) {
             self.adapter
                 .events
                 .send_blocking(Event::Object {
-                    target: node.id(),
+                    target: ObjectId::Node {
+                        adapter: self.adapter.id,
+                        node: node.id(),
+                    },
                     event: ObjectEvent::StateChanged(State::Focused, true),
                 })
                 .unwrap();
         }
-        if let Some(node) = old_node.map(NodeWrapper::DetachedNode) {
+        if let Some(node) = old_node.map(|node| NodeWrapper::DetachedNode {
+            adapter: self.adapter.id,
+            node,
+        }) {
             self.adapter
                 .events
                 .send_blocking(Event::Object {
-                    target: node.id(),
+                    target: ObjectId::Node {
+                        adapter: self.adapter.id,
+                        node: node.id(),
+                    },
                     event: ObjectEvent::StateChanged(State::Focused, false),
                 })
                 .unwrap();
@@ -129,7 +180,10 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
     }
 }
 
+static NEXT_ADAPTER_ID: AtomicUsize = AtomicUsize::new(0);
+
 pub struct Adapter {
+    id: usize,
     atspi_bus: Bus,
     _event_task: Task<()>,
     events: Sender<Event>,
@@ -158,10 +212,32 @@ impl Adapter {
             "accesskit_event_task",
         );
         let tree = Tree::new(initial_state(), is_window_focused);
-        let app_context = AppContext::new(app_name, toolkit_name, toolkit_version);
-        let context = Context::new(tree, action_handler, app_context);
-        block_on(async { atspi_bus.register_root_node(&context).await.ok() })?;
+        let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::SeqCst);
+        let root_id = tree.state().root_id();
+        let app_context = AppContext::get_or_init(app_name, toolkit_name, toolkit_version);
+        let context = Context::new(tree, action_handler, &app_context);
+        let adapter_index = app_context.write().unwrap().push_adapter(id, &context);
+        block_on(async {
+            if !atspi_bus.register_root_node(&app_context).await.ok()? {
+                atspi_bus
+                    .emit_object_event(
+                        ObjectId::Root,
+                        ObjectEvent::ChildAdded(
+                            adapter_index,
+                            ObjectId::Node {
+                                adapter: id,
+                                node: root_id,
+                            },
+                        ),
+                    )
+                    .await
+                    .ok()
+            } else {
+                Some(())
+            }
+        })?;
         let adapter = Adapter {
+            id,
             atspi_bus,
             _event_task: event_task,
             events: event_sender,
@@ -186,13 +262,21 @@ impl Adapter {
         objects_to_add.push(tree_state.root().id());
         add_children(tree_state.root(), &mut objects_to_add);
         for id in objects_to_add {
-            let interfaces = NodeWrapper::Node(&tree_state.node_by_id(id).unwrap()).interfaces();
+            let wrapper = NodeWrapper::Node {
+                adapter: self.id,
+                node: &tree_state.node_by_id(id).unwrap(),
+            };
+            let interfaces = wrapper.interfaces();
             self.register_interfaces(id, interfaces).unwrap();
         }
     }
 
     fn register_interfaces(&self, id: NodeId, new_interfaces: InterfaceSet) -> zbus::Result<bool> {
-        let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, ObjectId::from(id).as_str());
+        let path = ObjectId::Node {
+            adapter: self.id,
+            node: id,
+        }
+        .path();
         if new_interfaces.contains(Interface::Accessible) {
             block_on(async {
                 self.atspi_bus
@@ -200,7 +284,7 @@ impl Adapter {
                         &path,
                         AccessibleInterface::new(
                             self.atspi_bus.unique_name().to_owned(),
-                            PlatformNode::new(&self.context, id),
+                            PlatformNode::new(&self.context, self.id, id),
                         ),
                     )
                     .await
@@ -211,7 +295,7 @@ impl Adapter {
                 self.atspi_bus
                     .register_interface(
                         &path,
-                        ActionInterface::new(PlatformNode::new(&self.context, id)),
+                        ActionInterface::new(PlatformNode::new(&self.context, self.id, id)),
                     )
                     .await
             })?;
@@ -221,7 +305,7 @@ impl Adapter {
                 self.atspi_bus
                     .register_interface(
                         &path,
-                        ComponentInterface::new(PlatformNode::new(&self.context, id)),
+                        ComponentInterface::new(PlatformNode::new(&self.context, self.id, id)),
                     )
                     .await
             })?;
@@ -231,7 +315,7 @@ impl Adapter {
                 self.atspi_bus
                     .register_interface(
                         &path,
-                        ValueInterface::new(PlatformNode::new(&self.context, id)),
+                        ValueInterface::new(PlatformNode::new(&self.context, self.id, id)),
                     )
                     .await
             })?;
@@ -241,11 +325,15 @@ impl Adapter {
 
     fn unregister_interfaces(
         &self,
-        id: &ObjectId,
+        id: NodeId,
         old_interfaces: InterfaceSet,
     ) -> zbus::Result<bool> {
         block_on(async {
-            let path = format!("{}{}", ACCESSIBLE_PATH_PREFIX, id.as_str());
+            let path = ObjectId::Node {
+                adapter: self.id,
+                node: id,
+            }
+            .path();
             if old_interfaces.contains(Interface::Accessible) {
                 self.atspi_bus
                     .unregister_interface::<AccessibleInterface<PlatformNode>>(&path)
@@ -290,34 +378,82 @@ impl Adapter {
         tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
     }
 
-    fn window_activated(&self, window: &NodeWrapper, events: &Sender<Event>) {
-        events
-            .send_blocking(Event::Window {
-                target: window.id(),
-                name: window.name(),
-                event: WindowEvent::Activated,
-            })
-            .unwrap();
-        events
+    fn window_created(&self, adapter_index: usize, window: NodeId) {
+        self.events
             .send_blocking(Event::Object {
-                target: window.id(),
-                event: ObjectEvent::StateChanged(State::Active, true),
+                target: ObjectId::Root,
+                event: ObjectEvent::ChildAdded(
+                    adapter_index,
+                    ObjectId::Node {
+                        adapter: self.id,
+                        node: window,
+                    },
+                ),
             })
             .unwrap();
     }
 
-    fn window_deactivated(&self, window: &NodeWrapper, events: &Sender<Event>) {
-        events
+    fn window_activated(&self, window: &NodeWrapper) {
+        self.events
             .send_blocking(Event::Window {
-                target: window.id(),
+                target: ObjectId::Node {
+                    adapter: self.id,
+                    node: window.id(),
+                },
+                name: window.name(),
+                event: WindowEvent::Activated,
+            })
+            .unwrap();
+        self.events
+            .send_blocking(Event::Object {
+                target: ObjectId::Node {
+                    adapter: self.id,
+                    node: window.id(),
+                },
+                event: ObjectEvent::StateChanged(State::Active, true),
+            })
+            .unwrap();
+        self.events
+            .send_blocking(Event::Object {
+                target: ObjectId::Root,
+                event: ObjectEvent::ActiveDescendantChanged(ObjectId::Node {
+                    adapter: self.id,
+                    node: window.id(),
+                }),
+            })
+            .unwrap();
+    }
+
+    fn window_deactivated(&self, window: &NodeWrapper) {
+        self.events
+            .send_blocking(Event::Window {
+                target: ObjectId::Node {
+                    adapter: self.id,
+                    node: window.id(),
+                },
                 name: window.name(),
                 event: WindowEvent::Deactivated,
             })
             .unwrap();
-        events
+        self.events
             .send_blocking(Event::Object {
-                target: window.id(),
+                target: ObjectId::Node {
+                    adapter: self.id,
+                    node: window.id(),
+                },
                 event: ObjectEvent::StateChanged(State::Active, false),
+            })
+            .unwrap();
+    }
+
+    fn window_destroyed(&self, window: NodeId) {
+        self.events
+            .send_blocking(Event::Object {
+                target: ObjectId::Root,
+                event: ObjectEvent::ChildRemoved(ObjectId::Node {
+                    adapter: self.id,
+                    node: window,
+                }),
             })
             .unwrap();
     }
@@ -330,6 +466,24 @@ fn root_window(current_state: &TreeState) -> Option<Node> {
         Some(root)
     } else {
         None
+    }
+}
+
+impl Drop for Adapter {
+    fn drop(&mut self) {
+        block_on(async {
+            let root_id = self.context.read_tree().state().root_id();
+            self.atspi_bus
+                .emit_object_event(
+                    ObjectId::Root,
+                    ObjectEvent::ChildRemoved(ObjectId::Node {
+                        adapter: self.id,
+                        node: root_id,
+                    }),
+                )
+                .await
+                .unwrap();
+        });
     }
 }
 
