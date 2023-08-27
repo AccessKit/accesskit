@@ -838,7 +838,7 @@ impl<'a> Node<'a> {
     pub fn supports_text_ranges(&self) -> bool {
         matches!(
             self.role(),
-            Role::StaticText | Role::TextField | Role::Document | Role::SpinButton
+            Role::StaticText | Role::TextField | Role::Document | Role::SpinButton | Role::Terminal
         ) && self.inline_text_boxes().next().is_some()
     }
 

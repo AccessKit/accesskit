@@ -326,6 +326,7 @@ impl<'a> NodeWrapper<'a> {
             // TODO: Are there special cases to consider?
             Role::Presentation | Role::Unknown => AtspiRole::Unknown,
             Role::ImeCandidate | Role::Keyboard => AtspiRole::RedundantObject,
+            Role::Terminal => AtspiRole::Terminal,
         }
     }
 
