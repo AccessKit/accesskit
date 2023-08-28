@@ -9,6 +9,7 @@ edition = "2021"
 [lib]
 name = "accesskit"
 crate-type = ["cdylib", "staticlib"]
+doc = false
 
 [features]
 cbindgen = []
