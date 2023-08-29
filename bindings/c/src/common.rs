@@ -587,9 +587,7 @@ node_id_property_methods! {
     (popup_for, set_popup_for, clear_popup_for),
     (table_header, set_table_header, clear_table_header),
     (table_row_header, set_table_row_header, clear_table_row_header),
-    (table_column_header, set_table_column_header, clear_table_column_header),
-    (next_focus, set_next_focus, clear_next_focus),
-    (previous_focus, set_previous_focus, clear_previous_focus)
+    (table_column_header, set_table_column_header, clear_table_column_header)
 }
 
 /// Only call this function with a string that originated from AccessKit.

@@ -864,8 +864,6 @@ enum PropertyId {
     TableHeader,
     TableRowHeader,
     TableColumnHeader,
-    NextFocus,
-    PreviousFocus,
 
     // String
     Name,
@@ -1591,9 +1589,7 @@ node_id_property_methods! {
     (PopupFor, popup_for, set_popup_for, clear_popup_for),
     (TableHeader, table_header, set_table_header, clear_table_header),
     (TableRowHeader, table_row_header, set_table_row_header, clear_table_row_header),
-    (TableColumnHeader, table_column_header, set_table_column_header, clear_table_column_header),
-    (NextFocus, next_focus, set_next_focus, clear_next_focus),
-    (PreviousFocus, previous_focus, set_previous_focus, clear_previous_focus)
+    (TableColumnHeader, table_column_header, set_table_column_header, clear_table_column_header)
 }
 
 string_property_methods! {
@@ -2016,9 +2012,7 @@ impl<'de> Visitor<'de> for NodeVisitor {
                             PopupFor,
                             TableHeader,
                             TableRowHeader,
-                            TableColumnHeader,
-                            NextFocus,
-                            PreviousFocus
+                            TableColumnHeader
                         },
                         String {
                             Name,
@@ -2221,9 +2215,7 @@ impl JsonSchema for Node {
                 PopupFor,
                 TableHeader,
                 TableRowHeader,
-                TableColumnHeader,
-                NextFocus,
-                PreviousFocus
+                TableColumnHeader
             },
             Box<str> {
                 Name,
