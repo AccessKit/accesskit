@@ -12,7 +12,8 @@ use crate::{
         Bus, ObjectId, ACCESSIBLE_PATH_PREFIX,
     },
     context::Context,
-    node::{filter, filter_detached, NodeWrapper, PlatformNode},
+    filters::{filter, filter_detached},
+    node::{NodeWrapper, PlatformNode},
     util::{block_on, AppContext},
 };
 use accesskit::{ActionHandler, NodeId, Rect, Role, TreeUpdate};

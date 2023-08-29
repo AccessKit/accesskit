@@ -14,7 +14,8 @@ use std::{collections::HashSet, rc::Rc};
 use crate::{
     appkit::*,
     context::Context,
-    node::{filter, filter_detached, NodeWrapper},
+    filters::{filter, filter_detached},
+    node::NodeWrapper,
 };
 
 // Workaround for https://github.com/madsmtm/objc2/issues/306

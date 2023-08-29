@@ -14,6 +14,7 @@ use crate::{
         ObjectId, ObjectRef, Rect as AtspiRect, ACCESSIBLE_PATH_PREFIX,
     },
     context::Context,
+    filters::{filter, filter_detached},
     util::WindowBounds,
 };
 use accesskit::{
@@ -31,35 +32,6 @@ use std::{
     sync::{Arc, Weak},
 };
 use zbus::fdo;
-
-fn filter_common(node: &NodeState) -> FilterResult {
-    if node.is_hidden() {
-        return FilterResult::ExcludeSubtree;
-    }
-
-    let role = node.role();
-    if role == Role::Presentation || role == Role::GenericContainer || role == Role::InlineTextBox {
-        return FilterResult::ExcludeNode;
-    }
-
-    FilterResult::Include
-}
-
-pub(crate) fn filter(node: &Node) -> FilterResult {
-    if node.is_focused() {
-        return FilterResult::Include;
-    }
-
-    filter_common(node.state())
-}
-
-pub(crate) fn filter_detached(node: &DetachedNode) -> FilterResult {
-    if node.is_focused() {
-        return FilterResult::Include;
-    }
-
-    filter_common(node.state())
-}
 
 pub(crate) enum NodeWrapper<'a> {
     Node(&'a Node<'a>),

@@ -21,7 +21,12 @@ use windows::{
     Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
 };
 
-use crate::{context::Context, text::PlatformRange as PlatformTextRange, util::*};
+use crate::{
+    context::Context,
+    filters::{filter, filter_detached, filter_with_root_exception},
+    text::PlatformRange as PlatformTextRange,
+    util::*,
+};
 
 const RUNTIME_ID_SIZE: usize = 3;
 
@@ -33,42 +38,6 @@ fn runtime_id_from_node_id(id: NodeId) -> [i32; RUNTIME_ID_SIZE] {
         ((id >> 32) & 0xFFFFFFFF) as _,
         (id & 0xFFFFFFFF) as _,
     ]
-}
-
-fn filter_common(node: &NodeState) -> FilterResult {
-    if node.is_hidden() {
-        return FilterResult::ExcludeSubtree;
-    }
-
-    let role = node.role();
-    if role == Role::Presentation || role == Role::GenericContainer || role == Role::InlineTextBox {
-        return FilterResult::ExcludeNode;
-    }
-
-    FilterResult::Include
-}
-
-pub(crate) fn filter(node: &Node) -> FilterResult {
-    if node.is_focused() {
-        return FilterResult::Include;
-    }
-
-    filter_common(node.state())
-}
-
-pub(crate) fn filter_detached(node: &DetachedNode) -> FilterResult {
-    if node.is_focused() {
-        return FilterResult::Include;
-    }
-
-    filter_common(node.state())
-}
-
-fn filter_with_root_exception(node: &Node) -> FilterResult {
-    if node.is_root() {
-        return FilterResult::Include;
-    }
-    filter(node)
 }
 
 pub(crate) enum NodeWrapper<'a> {

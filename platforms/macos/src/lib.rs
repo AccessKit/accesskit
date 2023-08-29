@@ -7,6 +7,7 @@
 
 mod appkit;
 mod context;
+mod filters;
 mod node;
 mod util;
 

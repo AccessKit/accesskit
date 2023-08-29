@@ -15,8 +15,9 @@ use accesskit::{
     Role, TextSelection,
 };
 
+use crate::filters::FilterResult;
 use crate::iterators::{
-    FilterResult, FilteredChildren, FollowingFilteredSiblings, FollowingSiblings, LabelledBy,
+    FilteredChildren, FollowingFilteredSiblings, FollowingSiblings, LabelledBy,
     PrecedingFilteredSiblings, PrecedingSiblings,
 };
 use crate::tree::State as TreeState;

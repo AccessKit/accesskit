@@ -13,8 +13,9 @@ use windows::Win32::{
 
 use crate::{
     context::Context,
+    filters::{filter, filter_detached},
     init::UiaInitMarker,
-    node::{filter, filter_detached, NodeWrapper, PlatformNode},
+    node::{NodeWrapper, PlatformNode},
     util::QueuedEvent,
 };
 
