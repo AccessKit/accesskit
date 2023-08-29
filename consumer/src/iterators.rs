@@ -12,7 +12,7 @@ use std::iter::FusedIterator;
 
 use accesskit::NodeId;
 
-use crate::{node::Node, tree::State as TreeState};
+use crate::{filters::FilterResult, node::Node, tree::State as TreeState};
 
 /// An iterator that yields following siblings of a node.
 ///
@@ -177,13 +177,6 @@ impl<'a> DoubleEndedIterator for PrecedingSiblings<'a> {
 impl<'a> ExactSizeIterator for PrecedingSiblings<'a> {}
 
 impl<'a> FusedIterator for PrecedingSiblings<'a> {}
-
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub enum FilterResult {
-    Include,
-    ExcludeNode,
-    ExcludeSubtree,
-}
 
 fn next_filtered_sibling<'a>(
     node: Option<Node<'a>>,

@@ -15,7 +15,8 @@ use crate::{
     appkit::NSView,
     context::Context,
     event::{EventGenerator, QueuedEvents},
-    node::{can_be_focused, filter},
+    filters::filter,
+    node::can_be_focused,
     util::*,
 };
 

@@ -28,7 +28,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use crate::{appkit::*, context::Context, util::*};
+use crate::{appkit::*, context::Context, filters::filter, util::*};
 
 fn ns_role(node_state: &NodeState) -> &'static NSString {
     let role = node_state.role();
@@ -230,35 +230,6 @@ fn ns_role(node_state: &NodeState) -> &'static NSString {
             Role::Terminal => NSAccessibilityTextAreaRole,
         }
     }
-}
-
-fn filter_common(node_state: &NodeState) -> FilterResult {
-    let ns_role = ns_role(node_state);
-    if ns_role == unsafe { NSAccessibilityUnknownRole } {
-        return FilterResult::ExcludeNode;
-    }
-
-    if node_state.is_hidden() {
-        return FilterResult::ExcludeSubtree;
-    }
-
-    FilterResult::Include
-}
-
-pub(crate) fn filter(node: &Node) -> FilterResult {
-    if node.is_focused() {
-        return FilterResult::Include;
-    }
-
-    filter_common(node.state())
-}
-
-pub(crate) fn filter_detached(node: &DetachedNode) -> FilterResult {
-    if node.is_focused() {
-        return FilterResult::Include;
-    }
-
-    filter_common(node.state())
 }
 
 pub(crate) fn can_be_focused(node: &Node) -> bool {

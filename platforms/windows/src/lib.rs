@@ -4,6 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 mod context;
+mod filters;
 mod node;
 mod text;
 mod util;
