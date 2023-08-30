@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit::{
-    Action, ActionData, ActionRequest, CheckedState, Live, NodeId, NodeIdContent, Point, Role,
+    Action, ActionData, ActionRequest, Checked, Live, NodeId, NodeIdContent, Point, Role,
 };
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
 use paste::paste;
@@ -72,12 +72,22 @@ impl<'a> NodeWrapper<'a> {
             Role::MenuListOption => UIA_ListItemControlTypeId,
             Role::Paragraph => UIA_GroupControlTypeId,
             Role::GenericContainer => UIA_GroupControlTypeId,
-            Role::Presentation => UIA_GroupControlTypeId,
             Role::CheckBox => UIA_CheckBoxControlTypeId,
             Role::RadioButton => UIA_RadioButtonControlTypeId,
-            Role::TextField => UIA_EditControlTypeId,
-            Role::Button => UIA_ButtonControlTypeId,
-            Role::LabelText => UIA_TextControlTypeId,
+            Role::TextInput
+            | Role::MultilineTextInput
+            | Role::SearchInput
+            | Role::DateInput
+            | Role::DateTimeInput
+            | Role::WeekInput
+            | Role::MonthInput
+            | Role::TimeInput
+            | Role::EmailInput
+            | Role::NumberInput
+            | Role::PasswordInput
+            | Role::PhoneNumberInput
+            | Role::UrlInput => UIA_EditControlTypeId,
+            Role::Button | Role::DefaultButton => UIA_ButtonControlTypeId,
             Role::Pane => UIA_PaneControlTypeId,
             Role::RowHeader => UIA_DataItemControlTypeId,
             Role::ColumnHeader => UIA_DataItemControlTypeId,
@@ -109,18 +119,14 @@ impl<'a> NodeWrapper<'a> {
             Role::Canvas => UIA_ImageControlTypeId,
             Role::Caption => UIA_TextControlTypeId,
             Role::Caret => UIA_GroupControlTypeId,
-            Role::Client => UIA_PaneControlTypeId,
             Role::Code => UIA_TextControlTypeId,
             Role::ColorWell => UIA_ButtonControlTypeId,
-            Role::ComboBoxGrouping => UIA_ComboBoxControlTypeId,
-            Role::ComboBoxMenuButton => UIA_ComboBoxControlTypeId,
+            Role::ComboBox | Role::EditableComboBox => UIA_ComboBoxControlTypeId,
             Role::Complementary => UIA_GroupControlTypeId,
             Role::Comment => UIA_GroupControlTypeId,
             Role::ContentDeletion => UIA_GroupControlTypeId,
             Role::ContentInsertion => UIA_GroupControlTypeId,
             Role::ContentInfo => UIA_GroupControlTypeId,
-            Role::Date => UIA_EditControlTypeId,
-            Role::DateTime => UIA_EditControlTypeId,
             Role::Definition => UIA_GroupControlTypeId,
             Role::DescriptionList => UIA_ListControlTypeId,
             Role::DescriptionListDetail => UIA_TextControlTypeId,
@@ -146,7 +152,6 @@ impl<'a> NodeWrapper<'a> {
             Role::Iframe => UIA_DocumentControlTypeId,
             Role::IframePresentational => UIA_GroupControlTypeId,
             Role::ImeCandidate => UIA_PaneControlTypeId,
-            Role::InputTime => UIA_GroupControlTypeId,
             Role::Keyboard => UIA_PaneControlTypeId,
             Role::Legend => UIA_TextControlTypeId,
             Role::LineBreak => UIA_TextControlTypeId,
@@ -164,10 +169,6 @@ impl<'a> NodeWrapper<'a> {
             Role::Navigation => UIA_GroupControlTypeId,
             Role::Note => UIA_GroupControlTypeId,
             Role::PluginObject => UIA_GroupControlTypeId,
-            Role::PopupButton => {
-                // TODO: handle combo-box special case. (#25)
-                UIA_ButtonControlTypeId
-            }
             Role::Portal => UIA_ButtonControlTypeId,
             Role::Pre => UIA_GroupControlTypeId,
             Role::ProgressIndicator => UIA_ProgressBarControlTypeId,
@@ -188,7 +189,6 @@ impl<'a> NodeWrapper<'a> {
             Role::ScrollBar => UIA_ScrollBarControlTypeId,
             Role::ScrollView => UIA_PaneControlTypeId,
             Role::Search => UIA_GroupControlTypeId,
-            Role::SearchBox => UIA_EditControlTypeId,
             Role::Section => UIA_GroupControlTypeId,
             Role::Slider => UIA_SliderControlTypeId,
             Role::SpinButton => UIA_SpinnerControlTypeId,
@@ -201,7 +201,6 @@ impl<'a> NodeWrapper<'a> {
             Role::TabList => UIA_TabControlTypeId,
             Role::TabPanel => UIA_PaneControlTypeId,
             Role::Term => UIA_ListItemControlTypeId,
-            Role::TextFieldWithComboBox => UIA_ComboBoxControlTypeId,
             Role::Time => UIA_TextControlTypeId,
             Role::Timer => UIA_PaneControlTypeId,
             Role::TitleBar => UIA_PaneControlTypeId,
@@ -310,14 +309,14 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn is_toggle_pattern_supported(&self) -> bool {
-        self.node_state().checked_state().is_some() && !self.is_selection_item_pattern_supported()
+        self.node_state().checked().is_some() && !self.is_selection_item_pattern_supported()
     }
 
     fn toggle_state(&self) -> ToggleState {
-        match self.node_state().checked_state().unwrap() {
-            CheckedState::False => ToggleState_Off,
-            CheckedState::True => ToggleState_On,
-            CheckedState::Mixed => ToggleState_Indeterminate,
+        match self.node_state().checked().unwrap() {
+            Checked::False => ToggleState_Off,
+            Checked::True => ToggleState_On,
+            Checked::Mixed => ToggleState_Indeterminate,
         }
     }
 
@@ -376,8 +375,8 @@ impl<'a> NodeWrapper<'a> {
             // SelectionItem.IsSelected is exposed when aria-checked is True or
             // False, for 'radio' and 'menuitemradio' roles.
             Role::RadioButton | Role::MenuItemRadio => matches!(
-                self.node_state().checked_state(),
-                Some(CheckedState::True | CheckedState::False)
+                self.node_state().checked(),
+                Some(Checked::True | Checked::False)
             ),
             // https://www.w3.org/TR/wai-aria-1.1/#aria-selected
             // SelectionItem.IsSelected is exposed when aria-select is True or False.
@@ -396,7 +395,7 @@ impl<'a> NodeWrapper<'a> {
             // SelectionItem.IsSelected is set according to the True or False
             // value of aria-checked for 'radio' and 'menuitemradio' roles.
             Role::RadioButton | Role::MenuItemRadio => {
-                self.node_state().checked_state() == Some(CheckedState::True)
+                self.node_state().checked() == Some(Checked::True)
             }
             // https://www.w3.org/TR/wai-aria-1.1/#aria-selected
             // SelectionItem.IsSelected is set according to the True or False

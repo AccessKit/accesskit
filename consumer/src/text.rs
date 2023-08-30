@@ -836,10 +836,12 @@ impl<'a> Node<'a> {
     }
 
     pub fn supports_text_ranges(&self) -> bool {
-        matches!(
-            self.role(),
-            Role::StaticText | Role::TextField | Role::Document | Role::SpinButton | Role::Terminal
-        ) && self.inline_text_boxes().next().is_some()
+        (self.is_text_input()
+            || matches!(
+                self.role(),
+                Role::StaticText | Role::Document | Role::Terminal
+            ))
+            && self.inline_text_boxes().next().is_some()
     }
 
     fn document_start(&self) -> InnerPosition<'a> {
@@ -1043,7 +1045,7 @@ mod tests {
                     builder.build(&mut classes)
                 }),
                 (NodeId(1), {
-                    let mut builder = NodeBuilder::new(Role::TextField);
+                    let mut builder = NodeBuilder::new(Role::MultilineTextInput);
                     builder.set_bounds(Rect {
                         x0: 8.0,
                         y0: 31.666664123535156,

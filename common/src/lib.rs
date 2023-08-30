@@ -64,16 +64,17 @@ pub enum Role {
     MenuItem,
     MenuListOption,
     Paragraph,
-    GenericContainer,
 
-    /// Used for ARIA role="none"/"presentation" -- ignored in platform tree.
-    Presentation,
+    /// A generic container that should be ignored by assistive technologies
+    /// and filtered out of platform accessibility trees. Equivalent to the ARIA
+    /// `none` or `presentation` role, or to an HTML `div` with no role.
+    GenericContainer,
 
     CheckBox,
     RadioButton,
-    TextField,
+    TextInput,
     Button,
-    LabelText,
+    DefaultButton,
     Pane,
     RowHeader,
     ColumnHeader,
@@ -89,6 +90,19 @@ pub enum Role {
     ToggleButton,
     Menu,
 
+    MultilineTextInput,
+    SearchInput,
+    DateInput,
+    DateTimeInput,
+    WeekInput,
+    MonthInput,
+    TimeInput,
+    EmailInput,
+    NumberInput,
+    PasswordInput,
+    PhoneNumberInput,
+    UrlInput,
+
     Abbr,
     Alert,
     AlertDialog,
@@ -100,18 +114,15 @@ pub enum Role {
     Canvas,
     Caption,
     Caret,
-    Client,
     Code,
     ColorWell,
-    ComboBoxGrouping,
-    ComboBoxMenuButton,
+    ComboBox,
+    EditableComboBox,
     Complementary,
     Comment,
     ContentDeletion,
     ContentInsertion,
     ContentInfo,
-    Date,
-    DateTime,
     Definition,
     DescriptionList,
     DescriptionListDetail,
@@ -137,7 +148,6 @@ pub enum Role {
     Iframe,
     IframePresentational,
     ImeCandidate,
-    InputTime,
     Keyboard,
     Legend,
     LineBreak,
@@ -155,7 +165,6 @@ pub enum Role {
     Navigation,
     Note,
     PluginObject,
-    PopupButton,
     Portal,
     Pre,
     ProgressIndicator,
@@ -167,7 +176,6 @@ pub enum Role {
     ScrollBar,
     ScrollView,
     Search,
-    SearchBox,
     Section,
     Slider,
     SpinButton,
@@ -180,7 +188,6 @@ pub enum Role {
     TabList,
     TabPanel,
     Term,
-    TextFieldWithComboBox,
     Time,
     Timer,
     TitleBar,
@@ -295,21 +302,12 @@ pub enum Action {
     HideTooltip,
     ShowTooltip,
 
-    /// Request that the tree source invalidate its entire tree.
-    InvalidateTree,
-
-    /// Load inline text boxes for this subtree, providing information
-    /// about word boundaries, line layout, and individual character
-    /// bounding boxes.
-    LoadInlineTextBoxes,
-
     /// Delete any selected text in the control's text value and
     /// insert the specified value in its place, like when typing or pasting.
     /// Requires [`ActionRequest::data`] to be set to [`ActionData::Value`].
     ReplaceSelectedText,
 
-    // Scrolls by approximately one screen in a specific direction. Should be
-    // called on a node that has scrollable boolean set to true.
+    // Scrolls by approximately one screen in a specific direction.
     // TBD: Do we need a doc comment on each of the values below?
     // Or does this awkwardness suggest a refactor?
     ScrollBackward,
@@ -460,52 +458,6 @@ pub enum Orientation {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
-pub enum NameFrom {
-    /// E.g. [`aria-label`].
-    ///
-    /// [`aria-label`]: https://www.w3.org/TR/wai-aria-1.1/#aria-label
-    Attribute,
-    AttributeExplicitlyEmpty,
-    /// E.g. in the case of a table, from a `caption` element.
-    Caption,
-    Contents,
-    /// E.g. from an HTML placeholder attribute on a text field.
-    Placeholder,
-    /// E.g. from a `figcaption` element in a figure.
-    RelatedElement,
-    /// E.g. `<input type="text" title="title">`.
-    Title,
-    /// E.g. `<input type="button" value="Button's name">`.
-    Value,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "enumn", derive(enumn::N))]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
-#[repr(u8)]
-pub enum DescriptionFrom {
-    AriaDescription,
-    /// HTML-AAM 5.2.2
-    ButtonLabel,
-    RelatedElement,
-    RubyAnnotation,
-    /// HTML-AAM 5.8.2
-    Summary,
-    /// HTML-AAM 5.9.2
-    TableCaption,
-    Title,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "enumn", derive(enumn::N))]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
-#[repr(u8)]
 pub enum TextDirection {
     LeftToRight,
     RightToLeft,
@@ -537,7 +489,7 @@ pub enum Invalid {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
 #[repr(u8)]
-pub enum CheckedState {
+pub enum Checked {
     False,
     True,
     Mixed,
@@ -570,6 +522,7 @@ pub enum DefaultActionVerb {
     Open,
     Press,
     Select,
+    Unselect,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -601,6 +554,19 @@ pub enum AriaCurrent {
     Location,
     Date,
     Time,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "enumn", derive(enumn::N))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "pyo3", pyclass(module = "accesskit"))]
+#[repr(u8)]
+pub enum AutoComplete {
+    Inline,
+    List,
+    Both,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -763,28 +729,20 @@ pub struct TextSelection {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[repr(u8)]
 enum Flag {
-    AutofillAvailable,
-    Default,
-    Editable,
     Hovered,
     Hidden,
     Linked,
-    Multiline,
     Multiselectable,
-    Protected,
     Required,
     Visited,
     Busy,
     LiveAtomic,
     Modal,
-    Scrollable,
-    SelectedFromFocus,
-    TouchPassThrough,
+    TouchTransparent,
     ReadOnly,
     Disabled,
     Bold,
     Italic,
-    CanvasHasFallback,
     ClipsChildren,
     IsLineBreakingObject,
     IsPageBreakingObject,
@@ -792,7 +750,6 @@ enum Flag {
     IsGrammarError,
     IsSearchMatch,
     IsSuggestion,
-    IsNonatomicTextFieldRoot,
 }
 
 impl Flag {
@@ -817,16 +774,15 @@ enum PropertyValue {
     LengthSlice(Box<[u8]>),
     CoordSlice(Box<[f32]>),
     Bool(bool),
-    NameFrom(NameFrom),
-    DescriptionFrom(DescriptionFrom),
     Invalid(Invalid),
-    CheckedState(CheckedState),
+    Checked(Checked),
     Live(Live),
     DefaultActionVerb(DefaultActionVerb),
     TextDirection(TextDirection),
     Orientation(Orientation),
     SortDirection(SortDirection),
     AriaCurrent(AriaCurrent),
+    AutoComplete(AutoComplete),
     HasPopup(HasPopup),
     ListStyle(ListStyle),
     TextAlign(TextAlign),
@@ -845,7 +801,6 @@ enum PropertyValue {
 enum PropertyId {
     // NodeIdVec
     Children,
-    IndirectChildren,
     Controls,
     Details,
     DescribedBy,
@@ -870,20 +825,15 @@ enum PropertyId {
     Description,
     Value,
     AccessKey,
-    AutoComplete,
-    CheckedStateDescription,
     ClassName,
-    CssDisplay,
     FontFamily,
     HtmlTag,
     InnerHtml,
-    InputType,
-    KeyShortcuts,
+    KeyboardShortcut,
     Language,
-    LiveRelevant,
     Placeholder,
-    AriaRole,
     RoleDescription,
+    StateDescription,
     Tooltip,
     Url,
 
@@ -901,7 +851,6 @@ enum PropertyId {
     NumericValueJump,
     FontSize,
     FontWeight,
-    TextIndent,
 
     // usize
     TableRowCount,
@@ -939,16 +888,15 @@ enum PropertyId {
     Selected,
 
     // Unique enums
-    NameFrom,
-    DescriptionFrom,
     Invalid,
-    CheckedState,
+    Checked,
     Live,
     DefaultActionVerb,
     TextDirection,
     Orientation,
     SortDirection,
     AriaCurrent,
+    AutoComplete,
     HasPopup,
     ListStyle,
     TextAlign,
@@ -1463,41 +1411,28 @@ impl NodeBuilder {
 }
 
 flag_methods! {
-    (AutofillAvailable, is_autofill_available, set_autofill_available, clear_autofill_available),
-    (Default, is_default, set_default, clear_default),
-    (Editable, is_editable, set_editable, clear_editable),
     (Hovered, is_hovered, set_hovered, clear_hovered),
     /// Exclude this node and its descendants from the tree presented to
     /// assistive technologies, and from hit testing.
     (Hidden, is_hidden, set_hidden, clear_hidden),
     (Linked, is_linked, set_linked, clear_linked),
-    (Multiline, is_multiline, set_multiline, clear_multiline),
     (Multiselectable, is_multiselectable, set_multiselectable, clear_multiselectable),
-    (Protected, is_protected, set_protected, clear_protected),
     (Required, is_required, set_required, clear_required),
     (Visited, is_visited, set_visited, clear_visited),
     (Busy, is_busy, set_busy, clear_busy),
     (LiveAtomic, is_live_atomic, set_live_atomic, clear_live_atomic),
     /// If a dialog box is marked as explicitly modal.
     (Modal, is_modal, set_modal, clear_modal),
-    /// Indicates this node is user-scrollable, e.g. `overflow: scroll|auto`, as
-    /// opposed to only programmatically scrollable, like `overflow: hidden`, or
-    /// not scrollable at all, e.g. `overflow: visible`.
-    (Scrollable, is_scrollable, set_scrollable, clear_scrollable),
-    /// Indicates whether this node is selected due to selection follows focus.
-    (SelectedFromFocus, is_selected_from_focus, set_selected_from_focus, clear_selected_from_focus),
     /// This element allows touches to be passed through when a screen reader
     /// is in touch exploration mode, e.g. a virtual keyboard normally
     /// behaves this way.
-    (TouchPassThrough, is_touch_pass_through, set_touch_pass_through, clear_touch_pass_through),
+    (TouchTransparent, is_touch_transparent, set_touch_transparent, clear_touch_transparent),
     /// Use for a textbox that allows focus/selection but not input.
     (ReadOnly, is_read_only, set_read_only, clear_read_only),
     /// Use for a control or group of controls that disallows input.
     (Disabled, is_disabled, set_disabled, clear_disabled),
     (Bold, is_bold, set_bold, clear_bold),
     (Italic, is_italic, set_italic, clear_italic),
-    /// Set on a canvas element if it has fallback content.
-    (CanvasHasFallback, canvas_has_fallback, set_canvas_has_fallback, clear_canvas_has_fallback),
     /// Indicates that this node clips its children, i.e. may have
     /// `overflow: hidden` or clip children by default.
     (ClipsChildren, clips_children, set_clips_children, clear_clips_children),
@@ -1509,13 +1444,7 @@ flag_methods! {
     (IsSpellingError, is_spelling_error, set_is_spelling_error, clear_is_spelling_error),
     (IsGrammarError, is_grammar_error, set_is_grammar_error, clear_is_grammar_error),
     (IsSearchMatch, is_search_match, set_is_search_match, clear_is_search_match),
-    (IsSuggestion, is_suggestion, set_is_suggestion, clear_is_suggestion),
-    /// The object functions as a text field which exposes its descendants.
-    ///
-    /// Use cases include the root of a content-editable region, an ARIA
-    /// textbox which isn't currently editable and which has interactive
-    /// descendants, and a `<body>` element that has "design-mode" set to "on".
-    (IsNonatomicTextFieldRoot, is_nonatomic_text_field_root, set_is_nonatomic_text_field_root, clear_is_nonatomic_text_field_root)
+    (IsSuggestion, is_suggestion, set_is_suggestion, clear_is_suggestion)
 }
 
 option_ref_type_getters! {
@@ -1564,11 +1493,6 @@ vec_type_methods! {
 
 node_id_vec_property_methods! {
     (Children, children, set_children, push_child, clear_children),
-    /// Ids of nodes that are children of this node logically, but are
-    /// not children of this node in the tree structure. As an example,
-    /// a table cell is a child of a row, and an 'indirect' child of a
-    /// column.
-    (IndirectChildren, indirect_children, set_indirect_children, push_indirect_child, clear_indirect_children),
     (Controls, controls, set_controls, push_controlled, clear_controls),
     (Details, details, set_details, push_detail, clear_details),
     (DescribedBy, described_by, set_described_by, push_described_by, clear_described_by),
@@ -1596,29 +1520,40 @@ string_property_methods! {
     (Name, name, set_name, clear_name),
     (Description, description, set_description, clear_description),
     (Value, value, set_value, clear_value),
+    /// A single character, usually part of this node's name, that can be pressed,
+    /// possibly along with a platform-specific modifier, to perform
+    /// this node's default action. For menu items, the access key is only active
+    /// while the menu is active, in contrast with [`keyboard_shortcut`];
+    /// a single menu item may in fact have both properties.
+    ///
+    /// [`keyboard_shortcut`]: Node::keyboard_shortcut
     (AccessKey, access_key, set_access_key, clear_access_key),
-    (AutoComplete, auto_complete, set_auto_complete, clear_auto_complete),
-    (CheckedStateDescription, checked_state_description, set_checked_state_description, clear_checked_state_description),
     (ClassName, class_name, set_class_name, clear_class_name),
-    (CssDisplay, css_display, set_css_display, clear_css_display),
     /// Only present when different from parent.
     (FontFamily, font_family, set_font_family, clear_font_family),
     (HtmlTag, html_tag, set_html_tag, clear_html_tag),
     /// Inner HTML of an element. Only used for a top-level math element,
     /// to support third-party math accessibility products that parse MathML.
     (InnerHtml, inner_html, set_inner_html, clear_inner_html),
-    (InputType, input_type, set_input_type, clear_input_type),
-    (KeyShortcuts, key_shortcuts, set_key_shortcuts, clear_key_shortcuts),
+    /// A keystroke or sequence of keystrokes, complete with any required
+    /// modifiers(s), that will perform this node's default action.
+    /// The value of this property should be in a human-friendly format.
+    (KeyboardShortcut, keyboard_shortcut, set_keyboard_shortcut, clear_keyboard_shortcut),
     /// Only present when different from parent.
     (Language, language, set_language, clear_language),
-    (LiveRelevant, live_relevant, set_live_relevant, clear_live_relevant),
-    /// Only if not already exposed in [`name`] ([`NameFrom::Placeholder`]).
+    /// If a text input has placeholder text, it should be exposed
+    /// through this property rather than [`name`].
     ///
     /// [`name`]: Node::name
     (Placeholder, placeholder, set_placeholder, clear_placeholder),
-    (AriaRole, aria_role, set_aria_role, clear_aria_role),
     (RoleDescription, role_description, set_role_description, clear_role_description),
-    /// Only if not already exposed in [`name`] ([`NameFrom::Title`]).
+    /// An optional string that may override an assistive technology's
+    /// description of the node's state, replacing default strings such as
+    /// "checked" or "selected". Note that most platform accessibility APIs
+    /// and assistive technologies do not support this feature.
+    (StateDescription, state_description, set_state_description, clear_state_description),
+    /// If a node's only accessible name comes from a tooltip, it should be
+    /// exposed through this property rather than [`name`].
     ///
     /// [`name`]: Node::name
     (Tooltip, tooltip, set_tooltip, clear_tooltip),
@@ -1641,9 +1576,7 @@ f64_property_methods! {
     (FontSize, font_size, set_font_size, clear_font_size),
     /// Font weight can take on any arbitrary numeric value. Increments of 100 in
     /// range `[0, 900]` represent keywords such as light, normal, bold, etc.
-    (FontWeight, font_weight, set_font_weight, clear_font_weight),
-    /// The indentation of the text, in mm.
-    (TextIndent, text_indent, set_text_indent, clear_text_indent)
+    (FontWeight, font_weight, set_font_weight, clear_font_weight)
 }
 
 usize_property_methods! {
@@ -1781,18 +1714,15 @@ bool_property_methods! {
 }
 
 unique_enum_property_methods! {
-    /// What information was used to compute the object's name.
-    (NameFrom, name_from, set_name_from, clear_name_from),
-    /// What information was used to compute the object's description.
-    (DescriptionFrom, description_from, set_description_from, clear_description_from),
     (Invalid, invalid, set_invalid, clear_invalid),
-    (CheckedState, checked_state, set_checked_state, clear_checked_state),
+    (Checked, checked, set_checked, clear_checked),
     (Live, live, set_live, clear_live),
     (DefaultActionVerb, default_action_verb, set_default_action_verb, clear_default_action_verb),
     (TextDirection, text_direction, set_text_direction, clear_text_direction),
     (Orientation, orientation, set_orientation, clear_orientation),
     (SortDirection, sort_direction, set_sort_direction, clear_sort_direction),
     (AriaCurrent, aria_current, set_aria_current, clear_aria_current),
+    (AutoComplete, auto_complete, set_auto_complete, clear_auto_complete),
     (HasPopup, has_popup, set_has_popup, clear_has_popup),
     /// The list style type. Only available on list items.
     (ListStyle, list_style, set_list_style, clear_list_style),
@@ -1934,16 +1864,15 @@ impl Serialize for Node {
                 LengthSlice,
                 CoordSlice,
                 Bool,
-                NameFrom,
-                DescriptionFrom,
                 Invalid,
-                CheckedState,
+                Checked,
                 Live,
                 DefaultActionVerb,
                 TextDirection,
                 Orientation,
                 SortDirection,
                 AriaCurrent,
+                AutoComplete,
                 HasPopup,
                 ListStyle,
                 TextAlign,
@@ -1994,7 +1923,6 @@ impl<'de> Visitor<'de> for NodeVisitor {
                     deserialize_property!(builder, map, id, {
                         NodeIdVec {
                             Children,
-                            IndirectChildren,
                             Controls,
                             Details,
                             DescribedBy,
@@ -2019,20 +1947,15 @@ impl<'de> Visitor<'de> for NodeVisitor {
                             Description,
                             Value,
                             AccessKey,
-                            AutoComplete,
-                            CheckedStateDescription,
                             ClassName,
-                            CssDisplay,
                             FontFamily,
                             HtmlTag,
                             InnerHtml,
-                            InputType,
-                            KeyShortcuts,
+                            KeyboardShortcut,
                             Language,
-                            LiveRelevant,
                             Placeholder,
-                            AriaRole,
                             RoleDescription,
+                            StateDescription,
                             Tooltip,
                             Url
                         },
@@ -2049,8 +1972,7 @@ impl<'de> Visitor<'de> for NodeVisitor {
                             NumericValueStep,
                             NumericValueJump,
                             FontSize,
-                            FontWeight,
-                            TextIndent
+                            FontWeight
                         },
                         Usize {
                             TableRowCount,
@@ -2087,16 +2009,15 @@ impl<'de> Visitor<'de> for NodeVisitor {
                             Expanded,
                             Selected
                         },
-                        NameFrom { NameFrom },
-                        DescriptionFrom { DescriptionFrom },
                         Invalid { Invalid },
-                        CheckedState { CheckedState },
+                        Checked { Checked },
                         Live { Live },
                         DefaultActionVerb { DefaultActionVerb },
                         TextDirection { TextDirection },
                         Orientation { Orientation },
                         SortDirection { SortDirection },
                         AriaCurrent { AriaCurrent },
+                        AutoComplete { AutoComplete },
                         HasPopup { HasPopup },
                         ListStyle { ListStyle },
                         TextAlign { TextAlign },
@@ -2163,41 +2084,31 @@ impl JsonSchema for Node {
         add_schema_property!(gen, properties, ClassFieldId::Role, Role);
         add_schema_property!(gen, properties, ClassFieldId::Actions, Actions);
         add_flags_to_schema!(gen, properties, {
-            AutofillAvailable,
-            Default,
-            Editable,
             Hovered,
             Hidden,
             Linked,
-            Multiline,
             Multiselectable,
-            Protected,
             Required,
             Visited,
             Busy,
             LiveAtomic,
             Modal,
-            Scrollable,
-            SelectedFromFocus,
-            TouchPassThrough,
+            TouchTransparent,
             ReadOnly,
             Disabled,
             Bold,
             Italic,
-            CanvasHasFallback,
             ClipsChildren,
             IsLineBreakingObject,
             IsPageBreakingObject,
             IsSpellingError,
             IsGrammarError,
             IsSearchMatch,
-            IsSuggestion,
-            IsNonatomicTextFieldRoot
+            IsSuggestion
         });
         add_properties_to_schema!(gen, properties, {
             Vec<NodeId> {
                 Children,
-                IndirectChildren,
                 Controls,
                 Details,
                 DescribedBy,
@@ -2222,20 +2133,15 @@ impl JsonSchema for Node {
                 Description,
                 Value,
                 AccessKey,
-                AutoComplete,
-                CheckedStateDescription,
                 ClassName,
-                CssDisplay,
                 FontFamily,
                 HtmlTag,
                 InnerHtml,
-                InputType,
-                KeyShortcuts,
+                KeyboardShortcut,
                 Language,
-                LiveRelevant,
                 Placeholder,
-                AriaRole,
                 RoleDescription,
+                StateDescription,
                 Tooltip,
                 Url
             },
@@ -2252,8 +2158,7 @@ impl JsonSchema for Node {
                 NumericValueStep,
                 NumericValueJump,
                 FontSize,
-                FontWeight,
-                TextIndent
+                FontWeight
             },
             usize {
                 TableRowCount,
@@ -2290,16 +2195,15 @@ impl JsonSchema for Node {
                 Expanded,
                 Selected
             },
-            NameFrom { NameFrom },
-            DescriptionFrom { DescriptionFrom },
             Invalid { Invalid },
-            CheckedState { CheckedState },
+            Checked { Checked },
             Live { Live },
             DefaultActionVerb { DefaultActionVerb },
             TextDirection { TextDirection },
             Orientation { Orientation },
             SortDirection { SortDirection },
             AriaCurrent { AriaCurrent },
+            AutoComplete { AutoComplete },
             HasPopup { HasPopup },
             ListStyle { ListStyle },
             TextAlign { TextAlign },
