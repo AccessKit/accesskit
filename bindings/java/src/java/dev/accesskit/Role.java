@@ -35,16 +35,17 @@ public enum Role {
     MENU_ITEM,
     MENU_LIST_OPTION,
     PARAGRAPH,
-    GENERIC_CONTAINER,
     /**
-     * Used for ARIA role="none"/"presentation" -- ignored in platform tree.
+     * A generic container that should be ignored by assistive technologies
+     * and filtered out of platform accessibility trees. Equivalent to the ARIA
+     * `none` or `presentation` role, or to an HTML `div` with no role.
      */
-    PRESENTATION,
+    GENERIC_CONTAINER,
     CHECK_BOX,
     RADIO_BUTTON,
-    TEXT_FIELD,
+    TEXT_INPUT,
     BUTTON,
-    LABEL_TEXT,
+    DEFAULT_BUTTON,
     PANE,
     ROW_HEADER,
     COLUMN_HEADER,
@@ -59,6 +60,18 @@ public enum Role {
     SWITCH,
     TOGGLE_BUTTON,
     MENU,
+    MULTILINE_TEXT_INPUT,
+    SEARCH_INPUT,
+    DATE_INPUT,
+    DATE_TIME_INPUT,
+    WEEK_INPUT,
+    MONTH_INPUT,
+    TIME_INPUT,
+    EMAIL_INPUT,
+    NUMBER_INPUT,
+    PASSWORD_INPUT,
+    PHONE_NUMBER_INPUT,
+    URL_INPUT,
     ABBR,
     ALERT,
     ALERT_DIALOG,
@@ -70,18 +83,15 @@ public enum Role {
     CANVAS,
     CAPTION,
     CARET,
-    CLIENT,
     CODE,
     COLOR_WELL,
-    COMBO_BOX_GROUPING,
-    COMBO_BOX_MENU_BUTTON,
+    COMBO_BOX,
+    EDITABLE_COMBO_BOX,
     COMPLEMENTARY,
     COMMENT,
     CONTENT_DELETION,
     CONTENT_INSERTION,
     CONTENT_INFO,
-    DATE,
-    DATE_TIME,
     DEFINITION,
     DESCRIPTION_LIST,
     DESCRIPTION_LIST_DETAIL,
@@ -107,7 +117,6 @@ public enum Role {
     IFRAME,
     IFRAME_PRESENTATIONAL,
     IME_CANDIDATE,
-    INPUT_TIME,
     KEYBOARD,
     LEGEND,
     LINE_BREAK,
@@ -125,7 +134,6 @@ public enum Role {
     NAVIGATION,
     NOTE,
     PLUGIN_OBJECT,
-    POPUP_BUTTON,
     PORTAL,
     PRE,
     PROGRESS_INDICATOR,
@@ -137,7 +145,6 @@ public enum Role {
     SCROLL_BAR,
     SCROLL_VIEW,
     SEARCH,
-    SEARCH_BOX,
     SECTION,
     SLIDER,
     SPIN_BUTTON,
@@ -150,7 +157,6 @@ public enum Role {
     TAB_LIST,
     TAB_PANEL,
     TERM,
-    TEXT_FIELD_WITH_COMBO_BOX,
     TIME,
     TIMER,
     TITLE_BAR,
@@ -212,5 +218,11 @@ public enum Role {
      * `TableView` and its subclasses, so they can be exposed correctly
      * on certain platforms.
      */
-    LIST_GRID
+    LIST_GRID,
+    /**
+     * This is just like a multi-line document, but signals that assistive
+     * technologies should implement behavior specific to a VT-100-style
+     * terminal.
+     */
+    TERMINAL
 }

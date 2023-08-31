@@ -20,5 +20,6 @@ public enum DefaultActionVerb {
     JUMP,
     OPEN,
     PRESS,
-    SELECT
+    SELECT,
+    UNSELECT
 }

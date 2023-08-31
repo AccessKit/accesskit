@@ -29,16 +29,6 @@ public enum Action {
     HIDE_TOOLTIP,
     SHOW_TOOLTIP,
     /**
-     * Request that the tree source invalidate its entire tree.
-     */
-    INVALIDATE_TREE,
-    /**
-     * Load inline text boxes for this subtree, providing information
-     * about word boundaries, line layout, and individual character
-     * bounding boxes.
-     */
-    LOAD_INLINE_TEXT_BOXES,
-    /**
      * Delete any selected text in the control's text value and
      * insert the specified value in its place, like when typing or pasting.
      * Requires [`ActionRequest::data`] to be set to [`ActionData::Value`].

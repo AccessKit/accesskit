@@ -128,35 +128,15 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeClearChildren(
 }
 
 #[no_mangle]
-pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetMultiline(
-    _env: JNIEnv,
-    _class: JClass,
-    ptr: jlong,
-) {
-    let builder = mut_from_jptr::<NodeBuilder>(ptr);
-    builder.set_multiline();
-}
-
-#[no_mangle]
-pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeClearMultiline(
-    _env: JNIEnv,
-    _class: JClass,
-    ptr: jlong,
-) {
-    let builder = mut_from_jptr::<NodeBuilder>(ptr);
-    builder.clear_multiline();
-}
-
-#[no_mangle]
-pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetCheckedState(
+pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetChecked(
     _env: JNIEnv,
     _class: JClass,
     ptr: jlong,
     value: jint,
 ) {
     let builder = mut_from_jptr::<NodeBuilder>(ptr);
-    let value = CheckedState::n(value as u8).unwrap();
-    builder.set_checked_state(value);
+    let value = Checked::n(value as u8).unwrap();
+    builder.set_checked(value);
 }
 
 #[no_mangle]

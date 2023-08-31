@@ -5,7 +5,7 @@
 
 package dev.accesskit;
 
-public enum CheckedState {
+public enum Checked {
     FALSE,
     TRUE,
     MIXED
