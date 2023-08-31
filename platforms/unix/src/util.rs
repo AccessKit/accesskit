@@ -15,13 +15,24 @@ pub(crate) fn block_on<F: std::future::Future>(future: F) -> F::Output {
 }
 
 #[cfg(feature = "tokio")]
-pub(crate) static TOKIO_RT: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
-    tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(1)
-        .enable_io()
-        .enable_time()
+pub(crate) static TOKIO_RT: Lazy<tokio::runtime::Handle> = Lazy::new(|| {
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
         .build()
-        .expect("launch of single-threaded tokio runtime")
+        .expect("create tokio runtime");
+    let handle = rt.handle().clone();
+    std::thread::Builder::new()
+        .name("accesskit-tokio".into())
+        .spawn(move || {
+            rt.block_on(async {
+                let duration = std::time::Duration::from_secs(86400);
+                loop {
+                    tokio::time::sleep(duration).await;
+                }
+            });
+        })
+        .expect("launch tokio runtime thread");
+    handle
 });
 
 #[cfg(feature = "tokio")]
