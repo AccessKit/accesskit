@@ -11,8 +11,8 @@
 use std::{iter::FusedIterator, ops::Deref};
 
 use accesskit::{
-    Action, Affine, CheckedState, DefaultActionVerb, Live, Node as NodeData, NodeId, Point, Rect,
-    Role, TextSelection,
+    Action, Affine, Checked, DefaultActionVerb, Live, Node as NodeData, NodeId, Point, Rect, Role,
+    TextSelection,
 };
 
 use crate::filters::FilterResult;
@@ -366,8 +366,6 @@ impl NodeState {
         let data = self.data();
         if data.is_read_only() {
             true
-        } else if !data.is_editable() {
-            false
         } else {
             self.should_have_read_only_state_by_default() || !self.is_read_only_supported()
         }
@@ -377,8 +375,8 @@ impl NodeState {
         self.is_read_only() || self.is_disabled()
     }
 
-    pub fn checked_state(&self) -> Option<CheckedState> {
-        self.data().checked_state()
+    pub fn checked(&self) -> Option<Checked> {
+        self.data().checked()
     }
 
     pub fn numeric_value(&self) -> Option<f64> {
@@ -401,33 +399,29 @@ impl NodeState {
         self.data().numeric_value_jump()
     }
 
-    pub fn is_text_field(&self) -> bool {
-        self.is_atomic_text_field() || self.data().is_nonatomic_text_field_root()
-    }
-
-    pub fn is_atomic_text_field(&self) -> bool {
-        // The ARIA spec suggests a textbox is a simple text field, like an <input> or
-        // <textarea> depending on aria-multiline. However there is nothing to stop
-        // an author from adding the textbox role to a non-contenteditable element,
-        // or from adding or removing non-plain-text nodes. If we treat the textbox
-        // role as atomic when contenteditable is not set, it can break accessibility
-        // by pruning interactive elements from the accessibility tree. Therefore,
-        // until we have a reliable means to identify truly atomic ARIA textboxes,
-        // treat them as non-atomic.
-        match self.role() {
-            Role::SearchBox | Role::TextField | Role::TextFieldWithComboBox => {
-                !self.data().is_nonatomic_text_field_root()
-            }
-            _ => false,
-        }
+    pub fn is_text_input(&self) -> bool {
+        matches!(
+            self.role(),
+            Role::TextInput
+                | Role::MultilineTextInput
+                | Role::SearchInput
+                | Role::DateInput
+                | Role::DateTimeInput
+                | Role::WeekInput
+                | Role::MonthInput
+                | Role::TimeInput
+                | Role::EmailInput
+                | Role::NumberInput
+                | Role::PasswordInput
+                | Role::PhoneNumberInput
+                | Role::UrlInput
+                | Role::EditableComboBox
+                | Role::SpinButton
+        )
     }
 
     pub fn is_multiline(&self) -> bool {
-        self.data().is_multiline()
-    }
-
-    pub fn is_protected(&self) -> bool {
-        self.data().is_protected()
+        self.role() == Role::MultilineTextInput
     }
 
     pub fn default_action_verb(&self) -> Option<DefaultActionVerb> {
@@ -458,7 +452,7 @@ impl NodeState {
     }
 
     pub fn supports_toggle(&self) -> bool {
-        self.checked_state().is_some()
+        self.checked().is_some()
     }
 
     pub fn supports_expand_collapse(&self) -> bool {
@@ -471,13 +465,17 @@ impl NodeState {
         // when activated would be considered a toggle or expand-collapse
         // control - these controls are "clickable" but not "invocable".
         // Similarly, if the action only gives the control keyboard focus,
-        // such as when clicking a text field, the control is not considered
+        // such as when clicking a text input, the control is not considered
         // "invocable", as the "invoke" action would be a redundant synonym
         // for the "set focus" action. The same logic applies to selection.
         self.is_clickable()
             && !matches!(
                 self.default_action_verb(),
-                Some(DefaultActionVerb::Focus | DefaultActionVerb::Select)
+                Some(
+                    DefaultActionVerb::Focus
+                        | DefaultActionVerb::Select
+                        | DefaultActionVerb::Unselect
+                )
             )
             && !self.supports_toggle()
             && !self.supports_expand_collapse()
@@ -511,7 +509,9 @@ impl<'a> Node<'a> {
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
         let explicit = &self.state.data.labelled_by();
-        if explicit.is_empty() && matches!(self.role(), Role::Button | Role::Link) {
+        if explicit.is_empty()
+            && matches!(self.role(), Role::Button | Role::DefaultButton | Role::Link)
+        {
             LabelledBy::FromDescendants(FilteredChildren::new(*self, &descendant_label_filter))
         } else {
             LabelledBy::Explicit {
@@ -550,32 +550,24 @@ impl<'a> Node<'a> {
 
 impl NodeState {
     pub fn is_read_only_supported(&self) -> bool {
-        matches!(
-            self.role(),
-            Role::CheckBox
-                | Role::ColorWell
-                | Role::ComboBoxGrouping
-                | Role::ComboBoxMenuButton
-                | Role::Date
-                | Role::DateTime
-                | Role::Grid
-                | Role::InputTime
-                | Role::ListBox
-                | Role::MenuItemCheckBox
-                | Role::MenuItemRadio
-                | Role::MenuListPopup
-                | Role::PopupButton
-                | Role::RadioButton
-                | Role::RadioGroup
-                | Role::SearchBox
-                | Role::Slider
-                | Role::SpinButton
-                | Role::Switch
-                | Role::TextField
-                | Role::TextFieldWithComboBox
-                | Role::ToggleButton
-                | Role::TreeGrid
-        )
+        self.is_text_input()
+            || matches!(
+                self.role(),
+                Role::CheckBox
+                    | Role::ColorWell
+                    | Role::ComboBox
+                    | Role::Grid
+                    | Role::ListBox
+                    | Role::MenuItemCheckBox
+                    | Role::MenuItemRadio
+                    | Role::MenuListPopup
+                    | Role::RadioButton
+                    | Role::RadioGroup
+                    | Role::Slider
+                    | Role::Switch
+                    | Role::ToggleButton
+                    | Role::TreeGrid
+            )
     }
 
     pub fn should_have_read_only_state_by_default(&self) -> bool {
@@ -1054,7 +1046,7 @@ mod tests {
                     builder.build(&mut classes)
                 }),
                 (NodeId(3), {
-                    let mut builder = NodeBuilder::new(Role::TextField);
+                    let mut builder = NodeBuilder::new(Role::TextInput);
                     builder.push_labelled_by(NodeId(4));
                     builder.build(&mut classes)
                 }),

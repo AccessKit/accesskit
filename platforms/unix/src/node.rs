@@ -18,8 +18,8 @@ use crate::{
     util::WindowBounds,
 };
 use accesskit::{
-    Action, ActionData, ActionRequest, Affine, CheckedState, DefaultActionVerb, NodeId, Point,
-    Rect, Role,
+    Action, ActionData, ActionRequest, Affine, Checked, DefaultActionVerb, NodeId, Point, Rect,
+    Role,
 };
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
 use async_channel::Sender;
@@ -105,7 +105,7 @@ impl<'a> NodeWrapper<'a> {
             Role::Banner | Role::Header => AtspiRole::Landmark,
             Role::Blockquote => AtspiRole::BlockQuote,
             Role::Caret => AtspiRole::Unknown,
-            Role::Button => AtspiRole::PushButton,
+            Role::Button | Role::DefaultButton => AtspiRole::PushButton,
             Role::Canvas => AtspiRole::Canvas,
             Role::Caption => AtspiRole::Caption,
             Role::Cell => AtspiRole::TableCell,
@@ -114,12 +114,11 @@ impl<'a> NodeWrapper<'a> {
             Role::ColorWell => AtspiRole::PushButton,
             Role::Column => AtspiRole::Unknown,
             Role::ColumnHeader => AtspiRole::ColumnHeader,
-            Role::ComboBoxGrouping | Role::ComboBoxMenuButton => AtspiRole::ComboBox,
+            Role::ComboBox | Role::EditableComboBox => AtspiRole::ComboBox,
             Role::Complementary => AtspiRole::Landmark,
             Role::ContentDeletion => AtspiRole::ContentDeletion,
             Role::ContentInsertion => AtspiRole::ContentInsertion,
             Role::ContentInfo | Role::Footer => AtspiRole::Landmark,
-            Role::Date | Role::DateTime => AtspiRole::DateEditor,
             Role::Definition | Role::DescriptionListDetail => AtspiRole::DescriptionValue,
             Role::DescriptionList => AtspiRole::DescriptionList,
             Role::DescriptionListTerm => AtspiRole::DescriptionTerm,
@@ -186,8 +185,7 @@ impl<'a> NodeWrapper<'a> {
             // TODO: If there are unignored children, then it should be AtspiRole::ImageMap.
             Role::Image => AtspiRole::Image,
             Role::InlineTextBox => AtspiRole::Static,
-            Role::InputTime => AtspiRole::DateEditor,
-            Role::LabelText | Role::Legend => AtspiRole::Label,
+            Role::Legend => AtspiRole::Label,
             // Layout table objects are treated the same as `Role::GenericContainer`.
             Role::LayoutTable => AtspiRole::Section,
             Role::LayoutTableCell => AtspiRole::Section,
@@ -230,7 +228,6 @@ impl<'a> NodeWrapper<'a> {
             Role::PdfActionableHighlight => AtspiRole::PushButton,
             Role::PdfRoot => AtspiRole::DocumentFrame,
             Role::PluginObject => AtspiRole::Embedded,
-            Role::PopupButton => AtspiRole::PushButton,
             Role::Portal => AtspiRole::PushButton,
             Role::Pre => AtspiRole::Section,
             Role::ProgressIndicator => AtspiRole::ProgressBar,
@@ -270,14 +267,19 @@ impl<'a> NodeWrapper<'a> {
             // element.
             Role::Term => AtspiRole::DescriptionTerm,
             Role::TitleBar => AtspiRole::TitleBar,
-            Role::TextField | Role::SearchBox => {
-                if self.node_state().is_protected() {
-                    AtspiRole::PasswordText
-                } else {
-                    AtspiRole::Entry
-                }
-            }
-            Role::TextFieldWithComboBox => AtspiRole::ComboBox,
+            Role::TextInput
+            | Role::MultilineTextInput
+            | Role::SearchInput
+            | Role::EmailInput
+            | Role::NumberInput
+            | Role::PhoneNumberInput
+            | Role::UrlInput => AtspiRole::Entry,
+            Role::DateInput
+            | Role::DateTimeInput
+            | Role::WeekInput
+            | Role::MonthInput
+            | Role::TimeInput => AtspiRole::DateEditor,
+            Role::PasswordInput => AtspiRole::PasswordText,
             Role::Abbr | Role::Code | Role::Emphasis | Role::Strong | Role::Time => {
                 AtspiRole::Static
             }
@@ -293,10 +295,10 @@ impl<'a> NodeWrapper<'a> {
             // buttons, while those with `AtspiRole::Window` are windows without those
             // elements.
             Role::Window => AtspiRole::Frame,
-            Role::Client | Role::WebView => AtspiRole::Panel,
+            Role::WebView => AtspiRole::Panel,
             Role::FigureCaption => AtspiRole::Caption,
             // TODO: Are there special cases to consider?
-            Role::Presentation | Role::Unknown => AtspiRole::Unknown,
+            Role::Unknown => AtspiRole::Unknown,
             Role::ImeCandidate | Role::Keyboard => AtspiRole::RedundantObject,
             Role::Terminal => AtspiRole::Terminal,
         }
@@ -327,7 +329,7 @@ impl<'a> NodeWrapper<'a> {
         if filter_result == FilterResult::Include {
             atspi_state.insert(State::Visible | State::Showing);
         }
-        if atspi_role != AtspiRole::ToggleButton && state.checked_state().is_some() {
+        if atspi_role != AtspiRole::ToggleButton && state.checked().is_some() {
             atspi_state.insert(State::Checkable);
         }
         if let Some(selected) = state.is_selected() {
@@ -338,7 +340,7 @@ impl<'a> NodeWrapper<'a> {
                 atspi_state.insert(State::Selected);
             }
         }
-        if state.is_text_field() {
+        if state.is_text_input() {
             atspi_state.insert(State::SelectableText);
             atspi_state.insert(match state.is_multiline() {
                 true => State::MultiLine,
@@ -352,12 +354,12 @@ impl<'a> NodeWrapper<'a> {
         }
 
         // Checked state
-        match state.checked_state() {
-            Some(CheckedState::Mixed) => atspi_state.insert(State::Indeterminate),
-            Some(CheckedState::True) if atspi_role == AtspiRole::ToggleButton => {
+        match state.checked() {
+            Some(Checked::Mixed) => atspi_state.insert(State::Indeterminate),
+            Some(Checked::True) if atspi_role == AtspiRole::ToggleButton => {
                 atspi_state.insert(State::Pressed)
             }
-            Some(CheckedState::True) => atspi_state.insert(State::Checked),
+            Some(Checked::True) => atspi_state.insert(State::Checked),
             _ => {}
         }
 
@@ -417,6 +419,7 @@ impl<'a> NodeWrapper<'a> {
             Some(DefaultActionVerb::Open) => "open",
             Some(DefaultActionVerb::Press) => "press",
             Some(DefaultActionVerb::Select) => "select",
+            Some(DefaultActionVerb::Unselect) => "unselect",
             None => "",
         })
     }

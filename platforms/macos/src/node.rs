@@ -10,7 +10,7 @@
 
 #![allow(non_upper_case_globals)]
 
-use accesskit::{Action, ActionData, ActionRequest, CheckedState, NodeId, Role, TextSelection};
+use accesskit::{Action, ActionData, ActionRequest, Checked, NodeId, Role, TextSelection};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState};
 use objc2::{
     declare::{Ivar, IvarDrop},
@@ -50,18 +50,16 @@ fn ns_role(node_state: &NodeState) -> &'static NSString {
             Role::MenuListOption => NSAccessibilityMenuItemRole,
             Role::Paragraph => NSAccessibilityGroupRole,
             Role::GenericContainer => NSAccessibilityUnknownRole,
-            Role::Presentation => NSAccessibilityUnknownRole,
             Role::CheckBox => NSAccessibilityCheckBoxRole,
             Role::RadioButton => NSAccessibilityRadioButtonRole,
-            Role::TextField => {
-                if node_state.is_multiline() {
-                    NSAccessibilityTextAreaRole
-                } else {
-                    NSAccessibilityTextFieldRole
-                }
-            }
-            Role::Button => NSAccessibilityButtonRole,
-            Role::LabelText => NSAccessibilityGroupRole,
+            Role::TextInput
+            | Role::SearchInput
+            | Role::EmailInput
+            | Role::NumberInput
+            | Role::PasswordInput
+            | Role::PhoneNumberInput
+            | Role::UrlInput => NSAccessibilityTextFieldRole,
+            Role::Button | Role::DefaultButton => NSAccessibilityButtonRole,
             Role::Pane => NSAccessibilityUnknownRole,
             Role::RowHeader => NSAccessibilityCellRole,
             Role::ColumnHeader => NSAccessibilityCellRole,
@@ -76,6 +74,11 @@ fn ns_role(node_state: &NodeState) -> &'static NSString {
             Role::Switch => NSAccessibilityCheckBoxRole,
             Role::ToggleButton => NSAccessibilityCheckBoxRole,
             Role::Menu => NSAccessibilityMenuRole,
+            Role::MultilineTextInput => NSAccessibilityTextAreaRole,
+            Role::DateInput | Role::DateTimeInput | Role::WeekInput | Role::MonthInput => {
+                ns_string!("AXDateField")
+            }
+            Role::TimeInput => ns_string!("AXTimeField"),
             Role::Abbr => NSAccessibilityGroupRole,
             Role::Alert => NSAccessibilityGroupRole,
             Role::AlertDialog => NSAccessibilityGroupRole,
@@ -87,18 +90,15 @@ fn ns_role(node_state: &NodeState) -> &'static NSString {
             Role::Canvas => NSAccessibilityImageRole,
             Role::Caption => NSAccessibilityGroupRole,
             Role::Caret => NSAccessibilityUnknownRole,
-            Role::Client => NSAccessibilityUnknownRole,
             Role::Code => NSAccessibilityGroupRole,
             Role::ColorWell => NSAccessibilityColorWellRole,
-            Role::ComboBoxGrouping => NSAccessibilityComboBoxRole,
-            Role::ComboBoxMenuButton => NSAccessibilityComboBoxRole,
+            Role::ComboBox => NSAccessibilityPopUpButtonRole,
+            Role::EditableComboBox => NSAccessibilityComboBoxRole,
             Role::Complementary => NSAccessibilityGroupRole,
             Role::Comment => NSAccessibilityGroupRole,
             Role::ContentDeletion => NSAccessibilityGroupRole,
             Role::ContentInsertion => NSAccessibilityGroupRole,
             Role::ContentInfo => NSAccessibilityGroupRole,
-            Role::Date => ns_string!("AXDateField"),
-            Role::DateTime => ns_string!("AXDateField"),
             Role::Definition => NSAccessibilityGroupRole,
             Role::DescriptionList => NSAccessibilityListRole,
             Role::DescriptionListDetail => NSAccessibilityGroupRole,
@@ -124,7 +124,6 @@ fn ns_role(node_state: &NodeState) -> &'static NSString {
             Role::Iframe => NSAccessibilityGroupRole,
             Role::IframePresentational => NSAccessibilityGroupRole,
             Role::ImeCandidate => NSAccessibilityUnknownRole,
-            Role::InputTime => ns_string!("AXTimeField"),
             Role::Keyboard => NSAccessibilityUnknownRole,
             Role::Legend => NSAccessibilityGroupRole,
             Role::LineBreak => NSAccessibilityGroupRole,
@@ -142,7 +141,6 @@ fn ns_role(node_state: &NodeState) -> &'static NSString {
             Role::Navigation => NSAccessibilityGroupRole,
             Role::Note => NSAccessibilityGroupRole,
             Role::PluginObject => NSAccessibilityGroupRole,
-            Role::PopupButton => NSAccessibilityPopUpButtonRole,
             Role::Portal => NSAccessibilityButtonRole,
             Role::Pre => NSAccessibilityGroupRole,
             Role::ProgressIndicator => NSAccessibilityProgressIndicatorRole,
@@ -154,7 +152,6 @@ fn ns_role(node_state: &NodeState) -> &'static NSString {
             Role::ScrollBar => NSAccessibilityScrollBarRole,
             Role::ScrollView => NSAccessibilityUnknownRole,
             Role::Search => NSAccessibilityGroupRole,
-            Role::SearchBox => NSAccessibilityTextFieldRole,
             Role::Section => NSAccessibilityGroupRole,
             Role::Slider => NSAccessibilitySliderRole,
             Role::SpinButton => NSAccessibilityIncrementorRole,
@@ -167,7 +164,6 @@ fn ns_role(node_state: &NodeState) -> &'static NSString {
             Role::TabList => NSAccessibilityTabGroupRole,
             Role::TabPanel => NSAccessibilityGroupRole,
             Role::Term => NSAccessibilityGroupRole,
-            Role::TextFieldWithComboBox => NSAccessibilityComboBoxRole,
             Role::Time => NSAccessibilityGroupRole,
             Role::Timer => NSAccessibilityGroupRole,
             Role::TitleBar => NSAccessibilityStaticTextRole,
@@ -297,8 +293,8 @@ impl<'a> NodeWrapper<'a> {
 
     pub(crate) fn value(&self) -> Option<Value> {
         let state = self.node_state();
-        if let Some(state) = state.checked_state() {
-            return Some(Value::Bool(state != CheckedState::False));
+        if let Some(checked) = state.checked() {
+            return Some(Value::Bool(checked != Checked::False));
         }
         if let Some(value) = self.node_value() {
             return Some(Value::String(value));

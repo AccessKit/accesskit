@@ -534,41 +534,31 @@ impl node_builder {
 }
 
 flag_methods! {
-    (is_autofill_available, set_autofill_available, clear_autofill_available),
-    (is_default, set_default, clear_default),
-    (is_editable, set_editable, clear_editable),
     (is_hovered, set_hovered, clear_hovered),
     (is_hidden, set_hidden, clear_hidden),
     (is_linked, set_linked, clear_linked),
-    (is_multiline, set_multiline, clear_multiline),
     (is_multiselectable, set_multiselectable, clear_multiselectable),
-    (is_protected, set_protected, clear_protected),
     (is_required, set_required, clear_required),
     (is_visited, set_visited, clear_visited),
     (is_busy, set_busy, clear_busy),
     (is_live_atomic, set_live_atomic, clear_live_atomic),
     (is_modal, set_modal, clear_modal),
-    (is_scrollable, set_scrollable, clear_scrollable),
-    (is_selected_from_focus, set_selected_from_focus, clear_selected_from_focus),
-    (is_touch_pass_through, set_touch_pass_through, clear_touch_pass_through),
+    (is_touch_transparent, set_touch_transparent, clear_touch_transparent),
     (is_read_only, set_read_only, clear_read_only),
     (is_disabled, set_disabled, clear_disabled),
     (is_bold, set_bold, clear_bold),
     (is_italic, set_italic, clear_italic),
-    (canvas_has_fallback, set_canvas_has_fallback, clear_canvas_has_fallback),
     (clips_children, set_clips_children, clear_clips_children),
     (is_line_breaking_object, set_is_line_breaking_object, clear_is_line_breaking_object),
     (is_page_breaking_object, set_is_page_breaking_object, clear_is_page_breaking_object),
     (is_spelling_error, set_is_spelling_error, clear_is_spelling_error),
     (is_grammar_error, set_is_grammar_error, clear_is_grammar_error),
     (is_search_match, set_is_search_match, clear_is_search_match),
-    (is_suggestion, set_is_suggestion, clear_is_suggestion),
-    (is_nonatomic_text_field_root, set_is_nonatomic_text_field_root, clear_is_nonatomic_text_field_root)
+    (is_suggestion, set_is_suggestion, clear_is_suggestion)
 }
 
 node_id_vec_property_methods! {
     (children, set_children, push_child, clear_children),
-    (indirect_children, set_indirect_children, push_indirect_child, clear_indirect_children),
     (controls, set_controls, push_controlled, clear_controls),
     (details, set_details, push_detail, clear_details),
     (described_by, set_described_by, push_described_by, clear_described_by),
@@ -602,20 +592,15 @@ string_property_methods! {
     (description, set_description, clear_description),
     (value, set_value, clear_value),
     (access_key, set_access_key, clear_access_key),
-    (auto_complete, set_auto_complete, clear_auto_complete),
-    (checked_state_description, set_checked_state_description, clear_checked_state_description),
     (class_name, set_class_name, clear_class_name),
-    (css_display, set_css_display, clear_css_display),
     (font_family, set_font_family, clear_font_family),
     (html_tag, set_html_tag, clear_html_tag),
     (inner_html, set_inner_html, clear_inner_html),
-    (input_type, set_input_type, clear_input_type),
-    (key_shortcuts, set_key_shortcuts, clear_key_shortcuts),
+    (keyboard_shortcut, set_keyboard_shortcut, clear_keyboard_shortcut),
     (language, set_language, clear_language),
-    (live_relevant, set_live_relevant, clear_live_relevant),
     (placeholder, set_placeholder, clear_placeholder),
-    (aria_role, set_aria_role, clear_aria_role),
     (role_description, set_role_description, clear_role_description),
+    (state_description, set_state_description, clear_state_description),
     (tooltip, set_tooltip, clear_tooltip),
     (url, set_url, clear_url)
 }
@@ -633,8 +618,7 @@ f64_property_methods! {
     (numeric_value_step, set_numeric_value_step, clear_numeric_value_step),
     (numeric_value_jump, set_numeric_value_jump, clear_numeric_value_jump),
     (font_size, set_font_size, clear_font_size),
-    (font_weight, set_font_weight, clear_font_weight),
-    (text_indent, set_text_indent, clear_text_indent)
+    (font_weight, set_font_weight, clear_font_weight)
 }
 
 usize_property_methods! {
@@ -679,16 +663,15 @@ bool_property_methods! {
 }
 
 unique_enum_property_methods! {
-    (NameFrom, name_from, set_name_from, clear_name_from),
-    (DescriptionFrom, description_from, set_description_from, clear_description_from),
     (Invalid, invalid, set_invalid, clear_invalid),
-    (CheckedState, checked_state, set_checked_state, clear_checked_state),
+    (Checked, checked, set_checked, clear_checked),
     (Live, live, set_live, clear_live),
     (DefaultActionVerb, default_action_verb, set_default_action_verb, clear_default_action_verb),
     (TextDirection, text_direction, set_text_direction, clear_text_direction),
     (Orientation, orientation, set_orientation, clear_orientation),
     (SortDirection, sort_direction, set_sort_direction, clear_sort_direction),
     (AriaCurrent, aria_current, set_aria_current, clear_aria_current),
+    (AutoComplete, auto_complete, set_auto_complete, clear_auto_complete),
     (HasPopup, has_popup, set_has_popup, clear_has_popup),
     (ListStyle, list_style, set_list_style, clear_list_style),
     (TextAlign, text_align, set_text_align, clear_text_align),
