@@ -15,11 +15,4 @@ public final class Tree {
     }
 
     public NodeId root;
-
-    /**
-     * The node that's used as the root scroller, if any. On some platforms
-     * like Android we need to ignore accessibility scroll offsets for
-     * that node and get them from the viewport instead.
-     */
-    public NodeId rootScroller = null;
 }

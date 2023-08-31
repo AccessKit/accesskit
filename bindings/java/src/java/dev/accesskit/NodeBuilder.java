@@ -49,7 +49,7 @@ public final class NodeBuilder {
 
     public void addChild(NodeId id) {
         checkActive();
-        nativeAddChild(ptr, id.low, id.high);
+        nativeAddChild(ptr, id.value);
     }
 
     public void clearChildren() {
@@ -116,7 +116,7 @@ public final class NodeBuilder {
 
     public void setTextSelection(TextSelection value) {
         checkActive();
-        nativeSetTextSelection(ptr, value.anchor.node.low, value.anchor.node.high, value.anchor.characterIndex, value.focus.node.low, value.focus.node.high, value.focus.characterIndex);
+        nativeSetTextSelection(ptr, value.anchor.node.value, value.anchor.characterIndex, value.focus.node.value, value.focus.characterIndex);
     }
 
     public void setCharacterLengths(byte[] value) {
@@ -154,7 +154,7 @@ public final class NodeBuilder {
     private static native void nativeSetName(long ptr, byte[] value);
     private static native void nativeSetValue(long ptr, byte[] value);
     private static native void nativeSetBounds(long ptr, double x0, double y0, double x1, double y1);
-    private static native void nativeAddChild(long ptr, long idLow, long idHigh);
+    private static native void nativeAddChild(long ptr, long id);
     private static native void nativeClearChildren(long ptr);
     private static native void nativeSetMultiline(long ptr);
     private static native void nativeClearMultiline(long ptr);
@@ -166,7 +166,7 @@ public final class NodeBuilder {
     private static native void nativeSetMaxNumericValue(long ptr, double value);
     private static native void nativeSetNumericValueStep(long ptr, double value);
     private static native void nativeSetNumericValueJump(long ptr, double value);
-    private static native void nativeSetTextSelection(long ptr, long anchorNodeIdLow, long anchorNodeIdHigh, int anchorCharacterIndex, long focusNodeIdLow, long focusNodeIdHigh, int focusCharacterIndex);
+    private static native void nativeSetTextSelection(long ptr, long anchorNodeId, int anchorCharacterIndex, long focusNodeId, int focusCharacterIndex);
     private static native void nativeSetCharacterLengths(long ptr, byte[] value);
     private static native void nativeSetWordLengths(long ptr, byte[] value);
     private static native void nativeSetCharacterPositions(long ptr, float[] value);

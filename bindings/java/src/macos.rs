@@ -7,7 +7,7 @@ use accesskit::*;
 use accesskit_macos::*;
 use jni::{
     objects::{JClass, JObject},
-    sys::jlong,
+    sys::{jboolean, jlong, JNI_TRUE},
     JNIEnv,
 };
 
@@ -104,6 +104,20 @@ pub extern "system" fn Java_dev_accesskit_MacosSubclassingAdapter_nativeUpdateIf
         *box_from_jptr::<TreeUpdate>(ptr)
     };
     if let Some(events) = adapter.update_if_active(update_source) {
+        events.raise();
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_accesskit_MacosSubclassingAdapter_nativeUpdateViewFocusState(
+    _env: JNIEnv,
+    _class: JClass,
+    ptr: jlong,
+    is_focused: jboolean,
+) {
+    let adapter = ref_from_jptr::<SubclassingAdapter>(ptr);
+    let is_focused = is_focused == JNI_TRUE;
+    if let Some(events) = adapter.update_view_focus_state(is_focused) {
         events.raise();
     }
 }

@@ -14,15 +14,6 @@ use crate::{
     box_from_jptr, box_str_from_utf8_jbytes, convert_float_array, into_jptr, mut_from_jptr,
 };
 
-fn node_id_from_parts(low: jlong, high: jlong) -> NodeId {
-    let num = ((high as u128) << 64) | (low as u128);
-    NodeId(unsafe { std::num::NonZeroU128::new_unchecked(num) })
-}
-
-fn optional_node_id_from_parts(low: jlong, high: jlong) -> Option<NodeId> {
-    (low != 0 || high != 0).then(|| node_id_from_parts(low, high))
-}
-
 #[no_mangle]
 pub extern "system" fn Java_dev_accesskit_Node_nativeDrop(
     _env: JNIEnv,
@@ -119,11 +110,10 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeAddChild(
     _env: JNIEnv,
     _class: JClass,
     ptr: jlong,
-    id_low: jlong,
-    id_high: jlong,
+    id: jlong,
 ) {
     let builder = mut_from_jptr::<NodeBuilder>(ptr);
-    let id = node_id_from_parts(id_low, id_high);
+    let id = NodeId(id as _);
     builder.push_child(id);
 }
 
@@ -253,16 +243,14 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeSetTextSelection(
     _env: JNIEnv,
     _class: JClass,
     ptr: jlong,
-    anchor_id_low: jlong,
-    anchor_id_high: jlong,
+    anchor_id: jlong,
     anchor_character_index: jint,
-    focus_id_low: jlong,
-    focus_id_high: jlong,
+    focus_id: jlong,
     focus_character_index: jint,
 ) {
     let builder = mut_from_jptr::<NodeBuilder>(ptr);
-    let anchor_id = node_id_from_parts(anchor_id_low, anchor_id_high);
-    let focus_id = node_id_from_parts(focus_id_low, focus_id_high);
+    let anchor_id = NodeId(anchor_id as _);
+    let focus_id = NodeId(focus_id as _);
     builder.set_text_selection(TextSelection {
         anchor: TextPosition {
             node: anchor_id,
@@ -336,11 +324,17 @@ pub extern "system" fn Java_dev_accesskit_NodeBuilder_nativeBuild(
 }
 
 #[no_mangle]
-pub extern "system" fn Java_dev_accesskit_TreeUpdate_nativeNew(
+pub extern "system" fn Java_dev_accesskit_TreeUpdate_nativeWithFocus(
     _env: JNIEnv,
     _class: JClass,
+    focus: jlong,
 ) -> jlong {
-    let update = TreeUpdate::default();
+    let focus = NodeId(focus as _);
+    let update = TreeUpdate {
+        nodes: vec![],
+        tree: None,
+        focus,
+    };
     into_jptr(update)
 }
 
@@ -358,12 +352,11 @@ pub extern "system" fn Java_dev_accesskit_TreeUpdate_nativeAddNode(
     _env: JNIEnv,
     _class: JClass,
     ptr: jlong,
-    id_low: jlong,
-    id_high: jlong,
+    id: jlong,
     node_ptr: jlong,
 ) {
     let update = mut_from_jptr::<TreeUpdate>(ptr);
-    let id = node_id_from_parts(id_low, id_high);
+    let id = NodeId(id as _);
     let node = box_from_jptr::<Node>(node_ptr);
     update.nodes.push((id, *node));
 }
@@ -373,18 +366,11 @@ pub extern "system" fn Java_dev_accesskit_TreeUpdate_nativeSetTree(
     _env: JNIEnv,
     _class: JClass,
     ptr: jlong,
-    root_low: jlong,
-    root_high: jlong,
-    root_scroller_low: jlong,
-    root_scroller_high: jlong,
+    root: jlong,
 ) {
     let update = mut_from_jptr::<TreeUpdate>(ptr);
-    let root = node_id_from_parts(root_low, root_high);
-    let root_scroller = optional_node_id_from_parts(root_scroller_low, root_scroller_high);
-    update.tree = Some(Tree {
-        root,
-        root_scroller,
-    });
+    let root = NodeId(root as _);
+    update.tree = Some(Tree { root });
 }
 
 #[no_mangle]
@@ -402,20 +388,9 @@ pub extern "system" fn Java_dev_accesskit_TreeUpdate_nativeSetFocus(
     _env: JNIEnv,
     _class: JClass,
     ptr: jlong,
-    id_low: jlong,
-    id_high: jlong,
+    id: jlong,
 ) {
     let update = mut_from_jptr::<TreeUpdate>(ptr);
-    let id = node_id_from_parts(id_low, id_high);
-    update.focus = Some(id);
-}
-
-#[no_mangle]
-pub extern "system" fn Java_dev_accesskit_TreeUpdate_nativeClearFocus(
-    _env: JNIEnv,
-    _class: JClass,
-    ptr: jlong,
-) {
-    let update = mut_from_jptr::<TreeUpdate>(ptr);
-    update.focus = None;
+    let id = NodeId(id as _);
+    update.focus = id;
 }

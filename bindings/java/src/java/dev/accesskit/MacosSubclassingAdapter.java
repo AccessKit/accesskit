@@ -36,11 +36,17 @@ public final class MacosSubclassingAdapter implements AutoCloseable {
         nativeUpdateIfActive(ptr, nativeSupplier);
     }
 
+    public void updateViewFocusState(boolean isFocused) {
+        checkActive();
+        nativeUpdateViewFocusState(ptr, isFocused);
+    }
+
     long ptr;
     private static native long nativeNew(long view, NativePointerSupplier initialStateSupplier);
     private static native long nativeForWindow(long window, NativePointerSupplier initialStateSupplier);
     private static native void nativeDrop(long ptr);
     private static native void nativeUpdateIfActive(long ptr, NativePointerSupplier updateSupplier);
+    private static native void nativeUpdateViewFocusState(long ptr, boolean isFocused);
 
     void checkActive() {
         Util.checkActive(ptr);
