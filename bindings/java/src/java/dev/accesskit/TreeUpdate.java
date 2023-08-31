@@ -10,7 +10,7 @@ public final class TreeUpdate {
         this.ptr = ptr;
     }
 
-    public TreeUpdate withFocus(NodeId focus) {
+    public static TreeUpdate withFocus(NodeId focus) {
         return new TreeUpdate(nativeWithFocus(focus.value));
     }
 
