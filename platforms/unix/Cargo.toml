@@ -23,6 +23,6 @@ atspi = { version = "0.10.1", default-features = false }
 futures-lite = "1.12.0"
 once_cell = { version = "1.17.1", optional = true }
 serde = "1.0"
-tokio = { version = "1.10.0", optional = true, features = ["rt-multi-thread", "net", "time"] }
+tokio = { version = "1.10.0", optional = true, features = ["rt", "net", "time"] }
 zbus = { version = "3.6", default-features = false }
 
