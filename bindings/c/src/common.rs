@@ -882,19 +882,15 @@ impl tree {
     }
 
     #[no_mangle]
-    pub extern "C" fn accesskit_tree_set_toolkit_name(t: *mut tree, toolkit_name: *const c_char) {
+    pub extern "C" fn accesskit_tree_set_toolkit_info(
+        t: *mut tree,
+        toolkit_name: *const c_char,
+        toolkit_version: *const c_char,
+    ) {
         let t = mut_from_ptr(t);
         t.toolkit_name = Some(String::from(
             unsafe { CStr::from_ptr(toolkit_name) }.to_string_lossy(),
         ));
-    }
-
-    #[no_mangle]
-    pub extern "C" fn accesskit_tree_set_toolkit_version(
-        t: *mut tree,
-        toolkit_version: *const c_char,
-    ) {
-        let t = mut_from_ptr(t);
         t.toolkit_version = Some(String::from(
             unsafe { CStr::from_ptr(toolkit_version) }.to_string_lossy(),
         ));
