@@ -17,6 +17,7 @@ impl ApplicationInterface {
 
     #[dbus_interface(property)]
     fn version(&self) -> String {
+
         self.0.toolkit_version()
     }
 
