@@ -64,7 +64,7 @@ struct accesskit_sdl_adapter {
 };
 
 void accesskit_sdl_adapter_init(struct accesskit_sdl_adapter *adapter,
-                                SDL_Window *window, const char *app_name,
+                                SDL_Window *window,
                                 accesskit_tree_update_factory source,
                                 void *source_userdata,
                                 accesskit_action_handler *handler) {
@@ -76,8 +76,8 @@ void accesskit_sdl_adapter_init(struct accesskit_sdl_adapter *adapter,
   adapter->adapter = accesskit_macos_subclassing_adapter_for_window(
       (void *)wmInfo.info.cocoa.window, source, source_userdata, handler);
 #elif defined(UNIX)
-  adapter->adapter = accesskit_unix_adapter_new(
-      app_name, "SDL", "2.0", source, source_userdata, false, handler);
+  adapter->adapter =
+      accesskit_unix_adapter_new(source, source_userdata, false, handler);
 #elif defined(_WIN32)
   SDL_SysWMinfo wmInfo;
   SDL_VERSION(&wmInfo.version);
