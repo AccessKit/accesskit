@@ -88,7 +88,10 @@ accesskit_tree_update *window_state_build_initial_tree(
       build_button(BUTTON_2_ID, "Button 2", state->node_classes);
   accesskit_tree_update *result = accesskit_tree_update_with_capacity_and_focus(
       (state->announcement != NULL) ? 4 : 3, state->focus);
-  accesskit_tree_update_set_tree(result, accesskit_tree_new(WINDOW_ID));
+  accesskit_tree *tree = accesskit_tree_new(WINDOW_ID);
+  accesskit_tree_set_app_name(tree, "Hello world");
+  accesskit_tree_set_toolkit_info(tree, "AccessKitTest", "2.0");
+  accesskit_tree_update_set_tree(result, tree);
   accesskit_tree_update_push_node(result, WINDOW_ID, root);
   accesskit_tree_update_push_node(result, BUTTON_1_ID, button_1);
   accesskit_tree_update_push_node(result, BUTTON_2_ID, button_2);
