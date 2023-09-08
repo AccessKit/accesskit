@@ -84,7 +84,7 @@ impl State {
         let button_1 = build_button(BUTTON_1_ID, "Button 1", &mut self.node_classes);
         let button_2 = build_button(BUTTON_2_ID, "Button 2", &mut self.node_classes);
         let mut tree = Tree::new(WINDOW_ID);
-        tree.app_name = Some(WINDOW_TITLE.to_string());
+        tree.app_name = Some(env!("CARGO_BIN_NAME").to_string());
         tree.toolkit_name = Some(env!("CARGO_PKG_NAME").to_string());
         tree.toolkit_version = Some(env!("CARGO_PKG_VERSION").to_string());
 

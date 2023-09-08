@@ -2241,7 +2241,7 @@ pub struct Tree {
     /// The name of the application this tree belongs to.
     /// This value is optional.
     pub app_name: Option<String>,
-    /// Name of the UI toolkit in use.
+    /// The name of the UI toolkit in use.
     /// This value is optional.
     pub toolkit_name: Option<String>,
     /// The version of the UI toolkit.
