@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::{atspi::ObjectId, unknown_object, PlatformRootNode};
+use crate::PlatformRootNode;
 use zbus::fdo;
 
 pub(crate) struct ApplicationInterface(pub PlatformRootNode);
@@ -12,20 +12,12 @@ pub(crate) struct ApplicationInterface(pub PlatformRootNode);
 impl ApplicationInterface {
     #[dbus_interface(property)]
     fn toolkit_name(&self) -> String {
-        self.0
-            .context
-            .upgrade()
-            .map(|context| context.read_app_context().toolkit_name.clone())
-            .unwrap_or_default()
+        self.0.toolkit_name()
     }
 
     #[dbus_interface(property)]
     fn version(&self) -> String {
-        self.0
-            .context
-            .upgrade()
-            .map(|context| context.read_app_context().toolkit_version.clone())
-            .unwrap_or_default()
+        self.0.toolkit_version()
     }
 
     #[dbus_interface(property)]
@@ -35,19 +27,11 @@ impl ApplicationInterface {
 
     #[dbus_interface(property)]
     fn id(&self) -> i32 {
-        self.0
-            .context
-            .upgrade()
-            .and_then(|context| context.read_app_context().id)
-            .unwrap_or(-1)
+        self.0.id()
     }
 
     #[dbus_interface(property)]
     fn set_id(&mut self, id: i32) -> fdo::Result<()> {
-        self.0
-            .context
-            .upgrade()
-            .map(|context| context.app_context.write().unwrap().id = Some(id))
-            .ok_or_else(|| unknown_object(&ObjectId::root()))
+        self.0.set_id(id)
     }
 }

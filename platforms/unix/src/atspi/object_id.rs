@@ -3,25 +3,65 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use crate::atspi::OwnedObjectAddress;
 use accesskit::NodeId;
-use serde::{Deserialize, Serialize};
-use zbus::zvariant::{Str, Type, Value};
+use serde::{Serialize, Serializer};
+use zbus::{
+    names::OwnedUniqueName,
+    zvariant::{ObjectPath, OwnedObjectPath, Signature, Structure, StructureBuilder, Type},
+};
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Type, Value)]
-pub(crate) struct ObjectId<'a>(#[serde(borrow)] Str<'a>);
+const ACCESSIBLE_PATH_PREFIX: &str = "/org/a11y/atspi/accessible/";
+const ROOT_PATH: &str = "/org/a11y/atspi/accessible/root";
 
-impl<'a> ObjectId<'a> {
-    pub(crate) fn root() -> ObjectId<'static> {
-        ObjectId(Str::from("root"))
+#[derive(Debug, PartialEq)]
+pub(crate) enum ObjectId {
+    Root,
+    Node { adapter: usize, node: NodeId },
+}
+
+impl ObjectId {
+    pub(crate) fn to_address(&self, bus_name: OwnedUniqueName) -> OwnedObjectAddress {
+        OwnedObjectAddress::new(bus_name, self.path())
     }
 
-    pub(crate) fn as_str(&self) -> &str {
-        self.0.as_str()
+    pub(crate) fn path(&self) -> OwnedObjectPath {
+        match self {
+            Self::Root => ObjectPath::from_str_unchecked(ROOT_PATH),
+            Self::Node { adapter, node } => ObjectPath::from_string_unchecked(format!(
+                "{}{}/{}",
+                ACCESSIBLE_PATH_PREFIX, adapter, node.0
+            )),
+        }
+        .into()
     }
 }
 
-impl From<NodeId> for ObjectId<'static> {
-    fn from(value: NodeId) -> Self {
-        Self(Str::from(value.0.to_string()))
+impl Serialize for ObjectId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Self::Root => serializer.serialize_str("root"),
+            Self::Node { node, .. } => serializer.serialize_str(&node.0.to_string()),
+        }
+    }
+}
+
+impl Type for ObjectId {
+    fn signature() -> Signature<'static> {
+        <&str>::signature()
+    }
+}
+
+impl From<ObjectId> for Structure<'_> {
+    fn from(id: ObjectId) -> Self {
+        StructureBuilder::new()
+            .add_field(match id {
+                ObjectId::Root => "root".into(),
+                ObjectId::Node { node, .. } => node.0.to_string(),
+            })
+            .build()
     }
 }

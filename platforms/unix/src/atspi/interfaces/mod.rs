@@ -10,7 +10,7 @@ mod component;
 mod events;
 mod value;
 
-use crate::atspi::{ObjectRef, OwnedObjectAddress};
+use crate::atspi::{ObjectId, OwnedObjectAddress};
 use zbus::{
     fdo,
     names::{BusName, OwnedUniqueName, UniqueName},
@@ -18,13 +18,10 @@ use zbus::{
 
 fn object_address(
     destination: Option<&BusName>,
-    object_ref: Option<ObjectRef>,
+    object_id: Option<ObjectId>,
 ) -> fdo::Result<(OwnedObjectAddress,)> {
-    match object_ref {
-        Some(ObjectRef::Managed(id)) => {
-            Ok((OwnedObjectAddress::accessible(app_name(destination)?, id),))
-        }
-        Some(ObjectRef::Unmanaged(address)) => Ok((address,)),
+    match object_id {
+        Some(id) => Ok((id.to_address(app_name(destination)?),)),
         None => Ok((OwnedObjectAddress::null(app_name(destination)?),)),
     }
 }

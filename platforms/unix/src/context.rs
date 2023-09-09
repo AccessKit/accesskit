@@ -5,14 +5,15 @@
 
 use accesskit::ActionHandler;
 use accesskit_consumer::Tree;
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use once_cell::sync::OnceCell;
+use std::sync::{Arc, RwLock, RwLockReadGuard, Weak};
 
-use crate::util::{AppContext, WindowBounds};
+use crate::{atspi::OwnedObjectAddress, util::WindowBounds};
 
 pub(crate) struct Context {
     pub(crate) tree: RwLock<Tree>,
     pub(crate) action_handler: Box<dyn ActionHandler + Send + Sync>,
-    pub(crate) app_context: RwLock<AppContext>,
+    pub(crate) app_context: Arc<RwLock<AppContext>>,
     pub(crate) root_window_bounds: RwLock<WindowBounds>,
 }
 
@@ -20,12 +21,12 @@ impl Context {
     pub(crate) fn new(
         tree: Tree,
         action_handler: Box<dyn ActionHandler + Send + Sync>,
-        app_context: AppContext,
+        app_context: &Arc<RwLock<AppContext>>,
     ) -> Arc<Self> {
         Arc::new(Self {
             tree: RwLock::new(tree),
             action_handler,
-            app_context: RwLock::new(app_context),
+            app_context: app_context.clone(),
             root_window_bounds: RwLock::new(Default::default()),
         })
     }
@@ -40,5 +41,62 @@ impl Context {
 
     pub(crate) fn read_root_window_bounds(&self) -> RwLockReadGuard<'_, WindowBounds> {
         self.root_window_bounds.read().unwrap()
+    }
+}
+
+pub(crate) struct AdapterAndContext(usize, Weak<Context>);
+
+impl AdapterAndContext {
+    pub(crate) fn upgrade(&self) -> Option<(usize, Arc<Context>)> {
+        self.1.upgrade().map(|context| (self.0, context))
+    }
+}
+
+static APP_CONTEXT: OnceCell<Arc<RwLock<AppContext>>> = OnceCell::new();
+
+pub(crate) struct AppContext {
+    pub(crate) name: String,
+    pub(crate) toolkit_name: String,
+    pub(crate) toolkit_version: String,
+    pub(crate) id: Option<i32>,
+    pub(crate) desktop_address: Option<OwnedObjectAddress>,
+    pub(crate) adapters: Vec<AdapterAndContext>,
+}
+
+impl AppContext {
+    pub(crate) fn get_or_init(
+        name: String,
+        toolkit_name: String,
+        toolkit_version: String,
+    ) -> Arc<RwLock<Self>> {
+        APP_CONTEXT
+            .get_or_init(|| {
+                Arc::new(RwLock::new(Self {
+                    name,
+                    toolkit_name,
+                    toolkit_version,
+                    id: None,
+                    desktop_address: None,
+                    adapters: Vec::new(),
+                }))
+            })
+            .clone()
+    }
+
+    pub(crate) fn adapter_index(&self, id: usize) -> Result<usize, usize> {
+        self.adapters.binary_search_by(|adapter| adapter.0.cmp(&id))
+    }
+
+    pub(crate) fn push_adapter(&mut self, id: usize, context: &Arc<Context>) -> usize {
+        let index = self.adapters.len();
+        self.adapters
+            .push(AdapterAndContext(id, Arc::downgrade(context)));
+        index
+    }
+
+    pub(crate) fn remove_adapter(&mut self, id: usize) {
+        if let Ok(index) = self.adapter_index(id) {
+            self.adapters.remove(index);
+        }
     }
 }

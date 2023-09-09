@@ -3,7 +3,6 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::atspi::OwnedObjectAddress;
 use accesskit::{Point, Rect};
 use atspi::CoordType;
 #[cfg(feature = "tokio")]
@@ -38,26 +37,6 @@ pub(crate) static TOKIO_RT: Lazy<tokio::runtime::Handle> = Lazy::new(|| {
 #[cfg(feature = "tokio")]
 pub(crate) fn block_on<F: std::future::Future>(future: F) -> F::Output {
     TOKIO_RT.block_on(future)
-}
-
-pub(crate) struct AppContext {
-    pub(crate) name: String,
-    pub(crate) toolkit_name: String,
-    pub(crate) toolkit_version: String,
-    pub(crate) id: Option<i32>,
-    pub(crate) desktop_address: Option<OwnedObjectAddress>,
-}
-
-impl AppContext {
-    pub(crate) fn new(name: String, toolkit_name: String, toolkit_version: String) -> Self {
-        Self {
-            name,
-            toolkit_name,
-            toolkit_version,
-            id: None,
-            desktop_address: None,
-        }
-    }
 }
 
 #[derive(Default)]
