@@ -2239,13 +2239,10 @@ pub struct Tree {
     /// The identifier of the tree's root node
     pub root: NodeId,
     /// The name of the application this tree belongs to.
-    /// This value is optional.
     pub app_name: Option<String>,
     /// The name of the UI toolkit in use.
-    /// This value is optional.
     pub toolkit_name: Option<String>,
     /// The version of the UI toolkit.
-    /// This value is optional.
     pub toolkit_version: Option<String>,
 }
 

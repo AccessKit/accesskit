@@ -628,7 +628,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
                 match property_id {
                     UIA_FrameworkIdPropertyId => result = state.toolkit_name().into(),
                     UIA_ProviderDescriptionPropertyId => {
-                        result = state.app_and_toolkit_description().into()
+                        result = app_and_toolkit_description(state).into()
                     }
                     _ => (),
                 }

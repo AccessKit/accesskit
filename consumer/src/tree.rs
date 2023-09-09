@@ -270,33 +270,6 @@ impl State {
     pub fn toolkit_version(&self) -> Option<String> {
         self.data.toolkit_version.clone()
     }
-
-    pub fn app_and_toolkit_description(&self) -> Option<String> {
-        let app_name = self.app_name();
-        let toolkit_name = self.toolkit_name();
-        let toolkit_version = self.toolkit_version();
-        if let (Some(app_name), Some(toolkit_name), Some(toolkit_version)) =
-            (&app_name, &toolkit_name, &toolkit_version)
-        {
-            return Some(format!(
-                "{} <{} {}>",
-                app_name, toolkit_name, toolkit_version
-            ));
-        } else if let (Some(app_name), Some(toolkit_name), None) =
-            (&app_name, &toolkit_name, &toolkit_version)
-        {
-            return Some(format!("{} <{}>", app_name, toolkit_name));
-        } else if let (None, Some(toolkit_name), Some(toolkit_version)) =
-            (&app_name, &toolkit_name, &toolkit_version)
-        {
-            return Some(format!("{} {}", toolkit_name, toolkit_version));
-        } else if toolkit_name.is_some() {
-            return toolkit_name;
-        } else if app_name.is_some() {
-            return app_name;
-        }
-        None
-    }
 }
 
 pub trait ChangeHandler {
