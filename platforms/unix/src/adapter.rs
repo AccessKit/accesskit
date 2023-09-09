@@ -472,6 +472,11 @@ fn root_window(current_state: &TreeState) -> Option<Node> {
 impl Drop for Adapter {
     fn drop(&mut self) {
         block_on(async {
+            self.context
+                .app_context
+                .write()
+                .unwrap()
+                .remove_adapter(self.id);
             let root_id = self.context.read_tree().state().root_id();
             self.atspi_bus
                 .emit_object_event(

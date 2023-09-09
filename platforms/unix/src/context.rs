@@ -13,7 +13,7 @@ use crate::{atspi::OwnedObjectAddress, util::WindowBounds};
 pub(crate) struct Context {
     pub(crate) tree: RwLock<Tree>,
     pub(crate) action_handler: Box<dyn ActionHandler + Send + Sync>,
-    app_context: Arc<RwLock<AppContext>>,
+    pub(crate) app_context: Arc<RwLock<AppContext>>,
     pub(crate) root_window_bounds: RwLock<WindowBounds>,
 }
 
@@ -92,5 +92,11 @@ impl AppContext {
         self.adapters
             .push(AdapterAndContext(id, Arc::downgrade(context)));
         index
+    }
+
+    pub(crate) fn remove_adapter(&mut self, id: usize) {
+        if let Ok(index) = self.adapter_index(id) {
+            self.adapters.remove(index);
+        }
     }
 }
