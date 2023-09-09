@@ -262,12 +262,21 @@ impl Adapter {
         objects_to_add.push(tree_state.root().id());
         add_children(tree_state.root(), &mut objects_to_add);
         for id in objects_to_add {
+            let node = tree_state.node_by_id(id).unwrap();
             let wrapper = NodeWrapper::Node {
                 adapter: self.id,
-                node: &tree_state.node_by_id(id).unwrap(),
+                node: &node,
             };
             let interfaces = wrapper.interfaces();
             self.register_interfaces(id, interfaces).unwrap();
+            if node.is_root() && node.role() == Role::Window {
+                let adapter_index = self
+                    .context
+                    .read_app_context()
+                    .adapter_index(self.id)
+                    .unwrap();
+                self.window_created(adapter_index, node.id());
+            }
         }
     }
 
