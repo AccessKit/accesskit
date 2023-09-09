@@ -875,10 +875,10 @@ impl tree {
 
     /// Caller must call `accesskit_string_free` with the return value.
     #[no_mangle]
-    pub extern "C" fn accesskit_tree_get_app_name(tree: *mut tree) -> *mut c_char {
-        let tree = box_from_ptr(tree);
-        match tree.app_name {
-            Some(value) => CString::new(value).unwrap().into_raw(),
+    pub extern "C" fn accesskit_tree_get_app_name(tree: *const tree) -> *mut c_char {
+        let tree = ref_from_ptr(tree);
+        match tree.app_name.as_ref() {
+            Some(value) => CString::new(value.clone()).unwrap().into_raw(),
             None => ptr::null_mut(),
         }
     }
@@ -899,10 +899,10 @@ impl tree {
 
     /// Caller must call `accesskit_string_free` with the return value.
     #[no_mangle]
-    pub extern "C" fn accesskit_tree_get_toolkit_name(tree: *mut tree) -> *mut c_char {
-        let tree = box_from_ptr(tree);
-        match tree.toolkit_name {
-            Some(value) => CString::new(value).unwrap().into_raw(),
+    pub extern "C" fn accesskit_tree_get_toolkit_name(tree: *const tree) -> *mut c_char {
+        let tree = ref_from_ptr(tree);
+        match tree.toolkit_name.as_ref() {
+            Some(value) => CString::new(value.clone()).unwrap().into_raw(),
             None => ptr::null_mut(),
         }
     }
@@ -926,10 +926,10 @@ impl tree {
 
     /// Caller must call `accesskit_string_free` with the return value.
     #[no_mangle]
-    pub extern "C" fn accesskit_tree_get_toolkit_version(tree: *mut tree) -> *mut c_char {
-        let tree = box_from_ptr(tree);
-        match tree.toolkit_version {
-            Some(value) => CString::new(value).unwrap().into_raw(),
+    pub extern "C" fn accesskit_tree_get_toolkit_version(tree: *const tree) -> *mut c_char {
+        let tree = ref_from_ptr(tree);
+        match tree.toolkit_version.as_ref() {
+            Some(value) => CString::new(value.clone()).unwrap().into_raw(),
             None => ptr::null_mut(),
         }
     }
