@@ -8,7 +8,6 @@ use crate::{
     PlatformNode, PlatformRootNode,
 };
 use atspi::{accessible::Role, Interface, InterfaceSet, StateSet};
-use std::convert::TryInto;
 use zbus::{fdo, names::OwnedUniqueName, MessageHeader};
 
 pub(crate) struct AccessibleInterface<T> {
