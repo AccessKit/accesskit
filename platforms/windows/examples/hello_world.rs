@@ -206,7 +206,7 @@ struct SimpleActionHandler {
 }
 
 impl ActionHandler for SimpleActionHandler {
-    fn do_action(&self, request: ActionRequest) {
+    fn do_action(&mut self, request: ActionRequest) {
         match request.action {
             Action::Focus => {
                 unsafe {

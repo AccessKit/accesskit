@@ -198,7 +198,7 @@ impl Adapter {
         toolkit_version: String,
         initial_state: impl 'static + FnOnce() -> TreeUpdate,
         is_window_focused: bool,
-        action_handler: Box<dyn ActionHandler + Send + Sync>,
+        action_handler: Box<dyn ActionHandler + Send>,
     ) -> Option<Self> {
         let mut atspi_bus = block_on(async { Bus::a11y_bus().await })?;
         let (event_sender, event_receiver) = async_channel::unbounded();

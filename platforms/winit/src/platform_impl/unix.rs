@@ -6,7 +6,7 @@ use accesskit::{ActionHandler, Rect, TreeUpdate};
 use accesskit_unix::Adapter as UnixAdapter;
 use winit::{event::WindowEvent, window::Window};
 
-pub type ActionHandlerBox = Box<dyn ActionHandler + Send + Sync>;
+pub type ActionHandlerBox = Box<dyn ActionHandler + Send>;
 
 pub struct Adapter {
     adapter: Option<UnixAdapter>,
