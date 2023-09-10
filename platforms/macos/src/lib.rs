@@ -7,15 +7,13 @@
 
 mod appkit;
 mod context;
+mod event;
 mod filters;
 mod node;
 mod util;
 
 mod adapter;
 pub use adapter::Adapter;
-
-mod event;
-pub use event::QueuedEvents;
 
 mod patch;
 pub use patch::add_focus_forwarder_to_window_class;

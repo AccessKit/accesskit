@@ -24,13 +24,11 @@ impl Adapter {
     }
 
     pub fn update(&self, update: TreeUpdate) {
-        self.adapter.update(update).raise();
+        self.adapter.update(update);
     }
 
     pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
-        if let Some(events) = self.adapter.update_if_active(updater) {
-            events.raise();
-        }
+        self.adapter.update_if_active(updater);
     }
 
     pub fn on_event(&self, _window: &Window, _event: &WindowEvent) -> bool {

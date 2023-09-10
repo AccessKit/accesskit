@@ -22,7 +22,6 @@ use std::{cell::Cell, collections::HashMap, ffi::c_void, rc::Rc, sync::Mutex};
 
 use crate::{
     appkit::{NSView, NSWindow},
-    event::QueuedEvents,
     Adapter,
 };
 
@@ -215,33 +214,25 @@ impl SubclassingAdapter {
 
     /// Initialize the tree if it hasn't been initialized already, then apply
     /// the provided update.
-    ///
-    /// The caller must call [`QueuedEvents::raise`] on the return value.
-    pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
+    pub fn update(&self, update: TreeUpdate) {
         let adapter = Lazy::force(&self.associated.adapter);
-        adapter.update(update)
+        adapter.update(update);
     }
 
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update.
-    ///
-    /// If a [`QueuedEvents`] instance is returned, the caller must call
-    /// [`QueuedEvents::raise`] on it.
-    pub fn update_if_active(
-        &self,
-        update_factory: impl FnOnce() -> TreeUpdate,
-    ) -> Option<QueuedEvents> {
-        Lazy::get(&self.associated.adapter).map(|adapter| adapter.update(update_factory()))
+    pub fn update_if_active(&self, update_factory: impl FnOnce() -> TreeUpdate) {
+        if let Some(adapter) = Lazy::get(&self.associated.adapter) {
+            adapter.update(update_factory());
+        }
     }
 
     /// Update the tree state based on whether the window is focused.
-    ///
-    /// If a [`QueuedEvents`] instance is returned, the caller must call
-    /// [`QueuedEvents::raise`] on it.
-    pub fn update_view_focus_state(&self, is_focused: bool) -> Option<QueuedEvents> {
+    pub fn update_view_focus_state(&self, is_focused: bool) {
         self.is_view_focused.set(is_focused);
-        Lazy::get(&self.associated.adapter)
-            .map(|adapter| adapter.update_view_focus_state(is_focused))
+        if let Some(adapter) = Lazy::get(&self.associated.adapter) {
+            adapter.update_view_focus_state(is_focused);
+        }
     }
 }
 

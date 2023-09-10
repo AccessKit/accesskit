@@ -11,7 +11,7 @@ use windows::{
     Win32::{Foundation::*, UI::WindowsAndMessaging::*},
 };
 
-use crate::{Adapter, QueuedEvents, UiaInitMarker};
+use crate::{Adapter, UiaInitMarker};
 
 // Work around a difference between the SetWindowLongPtrW API definition
 // in windows-rs on 32-bit and 64-bit Windows.
@@ -41,7 +41,7 @@ extern "system" fn wnd_proc(window: HWND, message: u32, wparam: WPARAM, lparam: 
         WM_GETOBJECT => {
             let adapter = Lazy::force(&r#impl.adapter);
             if let Some(result) = adapter.handle_wm_getobject(wparam, lparam) {
-                return result.into();
+                return result;
             }
         }
         WM_SETFOCUS | WM_EXITMENULOOP | WM_EXITSIZEMOVE => {
@@ -109,8 +109,7 @@ impl SubclassImpl {
     fn update_window_focus_state(&self, is_focused: bool) {
         self.is_window_focused.set(is_focused);
         if let Some(adapter) = Lazy::get(&self.adapter) {
-            let events = adapter.update_window_focus_state(is_focused);
-            events.raise();
+            adapter.update_window_focus_state(is_focused);
         }
     }
 
@@ -137,6 +136,14 @@ impl SubclassImpl {
 /// Uses [Win32 subclassing] to handle `WM_GETOBJECT` messages on a window
 /// that provides no other way of adding custom message handlers.
 ///
+/// This must be owned by the thread that created the associated window handle,
+/// and this struct cannot be accessed on any other thread. However, this adapter
+/// doesn't use UI Automation's "COM threading" flag, so UI Automation
+/// will call most of the provider methods implemented by this adapter
+/// on another thread, meaning that the thread that created the window
+/// (often called the UI thread) will mostly not be a bottleneck for
+/// accessibility queries.
+///
 /// [Win32 subclassing]: https://docs.microsoft.com/en-us/windows/win32/controls/subclassing-overview
 pub struct SubclassingAdapter(Box<SubclassImpl>);
 
@@ -159,31 +166,17 @@ impl SubclassingAdapter {
 
     /// Initialize the tree if it hasn't been initialized already, then apply
     /// the provided update.
-    ///
-    /// The caller must call [`QueuedEvents::raise`] on the return value.
-    ///
-    /// This method may be safely called on any thread, but refer to
-    /// [`QueuedEvents::raise`] for restrictions on the context in which
-    /// it should be called.
-    pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
+    pub fn update(&self, update: TreeUpdate) {
         let adapter = Lazy::force(&self.0.adapter);
-        adapter.update(update)
+        adapter.update(update);
     }
 
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update.
-    ///
-    /// If a [`QueuedEvents`] instance is returned, the caller must call
-    /// [`QueuedEvents::raise`] on it.
-    ///
-    /// This method may be safely called on any thread, but refer to
-    /// [`QueuedEvents::raise`] for restrictions on the context in which
-    /// it should be called.
-    pub fn update_if_active(
-        &self,
-        update_factory: impl FnOnce() -> TreeUpdate,
-    ) -> Option<QueuedEvents> {
-        Lazy::get(&self.0.adapter).map(|adapter| adapter.update(update_factory()))
+    pub fn update_if_active(&self, update_factory: impl FnOnce() -> TreeUpdate) {
+        if let Some(adapter) = Lazy::get(&self.0.adapter) {
+            adapter.update(update_factory());
+        }
     }
 }
 

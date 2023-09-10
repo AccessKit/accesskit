@@ -68,8 +68,7 @@ fn update_window_focus_state(window: HWND, is_window_focused: bool) {
     inner_state.is_window_focused = is_window_focused;
     drop(inner_state);
     if let Some(adapter) = Lazy::get(&window_state.adapter) {
-        let events = adapter.update_window_focus_state(is_window_focused);
-        events.raise();
+        adapter.update_window_focus_state(is_window_focused);
     }
 }
 
@@ -126,10 +125,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             let window_state = unsafe { &*window_state };
             let adapter = Lazy::force(&window_state.adapter);
             let result = adapter.handle_wm_getobject(wparam, lparam);
-            result.map_or_else(
-                || unsafe { DefWindowProcW(window, message, wparam, lparam) },
-                |result| result.into(),
-            )
+            result.unwrap_or_else(|| unsafe { DefWindowProcW(window, message, wparam, lparam) })
         }
         WM_SETFOCUS | WM_EXITMENULOOP | WM_EXITSIZEMOVE => {
             update_window_focus_state(window, true);

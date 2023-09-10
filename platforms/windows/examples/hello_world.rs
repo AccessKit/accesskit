@@ -157,8 +157,7 @@ impl WindowState {
                 tree: None,
                 focus,
             };
-            let events = adapter.update(update);
-            events.raise();
+            adapter.update(update);
         }
     }
 
@@ -178,8 +177,7 @@ impl WindowState {
                 tree: None,
                 focus: inner_state.focus,
             };
-            let events = adapter.update(update);
-            events.raise();
+            adapter.update(update);
         }
     }
 }
@@ -194,8 +192,7 @@ fn update_window_focus_state(window: HWND, is_window_focused: bool) {
     inner_state.is_window_focused = is_window_focused;
     drop(inner_state);
     if let Some(adapter) = window_state.adapter.get() {
-        let events = adapter.update_window_focus_state(is_window_focused);
-        events.raise();
+        adapter.update_window_focus_state(is_window_focused);
     }
 }
 
@@ -277,10 +274,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             let window_state = unsafe { &*window_state };
             let adapter = window_state.get_or_init_accesskit_adapter(window);
             let result = adapter.handle_wm_getobject(wparam, lparam);
-            result.map_or_else(
-                || unsafe { DefWindowProcW(window, message, wparam, lparam) },
-                |result| result.into(),
-            )
+            result.unwrap_or_else(|| unsafe { DefWindowProcW(window, message, wparam, lparam) })
         }
         WM_SETFOCUS | WM_EXITMENULOOP | WM_EXITSIZEMOVE => {
             update_window_focus_state(window, true);

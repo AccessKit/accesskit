@@ -24,21 +24,16 @@ impl Adapter {
     }
 
     pub fn update(&self, update: TreeUpdate) {
-        let events = self.adapter.update(update);
-        events.raise();
+        self.adapter.update(update);
     }
 
     pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
-        if let Some(events) = self.adapter.update_if_active(updater) {
-            events.raise();
-        }
+        self.adapter.update_if_active(updater);
     }
 
     pub fn on_event(&self, _window: &Window, event: &WindowEvent) -> bool {
         if let WindowEvent::Focused(is_focused) = event {
-            if let Some(events) = self.adapter.update_view_focus_state(*is_focused) {
-                events.raise();
-            }
+            self.adapter.update_view_focus_state(*is_focused);
         }
 
         true

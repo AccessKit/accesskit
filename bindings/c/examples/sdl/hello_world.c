@@ -102,20 +102,12 @@ void accesskit_sdl_adapter_destroy(struct accesskit_sdl_adapter *adapter) {
 void accesskit_sdl_adapter_update(const struct accesskit_sdl_adapter *adapter,
                                   accesskit_tree_update *update) {
 #if defined(__APPLE__)
-  accesskit_macos_queued_events *events =
-      accesskit_macos_subclassing_adapter_update(adapter->adapter, update);
-  if (events != NULL) {
-    accesskit_macos_queued_events_raise(events);
-  }
+  accesskit_macos_subclassing_adapter_update(adapter->adapter, update);
 #elif defined(UNIX)
   if (adapter->adapter != NULL)
     accesskit_unix_adapter_update(adapter->adapter, update);
 #elif defined(_WIN32)
-  accesskit_windows_queued_events *events =
-      accesskit_windows_subclassing_adapter_update(adapter->adapter, update);
-  if (events != NULL) {
-    accesskit_windows_queued_events_raise(events);
-  }
+  accesskit_windows_subclassing_adapter_update(adapter->adapter, update);
 #endif
 }
 
@@ -124,36 +116,24 @@ void accesskit_sdl_adapter_update_if_active(
     accesskit_tree_update_factory update_factory,
     void *update_factory_userdata) {
 #if defined(__APPLE__)
-  accesskit_macos_queued_events *events =
-      accesskit_macos_subclassing_adapter_update_if_active(
-          adapter->adapter, update_factory, update_factory_userdata);
-  if (events != NULL) {
-    accesskit_macos_queued_events_raise(events);
-  }
+  accesskit_macos_subclassing_adapter_update_if_active(
+      adapter->adapter, update_factory, update_factory_userdata);
 #elif defined(UNIX)
   if (adapter->adapter != NULL) {
     accesskit_unix_adapter_update(adapter->adapter,
                                   update_factory(update_factory_userdata));
   }
 #elif defined(_WIN32)
-  accesskit_windows_queued_events *events =
-      accesskit_windows_subclassing_adapter_update_if_active(
-          adapter->adapter, update_factory, update_factory_userdata);
-  if (events != NULL) {
-    accesskit_windows_queued_events_raise(events);
-  }
+  accesskit_windows_subclassing_adapter_update_if_active(
+      adapter->adapter, update_factory, update_factory_userdata);
 #endif
 }
 
 void accesskit_sdl_adapter_update_window_focus_state(
     const struct accesskit_sdl_adapter *adapter, bool is_focused) {
 #if defined(__APPLE__)
-  accesskit_macos_queued_events *events =
-      accesskit_macos_subclassing_adapter_update_view_focus_state(
-          adapter->adapter, is_focused);
-  if (events != NULL) {
-    accesskit_macos_queued_events_raise(events);
-  }
+  accesskit_macos_subclassing_adapter_update_view_focus_state(adapter->adapter,
+                                                              is_focused);
 #elif defined(UNIX)
   if (adapter->adapter != NULL) {
     accesskit_unix_adapter_update_window_focus_state(adapter->adapter,

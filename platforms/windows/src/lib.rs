@@ -10,7 +10,7 @@ mod text;
 mod util;
 
 mod adapter;
-pub use adapter::{Adapter, QueuedEvents};
+pub use adapter::Adapter;
 
 mod init;
 pub use init::UiaInitMarker;

@@ -133,9 +133,7 @@ void window_state_set_focus(struct window_state *state,
   state->focus = focus;
   if (state->adapter != NULL) {
     accesskit_tree_update *update = accesskit_tree_update_with_focus(focus);
-    accesskit_windows_queued_events *events =
-        accesskit_windows_adapter_update(state->adapter, update);
-    accesskit_windows_queued_events_raise(events);
+    accesskit_windows_adapter_update(state->adapter, update);
   }
 }
 
@@ -156,9 +154,7 @@ void window_state_press_button(struct window_state *state,
         accesskit_tree_update_with_capacity_and_focus(2, state->focus);
     accesskit_tree_update_push_node(update, ANNOUNCEMENT_ID, announcement);
     accesskit_tree_update_push_node(update, WINDOW_ID, root);
-    accesskit_windows_queued_events *events =
-        accesskit_windows_adapter_update(state->adapter, update);
-    accesskit_windows_queued_events_raise(events);
+    accesskit_windows_adapter_update(state->adapter, update);
   }
 }
 
@@ -170,10 +166,8 @@ void update_window_focus_state(HWND window, bool is_focused) {
   struct window_state *state = get_window_state(window);
   state->is_window_focused = is_focused;
   if (state->adapter != NULL) {
-    accesskit_windows_queued_events *events =
-        accesskit_windows_adapter_update_window_focus_state(state->adapter,
-                                                            is_focused);
-    accesskit_windows_queued_events_raise(events);
+    accesskit_windows_adapter_update_window_focus_state(state->adapter,
+                                                        is_focused);
   }
 }
 

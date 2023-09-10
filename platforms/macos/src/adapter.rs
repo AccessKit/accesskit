@@ -12,11 +12,7 @@ use objc2::{
 use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
 use crate::{
-    appkit::NSView,
-    context::Context,
-    event::{EventGenerator, QueuedEvents},
-    filters::filter,
-    node::can_be_focused,
+    appkit::NSView, context::Context, event::EventGenerator, filters::filter, node::can_be_focused,
     util::*,
 };
 
@@ -50,22 +46,34 @@ impl Adapter {
 
     /// Apply the provided update to the tree.
     ///
-    /// The caller must call [`QueuedEvents::raise`] on the return value.
-    pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
+    /// This method synchronously posts all notifications generated
+    /// by the update. It is unknown whether accessibility methods on the view,
+    /// such as `accessibilityChildren`, can be called while notifications
+    /// are being posted. So to be safe, any mutexes, mutable borrows,
+    /// or the like that are required by those view accessibility methods
+    /// must not be held while this method is being called.
+    pub fn update(&self, update: TreeUpdate) {
         let mut event_generator = EventGenerator::new(self.context.clone());
         let mut tree = self.context.tree.borrow_mut();
         tree.update_and_process_changes(update, &mut event_generator);
-        event_generator.into_result()
+        drop(tree);
+        event_generator.raise_events();
     }
 
     /// Update the tree state based on whether the window is focused.
     ///
-    /// The caller must call [`QueuedEvents::raise`] on the return value.
-    pub fn update_view_focus_state(&self, is_focused: bool) -> QueuedEvents {
+    /// This method synchronously posts all notifications generated
+    /// by the update. It is unknown whether accessibility methods on the view,
+    /// such as `accessibilityChildren`, can be called while notifications
+    /// are being posted. So to be safe, any mutexes, mutable borrows,
+    /// or the like that are required by those view accessibility methods
+    /// must not be held while this method is being called.
+    pub fn update_view_focus_state(&self, is_focused: bool) {
         let mut event_generator = EventGenerator::new(self.context.clone());
         let mut tree = self.context.tree.borrow_mut();
         tree.update_host_focus_state_and_process_changes(is_focused, &mut event_generator);
-        event_generator.into_result()
+        drop(tree);
+        event_generator.raise_events();
     }
 
     pub fn view_children(&self) -> *mut NSArray<NSObject> {
