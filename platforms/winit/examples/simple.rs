@@ -85,8 +85,6 @@ impl State {
         let button_2 = build_button(BUTTON_2_ID, "Button 2", &mut self.node_classes);
         let mut tree = Tree::new(WINDOW_ID);
         tree.app_name = Some(env!("CARGO_BIN_NAME").to_string());
-        tree.toolkit_name = Some(String::from("winit"));
-        tree.toolkit_version = Some(String::from("0.28"));
         let mut result = TreeUpdate {
             nodes: vec![
                 (WINDOW_ID, root),
