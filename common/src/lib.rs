@@ -2236,7 +2236,7 @@ impl JsonSchema for Node {
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct Tree {
-    /// The identifier of the tree's root node
+    /// The identifier of the tree's root node.
     pub root: NodeId,
     /// The name of the application this tree belongs to.
     pub app_name: Option<String>,
