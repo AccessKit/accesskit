@@ -3,11 +3,10 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use accesskit::Role;
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
 
-use crate::{
-    filters::{filter, filter_detached, filter_with_root_exception},
-};
+use crate::filters::{filter, filter_detached, filter_with_root_exception};
 
 pub(crate) enum NodeWrapper<'a> {
     Node(&'a Node<'a>),
@@ -24,7 +23,10 @@ impl<'a> NodeWrapper<'a> {
 
     fn role(&self) -> Option<String> {
         let role = self.node_state().role();
-        todo!()
+        match role {
+            Role::Button => Some("button".into()),
+            _ => todo!(),
+        }
     }
 
     fn name(&self) -> Option<String> {
