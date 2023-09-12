@@ -11,3 +11,5 @@ readme = "README.md"
 edition = "2021"
 
 [dependencies]
+accesskit = { version = "0.11.2", path = "../../common" }
+accesskit_consumer = { version = "0.15.2", path = "../../consumer" }
