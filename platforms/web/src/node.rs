@@ -50,10 +50,31 @@ macro_rules! attributes {
                 $(let value = self.$m();
                 if let Some(value) = value.as_ref() {
                     element.set_attribute(&$name, value).unwrap();
-                }
-                )*
+                })*
                 if let Some(text_content) = self.text_content().as_ref() {
                     element.set_text_content(Some(text_content));
+                }
+            }
+            pub(crate) fn update_attributes(&self, element: &Element, old: &NodeWrapper) {
+                $({
+                    let old_value = old.$m();
+                    let new_value = self.$m();
+                    if old_value != new_value {
+                        if let Some(value) = new_value.as_ref() {
+                            element.set_attribute(&$name, value).unwrap();
+                        } else {
+                            element.remove_attribute(&$name).unwrap();
+                        }
+                    }
+                })*
+                let old_text_content = old.text_content();
+                let new_text_content = self.text_content();
+                if old_text_content != new_text_content {
+                    if let Some(text_content) = new_text_content.as_ref() {
+                        element.set_text_content(Some(text_content));
+                    } else {
+                        element.set_text_content(None);
+                    }
                 }
             }
         }

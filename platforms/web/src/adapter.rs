@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{ActionHandler, NodeId, TreeUpdate};
-use accesskit_consumer::{DetachedNode, Node, Tree, TreeChangeHandler, TreeState};
+use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use std::collections::HashMap;
 use web_sys::{Document, Element};
 
@@ -31,7 +31,8 @@ impl Adapter {
 
         let tree = Tree::new(initial_state, true);
         let mut elements = HashMap::new();
-        add_element(&document, tree.state().root(), &mut elements);
+        let root_node = tree.state().root();
+        add_element(&document, &root_node, &mut elements);
         Self {
             tree,
             action_handler,
@@ -49,12 +50,12 @@ impl Adapter {
     }
 }
 
-fn add_element(document: &Document, node: Node<'_>, elements: &mut HashMap<NodeId, Element>) {
+fn add_element(document: &Document, node: &Node, elements: &mut HashMap<NodeId, Element>) {
     let element = document.create_element("div").unwrap();
     let wrapper = NodeWrapper::Node(&node);
     wrapper.set_all_attributes(&element);
     for child in node.filtered_children(&filter) {
-        add_element(document, child, elements);
+        add_element(document, &child, elements);
     }
 }
 
@@ -64,11 +65,25 @@ struct AdapterChangeHandler<'a> {
 
 impl TreeChangeHandler for AdapterChangeHandler<'_> {
     fn node_added(&mut self, node: &Node) {
+        if filter(node) != FilterResult::Include {
+            return;
+        }
         // TODO
     }
 
     fn node_updated(&mut self, old_node: &DetachedNode, new_node: &Node) {
-        // TODO
+        if filter(new_node) != FilterResult::Include {
+            return;
+        }
+        let element = match self.elements.get(&new_node.id()) {
+            Some(element) => element,
+            None => {
+                return;
+            }
+        };
+        let old_wrapper = NodeWrapper::DetachedNode(old_node);
+        let new_wrapper = NodeWrapper::Node(new_node);
+        new_wrapper.update_attributes(element, &old_wrapper);
     }
 
     fn focus_moved(
