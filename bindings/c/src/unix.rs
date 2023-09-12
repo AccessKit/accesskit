@@ -9,11 +9,7 @@ use crate::{
 };
 use accesskit::Rect;
 use accesskit_unix::Adapter;
-use std::{
-    ffi::CStr,
-    os::raw::{c_char, c_void},
-    ptr,
-};
+use std::{os::raw::c_void, ptr};
 
 pub struct unix_adapter {
     _private: [u8; 0],
