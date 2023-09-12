@@ -37,6 +37,20 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
+    fn aria_label(&self) -> Option<String> {
+        if self.node_state().role() == Role::StaticText {
+            return None;
+        }
+        self.name()
+    }
+
+    fn text_content(&self) -> Option<String> {
+        if self.node_state().role() != Role::StaticText {
+            return None;
+        }
+        self.name()
+    }
+
     fn value(&self) -> Option<String> {
         match self {
             Self::Node(node) => node.value(),
@@ -61,5 +75,5 @@ macro_rules! attributes {
 
 attributes! {
     ("role", role),
-    ("aria-label", name)
+    ("aria-label", aria_label)
 }
