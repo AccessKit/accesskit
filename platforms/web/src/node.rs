@@ -5,6 +5,7 @@
 
 use accesskit::Role;
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
+use web_sys::Element;
 
 use crate::filters::{filter, filter_detached, filter_with_root_exception};
 
@@ -47,10 +48,11 @@ impl<'a> NodeWrapper<'a> {
 macro_rules! attributes {
     ($(($name:literal, $m:ident)),+) => {
         impl NodeWrapper<'_> {
-            fn set_all_attributes(&self) {
-                // TODO: add the element as a parameter
+            fn set_all_attributes(&self, element: &Element) {
                 $(let value = self.$m();
-                // TODO: set the attribute if necessary
+                if let Some(value) = value.as_ref() {
+                    element.set_attribute(&$name, value).unwrap();
+                }
                 )*
             }
         }
