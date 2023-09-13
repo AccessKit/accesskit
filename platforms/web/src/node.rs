@@ -4,26 +4,16 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::Role;
-use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
+use accesskit_consumer::{FilterResult, Node, TreeState};
 use web_sys::Element;
 
-use crate::filters::{filter, filter_detached, filter_with_root_exception};
+use crate::filters::{filter, filter_with_root_exception};
 
-pub(crate) enum NodeWrapper<'a> {
-    Node(&'a Node<'a>),
-    DetachedNode(&'a DetachedNode),
-}
+pub(crate) struct NodeWrapper<'a>(pub(crate) Node<'a>);
 
 impl<'a> NodeWrapper<'a> {
-    fn node_state(&self) -> &'a NodeState {
-        match self {
-            Self::Node(node) => node.state(),
-            Self::DetachedNode(node) => node.state(),
-        }
-    }
-
     fn role(&self) -> Option<String> {
-        let role = self.node_state().role();
+        let role = self.0.role();
         match role {
             Role::Button => Some("button".into()),
             _ => todo!(),
@@ -31,17 +21,11 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn name(&self) -> Option<String> {
-        match self {
-            Self::Node(node) => node.name(),
-            Self::DetachedNode(node) => node.name(),
-        }
+        self.0.name()
     }
 
     fn value(&self) -> Option<String> {
-        match self {
-            Self::Node(node) => node.value(),
-            Self::DetachedNode(node) => node.value(),
-        }
+        self.0.value()
     }
 }
 
