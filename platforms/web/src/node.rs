@@ -52,6 +52,9 @@ macro_rules! attributes {
                     element.set_attribute(&$name, value).unwrap();
                 }
                 )*
+                if let Some(text_content) = self.text_content().as_ref() {
+                    element.set_text_content(Some(text_content));
+                }
             }
         }
     };
