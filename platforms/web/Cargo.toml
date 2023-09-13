@@ -13,3 +13,11 @@ edition = "2021"
 [dependencies]
 accesskit = { version = "0.11.2", path = "../../common" }
 accesskit_consumer = { version = "0.15.2", path = "../../consumer" }
+
+[dependencies.web-sys]
+version = "0.3.64"
+features = [
+    "Document",
+    "Element",
+    "Window"
+]
