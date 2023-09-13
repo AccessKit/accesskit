@@ -5,6 +5,7 @@ members = [
     "consumer",
     "platforms/macos",
     "platforms/unix",
+    "platforms/web",
     "platforms/windows",
     "platforms/winit",
     "bindings/c",
@@ -12,6 +13,7 @@ members = [
 default-members = [
     "common",
     "consumer",
+    "platforms/web",
     "platforms/winit",
     "bindings/c",
 ]

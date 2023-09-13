@@ -8,6 +8,7 @@
     "consumer": {},
     "platforms/macos": {},
     "platforms/unix": {},
+    "platforms/web",
     "platforms/windows": {},
     "platforms/winit": {},
     "bindings/c": {}

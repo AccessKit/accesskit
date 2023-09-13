@@ -1,0 +1,13 @@
+[package]
+name = "accesskit_web"
+version = "0.1.0"
+authors = ["Arnold Loubriat <datatriny@gmail.com>", "Matt Campbell <mattcampbell@pobox.com>"]
+license = "MIT OR Apache-2.0"
+description = "AccessKit UI accessibility infrastructure: Web adapter"
+categories = ["gui"]
+keywords = ["gui", "ui", "accessibility"]
+repository = "https://github.com/AccessKit/accesskit"
+readme = "README.md"
+edition = "2021"
+
+[dependencies]
