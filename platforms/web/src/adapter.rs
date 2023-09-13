@@ -6,11 +6,14 @@
 use accesskit::{ActionHandler, NodeId, TreeUpdate};
 use accesskit_consumer::{DetachedNode, Node, Tree, TreeChangeHandler, TreeState};
 use std::collections::HashMap;
-use web_sys::Element;
+use web_sys::{Document, Element};
+
+use crate::{filters::filter, node::NodeWrapper};
 
 pub struct Adapter {
     tree: Tree,
     action_handler: Box<dyn ActionHandler>,
+    document: Document,
     root: Element,
     elements: HashMap<NodeId, Element>,
 }
@@ -25,11 +28,16 @@ impl Adapter {
         let parent = document.get_element_by_id(parent_id).unwrap();
         let root = document.create_element("div").unwrap();
         parent.append_child(&root).unwrap();
+
+        let tree = Tree::new(initial_state, true);
+        let mut elements = HashMap::new();
+        add_element(&document, tree.state().root(), &mut elements);
         Self {
-            tree: Tree::new(initial_state, true),
+            tree,
             action_handler,
+            document,
             root,
-            elements: HashMap::new(),
+            elements,
         }
     }
 
@@ -38,6 +46,15 @@ impl Adapter {
             elements: &mut self.elements,
         };
         self.tree.update_and_process_changes(update, &mut handler);
+    }
+}
+
+fn add_element(document: &Document, node: Node<'_>, elements: &mut HashMap<NodeId, Element>) {
+    let element = document.create_element("div").unwrap();
+    let wrapper = NodeWrapper::Node(&node);
+    wrapper.set_all_attributes(&element);
+    for child in node.filtered_children(&filter) {
+        add_element(document, child, elements);
     }
 }
 
