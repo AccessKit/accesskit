@@ -101,6 +101,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "accesskit_web"
+version = "0.1.0"
+
+[[package]]
 name = "accesskit_windows"
 version = "0.22.0"
 dependencies = [

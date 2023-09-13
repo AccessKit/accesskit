@@ -1,0 +1,14 @@
+[package]
+name = "accesskit_web"
+version = "0.1.0"
+authors.workspace = true
+license.workspace = true
+description = "AccessKit UI accessibility infrastructure: Web adapter"
+categories.workspace = true
+keywords = ["gui", "ui", "accessibility"]
+repository.workspace = true
+readme = "README.md"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
