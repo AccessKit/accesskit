@@ -46,7 +46,7 @@ impl<'a> NodeWrapper<'a> {
 macro_rules! attributes {
     ($(($name:literal, $m:ident)),+) => {
         impl NodeWrapper<'_> {
-            fn set_all_attributes(&self, element: &Element) {
+            pub(crate) fn set_all_attributes(&self, element: &Element) {
                 $(let value = self.$m();
                 if let Some(value) = value.as_ref() {
                     element.set_attribute(&$name, value).unwrap();
