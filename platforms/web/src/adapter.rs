@@ -32,7 +32,7 @@ impl Adapter {
         let tree = Tree::new(initial_state, true);
         let mut elements = HashMap::new();
         let root_node = tree.state().root();
-        add_element(&document, &root_node, &mut elements);
+        add_element(&document, &root, &root_node, &mut elements);
         Self {
             tree,
             action_handler,
@@ -50,13 +50,20 @@ impl Adapter {
     }
 }
 
-fn add_element(document: &Document, node: &Node, elements: &mut HashMap<NodeId, Element>) {
+fn add_element(
+    document: &Document,
+    parent: &Element,
+    node: &Node,
+    elements: &mut HashMap<NodeId, Element>,
+) {
     let element = document.create_element("div").unwrap();
     let wrapper = NodeWrapper::Node(&node);
     wrapper.set_all_attributes(&element);
+    parent.append_child(&element).unwrap();
     for child in node.filtered_children(&filter) {
-        add_element(document, &child, elements);
+        add_element(document, &element, &child, elements);
     }
+    elements.insert(node.id(), element);
 }
 
 struct AdapterChangeHandler<'a> {
