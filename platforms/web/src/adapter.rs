@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{ActionHandler, NodeId, TreeUpdate};
-use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
+use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use std::collections::HashMap;
 use web_sys::{Document, Element};
 
@@ -57,7 +57,7 @@ fn add_element(
     elements: &mut HashMap<NodeId, Element>,
 ) {
     let element = document.create_element("div").unwrap();
-    let wrapper = NodeWrapper::Node(&node);
+    let wrapper = NodeWrapper(*node);
     wrapper.set_all_attributes(&element);
     parent.append_child(&element).unwrap();
     for child in node.filtered_children(&filter) {
@@ -78,7 +78,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         // TODO
     }
 
-    fn node_updated(&mut self, old_node: &DetachedNode, new_node: &Node) {
+    fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
         if filter(new_node) != FilterResult::Include {
             return;
         }
@@ -88,21 +88,16 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 return;
             }
         };
-        let old_wrapper = NodeWrapper::DetachedNode(old_node);
-        let new_wrapper = NodeWrapper::Node(new_node);
+        let old_wrapper = NodeWrapper(*old_node);
+        let new_wrapper = NodeWrapper(*new_node);
         new_wrapper.update_attributes(element, &old_wrapper);
     }
 
-    fn focus_moved(
-        &mut self,
-        _old_node: Option<&DetachedNode>,
-        new_node: Option<&Node>,
-        _current_state: &TreeState,
-    ) {
+    fn focus_moved(&mut self, _old_node: Option<&Node>, new_node: Option<&Node>) {
         // TODO
     }
 
-    fn node_removed(&mut self, node: &DetachedNode, current_state: &TreeState) {
+    fn node_removed(&mut self, node: &Node) {
         // TODO
     }
 }

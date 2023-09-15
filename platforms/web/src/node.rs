@@ -25,14 +25,14 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn aria_label(&self) -> Option<String> {
-        if self.node_state().role() == Role::StaticText {
+        if self.0.role() == Role::Label {
             return None;
         }
         self.name()
     }
 
     fn text_content(&self) -> Option<String> {
-        if self.node_state().role() != Role::StaticText {
+        if self.0.role() != Role::Label {
             return None;
         }
         self.name()

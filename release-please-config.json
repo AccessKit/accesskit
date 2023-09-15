@@ -10,6 +10,7 @@
     "platforms/macos": {},
     "platforms/unix": {},
     "platforms/web",
+    "platforms/web/run-wasm",
     "platforms/windows": {},
     "platforms/winit": {},
     "bindings/c": {},
