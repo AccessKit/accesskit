@@ -120,6 +120,8 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
     }
 
     fn node_removed(&mut self, node: &DetachedNode, current_state: &TreeState) {
-        // TODO
+        if let Some(element) = self.elements.remove(&node.id()) {
+            element.remove();
+        }
     }
 }
