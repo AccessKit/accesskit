@@ -32,7 +32,7 @@ impl Adapter {
         let tree = Tree::new(initial_state, true);
         let mut elements = HashMap::new();
         let root_node = tree.state().root();
-        add_element(&document, &root, &root_node, &mut elements);
+        add_element_recursive(&document, &root, &root_node, &mut elements);
         Self {
             tree,
             action_handler,
@@ -44,6 +44,7 @@ impl Adapter {
 
     pub fn update(&mut self, update: TreeUpdate) {
         let mut handler = AdapterChangeHandler {
+            document: &mut self.document,
             elements: &mut self.elements,
         };
         self.tree.update_and_process_changes(update, &mut handler);
@@ -55,18 +56,29 @@ fn add_element(
     parent: &Element,
     node: &Node,
     elements: &mut HashMap<NodeId, Element>,
-) {
+) -> Element {
     let element = document.create_element("div").unwrap();
     let wrapper = NodeWrapper(*node);
     wrapper.set_all_attributes(&element);
     parent.append_child(&element).unwrap();
+    elements.insert(node.id(), element.clone());
+    element
+}
+
+fn add_element_recursive(
+    document: &Document,
+    parent: &Element,
+    node: &Node,
+    elements: &mut HashMap<NodeId, Element>,
+) {
+    let element = add_element(document, parent, node, elements);
     for child in node.filtered_children(&filter) {
-        add_element(document, &element, &child, elements);
+        add_element_recursive(document, &element, &child, elements);
     }
-    elements.insert(node.id(), element);
 }
 
 struct AdapterChangeHandler<'a> {
+    document: &'a Document,
     elements: &'a mut HashMap<NodeId, Element>,
 }
 
@@ -75,7 +87,12 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         if filter(node) != FilterResult::Include {
             return;
         }
-        // TODO
+        if self.elements.contains_key(&node.id()) {
+            return;
+        }
+        let parent = node.filtered_parent(&filter).unwrap();
+        let parent_element = self.elements.get(&parent.id()).unwrap().clone();
+        add_element(self.document, &parent_element, node, self.elements);
     }
 
     fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
