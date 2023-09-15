@@ -157,6 +157,9 @@ fn main() {
         .build(&event_loop)
         .unwrap();
 
+    #[cfg(target_arch = "wasm32")]
+    wasm::insert_canvas(&window);
+
     let adapter = {
         let state = Arc::clone(&state);
         Adapter::new(
@@ -229,4 +232,23 @@ fn main() {
             _ => (),
         }
     });
+}
+
+#[cfg(target_arch = "wasm32")]
+mod wasm {
+    use winit::window::Window;
+
+    pub fn insert_canvas(window: &Window) {
+        use winit::platform::web::WindowExtWebSys;
+
+        let canvas = window.canvas();
+
+        let window = web_sys::window().unwrap();
+        let document = window.document().unwrap();
+        let body = document.body().unwrap();
+
+        // Set a background color for the canvas to make it easier to tell where the canvas is for debugging purposes.
+        canvas.style().set_css_text("background-color: crimson;");
+        body.append_child(&canvas).unwrap();
+    }
 }

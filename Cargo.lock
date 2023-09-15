@@ -103,6 +103,7 @@ dependencies = [
  "accesskit_macos",
  "accesskit_unix",
  "accesskit_windows",
+ "web-sys",
  "winit",
 ]
 

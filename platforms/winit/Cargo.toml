@@ -33,3 +33,6 @@ accesskit_unix = { version = "0.5.2", path = "../unix", optional = true, default
 
 [dev-dependencies]
 winit = "0.28"
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+web-sys = { version = "0.3.22", features = ["Document", "Element", "Window"] }
