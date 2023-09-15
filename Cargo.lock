@@ -133,6 +133,7 @@ dependencies = [
  "accesskit_windows",
  "raw-window-handle 0.5.2",
  "raw-window-handle 0.6.0",
+ "web-sys",
  "winit",
 ]
 

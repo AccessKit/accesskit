@@ -165,6 +165,10 @@ impl Application {
             .with_visible(false);
 
         let window = event_loop.create_window(window_attributes)?;
+
+        #[cfg(target_arch = "wasm32")]
+        wasm::insert_canvas(&window);
+
         let adapter = Adapter::with_event_loop_proxy(&window, self.event_loop_proxy.clone());
         window.set_visible(true);
 
@@ -276,4 +280,23 @@ fn main() -> Result<(), Box<dyn Error>> {
     let event_loop = EventLoop::with_user_event().build()?;
     let mut state = Application::new(event_loop.create_proxy());
     event_loop.run_app(&mut state).map_err(Into::into)
+}
+
+#[cfg(target_arch = "wasm32")]
+mod wasm {
+    use winit::window::Window;
+
+    pub fn insert_canvas(window: &Window) {
+        use winit::platform::web::WindowExtWebSys;
+
+        let canvas = window.canvas().unwrap();
+
+        let window = web_sys::window().unwrap();
+        let document = window.document().unwrap();
+        let body = document.body().unwrap();
+
+        // Set a background color for the canvas to make it easier to tell where the canvas is for debugging purposes.
+        canvas.style().set_css_text("background-color: crimson;");
+        body.append_child(&canvas).unwrap();
+    }
 }
