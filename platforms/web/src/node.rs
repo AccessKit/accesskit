@@ -5,7 +5,7 @@
 
 use accesskit::Role;
 use accesskit_consumer::{FilterResult, Node, TreeState};
-use web_sys::Element;
+use web_sys::HtmlElement;
 
 use crate::filters::{filter, filter_with_root_exception};
 
@@ -35,7 +35,6 @@ impl<'a> NodeWrapper<'a> {
             Role::List => Some("list".into()),
             Role::Table => Some("table".into()),
             Role::Switch => Some("switch".into()),
-            Role::ToggleButton => Some("button".into()),
             Role::Menu => Some("menu".into()),
             Role::MultilineTextInput => Some("textbox".into()),
             Role::SearchInput => Some("searchbox".into()),
@@ -180,12 +179,16 @@ impl<'a> NodeWrapper<'a> {
     fn value(&self) -> Option<String> {
         self.0.value()
     }
+
+    fn is_focusable(&self) -> Option<String> {
+        self.0.is_focusable().then(|| "-1".into())
+    }
 }
 
 macro_rules! attributes {
     ($(($name:literal, $m:ident)),+) => {
         impl NodeWrapper<'_> {
-            pub(crate) fn set_all_attributes(&self, element: &Element) {
+            pub(crate) fn set_all_attributes(&self, element: &HtmlElement) {
                 $(let value = self.$m();
                 if let Some(value) = value.as_ref() {
                     element.set_attribute(&$name, value).unwrap();
@@ -194,7 +197,7 @@ macro_rules! attributes {
                     element.set_text_content(Some(text_content));
                 }
             }
-            pub(crate) fn update_attributes(&self, element: &Element, old: &NodeWrapper) {
+            pub(crate) fn update_attributes(&self, element: &HtmlElement, old: &NodeWrapper) {
                 $({
                     let old_value = old.$m();
                     let new_value = self.$m();
@@ -222,5 +225,6 @@ macro_rules! attributes {
 
 attributes! {
     ("role", role),
-    ("aria-label", aria_label)
+    ("aria-label", aria_label),
+    ("tabindex", is_focusable)
 }

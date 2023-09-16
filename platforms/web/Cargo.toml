@@ -14,11 +14,13 @@ rust-version.workspace = true
 [dependencies]
 accesskit = { version = "0.16.0", path = "../../common" }
 accesskit_consumer = { version = "0.24.0", path = "../../consumer" }
+wasm-bindgen = "0.2.92"
 
 [dependencies.web-sys]
 version = "0.3.69"
 features = [
     "Document",
     "Element",
+    "HtmlElement",
     "Window"
 ]

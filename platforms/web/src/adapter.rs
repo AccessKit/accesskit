@@ -6,7 +6,8 @@
 use accesskit::{ActionHandler, NodeId, TreeUpdate};
 use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use std::collections::HashMap;
-use web_sys::{Document, Element};
+use wasm_bindgen::JsCast;
+use web_sys::{Document, HtmlElement};
 
 use crate::{filters::filter, node::NodeWrapper};
 
@@ -14,8 +15,8 @@ pub struct Adapter {
     tree: Tree,
     action_handler: Box<dyn ActionHandler>,
     document: Document,
-    root: Element,
-    elements: HashMap<NodeId, Element>,
+    root: HtmlElement,
+    elements: HashMap<NodeId, HtmlElement>,
 }
 
 impl Adapter {
@@ -26,13 +27,21 @@ impl Adapter {
     ) -> Self {
         let document = web_sys::window().unwrap().document().unwrap();
         let parent = document.get_element_by_id(parent_id).unwrap();
-        let root = document.create_element("div").unwrap();
+        let root = document
+            .create_element("div")
+            .unwrap()
+            .unchecked_into::<HtmlElement>();
         parent.append_child(&root).unwrap();
 
         let tree = Tree::new(initial_state, true);
         let mut elements = HashMap::new();
         let root_node = tree.state().root();
         add_element_recursive(&document, &root, &root_node, &mut elements);
+        if let Some(focus_id) = tree.state().focus_id() {
+            if let Some(element) = elements.get(&focus_id) {
+                focus(&element);
+            }
+        }
         Self {
             tree,
             action_handler,
@@ -53,11 +62,14 @@ impl Adapter {
 
 fn add_element(
     document: &Document,
-    parent: &Element,
+    parent: &HtmlElement,
     node: &Node,
-    elements: &mut HashMap<NodeId, Element>,
-) -> Element {
-    let element = document.create_element("div").unwrap();
+    elements: &mut HashMap<NodeId, HtmlElement>,
+) -> HtmlElement {
+    let element = document
+        .create_element("div")
+        .unwrap()
+        .unchecked_into::<HtmlElement>();
     let wrapper = NodeWrapper(*node);
     wrapper.set_all_attributes(&element);
     parent.append_child(&element).unwrap();
@@ -67,9 +79,9 @@ fn add_element(
 
 fn add_element_recursive(
     document: &Document,
-    parent: &Element,
+    parent: &HtmlElement,
     node: &Node,
-    elements: &mut HashMap<NodeId, Element>,
+    elements: &mut HashMap<NodeId, HtmlElement>,
 ) {
     let element = add_element(document, parent, node, elements);
     for child in node.filtered_children(&filter) {
@@ -77,9 +89,17 @@ fn add_element_recursive(
     }
 }
 
+fn focus(element: &HtmlElement) {
+    element.focus().unwrap();
+}
+
+fn blur(element: &HtmlElement) {
+    element.blur().unwrap();
+}
+
 struct AdapterChangeHandler<'a> {
     document: &'a Document,
-    elements: &'a mut HashMap<NodeId, Element>,
+    elements: &'a mut HashMap<NodeId, HtmlElement>,
 }
 
 impl TreeChangeHandler for AdapterChangeHandler<'_> {
@@ -110,8 +130,16 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         new_wrapper.update_attributes(element, &old_wrapper);
     }
 
-    fn focus_moved(&mut self, _old_node: Option<&Node>, new_node: Option<&Node>) {
-        // TODO
+    fn focus_moved(&mut self, old_node: Option<&Node>, new_node: Option<&Node>) {
+        if let Some(new_node) = new_node {
+            if let Some(element) = self.elements.get(&new_node.id()) {
+                focus(element);
+            }
+        } else if let Some(old_node) = old_node {
+            if let Some(element) = self.elements.get(&old_node.id()) {
+                blur(element);
+            }
+        }
     }
 
     fn node_removed(&mut self, node: &Node) {
