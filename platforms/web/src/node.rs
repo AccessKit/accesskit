@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::Role;
+use accesskit::{Checked, Role};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
 use web_sys::HtmlElement;
 
@@ -169,6 +169,10 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
+    fn tabindex(&self) -> Option<String> {
+        self.node_state().is_focusable().then(|| "-1".into())
+    }
+
     fn name(&self) -> Option<String> {
         match self {
             Self::Node(node) => node.name(),
@@ -190,15 +194,31 @@ impl<'a> NodeWrapper<'a> {
         self.name()
     }
 
-    fn value(&self) -> Option<String> {
+    fn aria_checked(&self) -> Option<String> {
+        self.node_state().checked().map(|value| match value {
+            Checked::False => "false".into(),
+            Checked::True => "true".into(),
+            Checked::Mixed => "mixed".into(),
+        })
+    }
+
+    fn aria_valuemax(&self) -> Option<String> {
+        self.node_state().max_numeric_value().map(|value| value.to_string())
+    }
+
+    fn aria_valuemin(&self) -> Option<String> {
+        self.node_state().min_numeric_value().map(|value| value.to_string())
+    }
+
+    fn aria_valuenow(&self) -> Option<String> {
+        self.node_state().numeric_value().map(|value| value.to_string())
+    }
+
+    fn aria_valuetext(&self) -> Option<String> {
         match self {
             Self::Node(node) => node.value(),
             Self::DetachedNode(node) => node.value(),
         }
-    }
-
-    fn is_focusable(&self) -> Option<String> {
-        self.node_state().is_focusable().then(|| "-1".into())
     }
 }
 
@@ -242,6 +262,11 @@ macro_rules! attributes {
 
 attributes! {
     ("role", role),
+    ("tabindex", tabindex),
     ("aria-label", aria_label),
-    ("tabindex", is_focusable)
+    ("aria-checked", aria_checked),
+    ("aria-valuemax", aria_valuemax),
+    ("aria-valuemin", aria_valuemin),
+    ("aria-valuenow", aria_valuenow),
+    ("aria-valuetext", aria_valuetext)
 }
