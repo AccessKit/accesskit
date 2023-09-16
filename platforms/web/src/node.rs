@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::Role;
+use accesskit::{Role, Toggled};
 use accesskit_consumer::{FilterResult, Node, TreeState};
 use web_sys::HtmlElement;
 
@@ -158,6 +158,10 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
+    fn tabindex(&self) -> Option<String> {
+        self.0.is_focusable().then(|| "-1".into())
+    }
+
     fn name(&self) -> Option<String> {
         self.0.name()
     }
@@ -176,12 +180,28 @@ impl<'a> NodeWrapper<'a> {
         self.name()
     }
 
-    fn value(&self) -> Option<String> {
-        self.0.value()
+    fn aria_checked(&self) -> Option<String> {
+        self.0.toggled().map(|value| match value {
+            Toggled::False => "false".into(),
+            Toggled::True => "true".into(),
+            Toggled::Mixed => "mixed".into(),
+        })
     }
 
-    fn is_focusable(&self) -> Option<String> {
-        self.0.is_focusable().then(|| "-1".into())
+    fn aria_valuemax(&self) -> Option<String> {
+        self.0.max_numeric_value().map(|value| value.to_string())
+    }
+
+    fn aria_valuemin(&self) -> Option<String> {
+        self.0.min_numeric_value().map(|value| value.to_string())
+    }
+
+    fn aria_valuenow(&self) -> Option<String> {
+        self.0.numeric_value().map(|value| value.to_string())
+    }
+
+    fn aria_valuetext(&self) -> Option<String> {
+        self.0.value()
     }
 }
 
@@ -225,6 +245,11 @@ macro_rules! attributes {
 
 attributes! {
     ("role", role),
+    ("tabindex", tabindex),
     ("aria-label", aria_label),
-    ("tabindex", is_focusable)
+    ("aria-checked", aria_checked),
+    ("aria-valuemax", aria_valuemax),
+    ("aria-valuemin", aria_valuemin),
+    ("aria-valuenow", aria_valuenow),
+    ("aria-valuetext", aria_valuetext)
 }
