@@ -7,7 +7,7 @@ use crate::{
     atspi::{ObjectId, OwnedObjectAddress},
     PlatformNode, PlatformRootNode,
 };
-use atspi::{accessible::Role, Interface, InterfaceSet, StateSet};
+use atspi::{Interface, InterfaceSet, Role, StateSet};
 use zbus::{fdo, names::OwnedUniqueName, MessageHeader};
 
 pub(crate) struct AccessibleInterface<T> {

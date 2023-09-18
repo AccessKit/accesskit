@@ -9,7 +9,10 @@ use crate::{
     PlatformRootNode,
 };
 use async_once_cell::OnceCell;
-use atspi::{bus::BusProxy, socket::SocketProxy, EventBody};
+use atspi::{
+    events::EventBody,
+    proxy::{bus::BusProxy, socket::SocketProxy},
+};
 use serde::Serialize;
 use std::{
     collections::HashMap,

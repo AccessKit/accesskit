@@ -23,10 +23,7 @@ use accesskit::{
 };
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
 use async_channel::Sender;
-use atspi::{
-    accessible::Role as AtspiRole, component::Layer, CoordType, Interface, InterfaceSet, State,
-    StateSet,
-};
+use atspi::{CoordType, Interface, InterfaceSet, Layer, Role as AtspiRole, State, StateSet};
 use std::{
     iter::FusedIterator,
     sync::{Arc, RwLock, RwLockReadGuard, Weak},
