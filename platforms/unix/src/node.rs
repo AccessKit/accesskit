@@ -18,12 +18,15 @@ use crate::{
     util::WindowBounds,
 };
 use accesskit::{
-    Action, ActionData, ActionRequest, Affine, Checked, DefaultActionVerb, NodeId, Point, Rect,
-    Role,
+    Action, ActionData, ActionRequest, Affine, Checked, DefaultActionVerb, Live, NodeId, Point,
+    Rect, Role,
 };
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
 use async_channel::Sender;
-use atspi::{CoordType, Interface, InterfaceSet, Layer, Role as AtspiRole, State, StateSet};
+use atspi::{
+    CoordType, Interface, InterfaceSet, Layer, Live as AtspiLive, Role as AtspiRole, State,
+    StateSet,
+};
 use std::{
     iter::FusedIterator,
     sync::{Arc, RwLock, RwLockReadGuard, Weak},
@@ -56,12 +59,11 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
-    pub fn name(&self) -> String {
+    pub fn name(&self) -> Option<String> {
         match self {
             Self::Node { node, .. } => node.name(),
             Self::DetachedNode { node, .. } => node.name(),
         }
-        .unwrap_or_default()
     }
 
     pub fn description(&self) -> String {
@@ -412,6 +414,18 @@ impl<'a> NodeWrapper<'a> {
         interfaces
     }
 
+    pub(crate) fn live(&self) -> AtspiLive {
+        let live = match self {
+            Self::Node { node, .. } => node.live(),
+            Self::DetachedNode { node, .. } => node.live(),
+        };
+        match live {
+            Live::Off => AtspiLive::None,
+            Live::Polite => AtspiLive::Polite,
+            Live::Assertive => AtspiLive::Assertive,
+        }
+    }
+
     fn n_actions(&self) -> i32 {
         match self.node_state().default_action_verb() {
             Some(_) => 1,
@@ -502,15 +516,29 @@ impl<'a> NodeWrapper<'a> {
         let adapter = self.adapter();
         let name = self.name();
         if name != old.name() {
+            let name = name.unwrap_or_default();
             events
                 .send_blocking(Event::Object {
                     target: ObjectId::Node {
                         adapter,
                         node: self.id(),
                     },
-                    event: ObjectEvent::PropertyChanged(Property::Name(name)),
+                    event: ObjectEvent::PropertyChanged(Property::Name(name.clone())),
                 })
                 .unwrap();
+
+            let live = self.live();
+            if live != AtspiLive::None {
+                events
+                    .send_blocking(Event::Object {
+                        target: ObjectId::Node {
+                            adapter,
+                            node: self.id(),
+                        },
+                        event: ObjectEvent::Announcement(name, live),
+                    })
+                    .unwrap();
+            }
         }
         let description = self.description();
         if description != old.description() {
@@ -707,7 +735,7 @@ impl PlatformNode {
     pub fn name(&self) -> fdo::Result<String> {
         self.resolve(|node| {
             let wrapper = self.node_wrapper(&node);
-            Ok(wrapper.name())
+            Ok(wrapper.name().unwrap_or_default())
         })
     }
 

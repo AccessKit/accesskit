@@ -19,7 +19,7 @@ use crate::{
 use accesskit::{ActionHandler, NodeId, Rect, Role, TreeUpdate};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use async_channel::{Receiver, Sender};
-use atspi::{Interface, InterfaceSet, State};
+use atspi::{Interface, InterfaceSet, Live, State};
 use futures_lite::StreamExt;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -51,6 +51,22 @@ impl AdapterChangeHandler<'_> {
                 .adapter_index(self.adapter.id)
                 .unwrap();
             self.adapter.window_created(adapter_index, node.id());
+        }
+
+        let live = node.live();
+        if live != Live::None {
+            if let Some(name) = node.name() {
+                self.adapter
+                    .events
+                    .send_blocking(Event::Object {
+                        target: ObjectId::Node {
+                            adapter: self.adapter.id,
+                            node: node.id(),
+                        },
+                        event: ObjectEvent::Announcement(name, live),
+                    })
+                    .unwrap();
+            }
         }
     }
 
@@ -409,7 +425,7 @@ impl Adapter {
                     adapter: self.id,
                     node: window.id(),
                 },
-                name: window.name(),
+                name: window.name().unwrap_or_default(),
                 event: WindowEvent::Activated,
             })
             .unwrap();
@@ -440,7 +456,7 @@ impl Adapter {
                     adapter: self.id,
                     node: window.id(),
                 },
-                name: window.name(),
+                name: window.name().unwrap_or_default(),
                 event: WindowEvent::Deactivated,
             })
             .unwrap();
