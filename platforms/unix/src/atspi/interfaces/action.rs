@@ -25,8 +25,8 @@ impl ActionInterface {
 #[dbus_interface(name = "org.a11y.atspi.Action")]
 impl ActionInterface {
     #[dbus_interface(property)]
-    fn n_actions(&self) -> i32 {
-        self.0.n_actions().unwrap_or(0)
+    fn n_actions(&self) -> fdo::Result<i32> {
+        self.0.n_actions()
     }
 
     fn get_description(&self, _index: i32) -> &str {

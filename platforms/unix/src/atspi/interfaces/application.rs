@@ -11,12 +11,12 @@ pub(crate) struct ApplicationInterface(pub PlatformRootNode);
 #[dbus_interface(name = "org.a11y.atspi.Application")]
 impl ApplicationInterface {
     #[dbus_interface(property)]
-    fn toolkit_name(&self) -> String {
+    fn toolkit_name(&self) -> fdo::Result<String> {
         self.0.toolkit_name()
     }
 
     #[dbus_interface(property)]
-    fn version(&self) -> String {
+    fn version(&self) -> fdo::Result<String> {
         self.0.toolkit_version()
     }
 
@@ -26,7 +26,7 @@ impl ApplicationInterface {
     }
 
     #[dbus_interface(property)]
-    fn id(&self) -> i32 {
+    fn id(&self) -> fdo::Result<i32> {
         self.0.id()
     }
 
