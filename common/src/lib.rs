@@ -2348,5 +2348,5 @@ pub trait ActionHandler {
     /// This method may queue the request and handle it asynchronously.
     /// This behavior is preferred over blocking, e.g. when dispatching
     /// the request to another thread.
-    fn do_action(&self, request: ActionRequest);
+    fn do_action(&mut self, request: ActionRequest);
 }

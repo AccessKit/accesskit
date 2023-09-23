@@ -295,7 +295,7 @@ impl PlatformRange {
         let range = self.upgrade_for_read(tree.state())?;
         let request = f(range);
         drop(tree);
-        context.action_handler.do_action(request);
+        context.do_action(request);
         Ok(())
     }
 
