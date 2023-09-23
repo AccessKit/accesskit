@@ -7,7 +7,7 @@ use crate::{
     atspi::{OwnedObjectAddress, Rect},
     PlatformNode,
 };
-use atspi::{component::Layer, CoordType};
+use atspi::{CoordType, Layer};
 use zbus::{fdo, MessageHeader};
 
 pub(crate) struct ComponentInterface {

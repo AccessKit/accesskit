@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::atspi::{ObjectId, Rect};
-use atspi::{accessible::Role, State};
+use atspi::{Role, State};
 
 pub(crate) enum Event {
     Object {

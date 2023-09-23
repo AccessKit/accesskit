@@ -12,18 +12,17 @@ edition = "2021"
 
 [features]
 default = ["async-io"]
-async-io = ["zbus/async-io"]
-tokio = ["dep:tokio", "zbus/tokio"]
+async-io = ["atspi/async-std", "zbus/async-io"]
+tokio = ["dep:tokio", "atspi/tokio", "zbus/tokio"]
 
 [dependencies]
 accesskit = { version = "0.11.2", path = "../../common" }
 accesskit_consumer = { version = "0.15.2", path = "../../consumer" }
-async-channel = "1.8.0"
+async-channel = "1.9"
 async-once-cell = "0.5.3"
-atspi = { version = "0.10.1", default-features = false }
-futures-lite = "1.12.0"
+atspi = { version = "0.19", default-features = false }
+futures-lite = "1.13"
 once_cell = "1.17.1"
 serde = "1.0"
-tokio = { version = "1.10.0", optional = true, features = ["rt", "net", "time"] }
-zbus = { version = "3.6", default-features = false }
-
+tokio = { version = "1.32.0", optional = true, features = ["rt", "net", "time"] }
+zbus = { version = "3.14", default-features = false }

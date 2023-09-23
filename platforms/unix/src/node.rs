@@ -23,10 +23,7 @@ use accesskit::{
 };
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
 use async_channel::Sender;
-use atspi::{
-    accessible::Role as AtspiRole, component::Layer, CoordType, Interface, InterfaceSet, State,
-    StateSet,
-};
+use atspi::{CoordType, Interface, InterfaceSet, Layer, Role as AtspiRole, State, StateSet};
 use std::{
     iter::FusedIterator,
     sync::{Arc, RwLock, RwLockReadGuard, Weak},
@@ -997,20 +994,19 @@ impl PlatformRootNode {
         Err(unknown_object(&self.accessible_id()))
     }
 
-    pub(crate) fn name(&self) -> String {
+    pub(crate) fn name(&self) -> fdo::Result<String> {
         self.resolve_app_context(|context| Ok(context.name.clone()))
-            .unwrap_or_default()
     }
 
-    pub(crate) fn parent(&self) -> Option<OwnedObjectAddress> {
+    pub(crate) fn parent(&self) -> fdo::Result<Option<OwnedObjectAddress>> {
         self.resolve_app_context(|context| Ok(context.desktop_address.clone()))
-            .ok()
-            .flatten()
     }
 
-    pub(crate) fn child_count(&self) -> i32 {
-        self.resolve_app_context(|context| Ok(i32::try_from(context.adapters.len()).unwrap_or(-1)))
-            .unwrap_or(-1)
+    pub(crate) fn child_count(&self) -> fdo::Result<i32> {
+        self.resolve_app_context(|context| {
+            i32::try_from(context.adapters.len())
+                .map_err(|_| fdo::Error::Failed("Too many children.".into()))
+        })
     }
 
     pub(crate) fn accessible_id(&self) -> ObjectId {
@@ -1046,19 +1042,16 @@ impl PlatformRootNode {
         })
     }
 
-    pub(crate) fn toolkit_name(&self) -> String {
+    pub(crate) fn toolkit_name(&self) -> fdo::Result<String> {
         self.resolve_app_context(|context| Ok(context.toolkit_name.clone()))
-            .unwrap_or_default()
     }
 
-    pub(crate) fn toolkit_version(&self) -> String {
+    pub(crate) fn toolkit_version(&self) -> fdo::Result<String> {
         self.resolve_app_context(|context| Ok(context.toolkit_version.clone()))
-            .unwrap_or_default()
     }
 
-    pub(crate) fn id(&self) -> i32 {
+    pub(crate) fn id(&self) -> fdo::Result<i32> {
         self.resolve_app_context(|context| Ok(context.id.unwrap_or(-1)))
-            .unwrap_or(-1)
     }
 
     pub(crate) fn set_id(&mut self, id: i32) -> fdo::Result<()> {
