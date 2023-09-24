@@ -248,6 +248,18 @@ impl<'a> Position<'a> {
         Range::new(self.root_node, self.inner, self.inner)
     }
 
+    pub fn to_global_character_index(&self) -> usize {
+        let mut total_length = 0usize;
+        for node in self.root_node.inline_text_boxes() {
+            if node.id() == self.inner.node.id() {
+                return total_length + self.inner.character_index;
+            }
+            let node_text = node.data().value().unwrap();
+            total_length += node_text.chars().count();
+        }
+        panic!("invalid position")
+    }
+
     pub fn to_global_utf16_index(&self) -> usize {
         let mut total_length = 0usize;
         for node in self.root_node.inline_text_boxes() {
@@ -996,6 +1008,30 @@ impl<'a> Node<'a> {
         Some(Range::new(*self, pos.inner, end.inner))
     }
 
+    pub fn text_position_from_global_character_index(&self, index: usize) -> Option<Position> {
+        let mut total_length = 0usize;
+        for node in self.inline_text_boxes() {
+            let new_total_length = total_length + node.data().value().unwrap().chars().count();
+            if index >= total_length && index < new_total_length {
+                return Some(Position {
+                    root_node: *self,
+                    inner: InnerPosition {
+                        node,
+                        character_index: index - total_length,
+                    },
+                });
+            }
+            total_length = new_total_length;
+        }
+        if index == total_length {
+            return Some(Position {
+                root_node: *self,
+                inner: self.document_end(),
+            });
+        }
+        None
+    }
+
     pub fn text_position_from_global_utf16_index(&self, index: usize) -> Option<Position> {
         let mut total_length = 0usize;
         for node in self.inline_text_boxes() {
@@ -1692,6 +1728,31 @@ mod tests {
     }
 
     #[test]
+    fn to_global_character_index() {
+        let tree = main_multiline_tree(None);
+        let state = tree.state();
+        let node = state.node_by_id(NodeId(1)).unwrap();
+
+        {
+            let range = node.document_range();
+            assert_eq!(range.start().to_global_character_index(), 0);
+            assert_eq!(range.end().to_global_character_index(), 96);
+        }
+
+        {
+            let range = node.document_range();
+            let pos = range.start().forward_to_line_end();
+            assert_eq!(pos.to_global_character_index(), 38);
+            let pos = range.start().forward_to_line_start();
+            assert_eq!(pos.to_global_character_index(), 38);
+            let pos = pos.forward_to_character_start();
+            assert_eq!(pos.to_global_character_index(), 39);
+            let pos = pos.forward_to_line_start();
+            assert_eq!(pos.to_global_character_index(), 55);
+        }
+    }
+
+    #[test]
     fn to_global_utf16_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
@@ -1779,6 +1840,85 @@ mod tests {
         }
 
         assert!(node.line_range_from_index(6).is_none());
+    }
+
+    #[test]
+    fn text_position_from_global_character_index() {
+        let tree = main_multiline_tree(None);
+        let state = tree.state();
+        let node = state.node_by_id(NodeId(1)).unwrap();
+
+        {
+            let pos = node.text_position_from_global_character_index(0).unwrap();
+            assert!(pos.is_document_start());
+        }
+
+        {
+            let pos = node.text_position_from_global_character_index(17).unwrap();
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_to_character_end());
+            assert_eq!(range.text(), "\u{a0}");
+        }
+
+        {
+            let pos = node.text_position_from_global_character_index(18).unwrap();
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_to_character_end());
+            assert_eq!(range.text(), "l");
+        }
+
+        {
+            let pos = node.text_position_from_global_character_index(37).unwrap();
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_to_character_end());
+            assert_eq!(range.text(), " ");
+        }
+
+        {
+            let pos = node.text_position_from_global_character_index(38).unwrap();
+            assert!(!pos.is_paragraph_start());
+            assert!(pos.is_line_start());
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_to_character_end());
+            assert_eq!(range.text(), "t");
+        }
+
+        {
+            let pos = node.text_position_from_global_character_index(54).unwrap();
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_to_character_end());
+            assert_eq!(range.text(), "\n");
+        }
+
+        {
+            let pos = node.text_position_from_global_character_index(55).unwrap();
+            assert!(pos.is_paragraph_start());
+            assert!(pos.is_line_start());
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_to_character_end());
+            assert_eq!(range.text(), "A");
+        }
+
+        {
+            let pos = node.text_position_from_global_character_index(94).unwrap();
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_to_character_end());
+            assert_eq!(range.text(), "\u{1f60a}");
+        }
+
+        {
+            let pos = node.text_position_from_global_character_index(95).unwrap();
+            let mut range = pos.to_degenerate_range();
+            range.set_end(pos.forward_to_character_end());
+            assert_eq!(range.text(), "\n");
+        }
+
+        {
+            let pos = node.text_position_from_global_character_index(96).unwrap();
+            assert!(pos.is_document_end());
+        }
+
+        assert!(node.text_position_from_global_character_index(97).is_none());
     }
 
     #[test]

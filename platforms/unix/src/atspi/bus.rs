@@ -124,6 +124,10 @@ impl Bus {
             )
             .await?;
         }
+        if new_interfaces.contains(Interface::Text) {
+            self.register_interface(&path, TextInterface::new(node.clone()))
+                .await?;
+        }
         if new_interfaces.contains(Interface::Value) {
             self.register_interface(&path, ValueInterface::new(node.clone()))
                 .await?;
@@ -165,6 +169,9 @@ impl Bus {
             self.unregister_interface::<ComponentInterface>(&path)
                 .await?;
         }
+        if old_interfaces.contains(Interface::Text) {
+            self.unregister_interface::<TextInterface>(&path).await?;
+        }
         if old_interfaces.contains(Interface::Value) {
             self.unregister_interface::<ValueInterface>(&path).await?;
         }
@@ -201,9 +208,11 @@ impl Bus {
             ObjectEvent::ActiveDescendantChanged(_) => "ActiveDescendantChanged",
             ObjectEvent::Announcement(_, _) => "Announcement",
             ObjectEvent::BoundsChanged(_) => "BoundsChanged",
+            ObjectEvent::CaretMoved(_) => "TextCaretMoved",
             ObjectEvent::ChildAdded(_, _) | ObjectEvent::ChildRemoved(_) => "ChildrenChanged",
             ObjectEvent::PropertyChanged(_) => "PropertyChange",
             ObjectEvent::StateChanged(_, _) => "StateChanged",
+            ObjectEvent::TextSelectionChanged => "TextSelectionChanged",
         };
         let properties = HashMap::new();
         match event {
@@ -251,6 +260,21 @@ impl Bus {
                         detail1: 0,
                         detail2: 0,
                         any_data: Value::from(bounds),
+                        properties,
+                    },
+                )
+                .await
+            }
+            ObjectEvent::CaretMoved(offset) => {
+                self.emit_event(
+                    target,
+                    interface,
+                    signal,
+                    EventBody {
+                        kind: "",
+                        detail1: offset,
+                        detail2: 0,
+                        any_data: "".into(),
                         properties,
                     },
                 )
@@ -340,6 +364,21 @@ impl Bus {
                         detail1: value as i32,
                         detail2: 0,
                         any_data: 0i32.into(),
+                        properties,
+                    },
+                )
+                .await
+            }
+            ObjectEvent::TextSelectionChanged => {
+                self.emit_event(
+                    target,
+                    interface,
+                    signal,
+                    EventBody {
+                        kind: "",
+                        detail1: 0,
+                        detail2: 0,
+                        any_data: "".into(),
                         properties,
                     },
                 )

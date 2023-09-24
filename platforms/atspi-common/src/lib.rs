@@ -15,7 +15,9 @@ mod rect;
 pub mod simplified;
 mod util;
 
-pub use atspi_common::{CoordType, InterfaceSet, Layer, Role, State, StateSet};
+pub use atspi_common::{
+    CoordType, Granularity, InterfaceSet, Layer, Role, ScrollType, State, StateSet,
+};
 
 pub use action::*;
 pub use adapter::{next_adapter_id, Adapter};

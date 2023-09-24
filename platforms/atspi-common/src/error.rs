@@ -13,6 +13,10 @@ pub enum Error {
     TooManyChildren,
     #[error("index out of range")]
     IndexOutOfRange,
+    #[error("too many characters")]
+    TooManyCharacters,
+    #[error("unsupported text granularity")]
+    UnsupportedTextGranularity,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

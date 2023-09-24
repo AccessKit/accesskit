@@ -10,12 +10,12 @@
 
 use accesskit::{
     Action, ActionData, ActionRequest, Affine, DefaultActionVerb, Live, NodeId, Point, Rect, Role,
-    Toggled,
+    TextSelection, Toggled,
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
 use atspi_common::{
-    CoordType, Interface, InterfaceSet, Layer, Live as AtspiLive, Role as AtspiRole, State,
-    StateSet,
+    CoordType, Granularity, Interface, InterfaceSet, Layer, Live as AtspiLive, Role as AtspiRole,
+    ScrollType, State, StateSet,
 };
 use std::{
     collections::HashMap,
@@ -28,7 +28,10 @@ use crate::{
     adapter::Adapter,
     context::{AppContext, Context},
     filters::filter,
-    util::WindowBounds,
+    util::{
+        text_position_from_offset, text_range_bounds_from_offsets, text_range_from_offsets,
+        WindowBounds,
+    },
     Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
 };
 
@@ -283,6 +286,9 @@ impl<'a> NodeWrapper<'a> {
         if state.parent_id().is_none() && state.role() == Role::Window && is_window_focused {
             atspi_state.insert(State::Active);
         }
+        if state.is_text_input() && !state.is_read_only() {
+            atspi_state.insert(State::Editable);
+        }
         // TODO: Focus and selection.
         if state.is_focusable() {
             atspi_state.insert(State::Focusable);
@@ -358,6 +364,10 @@ impl<'a> NodeWrapper<'a> {
         self.0.raw_bounds().is_some() || self.is_root()
     }
 
+    fn supports_text(&self) -> bool {
+        self.0.supports_text_ranges()
+    }
+
     fn supports_value(&self) -> bool {
         self.current_value().is_some()
     }
@@ -369,6 +379,9 @@ impl<'a> NodeWrapper<'a> {
         }
         if self.supports_component() {
             interfaces.insert(Interface::Component);
+        }
+        if self.supports_text() {
+            interfaces.insert(Interface::Text);
         }
         if self.supports_value() {
             interfaces.insert(Interface::Value);
@@ -430,6 +443,10 @@ impl<'a> NodeWrapper<'a> {
             })
     }
 
+    fn raw_text_selection(&self) -> Option<&TextSelection> {
+        self.0.raw_text_selection()
+    }
+
     fn current_value(&self) -> Option<f64> {
         self.0.numeric_value()
     }
@@ -443,6 +460,7 @@ impl<'a> NodeWrapper<'a> {
         self.notify_state_changes(adapter, old);
         self.notify_property_changes(adapter, old);
         self.notify_bounds_changes(window_bounds, adapter, old);
+        self.notify_text_selection_changes(adapter, old);
         self.notify_children_changes(adapter, old);
     }
 
@@ -522,6 +540,26 @@ impl<'a> NodeWrapper<'a> {
         if self.raw_bounds_and_transform() != old.raw_bounds_and_transform() {
             if let Some(extents) = self.extents(window_bounds, CoordType::Window) {
                 adapter.emit_object_event(self.id(), ObjectEvent::BoundsChanged(extents.into()));
+            }
+        }
+    }
+
+    fn notify_text_selection_changes(&self, adapter: &Adapter, old: &NodeWrapper) {
+        if !self.supports_text() || self.raw_text_selection() == old.raw_text_selection() {
+            return;
+        }
+
+        if let Some(selection) = self.0.text_selection() {
+            if !selection.is_degenerate() {
+                adapter.emit_object_event(self.id(), ObjectEvent::TextSelectionChanged);
+            }
+
+            let old_caret_position = old.raw_text_selection().map(|selection| selection.focus);
+            let new_caret_position = self.raw_text_selection().map(|selection| selection.focus);
+            if old_caret_position != new_caret_position {
+                if let Ok(offset) = selection.end().to_global_character_index().try_into() {
+                    adapter.emit_object_event(self.id(), ObjectEvent::CaretMoved(offset));
+                }
             }
         }
     }
@@ -755,6 +793,13 @@ impl PlatformNode {
         })
     }
 
+    pub fn supports_text(&self) -> Result<bool> {
+        self.resolve(|node| {
+            let wrapper = NodeWrapper(&node);
+            Ok(wrapper.supports_text())
+        })
+    }
+
     pub fn supports_value(&self) -> Result<bool> {
         self.resolve(|node| {
             let wrapper = NodeWrapper(&node);
@@ -887,6 +932,277 @@ impl PlatformNode {
             Ok(())
         })?;
         Ok(true)
+    }
+
+    pub fn character_count(&self) -> Result<i32> {
+        self.resolve(|node| {
+            node.document_range()
+                .end()
+                .to_global_character_index()
+                .try_into()
+                .map_err(|_| Error::TooManyCharacters)
+        })
+    }
+
+    pub fn caret_offset(&self) -> Result<i32> {
+        self.resolve(|node| {
+            node.text_selection_focus().map_or(Ok(-1), |focus| {
+                focus
+                    .to_global_character_index()
+                    .try_into()
+                    .map_err(|_| Error::TooManyCharacters)
+            })
+        })
+    }
+
+    pub fn string_at_offset(
+        &self,
+        offset: i32,
+        granularity: Granularity,
+    ) -> Result<(String, i32, i32)> {
+        self.resolve(|node| {
+            let start_offset =
+                text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
+            let start = match granularity {
+                Granularity::Char => start_offset,
+                Granularity::Line if start_offset.is_line_start() => start_offset,
+                Granularity::Line => start_offset.backward_to_line_start(),
+                Granularity::Paragraph if start_offset.is_paragraph_start() => start_offset,
+                Granularity::Paragraph => start_offset.backward_to_paragraph_start(),
+                Granularity::Sentence => return Err(Error::UnsupportedTextGranularity),
+                Granularity::Word if start_offset.is_word_start() => start_offset,
+                Granularity::Word => start_offset.backward_to_word_start(),
+            };
+            let end = match granularity {
+                Granularity::Char => start_offset.forward_to_character_end(),
+                Granularity::Line => start_offset.forward_to_line_end(),
+                Granularity::Paragraph => start_offset.forward_to_paragraph_end(),
+                Granularity::Sentence => return Err(Error::UnsupportedTextGranularity),
+                Granularity::Word => start_offset.forward_to_word_end(),
+            };
+            let mut range = start.to_degenerate_range();
+            range.set_end(end);
+            let text = range.text();
+            let start = start
+                .to_global_character_index()
+                .try_into()
+                .map_err(|_| Error::TooManyCharacters)?;
+            let end = end
+                .to_global_character_index()
+                .try_into()
+                .map_err(|_| Error::TooManyCharacters)?;
+
+            Ok((text, start, end))
+        })
+    }
+
+    pub fn text(&self, start_offset: i32, end_offset: i32) -> Result<String> {
+        self.resolve(|node| {
+            let range = text_range_from_offsets(&node, start_offset, end_offset)
+                .ok_or(Error::IndexOutOfRange)?;
+            Ok(range.text())
+        })
+    }
+
+    pub fn set_caret_offset(&self, offset: i32) -> Result<bool> {
+        self.resolve_with_context(|node, context| {
+            let offset = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
+            context.do_action(ActionRequest {
+                action: Action::SetTextSelection,
+                target: node.id(),
+                data: Some(ActionData::SetTextSelection(
+                    offset.to_degenerate_range().to_text_selection(),
+                )),
+            });
+            Ok(true)
+        })
+    }
+
+    pub fn character_at_offset(&self, offset: i32) -> Result<i32> {
+        self.resolve(|node| {
+            let start = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
+            let mut range = start.to_degenerate_range();
+            range.set_end(start.forward_to_character_end());
+            Ok(range.text().chars().next().unwrap_or('\0') as i32)
+        })
+    }
+
+    pub fn character_extents(&self, offset: i32, coord_type: CoordType) -> Result<AtspiRect> {
+        self.resolve_with_context(|node, context| {
+            let start = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
+            let mut range = start.to_degenerate_range();
+            range.set_end(start.forward_to_character_end());
+            if let Some(bounds) = range.bounding_boxes().first() {
+                let window_bounds = context.read_root_window_bounds();
+                let top_left = window_bounds.top_left(coord_type, node.is_root());
+                let new_origin = Point::new(top_left.x + bounds.x0, top_left.y + bounds.y0);
+                Ok(bounds.with_origin(new_origin).into())
+            } else {
+                Ok(AtspiRect::INVALID)
+            }
+        })
+    }
+
+    pub fn offset_at_point(&self, x: i32, y: i32, coord_type: CoordType) -> Result<i32> {
+        self.resolve_with_context(|node, context| {
+            let window_bounds = context.read_root_window_bounds();
+            let top_left = window_bounds.top_left(coord_type, node.is_root());
+            let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
+            let point = node.transform().inverse() * point;
+            node.text_position_at_point(point)
+                .to_global_character_index()
+                .try_into()
+                .map_err(|_| Error::TooManyCharacters)
+        })
+    }
+
+    pub fn n_selections(&self) -> Result<i32> {
+        self.resolve(|node| {
+            Ok(
+                match node.text_selection().filter(|range| !range.is_degenerate()) {
+                    Some(_) => 1,
+                    None => 0,
+                },
+            )
+        })
+    }
+
+    pub fn selection(&self, selection_num: i32) -> Result<(i32, i32)> {
+        if selection_num != 0 {
+            return Ok((-1, -1));
+        }
+        self.resolve(|node| {
+            node.text_selection()
+                .filter(|range| !range.is_degenerate())
+                .map_or(Ok((-1, -1)), |range| {
+                    let start = range
+                        .start()
+                        .to_global_character_index()
+                        .try_into()
+                        .map_err(|_| Error::TooManyCharacters)?;
+                    let end = range
+                        .end()
+                        .to_global_character_index()
+                        .try_into()
+                        .map_err(|_| Error::TooManyCharacters)?;
+
+                    Ok((start, end))
+                })
+        })
+    }
+
+    pub fn add_selection(&self, start_offset: i32, end_offset: i32) -> Result<bool> {
+        // We only support one selection.
+        self.set_selection(0, start_offset, end_offset)
+    }
+
+    pub fn remove_selection(&self, selection_num: i32) -> Result<bool> {
+        if selection_num != 0 {
+            return Ok(false);
+        }
+
+        self.resolve_with_context(|node, context| {
+            // Simply collapse the selection to the position of the caret if a caret is
+            // visible, otherwise set the selection to 0.
+            let selection_end = node
+                .text_selection_focus()
+                .unwrap_or_else(|| node.document_range().start());
+            context.do_action(ActionRequest {
+                action: Action::SetTextSelection,
+                target: node.id(),
+                data: Some(ActionData::SetTextSelection(
+                    selection_end.to_degenerate_range().to_text_selection(),
+                )),
+            });
+            Ok(true)
+        })
+    }
+
+    pub fn set_selection(
+        &self,
+        selection_num: i32,
+        start_offset: i32,
+        end_offset: i32,
+    ) -> Result<bool> {
+        if selection_num != 0 {
+            return Ok(false);
+        }
+        self.resolve_with_context(|node, context| {
+            let range = text_range_from_offsets(&node, start_offset, end_offset)
+                .ok_or(Error::IndexOutOfRange)?;
+            context.do_action(ActionRequest {
+                action: Action::SetTextSelection,
+                target: node.id(),
+                data: Some(ActionData::SetTextSelection(range.to_text_selection())),
+            });
+            Ok(true)
+        })
+    }
+
+    pub fn range_extents(
+        &self,
+        start_offset: i32,
+        end_offset: i32,
+        coord_type: CoordType,
+    ) -> Result<AtspiRect> {
+        self.resolve_with_context(|node, context| {
+            if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
+                let window_bounds = context.read_root_window_bounds();
+                let top_left = window_bounds.top_left(coord_type, node.is_root());
+                let new_origin = Point::new(top_left.x + rect.x0, top_left.y + rect.y0);
+                Ok(rect.with_origin(new_origin).into())
+            } else {
+                Ok(AtspiRect::INVALID)
+            }
+        })
+    }
+
+    pub fn scroll_substring_to(
+        &self,
+        start_offset: i32,
+        end_offset: i32,
+        _: ScrollType,
+    ) -> Result<bool> {
+        self.resolve_with_context(|node, context| {
+            if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
+                context.do_action(ActionRequest {
+                    action: Action::ScrollIntoView,
+                    target: node.id(),
+                    data: Some(ActionData::ScrollTargetRect(rect)),
+                });
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        })
+    }
+
+    pub fn scroll_substring_to_point(
+        &self,
+        start_offset: i32,
+        end_offset: i32,
+        coord_type: CoordType,
+        x: i32,
+        y: i32,
+    ) -> Result<bool> {
+        self.resolve_with_context(|node, context| {
+            let window_bounds = context.read_root_window_bounds();
+            let top_left = window_bounds.top_left(coord_type, node.is_root());
+
+            if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
+                let point = Point::new(
+                    x as f64 - top_left.x - rect.x0,
+                    y as f64 - top_left.y - rect.y0,
+                );
+                context.do_action(ActionRequest {
+                    action: Action::ScrollToPoint,
+                    target: node.id(),
+                    data: Some(ActionData::ScrollToPoint(point)),
+                });
+                return Ok(true);
+            }
+            Ok(false)
+        })
     }
 
     pub fn minimum_value(&self) -> Result<f64> {

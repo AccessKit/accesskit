@@ -14,7 +14,7 @@ use crate::{
     WindowEvent,
 };
 
-pub use crate::{CoordType, Error, Layer, Rect, Result, Role, StateSet};
+pub use crate::{CoordType, Error, Granularity, Layer, Rect, Result, Role, ScrollType, StateSet};
 
 #[derive(Clone, Hash, PartialEq)]
 pub enum Accessible {
@@ -215,6 +215,153 @@ impl Accessible {
         }
     }
 
+    pub fn supports_text(&self) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.supports_text(),
+            Self::Root(_) => Ok(false),
+        }
+    }
+
+    pub fn character_count(&self) -> Result<i32> {
+        match self {
+            Self::Node(node) => node.character_count(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn caret_offset(&self) -> Result<i32> {
+        match self {
+            Self::Node(node) => node.caret_offset(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn string_at_offset(
+        &self,
+        offset: i32,
+        granularity: Granularity,
+    ) -> Result<(String, i32, i32)> {
+        match self {
+            Self::Node(node) => node.string_at_offset(offset, granularity),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn text(&self, start_offset: i32, end_offset: i32) -> Result<String> {
+        match self {
+            Self::Node(node) => node.text(start_offset, end_offset),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn set_caret_offset(&self, offset: i32) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.set_caret_offset(offset),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn character_at_offset(&self, offset: i32) -> Result<i32> {
+        match self {
+            Self::Node(node) => node.character_at_offset(offset),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn character_extents(&self, offset: i32, coord_type: CoordType) -> Result<Rect> {
+        match self {
+            Self::Node(node) => node.character_extents(offset, coord_type),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn offset_at_point(&self, x: i32, y: i32, coord_type: CoordType) -> Result<i32> {
+        match self {
+            Self::Node(node) => node.offset_at_point(x, y, coord_type),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn n_selections(&self) -> Result<i32> {
+        match self {
+            Self::Node(node) => node.n_selections(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn selection(&self, selection_num: i32) -> Result<(i32, i32)> {
+        match self {
+            Self::Node(node) => node.selection(selection_num),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn add_selection(&self, start_offset: i32, end_offset: i32) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.add_selection(start_offset, end_offset),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn remove_selection(&self, selection_num: i32) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.remove_selection(selection_num),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn set_selection(
+        &self,
+        selection_num: i32,
+        start_offset: i32,
+        end_offset: i32,
+    ) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.set_selection(selection_num, start_offset, end_offset),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn range_extents(
+        &self,
+        start_offset: i32,
+        end_offset: i32,
+        coord_type: CoordType,
+    ) -> Result<Rect> {
+        match self {
+            Self::Node(node) => node.range_extents(start_offset, end_offset, coord_type),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn scroll_substring_to(
+        &self,
+        start_offset: i32,
+        end_offset: i32,
+        scroll_type: ScrollType,
+    ) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.scroll_substring_to(start_offset, end_offset, scroll_type),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn scroll_substring_to_point(
+        &self,
+        start_offset: i32,
+        end_offset: i32,
+        coord_type: CoordType,
+        x: i32,
+        y: i32,
+    ) -> Result<bool> {
+        match self {
+            Self::Node(node) => {
+                node.scroll_substring_to_point(start_offset, end_offset, coord_type, x, y)
+            }
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
     pub fn supports_value(&self) -> Result<bool> {
         match self {
             Self::Node(node) => node.supports_value(),
@@ -309,6 +456,13 @@ impl Event {
                         detail2: 0,
                         data: Some(EventData::Rect(bounds)),
                     },
+                    ObjectEvent::CaretMoved(offset) => Self {
+                        kind: "object:text-caret-moved".into(),
+                        source,
+                        detail1: offset,
+                        detail2: 0,
+                        data: None,
+                    },
                     ObjectEvent::ChildAdded(index, child) => {
                         let child = Accessible::Node(adapter.platform_node(child));
                         Self {
@@ -363,6 +517,13 @@ impl Event {
                         kind: format!("object:state-changed:{}", String::from(state)),
                         source,
                         detail1: value as i32,
+                        detail2: 0,
+                        data: None,
+                    },
+                    ObjectEvent::TextSelectionChanged => Self {
+                        kind: "object:text-selection-changed".into(),
+                        source,
+                        detail1: 0,
                         detail2: 0,
                         data: None,
                     },
