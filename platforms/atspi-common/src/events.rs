@@ -36,10 +36,12 @@ pub enum ObjectEvent {
     ActiveDescendantChanged(NodeId),
     Announcement(String, Live),
     BoundsChanged(Rect),
+    CaretMoved(i32),
     ChildAdded(usize, NodeId),
     ChildRemoved(NodeId),
     PropertyChanged(Property),
     StateChanged(State, bool),
+    TextSelectionChanged,
 }
 
 #[derive(Debug)]
