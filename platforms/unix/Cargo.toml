@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_unix"
-version = "0.5.2"
+version = "0.6.0"
 authors = ["Arnold Loubriat <datatriny@gmail.com>"]
 license = "MIT OR Apache-2.0"
 description = "AccessKit UI accessibility infrastructure: Linux adapter"
@@ -16,8 +16,8 @@ async-io = ["atspi/async-std", "zbus/async-io"]
 tokio = ["dep:tokio", "atspi/tokio", "zbus/tokio"]
 
 [dependencies]
-accesskit = { version = "0.11.2", path = "../../common" }
-accesskit_consumer = { version = "0.15.2", path = "../../consumer" }
+accesskit = { version = "0.12.0", path = "../../common" }
+accesskit_consumer = { version = "0.16.0", path = "../../consumer" }
 async-channel = "1.9"
 async-once-cell = "0.5.3"
 atspi = { version = "0.19", default-features = false }

@@ -1,6 +1,6 @@
 [package]
 name = "accesskit"
-version = "0.11.2"
+version = "0.12.0"
 authors = ["Matt Campbell <mattcampbell@pobox.com>"]
 license = "MIT OR Apache-2.0"
 description = "UI accessibility infrastructure across platforms"

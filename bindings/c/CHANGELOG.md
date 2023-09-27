@@ -18,6 +18,47 @@
   * dependencies
     * accesskit_windows bumped from 0.14.2 to 0.14.3
 
+## [0.6.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.5.1...accesskit_c-v0.6.0) (2023-09-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* Allow providing app_name, toolkit_name and toolkit_version in Tree, remove parameters from unix adapter constructor ([#291](https://github.com/AccessKit/accesskit/issues/291))
+* Make `ActionHandler::do_action` take `&mut self` ([#296](https://github.com/AccessKit/accesskit/issues/296))
+* Clean up roles and properties ([#289](https://github.com/AccessKit/accesskit/issues/289))
+* Drop next/previous focus properties ([#288](https://github.com/AccessKit/accesskit/issues/288))
+* Drop `Tree::root_scroller` ([#279](https://github.com/AccessKit/accesskit/issues/279))
+* Decouple in-tree focus from host window/view focus ([#278](https://github.com/AccessKit/accesskit/issues/278))
+* Switch to simple unsigned 64-bit integer for node IDs ([#276](https://github.com/AccessKit/accesskit/issues/276))
+
+### Features
+
+* Allow providing app_name, toolkit_name and toolkit_version in Tree, remove parameters from unix adapter constructor ([#291](https://github.com/AccessKit/accesskit/issues/291)) ([5313860](https://github.com/AccessKit/accesskit/commit/531386023257150f49b5e4be942f359855fb7cb6))
+
+
+### Bug Fixes
+
+* Drop `Tree::root_scroller` ([#279](https://github.com/AccessKit/accesskit/issues/279)) ([fc6c4e0](https://github.com/AccessKit/accesskit/commit/fc6c4e0091d5b257a3869a468fca144a1453cebc))
+* Drop next/previous focus properties ([#288](https://github.com/AccessKit/accesskit/issues/288)) ([d35c7c1](https://github.com/AccessKit/accesskit/commit/d35c7c149a650dfedf1b031c0668adad585659fa))
+
+
+### Code Refactoring
+
+* Clean up roles and properties ([#289](https://github.com/AccessKit/accesskit/issues/289)) ([4fc9c55](https://github.com/AccessKit/accesskit/commit/4fc9c55c91812472593923d93ff89d75ff305ee4))
+* Decouple in-tree focus from host window/view focus ([#278](https://github.com/AccessKit/accesskit/issues/278)) ([d360d20](https://github.com/AccessKit/accesskit/commit/d360d20cf951e7643b81a5303006c9f7daa5bd56))
+* Make `ActionHandler::do_action` take `&mut self` ([#296](https://github.com/AccessKit/accesskit/issues/296)) ([4fc7846](https://github.com/AccessKit/accesskit/commit/4fc7846d732d61fb45c023060ebab96801a0053e))
+* Switch to simple unsigned 64-bit integer for node IDs ([#276](https://github.com/AccessKit/accesskit/issues/276)) ([3eadd48](https://github.com/AccessKit/accesskit/commit/3eadd48ec47854faa94a94ebf910ec08f514642f))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.11.2 to 0.12.0
+    * accesskit_windows bumped from 0.14.3 to 0.15.0
+    * accesskit_macos bumped from 0.9.0 to 0.10.0
+    * accesskit_unix bumped from 0.5.2 to 0.6.0
+
 ## [0.5.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.4.0...accesskit_c-v0.5.0) (2023-08-08)
 
 
