@@ -2236,13 +2236,25 @@ impl JsonSchema for Node {
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct Tree {
+    /// The identifier of the tree's root node.
     pub root: NodeId,
+    /// The name of the application this tree belongs to.
+    pub app_name: Option<String>,
+    /// The name of the UI toolkit in use.
+    pub toolkit_name: Option<String>,
+    /// The version of the UI toolkit.
+    pub toolkit_version: Option<String>,
 }
 
 impl Tree {
     #[inline]
     pub fn new(root: NodeId) -> Tree {
-        Tree { root }
+        Tree {
+            root,
+            app_name: None,
+            toolkit_name: None,
+            toolkit_version: None,
+        }
     }
 }
 

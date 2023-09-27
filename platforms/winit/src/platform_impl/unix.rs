@@ -18,14 +18,7 @@ impl Adapter {
         source: impl 'static + FnOnce() -> TreeUpdate,
         action_handler: ActionHandlerBox,
     ) -> Self {
-        let adapter = UnixAdapter::new(
-            String::new(),
-            String::new(),
-            String::new(),
-            source,
-            false,
-            action_handler,
-        );
+        let adapter = UnixAdapter::new(source, false, action_handler);
         Self { adapter }
     }
 

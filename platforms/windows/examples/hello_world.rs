@@ -105,13 +105,16 @@ impl InnerWindowState {
         let root = self.build_root();
         let button_1 = build_button(BUTTON_1_ID, "Button 1", &mut self.node_classes);
         let button_2 = build_button(BUTTON_2_ID, "Button 2", &mut self.node_classes);
+        let mut tree = Tree::new(WINDOW_ID);
+        tree.app_name = Some(env!("CARGO_BIN_NAME").to_string());
+
         let mut result = TreeUpdate {
             nodes: vec![
                 (WINDOW_ID, root),
                 (BUTTON_1_ID, button_1),
                 (BUTTON_2_ID, button_2),
             ],
-            tree: Some(Tree::new(WINDOW_ID)),
+            tree: Some(tree),
             focus: self.focus,
         };
         if let Some(announcement) = &self.announcement {

@@ -209,9 +209,6 @@ pub struct Adapter {
 impl Adapter {
     /// Create a new Unix adapter.
     pub fn new(
-        app_name: String,
-        toolkit_name: String,
-        toolkit_version: String,
         initial_state: impl 'static + FnOnce() -> TreeUpdate,
         is_window_focused: bool,
         action_handler: Box<dyn ActionHandler + Send>,
@@ -230,7 +227,11 @@ impl Adapter {
         let tree = Tree::new(initial_state(), is_window_focused);
         let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::SeqCst);
         let root_id = tree.state().root_id();
-        let app_context = AppContext::get_or_init(app_name, toolkit_name, toolkit_version);
+        let app_context = AppContext::get_or_init(
+            tree.state().app_name().unwrap_or_default(),
+            tree.state().toolkit_name().unwrap_or_default(),
+            tree.state().toolkit_version().unwrap_or_default(),
+        );
         let context = Context::new(tree, action_handler, &app_context);
         let adapter_index = app_context.write().unwrap().push_adapter(id, &context);
         block_on(async {

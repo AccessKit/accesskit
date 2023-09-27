@@ -11,7 +11,7 @@ const accesskit_node_id WINDOW_ID = 0;
 const accesskit_node_id BUTTON_1_ID = 1;
 const accesskit_node_id BUTTON_2_ID = 2;
 const accesskit_node_id ANNOUNCEMENT_ID = 3;
-const accesskit_node_id INITIAL_FOCUS = BUTTON_1_ID;
+#define INITIAL_FOCUS BUTTON_1_ID
 
 const accesskit_rect BUTTON_1_RECT = {20.0, 20.0, 100.0, 60.0};
 
@@ -88,7 +88,9 @@ accesskit_tree_update *window_state_build_initial_tree(
       build_button(BUTTON_2_ID, "Button 2", state->node_classes);
   accesskit_tree_update *result = accesskit_tree_update_with_capacity_and_focus(
       (state->announcement != NULL) ? 4 : 3, state->focus);
-  accesskit_tree_update_set_tree(result, accesskit_tree_new(WINDOW_ID));
+  accesskit_tree *tree = accesskit_tree_new(WINDOW_ID);
+  accesskit_tree_set_app_name(tree, "Hello World");
+  accesskit_tree_update_set_tree(result, tree);
   accesskit_tree_update_push_node(result, WINDOW_ID, root);
   accesskit_tree_update_push_node(result, BUTTON_1_ID, button_1);
   accesskit_tree_update_push_node(result, BUTTON_2_ID, button_2);

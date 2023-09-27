@@ -4,6 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::Point;
+use accesskit_consumer::TreeState;
 use std::{
     mem::ManuallyDrop,
     sync::{Arc, Weak},
@@ -240,6 +241,27 @@ pub(crate) fn window_title(hwnd: HWND) -> Option<BSTR> {
     let len = result.0 as usize;
     unsafe { buffer.set_len(len) };
     Some(BSTR::from_wide(&buffer).unwrap())
+}
+
+pub(crate) fn app_and_toolkit_description(state: &TreeState) -> Option<String> {
+    let app_name = state.app_name();
+    let toolkit_name = state.toolkit_name();
+    let toolkit_version = state.toolkit_version();
+    match (&app_name, &toolkit_name, &toolkit_version) {
+        (Some(app_name), Some(toolkit_name), Some(toolkit_version)) => Some(format!(
+            "{} <{} {}>",
+            app_name, toolkit_name, toolkit_version
+        )),
+        (Some(app_name), Some(toolkit_name), None) => {
+            Some(format!("{} <{}>", app_name, toolkit_name))
+        }
+        (None, Some(toolkit_name), Some(toolkit_version)) => {
+            Some(format!("{} {}", toolkit_name, toolkit_version))
+        }
+        _ if toolkit_name.is_some() => toolkit_name,
+        _ if app_name.is_some() => app_name,
+        _ => None,
+    }
 }
 
 pub(crate) fn upgrade<T>(weak: &Weak<T>) -> Result<Arc<T>> {

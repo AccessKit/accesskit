@@ -524,6 +524,19 @@ impl PlatformNode {
         })
     }
 
+    fn resolve_with_tree_state_and_context<F, T>(&self, f: F) -> Result<T>
+    where
+        for<'a> F: FnOnce(Node<'a>, &TreeState, &Context) -> Result<T>,
+    {
+        self.with_tree_state_and_context(|state, context| {
+            if let Some(node) = state.node_by_id(self.node_id) {
+                f(node, state, context)
+            } else {
+                Err(element_not_available())
+            }
+        })
+    }
+
     fn resolve<F, T>(&self, f: F) -> Result<T>
     where
         for<'a> F: FnOnce(Node<'a>) -> Result<T>,
@@ -597,16 +610,25 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
     }
 
     fn GetPropertyValue(&self, property_id: UIA_PROPERTY_ID) -> Result<VARIANT> {
-        self.resolve_with_context(|node, context| {
+        self.resolve_with_tree_state_and_context(|node, state, context| {
             let wrapper = NodeWrapper::Node(&node);
             let mut result = wrapper.get_property_value(property_id);
-            if result.is_empty() && node.is_root() {
-                match property_id {
-                    UIA_NamePropertyId => {
-                        result = window_title(context.hwnd).into();
+            if result.is_empty() {
+                if node.is_root() {
+                    match property_id {
+                        UIA_NamePropertyId => {
+                            result = window_title(context.hwnd).into();
+                        }
+                        UIA_NativeWindowHandlePropertyId => {
+                            result = (context.hwnd.0 as i32).into();
+                        }
+                        _ => (),
                     }
-                    UIA_NativeWindowHandlePropertyId => {
-                        result = (context.hwnd.0 as i32).into();
+                }
+                match property_id {
+                    UIA_FrameworkIdPropertyId => result = state.toolkit_name().into(),
+                    UIA_ProviderDescriptionPropertyId => {
+                        result = app_and_toolkit_description(state).into()
                     }
                     _ => (),
                 }

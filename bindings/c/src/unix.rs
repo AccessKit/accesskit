@@ -9,11 +9,7 @@ use crate::{
 };
 use accesskit::Rect;
 use accesskit_unix::Adapter;
-use std::{
-    ffi::CStr,
-    os::raw::{c_char, c_void},
-    ptr,
-};
+use std::{os::raw::c_void, ptr};
 
 pub struct unix_adapter {
     _private: [u8; 0],
@@ -26,27 +22,17 @@ impl CastPtr for unix_adapter {
 impl BoxCastPtr for unix_adapter {}
 
 impl unix_adapter {
-    /// Caller is responsible for freeing `app_name`, `toolkit_name` and `toolkit_version`.
     /// This function will take ownership of the pointer returned by `initial_state`, which can't be null.
     #[no_mangle]
     pub extern "C" fn accesskit_unix_adapter_new(
-        app_name: *const c_char,
-        toolkit_name: *const c_char,
-        toolkit_version: *const c_char,
         initial_state: tree_update_factory,
         initial_state_userdata: *mut c_void,
         is_window_focused: bool,
         handler: *mut action_handler,
     ) -> *mut unix_adapter {
-        let app_name = unsafe { CStr::from_ptr(app_name).to_string_lossy().into() };
-        let toolkit_name = unsafe { CStr::from_ptr(toolkit_name).to_string_lossy().into() };
-        let toolkit_version = unsafe { CStr::from_ptr(toolkit_version).to_string_lossy().into() };
         let initial_state = initial_state.unwrap();
         let handler = box_from_ptr(handler);
         let adapter = Adapter::new(
-            app_name,
-            toolkit_name,
-            toolkit_version,
             move || *box_from_ptr(initial_state(initial_state_userdata)),
             is_window_focused,
             handler,

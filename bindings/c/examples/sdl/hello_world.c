@@ -16,7 +16,7 @@ const accesskit_node_id WINDOW_ID = 0;
 const accesskit_node_id BUTTON_1_ID = 1;
 const accesskit_node_id BUTTON_2_ID = 2;
 const accesskit_node_id ANNOUNCEMENT_ID = 3;
-const accesskit_node_id INITIAL_FOCUS = BUTTON_1_ID;
+#define INITIAL_FOCUS BUTTON_1_ID
 
 const accesskit_rect BUTTON_1_RECT = {20.0, 20.0, 100.0, 60.0};
 
@@ -64,7 +64,7 @@ struct accesskit_sdl_adapter {
 };
 
 void accesskit_sdl_adapter_init(struct accesskit_sdl_adapter *adapter,
-                                SDL_Window *window, const char *app_name,
+                                SDL_Window *window,
                                 accesskit_tree_update_factory source,
                                 void *source_userdata,
                                 accesskit_action_handler *handler) {
@@ -76,8 +76,8 @@ void accesskit_sdl_adapter_init(struct accesskit_sdl_adapter *adapter,
   adapter->adapter = accesskit_macos_subclassing_adapter_for_window(
       (void *)wmInfo.info.cocoa.window, source, source_userdata, handler);
 #elif defined(UNIX)
-  adapter->adapter = accesskit_unix_adapter_new(
-      app_name, "SDL", "2.0", source, source_userdata, false, handler);
+  adapter->adapter =
+      accesskit_unix_adapter_new(source, source_userdata, false, handler);
 #elif defined(_WIN32)
   SDL_SysWMinfo wmInfo;
   SDL_VERSION(&wmInfo.version);
@@ -229,7 +229,9 @@ accesskit_tree_update *window_state_build_initial_tree(
       build_button(BUTTON_2_ID, "Button 2", state->node_classes);
   accesskit_tree_update *result = accesskit_tree_update_with_capacity_and_focus(
       (state->announcement != NULL) ? 4 : 3, state->focus);
-  accesskit_tree_update_set_tree(result, accesskit_tree_new(WINDOW_ID));
+  accesskit_tree *tree = accesskit_tree_new(WINDOW_ID);
+  accesskit_tree_set_app_name(tree, "Hello World");
+  accesskit_tree_update_set_tree(result, tree);
   accesskit_tree_update_push_node(result, WINDOW_ID, root);
   accesskit_tree_update_push_node(result, BUTTON_1_ID, button_1);
   accesskit_tree_update_push_node(result, BUTTON_2_ID, button_2);
@@ -343,7 +345,7 @@ int main(int argc, char *argv[]) {
   struct action_handler_state action_handler = {user_event, window_id};
   struct accesskit_sdl_adapter adapter;
   accesskit_sdl_adapter_init(
-      &adapter, window, "hello_world", build_initial_tree, &state,
+      &adapter, window, build_initial_tree, &state,
       accesskit_action_handler_new(do_action, &action_handler));
   SDL_ShowWindow(window);
 

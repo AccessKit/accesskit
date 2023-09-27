@@ -258,6 +258,18 @@ impl State {
     pub fn focus(&self) -> Option<Node<'_>> {
         self.focus_id().map(|id| self.node_by_id(id).unwrap())
     }
+
+    pub fn app_name(&self) -> Option<String> {
+        self.data.app_name.clone()
+    }
+
+    pub fn toolkit_name(&self) -> Option<String> {
+        self.data.toolkit_name.clone()
+    }
+
+    pub fn toolkit_version(&self) -> Option<String> {
+        self.data.toolkit_version.clone()
+    }
 }
 
 pub trait ChangeHandler {
