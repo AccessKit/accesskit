@@ -295,7 +295,7 @@ impl PlatformRange {
         let range = self.upgrade_for_read(tree.state())?;
         let request = f(range);
         drop(tree);
-        context.action_handler.do_action(request);
+        context.do_action(request);
         Ok(())
     }
 
@@ -458,8 +458,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
                 return Ok(std::ptr::null_mut());
             }
             let client_top_left = context.client_top_left();
-            let mut result = Vec::<f64>::new();
-            result.reserve(rects.len() * 4);
+            let mut result = Vec::<f64>::with_capacity(rects.len() * 4);
             for rect in rects {
                 result.push(rect.x0 + client_top_left.x);
                 result.push(rect.y0 + client_top_left.y);

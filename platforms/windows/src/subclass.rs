@@ -62,7 +62,7 @@ impl SubclassImpl {
     fn new(
         hwnd: HWND,
         source: impl 'static + FnOnce() -> TreeUpdate,
-        action_handler: Box<dyn ActionHandler + Send + Sync>,
+        action_handler: Box<dyn ActionHandler + Send>,
     ) -> Box<Self> {
         let is_window_focused = Rc::new(Cell::new(false));
         let uia_init_marker = UiaInitMarker::new();
@@ -150,7 +150,7 @@ impl SubclassingAdapter {
     pub fn new(
         hwnd: HWND,
         source: impl 'static + FnOnce() -> TreeUpdate,
-        action_handler: Box<dyn ActionHandler + Send + Sync>,
+        action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
         let mut r#impl = SubclassImpl::new(hwnd, source, action_handler);
         r#impl.install();

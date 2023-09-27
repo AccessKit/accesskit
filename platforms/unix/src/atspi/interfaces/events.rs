@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::atspi::{ObjectId, Rect};
-use atspi::{accessible::Role, State};
+use atspi::{Live, Role, State};
 
 pub(crate) enum Event {
     Object {
@@ -29,6 +29,7 @@ pub(crate) enum Property {
 #[allow(clippy::enum_variant_names)]
 pub(crate) enum ObjectEvent {
     ActiveDescendantChanged(ObjectId),
+    Announcement(String, Live),
     BoundsChanged(Rect),
     ChildAdded(usize, ObjectId),
     ChildRemoved(ObjectId),

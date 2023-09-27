@@ -53,7 +53,7 @@ fn get_initial_state() -> TreeUpdate {
 pub struct NullActionHandler;
 
 impl ActionHandler for NullActionHandler {
-    fn do_action(&self, _request: ActionRequest) {}
+    fn do_action(&mut self, _request: ActionRequest) {}
 }
 
 // This module uses winit for the purpose of testing with a real third-party

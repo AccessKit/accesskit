@@ -7,7 +7,7 @@ use crate::{
     atspi::{ObjectId, OwnedObjectAddress},
     PlatformNode, PlatformRootNode,
 };
-use atspi::{accessible::Role, Interface, InterfaceSet, StateSet};
+use atspi::{Interface, InterfaceSet, Role, StateSet};
 use zbus::{fdo, names::OwnedUniqueName, MessageHeader};
 
 pub(crate) struct AccessibleInterface<T> {
@@ -24,26 +24,25 @@ impl<T> AccessibleInterface<T> {
 #[dbus_interface(name = "org.a11y.atspi.Accessible")]
 impl AccessibleInterface<PlatformNode> {
     #[dbus_interface(property)]
-    fn name(&self) -> String {
-        self.node.name().unwrap_or_default()
+    fn name(&self) -> fdo::Result<String> {
+        self.node.name()
     }
 
     #[dbus_interface(property)]
-    fn description(&self) -> String {
-        self.node.description().unwrap_or_default()
+    fn description(&self) -> fdo::Result<String> {
+        self.node.description()
     }
 
     #[dbus_interface(property)]
-    fn parent(&self) -> OwnedObjectAddress {
-        match self.node.parent() {
-            Ok(parent) => parent.to_address(self.bus_name.clone()),
-            _ => OwnedObjectAddress::null(self.bus_name.clone()),
-        }
+    fn parent(&self) -> fdo::Result<OwnedObjectAddress> {
+        self.node
+            .parent()
+            .map(|parent| parent.to_address(self.bus_name.clone()))
     }
 
     #[dbus_interface(property)]
-    fn child_count(&self) -> i32 {
-        self.node.child_count().unwrap_or(0)
+    fn child_count(&self) -> fdo::Result<i32> {
+        self.node.child_count()
     }
 
     #[dbus_interface(property)]
@@ -103,7 +102,7 @@ impl AccessibleInterface<PlatformNode> {
 #[dbus_interface(name = "org.a11y.atspi.Accessible")]
 impl AccessibleInterface<PlatformRootNode> {
     #[dbus_interface(property)]
-    fn name(&self) -> String {
+    fn name(&self) -> fdo::Result<String> {
         self.node.name()
     }
 
@@ -113,14 +112,15 @@ impl AccessibleInterface<PlatformRootNode> {
     }
 
     #[dbus_interface(property)]
-    fn parent(&self) -> OwnedObjectAddress {
-        self.node
-            .parent()
-            .unwrap_or_else(|| OwnedObjectAddress::null(self.bus_name.clone()))
+    fn parent(&self) -> fdo::Result<OwnedObjectAddress> {
+        Ok(self
+            .node
+            .parent()?
+            .unwrap_or_else(|| OwnedObjectAddress::null(self.bus_name.clone())))
     }
 
     #[dbus_interface(property)]
-    fn child_count(&self) -> i32 {
+    fn child_count(&self) -> fdo::Result<i32> {
         self.node.child_count()
     }
 

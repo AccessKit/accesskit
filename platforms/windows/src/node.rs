@@ -576,7 +576,7 @@ impl PlatformNode {
         if tree.state().has_node(self.node_id) {
             drop(tree);
             let request = f();
-            context.action_handler.do_action(request);
+            context.do_action(request);
             Ok(())
         } else {
             Err(element_not_available())

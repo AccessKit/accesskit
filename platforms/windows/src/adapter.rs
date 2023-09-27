@@ -151,7 +151,7 @@ impl Adapter {
         hwnd: HWND,
         initial_state: TreeUpdate,
         is_window_focused: bool,
-        action_handler: Box<dyn ActionHandler + Send + Sync>,
+        action_handler: Box<dyn ActionHandler + Send>,
         _uia_init_marker: UiaInitMarker,
     ) -> Self {
         let context = Context::new(

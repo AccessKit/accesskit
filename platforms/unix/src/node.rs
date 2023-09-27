@@ -18,13 +18,13 @@ use crate::{
     util::WindowBounds,
 };
 use accesskit::{
-    Action, ActionData, ActionRequest, Affine, Checked, DefaultActionVerb, NodeId, Point, Rect,
-    Role,
+    Action, ActionData, ActionRequest, Affine, Checked, DefaultActionVerb, Live, NodeId, Point,
+    Rect, Role,
 };
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
 use async_channel::Sender;
 use atspi::{
-    accessible::Role as AtspiRole, component::Layer, CoordType, Interface, InterfaceSet, State,
+    CoordType, Interface, InterfaceSet, Layer, Live as AtspiLive, Role as AtspiRole, State,
     StateSet,
 };
 use std::{
@@ -59,12 +59,11 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
-    pub fn name(&self) -> String {
+    pub fn name(&self) -> Option<String> {
         match self {
             Self::Node { node, .. } => node.name(),
             Self::DetachedNode { node, .. } => node.name(),
         }
-        .unwrap_or_default()
     }
 
     pub fn description(&self) -> String {
@@ -415,6 +414,18 @@ impl<'a> NodeWrapper<'a> {
         interfaces
     }
 
+    pub(crate) fn live(&self) -> AtspiLive {
+        let live = match self {
+            Self::Node { node, .. } => node.live(),
+            Self::DetachedNode { node, .. } => node.live(),
+        };
+        match live {
+            Live::Off => AtspiLive::None,
+            Live::Polite => AtspiLive::Polite,
+            Live::Assertive => AtspiLive::Assertive,
+        }
+    }
+
     fn n_actions(&self) -> i32 {
         match self.node_state().default_action_verb() {
             Some(_) => 1,
@@ -505,15 +516,29 @@ impl<'a> NodeWrapper<'a> {
         let adapter = self.adapter();
         let name = self.name();
         if name != old.name() {
+            let name = name.unwrap_or_default();
             events
                 .send_blocking(Event::Object {
                     target: ObjectId::Node {
                         adapter,
                         node: self.id(),
                     },
-                    event: ObjectEvent::PropertyChanged(Property::Name(name)),
+                    event: ObjectEvent::PropertyChanged(Property::Name(name.clone())),
                 })
                 .unwrap();
+
+            let live = self.live();
+            if live != AtspiLive::None {
+                events
+                    .send_blocking(Event::Object {
+                        target: ObjectId::Node {
+                            adapter,
+                            node: self.id(),
+                        },
+                        event: ObjectEvent::Announcement(name, live),
+                    })
+                    .unwrap();
+            }
         }
         let description = self.description();
         if description != old.description() {
@@ -700,7 +725,7 @@ impl PlatformNode {
         if tree.state().has_node(self.node_id) {
             let request = f(tree.state(), &context);
             drop(tree);
-            context.action_handler.do_action(request);
+            context.do_action(request);
             Ok(())
         } else {
             Err(unknown_object(&self.accessible_id()))
@@ -710,7 +735,7 @@ impl PlatformNode {
     pub fn name(&self) -> fdo::Result<String> {
         self.resolve(|node| {
             let wrapper = self.node_wrapper(&node);
-            Ok(wrapper.name())
+            Ok(wrapper.name().unwrap_or_default())
         })
     }
 
@@ -997,20 +1022,19 @@ impl PlatformRootNode {
         Err(unknown_object(&self.accessible_id()))
     }
 
-    pub(crate) fn name(&self) -> String {
+    pub(crate) fn name(&self) -> fdo::Result<String> {
         self.resolve_app_context(|context| Ok(context.name.clone()))
-            .unwrap_or_default()
     }
 
-    pub(crate) fn parent(&self) -> Option<OwnedObjectAddress> {
+    pub(crate) fn parent(&self) -> fdo::Result<Option<OwnedObjectAddress>> {
         self.resolve_app_context(|context| Ok(context.desktop_address.clone()))
-            .ok()
-            .flatten()
     }
 
-    pub(crate) fn child_count(&self) -> i32 {
-        self.resolve_app_context(|context| Ok(i32::try_from(context.adapters.len()).unwrap_or(-1)))
-            .unwrap_or(-1)
+    pub(crate) fn child_count(&self) -> fdo::Result<i32> {
+        self.resolve_app_context(|context| {
+            i32::try_from(context.adapters.len())
+                .map_err(|_| fdo::Error::Failed("Too many children.".into()))
+        })
     }
 
     pub(crate) fn accessible_id(&self) -> ObjectId {
@@ -1046,19 +1070,16 @@ impl PlatformRootNode {
         })
     }
 
-    pub(crate) fn toolkit_name(&self) -> String {
+    pub(crate) fn toolkit_name(&self) -> fdo::Result<String> {
         self.resolve_app_context(|context| Ok(context.toolkit_name.clone()))
-            .unwrap_or_default()
     }
 
-    pub(crate) fn toolkit_version(&self) -> String {
+    pub(crate) fn toolkit_version(&self) -> fdo::Result<String> {
         self.resolve_app_context(|context| Ok(context.toolkit_version.clone()))
-            .unwrap_or_default()
     }
 
-    pub(crate) fn id(&self) -> i32 {
+    pub(crate) fn id(&self) -> fdo::Result<i32> {
         self.resolve_app_context(|context| Ok(context.id.unwrap_or(-1)))
-            .unwrap_or(-1)
     }
 
     pub(crate) fn set_id(&mut self, id: i32) -> fdo::Result<()> {

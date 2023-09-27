@@ -475,7 +475,7 @@ declare_class!(
             self.resolve_with_context(|node, context| {
                 if focused {
                     if node.is_focusable() {
-                        context.action_handler.do_action(ActionRequest {
+                        context.do_action(ActionRequest {
                             action: Action::Focus,
                             target: node.id(),
                             data: None,
@@ -484,7 +484,7 @@ declare_class!(
                 } else {
                     let root = node.tree_state.root();
                     if root.is_focusable() {
-                        context.action_handler.do_action(ActionRequest {
+                        context.do_action(ActionRequest {
                             action: Action::Focus,
                             target: root.id(),
                             data: None,
@@ -499,7 +499,7 @@ declare_class!(
             self.resolve_with_context(|node, context| {
                 let clickable = node.is_clickable();
                 if clickable {
-                    context.action_handler.do_action(ActionRequest {
+                    context.do_action(ActionRequest {
                         action: Action::Default,
                         target: node.id(),
                         data: None,
@@ -515,7 +515,7 @@ declare_class!(
             self.resolve_with_context(|node, context| {
                 let supports_increment = node.supports_increment();
                 if supports_increment {
-                    context.action_handler.do_action(ActionRequest {
+                    context.do_action(ActionRequest {
                         action: Action::Increment,
                         target: node.id(),
                         data: None,
@@ -531,7 +531,7 @@ declare_class!(
             self.resolve_with_context(|node, context| {
                 let supports_decrement = node.supports_decrement();
                 if supports_decrement {
-                    context.action_handler.do_action(ActionRequest {
+                    context.do_action(ActionRequest {
                         action: Action::Decrement,
                         target: node.id(),
                         data: None,
@@ -702,7 +702,7 @@ declare_class!(
             self.resolve_with_context(|node, context| {
                 if node.supports_text_ranges() {
                     if let Some(range) = from_ns_range(node, range) {
-                        context.action_handler.do_action(ActionRequest {
+                        context.do_action(ActionRequest {
                             action: Action::SetTextSelection,
                             target: node.id(),
                             data: Some(ActionData::SetTextSelection(range.to_text_selection())),

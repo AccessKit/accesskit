@@ -19,7 +19,7 @@ use crate::{
 use accesskit::{ActionHandler, NodeId, Rect, Role, TreeUpdate};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use async_channel::{Receiver, Sender};
-use atspi::{Interface, InterfaceSet, State};
+use atspi::{Interface, InterfaceSet, Live, State};
 use futures_lite::StreamExt;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -51,6 +51,22 @@ impl AdapterChangeHandler<'_> {
                 .adapter_index(self.adapter.id)
                 .unwrap();
             self.adapter.window_created(adapter_index, node.id());
+        }
+
+        let live = node.live();
+        if live != Live::None {
+            if let Some(name) = node.name() {
+                self.adapter
+                    .events
+                    .send_blocking(Event::Object {
+                        target: ObjectId::Node {
+                            adapter: self.adapter.id,
+                            node: node.id(),
+                        },
+                        event: ObjectEvent::Announcement(name, live),
+                    })
+                    .unwrap();
+            }
         }
     }
 
@@ -195,7 +211,7 @@ impl Adapter {
     pub fn new(
         initial_state: impl 'static + FnOnce() -> TreeUpdate,
         is_window_focused: bool,
-        action_handler: Box<dyn ActionHandler + Send + Sync>,
+        action_handler: Box<dyn ActionHandler + Send>,
     ) -> Option<Self> {
         let mut atspi_bus = block_on(async { Bus::a11y_bus().await })?;
         let (event_sender, event_receiver) = async_channel::unbounded();
@@ -410,7 +426,7 @@ impl Adapter {
                     adapter: self.id,
                     node: window.id(),
                 },
-                name: window.name(),
+                name: window.name().unwrap_or_default(),
                 event: WindowEvent::Activated,
             })
             .unwrap();
@@ -441,7 +457,7 @@ impl Adapter {
                     adapter: self.id,
                     node: window.id(),
                 },
-                name: window.name(),
+                name: window.name().unwrap_or_default(),
                 event: WindowEvent::Deactivated,
             })
             .unwrap();

@@ -9,7 +9,10 @@ use crate::{
     PlatformRootNode,
 };
 use async_once_cell::OnceCell;
-use atspi::{bus::BusProxy, socket::SocketProxy, EventBody};
+use atspi::{
+    events::EventBody,
+    proxy::{bus::BusProxy, socket::SocketProxy},
+};
 use serde::Serialize;
 use std::{
     collections::HashMap,
@@ -98,6 +101,7 @@ impl Bus {
         let interface = "org.a11y.atspi.Event.Object";
         let signal = match event {
             ObjectEvent::ActiveDescendantChanged(_) => "ActiveDescendantChanged",
+            ObjectEvent::Announcement(_, _) => "Announcement",
             ObjectEvent::BoundsChanged(_) => "BoundsChanged",
             ObjectEvent::ChildAdded(_, _) | ObjectEvent::ChildRemoved(_) => "ChildrenChanged",
             ObjectEvent::PropertyChanged(_) => "PropertyChange",
@@ -115,6 +119,21 @@ impl Bus {
                         detail1: 0,
                         detail2: 0,
                         any_data: child.to_address(self.unique_name().clone()).into(),
+                        properties,
+                    },
+                )
+                .await
+            }
+            ObjectEvent::Announcement(message, politeness) => {
+                self.emit_event(
+                    target,
+                    interface,
+                    signal,
+                    EventBody {
+                        kind: "",
+                        detail1: politeness as i32,
+                        detail2: 0,
+                        any_data: message.into(),
                         properties,
                     },
                 )

@@ -1081,7 +1081,6 @@ pub type ActionHandlerCallback =
 struct FfiActionHandlerUserdata(*mut c_void);
 
 unsafe impl Send for FfiActionHandlerUserdata {}
-unsafe impl Sync for FfiActionHandlerUserdata {}
 
 pub(crate) struct FfiActionHandler {
     callback: ActionHandlerCallback,
@@ -1116,7 +1115,7 @@ impl action_handler {
 }
 
 impl ActionHandler for FfiActionHandler {
-    fn do_action(&self, request: ActionRequest) {
+    fn do_action(&mut self, request: ActionRequest) {
         if let Some(callback) = self.callback {
             let request = request.into();
             callback(&request, self.userdata.0);

@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, NodeId};
+use accesskit::{ActionHandler, ActionRequest, NodeId};
 use accesskit_consumer::Tree;
 use objc2::{
     foundation::MainThreadMarker,
@@ -16,7 +16,7 @@ use crate::{appkit::*, node::PlatformNode};
 pub(crate) struct Context {
     pub(crate) view: WeakId<NSView>,
     pub(crate) tree: RefCell<Tree>,
-    pub(crate) action_handler: Box<dyn ActionHandler>,
+    pub(crate) action_handler: RefCell<Box<dyn ActionHandler>>,
     platform_nodes: RefCell<HashMap<NodeId, Id<PlatformNode, Shared>>>,
     _mtm: MainThreadMarker,
 }
@@ -31,7 +31,7 @@ impl Context {
         Rc::new(Self {
             view,
             tree: RefCell::new(tree),
-            action_handler,
+            action_handler: RefCell::new(action_handler),
             platform_nodes: RefCell::new(HashMap::new()),
             _mtm: mtm,
         })
@@ -54,6 +54,10 @@ impl Context {
     pub(crate) fn remove_platform_node(&self, id: NodeId) -> Option<Id<PlatformNode, Shared>> {
         let mut platform_nodes = self.platform_nodes.borrow_mut();
         platform_nodes.remove(&id)
+    }
+
+    pub(crate) fn do_action(&self, request: ActionRequest) {
+        self.action_handler.borrow_mut().do_action(request);
     }
 }
 

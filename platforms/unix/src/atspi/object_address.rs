@@ -3,6 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use atspi::Accessible;
 use serde::{Deserialize, Serialize};
 use zbus::{
     names::{OwnedUniqueName, UniqueName},
@@ -30,11 +31,11 @@ impl OwnedObjectAddress {
     }
 }
 
-impl From<(String, OwnedObjectPath)> for OwnedObjectAddress {
-    fn from(value: (String, OwnedObjectPath)) -> Self {
+impl From<Accessible> for OwnedObjectAddress {
+    fn from(object: Accessible) -> Self {
         Self {
-            bus_name: OwnedUniqueName::from(UniqueName::from_string_unchecked(value.0)),
-            path: value.1,
+            bus_name: OwnedUniqueName::from(UniqueName::from_string_unchecked(object.name)),
+            path: object.path,
         }
     }
 }
