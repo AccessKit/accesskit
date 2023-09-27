@@ -13,6 +13,42 @@
     * accesskit bumped from 0.10.0 to 0.10.1
     * accesskit_consumer bumped from 0.14.0 to 0.14.1
 
+## [0.10.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.9.0...accesskit_macos-v0.10.0) (2023-09-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* Make `ActionHandler::do_action` take `&mut self` ([#296](https://github.com/AccessKit/accesskit/issues/296))
+* Clean up roles and properties ([#289](https://github.com/AccessKit/accesskit/issues/289))
+* Decouple in-tree focus from host window/view focus ([#278](https://github.com/AccessKit/accesskit/issues/278))
+* Switch to simple unsigned 64-bit integer for node IDs ([#276](https://github.com/AccessKit/accesskit/issues/276))
+
+### Features
+
+* Add role for terminals ([#282](https://github.com/AccessKit/accesskit/issues/282)) ([ddbef37](https://github.com/AccessKit/accesskit/commit/ddbef37158b57f56217317b480e40d58f83a9c24))
+
+
+### Bug Fixes
+
+* Support text fields without a value property ([#274](https://github.com/AccessKit/accesskit/issues/274)) ([5ae557b](https://github.com/AccessKit/accesskit/commit/5ae557b40d395b4a9966a90a2d80e7d97ad50bf9))
+* Use common filters across platform adapters ([#287](https://github.com/AccessKit/accesskit/issues/287)) ([09c1204](https://github.com/AccessKit/accesskit/commit/09c12045ff4ccdb22f0cf643077a27465013572d))
+
+
+### Code Refactoring
+
+* Clean up roles and properties ([#289](https://github.com/AccessKit/accesskit/issues/289)) ([4fc9c55](https://github.com/AccessKit/accesskit/commit/4fc9c55c91812472593923d93ff89d75ff305ee4))
+* Decouple in-tree focus from host window/view focus ([#278](https://github.com/AccessKit/accesskit/issues/278)) ([d360d20](https://github.com/AccessKit/accesskit/commit/d360d20cf951e7643b81a5303006c9f7daa5bd56))
+* Make `ActionHandler::do_action` take `&mut self` ([#296](https://github.com/AccessKit/accesskit/issues/296)) ([4fc7846](https://github.com/AccessKit/accesskit/commit/4fc7846d732d61fb45c023060ebab96801a0053e))
+* Switch to simple unsigned 64-bit integer for node IDs ([#276](https://github.com/AccessKit/accesskit/issues/276)) ([3eadd48](https://github.com/AccessKit/accesskit/commit/3eadd48ec47854faa94a94ebf910ec08f514642f))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.11.2 to 0.12.0
+    * accesskit_consumer bumped from 0.15.2 to 0.16.0
+
 ## [0.9.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.8.0...accesskit_macos-v0.9.0) (2023-08-08)
 
 

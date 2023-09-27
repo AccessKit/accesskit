@@ -73,6 +73,42 @@
   * dependencies
     * accesskit_windows bumped from 0.14.2 to 0.14.3
 
+## [0.15.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.14.4...accesskit_winit-v0.15.0) (2023-09-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* Allow providing app_name, toolkit_name and toolkit_version in Tree, remove parameters from unix adapter constructor ([#291](https://github.com/AccessKit/accesskit/issues/291))
+* Make `ActionHandler::do_action` take `&mut self` ([#296](https://github.com/AccessKit/accesskit/issues/296))
+* Decouple in-tree focus from host window/view focus ([#278](https://github.com/AccessKit/accesskit/issues/278))
+* Switch to simple unsigned 64-bit integer for node IDs ([#276](https://github.com/AccessKit/accesskit/issues/276))
+
+### Features
+
+* Allow providing app_name, toolkit_name and toolkit_version in Tree, remove parameters from unix adapter constructor ([#291](https://github.com/AccessKit/accesskit/issues/291)) ([5313860](https://github.com/AccessKit/accesskit/commit/531386023257150f49b5e4be942f359855fb7cb6))
+
+
+### Bug Fixes
+
+* Fix doc build for accesskit_winit ([#281](https://github.com/AccessKit/accesskit/issues/281)) ([e3b38b8](https://github.com/AccessKit/accesskit/commit/e3b38b8164d0c5442a5a1904165e2b05847376c2))
+
+
+### Code Refactoring
+
+* Decouple in-tree focus from host window/view focus ([#278](https://github.com/AccessKit/accesskit/issues/278)) ([d360d20](https://github.com/AccessKit/accesskit/commit/d360d20cf951e7643b81a5303006c9f7daa5bd56))
+* Make `ActionHandler::do_action` take `&mut self` ([#296](https://github.com/AccessKit/accesskit/issues/296)) ([4fc7846](https://github.com/AccessKit/accesskit/commit/4fc7846d732d61fb45c023060ebab96801a0053e))
+* Switch to simple unsigned 64-bit integer for node IDs ([#276](https://github.com/AccessKit/accesskit/issues/276)) ([3eadd48](https://github.com/AccessKit/accesskit/commit/3eadd48ec47854faa94a94ebf910ec08f514642f))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.11.2 to 0.12.0
+    * accesskit_windows bumped from 0.14.3 to 0.15.0
+    * accesskit_macos bumped from 0.9.0 to 0.10.0
+    * accesskit_unix bumped from 0.5.2 to 0.6.0
+
 ## [0.14.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.13.0...accesskit_winit-v0.14.0) (2023-05-21)
 
 
