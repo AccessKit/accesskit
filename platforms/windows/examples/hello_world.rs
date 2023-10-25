@@ -31,8 +31,7 @@ static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
 
     let atom = unsafe { RegisterClassW(&wc) };
     if atom == 0 {
-        let result: Result<()> = Err(Error::from_win32());
-        result.unwrap();
+        panic!("{}", Error::from_win32());
     }
     atom
 });

@@ -33,7 +33,7 @@ static WINDOW_CLASS_ATOM: SyncLazy<u16> = SyncLazy::new(|| {
     let wc = WNDCLASSW {
         hCursor: unsafe { LoadCursorW(None, IDC_ARROW) }.unwrap(),
         hInstance: unsafe { GetModuleHandleW(None) }.unwrap(),
-        lpszClassName: class_name.into(),
+        lpszClassName: class_name,
         style: CS_HREDRAW | CS_VREDRAW,
         lpfnWndProc: Some(wndproc),
         ..Default::default()
@@ -41,8 +41,7 @@ static WINDOW_CLASS_ATOM: SyncLazy<u16> = SyncLazy::new(|| {
 
     let atom = unsafe { RegisterClassW(&wc) };
     if atom == 0 {
-        let result: Result<()> = Err(Error::from_win32());
-        result.unwrap();
+        panic!("{}", Error::from_win32());
     }
     atom
 });
@@ -267,6 +266,9 @@ pub(crate) struct ReceivedFocusEvent {
     mutex: Mutex<Option<IUIAutomationElement>>,
     cv: Condvar,
 }
+
+unsafe impl Send for ReceivedFocusEvent {}
+unsafe impl Sync for ReceivedFocusEvent {}
 
 impl ReceivedFocusEvent {
     fn new() -> Arc<Self> {
