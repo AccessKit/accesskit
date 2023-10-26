@@ -8,7 +8,7 @@ use once_cell::{sync::Lazy as SyncLazy, unsync::Lazy};
 use std::{
     cell::RefCell,
     rc::Rc,
-    sync::{Arc, Condvar, Mutex},
+    sync::{Condvar, Mutex},
     thread,
     time::Duration,
 };
@@ -267,12 +267,9 @@ pub(crate) struct ReceivedFocusEvent {
     cv: Condvar,
 }
 
-unsafe impl Send for ReceivedFocusEvent {}
-unsafe impl Sync for ReceivedFocusEvent {}
-
 impl ReceivedFocusEvent {
-    fn new() -> Arc<Self> {
-        Arc::new(Self {
+    fn new() -> Rc<Self> {
+        Rc::new(Self {
             mutex: Mutex::new(None),
             cv: Condvar::new(),
         })
@@ -304,14 +301,14 @@ impl ReceivedFocusEvent {
 
 #[implement(Windows::Win32::UI::Accessibility::IUIAutomationFocusChangedEventHandler)]
 pub(crate) struct FocusEventHandler {
-    received: Arc<ReceivedFocusEvent>,
+    received: Rc<ReceivedFocusEvent>,
 }
 
 impl FocusEventHandler {
     #[allow(clippy::new_ret_no_self)] // it does return self, but wrapped
     pub(crate) fn new() -> (
         IUIAutomationFocusChangedEventHandler,
-        Arc<ReceivedFocusEvent>,
+        Rc<ReceivedFocusEvent>,
     ) {
         let received = ReceivedFocusEvent::new();
         (
