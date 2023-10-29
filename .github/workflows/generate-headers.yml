@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Generate headers
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: install nightly toolchain
       uses: dtolnay/rust-toolchain@nightly

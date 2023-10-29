@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Check formatting
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: install stable toolchain
         uses: dtolnay/rust-toolchain@master
@@ -35,7 +35,7 @@ jobs:
         os: [macOS-latest, windows-2019, ubuntu-latest]
     name: cargo clippy+test
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: install stable toolchain
         uses: dtolnay/rust-toolchain@master
