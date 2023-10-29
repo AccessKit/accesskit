@@ -276,7 +276,7 @@ impl Add<Vec2> for Point {
 impl AddAssign<Vec2> for Point {
     #[inline]
     fn add_assign(&mut self, other: Vec2) {
-        *self = Point::new(self.x + other.x, self.y + other.y)
+        *self = Point::new(self.x + other.x, self.y + other.y);
     }
 }
 
@@ -292,7 +292,7 @@ impl Sub<Vec2> for Point {
 impl SubAssign<Vec2> for Point {
     #[inline]
     fn sub_assign(&mut self, other: Vec2) {
-        *self = Point::new(self.x - other.x, self.y - other.y)
+        *self = Point::new(self.x - other.x, self.y - other.y);
     }
 }
 
@@ -308,7 +308,7 @@ impl Add<(f64, f64)> for Point {
 impl AddAssign<(f64, f64)> for Point {
     #[inline]
     fn add_assign(&mut self, (x, y): (f64, f64)) {
-        *self = Point::new(self.x + x, self.y + y)
+        *self = Point::new(self.x + x, self.y + y);
     }
 }
 
@@ -324,7 +324,7 @@ impl Sub<(f64, f64)> for Point {
 impl SubAssign<(f64, f64)> for Point {
     #[inline]
     fn sub_assign(&mut self, (x, y): (f64, f64)) {
-        *self = Point::new(self.x - x, self.y - y)
+        *self = Point::new(self.x - x, self.y - y);
     }
 }
 
