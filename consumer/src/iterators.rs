@@ -16,7 +16,7 @@ use crate::{filters::FilterResult, node::Node, tree::State as TreeState};
 
 /// An iterator that yields following siblings of a node.
 ///
-/// This struct is created by the [following_siblings](Node::following_siblings) method on [Node].
+/// This struct is created by the [`following_siblings`](Node::following_siblings) method on [`Node`].
 pub struct FollowingSiblings<'a> {
     back_position: usize,
     done: bool,
@@ -100,7 +100,7 @@ impl<'a> FusedIterator for FollowingSiblings<'a> {}
 
 /// An iterator that yields preceding siblings of a node.
 ///
-/// This struct is created by the [preceding_siblings](Node::preceding_siblings) method on [Node].
+/// This struct is created by the [`preceding_siblings`](Node::preceding_siblings) method on [`Node`].
 pub struct PrecedingSiblings<'a> {
     back_position: usize,
     done: bool,
@@ -257,7 +257,7 @@ fn previous_filtered_sibling<'a>(
 /// An iterator that yields following siblings of a node according to the
 /// specified filter.
 ///
-/// This struct is created by the [following_filtered_siblings](Node::following_filtered_siblings) method on [Node].
+/// This struct is created by the [`following_filtered_siblings`](Node::following_filtered_siblings) method on [`Node`].
 pub struct FollowingFilteredSiblings<'a, Filter: Fn(&Node) -> FilterResult> {
     filter: Filter,
     back: Option<Node<'a>>,
@@ -318,7 +318,7 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> FusedIterator
 /// An iterator that yields preceding siblings of a node according to the
 /// specified filter.
 ///
-/// This struct is created by the [preceding_filtered_siblings](Node::preceding_filtered_siblings) method on [Node].
+/// This struct is created by the [`preceding_filtered_siblings`](Node::preceding_filtered_siblings) method on [`Node`].
 pub struct PrecedingFilteredSiblings<'a, Filter: Fn(&Node) -> FilterResult> {
     filter: Filter,
     back: Option<Node<'a>>,
@@ -379,7 +379,7 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> FusedIterator
 /// An iterator that yields children of a node according to the specified
 /// filter.
 ///
-/// This struct is created by the [filtered_children](Node::filtered_children) method on [Node].
+/// This struct is created by the [`filtered_children`](Node::filtered_children) method on [`Node`].
 pub struct FilteredChildren<'a, Filter: Fn(&Node) -> FilterResult> {
     filter: Filter,
     back: Option<Node<'a>>,

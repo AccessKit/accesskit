@@ -46,8 +46,8 @@ pub use unix::*;
 #[cfg(any(target_os = "windows", feature = "cbindgen"))]
 pub use windows::*;
 
-/// CastPtr represents the relationship between a snake case type (like node_class_set)
-/// and the corresponding Rust type (like NodeClassSet). For each matched pair of types, there
+/// `CastPtr` represents the relationship between a snake case type (like `node_class_set`)
+/// and the corresponding Rust type (like `NodeClassSet`). For each matched pair of types, there
 /// should be an `impl CastPtr for foo_bar { RustType = FooBar }`.
 ///
 /// This allows us to avoid using `as` in most places, and ensure that when we cast, we're
@@ -62,8 +62,8 @@ pub(crate) trait CastPtr {
     }
 }
 
-/// CastConstPtr represents a subset of CastPtr, for when we can only treat
-/// something as a const (for instance when dealing with Arc).
+/// `CastConstPtr` represents a subset of `CastPtr`, for when we can only treat
+/// something as a const (for instance when dealing with `Arc`).
 pub(crate) trait CastConstPtr {
     type RustType;
 
@@ -72,9 +72,9 @@ pub(crate) trait CastConstPtr {
     }
 }
 
-/// Anything that qualifies for CastPtr also automatically qualifies for
-/// CastConstPtr. Splitting out CastPtr vs CastConstPtr allows us to ensure
-/// that Arcs are never cast to a mutable pointer.
+/// Anything that qualifies for `CastPtr` also automatically qualifies for
+/// `CastConstPtr`. Splitting out `CastPtr` vs `CastConstPtr` allows us to ensure
+/// that `Arc`s are never cast to a mutable pointer.
 impl<T, R> CastConstPtr for T
 where
     T: CastPtr<RustType = R>,
@@ -103,9 +103,9 @@ pub(crate) trait BoxCastPtr: CastPtr + Sized {
 }
 
 /// Turn a raw const pointer into a reference. This is a generic function
-/// rather than part of the CastPtr trait because (a) const pointers can't act
+/// rather than part of the `CastPtr` trait because (a) const pointers can't act
 /// as "self" for trait methods, and (b) we want to rely on type inference
-/// against T (the cast-to type) rather than across F (the from type).
+/// against `T` (the cast-to type) rather than across `F` (the from type).
 pub(crate) fn ref_from_ptr<'a, F, T>(from: *const F) -> &'a T
 where
     F: CastConstPtr<RustType = T>,
