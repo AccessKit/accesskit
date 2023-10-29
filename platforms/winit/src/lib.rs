@@ -80,10 +80,10 @@ impl Adapter {
     }
 
     pub fn update(&self, update: TreeUpdate) {
-        self.adapter.update(update)
+        self.adapter.update(update);
     }
 
     pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
-        self.adapter.update_if_active(updater)
+        self.adapter.update_if_active(updater);
     }
 }

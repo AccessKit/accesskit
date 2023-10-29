@@ -113,7 +113,7 @@ impl State {
 
             if let Some(node_state) = self.nodes.get_mut(&node_id) {
                 if node_id == root {
-                    node_state.parent_and_index = None
+                    node_state.parent_and_index = None;
                 }
                 for child_id in node_state.data.children().iter() {
                     if !seen_child_ids.contains(child_id) {
