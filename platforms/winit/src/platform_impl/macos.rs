@@ -4,8 +4,11 @@
 
 use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_macos::SubclassingAdapter;
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
-use winit::{event::WindowEvent, window::Window};
+use winit::{
+    event::WindowEvent,
+    raw_window_handle::{HasWindowHandle, RawWindowHandle},
+    window::Window,
+};
 
 pub type ActionHandlerBox = Box<dyn ActionHandler>;
 
@@ -19,8 +22,8 @@ impl Adapter {
         source: impl 'static + FnOnce() -> TreeUpdate,
         action_handler: ActionHandlerBox,
     ) -> Self {
-        let view = match window.raw_window_handle() {
-            RawWindowHandle::AppKit(handle) => handle.ns_view,
+        let view = match window.window_handle().unwrap().as_raw() {
+            RawWindowHandle::AppKit(handle) => handle.ns_view.as_ptr(),
             RawWindowHandle::UiKit(_) => unimplemented!(),
             _ => unreachable!(),
         };
