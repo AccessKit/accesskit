@@ -14,8 +14,8 @@ use winit::{
     window::WindowBuilder,
 };
 
-use crate::SubclassingAdapter;
 use super::MUTEX;
+use crate::SubclassingAdapter;
 
 const WINDOW_TITLE: &str = "Simple test";
 
