@@ -185,7 +185,7 @@ impl Scope {
 }
 
 // It's not safe to run these UI-related tests concurrently.
-static MUTEX: Mutex<()> = Mutex::new(());
+pub(crate) static MUTEX: Mutex<()> = Mutex::new(());
 
 pub(crate) fn scope<F>(
     window_title: &str,

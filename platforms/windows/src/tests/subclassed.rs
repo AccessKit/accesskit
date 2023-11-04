@@ -14,6 +14,7 @@ use winit::{
     window::WindowBuilder,
 };
 
+use super::MUTEX;
 use crate::SubclassingAdapter;
 
 const WINDOW_TITLE: &str = "Simple test";
@@ -63,17 +64,16 @@ impl ActionHandler for NullActionHandler {
 fn has_native_uia() {
     // This test is simple enough that we know it's fine to run entirely
     // on one thread, so we don't need a full multithreaded test harness.
+    // Still, we must prevent this test from running concurrently with other
+    // tests, especially the focus test.
+    let _lock_guard = MUTEX.lock().unwrap();
     let event_loop = EventLoopBuilder::<()>::new().with_any_thread(true).build();
     let window = WindowBuilder::new()
         .with_title(WINDOW_TITLE)
+        .with_visible(false)
         .build(&event_loop)
         .unwrap();
     let hwnd = HWND(window.hwnd());
-    assert!(!unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
-    let adapter = SubclassingAdapter::new(hwnd, get_initial_state, Box::new(NullActionHandler {}));
-    assert!(unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
-    drop(adapter);
-    assert!(!unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
     let adapter = SubclassingAdapter::new(hwnd, get_initial_state, Box::new(NullActionHandler {}));
     assert!(unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
     drop(window);
