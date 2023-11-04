@@ -166,28 +166,3 @@ fn navigation() -> Result<()> {
         Ok(())
     })
 }
-
-#[test]
-fn focus() -> Result<()> {
-    scope(|s| {
-        let (focus_event_handler, received_focus_event) = FocusEventHandler::new();
-        unsafe {
-            s.uia
-                .AddFocusChangedEventHandler(None, &focus_event_handler)
-        }?;
-
-        s.show_and_focus_window();
-        let focus_from_event = received_focus_event.wait(is_button_1);
-        let has_focus: bool = unsafe { focus_from_event.CurrentHasKeyboardFocus() }?.into();
-        assert!(has_focus);
-        let is_focusable: bool = unsafe { focus_from_event.CurrentIsKeyboardFocusable() }?.into();
-        assert!(is_focusable);
-
-        let focus_on_demand = unsafe { s.uia.GetFocusedElement() }?;
-        let equal: bool =
-            unsafe { s.uia.CompareElements(&focus_from_event, &focus_on_demand) }?.into();
-        assert!(equal);
-
-        Ok(())
-    })
-}

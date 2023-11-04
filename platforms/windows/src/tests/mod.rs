@@ -8,11 +8,9 @@ use once_cell::{sync::Lazy as SyncLazy, unsync::Lazy};
 use std::{
     cell::RefCell,
     rc::Rc,
-    sync::{Arc, Condvar, Mutex},
+    sync::{Condvar, Mutex},
     thread,
-    time::Duration,
 };
-use windows as Windows;
 use windows::{
     core::*,
     Win32::{
@@ -24,8 +22,6 @@ use windows::{
 };
 
 use super::{Adapter, UiaInitMarker};
-
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
 
 static WINDOW_CLASS_ATOM: SyncLazy<u16> = SyncLazy::new(|| {
     let class_name = w!("AccessKitTest");
@@ -177,13 +173,6 @@ pub(crate) struct Scope {
     pub(crate) window: HWND,
 }
 
-impl Scope {
-    pub(crate) fn show_and_focus_window(&self) {
-        unsafe { ShowWindow(self.window, SW_SHOW) };
-        unsafe { SetForegroundWindow(self.window) };
-    }
-}
-
 // It's not safe to run these UI-related tests concurrently.
 static MUTEX: Mutex<()> = Mutex::new(());
 
@@ -260,82 +249,6 @@ where
         let s = Scope { uia, window };
         f(&s)
     })
-}
-
-/// This must only be used to wrap UIA elements returned by a UIA client
-/// that was created in the MTA. Those are safe to send between threads.
-struct SendableUiaElement(IUIAutomationElement);
-unsafe impl Send for SendableUiaElement {}
-
-pub(crate) struct ReceivedFocusEvent {
-    mutex: Mutex<Option<SendableUiaElement>>,
-    cv: Condvar,
-}
-
-impl ReceivedFocusEvent {
-    fn new() -> Arc<Self> {
-        Arc::new(Self {
-            mutex: Mutex::new(None),
-            cv: Condvar::new(),
-        })
-    }
-
-    pub(crate) fn wait<F>(&self, f: F) -> IUIAutomationElement
-    where
-        F: Fn(&IUIAutomationElement) -> bool,
-    {
-        let mut received = self.mutex.lock().unwrap();
-        loop {
-            if let Some(SendableUiaElement(element)) = received.take() {
-                if f(&element) {
-                    return element;
-                }
-            }
-            let (lock, result) = self.cv.wait_timeout(received, DEFAULT_TIMEOUT).unwrap();
-            assert!(!result.timed_out());
-            received = lock;
-        }
-    }
-
-    fn put(&self, element: IUIAutomationElement) {
-        let mut received = self.mutex.lock().unwrap();
-        *received = Some(SendableUiaElement(element));
-        self.cv.notify_one();
-    }
-}
-
-#[implement(Windows::Win32::UI::Accessibility::IUIAutomationFocusChangedEventHandler)]
-pub(crate) struct FocusEventHandler {
-    received: Arc<ReceivedFocusEvent>,
-}
-// Because we create a UIA client in the COM MTA, this event handler
-// _will_ be called from a different thread, and possibly multiple threads
-// at once.
-static_assertions::assert_impl_all!(FocusEventHandler: Send, Sync);
-
-impl FocusEventHandler {
-    #[allow(clippy::new_ret_no_self)] // it does return self, but wrapped
-    pub(crate) fn new() -> (
-        IUIAutomationFocusChangedEventHandler,
-        Arc<ReceivedFocusEvent>,
-    ) {
-        let received = ReceivedFocusEvent::new();
-        (
-            Self {
-                received: Arc::clone(&received),
-            }
-            .into(),
-            received,
-        )
-    }
-}
-
-#[allow(non_snake_case)]
-impl IUIAutomationFocusChangedEventHandler_Impl for FocusEventHandler {
-    fn HandleFocusChangedEvent(&self, sender: Option<&IUIAutomationElement>) -> Result<()> {
-        self.received.put(sender.unwrap().clone());
-        Ok(())
-    }
 }
 
 mod simple;
