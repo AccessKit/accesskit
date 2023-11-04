@@ -10,7 +10,8 @@ use accesskit::{
 use windows::Win32::{Foundation::*, UI::Accessibility::*};
 use winit::{
     event_loop::EventLoopBuilder,
-    platform::windows::{EventLoopBuilderExtWindows, WindowExtWindows},
+    platform::windows::EventLoopBuilderExtWindows,
+    raw_window_handle::{HasWindowHandle, RawWindowHandle},
     window::WindowBuilder,
 };
 
@@ -67,13 +68,20 @@ fn has_native_uia() {
     // Still, we must prevent this test from running concurrently with other
     // tests, especially the focus test.
     let _lock_guard = MUTEX.lock().unwrap();
-    let event_loop = EventLoopBuilder::<()>::new().with_any_thread(true).build();
+    let event_loop = EventLoopBuilder::<()>::new()
+        .with_any_thread(true)
+        .build()
+        .unwrap();
     let window = WindowBuilder::new()
         .with_title(WINDOW_TITLE)
         .with_visible(false)
         .build(&event_loop)
         .unwrap();
-    let hwnd = HWND(window.hwnd());
+    let hwnd = match window.window_handle().unwrap().as_raw() {
+        RawWindowHandle::Win32(handle) => HWND(handle.hwnd.get()),
+        RawWindowHandle::WinRt(_) => unimplemented!(),
+        _ => unreachable!(),
+    };
     let adapter = SubclassingAdapter::new(hwnd, get_initial_state, Box::new(NullActionHandler {}));
     assert!(unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
     drop(window);
