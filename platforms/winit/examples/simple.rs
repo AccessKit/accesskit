@@ -177,37 +177,40 @@ fn main() -> Result<(), impl std::error::Error> {
         event_loop.set_control_flow(ControlFlow::Wait);
 
         match event {
-            Event::WindowEvent { event, .. } if adapter.on_event(&window, &event) => match event {
-                WindowEvent::CloseRequested => {
-                    event_loop.exit();
-                }
-                WindowEvent::KeyboardInput {
-                    event:
-                        KeyEvent {
-                            logical_key: virtual_code,
-                            state: ElementState::Pressed,
-                            ..
-                        },
-                    ..
-                } => match virtual_code {
-                    Key::Named(winit::keyboard::NamedKey::Tab) => {
-                        let mut state = state.lock().unwrap();
-                        let new_focus = if state.focus == BUTTON_1_ID {
-                            BUTTON_2_ID
-                        } else {
-                            BUTTON_1_ID
-                        };
-                        state.set_focus(&adapter, new_focus);
+            Event::WindowEvent { event, .. } => {
+                adapter.process_event(&window, &event);
+                match event {
+                    WindowEvent::CloseRequested => {
+                        event_loop.exit();
                     }
-                    Key::Named(winit::keyboard::NamedKey::Space) => {
-                        let mut state = state.lock().unwrap();
-                        let id = state.focus;
-                        state.press_button(&adapter, id);
-                    }
+                    WindowEvent::KeyboardInput {
+                        event:
+                            KeyEvent {
+                                logical_key: virtual_code,
+                                state: ElementState::Pressed,
+                                ..
+                            },
+                        ..
+                    } => match virtual_code {
+                        Key::Named(winit::keyboard::NamedKey::Tab) => {
+                            let mut state = state.lock().unwrap();
+                            let new_focus = if state.focus == BUTTON_1_ID {
+                                BUTTON_2_ID
+                            } else {
+                                BUTTON_1_ID
+                            };
+                            state.set_focus(&adapter, new_focus);
+                        }
+                        Key::Named(winit::keyboard::NamedKey::Space) => {
+                            let mut state = state.lock().unwrap();
+                            let id = state.focus;
+                            state.press_button(&adapter, id);
+                        }
+                        _ => (),
+                    },
                     _ => (),
-                },
-                _ => (),
-            },
+                }
+            }
             Event::UserEvent(ActionRequestEvent {
                 request:
                     ActionRequest {

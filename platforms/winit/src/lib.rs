@@ -74,9 +74,12 @@ impl Adapter {
         Self { adapter }
     }
 
-    #[must_use]
-    pub fn on_event(&self, window: &Window, event: &WindowEvent) -> bool {
-        self.adapter.on_event(window, event)
+    /// Allows reacting to window events.
+    ///
+    /// This must be called whenever a new window event is received
+    /// and before it is handled by the application.
+    pub fn process_event(&self, window: &Window, event: &WindowEvent) {
+        self.adapter.process_event(window, event);
     }
 
     pub fn update(&self, update: TreeUpdate) {
