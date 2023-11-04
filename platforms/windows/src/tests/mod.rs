@@ -8,7 +8,7 @@ use once_cell::{sync::Lazy as SyncLazy, unsync::Lazy};
 use std::{
     cell::RefCell,
     rc::Rc,
-    sync::{Condvar, Mutex},
+    sync::{Arc, Condvar, Mutex},
     thread,
     time::Duration,
 };
@@ -262,14 +262,19 @@ where
     })
 }
 
+/// This must only be used to wrap UIA elements returned by a UIA client
+/// that was created in the MTA. Those are safe to send between threads.
+struct SendableUiaElement(IUIAutomationElement);
+unsafe impl Send for SendableUiaElement {}
+
 pub(crate) struct ReceivedFocusEvent {
-    mutex: Mutex<Option<IUIAutomationElement>>,
+    mutex: Mutex<Option<SendableUiaElement>>,
     cv: Condvar,
 }
 
 impl ReceivedFocusEvent {
-    fn new() -> Rc<Self> {
-        Rc::new(Self {
+    fn new() -> Arc<Self> {
+        Arc::new(Self {
             mutex: Mutex::new(None),
             cv: Condvar::new(),
         })
@@ -281,7 +286,7 @@ impl ReceivedFocusEvent {
     {
         let mut received = self.mutex.lock().unwrap();
         loop {
-            if let Some(element) = received.take() {
+            if let Some(SendableUiaElement(element)) = received.take() {
                 if f(&element) {
                     return element;
                 }
@@ -294,26 +299,30 @@ impl ReceivedFocusEvent {
 
     fn put(&self, element: IUIAutomationElement) {
         let mut received = self.mutex.lock().unwrap();
-        *received = Some(element);
+        *received = Some(SendableUiaElement(element));
         self.cv.notify_one();
     }
 }
 
 #[implement(Windows::Win32::UI::Accessibility::IUIAutomationFocusChangedEventHandler)]
 pub(crate) struct FocusEventHandler {
-    received: Rc<ReceivedFocusEvent>,
+    received: Arc<ReceivedFocusEvent>,
 }
+// Because we create a UIA client in the COM MTA, this event handler
+// _will_ be called from a different thread, and possibly multiple threads
+// at once.
+static_assertions::assert_impl_all!(FocusEventHandler: Send, Sync);
 
 impl FocusEventHandler {
     #[allow(clippy::new_ret_no_self)] // it does return self, but wrapped
     pub(crate) fn new() -> (
         IUIAutomationFocusChangedEventHandler,
-        Rc<ReceivedFocusEvent>,
+        Arc<ReceivedFocusEvent>,
     ) {
         let received = ReceivedFocusEvent::new();
         (
             Self {
-                received: received.clone(),
+                received: Arc::clone(&received),
             }
             .into(),
             received,
