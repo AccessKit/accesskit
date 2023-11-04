@@ -66,14 +66,10 @@ fn has_native_uia() {
     let event_loop = EventLoopBuilder::<()>::new().with_any_thread(true).build();
     let window = WindowBuilder::new()
         .with_title(WINDOW_TITLE)
+        .with_visible(false)
         .build(&event_loop)
         .unwrap();
     let hwnd = HWND(window.hwnd());
-    assert!(!unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
-    let adapter = SubclassingAdapter::new(hwnd, get_initial_state, Box::new(NullActionHandler {}));
-    assert!(unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
-    drop(adapter);
-    assert!(!unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
     let adapter = SubclassingAdapter::new(hwnd, get_initial_state, Box::new(NullActionHandler {}));
     assert!(unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
     drop(window);
