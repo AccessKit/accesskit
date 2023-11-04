@@ -28,6 +28,22 @@
     * accesskit bumped from 0.11.1 to 0.11.2
     * accesskit_consumer bumped from 0.15.1 to 0.15.2
 
+## [0.15.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.15.0...accesskit_windows-v0.15.1) (2023-11-04)
+
+
+### Bug Fixes
+
+* Make the test focus event handler thread-safe again ([#306](https://github.com/AccessKit/accesskit/issues/306)) ([bb479c6](https://github.com/AccessKit/accesskit/commit/bb479c69bddff77a1102549a7ff6ea5c7155d90d))
+* Make the Windows subclassing test more robust ([#308](https://github.com/AccessKit/accesskit/issues/308)) ([0078f79](https://github.com/AccessKit/accesskit/commit/0078f7997f11a3bb1f3c33dc7a91f427b1a60db8))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.12.0 to 0.12.1
+    * accesskit_consumer bumped from 0.16.0 to 0.16.1
+
 ## [0.15.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.14.3...accesskit_windows-v0.15.0) (2023-09-27)
 
 

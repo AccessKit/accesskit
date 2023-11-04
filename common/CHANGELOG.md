@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.12.0...accesskit-v0.12.1) (2023-11-04)
+
+
+### Bug Fixes
+
+* Add missing semicolons when not returning anything ([#303](https://github.com/AccessKit/accesskit/issues/303)) ([38d4de1](https://github.com/AccessKit/accesskit/commit/38d4de1442247e701047d75122a9638a2ed99b1f))
+
 ## [0.12.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.11.2...accesskit-v0.12.0) (2023-09-27)
 
 

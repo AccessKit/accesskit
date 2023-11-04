@@ -16,6 +16,20 @@
   * dependencies
     * accesskit bumped from 0.11.1 to 0.11.2
 
+## [0.16.1](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.16.0...accesskit_consumer-v0.16.1) (2023-11-04)
+
+
+### Bug Fixes
+
+* Add missing semicolons when not returning anything ([#303](https://github.com/AccessKit/accesskit/issues/303)) ([38d4de1](https://github.com/AccessKit/accesskit/commit/38d4de1442247e701047d75122a9638a2ed99b1f))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.12.0 to 0.12.1
+
 ## [0.16.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.15.2...accesskit_consumer-v0.16.0) (2023-09-27)
 
 

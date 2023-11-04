@@ -73,6 +73,39 @@
   * dependencies
     * accesskit_windows bumped from 0.14.2 to 0.14.3
 
+## [0.16.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.15.0...accesskit_winit-v0.16.0) (2023-11-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* Rename `accesskit_winit::Adapter::on_event` to `process_event` ([#307](https://github.com/AccessKit/accesskit/issues/307))
+* Bump winit to 0.29 ([#256](https://github.com/AccessKit/accesskit/issues/256))
+
+### deps
+
+* Bump winit to 0.29 ([#256](https://github.com/AccessKit/accesskit/issues/256)) ([4eb21ff](https://github.com/AccessKit/accesskit/commit/4eb21ff64256fcf0a16ab831554b06b80de9b36e))
+
+
+### Bug Fixes
+
+* Add missing semicolons when not returning anything ([#303](https://github.com/AccessKit/accesskit/issues/303)) ([38d4de1](https://github.com/AccessKit/accesskit/commit/38d4de1442247e701047d75122a9638a2ed99b1f))
+* Use raw-window-handle 0.6 ([#310](https://github.com/AccessKit/accesskit/issues/310)) ([3fa69ab](https://github.com/AccessKit/accesskit/commit/3fa69ab4d9216b51b651d3cf2a9c8217a77069f4))
+
+
+### Code Refactoring
+
+* Rename `accesskit_winit::Adapter::on_event` to `process_event` ([#307](https://github.com/AccessKit/accesskit/issues/307)) ([6fbebde](https://github.com/AccessKit/accesskit/commit/6fbebdeb9d1e96b1776ed1faf7ad21d9cc0a68df))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.12.0 to 0.12.1
+    * accesskit_windows bumped from 0.15.0 to 0.15.1
+    * accesskit_macos bumped from 0.10.0 to 0.10.1
+    * accesskit_unix bumped from 0.6.0 to 0.6.1
+
 ## [0.15.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.14.4...accesskit_winit-v0.15.0) (2023-09-27)
 
 
