@@ -11,7 +11,7 @@ readme = "README.md"
 edition = "2021"
 
 [package.metadata.docs.rs]
-features = ["winit/rwh_05", "winit/x11", "winit/wayland"]
+features = ["winit/rwh_06", "winit/x11", "winit/wayland"]
 
 [features]
 default = ["accesskit_unix", "async-io"]
@@ -20,8 +20,7 @@ tokio = ["accesskit_unix/tokio"]
 
 [dependencies]
 accesskit = { version = "0.12.0", path = "../../common" }
-raw-window-handle = "0.5"
-winit = { version = "0.29", default-features = false, features = ["rwh_05"] }
+winit = { version = "0.29", default-features = false, features = ["rwh_06"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 accesskit_windows = { version = "0.15.0", path = "../windows" }
@@ -35,4 +34,4 @@ accesskit_unix = { version = "0.6.0", path = "../unix", optional = true, default
 [dev-dependencies.winit]
 version = "0.29"
 default-features = false
-features = ["rwh_05", "x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita"]
+features = ["rwh_06", "x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita"]
