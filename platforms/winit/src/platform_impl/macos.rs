@@ -2,9 +2,11 @@
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file).
 
+use crate::WindowEvent;
 use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_macos::SubclassingAdapter;
-use winit::{event::WindowEvent, platform::macos::WindowExtMacOS, window::Window};
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use winit::window::Window;
 
 pub type ActionHandlerBox = Box<dyn ActionHandler>;
 
@@ -18,7 +20,12 @@ impl Adapter {
         source: impl 'static + FnOnce() -> TreeUpdate,
         action_handler: ActionHandlerBox,
     ) -> Self {
-        let view = window.ns_view();
+        // LINK FOR REVIEWERS: https://github.com/rust-windowing/winit/blob/309e6aa85ae60104308d039763d28f42d6fe1595/src/platform_impl/macos/window.rs#L463
+        let view = match window.raw_window_handle() {
+            RawWindowHandle::AppKit(handle) => handle.ns_view,
+            RawWindowHandle::UiKit(_) => unimplemented!(),
+            _ => unreachable!(),
+        };
         let adapter = unsafe { SubclassingAdapter::new(view, source, action_handler) };
         Self { adapter }
     }

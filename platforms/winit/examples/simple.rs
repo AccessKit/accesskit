@@ -5,8 +5,9 @@ use accesskit::{
 use accesskit_winit::{ActionRequestEvent, Adapter};
 use std::sync::{Arc, Mutex};
 use winit::{
-    event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
+    event::{ElementState, Event, KeyEvent, WindowEvent},
     event_loop::{ControlFlow, EventLoopBuilder},
+    keyboard::Key,
     window::WindowBuilder,
 };
 
@@ -131,7 +132,7 @@ impl State {
     }
 }
 
-fn main() {
+fn main() -> Result<(), impl std::error::Error> {
     println!("This example has no visible GUI, and a keyboard interface:");
     println!("- [Tab] switches focus between two logical buttons.");
     println!("- [Space] 'presses' the button, adding static text in a live region announcing that it was pressed.");
@@ -149,15 +150,14 @@ fn main() {
     ))]
     println!("Enable Orca with [Super]+[Alt]+[S].");
 
-    let event_loop = EventLoopBuilder::with_user_event().build();
+    let event_loop = EventLoopBuilder::with_user_event().build()?;
 
     let state = State::new();
 
     let window = WindowBuilder::new()
         .with_title(WINDOW_TITLE)
         .with_visible(false)
-        .build(&event_loop)
-        .unwrap();
+        .build(&event_loop)?;
 
     let adapter = {
         let state = Arc::clone(&state);
@@ -173,24 +173,24 @@ fn main() {
 
     window.set_visible(true);
 
-    event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Wait;
+    event_loop.run(move |event, event_loop| {
+        event_loop.set_control_flow(ControlFlow::Wait);
 
         match event {
             Event::WindowEvent { event, .. } if adapter.on_event(&window, &event) => match event {
                 WindowEvent::CloseRequested => {
-                    *control_flow = ControlFlow::ExitWithCode(0);
+                    event_loop.exit();
                 }
                 WindowEvent::KeyboardInput {
-                    input:
-                        KeyboardInput {
-                            virtual_keycode: Some(virtual_code),
+                    event:
+                        KeyEvent {
+                            logical_key: virtual_code,
                             state: ElementState::Pressed,
                             ..
                         },
                     ..
                 } => match virtual_code {
-                    VirtualKeyCode::Tab => {
+                    Key::Named(winit::keyboard::NamedKey::Tab) => {
                         let mut state = state.lock().unwrap();
                         let new_focus = if state.focus == BUTTON_1_ID {
                             BUTTON_2_ID
@@ -199,7 +199,7 @@ fn main() {
                         };
                         state.set_focus(&adapter, new_focus);
                     }
-                    VirtualKeyCode::Space => {
+                    Key::Named(winit::keyboard::NamedKey::Space) => {
                         let mut state = state.lock().unwrap();
                         let id = state.focus;
                         state.press_button(&adapter, id);
@@ -230,5 +230,5 @@ fn main() {
             }
             _ => (),
         }
-    });
+    })
 }

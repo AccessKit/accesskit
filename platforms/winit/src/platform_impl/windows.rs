@@ -4,7 +4,8 @@
 
 use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_windows::{SubclassingAdapter, HWND};
-use winit::{event::WindowEvent, platform::windows::WindowExtWindows, window::Window};
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use winit::{event::WindowEvent, window::Window};
 
 pub type ActionHandlerBox = Box<dyn ActionHandler + Send>;
 
@@ -18,7 +19,11 @@ impl Adapter {
         source: impl 'static + FnOnce() -> TreeUpdate,
         action_handler: ActionHandlerBox,
     ) -> Self {
-        let hwnd = HWND(window.hwnd());
+        let hwnd = HWND(match window.raw_window_handle() {
+            RawWindowHandle::Win32(handle) => handle.hwnd as isize,
+            RawWindowHandle::WinRt(_) => unimplemented!(),
+            _ => unreachable!(),
+        });
         let adapter = SubclassingAdapter::new(hwnd, source, action_handler);
         Self { adapter }
     }
