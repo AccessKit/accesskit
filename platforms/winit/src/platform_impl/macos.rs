@@ -39,13 +39,11 @@ impl Adapter {
         }
     }
 
-    pub fn on_event(&self, _window: &Window, event: &WindowEvent) -> bool {
+    pub fn process_event(&self, _window: &Window, event: &WindowEvent) {
         if let WindowEvent::Focused(is_focused) = event {
             if let Some(events) = self.adapter.update_view_focus_state(*is_focused) {
                 events.raise();
             }
         }
-
-        true
     }
 }

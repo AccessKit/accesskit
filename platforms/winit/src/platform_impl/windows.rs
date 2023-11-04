@@ -38,7 +38,5 @@ impl Adapter {
         }
     }
 
-    pub fn on_event(&self, _window: &Window, _event: &WindowEvent) -> bool {
-        true
-    }
+    pub fn process_event(&self, _window: &Window, _event: &WindowEvent) {}
 }

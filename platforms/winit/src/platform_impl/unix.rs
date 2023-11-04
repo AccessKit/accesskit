@@ -46,7 +46,7 @@ impl Adapter {
         }
     }
 
-    pub fn on_event(&self, window: &Window, event: &WindowEvent) -> bool {
+    pub fn process_event(&self, window: &Window, event: &WindowEvent) {
         match event {
             WindowEvent::Moved(outer_position) => {
                 let outer_position: (_, _) = outer_position.cast::<f64>().into();
@@ -85,7 +85,5 @@ impl Adapter {
             }
             _ => (),
         }
-
-        true
     }
 }

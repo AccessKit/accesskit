@@ -22,7 +22,5 @@ impl Adapter {
 
     pub fn update_if_active(&self, _updater: impl FnOnce() -> TreeUpdate) {}
 
-    pub fn on_event(&self, _window: &Window, _event: &WindowEvent) -> bool {
-        true
-    }
+    pub fn process_event(&self, _window: &Window, _event: &WindowEvent) {}
 }
