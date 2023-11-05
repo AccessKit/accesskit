@@ -73,6 +73,13 @@
   * dependencies
     * accesskit_windows bumped from 0.14.2 to 0.14.3
 
+## [0.16.1](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.16.0...accesskit_winit-v0.16.1) (2023-11-05)
+
+
+### Bug Fixes
+
+* Account for window decorations when `accesskit_winit::Adapter::process_event` receives a resizing event on Unix ([#312](https://github.com/AccessKit/accesskit/issues/312)) ([e2b264c](https://github.com/AccessKit/accesskit/commit/e2b264c2e5b0fb699576f2ece905509c38ffc9be))
+
 ## [0.16.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.15.0...accesskit_winit-v0.16.0) (2023-11-04)
 
 
