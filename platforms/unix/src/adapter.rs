@@ -14,7 +14,7 @@ use crate::{
     context::{AppContext, Context},
     filters::{filter, filter_detached},
     node::{NodeWrapper, PlatformNode},
-    util::block_on,
+    util::{block_on, WindowBounds},
 };
 use accesskit::{ActionHandler, NodeId, Rect, Role, TreeUpdate};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
@@ -24,8 +24,8 @@ use futures_lite::StreamExt;
 use std::{
     pin::pin,
     sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+        Arc, Mutex,
     },
 };
 use zbus::Task;
@@ -207,6 +207,8 @@ pub struct Adapter {
     _event_task: Task<()>,
     events: Sender<Event>,
     context: Arc<Context>,
+    is_window_focused: Arc<AtomicBool>,
+    root_window_bounds: Arc<Mutex<WindowBounds>>,
 }
 
 impl Adapter {
@@ -227,7 +229,9 @@ impl Adapter {
             },
             "accesskit_event_task",
         );
-        let tree = Tree::new(initial_state(), is_window_focused);
+        let is_window_focused = Arc::new(AtomicBool::new(is_window_focused));
+        let root_window_bounds = Arc::new(Mutex::new(Default::default()));
+        let tree = Tree::new(initial_state(), is_window_focused.load(Ordering::Relaxed));
         let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::SeqCst);
         let root_id = tree.state().root_id();
         let app_context = AppContext::get_or_init(
@@ -235,7 +239,12 @@ impl Adapter {
             tree.state().toolkit_name().unwrap_or_default(),
             tree.state().toolkit_version().unwrap_or_default(),
         );
-        let context = Context::new(tree, action_handler, &app_context);
+        let context = Context::new(
+            tree,
+            action_handler,
+            *root_window_bounds.lock().unwrap(),
+            &app_context,
+        );
         let adapter_index = app_context.write().unwrap().push_adapter(id, &context);
         block_on(async {
             if !atspi_bus.register_root_node(&app_context).await.ok()? {
@@ -262,6 +271,8 @@ impl Adapter {
             _event_task: event_task,
             events: event_sender,
             context,
+            is_window_focused,
+            root_window_bounds,
         };
         adapter.register_tree();
         Some(adapter)
@@ -388,9 +399,11 @@ impl Adapter {
     }
 
     pub fn set_root_window_bounds(&self, outer: Rect, inner: Rect) {
-        let mut bounds = self.context.root_window_bounds.write().unwrap();
+        let mut bounds = self.root_window_bounds.lock().unwrap();
         bounds.outer = outer;
         bounds.inner = inner;
+        let mut old_bounds = self.context.root_window_bounds.write().unwrap();
+        *old_bounds = *bounds;
     }
 
     /// Apply the provided update to the tree.
@@ -402,6 +415,7 @@ impl Adapter {
 
     /// Update the tree state based on whether the window is focused.
     pub fn update_window_focus_state(&self, is_focused: bool) {
+        self.is_window_focused.store(is_focused, Ordering::SeqCst);
         let mut handler = AdapterChangeHandler { adapter: self };
         let mut tree = self.context.tree.write().unwrap();
         tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);

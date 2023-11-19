@@ -39,7 +39,7 @@ pub(crate) fn block_on<F: std::future::Future>(future: F) -> F::Output {
     TOKIO_RT.block_on(future)
 }
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default)]
 pub(crate) struct WindowBounds {
     pub(crate) outer: Rect,
     pub(crate) inner: Rect,

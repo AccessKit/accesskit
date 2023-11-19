@@ -21,13 +21,14 @@ impl Context {
     pub(crate) fn new(
         tree: Tree,
         action_handler: Box<dyn ActionHandler + Send>,
+        root_window_bounds: WindowBounds,
         app_context: &Arc<RwLock<AppContext>>,
     ) -> Arc<Self> {
         Arc::new(Self {
             tree: RwLock::new(tree),
             action_handler: Mutex::new(action_handler),
             app_context: app_context.clone(),
-            root_window_bounds: RwLock::new(Default::default()),
+            root_window_bounds: RwLock::new(root_window_bounds),
         })
     }
 
