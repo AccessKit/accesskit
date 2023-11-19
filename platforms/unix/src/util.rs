@@ -46,6 +46,10 @@ pub(crate) struct WindowBounds {
 }
 
 impl WindowBounds {
+    pub(crate) fn new(outer: Rect, inner: Rect) -> Self {
+        Self { outer, inner }
+    }
+
     pub(crate) fn top_left(&self, coord_type: CoordType, is_root: bool) -> Point {
         match coord_type {
             CoordType::Screen if is_root => self.outer.origin(),

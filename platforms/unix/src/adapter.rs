@@ -19,10 +19,11 @@ use crate::{
 use accesskit::{ActionHandler, NodeId, Rect, Role, TreeUpdate};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use async_channel::{Receiver, Sender};
+use async_once_cell::Lazy;
 use atspi::{Interface, InterfaceSet, Live, State};
-use futures_lite::StreamExt;
+use futures_lite::{future::Boxed, FutureExt, StreamExt};
 use std::{
-    pin::pin,
+    pin::{pin, Pin},
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex,
@@ -31,7 +32,7 @@ use std::{
 use zbus::Task;
 
 struct AdapterChangeHandler<'a> {
-    adapter: &'a Adapter,
+    adapter: &'a AdapterImpl,
 }
 
 impl AdapterChangeHandler<'_> {
@@ -201,21 +202,19 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
 
 static NEXT_ADAPTER_ID: AtomicUsize = AtomicUsize::new(0);
 
-pub struct Adapter {
+pub(crate) struct AdapterImpl {
     id: usize,
     atspi_bus: Bus,
     _event_task: Task<()>,
     events: Sender<Event>,
     context: Arc<Context>,
-    is_window_focused: Arc<AtomicBool>,
-    root_window_bounds: Arc<Mutex<WindowBounds>>,
 }
 
-impl Adapter {
-    /// Create a new Unix adapter.
-    pub fn new(
-        initial_state: impl 'static + FnOnce() -> TreeUpdate,
+impl AdapterImpl {
+    fn new(
+        initial_state: TreeUpdate,
         is_window_focused: bool,
+        root_window_bounds: WindowBounds,
         action_handler: Box<dyn ActionHandler + Send>,
     ) -> Option<Self> {
         let mut atspi_bus = block_on(async { Bus::a11y_bus().await })?;
@@ -229,9 +228,7 @@ impl Adapter {
             },
             "accesskit_event_task",
         );
-        let is_window_focused = Arc::new(AtomicBool::new(is_window_focused));
-        let root_window_bounds = Arc::new(Mutex::new(Default::default()));
-        let tree = Tree::new(initial_state(), is_window_focused.load(Ordering::Relaxed));
+        let tree = Tree::new(initial_state, is_window_focused);
         let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::SeqCst);
         let root_id = tree.state().root_id();
         let app_context = AppContext::get_or_init(
@@ -239,12 +236,7 @@ impl Adapter {
             tree.state().toolkit_name().unwrap_or_default(),
             tree.state().toolkit_version().unwrap_or_default(),
         );
-        let context = Context::new(
-            tree,
-            action_handler,
-            *root_window_bounds.lock().unwrap(),
-            &app_context,
-        );
+        let context = Context::new(tree, action_handler, root_window_bounds, &app_context);
         let adapter_index = app_context.write().unwrap().push_adapter(id, &context);
         block_on(async {
             if !atspi_bus.register_root_node(&app_context).await.ok()? {
@@ -265,17 +257,15 @@ impl Adapter {
                 Some(())
             }
         })?;
-        let adapter = Adapter {
+        let r#impl = AdapterImpl {
             id,
             atspi_bus,
             _event_task: event_task,
             events: event_sender,
             context,
-            is_window_focused,
-            root_window_bounds,
         };
-        adapter.register_tree();
-        Some(adapter)
+        r#impl.register_tree();
+        Some(r#impl)
     }
 
     fn register_tree(&self) {
@@ -398,24 +388,18 @@ impl Adapter {
         })
     }
 
-    pub fn set_root_window_bounds(&self, outer: Rect, inner: Rect) {
-        let mut bounds = self.root_window_bounds.lock().unwrap();
-        bounds.outer = outer;
-        bounds.inner = inner;
+    fn set_root_window_bounds(&self, bounds: WindowBounds) {
         let mut old_bounds = self.context.root_window_bounds.write().unwrap();
-        *old_bounds = *bounds;
+        *old_bounds = bounds;
     }
 
-    /// Apply the provided update to the tree.
-    pub fn update(&self, update: TreeUpdate) {
+    fn update(&self, update: TreeUpdate) {
         let mut handler = AdapterChangeHandler { adapter: self };
         let mut tree = self.context.tree.write().unwrap();
         tree.update_and_process_changes(update, &mut handler);
     }
 
-    /// Update the tree state based on whether the window is focused.
-    pub fn update_window_focus_state(&self, is_focused: bool) {
-        self.is_window_focused.store(is_focused, Ordering::SeqCst);
+    fn update_window_focus_state(&self, is_focused: bool) {
         let mut handler = AdapterChangeHandler { adapter: self };
         let mut tree = self.context.tree.write().unwrap();
         tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
@@ -512,7 +496,7 @@ fn root_window(current_state: &TreeState) -> Option<Node> {
     }
 }
 
-impl Drop for Adapter {
+impl Drop for AdapterImpl {
     fn drop(&mut self) {
         block_on(async {
             self.context
@@ -546,5 +530,73 @@ async fn handle_events(bus: Bus, mut events: Receiver<Event>) {
                 event,
             } => bus.emit_window_event(target, name, event).await,
         };
+    }
+}
+
+pub(crate) type LazyAdapter = Pin<Arc<Lazy<Option<AdapterImpl>, Boxed<Option<AdapterImpl>>>>>;
+
+pub struct Adapter {
+    r#impl: LazyAdapter,
+    is_window_focused: Arc<AtomicBool>,
+    root_window_bounds: Arc<Mutex<WindowBounds>>,
+}
+
+impl Adapter {
+    /// Create a new Unix adapter.
+    pub fn new(
+        source: impl 'static + FnOnce() -> TreeUpdate + Send,
+        action_handler: Box<dyn ActionHandler + Send>,
+    ) -> Self {
+        let is_window_focused = Arc::new(AtomicBool::new(false));
+        let is_window_focused_copy = is_window_focused.clone();
+        let root_window_bounds = Arc::new(Mutex::new(Default::default()));
+        let root_window_bounds_copy = root_window_bounds.clone();
+        let r#impl = Arc::pin(Lazy::new(
+            async move {
+                let is_window_focused = is_window_focused_copy.load(Ordering::Relaxed);
+                let root_window_bounds = *root_window_bounds_copy.lock().unwrap();
+                AdapterImpl::new(
+                    source(),
+                    is_window_focused,
+                    root_window_bounds,
+                    action_handler,
+                )
+            }
+            .boxed(),
+        ));
+        let adapter = Self {
+            r#impl: r#impl.clone(),
+            is_window_focused,
+            root_window_bounds,
+        };
+        block_on(async { r#impl.as_ref().await });
+        adapter
+    }
+
+    pub fn set_root_window_bounds(&self, outer: Rect, inner: Rect) {
+        let new_bounds = WindowBounds::new(outer, inner);
+        {
+            let mut bounds = self.root_window_bounds.lock().unwrap();
+            *bounds = new_bounds;
+        }
+        if let Some(Some(r#impl)) = Lazy::try_get(&self.r#impl) {
+            r#impl.set_root_window_bounds(new_bounds);
+        }
+    }
+
+    /// If and only if the tree has been initialized, call the provided function
+    /// and apply the resulting update.
+    pub fn update_if_active(&self, update_factory: impl FnOnce() -> TreeUpdate) {
+        if let Some(Some(r#impl)) = Lazy::try_get(&self.r#impl) {
+            r#impl.update(update_factory());
+        }
+    }
+
+    /// Update the tree state based on whether the window is focused.
+    pub fn update_window_focus_state(&self, is_focused: bool) {
+        self.is_window_focused.store(is_focused, Ordering::SeqCst);
+        if let Some(Some(r#impl)) = Lazy::try_get(&self.r#impl) {
+            r#impl.update_window_focus_state(is_focused);
+        }
     }
 }

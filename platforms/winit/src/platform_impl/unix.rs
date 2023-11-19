@@ -9,35 +9,29 @@ use winit::{event::WindowEvent, window::Window};
 pub type ActionHandlerBox = Box<dyn ActionHandler + Send>;
 
 pub struct Adapter {
-    adapter: Option<UnixAdapter>,
+    adapter: UnixAdapter,
 }
 
 impl Adapter {
     pub fn new(
         _: &Window,
-        source: impl 'static + FnOnce() -> TreeUpdate,
+        source: impl 'static + FnOnce() -> TreeUpdate + Send,
         action_handler: ActionHandlerBox,
     ) -> Self {
-        let adapter = UnixAdapter::new(source, false, action_handler);
+        let adapter = UnixAdapter::new(source, action_handler);
         Self { adapter }
     }
 
     fn set_root_window_bounds(&self, outer: Rect, inner: Rect) {
-        if let Some(adapter) = &self.adapter {
-            adapter.set_root_window_bounds(outer, inner);
-        }
+        self.adapter.set_root_window_bounds(outer, inner);
     }
 
     pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
-        if let Some(adapter) = &self.adapter {
-            adapter.update(updater());
-        }
+        self.adapter.update_if_active(updater);
     }
 
     fn update_window_focus_state(&self, is_focused: bool) {
-        if let Some(adapter) = &self.adapter {
-            adapter.update_window_focus_state(is_focused);
-        }
+        self.adapter.update_window_focus_state(is_focused);
     }
 
     pub fn process_event(&self, window: &Window, event: &WindowEvent) {

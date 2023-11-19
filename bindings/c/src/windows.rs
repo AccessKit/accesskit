@@ -5,7 +5,7 @@
 
 use crate::{
     action_handler, box_from_ptr, opt_struct, ref_from_ptr, tree_update, tree_update_factory,
-    BoxCastPtr, CastPtr,
+    tree_update_factory_userdata, BoxCastPtr, CastPtr,
 };
 use accesskit_windows::*;
 use std::{os::raw::c_void, ptr};
@@ -151,6 +151,7 @@ impl windows_subclassing_adapter {
         handler: *mut action_handler,
     ) -> *mut windows_subclassing_adapter {
         let source = source.unwrap();
+        let source_userdata = tree_update_factory_userdata(source_userdata);
         let handler = box_from_ptr(handler);
         let adapter = SubclassingAdapter::new(
             hwnd,
@@ -188,6 +189,7 @@ impl windows_subclassing_adapter {
         update_factory_userdata: *mut c_void,
     ) -> *mut windows_queued_events {
         let update_factory = update_factory.unwrap();
+        let update_factory_userdata = tree_update_factory_userdata(update_factory_userdata);
         let adapter = ref_from_ptr(adapter);
         let events =
             adapter.update_if_active(|| *box_from_ptr(update_factory(update_factory_userdata)));

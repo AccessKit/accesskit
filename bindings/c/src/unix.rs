@@ -4,12 +4,12 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    action_handler, box_from_ptr, ref_from_ptr, tree_update, tree_update_factory, BoxCastPtr,
-    CastPtr,
+    action_handler, box_from_ptr, ref_from_ptr, tree_update_factory, tree_update_factory_userdata,
+    BoxCastPtr, CastPtr,
 };
 use accesskit::Rect;
 use accesskit_unix::Adapter;
-use std::{os::raw::c_void, ptr};
+use std::os::raw::c_void;
 
 pub struct unix_adapter {
     _private: [u8; 0],
@@ -22,22 +22,20 @@ impl CastPtr for unix_adapter {
 impl BoxCastPtr for unix_adapter {}
 
 impl unix_adapter {
-    /// This function will take ownership of the pointer returned by `initial_state`, which can't be null.
+    /// This function will take ownership of the pointer returned by `source`, which can't be null.
+    ///
+    /// `source` can be called from any thread.
     #[no_mangle]
     pub extern "C" fn accesskit_unix_adapter_new(
-        initial_state: tree_update_factory,
-        initial_state_userdata: *mut c_void,
-        is_window_focused: bool,
+        source: tree_update_factory,
+        source_userdata: *mut c_void,
         handler: *mut action_handler,
     ) -> *mut unix_adapter {
-        let initial_state = initial_state.unwrap();
+        let source = source.unwrap();
+        let source_userdata = tree_update_factory_userdata(source_userdata);
         let handler = box_from_ptr(handler);
-        let adapter = Adapter::new(
-            move || *box_from_ptr(initial_state(initial_state_userdata)),
-            is_window_focused,
-            handler,
-        );
-        adapter.map_or_else(ptr::null_mut, BoxCastPtr::to_mut_ptr)
+        let adapter = Adapter::new(move || *box_from_ptr(source(source_userdata)), handler);
+        BoxCastPtr::to_mut_ptr(adapter)
     }
 
     #[no_mangle]
@@ -57,13 +55,15 @@ impl unix_adapter {
 
     /// This function takes ownership of `update`.
     #[no_mangle]
-    pub extern "C" fn accesskit_unix_adapter_update(
+    pub extern "C" fn accesskit_unix_adapter_update_if_active(
         adapter: *const unix_adapter,
-        update: *mut tree_update,
+        update_factory: tree_update_factory,
+        update_factory_userdata: *mut c_void,
     ) {
+        let update_factory = update_factory.unwrap();
+        let update_factory_userdata = tree_update_factory_userdata(update_factory_userdata);
         let adapter = ref_from_ptr(adapter);
-        let update = box_from_ptr(update);
-        adapter.update(*update);
+        adapter.update_if_active(|| *box_from_ptr(update_factory(update_factory_userdata)));
     }
 
     /// Update the tree state based on whether the window is focused.

@@ -4,8 +4,8 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    action_handler, box_from_ptr, ref_from_ptr, tree_update, tree_update_factory, BoxCastPtr,
-    CastPtr,
+    action_handler, box_from_ptr, ref_from_ptr, tree_update, tree_update_factory,
+    tree_update_factory_userdata, BoxCastPtr, CastPtr,
 };
 use accesskit_macos::{
     add_focus_forwarder_to_window_class, Adapter, NSPoint, QueuedEvents, SubclassingAdapter,
@@ -147,6 +147,7 @@ impl macos_subclassing_adapter {
         handler: *mut action_handler,
     ) -> *mut macos_subclassing_adapter {
         let source = source.unwrap();
+        let source_userdata = tree_update_factory_userdata(source_userdata);
         let handler = box_from_ptr(handler);
         let adapter = SubclassingAdapter::new(
             view,
@@ -174,6 +175,7 @@ impl macos_subclassing_adapter {
         handler: *mut action_handler,
     ) -> *mut macos_subclassing_adapter {
         let source = source.unwrap();
+        let source_userdata = tree_update_factory_userdata(source_userdata);
         let handler = box_from_ptr(handler);
         let adapter = SubclassingAdapter::for_window(
             window,
@@ -211,6 +213,7 @@ impl macos_subclassing_adapter {
         update_factory_userdata: *mut c_void,
     ) -> *mut macos_queued_events {
         let update_factory = update_factory.unwrap();
+        let update_factory_userdata = tree_update_factory_userdata(update_factory_userdata);
         let adapter = ref_from_ptr(adapter);
         let events =
             adapter.update_if_active(|| *box_from_ptr(update_factory(update_factory_userdata)));
