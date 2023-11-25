@@ -2,12 +2,14 @@
 members = [
     "common",
     "consumer",
+    "platforms/mac",
     "platforms/windows",
     "platforms/winit",
 ]
 default-members = [
     "common",
     "consumer",
+    "platforms/mac",
     "platforms/winit",
 ]
 
