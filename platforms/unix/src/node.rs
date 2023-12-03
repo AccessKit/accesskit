@@ -110,6 +110,9 @@ impl<'a> NodeWrapper<'a> {
     }
 
     pub fn role(&self) -> AtspiRole {
+        if self.node_state().role_description().is_some() {
+            return AtspiRole::Extended;
+        }
         match self.node_state().role() {
             Role::Alert => AtspiRole::Notification,
             Role::AlertDialog => AtspiRole::Alert,
@@ -811,6 +814,10 @@ impl PlatformNode {
             let wrapper = self.node_wrapper(&node);
             Ok(wrapper.role())
         })
+    }
+
+    pub(crate) fn localized_role_name(&self) -> fdo::Result<String> {
+        self.resolve(|node| Ok(node.state().role_description().unwrap_or_default()))
     }
 
     pub fn state(&self) -> fdo::Result<StateSet> {
