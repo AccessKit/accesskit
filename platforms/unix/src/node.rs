@@ -113,6 +113,7 @@ impl<'a> NodeWrapper<'a> {
         if self.node_state().role_description().is_some() {
             return AtspiRole::Extended;
         }
+
         match self.node_state().role() {
             Role::Alert => AtspiRole::Notification,
             Role::AlertDialog => AtspiRole::Alert,

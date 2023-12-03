@@ -18,7 +18,7 @@ use objc2::{
     foundation::{
         NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSPoint, NSRange, NSRect, NSString,
     },
-    msg_send, msg_send_id, ns_string, 
+    msg_send, msg_send_id, ns_string,
     rc::{Id, Owned, Shared},
     runtime::Sel,
     sel, ClassType,
