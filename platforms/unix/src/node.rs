@@ -110,7 +110,7 @@ impl<'a> NodeWrapper<'a> {
     }
 
     pub fn role(&self) -> AtspiRole {
-        if self.node_state().role_description().is_some() {
+        if self.node_state().has_role_description() {
             return AtspiRole::Extended;
         }
 
