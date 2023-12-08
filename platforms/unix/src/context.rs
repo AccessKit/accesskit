@@ -6,14 +6,13 @@
 use accesskit::{ActionHandler, ActionRequest};
 use accesskit_consumer::Tree;
 use once_cell::sync::OnceCell;
-use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, Weak};
+use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
 
 use crate::{atspi::OwnedObjectAddress, util::WindowBounds};
 
 pub(crate) struct Context {
     pub(crate) tree: RwLock<Tree>,
     pub(crate) action_handler: Mutex<Box<dyn ActionHandler + Send>>,
-    pub(crate) app_context: Arc<RwLock<AppContext>>,
     pub(crate) root_window_bounds: RwLock<WindowBounds>,
 }
 
@@ -22,22 +21,16 @@ impl Context {
         tree: Tree,
         action_handler: Box<dyn ActionHandler + Send>,
         root_window_bounds: WindowBounds,
-        app_context: &Arc<RwLock<AppContext>>,
     ) -> Arc<Self> {
         Arc::new(Self {
             tree: RwLock::new(tree),
             action_handler: Mutex::new(action_handler),
-            app_context: app_context.clone(),
             root_window_bounds: RwLock::new(root_window_bounds),
         })
     }
 
     pub(crate) fn read_tree(&self) -> RwLockReadGuard<'_, Tree> {
         self.tree.read().unwrap()
-    }
-
-    pub(crate) fn read_app_context(&self) -> RwLockReadGuard<'_, AppContext> {
-        self.app_context.read().unwrap()
     }
 
     pub(crate) fn read_root_window_bounds(&self) -> RwLockReadGuard<'_, WindowBounds> {
@@ -86,6 +79,14 @@ impl AppContext {
                 }))
             })
             .clone()
+    }
+
+    pub(crate) fn read<'a>() -> RwLockReadGuard<'a, AppContext> {
+        APP_CONTEXT.get().unwrap().read().unwrap()
+    }
+
+    pub(crate) fn write<'a>() -> RwLockWriteGuard<'a, AppContext> {
+        APP_CONTEXT.get().unwrap().write().unwrap()
     }
 
     pub(crate) fn adapter_index(&self, id: usize) -> Result<usize, usize> {

@@ -29,7 +29,7 @@ use atspi::{
 };
 use std::{
     iter::FusedIterator,
-    sync::{Arc, RwLock, RwLockReadGuard, Weak},
+    sync::{Arc, RwLockReadGuard, Weak},
 };
 use zbus::fdo;
 
@@ -999,27 +999,19 @@ impl PlatformNode {
 }
 
 #[derive(Clone)]
-pub(crate) struct PlatformRootNode {
-    pub(crate) app_context: Weak<RwLock<AppContext>>,
-}
+pub(crate) struct PlatformRootNode;
 
 impl PlatformRootNode {
-    pub(crate) fn new(app_context: &Arc<RwLock<AppContext>>) -> Self {
-        Self {
-            app_context: Arc::downgrade(app_context),
-        }
+    pub(crate) fn new() -> Self {
+        Self {}
     }
 
     fn resolve_app_context<F, T>(&self, f: F) -> fdo::Result<T>
     where
         for<'a> F: FnOnce(RwLockReadGuard<'a, AppContext>) -> fdo::Result<T>,
     {
-        if let Some(context) = self.app_context.upgrade() {
-            if let Ok(context) = context.read() {
-                return f(context);
-            }
-        }
-        Err(unknown_object(&self.accessible_id()))
+        let app_context = AppContext::read();
+        f(app_context)
     }
 
     pub(crate) fn name(&self) -> fdo::Result<String> {
@@ -1083,12 +1075,8 @@ impl PlatformRootNode {
     }
 
     pub(crate) fn set_id(&mut self, id: i32) -> fdo::Result<()> {
-        if let Some(context) = self.app_context.upgrade() {
-            if let Ok(mut context) = context.write() {
-                context.id = Some(id);
-                return Ok(());
-            }
-        }
-        Err(unknown_object(&self.accessible_id()))
+        let mut app_context = AppContext::write();
+        app_context.id = Some(id);
+        Ok(())
     }
 }

@@ -48,12 +48,7 @@ impl AdapterChangeHandler<'_> {
             .register_interfaces(node.id(), interfaces)
             .unwrap();
         if is_root && role == Role::Window {
-            let adapter_index = self
-                .adapter
-                .context
-                .read_app_context()
-                .adapter_index(self.adapter.id)
-                .unwrap();
+            let adapter_index = AppContext::read().adapter_index(self.adapter.id).unwrap();
             self.adapter.window_created(adapter_index, node.id());
         }
 
@@ -236,10 +231,10 @@ impl AdapterImpl {
             tree.state().toolkit_name().unwrap_or_default(),
             tree.state().toolkit_version().unwrap_or_default(),
         );
-        let context = Context::new(tree, action_handler, root_window_bounds, &app_context);
+        let context = Context::new(tree, action_handler, root_window_bounds);
         let adapter_index = app_context.write().unwrap().push_adapter(id, &context);
         block_on(async {
-            if !atspi_bus.register_root_node(&app_context).await.ok()? {
+            if !atspi_bus.register_root_node().await.ok()? {
                 atspi_bus
                     .emit_object_event(
                         ObjectId::Root,
@@ -291,11 +286,7 @@ impl AdapterImpl {
             let interfaces = wrapper.interfaces();
             self.register_interfaces(id, interfaces).unwrap();
             if node.is_root() && node.role() == Role::Window {
-                let adapter_index = self
-                    .context
-                    .read_app_context()
-                    .adapter_index(self.id)
-                    .unwrap();
+                let adapter_index = AppContext::read().adapter_index(self.id).unwrap();
                 self.window_created(adapter_index, node.id());
             }
         }
@@ -499,11 +490,7 @@ fn root_window(current_state: &TreeState) -> Option<Node> {
 impl Drop for AdapterImpl {
     fn drop(&mut self) {
         block_on(async {
-            self.context
-                .app_context
-                .write()
-                .unwrap()
-                .remove_adapter(self.id);
+            AppContext::write().remove_adapter(self.id);
             let root_id = self.context.read_tree().state().root_id();
             self.atspi_bus
                 .emit_object_event(

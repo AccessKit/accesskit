@@ -14,11 +14,7 @@ use atspi::{
     proxy::{bus::BusProxy, socket::SocketProxy},
 };
 use serde::Serialize;
-use std::{
-    collections::HashMap,
-    env::var,
-    sync::{Arc, RwLock},
-};
+use std::{collections::HashMap, env::var};
 use zbus::{
     names::{BusName, InterfaceName, MemberName, OwnedUniqueName},
     zvariant::{Str, Value},
@@ -60,11 +56,8 @@ impl Bus {
         self.conn.object_server().remove::<T, _>(path).await
     }
 
-    pub async fn register_root_node(
-        &mut self,
-        app_context: &Arc<RwLock<AppContext>>,
-    ) -> Result<bool> {
-        let node = PlatformRootNode::new(app_context);
+    pub(crate) async fn register_root_node(&mut self) -> Result<bool> {
+        let node = PlatformRootNode::new();
         let path = ObjectId::Root.path();
 
         let app_node_added = self
@@ -86,7 +79,8 @@ impl Bus {
                 .socket_proxy
                 .embed(&(self.unique_name().as_str(), ObjectId::Root.path().into()))
                 .await?;
-            app_context.write().unwrap().desktop_address = Some(desktop.into());
+            let mut app_context = AppContext::write();
+            app_context.desktop_address = Some(desktop.into());
             Ok(true)
         } else {
             Ok(false)
