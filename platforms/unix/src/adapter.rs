@@ -11,7 +11,7 @@ use crate::{
         },
         Bus, ObjectId,
     },
-    context::{AppContext, Context},
+    context::{ActivationContext, AppContext, Context},
     filters::{filter, filter_detached},
     node::{NodeWrapper, PlatformNode},
     util::{block_on, WindowBounds},
@@ -212,27 +212,29 @@ impl AdapterImpl {
         root_window_bounds: WindowBounds,
         action_handler: Box<dyn ActionHandler + Send>,
     ) -> Option<Self> {
-        let mut atspi_bus = block_on(async { Bus::a11y_bus().await })?;
-        let (event_sender, event_receiver) = async_channel::unbounded();
-        let atspi_bus_copy = atspi_bus.clone();
-        #[cfg(feature = "tokio")]
-        let _guard = crate::util::TOKIO_RT.enter();
-        let event_task = atspi_bus.connection().executor().spawn(
-            async move {
-                handle_events(atspi_bus_copy, event_receiver).await;
-            },
-            "accesskit_event_task",
-        );
         let tree = Tree::new(initial_state, is_window_focused);
         let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::SeqCst);
         let root_id = tree.state().root_id();
-        let app_context = AppContext::get_or_init(
-            tree.state().app_name().unwrap_or_default(),
-            tree.state().toolkit_name().unwrap_or_default(),
-            tree.state().toolkit_version().unwrap_or_default(),
-        );
-        let context = Context::new(tree, action_handler, root_window_bounds);
-        let adapter_index = app_context.write().unwrap().push_adapter(id, &context);
+        let (event_sender, event_receiver) = async_channel::unbounded();
+        let (mut atspi_bus, event_task, context, adapter_index) = {
+            let mut app_context = AppContext::write();
+            app_context.name = tree.state().app_name();
+            app_context.toolkit_name = tree.state().toolkit_name();
+            app_context.toolkit_version = tree.state().toolkit_version();
+            let atspi_bus = app_context.atspi_bus.clone().unwrap();
+            let atspi_bus_copy = atspi_bus.clone();
+            #[cfg(feature = "tokio")]
+            let _guard = crate::util::TOKIO_RT.enter();
+            let event_task = atspi_bus.connection().executor().spawn(
+                async move {
+                    handle_events(atspi_bus_copy, event_receiver).await;
+                },
+                "accesskit_event_task",
+            );
+            let context = Context::new(tree, action_handler, root_window_bounds);
+            let adapter_index = app_context.push_adapter(id, &context);
+            (atspi_bus, event_task, context, adapter_index)
+        };
         block_on(async {
             if !atspi_bus.register_root_node().await.ok()? {
                 atspi_bus
@@ -556,7 +558,7 @@ impl Adapter {
             is_window_focused,
             root_window_bounds,
         };
-        block_on(async { r#impl.as_ref().await });
+        block_on(async move { ActivationContext::activate_eventually(r#impl).await });
         adapter
     }
 

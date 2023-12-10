@@ -8,7 +8,6 @@ use crate::{
     context::AppContext,
     PlatformRootNode,
 };
-use async_once_cell::OnceCell;
 use atspi::{
     events::EventBody,
     proxy::{bus::BusProxy, socket::SocketProxy},
@@ -269,26 +268,19 @@ impl Bus {
     }
 }
 
-static A11Y_BUS: OnceCell<Option<Connection>> = OnceCell::new();
-
 async fn a11y_bus() -> Option<Connection> {
-    A11Y_BUS
-        .get_or_init(async {
-            let address = match var("AT_SPI_BUS_ADDRESS") {
-                Ok(address) if !address.is_empty() => address,
-                _ => {
-                    let session_bus = Connection::session().await.ok()?;
-                    BusProxy::new(&session_bus)
-                        .await
-                        .ok()?
-                        .get_address()
-                        .await
-                        .ok()?
-                }
-            };
-            let address: Address = address.as_str().try_into().ok()?;
-            ConnectionBuilder::address(address).ok()?.build().await.ok()
-        })
-        .await
-        .clone()
+    let address = match var("AT_SPI_BUS_ADDRESS") {
+        Ok(address) if !address.is_empty() => address,
+        _ => {
+            let session_bus = Connection::session().await.ok()?;
+            BusProxy::new(&session_bus)
+                .await
+                .ok()?
+                .get_address()
+                .await
+                .ok()?
+        }
+    };
+    let address: Address = address.as_str().try_into().ok()?;
+    ConnectionBuilder::address(address).ok()?.build().await.ok()
 }

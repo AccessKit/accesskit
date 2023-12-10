@@ -63,6 +63,7 @@ dependencies = [
  "accesskit",
  "accesskit_consumer",
  "async-channel 2.1.1",
+ "async-lock",
  "async-once-cell",
  "atspi",
  "futures-lite",

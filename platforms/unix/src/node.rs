@@ -1015,7 +1015,7 @@ impl PlatformRootNode {
     }
 
     pub(crate) fn name(&self) -> fdo::Result<String> {
-        self.resolve_app_context(|context| Ok(context.name.clone()))
+        self.resolve_app_context(|context| Ok(context.name.clone().unwrap_or_default()))
     }
 
     pub(crate) fn parent(&self) -> fdo::Result<Option<OwnedObjectAddress>> {
@@ -1063,11 +1063,11 @@ impl PlatformRootNode {
     }
 
     pub(crate) fn toolkit_name(&self) -> fdo::Result<String> {
-        self.resolve_app_context(|context| Ok(context.toolkit_name.clone()))
+        self.resolve_app_context(|context| Ok(context.toolkit_name.clone().unwrap_or_default()))
     }
 
     pub(crate) fn toolkit_version(&self) -> fdo::Result<String> {
-        self.resolve_app_context(|context| Ok(context.toolkit_version.clone()))
+        self.resolve_app_context(|context| Ok(context.toolkit_version.clone().unwrap_or_default()))
     }
 
     pub(crate) fn id(&self) -> fdo::Result<i32> {
