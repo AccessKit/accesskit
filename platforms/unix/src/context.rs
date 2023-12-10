@@ -160,10 +160,22 @@ async fn monitor_a11y_status(session_bus: Connection) -> zbus::Result<()> {
     let mut changes = status.receive_is_enabled_changed().await;
 
     while let Some(change) = changes.next().await {
-        if let Ok(true) = change.get().await {
-            let atspi_bus = Bus::a11y_bus().await;
+        let atspi_bus = match change.get().await {
+            Ok(true) => Bus::a11y_bus().await,
+            _ => None,
+        };
+        let activate = atspi_bus.is_some();
+        {
             let mut app_context = AppContext::get_or_init();
             app_context.atspi_bus = atspi_bus;
+        }
+        if activate {
+            if let Some(activation_context) = ACTIVATION_CONTEXT.get() {
+                let activation_context = activation_context.lock().await;
+                for adapter in &activation_context.adapters {
+                    adapter.as_ref().await;
+                }
+            }
         }
     }
 
