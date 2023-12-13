@@ -21,9 +21,12 @@ use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandl
 use async_channel::{Receiver, Sender};
 use atspi::{Interface, InterfaceSet, Live, State};
 use futures_lite::StreamExt;
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc,
+use std::{
+    pin::pin,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
 };
 use zbus::Task;
 
@@ -519,6 +522,7 @@ impl Drop for Adapter {
 }
 
 async fn handle_events(bus: Bus, mut events: Receiver<Event>) {
+    let mut events = pin!(events);
     while let Some(event) = events.next().await {
         let _ = match event {
             Event::Object { target, event } => bus.emit_object_event(target, event).await,
