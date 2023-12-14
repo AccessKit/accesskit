@@ -1,14 +1,11 @@
 // Copyright 2022 The AccessKit Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file).
+use crate::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
 use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_macos::SubclassingAdapter;
-use winit::{
-    event::WindowEvent,
-    raw_window_handle::{HasWindowHandle, RawWindowHandle},
-    window::Window,
-};
+use winit::{event::WindowEvent, window::Window};
 
 pub type ActionHandlerBox = Box<dyn ActionHandler>;
 
@@ -22,11 +19,19 @@ impl Adapter {
         source: impl 'static + FnOnce() -> TreeUpdate,
         action_handler: ActionHandlerBox,
     ) -> Self {
+        #[cfg(feature = "rwh_05")]
+        let view = match window.raw_window_handle() {
+            RawWindowHandle::AppKit(handle) => handle.ns_view,
+            RawWindowHandle::UiKit(_) => unimplemented!(),
+            _ => unreachable!(),
+        };
+        #[cfg(feature = "rwh_06")]
         let view = match window.window_handle().unwrap().as_raw() {
             RawWindowHandle::AppKit(handle) => handle.ns_view.as_ptr(),
             RawWindowHandle::UiKit(_) => unimplemented!(),
             _ => unreachable!(),
         };
+
         let adapter = unsafe { SubclassingAdapter::new(view, source, action_handler) };
         Self { adapter }
     }
