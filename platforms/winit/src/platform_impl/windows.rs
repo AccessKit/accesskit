@@ -1,10 +1,11 @@
 // Copyright 2022 The AccessKit Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file).
+#[allow(unused)]
 use crate::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
 use accesskit::{ActionHandler, TreeUpdate};
-use accesskit_windows::SubclassingAdapter;
+use accesskit_windows::{SubclassingAdapter, HWND};
 use winit::{event::WindowEvent, window::Window};
 
 pub type ActionHandlerBox = Box<dyn ActionHandler + Send>;
@@ -27,12 +28,12 @@ impl Adapter {
         };
         #[cfg(feature = "rwh_06")]
         let hwnd = match window.window_handle().unwrap().as_raw() {
-            RawWindowHandle::Win32(handle) => accesskit_windows::HWND(handle.hwnd.get()),
+            RawWindowHandle::Win32(handle) => handle.hwnd.get(),
             RawWindowHandle::WinRt(_) => unimplemented!(),
             _ => unreachable!(),
         };
 
-        let adapter = SubclassingAdapter::new(hwnd, source, action_handler);
+        let adapter = SubclassingAdapter::new(HWND(hwnd), source, action_handler);
         Self { adapter }
     }
 
