@@ -25,6 +25,10 @@
     * accesskit_macos bumped from 0.10.0 to 0.10.1
     * accesskit_unix bumped from 0.6.0 to 0.6.1
 
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_unix bumped from 0.6.1 to 0.6.2
+
 ## [0.6.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.5.1...accesskit_c-v0.6.0) (2023-09-27)
 
 

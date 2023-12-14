@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_c"
-version = "0.6.1"
+version = "0.6.2"
 authors = ["Arnold Loubriat <datatriny@gmail.com>"]
 license = "MIT OR Apache-2.0"
 publish = false
@@ -25,4 +25,4 @@ accesskit_windows = { version = "0.15.1", path = "../../platforms/windows" }
 accesskit_macos = { version = "0.10.1", path = "../../platforms/macos" }
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
-accesskit_unix = { version = "0.6.1", path = "../../platforms/unix" }
+accesskit_unix = { version = "0.6.2", path = "../../platforms/unix" }
