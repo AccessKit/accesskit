@@ -73,6 +73,25 @@
   * dependencies
     * accesskit_windows bumped from 0.14.2 to 0.14.3
 
+## [0.17.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.16.1...accesskit_winit-v0.17.0) (2023-12-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* Force a semver break for the winit rwh feature additions ([#322](https://github.com/AccessKit/accesskit/issues/322))
+
+### Bug Fixes
+
+* Add a `rwh_05` feature flag to `accesskit_winit` ([#319](https://github.com/AccessKit/accesskit/issues/319)) ([f4d279c](https://github.com/AccessKit/accesskit/commit/f4d279c5ece16df2925c0e31dc82eaf192c40cd0))
+* Force a semver break for the winit rwh feature additions ([#322](https://github.com/AccessKit/accesskit/issues/322)) ([61acdb0](https://github.com/AccessKit/accesskit/commit/61acdb0ea083263c88a00ad4db637b25863852c0))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_unix bumped from 0.6.1 to 0.6.2
+
 ## [0.16.1](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.16.0...accesskit_winit-v0.16.1) (2023-11-05)
 
 

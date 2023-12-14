@@ -29,6 +29,13 @@
     * accesskit bumped from 0.12.0 to 0.12.1
     * accesskit_consumer bumped from 0.16.0 to 0.16.1
 
+## [0.6.2](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.6.1...accesskit_unix-v0.6.2) (2023-12-14)
+
+
+### Bug Fixes
+
+* Bump async-channel dependency to `2.1.1` ([#321](https://github.com/AccessKit/accesskit/issues/321)) ([99120b8](https://github.com/AccessKit/accesskit/commit/99120b828d65306ab71d41f71979dc67e8b0bf6b))
+
 ## [0.6.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.5.2...accesskit_unix-v0.6.0) (2023-09-27)
 
 
