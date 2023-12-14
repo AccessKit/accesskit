@@ -9,7 +9,17 @@ use winit::{
     window::{Window, WindowId},
 };
 
+#[cfg(feature = "rwh_05")]
+#[allow(unused)]
+use rwh_05 as raw_window_handle;
+#[cfg(feature = "rwh_06")]
+#[allow(unused)]
+use rwh_06 as raw_window_handle;
+
 mod platform_impl;
+
+#[cfg(all(feature = "rwh_05", feature = "rwh_06"))]
+compile_error!("Cannot enable both 'rwh_05' and 'rwh_06' features at the same time");
 
 #[derive(Debug)]
 pub struct ActionRequestEvent {
