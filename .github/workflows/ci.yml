@@ -35,7 +35,13 @@ jobs:
 
       - name: ruff check
         uses: chartboost/ruff-action@v1
-  
+
+  cargo-deny:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: EmbarkStudios/cargo-deny-action@v1
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:
