@@ -23,4 +23,4 @@ pub use patch::add_focus_forwarder_to_window_class;
 mod subclass;
 pub use subclass::SubclassingAdapter;
 
-pub use objc2::foundation::{NSArray, NSObject, NSPoint};
+pub use icrate::Foundation::{NSArray, NSObject, NSPoint};

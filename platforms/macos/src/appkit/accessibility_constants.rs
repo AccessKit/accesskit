@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use objc2::foundation::{NSInteger, NSString};
+use icrate::Foundation::{NSInteger, NSString};
 
 #[link(name = "AppKit", kind = "framework")]
 extern "C" {

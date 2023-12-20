@@ -12,13 +12,15 @@
 
 use accesskit::{Action, ActionData, ActionRequest, Checked, NodeId, Role, TextSelection};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState};
-use objc2::{
-    declare::{Ivar, IvarDrop},
-    declare_class,
-    foundation::{
+use icrate::{
+    ns_string,
+    Foundation::{
         NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSPoint, NSRange, NSRect, NSString,
     },
-    msg_send, msg_send_id, ns_string,
+};
+use objc2::{
+    declare::{Ivar, IvarDrop},
+    declare_class, msg_send, msg_send_id,
     rc::{Id, Owned, Shared},
     runtime::Sel,
     sel, ClassType,
@@ -341,7 +343,7 @@ declare_class!(
     }
 
     unsafe impl PlatformNode {
-        #[sel(accessibilityParent)]
+        #[method(accessibilityParent)]
         fn parent(&self) -> *mut NSObject {
             self.resolve_with_context(|node, context| {
                 if let Some(parent) = node.filtered_parent(&filter) {
@@ -357,18 +359,18 @@ declare_class!(
             .unwrap_or_else(null_mut)
         }
 
-        #[sel(accessibilityChildren)]
+        #[method(accessibilityChildren)]
         fn children(&self) -> *mut NSArray<PlatformNode> {
             self.children_internal()
         }
 
-        #[sel(accessibilityChildrenInNavigationOrder)]
+        #[method(accessibilityChildrenInNavigationOrder)]
         fn children_in_navigation_order(&self) -> *mut NSArray<PlatformNode> {
             // For now, we assume the children are in navigation order.
             self.children_internal()
         }
 
-        #[sel(accessibilityFrame)]
+        #[method(accessibilityFrame)]
         fn frame(&self) -> NSRect {
             self.resolve_with_context(|node, context| {
                 let view = match context.view.load() {
@@ -392,7 +394,7 @@ declare_class!(
             .unwrap_or(NSRect::ZERO)
         }
 
-        #[sel(accessibilityRole)]
+        #[method(accessibilityRole)]
         fn role(&self) -> *mut NSString {
             let role = self
                 .resolve(|node| ns_role(node.state()))
@@ -400,19 +402,19 @@ declare_class!(
             Id::autorelease_return(role.copy())
         }
 
-        #[sel(accessibilityRoleDescription)]
-        fn role_description(&self) -> *mut NSString {
+        #[method_id(accessibilityRoleDescription)]
+        fn role_description(&self) -> Option<Id<NSString>> {
             self.resolve(|node| {
                 if let Some(role_description) = node.role_description() {
-                    Id::autorelease_return(NSString::from_str(&role_description))
+                    Some(NSString::from_str(&role_description))
                 } else {
                     unsafe { msg_send![super(self), accessibilityRoleDescription] }
                 }
             })
-            .unwrap_or_else(null_mut)
+            .flatten()
         }
 
-        #[sel(accessibilityTitle)]
+        #[method(accessibilityTitle)]
         fn title(&self) -> *mut NSString {
             let result = self
                 .resolve(|node| {
@@ -425,7 +427,7 @@ declare_class!(
             })
         }
 
-        #[sel(accessibilityValue)]
+        #[method(accessibilityValue)]
         fn value(&self) -> *mut NSObject {
             self.resolve(|node| {
                 let wrapper = NodeWrapper::Node(node);
@@ -444,13 +446,13 @@ declare_class!(
             .unwrap_or_else(null_mut)
         }
 
-        #[sel(setAccessibilityValue:)]
+        #[method(setAccessibilityValue:)]
         fn set_value(&self, _value: &NSObject) {
             // This isn't yet implemented. See the comment on this selector
             // in `is_selector_allowed`.
         }
 
-        #[sel(accessibilityMinValue)]
+        #[method(accessibilityMinValue)]
         fn min_value(&self) -> *mut NSNumber {
             self.resolve(|node| {
                 node.min_numeric_value().map_or_else(null_mut, |value| {
@@ -460,7 +462,7 @@ declare_class!(
             .unwrap_or_else(null_mut)
         }
 
-        #[sel(accessibilityMaxValue)]
+        #[method(accessibilityMaxValue)]
         fn max_value(&self) -> *mut NSNumber {
             self.resolve(|node| {
                 node.max_numeric_value().map_or_else(null_mut, |value| {
@@ -470,19 +472,19 @@ declare_class!(
             .unwrap_or_else(null_mut)
         }
 
-        #[sel(isAccessibilityElement)]
+        #[method(isAccessibilityElement)]
         fn is_accessibility_element(&self) -> bool {
             self.resolve(|node| filter(node) == FilterResult::Include)
                 .unwrap_or(false)
         }
 
-        #[sel(isAccessibilityFocused)]
+        #[method(isAccessibilityFocused)]
         fn is_focused(&self) -> bool {
             self.resolve(|node| node.is_focused() && can_be_focused(node))
                 .unwrap_or(false)
         }
 
-        #[sel(setAccessibilityFocused:)]
+        #[method(setAccessibilityFocused:)]
         fn set_focused(&self, focused: bool) {
             self.resolve_with_context(|node, context| {
                 if focused {
@@ -506,7 +508,7 @@ declare_class!(
             });
         }
 
-        #[sel(accessibilityPerformPress)]
+        #[method(accessibilityPerformPress)]
         fn press(&self) -> bool {
             self.resolve_with_context(|node, context| {
                 let clickable = node.is_clickable();
@@ -522,7 +524,7 @@ declare_class!(
             .unwrap_or(false)
         }
 
-        #[sel(accessibilityPerformIncrement)]
+        #[method(accessibilityPerformIncrement)]
         fn increment(&self) -> bool {
             self.resolve_with_context(|node, context| {
                 let supports_increment = node.supports_increment();
@@ -538,7 +540,7 @@ declare_class!(
             .unwrap_or(false)
         }
 
-        #[sel(accessibilityPerformDecrement)]
+        #[method(accessibilityPerformDecrement)]
         fn decrement(&self) -> bool {
             self.resolve_with_context(|node, context| {
                 let supports_decrement = node.supports_decrement();
@@ -554,12 +556,12 @@ declare_class!(
             .unwrap_or(false)
         }
 
-        #[sel(accessibilityNotifiesWhenDestroyed)]
+        #[method(accessibilityNotifiesWhenDestroyed)]
         fn notifies_when_destroyed(&self) -> bool {
             true
         }
 
-        #[sel(accessibilityNumberOfCharacters)]
+        #[method(accessibilityNumberOfCharacters)]
         fn number_of_characters(&self) -> NSInteger {
             self.resolve(|node| {
                 if node.supports_text_ranges() {
@@ -571,7 +573,7 @@ declare_class!(
             .unwrap_or(0)
         }
 
-        #[sel(accessibilitySelectedText)]
+        #[method(accessibilitySelectedText)]
         fn selected_text(&self) -> *mut NSString {
             self.resolve(|node| {
                 if node.supports_text_ranges() {
@@ -585,7 +587,7 @@ declare_class!(
             .unwrap_or_else(null_mut)
         }
 
-        #[sel(accessibilitySelectedTextRange)]
+        #[method(accessibilitySelectedTextRange)]
         fn selected_text_range(&self) -> NSRange {
             self.resolve(|node| {
                 if node.supports_text_ranges() {
@@ -598,7 +600,7 @@ declare_class!(
             .unwrap_or_else(|| NSRange::new(0, 0))
         }
 
-        #[sel(accessibilityInsertionPointLineNumber)]
+        #[method(accessibilityInsertionPointLineNumber)]
         fn insertion_point_line_number(&self) -> NSInteger {
             self.resolve(|node| {
                 if node.supports_text_ranges() {
@@ -611,7 +613,7 @@ declare_class!(
             .unwrap_or(0)
         }
 
-        #[sel(accessibilityRangeForLine:)]
+        #[method(accessibilityRangeForLine:)]
         fn range_for_line(&self, line_index: NSInteger) -> NSRange {
             self.resolve(|node| {
                 if node.supports_text_ranges() && line_index >= 0 {
@@ -624,7 +626,7 @@ declare_class!(
             .unwrap_or_else(|| NSRange::new(0, 0))
         }
 
-        #[sel(accessibilityRangeForPosition:)]
+        #[method(accessibilityRangeForPosition:)]
         fn range_for_position(&self, point: NSPoint) -> NSRange {
             self.resolve_with_context(|node, context| {
                 let view = match context.view.load() {
@@ -644,7 +646,7 @@ declare_class!(
             .unwrap_or_else(|| NSRange::new(0, 0))
         }
 
-        #[sel(accessibilityStringForRange:)]
+        #[method(accessibilityStringForRange:)]
         fn string_for_range(&self, range: NSRange) -> *mut NSString {
             self.resolve(|node| {
                 if node.supports_text_ranges() {
@@ -658,7 +660,7 @@ declare_class!(
             .unwrap_or_else(null_mut)
         }
 
-        #[sel(accessibilityFrameForRange:)]
+        #[method(accessibilityFrameForRange:)]
         fn frame_for_range(&self, range: NSRange) -> NSRect {
             self.resolve_with_context(|node, context| {
                 let view = match context.view.load() {
@@ -683,7 +685,7 @@ declare_class!(
             .unwrap_or(NSRect::ZERO)
         }
 
-        #[sel(accessibilityLineForIndex:)]
+        #[method(accessibilityLineForIndex:)]
         fn line_for_index(&self, index: NSInteger) -> NSInteger {
             self.resolve(|node| {
                 if node.supports_text_ranges() && index >= 0 {
@@ -696,7 +698,7 @@ declare_class!(
             .unwrap_or(0)
         }
 
-        #[sel(accessibilityRangeForIndex:)]
+        #[method(accessibilityRangeForIndex:)]
         fn range_for_index(&self, index: NSInteger) -> NSRange {
             self.resolve(|node| {
                 if node.supports_text_ranges() && index >= 0 {
@@ -709,7 +711,7 @@ declare_class!(
             .unwrap_or_else(|| NSRange::new(0, 0))
         }
 
-        #[sel(setAccessibilitySelectedTextRange:)]
+        #[method(setAccessibilitySelectedTextRange:)]
         fn set_selected_text_range(&self, range: NSRange) {
             self.resolve_with_context(|node, context| {
                 if node.supports_text_ranges() {
@@ -724,7 +726,7 @@ declare_class!(
             });
         }
 
-        #[sel(isAccessibilitySelectorAllowed:)]
+        #[method(isAccessibilitySelectorAllowed:)]
         fn is_selector_allowed(&self, selector: Sel) -> bool {
             self.resolve(|node| {
                 if selector == sel!(setAccessibilityFocused:) {

@@ -3,10 +3,9 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use icrate::Foundation::{NSObject, NSPoint, NSRect};
 use objc2::{
-    extern_class, extern_methods,
-    foundation::{NSObject, NSPoint, NSRect},
-    msg_send_id,
+    extern_class, extern_methods, msg_send_id,
     rc::{Id, Shared},
     ClassType,
 };
@@ -25,10 +24,10 @@ extern_class!(
 
 extern_methods!(
     unsafe impl NSWindow {
-        #[sel(convertRectToScreen:)]
+        #[method(convertRectToScreen:)]
         pub(crate) fn convert_rect_to_screen(&self, rect: NSRect) -> NSRect;
 
-        #[sel(convertPointFromScreen:)]
+        #[method(convertPointFromScreen:)]
         pub(crate) fn convert_point_from_screen(&self, point: NSPoint) -> NSPoint;
 
         pub(crate) fn content_view(&self) -> Option<Id<NSView, Shared>> {

@@ -5,7 +5,7 @@
 
 use accesskit::{Point, Rect};
 use accesskit_consumer::{Node, TextPosition, TextRange};
-use objc2::foundation::{NSPoint, NSRange, NSRect, NSSize};
+use icrate::Foundation::{NSPoint, NSRange, NSRect, NSSize};
 
 use crate::appkit::*;
 

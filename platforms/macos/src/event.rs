@@ -5,10 +5,8 @@
 
 use accesskit::{Live, NodeId, Role};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, TreeChangeHandler, TreeState};
-use objc2::{
-    foundation::{NSInteger, NSMutableDictionary, NSNumber, NSObject, NSString},
-    msg_send, Message,
-};
+use icrate::Foundation::{NSInteger, NSMutableDictionary, NSNumber, NSObject, NSString};
+use objc2::{msg_send, Message};
 use std::{collections::HashSet, rc::Rc};
 
 use crate::{
