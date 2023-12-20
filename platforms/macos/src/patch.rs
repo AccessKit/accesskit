@@ -3,6 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use icrate::AppKit::NSWindow;
 use objc2::{
     declare::MethodImplementation,
     encode::{
@@ -16,12 +17,12 @@ use objc2::{
 };
 use std::{ffi::CString, ptr::null_mut};
 
-use crate::appkit::NSWindow;
-
 extern "C" fn focus_forwarder(this: &NSWindow, _cmd: Sel) -> *mut Object {
-    this.content_view().map_or_else(null_mut, |view| unsafe {
-        msg_send![&*view, accessibilityFocusedUIElement]
-    })
+    unsafe {
+        this.contentView().map_or_else(null_mut, |view| {
+            msg_send![&*view, accessibilityFocusedUIElement]
+        })
+    }
 }
 
 /// Modifies the specified class, which must be a subclass of `NSWindow`,

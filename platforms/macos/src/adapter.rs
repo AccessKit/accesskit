@@ -5,12 +5,14 @@
 
 use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_consumer::{FilterResult, Tree};
-use icrate::Foundation::{MainThreadMarker, NSArray, NSObject, NSPoint};
+use icrate::{
+    AppKit::NSView,
+    Foundation::{MainThreadMarker, NSArray, NSObject, NSPoint},
+};
 use objc2::rc::{Id, Shared, WeakId};
 use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
 use crate::{
-    appkit::NSView,
     context::Context,
     event::{EventGenerator, QueuedEvents},
     filters::filter,

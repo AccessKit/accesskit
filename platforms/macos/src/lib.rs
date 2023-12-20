@@ -5,7 +5,6 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
-mod appkit;
 mod context;
 mod filters;
 mod node;

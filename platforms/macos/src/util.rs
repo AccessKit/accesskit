@@ -5,9 +5,10 @@
 
 use accesskit::{Point, Rect};
 use accesskit_consumer::{Node, TextPosition, TextRange};
-use icrate::Foundation::{NSPoint, NSRange, NSRect, NSSize};
-
-use crate::appkit::*;
+use icrate::{
+    AppKit::*,
+    Foundation::{NSPoint, NSRange, NSRect, NSSize},
+};
 
 pub(crate) fn from_ns_range<'a>(node: &'a Node<'a>, ns_range: NSRange) -> Option<TextRange<'a>> {
     let pos = node.text_position_from_global_utf16_index(ns_range.location)?;
@@ -35,18 +36,18 @@ pub(crate) fn to_ns_range_for_character(pos: &TextPosition) -> NSRange {
 }
 
 pub(crate) fn from_ns_point(view: &NSView, node: &Node, point: NSPoint) -> Point {
-    let window = view.window().unwrap();
-    let point = window.convert_point_from_screen(point);
-    let point = view.convert_point_from_view(point, None);
+    let window = unsafe { view.window() }.unwrap();
+    let point = unsafe { window.convertPointFromScreen(point) };
+    let point = unsafe { view.convertPoint_fromView(point, None) };
     // AccessKit coordinates are in physical (DPI-dependent) pixels, but
     // macOS provides logical (DPI-independent) coordinates here.
-    let factor = view.backing_scale_factor();
+    let factor = unsafe { window.backingScaleFactor() };
     let point = Point::new(
         point.x * factor,
-        if view.is_flipped() {
+        if unsafe { view.isFlipped() } {
             point.y * factor
         } else {
-            let view_bounds = view.bounds();
+            let view_bounds = unsafe { view.bounds() };
             (view_bounds.size.height - point.y) * factor
         },
     );
@@ -54,17 +55,18 @@ pub(crate) fn from_ns_point(view: &NSView, node: &Node, point: NSPoint) -> Point
 }
 
 pub(crate) fn to_ns_rect(view: &NSView, rect: Rect) -> NSRect {
+    let window = unsafe { view.window() }.unwrap();
     // AccessKit coordinates are in physical (DPI-dependent)
     // pixels, but macOS expects logical (DPI-independent)
     // coordinates here.
-    let factor = view.backing_scale_factor();
+    let factor = unsafe { window.backingScaleFactor() };
     let rect = NSRect {
         origin: NSPoint {
             x: rect.x0 / factor,
-            y: if view.is_flipped() {
+            y: if unsafe { view.isFlipped() } {
                 rect.y0 / factor
             } else {
-                let view_bounds = view.bounds();
+                let view_bounds = unsafe { view.bounds() };
                 view_bounds.size.height - rect.y1 / factor
             },
         },
@@ -73,7 +75,7 @@ pub(crate) fn to_ns_rect(view: &NSView, rect: Rect) -> NSRect {
             height: rect.height() / factor,
         },
     };
-    let rect = view.convert_rect_to_view(rect, None);
-    let window = view.window().unwrap();
-    window.convert_rect_to_screen(rect)
+    let rect = unsafe { view.convertRect_toView(rect, None) };
+    let window = unsafe { view.window() }.unwrap();
+    unsafe { window.convertRectToScreen(rect) }
 }

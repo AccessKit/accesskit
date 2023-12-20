@@ -4,7 +4,10 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{ActionHandler, TreeUpdate};
-use icrate::Foundation::{NSArray, NSObject, NSPoint};
+use icrate::{
+    AppKit::{NSView, NSWindow},
+    Foundation::{NSArray, NSObject, NSPoint},
+};
 use objc2::{
     declare::{ClassBuilder, Ivar, IvarDrop, IvarEncode},
     declare_class,
@@ -20,11 +23,7 @@ use objc2::{
 use once_cell::{sync::Lazy as SyncLazy, unsync::Lazy};
 use std::{cell::Cell, collections::HashMap, ffi::c_void, rc::Rc, sync::Mutex};
 
-use crate::{
-    appkit::{NSView, NSWindow},
-    event::QueuedEvents,
-    Adapter,
-};
+use crate::{event::QueuedEvents, Adapter};
 
 static SUBCLASSES: SyncLazy<Mutex<HashMap<&'static Class, &'static Class>>> =
     SyncLazy::new(|| Mutex::new(HashMap::new()));
@@ -211,7 +210,7 @@ impl SubclassingAdapter {
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let window = unsafe { &*(window as *const NSWindow) };
-        let retained_view = window.content_view().unwrap();
+        let retained_view = unsafe { window.contentView() }.unwrap();
         Self::new_internal(retained_view, source, action_handler)
     }
 

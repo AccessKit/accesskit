@@ -5,12 +5,14 @@
 
 use accesskit::{Live, NodeId, Role};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, TreeChangeHandler, TreeState};
-use icrate::Foundation::{NSInteger, NSMutableDictionary, NSNumber, NSObject, NSString};
-use objc2::{msg_send, Message};
+use icrate::{
+    AppKit::*,
+    Foundation::{NSMutableDictionary, NSNumber, NSString},
+};
+use objc2::{msg_send, runtime::Object, Message};
 use std::{collections::HashSet, rc::Rc};
 
 use crate::{
-    appkit::*,
     context::Context,
     filters::{filter, filter_detached},
     node::NodeWrapper,
@@ -30,12 +32,12 @@ fn set_object_for_key<K: Message, V: Message>(
 pub(crate) enum QueuedEvent {
     Generic {
         node_id: NodeId,
-        notification: &'static NSString,
+        notification: &'static NSAccessibilityNotificationName,
     },
     NodeDestroyed(NodeId),
     Announcement {
         text: String,
-        priority: NSInteger,
+        priority: NSAccessibilityPriorityLevel,
     },
 }
 
@@ -78,14 +80,14 @@ impl QueuedEvent {
                     }
                 };
 
-                let window = match view.window() {
+                let window = match unsafe { view.window() } {
                     Some(window) => window,
                     None => {
                         return;
                     }
                 };
 
-                let mut user_info = NSMutableDictionary::<_, NSObject>::new();
+                let mut user_info = NSMutableDictionary::<_, Object>::new();
                 let text = NSString::from_str(&text);
                 set_object_for_key(&mut user_info, &*text, unsafe {
                     NSAccessibilityAnnouncementKey
@@ -99,7 +101,7 @@ impl QueuedEvent {
                     NSAccessibilityPostNotificationWithUserInfo(
                         &window,
                         NSAccessibilityAnnouncementRequestedNotification,
-                        &user_info,
+                        Some(&**user_info),
                     )
                 };
             }

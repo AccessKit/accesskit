@@ -22,6 +22,10 @@ once_cell = "1.13.0"
 [dependencies.icrate]
 version = "<= 0.0.2"
 features = [
+    "AppKit",
+    "AppKit_NSAccessibilityElement",
+    "AppKit_NSView",
+    "AppKit_NSWindow",
     "Foundation",
     "Foundation_NSArray",
     "Foundation_NSMutableDictionary",

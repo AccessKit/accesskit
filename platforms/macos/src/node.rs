@@ -14,6 +14,7 @@ use accesskit::{Action, ActionData, ActionRequest, Checked, NodeId, Role, TextSe
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState};
 use icrate::{
     ns_string,
+    AppKit::*,
     Foundation::{
         NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSPoint, NSRange, NSRect, NSString,
     },
@@ -22,7 +23,7 @@ use objc2::{
     declare::{Ivar, IvarDrop},
     declare_class, msg_send, msg_send_id,
     rc::{Id, Owned, Shared},
-    runtime::Sel,
+    runtime::{Object, Sel},
     sel, ClassType,
 };
 use std::{
@@ -30,7 +31,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use crate::{appkit::*, context::Context, filters::filter, util::*};
+use crate::{context::Context, filters::filter, util::*};
 
 fn ns_role(node_state: &NodeState) -> &'static NSString {
     let role = node_state.role();
@@ -346,7 +347,7 @@ declare_class!(
 
     unsafe impl PlatformNode {
         #[method(accessibilityParent)]
-        fn parent(&self) -> *mut NSObject {
+        fn parent(&self) -> *mut Object {
             self.resolve_with_context(|node, context| {
                 if let Some(parent) = node.filtered_parent(&filter) {
                     Id::autorelease_return(context.get_or_create_platform_node(parent.id()))
@@ -355,7 +356,8 @@ declare_class!(
                     context
                         .view
                         .load()
-                        .map_or_else(null_mut, |view| view.accessibility_parent())
+                        .and_then(|view| unsafe { NSAccessibility::accessibilityParent(&*view) })
+                        .map_or_else(null_mut, |parent| Id::as_ptr(&parent) as *mut _)
                 }
             })
             .unwrap_or_else(null_mut)
@@ -385,7 +387,7 @@ declare_class!(
                 node.bounding_box().map_or_else(
                     || {
                         if node.is_root() {
-                            view.accessibility_frame()
+                            unsafe { NSAccessibility::accessibilityFrame(&*view) }
                         } else {
                             NSRect::ZERO
                         }
