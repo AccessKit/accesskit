@@ -324,7 +324,7 @@ impl<'a> NodeWrapper<'a> {
     }
 }
 
-struct BoxedData {
+pub struct BoxedData {
     context: Weak<Context>,
     node_id: NodeId,
 }
@@ -333,8 +333,10 @@ declare_class!(
     pub(crate) struct PlatformNode {
         // SAFETY: This is set in `PlatformNode::new` immediately after
         // the object is created.
-        boxed: IvarDrop<Box<BoxedData>>,
+        boxed: IvarDrop<Box<BoxedData>, "_boxed">,
     }
+
+    mod ivars;
 
     unsafe impl ClassType for PlatformNode {
         #[inherits(NSObject)]

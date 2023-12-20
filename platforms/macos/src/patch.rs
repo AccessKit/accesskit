@@ -5,7 +5,10 @@
 
 use objc2::{
     declare::MethodImplementation,
-    encode::{Encode, EncodeArguments, Encoding},
+    encode::{
+        Encode, Encoding,
+        __unstable::{EncodeArguments, EncodeReturn},
+    },
     ffi::class_addMethod,
     msg_send,
     runtime::{Bool, Class, Object, Sel},
@@ -65,7 +68,7 @@ where
         encs.len(),
     );
 
-    let types = method_type_encoding(&F::Ret::ENCODING, encs);
+    let types = method_type_encoding(&F::Ret::ENCODING_RETURN, encs);
     let success = Bool::from_raw(unsafe {
         class_addMethod(
             class as *mut _,

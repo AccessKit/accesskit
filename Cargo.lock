@@ -52,8 +52,8 @@ version = "0.10.1"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
- "icrate 0.0.1",
- "objc2 0.3.0-beta.4",
+ "icrate 0.0.2",
+ "objc2 0.3.0-beta.5",
  "once_cell",
 ]
 
@@ -434,30 +434,21 @@ dependencies = [
 
 [[package]]
 name = "block-sys"
-version = "0.1.0-beta.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0a27d75e09d3d1a1b72c2583aaec59db16932ea927846036b24b968d8240c08"
-dependencies = [
- "objc-sys 0.2.0-beta.3",
-]
-
-[[package]]
-name = "block-sys"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dd7cf50912cddc06dc5ea7c08c5e81c1b2c842a70d19def1848d54c586fed92"
 dependencies = [
- "objc-sys 0.3.1",
+ "objc-sys",
 ]
 
 [[package]]
 name = "block2"
-version = "0.2.0-alpha.7"
+version = "0.2.0-alpha.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "344b33cc92d2c0816f45d61b2dca4a30fb8c84e395a4323397f0965f16f990e1"
+checksum = "05d5ba46b637575ec80985914d45f6f056b575d40b8482670c6b445a30e691e7"
 dependencies = [
- "block-sys 0.1.0-beta.2",
- "objc2-encode 2.0.0-pre.3",
+ "block-sys",
+ "objc2 0.3.0-beta.5",
 ]
 
 [[package]]
@@ -466,7 +457,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15b55663a85f33501257357e6421bb33e769d5c9ffb5ba0921c975a123e35e68"
 dependencies = [
- "block-sys 0.2.0",
+ "block-sys",
  "objc2 0.4.1",
 ]
 
@@ -975,12 +966,12 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "icrate"
-version = "0.0.1"
+version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "237fb2e3e141fa4698b2dbb0fa1db42a6726bf73d3503441ae68d472bedfb67a"
+checksum = "b9a9660e2268e6b80b12149081539a9115d43826c1bb2539328604277385b537"
 dependencies = [
- "block2 0.2.0-alpha.7",
- "objc2 0.3.0-beta.4",
+ "block2 0.2.0-alpha.8",
+ "objc2 0.3.0-beta.5",
 ]
 
 [[package]]
@@ -1272,25 +1263,18 @@ dependencies = [
 
 [[package]]
 name = "objc-sys"
-version = "0.2.0-beta.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0925b3332d2aaa3a78b65b065cf68ab0e1d7527d5f7fe48c7613ce166f1494a"
-
-[[package]]
-name = "objc-sys"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99e1d07c6eab1ce8b6382b8e3c7246fe117ff3f8b34be065f5ebace6749fe845"
 
 [[package]]
 name = "objc2"
-version = "0.3.0-beta.4"
+version = "0.3.0-beta.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd23541ef10d7053608da654dcc785e7bba1f9c9a9b3f01abef086e6b18e55af"
+checksum = "ef3a6024722b4230242a53e5b5759ce117548983696b8e4b7bc2fd1f8fce621e"
 dependencies = [
- "block2 0.2.0-alpha.7",
- "objc-sys 0.2.0-beta.3",
- "objc2-encode 2.0.0-pre.3",
+ "objc-sys",
+ "objc2-encode 2.0.0-pre.4",
 ]
 
 [[package]]
@@ -1299,18 +1283,15 @@ version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "559c5a40fdd30eb5e344fbceacf7595a81e242529fb4e21cf5f43fb4f11ff98d"
 dependencies = [
- "objc-sys 0.3.1",
+ "objc-sys",
  "objc2-encode 3.0.0",
 ]
 
 [[package]]
 name = "objc2-encode"
-version = "2.0.0-pre.3"
+version = "2.0.0-pre.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2612e4d4049c415e4a5de45c1d000df1bcf4782167716db14c3d5d54285da846"
-dependencies = [
- "objc-sys 0.2.0-beta.3",
-]
+checksum = "8f8f7297b786454a87e392631e2b2754ed59a7b413effa8521225d93f46b2192"
 
 [[package]]
 name = "objc2-encode"

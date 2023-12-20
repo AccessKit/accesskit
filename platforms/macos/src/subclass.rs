@@ -6,7 +6,7 @@
 use accesskit::{ActionHandler, TreeUpdate};
 use icrate::Foundation::{NSArray, NSObject, NSPoint};
 use objc2::{
-    declare::{ClassBuilder, Ivar, IvarDrop},
+    declare::{ClassBuilder, Ivar, IvarDrop, IvarEncode},
     declare_class,
     ffi::{
         objc_getAssociatedObject, objc_setAssociatedObject, object_setClass,
@@ -42,9 +42,11 @@ declare_class!(
     struct AssociatedObject {
         // SAFETY: These are set in AssociatedObject::new, immediately after
         // the object is created.
-        adapter: IvarDrop<Box<LazyAdapter>>,
-        prev_class: &'static Class,
+        adapter: IvarDrop<Box<LazyAdapter>, "_adapter">,
+        prev_class: IvarEncode<&'static Class, "_prev_class">,
     }
+
+    mod ivars;
 
     unsafe impl ClassType for AssociatedObject {
         type Super = NSObject;
