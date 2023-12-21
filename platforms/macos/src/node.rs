@@ -13,18 +13,18 @@
 use accesskit::{Action, ActionData, ActionRequest, Checked, NodeId, Role, TextSelection};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState};
 use icrate::{
-    ns_string,
     AppKit::*,
     Foundation::{
-        NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSPoint, NSRange, NSRect, NSString,
+        ns_string, NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSPoint, NSRange, NSRect,
+        NSString,
     },
 };
 use objc2::{
-    declare::{Ivar, IvarDrop},
     declare_class, msg_send, msg_send_id,
-    rc::{Id, Owned, Shared},
-    runtime::{Object, Sel},
-    sel, ClassType,
+    mutability::InteriorMutable,
+    rc::Id,
+    runtime::{AnyObject, Sel},
+    sel, ClassType, DeclaredClass,
 };
 use std::{
     ptr::null_mut,
@@ -325,29 +325,27 @@ impl<'a> NodeWrapper<'a> {
     }
 }
 
-pub struct BoxedData {
+pub(crate) struct PlatformNodeIvars {
     context: Weak<Context>,
     node_id: NodeId,
 }
 
 declare_class!(
-    pub(crate) struct PlatformNode {
-        // SAFETY: This is set in `PlatformNode::new` immediately after
-        // the object is created.
-        boxed: IvarDrop<Box<BoxedData>, "_boxed">,
-    }
-
-    mod ivars;
-
+    pub(crate) struct PlatformNode;
     unsafe impl ClassType for PlatformNode {
         #[inherits(NSObject)]
         type Super = NSAccessibilityElement;
+        type Mutability = InteriorMutable;
         const NAME: &'static str = "AccessKitNode";
+    }
+
+    impl DeclaredClass for PlatformNode {
+        type Ivars = PlatformNodeIvars;
     }
 
     unsafe impl PlatformNode {
         #[method(accessibilityParent)]
-        fn parent(&self) -> *mut Object {
+        fn parent(&self) -> *mut AnyObject {
             self.resolve_with_context(|node, context| {
                 if let Some(parent) = node.filtered_parent(&filter) {
                     Id::autorelease_return(context.get_or_create_platform_node(parent.id()))
@@ -787,23 +785,20 @@ declare_class!(
 );
 
 impl PlatformNode {
-    pub(crate) fn new(context: Weak<Context>, node_id: NodeId) -> Id<Self, Shared> {
-        let boxed = Box::new(BoxedData { context, node_id });
-        unsafe {
-            let mut object: Id<Self, Owned> = msg_send_id![Self::class(), new];
-            Ivar::write(&mut object.boxed, boxed);
-            object.into()
-        }
+    pub(crate) fn new(context: Weak<Context>, node_id: NodeId) -> Id<Self> {
+        let this = Self::alloc().set_ivars(PlatformNodeIvars { context, node_id });
+
+        unsafe { msg_send_id![super(this), init] }
     }
 
     fn resolve_with_context<F, T>(&self, f: F) -> Option<T>
     where
         F: FnOnce(&Node, &Rc<Context>) -> T,
     {
-        let context = self.boxed.context.upgrade()?;
+        let context = self.ivars().context.upgrade()?;
         let tree = context.tree.borrow();
         let state = tree.state();
-        let node = state.node_by_id(self.boxed.node_id)?;
+        let node = state.node_by_id(self.ivars().node_id)?;
         Some(f(&node, &context))
     }
 
@@ -819,7 +814,7 @@ impl PlatformNode {
             let platform_nodes = node
                 .filtered_children(filter)
                 .map(|child| context.get_or_create_platform_node(child.id()))
-                .collect::<Vec<Id<PlatformNode, Shared>>>();
+                .collect::<Vec<Id<PlatformNode>>>();
             Id::autorelease_return(NSArray::from_vec(platform_nodes))
         })
         .unwrap_or_else(null_mut)

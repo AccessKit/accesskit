@@ -36,18 +36,18 @@ pub(crate) fn to_ns_range_for_character(pos: &TextPosition) -> NSRange {
 }
 
 pub(crate) fn from_ns_point(view: &NSView, node: &Node, point: NSPoint) -> Point {
-    let window = unsafe { view.window() }.unwrap();
+    let window = view.window().unwrap();
     let point = unsafe { window.convertPointFromScreen(point) };
-    let point = unsafe { view.convertPoint_fromView(point, None) };
+    let point = view.convertPoint_fromView(point, None);
     // AccessKit coordinates are in physical (DPI-dependent) pixels, but
     // macOS provides logical (DPI-independent) coordinates here.
-    let factor = unsafe { window.backingScaleFactor() };
+    let factor = window.backingScaleFactor();
     let point = Point::new(
         point.x * factor,
         if unsafe { view.isFlipped() } {
             point.y * factor
         } else {
-            let view_bounds = unsafe { view.bounds() };
+            let view_bounds = view.bounds();
             (view_bounds.size.height - point.y) * factor
         },
     );
@@ -55,18 +55,18 @@ pub(crate) fn from_ns_point(view: &NSView, node: &Node, point: NSPoint) -> Point
 }
 
 pub(crate) fn to_ns_rect(view: &NSView, rect: Rect) -> NSRect {
-    let window = unsafe { view.window() }.unwrap();
+    let window = view.window().unwrap();
     // AccessKit coordinates are in physical (DPI-dependent)
     // pixels, but macOS expects logical (DPI-independent)
     // coordinates here.
-    let factor = unsafe { window.backingScaleFactor() };
+    let factor = window.backingScaleFactor();
     let rect = NSRect {
         origin: NSPoint {
             x: rect.x0 / factor,
             y: if unsafe { view.isFlipped() } {
                 rect.y0 / factor
             } else {
-                let view_bounds = unsafe { view.bounds() };
+                let view_bounds = view.bounds();
                 view_bounds.size.height - rect.y1 / factor
             },
         },
@@ -76,6 +76,6 @@ pub(crate) fn to_ns_rect(view: &NSView, rect: Rect) -> NSRect {
         },
     };
     let rect = unsafe { view.convertRect_toView(rect, None) };
-    let window = unsafe { view.window() }.unwrap();
+    let window = view.window().unwrap();
     unsafe { window.convertRectToScreen(rect) }
 }

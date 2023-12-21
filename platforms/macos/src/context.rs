@@ -5,8 +5,8 @@
 
 use accesskit::{ActionHandler, ActionRequest, NodeId};
 use accesskit_consumer::Tree;
+use icrate::objc2::rc::{Id, WeakId};
 use icrate::{AppKit::*, Foundation::MainThreadMarker};
-use objc2::rc::{Id, Shared, WeakId};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::node::PlatformNode;
@@ -15,7 +15,7 @@ pub(crate) struct Context {
     pub(crate) view: WeakId<NSView>,
     pub(crate) tree: RefCell<Tree>,
     pub(crate) action_handler: RefCell<Box<dyn ActionHandler>>,
-    platform_nodes: RefCell<HashMap<NodeId, Id<PlatformNode, Shared>>>,
+    platform_nodes: RefCell<HashMap<NodeId, Id<PlatformNode>>>,
     _mtm: MainThreadMarker,
 }
 
@@ -35,10 +35,7 @@ impl Context {
         })
     }
 
-    pub(crate) fn get_or_create_platform_node(
-        self: &Rc<Self>,
-        id: NodeId,
-    ) -> Id<PlatformNode, Shared> {
+    pub(crate) fn get_or_create_platform_node(self: &Rc<Self>, id: NodeId) -> Id<PlatformNode> {
         let mut platform_nodes = self.platform_nodes.borrow_mut();
         if let Some(result) = platform_nodes.get(&id) {
             return result.clone();
@@ -49,7 +46,7 @@ impl Context {
         result
     }
 
-    pub(crate) fn remove_platform_node(&self, id: NodeId) -> Option<Id<PlatformNode, Shared>> {
+    pub(crate) fn remove_platform_node(&self, id: NodeId) -> Option<Id<PlatformNode>> {
         let mut platform_nodes = self.platform_nodes.borrow_mut();
         platform_nodes.remove(&id)
     }

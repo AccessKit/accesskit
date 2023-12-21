@@ -5,11 +5,11 @@
 
 use accesskit::{Live, NodeId, Role};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, TreeChangeHandler, TreeState};
+use icrate::objc2::{msg_send, runtime::AnyObject, Message};
 use icrate::{
     AppKit::*,
     Foundation::{NSMutableDictionary, NSNumber, NSString},
 };
-use objc2::{msg_send, runtime::Object, Message};
 use std::{collections::HashSet, rc::Rc};
 
 use crate::{
@@ -80,14 +80,14 @@ impl QueuedEvent {
                     }
                 };
 
-                let window = match unsafe { view.window() } {
+                let window = match view.window() {
                     Some(window) => window,
                     None => {
                         return;
                     }
                 };
 
-                let mut user_info = NSMutableDictionary::<_, Object>::new();
+                let mut user_info = NSMutableDictionary::<_, AnyObject>::new();
                 let text = NSString::from_str(&text);
                 set_object_for_key(&mut user_info, &*text, unsafe {
                     NSAccessibilityAnnouncementKey
