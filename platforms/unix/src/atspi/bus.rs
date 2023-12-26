@@ -5,15 +5,17 @@
 
 use crate::{
     atspi::{interfaces::*, ObjectId},
-    context::AppContext,
-    PlatformRootNode,
+    context::{AppContext, Context},
+    PlatformNode, PlatformRootNode,
 };
+use accesskit::NodeId;
 use atspi::{
     events::EventBody,
     proxy::{bus::BusProxy, socket::SocketProxy},
+    Interface, InterfaceSet,
 };
 use serde::Serialize;
-use std::{collections::HashMap, env::var};
+use std::{collections::HashMap, env::var, sync::Weak};
 use zbus::{
     names::{BusName, InterfaceName, MemberName, OwnedUniqueName},
     zvariant::{Str, Value},
@@ -27,35 +29,24 @@ pub(crate) struct Bus {
 }
 
 impl Bus {
-    pub async fn a11y_bus() -> Option<Self> {
-        let conn = a11y_bus().await?;
-        let socket_proxy = SocketProxy::new(&conn).await.ok()?;
-        Some(Bus { conn, socket_proxy })
+    pub(crate) async fn new(session_bus: &Connection) -> zbus::Result<Self> {
+        let address = match var("AT_SPI_BUS_ADDRESS") {
+            Ok(address) if !address.is_empty() => address,
+            _ => BusProxy::new(session_bus).await?.get_address().await?,
+        };
+        let address: Address = address.as_str().try_into()?;
+        let conn = ConnectionBuilder::address(address)?.build().await?;
+        let socket_proxy = SocketProxy::new(&conn).await?;
+        let mut bus = Bus { conn, socket_proxy };
+        bus.register_root_node().await?;
+        Ok(bus)
     }
 
-    pub(crate) fn connection(&self) -> &Connection {
-        &self.conn
-    }
-
-    pub fn unique_name(&self) -> &OwnedUniqueName {
+    fn unique_name(&self) -> &OwnedUniqueName {
         self.conn.unique_name().unwrap()
     }
 
-    pub async fn register_interface<T>(&self, path: &str, interface: T) -> Result<bool>
-    where
-        T: zbus::Interface,
-    {
-        self.conn.object_server().at(path, interface).await
-    }
-
-    pub async fn unregister_interface<T>(&self, path: &str) -> Result<bool>
-    where
-        T: zbus::Interface,
-    {
-        self.conn.object_server().remove::<T, _>(path).await
-    }
-
-    pub(crate) async fn register_root_node(&mut self) -> Result<bool> {
+    async fn register_root_node(&mut self) -> Result<()> {
         let node = PlatformRootNode::new();
         let path = ObjectId::Root.path();
 
@@ -80,10 +71,101 @@ impl Bus {
                 .await?;
             let mut app_context = AppContext::write();
             app_context.desktop_address = Some(desktop.into());
-            Ok(true)
-        } else {
-            Ok(false)
         }
+
+        Ok(())
+    }
+
+    pub(crate) async fn register_interfaces(
+        &self,
+        adapter_id: usize,
+        context: Weak<Context>,
+        node_id: NodeId,
+        new_interfaces: InterfaceSet,
+    ) -> zbus::Result<()> {
+        let path = ObjectId::Node {
+            adapter: adapter_id,
+            node: node_id,
+        }
+        .path();
+        if new_interfaces.contains(Interface::Accessible) {
+            self.register_interface(
+                &path,
+                AccessibleInterface::new(
+                    self.unique_name().to_owned(),
+                    PlatformNode::new(context.clone(), adapter_id, node_id),
+                ),
+            )
+            .await?;
+        }
+        if new_interfaces.contains(Interface::Action) {
+            self.register_interface(
+                &path,
+                ActionInterface::new(PlatformNode::new(context.clone(), adapter_id, node_id)),
+            )
+            .await?;
+        }
+        if new_interfaces.contains(Interface::Component) {
+            self.register_interface(
+                &path,
+                ComponentInterface::new(PlatformNode::new(context.clone(), adapter_id, node_id)),
+            )
+            .await?;
+        }
+        if new_interfaces.contains(Interface::Value) {
+            self.register_interface(
+                &path,
+                ValueInterface::new(PlatformNode::new(context, adapter_id, node_id)),
+            )
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn register_interface<T>(&self, path: &str, interface: T) -> Result<()>
+    where
+        T: zbus::Interface,
+    {
+        self.conn.object_server().at(path, interface).await?;
+        Ok(())
+    }
+
+    pub(crate) async fn unregister_interfaces(
+        &self,
+        adapter_id: usize,
+        node_id: NodeId,
+        old_interfaces: InterfaceSet,
+    ) -> zbus::Result<()> {
+        let path = ObjectId::Node {
+            adapter: adapter_id,
+            node: node_id,
+        }
+        .path();
+        if old_interfaces.contains(Interface::Accessible) {
+            self.unregister_interface::<AccessibleInterface<PlatformNode>>(&path)
+                .await?;
+        }
+        if old_interfaces.contains(Interface::Action) {
+            self.unregister_interface::<ActionInterface>(&path).await?;
+        }
+        if old_interfaces.contains(Interface::Component) {
+            self.unregister_interface::<ComponentInterface>(&path)
+                .await?;
+        }
+        if old_interfaces.contains(Interface::Value) {
+            self.unregister_interface::<ValueInterface>(&path).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn unregister_interface<T>(&self, path: &str) -> Result<()>
+    where
+        T: zbus::Interface,
+    {
+        self.conn.object_server().remove::<T, _>(path).await?;
+        Ok(())
     }
 
     pub(crate) async fn emit_object_event(
@@ -266,21 +348,4 @@ impl Bus {
             )
             .await
     }
-}
-
-async fn a11y_bus() -> Option<Connection> {
-    let address = match var("AT_SPI_BUS_ADDRESS") {
-        Ok(address) if !address.is_empty() => address,
-        _ => {
-            let session_bus = Connection::session().await.ok()?;
-            BusProxy::new(&session_bus)
-                .await
-                .ok()?
-                .get_address()
-                .await
-                .ok()?
-        }
-    };
-    let address: Address = address.as_str().try_into().ok()?;
-    ConnectionBuilder::address(address).ok()?.build().await.ok()
 }

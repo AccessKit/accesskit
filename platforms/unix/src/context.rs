@@ -5,17 +5,18 @@
 
 use accesskit::{ActionHandler, ActionRequest};
 use accesskit_consumer::Tree;
+use async_channel::Sender;
 use async_lock::{Mutex as AsyncMutex, MutexGuard as AsyncMutexGuard};
 use async_once_cell::OnceCell as AsyncOnceCell;
 use atspi::proxy::bus::StatusProxy;
-use futures_lite::StreamExt;
+use futures_util::{pin_mut, select, StreamExt};
 use once_cell::sync::OnceCell;
 use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
 use zbus::{Connection, Task};
 
 use crate::{
-    adapter::LazyAdapter,
-    atspi::{Bus, OwnedObjectAddress},
+    adapter::{LazyAdapter, Message},
+    atspi::{interfaces::Event, Bus, OwnedObjectAddress},
     util::WindowBounds,
 };
 
@@ -62,7 +63,7 @@ impl AdapterAndContext {
 static APP_CONTEXT: OnceCell<Arc<RwLock<AppContext>>> = OnceCell::new();
 
 pub(crate) struct AppContext {
-    pub(crate) atspi_bus: Option<Bus>,
+    pub(crate) messages: Option<Sender<Message>>,
     pub(crate) name: Option<String>,
     pub(crate) toolkit_name: Option<String>,
     pub(crate) toolkit_version: Option<String>,
@@ -76,7 +77,7 @@ impl AppContext {
         APP_CONTEXT
             .get_or_init(|| {
                 Arc::new(RwLock::new(Self {
-                    atspi_bus: None,
+                    messages: None,
                     name: None,
                     toolkit_name: None,
                     toolkit_version: None,
@@ -101,11 +102,9 @@ impl AppContext {
         self.adapters.binary_search_by(|adapter| adapter.0.cmp(&id))
     }
 
-    pub(crate) fn push_adapter(&mut self, id: usize, context: &Arc<Context>) -> usize {
-        let index = self.adapters.len();
+    pub(crate) fn push_adapter(&mut self, id: usize, context: &Arc<Context>) {
         self.adapters
             .push(AdapterAndContext(id, Arc::downgrade(context)));
-        index
     }
 
     pub(crate) fn remove_adapter(&mut self, id: usize) {
@@ -116,7 +115,7 @@ impl AppContext {
 }
 
 pub(crate) struct ActivationContext {
-    _monitoring_task: Task<()>,
+    _task: Task<()>,
     adapters: Vec<LazyAdapter>,
 }
 
@@ -128,14 +127,14 @@ impl ActivationContext {
             .get_or_init(async {
                 let session_bus = Connection::session().await.unwrap();
                 let session_bus_copy = session_bus.clone();
-                let monitoring_task = session_bus.executor().spawn(
+                let task = session_bus.executor().spawn(
                     async move {
-                        let _ = monitor_a11y_status(session_bus_copy).await;
+                        listen(session_bus_copy).await.unwrap();
                     },
-                    "accesskit_a11y_monitoring_task",
+                    "accesskit_task",
                 );
                 Arc::new(AsyncMutex::new(ActivationContext {
-                    _monitoring_task: monitoring_task,
+                    _task: task,
                     adapters: Vec::new(),
                 }))
             })
@@ -147,36 +146,86 @@ impl ActivationContext {
     pub(crate) async fn activate_eventually(adapter: LazyAdapter) {
         let mut activation_context = ActivationContext::get_or_init().await;
         activation_context.adapters.push(adapter);
-        let adapter = activation_context.adapters.last().unwrap();
-        let is_a11y_enabled = AppContext::get_or_init().atspi_bus.is_some();
+        let is_a11y_enabled = AppContext::get_or_init().messages.is_some();
         if is_a11y_enabled {
+            let adapter = activation_context.adapters.last().unwrap();
             adapter.as_ref().await;
         }
     }
 }
 
-async fn monitor_a11y_status(session_bus: Connection) -> zbus::Result<()> {
+async fn listen(session_bus: Connection) -> zbus::Result<()> {
     let status = StatusProxy::new(&session_bus).await?;
-    let mut changes = status.receive_is_enabled_changed().await;
+    let changes = status.receive_is_enabled_changed().await.fuse();
+    pin_mut!(changes);
+    let (tx, rx) = async_channel::unbounded();
+    let messages = rx.fuse();
+    pin_mut!(messages);
+    let mut atspi_bus = None;
 
-    while let Some(change) = changes.next().await {
-        let atspi_bus = match change.get().await {
-            Ok(true) => Bus::a11y_bus().await,
-            _ => None,
-        };
-        let activate = atspi_bus.is_some();
-        {
-            let mut app_context = AppContext::get_or_init();
-            app_context.atspi_bus = atspi_bus;
-        }
-        if activate {
-            if let Some(activation_context) = ACTIVATION_CONTEXT.get() {
-                let activation_context = activation_context.lock().await;
-                for adapter in &activation_context.adapters {
-                    adapter.as_ref().await;
+    loop {
+        select! {
+            change = changes.next() => {
+                atspi_bus = if let Some(change) = change {
+                    match change.get().await {
+                        Ok(true) => Bus::new(&session_bus).await.ok(),
+                        _ => None,
+                    }
+                } else {
+                    None
+                };
+                {
+                    let mut app_context = AppContext::get_or_init();
+                    app_context.messages = Some(tx.clone());
+                }
+                if atspi_bus.is_some() {
+                    if let Some(activation_context) = ACTIVATION_CONTEXT.get() {
+                        let activation_context = activation_context.lock().await;
+                        for adapter in &activation_context.adapters {
+                            if let Some(adapter) = &*adapter.as_ref().await {
+                                adapter.register_tree().await;
+                            }
+                        }
+                    }
                 }
             }
+            message = messages.next() => {
+                if let Some((message, atspi_bus)) = message.zip(atspi_bus.as_ref()) {
+                    let _ = process_adapter_message(atspi_bus, message).await;
+                }
+            }
+            complete => return Ok(()),
         }
+    }
+}
+
+async fn process_adapter_message(bus: &Bus, message: Message) -> zbus::Result<()> {
+    match message {
+        Message::RegisterInterfaces {
+            adapter_id,
+            context,
+            node_id,
+            interfaces,
+        } => {
+            bus.register_interfaces(adapter_id, context, node_id, interfaces)
+                .await?
+        }
+        Message::UnregisterInterfaces {
+            adapter_id,
+            node_id,
+            interfaces,
+        } => {
+            bus.unregister_interfaces(adapter_id, node_id, interfaces)
+                .await?
+        }
+        Message::EmitEvent(Event::Object { target, event }) => {
+            bus.emit_object_event(target, event).await?
+        }
+        Message::EmitEvent(Event::Window {
+            target,
+            name,
+            event,
+        }) => bus.emit_window_event(target, name, event).await?,
     }
 
     Ok(())
