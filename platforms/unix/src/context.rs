@@ -16,7 +16,7 @@ use zbus::{Connection, Task};
 
 use crate::{
     adapter::{LazyAdapter, Message},
-    atspi::{interfaces::Event, Bus, OwnedObjectAddress},
+    atspi::{interfaces::Event, map_or_ignoring_broken_pipe, Bus, OwnedObjectAddress},
     util::WindowBounds,
 };
 
@@ -167,9 +167,10 @@ async fn listen(session_bus: Connection) -> zbus::Result<()> {
         select! {
             change = changes.next() => {
                 atspi_bus = if let Some(change) = change {
-                    match change.get().await {
-                        Ok(true) => Bus::new(&session_bus).await.ok(),
-                        _ => None,
+                    if change.get().await? {
+                        map_or_ignoring_broken_pipe(Bus::new(&session_bus).await, None, Some)?
+                    } else {
+                        None
                     }
                 } else {
                     None
@@ -182,16 +183,14 @@ async fn listen(session_bus: Connection) -> zbus::Result<()> {
                     if let Some(activation_context) = ACTIVATION_CONTEXT.get() {
                         let activation_context = activation_context.lock().await;
                         for adapter in &activation_context.adapters {
-                            if let Some(adapter) = &*adapter.as_ref().await {
-                                adapter.register_tree().await;
-                            }
+                            adapter.as_ref().await.register_tree().await;
                         }
                     }
                 }
             }
             message = messages.next() => {
                 if let Some((message, atspi_bus)) = message.zip(atspi_bus.as_ref()) {
-                    let _ = process_adapter_message(atspi_bus, message).await;
+                    process_adapter_message(atspi_bus, message).await?;
                 }
             }
             complete => return Ok(()),

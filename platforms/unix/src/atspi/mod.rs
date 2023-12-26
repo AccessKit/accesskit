@@ -39,6 +39,6 @@ impl From<accesskit::Rect> for Rect {
     }
 }
 
-pub(crate) use bus::Bus;
+pub(crate) use bus::*;
 pub(crate) use object_address::OwnedObjectAddress;
 pub(crate) use object_id::ObjectId;

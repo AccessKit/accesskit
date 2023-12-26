@@ -15,7 +15,7 @@ use atspi::{
     Interface, InterfaceSet,
 };
 use serde::Serialize;
-use std::{collections::HashMap, env::var, sync::Weak};
+use std::{collections::HashMap, env::var, io, sync::Weak};
 use zbus::{
     names::{BusName, InterfaceName, MemberName, OwnedUniqueName},
     zvariant::{Str, Value},
@@ -123,12 +123,15 @@ impl Bus {
         Ok(())
     }
 
-    async fn register_interface<T>(&self, path: &str, interface: T) -> Result<()>
+    async fn register_interface<T>(&self, path: &str, interface: T) -> Result<bool>
     where
         T: zbus::Interface,
     {
-        self.conn.object_server().at(path, interface).await?;
-        Ok(())
+        map_or_ignoring_broken_pipe(
+            self.conn.object_server().at(path, interface).await,
+            false,
+            |result| result,
+        )
     }
 
     pub(crate) async fn unregister_interfaces(
@@ -160,12 +163,15 @@ impl Bus {
         Ok(())
     }
 
-    async fn unregister_interface<T>(&self, path: &str) -> Result<()>
+    async fn unregister_interface<T>(&self, path: &str) -> Result<bool>
     where
         T: zbus::Interface,
     {
-        self.conn.object_server().remove::<T, _>(path).await?;
-        Ok(())
+        map_or_ignoring_broken_pipe(
+            self.conn.object_server().remove::<T, _>(path).await,
+            false,
+            |result| result,
+        )
     }
 
     pub(crate) async fn emit_object_event(
@@ -338,14 +344,35 @@ impl Bus {
         signal_name: &str,
         body: EventBody<'_, T>,
     ) -> Result<()> {
-        self.conn
-            .emit_signal(
-                Option::<BusName>::None,
-                target.path(),
-                InterfaceName::from_str_unchecked(interface),
-                MemberName::from_str_unchecked(signal_name),
-                &body,
-            )
-            .await
+        map_or_ignoring_broken_pipe(
+            self.conn
+                .emit_signal(
+                    Option::<BusName>::None,
+                    target.path(),
+                    InterfaceName::from_str_unchecked(interface),
+                    MemberName::from_str_unchecked(signal_name),
+                    &body,
+                )
+                .await,
+            (),
+            |_| (),
+        )
+    }
+}
+
+pub(crate) fn map_or_ignoring_broken_pipe<T, U, F>(
+    result: zbus::Result<T>,
+    default: U,
+    f: F,
+) -> zbus::Result<U>
+where
+    F: FnOnce(T) -> U,
+{
+    match result {
+        Ok(result) => Ok(f(result)),
+        Err(zbus::Error::InputOutput(error)) if error.kind() == io::ErrorKind::BrokenPipe => {
+            Ok(default)
+        }
+        Err(error) => Err(error),
     }
 }

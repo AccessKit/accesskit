@@ -212,7 +212,7 @@ impl AdapterImpl {
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
         action_handler: Box<dyn ActionHandler + Send>,
-    ) -> Option<Self> {
+    ) -> Self {
         let tree = Tree::new(initial_state, is_window_focused);
         let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::SeqCst);
         let (messages, context) = {
@@ -222,11 +222,11 @@ impl AdapterImpl {
             app_context.push_adapter(id, &context);
             (messages, context)
         };
-        Some(AdapterImpl {
+        AdapterImpl {
             id,
             messages,
             context,
-        })
+        }
     }
 
     pub(crate) async fn register_tree(&self) {
@@ -428,7 +428,7 @@ impl Drop for AdapterImpl {
     }
 }
 
-pub(crate) type LazyAdapter = Pin<Arc<Lazy<Option<AdapterImpl>, Boxed<Option<AdapterImpl>>>>>;
+pub(crate) type LazyAdapter = Pin<Arc<Lazy<AdapterImpl, Boxed<AdapterImpl>>>>;
 
 pub struct Adapter {
     r#impl: LazyAdapter,
@@ -474,7 +474,7 @@ impl Adapter {
             let mut bounds = self.root_window_bounds.lock().unwrap();
             *bounds = new_bounds;
         }
-        if let Some(Some(r#impl)) = Lazy::try_get(&self.r#impl) {
+        if let Some(r#impl) = Lazy::try_get(&self.r#impl) {
             r#impl.set_root_window_bounds(new_bounds);
         }
     }
@@ -482,7 +482,7 @@ impl Adapter {
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update.
     pub fn update_if_active(&self, update_factory: impl FnOnce() -> TreeUpdate) {
-        if let Some(Some(r#impl)) = Lazy::try_get(&self.r#impl) {
+        if let Some(r#impl) = Lazy::try_get(&self.r#impl) {
             r#impl.update(update_factory());
         }
     }
@@ -490,7 +490,7 @@ impl Adapter {
     /// Update the tree state based on whether the window is focused.
     pub fn update_window_focus_state(&self, is_focused: bool) {
         self.is_window_focused.store(is_focused, Ordering::SeqCst);
-        if let Some(Some(r#impl)) = Lazy::try_get(&self.r#impl) {
+        if let Some(r#impl) = Lazy::try_get(&self.r#impl) {
             r#impl.update_window_focus_state(is_focused);
         }
     }
