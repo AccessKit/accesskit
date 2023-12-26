@@ -116,7 +116,7 @@ impl AppContext {
 
 pub(crate) struct ActivationContext {
     _task: Task<()>,
-    adapters: Vec<LazyAdapter>,
+    adapters: Vec<(usize, LazyAdapter)>,
 }
 
 static ACTIVATION_CONTEXT: AsyncOnceCell<Arc<AsyncMutex<ActivationContext>>> = AsyncOnceCell::new();
@@ -143,13 +143,25 @@ impl ActivationContext {
             .await
     }
 
-    pub(crate) async fn activate_eventually(adapter: LazyAdapter) {
+    pub(crate) async fn activate_eventually(id: usize, adapter: LazyAdapter) {
         let mut activation_context = ActivationContext::get_or_init().await;
-        activation_context.adapters.push(adapter);
+        activation_context.adapters.push((id, adapter));
         let is_a11y_enabled = AppContext::get_or_init().messages.is_some();
         if is_a11y_enabled {
-            let adapter = activation_context.adapters.last().unwrap();
+            let adapter = &activation_context.adapters.last().unwrap().1;
             adapter.as_ref().await;
+        }
+    }
+
+    pub(crate) async fn remove_adapter(id: usize) {
+        if let Some(activation_context) = ACTIVATION_CONTEXT.get() {
+            let mut context = activation_context.lock().await;
+            if let Ok(index) = context
+                .adapters
+                .binary_search_by(|adapter| adapter.0.cmp(&id))
+            {
+                context.adapters.remove(index);
+            }
         }
     }
 }
@@ -182,7 +194,7 @@ async fn listen(session_bus: Connection) -> zbus::Result<()> {
                 if atspi_bus.is_some() {
                     if let Some(activation_context) = ACTIVATION_CONTEXT.get() {
                         let activation_context = activation_context.lock().await;
-                        for adapter in &activation_context.adapters {
+                        for (_, adapter) in &activation_context.adapters {
                             adapter.as_ref().await.register_tree().await;
                         }
                     }

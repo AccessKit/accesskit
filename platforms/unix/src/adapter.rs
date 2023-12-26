@@ -198,8 +198,6 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
     }
 }
 
-static NEXT_ADAPTER_ID: AtomicUsize = AtomicUsize::new(0);
-
 pub(crate) struct AdapterImpl {
     id: usize,
     messages: Sender<Message>,
@@ -208,13 +206,13 @@ pub(crate) struct AdapterImpl {
 
 impl AdapterImpl {
     fn new(
+        id: usize,
         initial_state: TreeUpdate,
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
         action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
         let tree = Tree::new(initial_state, is_window_focused);
-        let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::SeqCst);
         let (messages, context) = {
             let mut app_context = AppContext::write();
             let messages = app_context.messages.clone().unwrap();
@@ -430,7 +428,10 @@ impl Drop for AdapterImpl {
 
 pub(crate) type LazyAdapter = Pin<Arc<Lazy<AdapterImpl, Boxed<AdapterImpl>>>>;
 
+static NEXT_ADAPTER_ID: AtomicUsize = AtomicUsize::new(0);
+
 pub struct Adapter {
+    id: usize,
     r#impl: LazyAdapter,
     is_window_focused: Arc<AtomicBool>,
     root_window_bounds: Arc<Mutex<WindowBounds>>,
@@ -442,6 +443,7 @@ impl Adapter {
         source: impl 'static + FnOnce() -> TreeUpdate + Send,
         action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
+        let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::SeqCst);
         let is_window_focused = Arc::new(AtomicBool::new(false));
         let is_window_focused_copy = is_window_focused.clone();
         let root_window_bounds = Arc::new(Mutex::new(Default::default()));
@@ -451,6 +453,7 @@ impl Adapter {
                 let is_window_focused = is_window_focused_copy.load(Ordering::Relaxed);
                 let root_window_bounds = *root_window_bounds_copy.lock().unwrap();
                 AdapterImpl::new(
+                    id,
                     source(),
                     is_window_focused,
                     root_window_bounds,
@@ -460,11 +463,12 @@ impl Adapter {
             .boxed(),
         ));
         let adapter = Self {
+            id,
             r#impl: r#impl.clone(),
             is_window_focused,
             root_window_bounds,
         };
-        block_on(async move { ActivationContext::activate_eventually(r#impl).await });
+        block_on(async move { ActivationContext::activate_eventually(id, r#impl).await });
         adapter
     }
 
@@ -493,6 +497,14 @@ impl Adapter {
         if let Some(r#impl) = Lazy::try_get(&self.r#impl) {
             r#impl.update_window_focus_state(is_focused);
         }
+    }
+}
+
+impl Drop for Adapter {
+    fn drop(&mut self) {
+        block_on(async {
+            ActivationContext::remove_adapter(self.id).await;
+        })
     }
 }
 
