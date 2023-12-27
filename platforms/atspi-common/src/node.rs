@@ -294,16 +294,22 @@ impl NodeWrapper<'_> {
         if state.is_focusable() {
             atspi_state.insert(State::Focusable);
         }
+        let filter_result = filter(self.0);
+        if filter_result == FilterResult::Include {
+            atspi_state.insert(State::Visible | State::Showing);
+        }
+        if state.is_multiselectable() {
+            atspi_state.insert(State::Multiselectable);
+        }
+        if state.is_required() {
+            atspi_state.insert(State::Required);
+        }
         if let Some(orientation) = state.orientation() {
             atspi_state.insert(if orientation == Orientation::Horizontal {
                 State::Horizontal
             } else {
                 State::Vertical
             });
-        }
-        let filter_result = filter(self.0);
-        if filter_result == FilterResult::Include {
-            atspi_state.insert(State::Visible | State::Showing);
         }
         if atspi_role != AtspiRole::ToggleButton && state.toggled().is_some() {
             atspi_state.insert(State::Checkable);
@@ -352,11 +358,30 @@ impl NodeWrapper<'_> {
         atspi_state
     }
 
+    fn placeholder(&self) -> Option<String> {
+        self.0.placeholder()
+    }
+
+    fn position_in_set(&self) -> Option<String> {
+        self.0.position_in_set().map(|p| (p + 1).to_string())
+    }
+
+    fn size_of_set(&self) -> Option<String> {
+        self.0.size_of_set().map(|s| s.to_string())
+    }
+
     fn attributes(&self) -> HashMap<&'static str, String> {
         let mut attributes = HashMap::new();
-        if let Some(placeholder) = self.0.placeholder() {
+        if let Some(placeholder) = self.placeholder() {
             attributes.insert("placeholder-text", placeholder);
         }
+        if let Some(position_in_set) = self.position_in_set() {
+            attributes.insert("posinset", position_in_set);
+        }
+        if let Some(size_of_set) = self.size_of_set() {
+            attributes.insert("setsize", size_of_set);
+        }
+
         attributes
     }
 
@@ -370,6 +395,10 @@ impl NodeWrapper<'_> {
 
     fn supports_component(&self) -> bool {
         self.0.raw_bounds().is_some() || self.is_root()
+    }
+
+    fn supports_selection(&self) -> bool {
+        self.0.is_container_with_selectable_children()
     }
 
     fn supports_text(&self) -> bool {
@@ -387,6 +416,9 @@ impl NodeWrapper<'_> {
         }
         if self.supports_component() {
             interfaces.insert(Interface::Component);
+        }
+        if self.supports_selection() {
+            interfaces.insert(Interface::Selection);
         }
         if self.supports_text() {
             interfaces.insert(Interface::Text);
@@ -623,6 +655,20 @@ impl PlatformNode {
         })
     }
 
+    fn resolve_for_selection_with_context<F, T>(&self, f: F) -> Result<T>
+    where
+        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
+    {
+        self.resolve_with_context(|node, context| {
+            let wrapper = NodeWrapper(&node);
+            if wrapper.supports_selection() {
+                f(node, context)
+            } else {
+                Err(Error::UnsupportedInterface)
+            }
+        })
+    }
+
     fn resolve_for_text_with_context<F, T>(&self, f: F) -> Result<T>
     where
         for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
@@ -642,6 +688,20 @@ impl PlatformNode {
         for<'a> F: FnOnce(Node<'a>) -> Result<T>,
     {
         self.resolve_with_context(|node, _| f(node))
+    }
+
+    fn resolve_for_selection<F, T>(&self, f: F) -> Result<T>
+    where
+        for<'a> F: FnOnce(Node<'a>) -> Result<T>,
+    {
+        self.resolve(|node| {
+            let wrapper = NodeWrapper(&node);
+            if wrapper.supports_selection() {
+                f(node)
+            } else {
+                Err(Error::UnsupportedInterface)
+            }
+        })
     }
 
     fn resolve_for_text<F, T>(&self, f: F) -> Result<T>
@@ -807,6 +867,13 @@ impl PlatformNode {
         })
     }
 
+    pub fn supports_selection(&self) -> Result<bool> {
+        self.resolve(|node| {
+            let wrapper = NodeWrapper(&node);
+            Ok(wrapper.supports_selection())
+        })
+    }
+
     pub fn supports_text(&self) -> Result<bool> {
         self.resolve(|node| {
             let wrapper = NodeWrapper(&node);
@@ -946,6 +1013,97 @@ impl PlatformNode {
             Ok(())
         })?;
         Ok(true)
+    }
+
+    pub fn n_selected_children(&self) -> Result<i32> {
+        self.resolve_for_selection(|node| {
+            node.items(filter)
+                .filter(|item| item.is_selected() == Some(true))
+                .count()
+                .try_into()
+                .map_err(|_| Error::TooManyChildren)
+        })
+    }
+
+    pub fn selected_child(&self, selected_child_index: usize) -> Result<Option<NodeId>> {
+        self.resolve_for_selection(|node| {
+            Ok(node
+                .items(filter)
+                .filter(|item| item.is_selected() == Some(true))
+                .nth(selected_child_index)
+                .map(|node| node.id()))
+        })
+    }
+
+    pub fn select_child(&self, child_index: usize) -> Result<bool> {
+        self.resolve_for_selection_with_context(|node, context| {
+            if let Some(child) = node.filtered_children(filter).nth(child_index) {
+                if child.is_selectable() {
+                    context.do_action(ActionRequest {
+                        action: Action::Default,
+                        target: child.id(),
+                        data: None,
+                    });
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            } else {
+                Err(Error::Defunct)
+            }
+        })
+    }
+
+    pub fn deselect_selected_child(&self, selected_child_index: usize) -> Result<bool> {
+        todo!()
+    }
+
+    pub fn is_child_selected(&self, child_index: usize) -> Result<bool> {
+        self.resolve_for_selection(|node| {
+            node.filtered_children(filter)
+                .nth(child_index)
+                .map(|child| child.is_item_like() && child.is_selected() == Some(true))
+                .ok_or(Error::Defunct)
+        })
+    }
+
+    pub fn select_all(&self) -> Result<bool> {
+        todo!()
+    }
+
+    pub fn clear_selection(&self) -> Result<bool> {
+        self.resolve_for_selection_with_context(|node, context| {
+            let selected_children = node
+                .items(filter)
+                .filter(|item| item.is_selected() == Some(true));
+            for child in selected_children {
+                context.do_action(ActionRequest {
+                    action: Action::Default,
+                    target: child.id,
+                    data: None,
+                });
+            }
+            Ok(true)
+        })
+    }
+
+    pub fn deselect_child(&self, child_index: usize) -> Result<bool> {
+        self.resolve_for_selection_with_context(|node, context| {
+            if let Some(child) = node.filtered_children(filter).nth(child_index) {
+                if child.is_selectable() {
+                    context.do_action(ActionRequest {
+                        action: Action::Default,
+                        target: child.id(),
+                        data: None,
+                    });
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            } else {
+                Err(Error::Defunct)
+            }
+        })
     }
 
     pub fn character_count(&self) -> Result<i32> {

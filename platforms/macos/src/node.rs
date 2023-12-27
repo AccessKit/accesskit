@@ -434,6 +434,11 @@ declare_class!(
             .unwrap_or(NSRect::ZERO)
         }
 
+        #[method_id(isAccessibilityRequired)]
+        fn is_required(&self) -> bool {
+            self.resolve(|node| node.is_required())
+        }
+
         #[method_id(accessibilityRole)]
         fn role(&self) -> Id<NSAccessibilityRole> {
             self.resolve(ns_role)

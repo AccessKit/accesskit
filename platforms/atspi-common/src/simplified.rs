@@ -222,6 +222,71 @@ impl Accessible {
         }
     }
 
+    pub fn supports_selection(&self) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.supports_selection(),
+            Self::Root(_) => Ok(false),
+        }
+    }
+
+    pub fn n_selected_children(&self) -> Result<i32> {
+        match self {
+            Self::Node(node) => node.n_selected_children(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn selected_child(&self, selected_child_index: usize) -> Result<Option<Self>> {
+        match self {
+            Self::Node(node) => node
+                .selected_child(selected_child_index)
+                .map(|id| id.map(|id| Self::Node(node.relative(id)))),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn select_child(&self, child_index: usize) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.select_child(child_index),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn deselect_selected_child(&self, selected_child_index: usize) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.deselect_selected_child(selected_child_index),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn is_child_selected(&self, child_index: usize) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.is_child_selected(child_index),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn select_all(&self) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.select_all(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn clear_selection(&self) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.clear_selection(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn deselect_child(&self, child_index: usize) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.deselect_child(child_index),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
     pub fn supports_text(&self) -> Result<bool> {
         match self {
             Self::Node(node) => node.supports_text(),
@@ -544,6 +609,13 @@ impl Event {
                             Property::Role(value) => EventData::U32(value as u32),
                             Property::Value(value) => EventData::F64(value),
                         }),
+                    },
+                    ObjectEvent::SelectionChanged => Self {
+                        kind: "object:selection-changed".into(),
+                        source,
+                        detail1: 0,
+                        detail2: 0,
+                        data: None,
                     },
                     ObjectEvent::StateChanged(state, value) => Self {
                         kind: format!("object:state-changed:{}", String::from(state)),
