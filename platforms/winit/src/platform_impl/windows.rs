@@ -39,10 +39,6 @@ impl Adapter {
         Self { adapter }
     }
 
-    pub fn update(&self, update: TreeUpdate) {
-        self.adapter.update(update).raise();
-    }
-
     pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
         if let Some(events) = self.adapter.update_if_active(updater) {
             events.raise();

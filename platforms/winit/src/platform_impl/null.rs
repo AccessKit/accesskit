@@ -18,8 +18,6 @@ impl Adapter {
         Self {}
     }
 
-    pub fn update(&self, _update: TreeUpdate) {}
-
     pub fn update_if_active(&self, _updater: impl FnOnce() -> TreeUpdate) {}
 
     pub fn process_event(&self, _window: &Window, _event: &WindowEvent) {}
