@@ -115,7 +115,7 @@ impl AppContext {
 }
 
 pub(crate) struct ActivationContext {
-    _task: Task<()>,
+    _task: Option<Task<()>>,
     adapters: Vec<(usize, LazyAdapter)>,
 }
 
@@ -125,14 +125,15 @@ impl ActivationContext {
     async fn get_or_init<'a>() -> AsyncMutexGuard<'a, ActivationContext> {
         ACTIVATION_CONTEXT
             .get_or_init(async {
-                let session_bus = Connection::session().await.unwrap();
-                let session_bus_copy = session_bus.clone();
-                let task = session_bus.executor().spawn(
-                    async move {
-                        listen(session_bus_copy).await.unwrap();
-                    },
-                    "accesskit_task",
-                );
+                let task = Connection::session().await.ok().map(|session_bus| {
+                    let session_bus_copy = session_bus.clone();
+                    session_bus.executor().spawn(
+                        async move {
+                            listen(session_bus_copy).await.unwrap();
+                        },
+                        "accesskit_task",
+                    )
+                });
                 Arc::new(AsyncMutex::new(ActivationContext {
                     _task: task,
                     adapters: Vec::new(),
