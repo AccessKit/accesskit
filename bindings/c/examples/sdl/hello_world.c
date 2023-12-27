@@ -99,26 +99,6 @@ void accesskit_sdl_adapter_destroy(struct accesskit_sdl_adapter *adapter) {
   }
 }
 
-void accesskit_sdl_adapter_update(const struct accesskit_sdl_adapter *adapter,
-                                  accesskit_tree_update *update) {
-#if defined(__APPLE__)
-  accesskit_macos_queued_events *events =
-      accesskit_macos_subclassing_adapter_update(adapter->adapter, update);
-  if (events != NULL) {
-    accesskit_macos_queued_events_raise(events);
-  }
-#elif defined(UNIX)
-  if (adapter->adapter != NULL)
-    accesskit_unix_adapter_update(adapter->adapter, update);
-#elif defined(_WIN32)
-  accesskit_windows_queued_events *events =
-      accesskit_windows_subclassing_adapter_update(adapter->adapter, update);
-  if (events != NULL) {
-    accesskit_windows_queued_events_raise(events);
-  }
-#endif
-}
-
 void accesskit_sdl_adapter_update_if_active(
     const struct accesskit_sdl_adapter *adapter,
     accesskit_tree_update_factory update_factory,
