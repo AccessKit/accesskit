@@ -92,10 +92,6 @@ impl Adapter {
         self.adapter.process_event(window, event);
     }
 
-    pub fn update(&self, update: TreeUpdate) {
-        self.adapter.update(update);
-    }
-
     pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
         self.adapter.update_if_active(updater);
     }
