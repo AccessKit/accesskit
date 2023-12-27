@@ -807,9 +807,64 @@ declare_class!(
             });
         }
 
+        #[method_id(accessibilityRows)]
+        fn rows(&self) -> Option<Id<NSArray<PlatformNode>>> {
+            self.resolve_with_context(|node, context| {
+                if !node.is_container_with_selectable_children() {
+                    return None;
+                }
+                let platform_nodes = node
+                    .items(filter)
+                    .map(|child| context.get_or_create_platform_node(child.id()))
+                    .collect::<Vec<Id<PlatformNode>>>();
+                Some(NSArray::from_vec(platform_nodes))
+            })
+            .flatten()
+        }
+
+        #[method_id(accessibilitySelectedRows)]
+        fn selected_rows(&self) -> Option<Id<NSArray<PlatformNode>>> {
+            self.resolve_with_context(|node, context| {
+                println!("accessibilitySelectedRows");
+                if !node.is_container_with_selectable_children() {
+                    return None;
+                }
+                let platform_nodes = node
+                    .items(filter)
+                    .filter(|item| item.is_selected() == Some(true))
+                    .map(|child| context.get_or_create_platform_node(child.id()))
+                    .collect::<Vec<Id<PlatformNode>>>();
+                Some(NSArray::from_vec(platform_nodes))
+            })
+            .flatten()
+        }
+
+        #[method(accessibilityPerformPick)]
+        fn pick(&self) -> bool {
+            println!("accessibilityPerformPick");
+            self.resolve_with_context(|node, context| {
+                let selectable = node.is_selectable();
+                if selectable {
+                    context.do_action(ActionRequest {
+                        action: Action::Click,
+                        target: node.id(),
+                        data: None,
+                    });
+                }
+                selectable
+            })
+            .unwrap_or(false)
+        }
+
         #[method(isAccessibilitySelectorAllowed:)]
         fn is_selector_allowed(&self, selector: Sel) -> bool {
             self.resolve(|node| {
+                if node.role() == Role::ListBox {
+                    println!("Listbox: {:?}", selector);
+                }
+                if node.role() == Role::ListBoxOption {
+                    println!("ListboxOption: {:?}", selector);
+                }
                 if selector == sel!(setAccessibilityFocused:) {
                     return node.is_focusable();
                 }
@@ -842,6 +897,14 @@ declare_class!(
                     // but it must be allowed for editable text in order to get
                     // the expected VoiceOver behavior.
                     return node.supports_text_ranges() && !node.is_read_only();
+                }
+                if selector == sel!(accessibilityRows)
+                    || selector == sel!(accessibilitySelectedRows)
+                {
+                    return node.is_container_with_selectable_children()
+                }
+                if selector == sel!(accessibilityPerformPick) {
+                    return node.is_selectable()
                 }
                 selector == sel!(accessibilityParent)
                     || selector == sel!(accessibilityChildren)
