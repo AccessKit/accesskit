@@ -56,11 +56,6 @@ class PygameAdapter:
                 hwnd, source, action_handler
             )
 
-    def update(self, tree_update):
-        if self.adapter is not None:
-            events = self.adapter.update(tree_update)
-            if events is not None:
-                events.raise_events()
 
     def update_if_active(self, update_factory):
         if self.adapter is not None:
