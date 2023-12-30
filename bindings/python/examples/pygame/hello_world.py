@@ -56,7 +56,6 @@ class PygameAdapter:
                 hwnd, source, action_handler
             )
 
-
     def update_if_active(self, update_factory):
         if self.adapter is not None:
             if PLATFORM_SYSTEM in ["Darwin", "Windows"]:
