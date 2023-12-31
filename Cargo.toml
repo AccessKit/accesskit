@@ -18,7 +18,5 @@ default-members = [
 
 [profile.release]
 lto = true
-panic = "abort"
-debug = true
 opt-level = "z"
 codegen-units = 1
