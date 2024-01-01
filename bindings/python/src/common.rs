@@ -3,6 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use crate::{Point, Rect};
 use pyo3::{prelude::*, types::PyList};
 
 #[pyclass(module = "accesskit")]
@@ -257,7 +258,7 @@ macro_rules! simple_getter {
     };
 }
 
-macro_rules! convertion_getter {
+macro_rules! converting_getter {
     ($struct_name:ident, $getter:ident, $type:ty) => {
         #[pymethods]
         impl $struct_name {
@@ -292,7 +293,7 @@ macro_rules! simple_setter {
     };
 }
 
-macro_rules! convertion_setter {
+macro_rules! converting_setter {
     ($setter:ident, $setter_param:ty) => {
         #[pymethods]
         impl NodeBuilder {
@@ -379,7 +380,7 @@ macro_rules! node_id_vec_property_methods {
 macro_rules! node_id_property_methods {
     ($(($getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
-            ($getter, option_getter, Option<NodeId>, $setter, convertion_setter, NodeId, $clearer)
+            ($getter, option_getter, Option<NodeId>, $setter, converting_setter, NodeId, $clearer)
         })*
     }
 }
@@ -411,7 +412,7 @@ macro_rules! color_property_methods {
 macro_rules! text_decoration_property_methods {
     ($(($getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
-            ($getter, option_getter, Option<accesskit::TextDecoration>, $setter, convertion_setter, accesskit::TextDecoration, $clearer)
+            ($getter, option_getter, Option<accesskit::TextDecoration>, $setter, converting_setter, accesskit::TextDecoration, $clearer)
         })*
     }
 }
@@ -419,7 +420,7 @@ macro_rules! text_decoration_property_methods {
 macro_rules! length_slice_property_methods {
     ($(($getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
-            ($getter, convertion_getter, Vec<u8>, $setter, simple_setter, Vec<u8>, $clearer)
+            ($getter, converting_getter, Vec<u8>, $setter, simple_setter, Vec<u8>, $clearer)
         })*
     }
 }
@@ -588,7 +589,7 @@ unique_enum_property_methods! {
 
 property_methods! {
     (transform, option_getter, Option<crate::Affine>, set_transform, simple_setter, crate::Affine, clear_transform),
-    (bounds, option_getter, Option<crate::Rect>, set_bounds, convertion_setter, crate::Rect, clear_bounds),
+    (bounds, option_getter, Option<crate::Rect>, set_bounds, converting_setter, crate::Rect, clear_bounds),
     (text_selection, option_getter, Option<TextSelection>, set_text_selection, simple_setter, TextSelection, clear_text_selection)
 }
 
@@ -602,7 +603,7 @@ pub struct Tree {
     pub root: NodeId,
     pub app_name: Option<String>,
     pub toolkit_name: Option<String>,
-    toolkit_version: Option<String>,
+    pub toolkit_version: Option<String>,
 }
 
 #[pymethods]
@@ -674,58 +675,23 @@ impl From<TreeUpdate> for accesskit::TreeUpdate {
     }
 }
 
-#[pyclass(module = "accesskit")]
-pub struct ActionData(accesskit::ActionData);
-
-#[pymethods]
-impl ActionData {
-    #[staticmethod]
-    pub fn custom_action(action: i32) -> Self {
-        accesskit::ActionData::CustomAction(action).into()
-    }
-
-    #[staticmethod]
-    pub fn value(value: &str) -> Self {
-        accesskit::ActionData::Value(value.into()).into()
-    }
-
-    #[staticmethod]
-    pub fn numeric_value(value: f64) -> Self {
-        accesskit::ActionData::NumericValue(value).into()
-    }
-
-    #[staticmethod]
-    pub fn scroll_target_rect(rect: crate::Rect) -> Self {
-        accesskit::ActionData::ScrollTargetRect(rect.into()).into()
-    }
-
-    #[staticmethod]
-    pub fn scroll_to_point(point: crate::Point) -> Self {
-        accesskit::ActionData::ScrollToPoint(point.into()).into()
-    }
-
-    #[staticmethod]
-    pub fn set_scroll_offset(offset: crate::Point) -> Self {
-        accesskit::ActionData::SetScrollOffset(offset.into()).into()
-    }
-
-    #[staticmethod]
-    pub fn set_text_selection(selection: TextSelection) -> Self {
-        accesskit::ActionData::SetTextSelection(selection.into()).into()
-    }
+#[derive(Clone)]
+#[pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ActionDataKind {
+    CustomAction,
+    Value,
+    NumericValue,
+    ScrollTargetRect,
+    ScrollToPoint,
+    SetScrollOffset,
+    SetTextSelection,
 }
 
-impl From<accesskit::ActionData> for ActionData {
-    fn from(data: accesskit::ActionData) -> Self {
-        Self(data)
-    }
-}
-
-#[pyclass(get_all, set_all, module = "accesskit")]
+#[pyclass(get_all, module = "accesskit")]
 pub struct ActionRequest {
     pub action: accesskit::Action,
     pub target: NodeId,
-    pub data: Option<Py<ActionData>>,
+    pub data: Option<(ActionDataKind, Py<PyAny>)>,
 }
 
 impl From<accesskit::ActionRequest> for ActionRequest {
@@ -733,9 +699,31 @@ impl From<accesskit::ActionRequest> for ActionRequest {
         Python::with_gil(|py| Self {
             action: request.action,
             target: request.target.into(),
-            data: request
-                .data
-                .map(|data| Py::new(py, ActionData::from(data)).unwrap()),
+            data: request.data.map(|data| match data {
+                accesskit::ActionData::CustomAction(action) => {
+                    (ActionDataKind::CustomAction, action.into_py(py))
+                }
+                accesskit::ActionData::Value(value) => (ActionDataKind::Value, value.into_py(py)),
+                accesskit::ActionData::NumericValue(value) => {
+                    (ActionDataKind::NumericValue, value.into_py(py))
+                }
+                accesskit::ActionData::ScrollTargetRect(rect) => (
+                    ActionDataKind::ScrollTargetRect,
+                    Rect::from(rect).into_py(py),
+                ),
+                accesskit::ActionData::ScrollToPoint(point) => (
+                    ActionDataKind::ScrollToPoint,
+                    Point::from(point).into_py(py),
+                ),
+                accesskit::ActionData::SetScrollOffset(point) => (
+                    ActionDataKind::SetScrollOffset,
+                    Point::from(point).into_py(py),
+                ),
+                accesskit::ActionData::SetTextSelection(selection) => (
+                    ActionDataKind::SetTextSelection,
+                    TextSelection::from(&selection).into_py(py),
+                ),
+            }),
         })
     }
 }

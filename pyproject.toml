@@ -5,9 +5,6 @@ build-backend = "maturin"
 [tool.maturin]
 manifest-path = "bindings/python/Cargo.toml"
 features = ["pyo3/extension-module"]
-exclude = [
-    "bindings/python/examples/**"
-]
 include = [
     "LICENSE*"
 ]

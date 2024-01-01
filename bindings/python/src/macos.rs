@@ -64,16 +64,19 @@ impl Adapter {
         self.0.update_view_focus_state(is_focused).into()
     }
 
-    pub fn view_children(&self) -> isize {
-        self.0.view_children() as _
+    pub fn view_children(&self, py: Python<'_>) -> PyResult<Py<PyCapsule>> {
+        let ptr: isize = self.0.view_children() as _;
+        Ok(PyCapsule::new(py, ptr, None)?.into())
     }
 
-    pub fn focus(&self) -> isize {
-        self.0.focus() as _
+    pub fn focus(&self, py: Python<'_>) -> PyResult<Py<PyCapsule>> {
+        let ptr: isize = self.0.focus() as _;
+        Ok(PyCapsule::new(py, ptr, None)?.into())
     }
 
-    pub fn hit_test(&self, x: f64, y: f64) -> isize {
-        self.0.hit_test(NSPoint::new(x, y)) as _
+    pub fn hit_test(&self, py: Python<'_>, x: f64, y: f64) -> PyResult<Py<PyCapsule>> {
+        let ptr: isize = self.0.hit_test(NSPoint::new(x, y)) as _;
+        Ok(PyCapsule::new(py, ptr, None)?.into())
     }
 }
 

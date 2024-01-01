@@ -46,6 +46,8 @@ fn accesskit(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<NodeBuilder>()?;
     m.add_class::<Tree>()?;
     m.add_class::<TreeUpdate>()?;
+    m.add_class::<ActionDataKind>()?;
+    m.add_class::<ActionRequest>()?;
     m.add_class::<Affine>()?;
     m.add_class::<Point>()?;
     m.add_class::<Rect>()?;

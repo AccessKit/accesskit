@@ -85,7 +85,6 @@ impl Adapter {
     }
 }
 
-/// This class must only be used from the main thread.
 #[pyclass(module = "accesskit.windows", unsendable)]
 pub struct SubclassingAdapter(accesskit_windows::SubclassingAdapter);
 
