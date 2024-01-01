@@ -7,3 +7,7 @@ rustflags = [
 rustflags = [
   "-C", "link-arg=-Wl,-install_name,@rpath/libaccesskit.dylib",
 ]
+
+[profile.release]
+panic = "abort"
+debug = true
