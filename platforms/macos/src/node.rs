@@ -26,10 +26,7 @@ use objc2::{
     runtime::{AnyObject, Sel},
     sel, ClassType, DeclaredClass,
 };
-use std::{
-    ptr::null_mut,
-    rc::{Rc, Weak},
-};
+use std::rc::{Rc, Weak};
 
 use crate::{context::Context, filters::filter, util::*};
 
@@ -344,30 +341,28 @@ declare_class!(
     }
 
     unsafe impl PlatformNode {
-        #[method(accessibilityParent)]
-        fn parent(&self) -> *mut AnyObject {
+        #[method_id(accessibilityParent)]
+        fn parent(&self) -> Option<Id<AnyObject>> {
             self.resolve_with_context(|node, context| {
                 if let Some(parent) = node.filtered_parent(&filter) {
-                    Id::autorelease_return(context.get_or_create_platform_node(parent.id()))
-                        as *mut _
+                    Some(unsafe { Id::cast(context.get_or_create_platform_node(parent.id())) })
                 } else {
                     context
                         .view
                         .load()
                         .and_then(|view| unsafe { NSAccessibility::accessibilityParent(&*view) })
-                        .map_or_else(null_mut, |parent| Id::as_ptr(&parent) as *mut _)
                 }
             })
-            .unwrap_or_else(null_mut)
+            .flatten()
         }
 
-        #[method(accessibilityChildren)]
-        fn children(&self) -> *mut NSArray<PlatformNode> {
+        #[method_id(accessibilityChildren)]
+        fn children(&self) -> Option<Id<NSArray<PlatformNode>>> {
             self.children_internal()
         }
 
-        #[method(accessibilityChildrenInNavigationOrder)]
-        fn children_in_navigation_order(&self) -> *mut NSArray<PlatformNode> {
+        #[method_id(accessibilityChildrenInNavigationOrder)]
+        fn children_in_navigation_order(&self) -> Option<Id<NSArray<PlatformNode>>> {
             // For now, we assume the children are in navigation order.
             self.children_internal()
         }
@@ -396,12 +391,12 @@ declare_class!(
             .unwrap_or(NSRect::ZERO)
         }
 
-        #[method(accessibilityRole)]
-        fn role(&self) -> *mut NSString {
+        #[method_id(accessibilityRole)]
+        fn role(&self) -> Id<NSString> {
             let role = self
                 .resolve(|node| ns_role(node.state()))
                 .unwrap_or(unsafe { NSAccessibilityUnknownRole });
-            Id::autorelease_return(role.copy())
+                role.copy()
         }
 
         #[method_id(accessibilityRoleDescription)]
@@ -416,36 +411,33 @@ declare_class!(
             .flatten()
         }
 
-        #[method(accessibilityTitle)]
-        fn title(&self) -> *mut NSString {
-            let result = self
+        #[method_id(accessibilityTitle)]
+        fn title(&self) -> Option<Id<NSString>> {
+            self
                 .resolve(|node| {
                     let wrapper = NodeWrapper::Node(node);
-                    wrapper.title()
+                    wrapper.title().map(|title| NSString::from_str(&title))
                 })
-                .flatten();
-            result.map_or_else(null_mut, |result| {
-                Id::autorelease_return(NSString::from_str(&result))
-            })
+                .flatten()
         }
 
-        #[method(accessibilityValue)]
-        fn value(&self) -> *mut NSObject {
+        #[method_id(accessibilityValue)]
+        fn value(&self) -> Option<Id<NSObject>> {
             self.resolve(|node| {
                 let wrapper = NodeWrapper::Node(node);
-                wrapper.value().map_or_else(null_mut, |value| match value {
+                wrapper.value().map(|value| match value {
                     Value::Bool(value) => {
-                        Id::autorelease_return(NSNumber::new_bool(value)) as *mut _
+                        unsafe { Id::cast(NSNumber::new_bool(value)) }
                     }
                     Value::Number(value) => {
-                        Id::autorelease_return(NSNumber::new_f64(value)) as *mut _
+                        unsafe { Id::cast(NSNumber::new_f64(value)) }
                     }
                     Value::String(value) => {
-                        Id::autorelease_return(NSString::from_str(&value)) as *mut _
+                        unsafe { Id::cast(NSString::from_str(&value)) }
                     }
                 })
             })
-            .unwrap_or_else(null_mut)
+            .flatten()
         }
 
         #[method(setAccessibilityValue:)]
@@ -454,24 +446,20 @@ declare_class!(
             // in `is_selector_allowed`.
         }
 
-        #[method(accessibilityMinValue)]
-        fn min_value(&self) -> *mut NSNumber {
+        #[method_id(accessibilityMinValue)]
+        fn min_value(&self) -> Option<Id<NSNumber>> {
             self.resolve(|node| {
-                node.min_numeric_value().map_or_else(null_mut, |value| {
-                    Id::autorelease_return(NSNumber::new_f64(value))
-                })
+                node.min_numeric_value().map(NSNumber::new_f64)
             })
-            .unwrap_or_else(null_mut)
+            .flatten()
         }
 
-        #[method(accessibilityMaxValue)]
-        fn max_value(&self) -> *mut NSNumber {
+        #[method_id(accessibilityMaxValue)]
+        fn max_value(&self) -> Option<Id<NSNumber>> {
             self.resolve(|node| {
-                node.max_numeric_value().map_or_else(null_mut, |value| {
-                    Id::autorelease_return(NSNumber::new_f64(value))
-                })
+                node.max_numeric_value().map(NSNumber::new_f64)
             })
-            .unwrap_or_else(null_mut)
+            .flatten()
         }
 
         #[method(isAccessibilityElement)]
@@ -575,18 +563,18 @@ declare_class!(
             .unwrap_or(0)
         }
 
-        #[method(accessibilitySelectedText)]
-        fn selected_text(&self) -> *mut NSString {
+        #[method_id(accessibilitySelectedText)]
+        fn selected_text(&self) -> Option<Id<NSString>> {
             self.resolve(|node| {
                 if node.supports_text_ranges() {
                     if let Some(range) = node.text_selection() {
                         let text = range.text();
-                        return Id::autorelease_return(NSString::from_str(&text));
+                        return Some(NSString::from_str(&text));
                     }
                 }
-                null_mut()
+                None
             })
-            .unwrap_or_else(null_mut)
+            .flatten()
         }
 
         #[method(accessibilitySelectedTextRange)]
@@ -648,18 +636,18 @@ declare_class!(
             .unwrap_or_else(|| NSRange::new(0, 0))
         }
 
-        #[method(accessibilityStringForRange:)]
-        fn string_for_range(&self, range: NSRange) -> *mut NSString {
+        #[method_id(accessibilityStringForRange:)]
+        fn string_for_range(&self, range: NSRange) -> Option<Id<NSString>> {
             self.resolve(|node| {
                 if node.supports_text_ranges() {
                     if let Some(range) = from_ns_range(node, range) {
                         let text = range.text();
-                        return Id::autorelease_return(NSString::from_str(&text));
+                        return Some(NSString::from_str(&text));
                     }
                 }
-                null_mut()
+                None
             })
-            .unwrap_or_else(null_mut)
+            .flatten()
         }
 
         #[method(accessibilityFrameForRange:)]
@@ -809,14 +797,13 @@ impl PlatformNode {
         self.resolve_with_context(|node, _| f(node))
     }
 
-    fn children_internal(&self) -> *mut NSArray<PlatformNode> {
+    fn children_internal(&self) -> Option<Id<NSArray<PlatformNode>>> {
         self.resolve_with_context(|node, context| {
             let platform_nodes = node
                 .filtered_children(filter)
                 .map(|child| context.get_or_create_platform_node(child.id()))
                 .collect::<Vec<Id<PlatformNode>>>();
-            Id::autorelease_return(NSArray::from_vec(platform_nodes))
+            NSArray::from_vec(platform_nodes)
         })
-        .unwrap_or_else(null_mut)
     }
 }
