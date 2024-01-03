@@ -111,6 +111,9 @@ jobs:
 
   pypi-release:
     name: Publish to PyPI
+    environment: release
+    permissions:
+      id-token: write
     if: "startsWith(github.ref, 'refs/tags/')"
     needs: [macos-wheels, unix-wheels, windows-wheels, sdist]
     runs-on: ubuntu-latest
@@ -119,8 +122,6 @@ jobs:
         with:
           name: wheels
       - uses: PyO3/maturin-action@v1
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         with:
           command: upload
           args: --non-interactive --skip-existing *
