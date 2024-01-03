@@ -3,22 +3,22 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use icrate::AppKit::NSWindow;
 use objc2::{
-    declare::MethodImplementation,
-    encode::{Encode, EncodeArguments, Encoding},
+    encode::{Encode, EncodeArguments, EncodeReturn, Encoding},
     ffi::class_addMethod,
     msg_send,
-    runtime::{Bool, Class, Object, Sel},
+    runtime::{AnyClass, AnyObject, Bool, MethodImplementation, Sel},
     sel, Message,
 };
 use std::{ffi::CString, ptr::null_mut};
 
-use crate::appkit::NSWindow;
-
-extern "C" fn focus_forwarder(this: &NSWindow, _cmd: Sel) -> *mut Object {
-    this.content_view().map_or_else(null_mut, |view| unsafe {
-        msg_send![&*view, accessibilityFocusedUIElement]
-    })
+extern "C" fn focus_forwarder(this: &NSWindow, _cmd: Sel) -> *mut AnyObject {
+    unsafe {
+        this.contentView().map_or_else(null_mut, |view| {
+            msg_send![&*view, accessibilityFocusedUIElement]
+        })
+    }
 }
 
 /// Modifies the specified class, which must be a subclass of `NSWindow`,
@@ -36,10 +36,10 @@ extern "C" fn focus_forwarder(this: &NSWindow, _cmd: Sel) -> *mut Object {
 /// Also, this function assumes that the specified class is a subclass
 /// of `NSWindow`.
 pub unsafe fn add_focus_forwarder_to_window_class(class_name: &str) {
-    let class = Class::get(class_name).unwrap();
+    let class = AnyClass::get(class_name).unwrap();
     unsafe {
         add_method(
-            class as *const Class as *mut Class,
+            class as *const AnyClass as *mut AnyClass,
             sel!(accessibilityFocusedUIElement),
             focus_forwarder as unsafe extern "C" fn(_, _) -> _,
         )
@@ -49,12 +49,12 @@ pub unsafe fn add_focus_forwarder_to_window_class(class_name: &str) {
 // The rest of this file is copied from objc2 with only minor adaptations,
 // to allow a method to be added to an existing class.
 
-unsafe fn add_method<T, F>(class: *mut Class, sel: Sel, func: F)
+unsafe fn add_method<T, F>(class: *mut AnyClass, sel: Sel, func: F)
 where
     T: Message + ?Sized,
     F: MethodImplementation<Callee = T>,
 {
-    let encs = F::Args::ENCODINGS;
+    let encs = F::Arguments::ENCODINGS;
     let sel_args = count_args(sel);
     assert_eq!(
         sel_args,
@@ -65,7 +65,7 @@ where
         encs.len(),
     );
 
-    let types = method_type_encoding(&F::Ret::ENCODING, encs);
+    let types = method_type_encoding(&F::Return::ENCODING_RETURN, encs);
     let success = Bool::from_raw(unsafe {
         class_addMethod(
             class as *mut _,
@@ -83,7 +83,7 @@ fn count_args(sel: Sel) -> usize {
 
 fn method_type_encoding(ret: &Encoding, args: &[Encoding]) -> CString {
     // First two arguments are always self and the selector
-    let mut types = format!("{}{}{}", ret, <*mut Object>::ENCODING, Sel::ENCODING);
+    let mut types = format!("{}{}{}", ret, <*mut AnyObject>::ENCODING, Sel::ENCODING);
     for enc in args {
         use core::fmt::Write;
         write!(&mut types, "{}", enc).unwrap();

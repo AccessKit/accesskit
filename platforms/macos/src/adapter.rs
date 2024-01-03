@@ -5,14 +5,14 @@
 
 use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_consumer::{FilterResult, Tree};
-use objc2::{
-    foundation::{MainThreadMarker, NSArray, NSObject, NSPoint},
-    rc::{Id, Shared, WeakId},
+use icrate::{
+    AppKit::NSView,
+    Foundation::{MainThreadMarker, NSArray, NSObject, NSPoint},
 };
+use objc2::rc::{Id, WeakId};
 use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
 use crate::{
-    appkit::NSView,
     context::Context,
     event::{EventGenerator, QueuedEvents},
     filters::filter,
@@ -40,7 +40,7 @@ impl Adapter {
         action_handler: Box<dyn ActionHandler>,
     ) -> Self {
         let view = unsafe { Id::retain(view as *mut NSView) }.unwrap();
-        let view = WeakId::new(&view);
+        let view = WeakId::from_id(&view);
         let tree = Tree::new(initial_state, is_view_focused);
         let mtm = MainThreadMarker::new().unwrap();
         Self {
@@ -83,7 +83,7 @@ impl Adapter {
                         self.context.get_or_create_platform_node(node.id()),
                     ))
                 })
-                .collect::<Vec<Id<NSObject, Shared>>>()
+                .collect::<Vec<Id<NSObject>>>()
         };
         let array = NSArray::from_vec(platform_nodes);
         Id::autorelease_return(array)

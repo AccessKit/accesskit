@@ -5,39 +5,30 @@
 
 use accesskit::{Live, NodeId, Role};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, TreeChangeHandler, TreeState};
-use objc2::{
-    foundation::{NSInteger, NSMutableDictionary, NSNumber, NSObject, NSString},
-    msg_send, Message,
+use icrate::{
+    AppKit::*,
+    Foundation::{NSMutableDictionary, NSNumber, NSString},
 };
+use objc2::runtime::{AnyObject, ProtocolObject};
 use std::{collections::HashSet, rc::Rc};
 
 use crate::{
-    appkit::*,
     context::Context,
     filters::{filter, filter_detached},
     node::NodeWrapper,
 };
-
-// Workaround for https://github.com/madsmtm/objc2/issues/306
-fn set_object_for_key<K: Message, V: Message>(
-    dictionary: &mut NSMutableDictionary<K, V>,
-    value: &V,
-    key: &K,
-) {
-    let _: () = unsafe { msg_send![dictionary, setObject: value, forKey: key] };
-}
 
 // This type is designed to be safe to create on a non-main thread
 // and send to the main thread. This ability isn't yet used though.
 pub(crate) enum QueuedEvent {
     Generic {
         node_id: NodeId,
-        notification: &'static NSString,
+        notification: &'static NSAccessibilityNotificationName,
     },
     NodeDestroyed(NodeId),
     Announcement {
         text: String,
-        priority: NSInteger,
+        priority: NSAccessibilityPriorityLevel,
     },
 }
 
@@ -87,21 +78,27 @@ impl QueuedEvent {
                     }
                 };
 
-                let mut user_info = NSMutableDictionary::<_, NSObject>::new();
+                let mut user_info = NSMutableDictionary::<_, AnyObject>::new();
                 let text = NSString::from_str(&text);
-                set_object_for_key(&mut user_info, &*text, unsafe {
-                    NSAccessibilityAnnouncementKey
-                });
+                unsafe {
+                    user_info.setObject_forKey(
+                        &*text,
+                        ProtocolObject::from_ref(NSAccessibilityAnnouncementKey),
+                    )
+                };
                 let priority = NSNumber::new_isize(priority);
-                set_object_for_key(&mut user_info, &*priority, unsafe {
-                    NSAccessibilityPriorityKey
-                });
+                unsafe {
+                    user_info.setObject_forKey(
+                        &*priority,
+                        ProtocolObject::from_ref(NSAccessibilityPriorityKey),
+                    )
+                };
 
                 unsafe {
                     NSAccessibilityPostNotificationWithUserInfo(
                         &window,
                         NSAccessibilityAnnouncementRequestedNotification,
-                        &user_info,
+                        Some(&**user_info),
                     )
                 };
             }

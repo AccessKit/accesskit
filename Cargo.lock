@@ -52,7 +52,8 @@ version = "0.10.1"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
- "objc2 0.3.0-beta.3.patch-leaks.2",
+ "icrate 0.1.0",
+ "objc2 0.5.0",
  "once_cell",
 ]
 
@@ -433,30 +434,11 @@ dependencies = [
 
 [[package]]
 name = "block-sys"
-version = "0.1.0-beta.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fa55741ee90902547802152aaf3f8e5248aab7e21468089560d4c8840561146"
-dependencies = [
- "objc-sys 0.2.0-beta.2",
-]
-
-[[package]]
-name = "block-sys"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dd7cf50912cddc06dc5ea7c08c5e81c1b2c842a70d19def1848d54c586fed92"
 dependencies = [
- "objc-sys 0.3.1",
-]
-
-[[package]]
-name = "block2"
-version = "0.2.0-alpha.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8dd9e63c1744f755c2f60332b88de39d341e5e86239014ad839bd71c106dec42"
-dependencies = [
- "block-sys 0.1.0-beta.1",
- "objc2-encode 2.0.0-pre.2",
+ "objc-sys",
 ]
 
 [[package]]
@@ -465,8 +447,18 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15b55663a85f33501257357e6421bb33e769d5c9ffb5ba0921c975a123e35e68"
 dependencies = [
- "block-sys 0.2.0",
+ "block-sys",
  "objc2 0.4.1",
+]
+
+[[package]]
+name = "block2"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e58aa60e59d8dbfcc36138f5f18be5f24394d33b38b24f7fd0b1caa33095f22f"
+dependencies = [
+ "block-sys",
+ "objc2 0.5.0",
 ]
 
 [[package]]
@@ -984,6 +976,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "icrate"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e286f4b975ac6c054971a0600a9b76438b332edace54bff79c71c9d3adfc9772"
+dependencies = [
+ "block2 0.4.0",
+ "objc2 0.5.0",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1261,26 +1263,9 @@ dependencies = [
 
 [[package]]
 name = "objc-sys"
-version = "0.2.0-beta.2"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df3b9834c1e95694a05a828b59f55fa2afec6288359cda67146126b3f90a55d7"
-
-[[package]]
-name = "objc-sys"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99e1d07c6eab1ce8b6382b8e3c7246fe117ff3f8b34be065f5ebace6749fe845"
-
-[[package]]
-name = "objc2"
-version = "0.3.0-beta.3.patch-leaks.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7d9bb2ee6b71d02b1b3554ed600d267ee9a2796acc9fa43fb7748e13fe072dd"
-dependencies = [
- "block2 0.2.0-alpha.6",
- "objc-sys 0.2.0-beta.2",
- "objc2-encode 2.0.0-pre.2",
-]
+checksum = "c7c71324e4180d0899963fc83d9d241ac39e699609fc1025a850aadac8257459"
 
 [[package]]
 name = "objc2"
@@ -1288,17 +1273,18 @@ version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "559c5a40fdd30eb5e344fbceacf7595a81e242529fb4e21cf5f43fb4f11ff98d"
 dependencies = [
- "objc-sys 0.3.1",
+ "objc-sys",
  "objc2-encode 3.0.0",
 ]
 
 [[package]]
-name = "objc2-encode"
-version = "2.0.0-pre.2"
+name = "objc2"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abfcac41015b00a120608fdaa6938c44cb983fee294351cc4bac7638b4e50512"
+checksum = "9a9c7f0d511a4ce26b078183179dca908171cfc69f88986fe36c5138e1834476"
 dependencies = [
- "objc-sys 0.2.0-beta.2",
+ "objc-sys",
+ "objc2-encode 4.0.0",
 ]
 
 [[package]]
@@ -1306,6 +1292,12 @@ name = "objc2-encode"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d079845b37af429bfe5dfa76e6d087d788031045b25cfc6fd898486fd9847666"
+
+[[package]]
+name = "objc2-encode"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ff06a6505cde0766484f38d8479ac8e6d31c66fbc2d5492f65ca8c091456379"
 
 [[package]]
 name = "object"
@@ -2550,7 +2542,7 @@ dependencies = [
  "core-foundation",
  "core-graphics",
  "cursor-icon",
- "icrate",
+ "icrate 0.0.4",
  "js-sys",
  "libc",
  "log",
