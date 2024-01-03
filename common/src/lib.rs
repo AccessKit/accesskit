@@ -1594,6 +1594,9 @@ string_property_methods! {
     ///
     /// [`name`]: Node::name
     (Placeholder, placeholder, set_placeholder, clear_placeholder),
+    /// An optional string that may override an assistive technology's
+    /// description of the node's role. Only provide this for custom control types.
+    /// The value of this property should be in a human-friendly, localized format.
     (RoleDescription, role_description, set_role_description, clear_role_description),
     /// An optional string that may override an assistive technology's
     /// description of the node's state, replacing default strings such as
