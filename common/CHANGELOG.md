@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.2](https://github.com/AccessKit/accesskit/compare/accesskit-v0.12.1...accesskit-v0.12.2) (2024-01-03)
+
+
+### Bug Fixes
+
+* Bump pyo3; add `rename_all` attribute to enums ([#330](https://github.com/AccessKit/accesskit/issues/330)) ([5a4c6f3](https://github.com/AccessKit/accesskit/commit/5a4c6f399837d67b066451a8fb4d43d03c8acb8b))
+* Document the `role_description` node property ([#331](https://github.com/AccessKit/accesskit/issues/331)) ([936fa2c](https://github.com/AccessKit/accesskit/commit/936fa2c23190c5d7cd4eb880612295785a009721))
+
 ## [0.12.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.12.0...accesskit-v0.12.1) (2023-11-04)
 
 

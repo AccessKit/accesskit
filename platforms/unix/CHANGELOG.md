@@ -29,6 +29,30 @@
     * accesskit bumped from 0.12.0 to 0.12.1
     * accesskit_consumer bumped from 0.16.0 to 0.16.1
 
+## [0.7.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.6.2...accesskit_unix-v0.7.0) (2024-01-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* Lazily activate Unix adapters ([#324](https://github.com/AccessKit/accesskit/issues/324))
+
+### Features
+
+* Support custom role descriptions ([#316](https://github.com/AccessKit/accesskit/issues/316)) ([c8d1a56](https://github.com/AccessKit/accesskit/commit/c8d1a5638fa6c33adfa059815c04f7e043c56026))
+
+
+### Bug Fixes
+
+* Lazily activate Unix adapters ([#324](https://github.com/AccessKit/accesskit/issues/324)) ([54ed036](https://github.com/AccessKit/accesskit/commit/54ed036c99d87428a8eb5bb03fd77e9e31562d4c))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.12.1 to 0.12.2
+    * accesskit_consumer bumped from 0.16.1 to 0.17.0
+
 ## [0.6.2](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.6.1...accesskit_unix-v0.6.2) (2023-12-14)
 
 

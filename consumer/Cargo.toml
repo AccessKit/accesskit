@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_consumer"
-version = "0.16.1"
+version = "0.17.0"
 authors = ["Matt Campbell <mattcampbell@pobox.com>"]
 license = "MIT OR Apache-2.0"
 description = "AccessKit consumer library (internal)"
@@ -11,5 +11,5 @@ readme = "README.md"
 edition = "2021"
 
 [dependencies]
-accesskit = { version = "0.12.1", path = "../common" }
+accesskit = { version = "0.12.2", path = "../common" }
 
