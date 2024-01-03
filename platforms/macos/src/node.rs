@@ -346,7 +346,7 @@ declare_class!(
         fn parent(&self) -> Option<Id<AnyObject>> {
             self.resolve_with_context(|node, context| {
                 if let Some(parent) = node.filtered_parent(&filter) {
-                    Some(unsafe { Id::cast(context.get_or_create_platform_node(parent.id())) })
+                    Some(Id::into_super(Id::into_super(Id::into_super(context.get_or_create_platform_node(parent.id())))))
                 } else {
                     context
                         .view
@@ -426,13 +426,13 @@ declare_class!(
                 let wrapper = NodeWrapper::Node(node);
                 wrapper.value().map(|value| match value {
                     Value::Bool(value) => {
-                        unsafe { Id::cast(NSNumber::new_bool(value)) }
+                        Id::into_super(Id::into_super(NSNumber::new_bool(value)))
                     }
                     Value::Number(value) => {
-                        unsafe { Id::cast(NSNumber::new_f64(value)) }
+                        Id::into_super(Id::into_super(NSNumber::new_f64(value)))
                     }
                     Value::String(value) => {
-                        unsafe { Id::cast(NSString::from_str(&value)) }
+                        Id::into_super(NSString::from_str(&value))
                     }
                 })
             })
