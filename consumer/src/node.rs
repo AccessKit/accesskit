@@ -354,6 +354,14 @@ impl NodeState {
         self.data().role()
     }
 
+    pub fn role_description(&self) -> Option<String> {
+        self.data().role_description().map(String::from)
+    }
+
+    pub fn has_role_description(&self) -> bool {
+        self.data().role_description().is_some()
+    }
+
     pub fn is_hidden(&self) -> bool {
         self.data().is_hidden()
     }

@@ -83,6 +83,10 @@ impl AccessibleInterface<PlatformNode> {
         self.node.role()
     }
 
+    fn get_localized_role_name(&self) -> fdo::Result<String> {
+        self.node.localized_role_name()
+    }
+
     fn get_state(&self) -> fdo::Result<StateSet> {
         self.node.state()
     }

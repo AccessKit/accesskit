@@ -18,7 +18,7 @@ use objc2::{
     foundation::{
         NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSPoint, NSRange, NSRect, NSString,
     },
-    msg_send_id, ns_string,
+    msg_send, msg_send_id, ns_string,
     rc::{Id, Owned, Shared},
     runtime::Sel,
     sel, ClassType,
@@ -398,6 +398,18 @@ declare_class!(
                 .resolve(|node| ns_role(node.state()))
                 .unwrap_or(unsafe { NSAccessibilityUnknownRole });
             Id::autorelease_return(role.copy())
+        }
+
+        #[sel(accessibilityRoleDescription)]
+        fn role_description(&self) -> *mut NSString {
+            self.resolve(|node| {
+                if let Some(role_description) = node.role_description() {
+                    Id::autorelease_return(NSString::from_str(&role_description))
+                } else {
+                    unsafe { msg_send![super(self), accessibilityRoleDescription] }
+                }
+            })
+            .unwrap_or_else(null_mut)
         }
 
         #[sel(accessibilityTitle)]
