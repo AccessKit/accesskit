@@ -5,11 +5,11 @@
 
 use accesskit::{ActionHandler, TreeUpdate};
 use accesskit_consumer::{FilterResult, Tree};
-use icrate::objc2::rc::{Id, WeakId};
 use icrate::{
     AppKit::NSView,
     Foundation::{MainThreadMarker, NSArray, NSObject, NSPoint},
 };
+use objc2::rc::{Id, WeakId};
 use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
 use crate::{

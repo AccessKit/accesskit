@@ -329,6 +329,7 @@ pub(crate) struct PlatformNodeIvars {
 
 declare_class!(
     pub(crate) struct PlatformNode;
+
     unsafe impl ClassType for PlatformNode {
         #[inherits(NSObject)]
         type Super = NSAccessibilityElement;
@@ -393,10 +394,9 @@ declare_class!(
 
         #[method_id(accessibilityRole)]
         fn role(&self) -> Id<NSString> {
-            let role = self
-                .resolve(|node| ns_role(node.state()))
-                .unwrap_or(unsafe { NSAccessibilityUnknownRole });
-                role.copy()
+            self.resolve(|node| ns_role(node.state()))
+                .unwrap_or(unsafe { NSAccessibilityUnknownRole })
+                .copy()
         }
 
         #[method_id(accessibilityRoleDescription)]
@@ -413,12 +413,11 @@ declare_class!(
 
         #[method_id(accessibilityTitle)]
         fn title(&self) -> Option<Id<NSString>> {
-            self
-                .resolve(|node| {
-                    let wrapper = NodeWrapper::Node(node);
-                    wrapper.title().map(|title| NSString::from_str(&title))
-                })
-                .flatten()
+            self.resolve(|node| {
+                let wrapper = NodeWrapper::Node(node);
+                wrapper.title().map(|title| NSString::from_str(&title))
+            })
+            .flatten()
         }
 
         #[method_id(accessibilityValue)]

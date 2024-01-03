@@ -5,11 +5,11 @@
 
 use accesskit::{Live, NodeId, Role};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, TreeChangeHandler, TreeState};
-use icrate::objc2::{msg_send, runtime::AnyObject, Message};
 use icrate::{
     AppKit::*,
     Foundation::{NSMutableDictionary, NSNumber, NSString},
 };
+use objc2::{msg_send, runtime::AnyObject, Message};
 use std::{collections::HashSet, rc::Rc};
 
 use crate::{
