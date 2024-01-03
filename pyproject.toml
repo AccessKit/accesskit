@@ -1,0 +1,35 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+manifest-path = "bindings/python/Cargo.toml"
+features = ["pyo3/extension-module"]
+include = [
+    "LICENSE*"
+]
+
+[tool.maturin.target."x86_64-apple-darwin"]
+macos-deployment-target = "10.12"
+
+[tool.maturin.target."aarch64-apple-darwin"]
+macos-deployment-target = "11.0"
+
+[tool.ruff]
+include = ['bindings/python/*.py']
+
+[project]
+name = "accesskit"
+requires-python = ">= 3.9"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Software Development :: User Interfaces"
+]
+
+[project.urls]
+Homepage = "https://github.com/AccessKit/accesskit"

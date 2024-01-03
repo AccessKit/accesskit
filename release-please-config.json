@@ -10,6 +10,7 @@
     "platforms/unix": {},
     "platforms/windows": {},
     "platforms/winit": {},
-    "bindings/c": {}
+    "bindings/c": {},
+    "bindings/python": {}
   }
 }

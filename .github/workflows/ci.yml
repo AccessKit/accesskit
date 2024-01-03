@@ -28,6 +28,14 @@ jobs:
           clang-format-version: 15
           check-path: bindings/c
 
+      - name: ruff format
+        uses: chartboost/ruff-action@v1
+        with:
+          args: format --check
+
+      - name: ruff check
+        uses: chartboost/ruff-action@v1
+  
   test:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -42,6 +50,11 @@ jobs:
         with:
           toolchain: stable
           components: clippy
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
 
       - name: restore cache
         uses: Swatinem/rust-cache@v2

@@ -1,0 +1,144 @@
+on:
+  push:
+    tags:
+      - 'accesskit_python-v*'
+
+name: Publish Python bindings
+
+env:
+  MIN_PYTHON_VERSION: 3.9
+
+jobs:
+  macos-wheels:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64, aarch64]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.MIN_PYTHON_VERSION }}
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist
+          sccache: 'true'
+      - name: Test wheel installation
+        if: matrix.target == 'x86_64'
+        run: |
+          pip install accesskit --no-index --find-links dist --force-reinstall
+          python -c "import accesskit"
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: dist
+
+  unix-wheels:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64, x86, aarch64]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.MIN_PYTHON_VERSION }}
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist
+          sccache: 'true'
+          manylinux: auto
+      - name: Test wheel installation
+        if: matrix.target == 'x86_64'
+        run: |
+          pip install accesskit --no-index --find-links dist --force-reinstall
+          python -c "import accesskit"
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: dist
+
+  windows-wheels:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x64, x86]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.MIN_PYTHON_VERSION }}
+          architecture: ${{ matrix.target }}
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist
+          sccache: 'true'
+      - name: Test wheel installation
+        run: |
+          pip install accesskit --no-index --find-links dist --force-reinstall
+          python -c "import accesskit"
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: dist
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+      - name: Upload sdist
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: dist
+
+  pypi-release:
+    name: Publish to PyPI
+    environment: release
+    permissions:
+      id-token: write
+    if: "startsWith(github.ref, 'refs/tags/')"
+    needs: [macos-wheels, unix-wheels, windows-wheels, sdist]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: wheels
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: upload
+          args: --non-interactive --skip-existing *
+
+  github-release:
+    name: Add to GitHub release
+    if: "startsWith(github.ref, 'refs/tags/')"
+    needs: [macos-wheels, unix-wheels, windows-wheels, sdist]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: wheels
+          path: dist
+
+      - uses: AButler/upload-release-assets@v2.0
+        with:
+          files: "dist/*"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: ${{ github.ref_name }}
