@@ -49,7 +49,7 @@ class PygameAdapter:
                 window, source, action_handler
             )
         elif os.name == "posix":
-            self.adapter = accesskit.unix.Adapter.create(source, False, action_handler)
+            self.adapter = accesskit.unix.Adapter(source, action_handler)
         elif PLATFORM_SYSTEM == "Windows":
             hwnd = pygame.display.get_wm_info()["window"]
             self.adapter = accesskit.windows.SubclassingAdapter(
@@ -57,22 +57,17 @@ class PygameAdapter:
             )
 
     def update_if_active(self, update_factory):
-        if self.adapter is not None:
-            if PLATFORM_SYSTEM in ["Darwin", "Windows"]:
-                events = self.adapter.update_if_active(update_factory)
-                if events is not None:
-                    events.raise_events()
-            else:
-                self.adapter.update(update_factory())
+        events = self.adapter.update_if_active(update_factory)
+        if events is not None:
+            events.raise_events()
 
     def update_window_focus_state(self, is_focused):
-        if self.adapter is not None:
-            if PLATFORM_SYSTEM == "Darwin":
-                events = self.adapter.update_view_focus_state(is_focused)
-                if events is not None:
-                    events.raise_events()
-            elif os.name == "posix":
-                self.adapter.update_window_focus_state(is_focused)
+        if PLATFORM_SYSTEM == "Darwin":
+            events = self.adapter.update_view_focus_state(is_focused)
+            if events is not None:
+                events.raise_events()
+        elif os.name == "posix":
+            self.adapter.update_window_focus_state(is_focused)
 
 
 class WindowState:

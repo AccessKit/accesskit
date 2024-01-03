@@ -11,13 +11,9 @@ pub struct Adapter(accesskit_unix::Adapter);
 
 #[pymethods]
 impl Adapter {
-    #[staticmethod]
-    pub fn create(
-        source: Py<PyAny>,
-        is_window_focused: bool,
-        action_handler: Py<PyAny>,
-    ) -> Option<Self> {
-        accesskit_unix::Adapter::new(
+    #[new]
+    pub fn new(source: Py<PyAny>, action_handler: Py<PyAny>) -> Self {
+        Self(accesskit_unix::Adapter::new(
             move || {
                 Python::with_gil(|py| {
                     source
@@ -28,18 +24,19 @@ impl Adapter {
                         .into()
                 })
             },
-            is_window_focused,
             Box::new(PythonActionHandler(action_handler)),
-        )
-        .map(Self)
+        ))
     }
 
     pub fn set_root_window_bounds(&mut self, outer: Rect, inner: Rect) {
         self.0.set_root_window_bounds(outer.into(), inner.into());
     }
 
-    pub fn update(&self, update: TreeUpdate) {
-        self.0.update(update.into());
+    pub fn update_if_active(&self, py: Python<'_>, update_factory: Py<PyAny>) {
+        self.0.update_if_active(|| {
+            let update = update_factory.call0(py).unwrap();
+            update.extract::<TreeUpdate>(py).unwrap().into()
+        });
     }
 
     pub fn update_window_focus_state(&self, is_focused: bool) {
