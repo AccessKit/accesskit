@@ -30,7 +30,7 @@ use std::rc::{Rc, Weak};
 
 use crate::{context::Context, filters::filter, util::*};
 
-fn ns_role(node_state: &NodeState) -> &'static NSString {
+fn ns_role(node_state: &NodeState) -> &'static NSAccessibilityRole {
     let role = node_state.role();
     // TODO: Handle special cases.
     unsafe {
@@ -393,7 +393,7 @@ declare_class!(
         }
 
         #[method_id(accessibilityRole)]
-        fn role(&self) -> Id<NSString> {
+        fn role(&self) -> Id<NSAccessibilityRole> {
             self.resolve(|node| ns_role(node.state()))
                 .unwrap_or(unsafe { NSAccessibilityUnknownRole })
                 .copy()
