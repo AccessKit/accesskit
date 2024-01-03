@@ -29,6 +29,27 @@
   * dependencies
     * accesskit_unix bumped from 0.6.1 to 0.6.2
 
+## [0.7.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.6.2...accesskit_c-v0.7.0) (2024-01-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* Lazily activate Unix adapters ([#324](https://github.com/AccessKit/accesskit/issues/324))
+
+### Bug Fixes
+
+* Lazily activate Unix adapters ([#324](https://github.com/AccessKit/accesskit/issues/324)) ([54ed036](https://github.com/AccessKit/accesskit/commit/54ed036c99d87428a8eb5bb03fd77e9e31562d4c))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.12.1 to 0.12.2
+    * accesskit_windows bumped from 0.15.1 to 0.16.0
+    * accesskit_macos bumped from 0.10.1 to 0.11.0
+    * accesskit_unix bumped from 0.6.2 to 0.7.0
+
 ## [0.6.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.5.1...accesskit_c-v0.6.0) (2023-09-27)
 
 

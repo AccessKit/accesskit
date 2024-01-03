@@ -16,6 +16,20 @@
   * dependencies
     * accesskit bumped from 0.11.1 to 0.11.2
 
+## [0.17.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.16.1...accesskit_consumer-v0.17.0) (2024-01-03)
+
+
+### Features
+
+* Support custom role descriptions ([#316](https://github.com/AccessKit/accesskit/issues/316)) ([c8d1a56](https://github.com/AccessKit/accesskit/commit/c8d1a5638fa6c33adfa059815c04f7e043c56026))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.12.1 to 0.12.2
+
 ## [0.16.1](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.16.0...accesskit_consumer-v0.16.1) (2023-11-04)
 
 

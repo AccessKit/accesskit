@@ -18,6 +18,26 @@
     * accesskit bumped from 0.12.0 to 0.12.1
     * accesskit_consumer bumped from 0.16.0 to 0.16.1
 
+## [0.11.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.10.1...accesskit_macos-v0.11.0) (2024-01-03)
+
+
+### Features
+
+* Support custom role descriptions ([#316](https://github.com/AccessKit/accesskit/issues/316)) ([c8d1a56](https://github.com/AccessKit/accesskit/commit/c8d1a5638fa6c33adfa059815c04f7e043c56026))
+
+
+### Bug Fixes
+
+* Bump objc2 to 0.5.0; bring icrate 0.1.0 ([#323](https://github.com/AccessKit/accesskit/issues/323)) ([23b3f2f](https://github.com/AccessKit/accesskit/commit/23b3f2f93b9452c80374d1da3e9abeaec60ba9bf))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.12.1 to 0.12.2
+    * accesskit_consumer bumped from 0.16.1 to 0.17.0
+
 ## [0.10.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.9.0...accesskit_macos-v0.10.0) (2023-09-27)
 
 

@@ -73,6 +73,29 @@
   * dependencies
     * accesskit_windows bumped from 0.14.2 to 0.14.3
 
+## [0.18.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.17.0...accesskit_winit-v0.18.0) (2024-01-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* Lazily activate Unix adapters ([#324](https://github.com/AccessKit/accesskit/issues/324))
+* Remove `accesskit_winit::Adapter::update` ([#325](https://github.com/AccessKit/accesskit/issues/325))
+
+### Bug Fixes
+
+* Lazily activate Unix adapters ([#324](https://github.com/AccessKit/accesskit/issues/324)) ([54ed036](https://github.com/AccessKit/accesskit/commit/54ed036c99d87428a8eb5bb03fd77e9e31562d4c))
+* Remove `accesskit_winit::Adapter::update` ([#325](https://github.com/AccessKit/accesskit/issues/325)) ([f121bff](https://github.com/AccessKit/accesskit/commit/f121bffe9e651fd2ac6deb882f57e1c9b613b7eb))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.12.1 to 0.12.2
+    * accesskit_windows bumped from 0.15.1 to 0.16.0
+    * accesskit_macos bumped from 0.10.1 to 0.11.0
+    * accesskit_unix bumped from 0.6.2 to 0.7.0
+
 ## [0.17.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.16.1...accesskit_winit-v0.17.0) (2023-12-14)
 
 
