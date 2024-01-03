@@ -1123,5 +1123,11 @@ impl ActionHandler for FfiActionHandler {
     }
 }
 
+#[repr(transparent)]
+pub struct tree_update_factory_userdata(pub *mut c_void);
+
+unsafe impl Send for tree_update_factory_userdata {}
+
 /// This function can't return a null pointer. Ownership of the returned value will be transfered to the caller.
-pub type tree_update_factory = Option<extern "C" fn(*mut c_void) -> *mut tree_update>;
+pub type tree_update_factory =
+    Option<extern "C" fn(tree_update_factory_userdata) -> *mut tree_update>;

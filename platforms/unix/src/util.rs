@@ -39,13 +39,17 @@ pub(crate) fn block_on<F: std::future::Future>(future: F) -> F::Output {
     TOKIO_RT.block_on(future)
 }
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default)]
 pub(crate) struct WindowBounds {
     pub(crate) outer: Rect,
     pub(crate) inner: Rect,
 }
 
 impl WindowBounds {
+    pub(crate) fn new(outer: Rect, inner: Rect) -> Self {
+        Self { outer, inner }
+    }
+
     pub(crate) fn top_left(&self, coord_type: CoordType, is_root: bool) -> Point {
         match coord_type {
             CoordType::Screen if is_root => self.outer.origin(),
