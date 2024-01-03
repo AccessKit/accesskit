@@ -20,7 +20,7 @@ use icrate::{
     },
 };
 use objc2::{
-    declare_class, msg_send, msg_send_id,
+    declare_class, msg_send_id,
     mutability::InteriorMutable,
     rc::Id,
     runtime::{AnyObject, Sel},
@@ -405,7 +405,7 @@ declare_class!(
                 if let Some(role_description) = node.role_description() {
                     Some(NSString::from_str(&role_description))
                 } else {
-                    unsafe { msg_send![super(self), accessibilityRoleDescription] }
+                    unsafe { msg_send_id![super(self), accessibilityRoleDescription] }
                 }
             })
             .flatten()
