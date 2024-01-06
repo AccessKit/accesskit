@@ -6,7 +6,7 @@ on:
 name: Publish Python bindings
 
 env:
-  MIN_PYTHON_VERSION: 3.9
+  MIN_PYTHON_VERSION: 3.8
 
 jobs:
   macos-wheels:
@@ -37,12 +37,12 @@ jobs:
           name: wheels
           path: dist
 
-  unix-wheels:
+  linux-wheels:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        target: [x86_64, x86, aarch64]
+        target: [x86_64, x86, aarch64, armv7]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v5
@@ -115,7 +115,7 @@ jobs:
     permissions:
       id-token: write
     if: "startsWith(github.ref, 'refs/tags/')"
-    needs: [macos-wheels, unix-wheels, windows-wheels, sdist]
+    needs: [macos-wheels, linux-wheels, windows-wheels, sdist]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v3
@@ -129,7 +129,7 @@ jobs:
   github-release:
     name: Add to GitHub release
     if: "startsWith(github.ref, 'refs/tags/')"
-    needs: [macos-wheels, unix-wheels, windows-wheels, sdist]
+    needs: [macos-wheels, linux-wheels, windows-wheels, sdist]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v3

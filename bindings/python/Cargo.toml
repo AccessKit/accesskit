@@ -18,7 +18,7 @@ extension-module = ["pyo3/extension-module"]
 
 [dependencies]
 accesskit = { version = "0.12.2", path = "../../common", features = ["pyo3"] }
-pyo3 = { version = "0.20", features = ["abi3-py39", "multiple-pymethods"] }
+pyo3 = { version = "0.20", features = ["abi3-py38", "multiple-pymethods"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 accesskit_windows = { version = "0.16.0", path = "../../platforms/windows" }
