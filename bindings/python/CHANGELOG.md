@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/AccessKit/accesskit/compare/accesskit_python-v0.1.0...accesskit_python-v0.1.1) (2024-01-06)
+
+
+### Bug Fixes
+
+* Decrease minimum Python version to 3.8 for Python bindings ([#334](https://github.com/AccessKit/accesskit/issues/334)) ([3725373](https://github.com/AccessKit/accesskit/commit/3725373658bf2475cf3e1341b2e5fcefada576bd))
+
 ## 0.1.0 (2024-01-03)
 
 
