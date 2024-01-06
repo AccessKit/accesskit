@@ -4,7 +4,7 @@ This directory contains a cross-platform application that demonstrates how to in
 
 ## Prerequisites
 
-- Python 3.9 or higher
+- Python 3.8 or higher
 - A virtual environment: `python -m venv .venv` (activating it will vary based on your platform)
 - `pip install -r requirements.txt` 
 
