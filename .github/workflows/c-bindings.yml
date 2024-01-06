@@ -1,11 +1,12 @@
 on:
-  release:
-    types:
-      - published
+  push:
+    tags:
+      - 'accesskit_c-v*'
+
 name: Publish C bindings
+
 jobs:
   build-binaries:
-    if: startsWith(github.ref_name, 'accesskit_c-v')
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -49,6 +50,7 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             path: linux/x86_64
+
     name: Build
     steps:
       - uses: actions/checkout@v4
@@ -73,7 +75,6 @@ jobs:
           path: bindings/c/lib
 
   generate-headers:
-    if: startsWith(github.ref_name, 'accesskit_c-v')
     uses: AccessKit/accesskit/.github/workflows/generate-headers.yml@main
 
   publish:
