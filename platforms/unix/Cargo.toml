@@ -12,7 +12,7 @@ edition = "2021"
 
 [features]
 default = ["async-io"]
-async-io = ["dep:async-channel", "dep:async-lock", "dep:futures-util", "atspi/async-std", "zbus/async-io"]
+async-io = ["dep:async-channel", "dep:async-executor", "dep:async-task", "dep:futures-util", "atspi/async-std", "zbus/async-io"]
 tokio = ["dep:tokio", "dep:tokio-stream", "atspi/tokio", "zbus/tokio"]
 
 [dependencies]
@@ -27,7 +27,8 @@ zbus = { version = "3.14", default-features = false }
 
 # async-io support
 async-channel = { version = "2.1.1", optional = true }
-async-lock = { version = "2.7.0", optional = true }
+async-executor = { version = "1.5.0", optional = true }
+async-task = { version = "4.3.0", optional = true }
 futures-util = { version = "0.3.27", optional = true }
 
 # tokio support

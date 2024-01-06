@@ -486,172 +486,151 @@ impl<'a> NodeWrapper<'a> {
         self.node_state().numeric_value()
     }
 
-    pub(crate) async fn notify_changes(
+    pub(crate) fn notify_changes(
         &self,
         window_bounds: &WindowBounds,
         adapter: &AdapterImpl,
         old: &NodeWrapper<'_>,
     ) {
-        self.notify_state_changes(adapter, old).await;
-        self.notify_property_changes(adapter, old).await;
-        self.notify_bounds_changes(window_bounds, adapter, old)
-            .await;
-        self.notify_children_changes(adapter, old).await;
+        self.notify_state_changes(adapter, old);
+        self.notify_property_changes(adapter, old);
+        self.notify_bounds_changes(window_bounds, adapter, old);
+        self.notify_children_changes(adapter, old);
     }
 
-    async fn notify_state_changes(&self, adapter: &AdapterImpl, old: &NodeWrapper<'_>) {
+    fn notify_state_changes(&self, adapter: &AdapterImpl, old: &NodeWrapper<'_>) {
         let adapter_id = self.adapter();
         let old_state = old.state(true);
         let new_state = self.state(true);
         let changed_states = old_state ^ new_state;
         for state in changed_states.iter() {
-            adapter
-                .emit_object_event(
-                    ObjectId::Node {
-                        adapter: adapter_id,
-                        node: self.id(),
-                    },
-                    ObjectEvent::StateChanged(state, new_state.contains(state)),
-                )
-                .await;
+            adapter.emit_object_event(
+                ObjectId::Node {
+                    adapter: adapter_id,
+                    node: self.id(),
+                },
+                ObjectEvent::StateChanged(state, new_state.contains(state)),
+            );
         }
     }
 
-    async fn notify_property_changes(&self, adapter: &AdapterImpl, old: &NodeWrapper<'_>) {
+    fn notify_property_changes(&self, adapter: &AdapterImpl, old: &NodeWrapper<'_>) {
         let adapter_id = self.adapter();
         let name = self.name();
         if name != old.name() {
             let name = name.unwrap_or_default();
-            adapter
-                .emit_object_event(
+            adapter.emit_object_event(
+                ObjectId::Node {
+                    adapter: adapter_id,
+                    node: self.id(),
+                },
+                ObjectEvent::PropertyChanged(Property::Name(name.clone())),
+            );
+
+            let live = self.live();
+            if live != AtspiLive::None {
+                adapter.emit_object_event(
                     ObjectId::Node {
                         adapter: adapter_id,
                         node: self.id(),
                     },
-                    ObjectEvent::PropertyChanged(Property::Name(name.clone())),
-                )
-                .await;
-
-            let live = self.live();
-            if live != AtspiLive::None {
-                adapter
-                    .emit_object_event(
-                        ObjectId::Node {
-                            adapter: adapter_id,
-                            node: self.id(),
-                        },
-                        ObjectEvent::Announcement(name, live),
-                    )
-                    .await;
+                    ObjectEvent::Announcement(name, live),
+                );
             }
         }
         let description = self.description();
         if description != old.description() {
-            adapter
-                .emit_object_event(
-                    ObjectId::Node {
-                        adapter: adapter_id,
-                        node: self.id(),
-                    },
-                    ObjectEvent::PropertyChanged(Property::Description(description)),
-                )
-                .await;
+            adapter.emit_object_event(
+                ObjectId::Node {
+                    adapter: adapter_id,
+                    node: self.id(),
+                },
+                ObjectEvent::PropertyChanged(Property::Description(description)),
+            );
         }
         let parent_id = self.parent_id();
         if parent_id != old.parent_id() {
-            adapter
-                .emit_object_event(
-                    ObjectId::Node {
-                        adapter: adapter_id,
-                        node: self.id(),
-                    },
-                    ObjectEvent::PropertyChanged(Property::Parent(self.filtered_parent())),
-                )
-                .await;
+            adapter.emit_object_event(
+                ObjectId::Node {
+                    adapter: adapter_id,
+                    node: self.id(),
+                },
+                ObjectEvent::PropertyChanged(Property::Parent(self.filtered_parent())),
+            );
         }
         let role = self.role();
         if role != old.role() {
-            adapter
-                .emit_object_event(
+            adapter.emit_object_event(
+                ObjectId::Node {
+                    adapter: adapter_id,
+                    node: self.id(),
+                },
+                ObjectEvent::PropertyChanged(Property::Role(role)),
+            );
+        }
+        if let Some(value) = self.current_value() {
+            if Some(value) != old.current_value() {
+                adapter.emit_object_event(
                     ObjectId::Node {
                         adapter: adapter_id,
                         node: self.id(),
                     },
-                    ObjectEvent::PropertyChanged(Property::Role(role)),
-                )
-                .await;
-        }
-        if let Some(value) = self.current_value() {
-            if Some(value) != old.current_value() {
-                adapter
-                    .emit_object_event(
-                        ObjectId::Node {
-                            adapter: adapter_id,
-                            node: self.id(),
-                        },
-                        ObjectEvent::PropertyChanged(Property::Value(value)),
-                    )
-                    .await;
+                    ObjectEvent::PropertyChanged(Property::Value(value)),
+                );
             }
         }
     }
 
-    async fn notify_bounds_changes(
+    fn notify_bounds_changes(
         &self,
         window_bounds: &WindowBounds,
         adapter: &AdapterImpl,
         old: &NodeWrapper<'_>,
     ) {
         if self.raw_bounds_and_transform() != old.raw_bounds_and_transform() {
-            adapter
-                .emit_object_event(
-                    ObjectId::Node {
-                        adapter: self.adapter(),
-                        node: self.id(),
-                    },
-                    ObjectEvent::BoundsChanged(self.extents(window_bounds)),
-                )
-                .await;
+            adapter.emit_object_event(
+                ObjectId::Node {
+                    adapter: self.adapter(),
+                    node: self.id(),
+                },
+                ObjectEvent::BoundsChanged(self.extents(window_bounds)),
+            );
         }
     }
 
-    async fn notify_children_changes(&self, adapter: &AdapterImpl, old: &NodeWrapper<'_>) {
+    fn notify_children_changes(&self, adapter: &AdapterImpl, old: &NodeWrapper<'_>) {
         let adapter_id = self.adapter();
         let old_children = old.child_ids().collect::<Vec<NodeId>>();
         let filtered_children = self.filtered_child_ids().collect::<Vec<NodeId>>();
         for (index, child) in filtered_children.iter().enumerate() {
             if !old_children.contains(child) {
-                adapter
-                    .emit_object_event(
+                adapter.emit_object_event(
+                    ObjectId::Node {
+                        adapter: adapter_id,
+                        node: self.id(),
+                    },
+                    ObjectEvent::ChildAdded(
+                        index,
                         ObjectId::Node {
                             adapter: adapter_id,
-                            node: self.id(),
+                            node: *child,
                         },
-                        ObjectEvent::ChildAdded(
-                            index,
-                            ObjectId::Node {
-                                adapter: adapter_id,
-                                node: *child,
-                            },
-                        ),
-                    )
-                    .await;
+                    ),
+                );
             }
         }
         for child in old_children.into_iter() {
             if !filtered_children.contains(&child) {
-                adapter
-                    .emit_object_event(
-                        ObjectId::Node {
-                            adapter: adapter_id,
-                            node: self.id(),
-                        },
-                        ObjectEvent::ChildRemoved(ObjectId::Node {
-                            adapter: adapter_id,
-                            node: child,
-                        }),
-                    )
-                    .await;
+                adapter.emit_object_event(
+                    ObjectId::Node {
+                        adapter: adapter_id,
+                        node: self.id(),
+                    },
+                    ObjectEvent::ChildRemoved(ObjectId::Node {
+                        adapter: adapter_id,
+                        node: child,
+                    }),
+                );
             }
         }
     }

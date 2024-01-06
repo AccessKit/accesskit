@@ -5,38 +5,20 @@
 
 use accesskit::{Point, Rect};
 use atspi::CoordType;
-#[cfg(feature = "tokio")]
-use once_cell::sync::Lazy;
 
 #[cfg(not(feature = "tokio"))]
 pub(crate) fn block_on<F: std::future::Future>(future: F) -> F::Output {
-    zbus::block_on(future)
+    futures_lite::future::block_on(future)
 }
 
 #[cfg(feature = "tokio")]
-pub(crate) static TOKIO_RT: Lazy<tokio::runtime::Handle> = Lazy::new(|| {
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("create tokio runtime");
-    let handle = rt.handle().clone();
-    std::thread::Builder::new()
-        .name("accesskit-tokio".into())
-        .spawn(move || {
-            rt.block_on(async {
-                let duration = std::time::Duration::from_secs(86400);
-                loop {
-                    tokio::time::sleep(duration).await;
-                }
-            });
-        })
-        .expect("launch tokio runtime thread");
-    handle
-});
-
-#[cfg(feature = "tokio")]
 pub(crate) fn block_on<F: std::future::Future>(future: F) -> F::Output {
-    TOKIO_RT.block_on(future)
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_io()
+        .enable_time()
+        .build()
+        .expect("launch of single-threaded tokio runtime");
+    runtime.block_on(future)
 }
 
 #[derive(Clone, Copy, Default)]

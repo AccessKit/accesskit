@@ -6,6 +6,7 @@
 use crate::{
     atspi::{interfaces::*, ObjectId},
     context::{AppContext, Context},
+    executor::{Executor, Task},
     PlatformNode, PlatformRootNode,
 };
 use accesskit::NodeId;
@@ -22,22 +23,41 @@ use zbus::{
     Address, Connection, ConnectionBuilder, Result,
 };
 
-#[derive(Clone)]
 pub(crate) struct Bus {
     conn: Connection,
+    _task: Task<()>,
     socket_proxy: SocketProxy<'static>,
 }
 
 impl Bus {
-    pub(crate) async fn new(session_bus: &Connection) -> zbus::Result<Self> {
+    pub(crate) async fn new(
+        session_bus: &Connection,
+        executor: &Executor<'_>,
+    ) -> zbus::Result<Self> {
         let address = match var("AT_SPI_BUS_ADDRESS") {
             Ok(address) if !address.is_empty() => address,
             _ => BusProxy::new(session_bus).await?.get_address().await?,
         };
         let address: Address = address.as_str().try_into()?;
-        let conn = ConnectionBuilder::address(address)?.build().await?;
+        let conn = ConnectionBuilder::address(address)?
+            .internal_executor(false)
+            .build()
+            .await?;
+        let conn_copy = conn.clone();
+        let _task = executor.spawn(
+            async move {
+                loop {
+                    conn_copy.executor().tick().await;
+                }
+            },
+            "accesskit_atspi_bus_task",
+        );
         let socket_proxy = SocketProxy::new(&conn).await?;
-        let mut bus = Bus { conn, socket_proxy };
+        let mut bus = Bus {
+            conn,
+            _task,
+            socket_proxy,
+        };
         bus.register_root_node().await?;
         Ok(bus)
     }

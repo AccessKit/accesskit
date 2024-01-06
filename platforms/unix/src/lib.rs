@@ -9,6 +9,7 @@ extern crate zbus;
 mod adapter;
 mod atspi;
 mod context;
+mod executor;
 mod filters;
 mod node;
 mod util;
