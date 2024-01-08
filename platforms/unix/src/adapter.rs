@@ -15,6 +15,7 @@ use crate::{
 };
 use accesskit::{ActionHandler, NodeId, Rect, Role, TreeUpdate};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
+#[cfg(not(feature = "tokio"))]
 use async_channel::Sender;
 use async_once_cell::Lazy;
 use atspi::{InterfaceSet, Live, State};
@@ -26,6 +27,8 @@ use std::{
         Arc, Mutex, Weak,
     },
 };
+#[cfg(feature = "tokio")]
+use tokio::sync::mpsc::UnboundedSender as Sender;
 
 struct AdapterChangeHandler<'a> {
     adapter: &'a AdapterImpl,
@@ -274,34 +277,35 @@ impl AdapterImpl {
         }
     }
 
+    pub(crate) async fn send_message(&self, message: Message) {
+        #[cfg(not(feature = "tokio"))]
+        self.messages.send(message).await.unwrap();
+        #[cfg(feature = "tokio")]
+        self.messages.send(message).unwrap();
+    }
+
     async fn register_interfaces(&self, id: NodeId, new_interfaces: InterfaceSet) {
-        self.messages
-            .send(Message::RegisterInterfaces {
-                adapter_id: self.id,
-                context: Arc::downgrade(&self.context),
-                node_id: id,
-                interfaces: new_interfaces,
-            })
-            .await
-            .unwrap();
+        self.send_message(Message::RegisterInterfaces {
+            adapter_id: self.id,
+            context: Arc::downgrade(&self.context),
+            node_id: id,
+            interfaces: new_interfaces,
+        })
+        .await;
     }
 
     async fn unregister_interfaces(&self, id: NodeId, old_interfaces: InterfaceSet) {
-        self.messages
-            .send(Message::UnregisterInterfaces {
-                adapter_id: self.id,
-                node_id: id,
-                interfaces: old_interfaces,
-            })
-            .await
-            .unwrap();
+        self.send_message(Message::UnregisterInterfaces {
+            adapter_id: self.id,
+            node_id: id,
+            interfaces: old_interfaces,
+        })
+        .await;
     }
 
     pub(crate) async fn emit_object_event(&self, target: ObjectId, event: ObjectEvent) {
-        self.messages
-            .send(Message::EmitEvent(Event::Object { target, event }))
-            .await
-            .unwrap();
+        self.send_message(Message::EmitEvent(Event::Object { target, event }))
+            .await;
     }
 
     fn set_root_window_bounds(&self, bounds: WindowBounds) {
@@ -336,17 +340,15 @@ impl AdapterImpl {
     }
 
     async fn window_activated(&self, window: &NodeWrapper<'_>) {
-        self.messages
-            .send(Message::EmitEvent(Event::Window {
-                target: ObjectId::Node {
-                    adapter: self.id,
-                    node: window.id(),
-                },
-                name: window.name().unwrap_or_default(),
-                event: WindowEvent::Activated,
-            }))
-            .await
-            .unwrap();
+        self.send_message(Message::EmitEvent(Event::Window {
+            target: ObjectId::Node {
+                adapter: self.id,
+                node: window.id(),
+            },
+            name: window.name().unwrap_or_default(),
+            event: WindowEvent::Activated,
+        }))
+        .await;
         self.emit_object_event(
             ObjectId::Node {
                 adapter: self.id,
@@ -366,17 +368,15 @@ impl AdapterImpl {
     }
 
     async fn window_deactivated(&self, window: &NodeWrapper<'_>) {
-        self.messages
-            .send(Message::EmitEvent(Event::Window {
-                target: ObjectId::Node {
-                    adapter: self.id,
-                    node: window.id(),
-                },
-                name: window.name().unwrap_or_default(),
-                event: WindowEvent::Deactivated,
-            }))
-            .await
-            .unwrap();
+        self.send_message(Message::EmitEvent(Event::Window {
+            target: ObjectId::Node {
+                adapter: self.id,
+                node: window.id(),
+            },
+            name: window.name().unwrap_or_default(),
+            event: WindowEvent::Deactivated,
+        }))
+        .await;
         self.emit_object_event(
             ObjectId::Node {
                 adapter: self.id,
