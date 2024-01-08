@@ -2,6 +2,14 @@
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file).
 
+/// ## Compatibility with async runtimes
+///
+/// The following only applies on Linux/Unix:
+///
+/// While this crate's API is purely blocking, it internally spawns asynchronous tasks on an executor.
+///
+/// - If you use tokio, make sure to enable the `tokio` feature of this crate.
+/// - If you use another async runtime or if you don't use one at all, the default feature will suit your needs.
 use accesskit::{ActionHandler, ActionRequest, TreeUpdate};
 use winit::{
     event::WindowEvent,

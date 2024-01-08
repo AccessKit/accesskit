@@ -3,6 +3,13 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+/// ## Compatibility with async runtimes
+///
+/// While this crate's API is purely blocking, it internally spawns asynchronous tasks on an executor.
+///
+/// - If you use tokio, make sure to enable the `tokio` feature of this crate.
+/// - If you use another async runtime or if you don't use one at all, the default feature will suit your needs.
+
 #[macro_use]
 extern crate zbus;
 
