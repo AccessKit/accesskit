@@ -13,6 +13,9 @@
 #[macro_use]
 extern crate zbus;
 
+#[cfg(all(not(feature = "async-io"), not(feature = "tokio")))]
+compile_error!("Either \"async-io\" (default) or \"tokio\" feature must be enabled.");
+
 mod adapter;
 mod atspi;
 mod context;

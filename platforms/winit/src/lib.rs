@@ -10,6 +10,21 @@
 ///
 /// - If you use tokio, make sure to enable the `tokio` feature of this crate.
 /// - If you use another async runtime or if you don't use one at all, the default feature will suit your needs.
+
+#[cfg(all(
+    feature = "accesskit_unix",
+    any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ),
+    not(feature = "async-io"),
+    not(feature = "tokio")
+))]
+compile_error!("Either \"async-io\" (default) or \"tokio\" feature must be enabled.");
+
 use accesskit::{ActionHandler, ActionRequest, TreeUpdate};
 use winit::{
     event::WindowEvent,
