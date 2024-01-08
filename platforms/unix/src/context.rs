@@ -5,13 +5,23 @@
 
 use accesskit::{ActionHandler, ActionRequest};
 use accesskit_consumer::Tree;
+#[cfg(not(feature = "tokio"))]
 use async_channel::Sender;
+#[cfg(not(feature = "tokio"))]
 use async_lock::{Mutex as AsyncMutex, MutexGuard as AsyncMutexGuard};
 use async_once_cell::OnceCell as AsyncOnceCell;
 use atspi::proxy::bus::StatusProxy;
-use futures_util::{pin_mut, select, StreamExt};
+#[cfg(not(feature = "tokio"))]
+use futures_util::{pin_mut as pin, select, StreamExt};
 use once_cell::sync::OnceCell;
 use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
+#[cfg(feature = "tokio")]
+use tokio::{
+    pin, select,
+    sync::{mpsc::UnboundedSender as Sender, Mutex as AsyncMutex, MutexGuard as AsyncMutexGuard},
+};
+#[cfg(feature = "tokio")]
+use tokio_stream::{wrappers::UnboundedReceiverStream, StreamExt};
 use zbus::{Connection, Task};
 
 use crate::{
@@ -170,10 +180,21 @@ impl ActivationContext {
 async fn listen(session_bus: Connection) -> zbus::Result<()> {
     let status = StatusProxy::new(&session_bus).await?;
     let changes = status.receive_is_enabled_changed().await.fuse();
-    pin_mut!(changes);
-    let (tx, rx) = async_channel::unbounded();
-    let messages = rx.fuse();
-    pin_mut!(messages);
+    pin!(changes);
+
+    #[cfg(not(feature = "tokio"))]
+    let (tx, messages) = {
+        let (tx, rx) = async_channel::unbounded();
+        let messages = rx.fuse();
+        (tx, messages)
+    };
+    #[cfg(feature = "tokio")]
+    let (tx, messages) = {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let messages = UnboundedReceiverStream::new(rx).fuse();
+        (tx, messages)
+    };
+    pin!(messages);
     let mut atspi_bus = None;
 
     loop {
@@ -206,7 +227,6 @@ async fn listen(session_bus: Connection) -> zbus::Result<()> {
                     process_adapter_message(atspi_bus, message).await?;
                 }
             }
-            complete => return Ok(()),
         }
     }
 }
