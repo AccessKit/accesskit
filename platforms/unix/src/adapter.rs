@@ -8,24 +8,20 @@ use crate::{
         interfaces::{Event, ObjectEvent, WindowEvent},
         ObjectId,
     },
-    context::{ActivationContext, AppContext, Context},
+    context::{AppContext, Context},
     filters::{filter, filter_detached},
     node::NodeWrapper,
-    util::{block_on, WindowBounds},
+    util::WindowBounds,
 };
 use accesskit::{ActionHandler, NodeId, Rect, Role, TreeUpdate};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 #[cfg(not(feature = "tokio"))]
 use async_channel::Sender;
-use async_once_cell::Lazy;
 use atspi::{InterfaceSet, Live, State};
-use futures_lite::{future::Boxed, FutureExt};
-use std::{
-    pin::Pin,
-    sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc, Mutex, Weak,
-    },
+use once_cell::sync::Lazy;
+use std::sync::{
+    atomic::{AtomicBool, AtomicUsize, Ordering},
+    Arc, Mutex, Weak,
 };
 #[cfg(feature = "tokio")]
 use tokio::sync::mpsc::UnboundedSender as Sender;
@@ -36,63 +32,52 @@ struct AdapterChangeHandler<'a> {
 
 impl AdapterChangeHandler<'_> {
     fn add_node(&mut self, node: &Node) {
-        block_on(async {
-            let role = node.role();
-            let is_root = node.is_root();
-            let node = NodeWrapper::Node {
-                adapter: self.adapter.id,
-                node,
-            };
-            let interfaces = node.interfaces();
-            self.adapter
-                .register_interfaces(node.id(), interfaces)
-                .await;
-            if is_root && role == Role::Window {
-                let adapter_index = AppContext::read().adapter_index(self.adapter.id).unwrap();
-                self.adapter.window_created(adapter_index, node.id()).await;
-            }
+        let role = node.role();
+        let is_root = node.is_root();
+        let node = NodeWrapper::Node {
+            adapter: self.adapter.id,
+            node,
+        };
+        let interfaces = node.interfaces();
+        self.adapter.register_interfaces(node.id(), interfaces);
+        if is_root && role == Role::Window {
+            let adapter_index = AppContext::read().adapter_index(self.adapter.id).unwrap();
+            self.adapter.window_created(adapter_index, node.id());
+        }
 
-            let live = node.live();
-            if live != Live::None {
-                if let Some(name) = node.name() {
-                    self.adapter
-                        .emit_object_event(
-                            ObjectId::Node {
-                                adapter: self.adapter.id,
-                                node: node.id(),
-                            },
-                            ObjectEvent::Announcement(name, live),
-                        )
-                        .await;
-                }
-            }
-        })
-    }
-
-    fn remove_node(&mut self, node: &DetachedNode) {
-        block_on(async {
-            let role = node.role();
-            let is_root = node.is_root();
-            let node = NodeWrapper::DetachedNode {
-                adapter: self.adapter.id,
-                node,
-            };
-            if is_root && role == Role::Window {
-                self.adapter.window_destroyed(node.id()).await;
-            }
-            self.adapter
-                .emit_object_event(
+        let live = node.live();
+        if live != Live::None {
+            if let Some(name) = node.name() {
+                self.adapter.emit_object_event(
                     ObjectId::Node {
                         adapter: self.adapter.id,
                         node: node.id(),
                     },
-                    ObjectEvent::StateChanged(State::Defunct, true),
-                )
-                .await;
-            self.adapter
-                .unregister_interfaces(node.id(), node.interfaces())
-                .await;
-        });
+                    ObjectEvent::Announcement(name, live),
+                );
+            }
+        }
+    }
+
+    fn remove_node(&mut self, node: &DetachedNode) {
+        let role = node.role();
+        let is_root = node.is_root();
+        let node = NodeWrapper::DetachedNode {
+            adapter: self.adapter.id,
+            node,
+        };
+        if is_root && role == Role::Window {
+            self.adapter.window_destroyed(node.id());
+        }
+        self.adapter.emit_object_event(
+            ObjectId::Node {
+                adapter: self.adapter.id,
+                node: node.id(),
+            },
+            ObjectEvent::StateChanged(State::Defunct, true),
+        );
+        self.adapter
+            .unregister_interfaces(node.id(), node.interfaces());
     }
 }
 
@@ -124,18 +109,12 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
             let old_interfaces = old_wrapper.interfaces();
             let new_interfaces = new_wrapper.interfaces();
             let kept_interfaces = old_interfaces & new_interfaces;
-            block_on(async {
-                self.adapter
-                    .unregister_interfaces(new_wrapper.id(), old_interfaces ^ kept_interfaces)
-                    .await;
-                self.adapter
-                    .register_interfaces(new_node.id(), new_interfaces ^ kept_interfaces)
-                    .await;
-                let bounds = *self.adapter.context.read_root_window_bounds();
-                new_wrapper
-                    .notify_changes(&bounds, self.adapter, &old_wrapper)
-                    .await;
-            });
+            self.adapter
+                .unregister_interfaces(new_wrapper.id(), old_interfaces ^ kept_interfaces);
+            self.adapter
+                .register_interfaces(new_node.id(), new_interfaces ^ kept_interfaces);
+            let bounds = *self.adapter.context.read_root_window_bounds();
+            new_wrapper.notify_changes(&bounds, self.adapter, &old_wrapper);
         }
     }
 
@@ -145,53 +124,43 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         new_node: Option<&Node>,
         current_state: &TreeState,
     ) {
-        block_on(async {
-            if let Some(root_window) = root_window(current_state) {
-                if old_node.is_none() && new_node.is_some() {
-                    self.adapter
-                        .window_activated(&NodeWrapper::Node {
-                            adapter: self.adapter.id,
-                            node: &root_window,
-                        })
-                        .await;
-                } else if old_node.is_some() && new_node.is_none() {
-                    self.adapter
-                        .window_deactivated(&NodeWrapper::Node {
-                            adapter: self.adapter.id,
-                            node: &root_window,
-                        })
-                        .await;
-                }
+        if let Some(root_window) = root_window(current_state) {
+            if old_node.is_none() && new_node.is_some() {
+                self.adapter.window_activated(&NodeWrapper::Node {
+                    adapter: self.adapter.id,
+                    node: &root_window,
+                });
+            } else if old_node.is_some() && new_node.is_none() {
+                self.adapter.window_deactivated(&NodeWrapper::Node {
+                    adapter: self.adapter.id,
+                    node: &root_window,
+                });
             }
-            if let Some(node) = new_node.map(|node| NodeWrapper::Node {
-                adapter: self.adapter.id,
-                node,
-            }) {
-                self.adapter
-                    .emit_object_event(
-                        ObjectId::Node {
-                            adapter: self.adapter.id,
-                            node: node.id(),
-                        },
-                        ObjectEvent::StateChanged(State::Focused, true),
-                    )
-                    .await;
-            }
-            if let Some(node) = old_node.map(|node| NodeWrapper::DetachedNode {
-                adapter: self.adapter.id,
-                node,
-            }) {
-                self.adapter
-                    .emit_object_event(
-                        ObjectId::Node {
-                            adapter: self.adapter.id,
-                            node: node.id(),
-                        },
-                        ObjectEvent::StateChanged(State::Focused, false),
-                    )
-                    .await;
-            }
-        });
+        }
+        if let Some(node) = new_node.map(|node| NodeWrapper::Node {
+            adapter: self.adapter.id,
+            node,
+        }) {
+            self.adapter.emit_object_event(
+                ObjectId::Node {
+                    adapter: self.adapter.id,
+                    node: node.id(),
+                },
+                ObjectEvent::StateChanged(State::Focused, true),
+            );
+        }
+        if let Some(node) = old_node.map(|node| NodeWrapper::DetachedNode {
+            adapter: self.adapter.id,
+            node,
+        }) {
+            self.adapter.emit_object_event(
+                ObjectId::Node {
+                    adapter: self.adapter.id,
+                    node: node.id(),
+                },
+                ObjectEvent::StateChanged(State::Focused, false),
+            );
+        }
     }
 
     fn node_removed(&mut self, node: &DetachedNode, _: &TreeState) {
@@ -210,18 +179,18 @@ pub(crate) struct AdapterImpl {
 impl AdapterImpl {
     fn new(
         id: usize,
+        messages: Sender<Message>,
         initial_state: TreeUpdate,
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
         action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
         let tree = Tree::new(initial_state, is_window_focused);
-        let (messages, context) = {
+        let context = {
             let mut app_context = AppContext::write();
-            let messages = app_context.messages.clone().unwrap();
             let context = Context::new(tree, action_handler, root_window_bounds);
             app_context.push_adapter(id, &context);
-            (messages, context)
+            context
         };
         AdapterImpl {
             id,
@@ -230,7 +199,7 @@ impl AdapterImpl {
         }
     }
 
-    pub(crate) async fn register_tree(&self) {
+    pub(crate) fn register_tree(&self) {
         fn add_children(
             node: Node<'_>,
             to_add: &mut Vec<(NodeId, InterfaceSet)>,
@@ -270,42 +239,39 @@ impl AdapterImpl {
         };
 
         for (id, interfaces) in objects_to_add {
-            self.register_interfaces(id, interfaces).await;
+            self.register_interfaces(id, interfaces);
             if id == root_id {
-                self.window_created(adapter_index, id).await;
+                self.window_created(adapter_index, id);
             }
         }
     }
 
-    pub(crate) async fn send_message(&self, message: Message) {
+    pub(crate) fn send_message(&self, message: Message) {
         #[cfg(not(feature = "tokio"))]
-        self.messages.send(message).await.unwrap();
+        let _ = self.messages.try_send(message);
         #[cfg(feature = "tokio")]
-        self.messages.send(message).unwrap();
+        let _ = self.messages.send(message);
     }
 
-    async fn register_interfaces(&self, id: NodeId, new_interfaces: InterfaceSet) {
+    fn register_interfaces(&self, id: NodeId, new_interfaces: InterfaceSet) {
         self.send_message(Message::RegisterInterfaces {
             adapter_id: self.id,
             context: Arc::downgrade(&self.context),
             node_id: id,
             interfaces: new_interfaces,
-        })
-        .await;
+        });
     }
 
-    async fn unregister_interfaces(&self, id: NodeId, old_interfaces: InterfaceSet) {
+    fn unregister_interfaces(&self, id: NodeId, old_interfaces: InterfaceSet) {
         self.send_message(Message::UnregisterInterfaces {
             adapter_id: self.id,
             node_id: id,
             interfaces: old_interfaces,
-        })
-        .await;
+        });
     }
 
-    pub(crate) async fn emit_object_event(&self, target: ObjectId, event: ObjectEvent) {
-        self.send_message(Message::EmitEvent(Event::Object { target, event }))
-            .await;
+    pub(crate) fn emit_object_event(&self, target: ObjectId, event: ObjectEvent) {
+        self.send_message(Message::EmitEvent(Event::Object { target, event }));
     }
 
     fn set_root_window_bounds(&self, bounds: WindowBounds) {
@@ -325,7 +291,7 @@ impl AdapterImpl {
         tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
     }
 
-    async fn window_created(&self, adapter_index: usize, window: NodeId) {
+    fn window_created(&self, adapter_index: usize, window: NodeId) {
         self.emit_object_event(
             ObjectId::Root,
             ObjectEvent::ChildAdded(
@@ -335,11 +301,10 @@ impl AdapterImpl {
                     node: window,
                 },
             ),
-        )
-        .await;
+        );
     }
 
-    async fn window_activated(&self, window: &NodeWrapper<'_>) {
+    fn window_activated(&self, window: &NodeWrapper<'_>) {
         self.send_message(Message::EmitEvent(Event::Window {
             target: ObjectId::Node {
                 adapter: self.id,
@@ -347,27 +312,24 @@ impl AdapterImpl {
             },
             name: window.name().unwrap_or_default(),
             event: WindowEvent::Activated,
-        }))
-        .await;
+        }));
         self.emit_object_event(
             ObjectId::Node {
                 adapter: self.id,
                 node: window.id(),
             },
             ObjectEvent::StateChanged(State::Active, true),
-        )
-        .await;
+        );
         self.emit_object_event(
             ObjectId::Root,
             ObjectEvent::ActiveDescendantChanged(ObjectId::Node {
                 adapter: self.id,
                 node: window.id(),
             }),
-        )
-        .await;
+        );
     }
 
-    async fn window_deactivated(&self, window: &NodeWrapper<'_>) {
+    fn window_deactivated(&self, window: &NodeWrapper<'_>) {
         self.send_message(Message::EmitEvent(Event::Window {
             target: ObjectId::Node {
                 adapter: self.id,
@@ -375,27 +337,24 @@ impl AdapterImpl {
             },
             name: window.name().unwrap_or_default(),
             event: WindowEvent::Deactivated,
-        }))
-        .await;
+        }));
         self.emit_object_event(
             ObjectId::Node {
                 adapter: self.id,
                 node: window.id(),
             },
             ObjectEvent::StateChanged(State::Active, false),
-        )
-        .await;
+        );
     }
 
-    async fn window_destroyed(&self, window: NodeId) {
+    fn window_destroyed(&self, window: NodeId) {
         self.emit_object_event(
             ObjectId::Root,
             ObjectEvent::ChildRemoved(ObjectId::Node {
                 adapter: self.id,
                 node: window,
             }),
-        )
-        .await;
+        );
     }
 }
 
@@ -413,24 +372,22 @@ impl Drop for AdapterImpl {
     fn drop(&mut self) {
         AppContext::write().remove_adapter(self.id);
         let root_id = self.context.read_tree().state().root_id();
-        block_on(async {
-            self.emit_object_event(
-                ObjectId::Root,
-                ObjectEvent::ChildRemoved(ObjectId::Node {
-                    adapter: self.id,
-                    node: root_id,
-                }),
-            )
-            .await;
-        });
+        self.emit_object_event(
+            ObjectId::Root,
+            ObjectEvent::ChildRemoved(ObjectId::Node {
+                adapter: self.id,
+                node: root_id,
+            }),
+        );
     }
 }
 
-pub(crate) type LazyAdapter = Pin<Arc<Lazy<AdapterImpl, Boxed<AdapterImpl>>>>;
+pub(crate) type LazyAdapter = Arc<Lazy<AdapterImpl, Box<dyn FnOnce() -> AdapterImpl + Send>>>;
 
 static NEXT_ADAPTER_ID: AtomicUsize = AtomicUsize::new(0);
 
 pub struct Adapter {
+    messages: Sender<Message>,
     id: usize,
     r#impl: LazyAdapter,
     is_window_focused: Arc<AtomicBool>,
@@ -444,32 +401,43 @@ impl Adapter {
         action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
         let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::SeqCst);
+        let messages = AppContext::read().messages.clone();
         let is_window_focused = Arc::new(AtomicBool::new(false));
-        let is_window_focused_copy = is_window_focused.clone();
         let root_window_bounds = Arc::new(Mutex::new(Default::default()));
-        let root_window_bounds_copy = root_window_bounds.clone();
-        let r#impl = Arc::pin(Lazy::new(
-            async move {
-                let is_window_focused = is_window_focused_copy.load(Ordering::Relaxed);
-                let root_window_bounds = *root_window_bounds_copy.lock().unwrap();
+        let r#impl: LazyAdapter = Arc::new(Lazy::new(Box::new({
+            let messages = messages.clone();
+            let is_window_focused = Arc::clone(&is_window_focused);
+            let root_window_bounds = Arc::clone(&root_window_bounds);
+            move || {
                 AdapterImpl::new(
                     id,
+                    messages,
                     source(),
-                    is_window_focused,
-                    root_window_bounds,
+                    is_window_focused.load(Ordering::Relaxed),
+                    *root_window_bounds.lock().unwrap(),
                     action_handler,
                 )
             }
-            .boxed(),
-        ));
+        })));
         let adapter = Self {
             id,
+            messages: messages.clone(),
             r#impl: r#impl.clone(),
             is_window_focused,
             root_window_bounds,
         };
-        block_on(async move { ActivationContext::activate_eventually(id, r#impl).await });
+        adapter.send_message(Message::AddAdapter {
+            id,
+            adapter: r#impl,
+        });
         adapter
+    }
+
+    pub(crate) fn send_message(&self, message: Message) {
+        #[cfg(not(feature = "tokio"))]
+        let _ = self.messages.try_send(message);
+        #[cfg(feature = "tokio")]
+        let _ = self.messages.send(message);
     }
 
     pub fn set_root_window_bounds(&self, outer: Rect, inner: Rect) {
@@ -478,7 +446,7 @@ impl Adapter {
             let mut bounds = self.root_window_bounds.lock().unwrap();
             *bounds = new_bounds;
         }
-        if let Some(r#impl) = Lazy::try_get(&self.r#impl) {
+        if let Some(r#impl) = Lazy::get(&self.r#impl) {
             r#impl.set_root_window_bounds(new_bounds);
         }
     }
@@ -486,7 +454,7 @@ impl Adapter {
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update.
     pub fn update_if_active(&self, update_factory: impl FnOnce() -> TreeUpdate) {
-        if let Some(r#impl) = Lazy::try_get(&self.r#impl) {
+        if let Some(r#impl) = Lazy::get(&self.r#impl) {
             r#impl.update(update_factory());
         }
     }
@@ -494,7 +462,7 @@ impl Adapter {
     /// Update the tree state based on whether the window is focused.
     pub fn update_window_focus_state(&self, is_focused: bool) {
         self.is_window_focused.store(is_focused, Ordering::SeqCst);
-        if let Some(r#impl) = Lazy::try_get(&self.r#impl) {
+        if let Some(r#impl) = Lazy::get(&self.r#impl) {
             r#impl.update_window_focus_state(is_focused);
         }
     }
@@ -502,13 +470,18 @@ impl Adapter {
 
 impl Drop for Adapter {
     fn drop(&mut self) {
-        block_on(async {
-            ActivationContext::remove_adapter(self.id).await;
-        })
+        self.send_message(Message::RemoveAdapter { id: self.id });
     }
 }
 
 pub(crate) enum Message {
+    AddAdapter {
+        id: usize,
+        adapter: LazyAdapter,
+    },
+    RemoveAdapter {
+        id: usize,
+    },
     RegisterInterfaces {
         adapter_id: usize,
         context: Weak<Context>,

@@ -2,6 +2,45 @@
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file).
 
+/// ## Compatibility with async runtimes
+///
+/// The following only applies on Linux/Unix:
+///
+/// While this crate's API is purely blocking, it internally spawns asynchronous tasks on an executor.
+///
+/// - If you use tokio, make sure to enable the `tokio` feature of this crate.
+/// - If you use another async runtime or if you don't use one at all, the default feature will suit your needs.
+
+#[cfg(all(
+    feature = "accesskit_unix",
+    any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ),
+    not(feature = "async-io"),
+    not(feature = "tokio")
+))]
+compile_error!("Either \"async-io\" (default) or \"tokio\" feature must be enabled.");
+
+#[cfg(all(
+    feature = "accesskit_unix",
+    any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ),
+    feature = "async-io",
+    feature = "tokio"
+))]
+compile_error!(
+    "Both \"async-io\" (default) and \"tokio\" features cannot be enabled at the same time."
+);
+
 use accesskit::{ActionHandler, ActionRequest, TreeUpdate};
 use winit::{
     event::WindowEvent,

@@ -75,8 +75,8 @@ dependencies = [
  "accesskit",
  "accesskit_consumer",
  "async-channel 2.1.1",
- "async-lock",
- "async-once-cell",
+ "async-executor",
+ "async-task",
  "atspi",
  "futures-lite",
  "futures-util",
@@ -284,12 +284,6 @@ checksum = "fa24f727524730b077666307f2734b4a1a1c57acb79193127dcc8914d5242dd7"
 dependencies = [
  "event-listener 2.5.3",
 ]
-
-[[package]]
-name = "async-once-cell"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9338790e78aa95a416786ec8389546c4b6a1dfc3dc36071ed9518a9413a542eb"
 
 [[package]]
 name = "async-process"
