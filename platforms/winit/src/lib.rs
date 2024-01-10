@@ -41,6 +41,14 @@ compile_error!(
     "Both \"async-io\" (default) and \"tokio\" features cannot be enabled at the same time."
 );
 
+#[cfg(all(not(feature = "rwh_05"), not(feature = "rwh_06")))]
+compile_error!("Either \"rwh_06\" (default) or \"rwh_05\" feature must be enabled.");
+
+#[cfg(all(feature = "rwh_05", feature = "rwh_06"))]
+compile_error!(
+    "Both \"rwh_06\" (default) and \"rwh_05\" features cannot be enabled at the same time."
+);
+
 use accesskit::{ActionHandler, ActionRequest, TreeUpdate};
 use winit::{
     event::WindowEvent,
@@ -56,9 +64,6 @@ use rwh_05 as raw_window_handle;
 use rwh_06 as raw_window_handle;
 
 mod platform_impl;
-
-#[cfg(all(feature = "rwh_05", feature = "rwh_06"))]
-compile_error!("Cannot enable both 'rwh_05' and 'rwh_06' features at the same time");
 
 #[derive(Debug)]
 pub struct ActionRequestEvent {
