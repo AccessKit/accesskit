@@ -178,7 +178,7 @@ async fn run_event_loop(
                 }
                 if atspi_bus.is_some() {
                     for (_, adapter) in &adapters {
-                        adapter.as_ref().await.register_tree();
+                        adapter.register_tree();
                     }
                 }
             }
@@ -201,7 +201,7 @@ async fn process_adapter_message(
             adapters.push((id, adapter));
             if atspi_bus.is_some() {
                 let adapter = &adapters.last_mut().unwrap().1;
-                adapter.as_ref().await.register_tree();
+                adapter.register_tree();
             }
         }
         Message::RemoveAdapter { id } => {

@@ -17,15 +17,11 @@ use accesskit::{ActionHandler, NodeId, Rect, Role, TreeUpdate};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 #[cfg(not(feature = "tokio"))]
 use async_channel::Sender;
-use async_once_cell::Lazy;
 use atspi::{InterfaceSet, Live, State};
-use futures_lite::{future::Boxed, FutureExt};
-use std::{
-    pin::Pin,
-    sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc, Mutex, Weak,
-    },
+use once_cell::sync::Lazy;
+use std::sync::{
+    atomic::{AtomicBool, AtomicUsize, Ordering},
+    Arc, Mutex, Weak,
 };
 #[cfg(feature = "tokio")]
 use tokio::sync::mpsc::UnboundedSender as Sender;
@@ -386,7 +382,7 @@ impl Drop for AdapterImpl {
     }
 }
 
-pub(crate) type LazyAdapter = Pin<Arc<Lazy<AdapterImpl, Boxed<AdapterImpl>>>>;
+pub(crate) type LazyAdapter = Arc<Lazy<AdapterImpl, Box<dyn FnOnce() -> AdapterImpl + Send>>>;
 
 static NEXT_ADAPTER_ID: AtomicUsize = AtomicUsize::new(0);
 
@@ -406,26 +402,23 @@ impl Adapter {
     ) -> Self {
         let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::SeqCst);
         let messages = AppContext::read().messages.clone();
-        let messages_copy = messages.clone();
         let is_window_focused = Arc::new(AtomicBool::new(false));
-        let is_window_focused_copy = is_window_focused.clone();
         let root_window_bounds = Arc::new(Mutex::new(Default::default()));
-        let root_window_bounds_copy = root_window_bounds.clone();
-        let r#impl = Arc::pin(Lazy::new(
-            async move {
-                let is_window_focused = is_window_focused_copy.load(Ordering::Relaxed);
-                let root_window_bounds = *root_window_bounds_copy.lock().unwrap();
+        let r#impl: LazyAdapter = Arc::new(Lazy::new(Box::new({
+            let messages = messages.clone();
+            let is_window_focused = Arc::clone(&is_window_focused);
+            let root_window_bounds = Arc::clone(&root_window_bounds);
+            move || {
                 AdapterImpl::new(
                     id,
-                    messages_copy,
+                    messages,
                     source(),
-                    is_window_focused,
-                    root_window_bounds,
+                    is_window_focused.load(Ordering::Relaxed),
+                    *root_window_bounds.lock().unwrap(),
                     action_handler,
                 )
             }
-            .boxed(),
-        ));
+        })));
         let adapter = Self {
             id,
             messages: messages.clone(),
@@ -453,7 +446,7 @@ impl Adapter {
             let mut bounds = self.root_window_bounds.lock().unwrap();
             *bounds = new_bounds;
         }
-        if let Some(r#impl) = Lazy::try_get(&self.r#impl) {
+        if let Some(r#impl) = Lazy::get(&self.r#impl) {
             r#impl.set_root_window_bounds(new_bounds);
         }
     }
@@ -461,7 +454,7 @@ impl Adapter {
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update.
     pub fn update_if_active(&self, update_factory: impl FnOnce() -> TreeUpdate) {
-        if let Some(r#impl) = Lazy::try_get(&self.r#impl) {
+        if let Some(r#impl) = Lazy::get(&self.r#impl) {
             r#impl.update(update_factory());
         }
     }
@@ -469,7 +462,7 @@ impl Adapter {
     /// Update the tree state based on whether the window is focused.
     pub fn update_window_focus_state(&self, is_focused: bool) {
         self.is_window_focused.store(is_focused, Ordering::SeqCst);
-        if let Some(r#impl) = Lazy::try_get(&self.r#impl) {
+        if let Some(r#impl) = Lazy::get(&self.r#impl) {
             r#impl.update_window_focus_state(is_focused);
         }
     }

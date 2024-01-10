@@ -25,6 +25,22 @@
 ))]
 compile_error!("Either \"async-io\" (default) or \"tokio\" feature must be enabled.");
 
+#[cfg(all(
+    feature = "accesskit_unix",
+    any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ),
+    feature = "async-io",
+    feature = "tokio"
+))]
+compile_error!(
+    "Both \"async-io\" (default) and \"tokio\" features cannot be enabled at the same time."
+);
+
 use accesskit::{ActionHandler, ActionRequest, TreeUpdate};
 use winit::{
     event::WindowEvent,
