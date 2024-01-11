@@ -29,6 +29,10 @@
   * dependencies
     * accesskit_unix bumped from 0.6.1 to 0.6.2
 
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_unix bumped from 0.7.0 to 0.7.1
+
 ## [0.7.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.6.2...accesskit_c-v0.7.0) (2024-01-03)
 
 

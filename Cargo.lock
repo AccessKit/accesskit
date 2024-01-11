@@ -30,7 +30,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_c"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "accesskit",
  "accesskit_macos",
@@ -59,7 +59,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_python"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "accesskit",
  "accesskit_macos",
@@ -70,7 +70,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_unix"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -103,7 +103,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_winit"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "accesskit",
  "accesskit_macos",
