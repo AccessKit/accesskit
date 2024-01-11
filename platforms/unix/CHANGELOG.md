@@ -29,6 +29,14 @@
     * accesskit bumped from 0.12.0 to 0.12.1
     * accesskit_consumer bumped from 0.16.0 to 0.16.1
 
+## [0.7.1](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.7.0...accesskit_unix-v0.7.1) (2024-01-11)
+
+
+### Bug Fixes
+
+* Make full use of tokio ecosystem if the tokio feature is enabled on Unix ([#336](https://github.com/AccessKit/accesskit/issues/336)) ([c034802](https://github.com/AccessKit/accesskit/commit/c0348024665a615a30fd8fe2f02e8c93cf9c6332))
+* Run our own async executor on Unix ([#337](https://github.com/AccessKit/accesskit/issues/337)) ([8f937ba](https://github.com/AccessKit/accesskit/commit/8f937baaa510dd96da196501822b82f75f05b595))
+
 ## [0.7.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.6.2...accesskit_unix-v0.7.0) (2024-01-03)
 
 

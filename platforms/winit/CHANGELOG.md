@@ -73,6 +73,21 @@
   * dependencies
     * accesskit_windows bumped from 0.14.2 to 0.14.3
 
+## [0.18.1](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.18.0...accesskit_winit-v0.18.1) (2024-01-11)
+
+
+### Bug Fixes
+
+* Run our own async executor on Unix ([#337](https://github.com/AccessKit/accesskit/issues/337)) ([8f937ba](https://github.com/AccessKit/accesskit/commit/8f937baaa510dd96da196501822b82f75f05b595))
+* Show an error at compile-time if no raw-window-handle feature is enabled for the winit adapter ([#339](https://github.com/AccessKit/accesskit/issues/339)) ([a24f5fd](https://github.com/AccessKit/accesskit/commit/a24f5fd443a683a6194b54244052ff3e1cc05de6))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_unix bumped from 0.7.0 to 0.7.1
+
 ## [0.18.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.17.0...accesskit_winit-v0.18.0) (2024-01-03)
 
 
