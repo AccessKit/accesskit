@@ -39,4 +39,3 @@ accesskit_unix = { version = "0.7.1", path = "../unix", optional = true, default
 version = "0.29"
 default-features = false
 features = ["x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita"]
-
