@@ -1,7 +1,7 @@
 [package]
 name = "accesskit_windows"
 version = "0.16.0"
-authors = ["Matt Campbell <mattcampbell@pobox.com>"]
+authors.workspace = true
 license.workspace = true
 description = "AccessKit UI accessibility infrastructure: Windows adapter"
 categories.workspace = true

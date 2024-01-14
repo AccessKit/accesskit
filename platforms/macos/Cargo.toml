@@ -1,7 +1,7 @@
 [package]
 name = "accesskit_macos"
 version = "0.11.0"
-authors = ["Matt Campbell <mattcampbell@pobox.com>"]
+authors.workspace = true
 license.workspace = true
 description = "AccessKit UI accessibility infrastructure: macOS adapter"
 categories.workspace = true

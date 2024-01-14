@@ -1,7 +1,7 @@
 [package]
 name = "accesskit_unix"
 version = "0.7.1"
-authors = ["Arnold Loubriat <datatriny@gmail.com>"]
+authors.workspace = true
 license.workspace = true
 description = "AccessKit UI accessibility infrastructure: Linux adapter"
 categories.workspace = true

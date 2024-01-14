@@ -1,7 +1,7 @@
 [package]
 name = "accesskit_winit"
 version = "0.18.1"
-authors = ["Matt Campbell <mattcampbell@pobox.com>"]
+authors.workspace = true
 license = "Apache-2.0"
 description = "AccessKit UI accessibility infrastructure: winit adapter"
 categories.workspace = true
