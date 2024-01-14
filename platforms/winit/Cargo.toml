@@ -4,11 +4,12 @@ version = "0.18.1"
 authors = ["Matt Campbell <mattcampbell@pobox.com>"]
 license = "Apache-2.0"
 description = "AccessKit UI accessibility infrastructure: winit adapter"
-categories = ["gui"]
+categories.workspace = true
 keywords = ["gui", "ui", "accessibility", "winit"]
-repository = "https://github.com/AccessKit/accesskit"
+repository.workspace = true
 readme = "README.md"
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 [package.metadata.docs.rs]
 features = ["winit/rwh_06", "winit/x11", "winit/wayland"]

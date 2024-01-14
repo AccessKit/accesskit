@@ -18,6 +18,13 @@ default-members = [
     "bindings/python",
 ]
 
+[workspace.package]
+categories = ["gui"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/AccessKit/accesskit"
+rust-version = "1.68.2"
+
 [profile.release]
 lto = true
 opt-level = "z"

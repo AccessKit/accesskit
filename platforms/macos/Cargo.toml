@@ -2,13 +2,14 @@
 name = "accesskit_macos"
 version = "0.11.0"
 authors = ["Matt Campbell <mattcampbell@pobox.com>"]
-license = "MIT OR Apache-2.0"
+license.workspace = true
 description = "AccessKit UI accessibility infrastructure: macOS adapter"
-categories = ["gui"]
+categories.workspace = true
 keywords = ["gui", "ui", "accessibility"]
-repository = "https://github.com/AccessKit/accesskit"
+repository.workspace = true
 readme = "README.md"
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 [package.metadata.docs.rs]
 default-target = "x86_64-apple-darwin"
