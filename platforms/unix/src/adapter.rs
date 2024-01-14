@@ -421,7 +421,7 @@ impl Adapter {
         })));
         let adapter = Self {
             id,
-            messages: messages.clone(),
+            messages,
             r#impl: r#impl.clone(),
             is_window_focused,
             root_window_bounds,
