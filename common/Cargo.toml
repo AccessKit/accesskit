@@ -1,14 +1,15 @@
 [package]
 name = "accesskit"
 version = "0.12.2"
-authors = ["Matt Campbell <mattcampbell@pobox.com>"]
-license = "MIT OR Apache-2.0"
+authors.workspace = true
+license.workspace = true
 description = "UI accessibility infrastructure across platforms"
-categories = ["gui"]
+categories.workspace = true
 keywords = ["gui", "ui", "accessibility"]
-repository = "https://github.com/AccessKit/accesskit"
+repository.workspace = true
 readme = "README.md"
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 [package.metadata.docs.rs]
 features = ["schemars", "serde"]

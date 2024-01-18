@@ -1,14 +1,15 @@
 [package]
 name = "accesskit_windows"
 version = "0.16.0"
-authors = ["Matt Campbell <mattcampbell@pobox.com>"]
-license = "MIT OR Apache-2.0"
+authors.workspace = true
+license.workspace = true
 description = "AccessKit UI accessibility infrastructure: Windows adapter"
-categories = ["gui"]
+categories.workspace = true
 keywords = ["gui", "ui", "accessibility"]
-repository = "https://github.com/AccessKit/accesskit"
+repository.workspace = true
 readme = "README.md"
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 accesskit = { version = "0.12.2", path = "../../common" }

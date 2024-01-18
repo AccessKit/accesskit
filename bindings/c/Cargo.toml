@@ -1,10 +1,10 @@
 [package]
 name = "accesskit_c"
 version = "0.7.1"
-authors = ["Arnold Loubriat <datatriny@gmail.com>"]
-license = "MIT OR Apache-2.0"
+authors.workspace = true
+license.workspace = true
 publish = false
-edition = "2021"
+edition.workspace = true
 
 [lib]
 name = "accesskit"

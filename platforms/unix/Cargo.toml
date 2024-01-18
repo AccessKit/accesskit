@@ -1,14 +1,15 @@
 [package]
 name = "accesskit_unix"
 version = "0.7.1"
-authors = ["Arnold Loubriat <datatriny@gmail.com>"]
-license = "MIT OR Apache-2.0"
+authors.workspace = true
+license.workspace = true
 description = "AccessKit UI accessibility infrastructure: Linux adapter"
-categories = ["gui"]
+categories.workspace = true
 keywords = ["gui", "ui", "accessibility"]
-repository = "https://github.com/AccessKit/accesskit"
+repository.workspace = true
 readme = "README.md"
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 [features]
 default = ["async-io"]

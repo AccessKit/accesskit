@@ -1,12 +1,12 @@
 [package]
 name = "accesskit_python"
 version = "0.1.2"
-authors = ["Arnold Loubriat <datatriny@gmail.com>"]
-license = "MIT OR Apache-2.0"
+authors.workspace = true
+license.workspace = true
 description = "Python bindings to the AccessKit library"
 readme = "README.md"
 publish = false
-edition = "2021"
+edition.workspace = true
 
 [lib]
 name = "accesskit"
