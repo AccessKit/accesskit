@@ -13,6 +13,10 @@ use windows::{
 
 use crate::{Adapter, QueuedEvents, UiaInitMarker};
 
+fn win32_error() -> ! {
+    panic!("{}", Error::from_win32())
+}
+
 // Work around a difference between the SetWindowLongPtrW API definition
 // in windows-rs on 32-bit and 64-bit Windows.
 #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
@@ -98,10 +102,8 @@ impl SubclassImpl {
         .unwrap();
         let result =
             unsafe { SetWindowLongPtrW(self.hwnd, GWLP_WNDPROC, wnd_proc as *const c_void as _) };
-        #[allow(clippy::unnecessary_literal_unwrap)]
         if result == 0 {
-            let result: Result<()> = Err(Error::from_win32());
-            result.unwrap();
+            win32_error();
         }
         self.prev_wnd_proc = unsafe { transmute::<LongPtr, WNDPROC>(result) };
     }
@@ -125,10 +127,8 @@ impl SubclassImpl {
                 transmute::<WNDPROC, LongPtr>(self.prev_wnd_proc),
             )
         };
-        #[allow(clippy::unnecessary_literal_unwrap)]
         if result == 0 {
-            let result: Result<()> = Err(Error::from_win32());
-            result.unwrap();
+            win32_error();
         }
         unsafe { RemovePropW(self.hwnd, PROP_NAME) }.unwrap();
     }
