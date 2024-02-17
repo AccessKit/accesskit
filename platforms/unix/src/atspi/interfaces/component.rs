@@ -3,27 +3,32 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::{
-    atspi::{OwnedObjectAddress, Rect},
-    PlatformNode,
-};
+use accesskit_atspi_common::{PlatformNode, Rect};
 use atspi::{CoordType, Layer};
 use zbus::{fdo, MessageHeader};
+
+use crate::atspi::{ObjectId, OwnedObjectAddress};
 
 pub(crate) struct ComponentInterface {
     node: PlatformNode,
 }
 
 impl ComponentInterface {
-    pub(crate) fn new(node: PlatformNode) -> Self {
+    pub fn new(node: PlatformNode) -> Self {
         Self { node }
+    }
+
+    fn map_error<'a>(&'a self) -> impl 'a + FnOnce(accesskit_atspi_common::Error) -> fdo::Error {
+        |error| crate::util::map_error_from_node(&self.node, error)
     }
 }
 
 #[dbus_interface(name = "org.a11y.atspi.Component")]
 impl ComponentInterface {
     fn contains(&self, x: i32, y: i32, coord_type: CoordType) -> fdo::Result<bool> {
-        self.node.contains(x, y, coord_type)
+        self.node
+            .contains(x, y, coord_type)
+            .map_err(self.map_error())
     }
 
     fn get_accessible_at_point(
@@ -33,23 +38,29 @@ impl ComponentInterface {
         y: i32,
         coord_type: CoordType,
     ) -> fdo::Result<(OwnedObjectAddress,)> {
-        let accessible = self.node.get_accessible_at_point(x, y, coord_type)?;
+        let accessible = self
+            .node
+            .get_accessible_at_point(x, y, coord_type)
+            .map_err(self.map_error())?
+            .map(|node| ObjectId::from(&node));
         super::object_address(hdr.destination()?, accessible)
     }
 
     fn get_extents(&self, coord_type: CoordType) -> fdo::Result<(Rect,)> {
-        self.node.get_extents(coord_type)
+        self.node.get_extents(coord_type).map_err(self.map_error())
     }
 
     fn get_layer(&self) -> fdo::Result<Layer> {
-        self.node.get_layer()
+        self.node.get_layer().map_err(self.map_error())
     }
 
     fn grab_focus(&self) -> fdo::Result<bool> {
-        self.node.grab_focus()
+        self.node.grab_focus().map_err(self.map_error())
     }
 
     fn scroll_to_point(&self, coord_type: CoordType, x: i32, y: i32) -> fdo::Result<bool> {
-        self.node.scroll_to_point(coord_type, x, y)
+        self.node
+            .scroll_to_point(coord_type, x, y)
+            .map_err(self.map_error())
     }
 }

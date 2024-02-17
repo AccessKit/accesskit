@@ -3,46 +3,51 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::{
-    atspi::{ObjectId, OwnedObjectAddress},
-    PlatformNode, PlatformRootNode,
-};
+use accesskit_atspi_common::{PlatformNode, PlatformRoot};
 use atspi::{Interface, InterfaceSet, Role, StateSet};
 use zbus::{fdo, names::OwnedUniqueName, MessageHeader};
 
-pub(crate) struct AccessibleInterface<T> {
+use super::map_root_error;
+use crate::atspi::{ObjectId, OwnedObjectAddress};
+
+pub(crate) struct NodeAccessibleInterface {
     bus_name: OwnedUniqueName,
-    node: T,
+    node: PlatformNode,
 }
 
-impl<T> AccessibleInterface<T> {
-    pub fn new(bus_name: OwnedUniqueName, node: T) -> Self {
+impl NodeAccessibleInterface {
+    pub fn new(bus_name: OwnedUniqueName, node: PlatformNode) -> Self {
         Self { bus_name, node }
+    }
+
+    fn map_error<'a>(&'a self) -> impl 'a + FnOnce(accesskit_atspi_common::Error) -> fdo::Error {
+        |error| crate::util::map_error_from_node(&self.node, error)
     }
 }
 
 #[dbus_interface(name = "org.a11y.atspi.Accessible")]
-impl AccessibleInterface<PlatformNode> {
+impl NodeAccessibleInterface {
     #[dbus_interface(property)]
     fn name(&self) -> fdo::Result<String> {
-        self.node.name()
+        self.node.name().map_err(self.map_error())
     }
 
     #[dbus_interface(property)]
     fn description(&self) -> fdo::Result<String> {
-        self.node.description()
+        self.node.description().map_err(self.map_error())
     }
 
     #[dbus_interface(property)]
     fn parent(&self) -> fdo::Result<OwnedObjectAddress> {
         self.node
             .parent()
-            .map(|parent| parent.to_address(self.bus_name.clone()))
+            .map_err(self.map_error())
+            .map(|parent| ObjectId::from(&parent).to_address(self.bus_name.clone()))
     }
 
     #[dbus_interface(property)]
     fn child_count(&self) -> fdo::Result<i32> {
-        self.node.child_count()
+        self.node.child_count().map_err(self.map_error())
     }
 
     #[dbus_interface(property)]
@@ -52,7 +57,7 @@ impl AccessibleInterface<PlatformNode> {
 
     #[dbus_interface(property)]
     fn accessible_id(&self) -> ObjectId {
-        self.node.accessible_id()
+        ObjectId::from(&self.node)
     }
 
     fn get_child_at_index(
@@ -63,32 +68,38 @@ impl AccessibleInterface<PlatformNode> {
         let index = index
             .try_into()
             .map_err(|_| fdo::Error::InvalidArgs("Index can't be negative.".into()))?;
-        super::object_address(hdr.destination()?, self.node.child_at_index(index)?)
+        let child = self
+            .node
+            .child_at_index(index)
+            .map_err(self.map_error())?
+            .map(|child| ObjectId::from(&child));
+        super::object_address(hdr.destination()?, child)
     }
 
     fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
         Ok(self
             .node
-            .children()?
+            .children()
+            .map_err(self.map_error())?
             .into_iter()
-            .map(|child| child.to_address(self.bus_name.clone()))
+            .map(|child| ObjectId::from(&child).to_address(self.bus_name.clone()))
             .collect())
     }
 
     fn get_index_in_parent(&self) -> fdo::Result<i32> {
-        self.node.index_in_parent()
+        self.node.index_in_parent().map_err(self.map_error())
     }
 
     fn get_role(&self) -> fdo::Result<Role> {
-        self.node.role()
+        self.node.role().map_err(self.map_error())
     }
 
     fn get_localized_role_name(&self) -> fdo::Result<String> {
-        self.node.localized_role_name()
+        self.node.localized_role_name().map_err(self.map_error())
     }
 
     fn get_state(&self) -> fdo::Result<StateSet> {
-        self.node.state()
+        self.node.state().map_err(self.map_error())
     }
 
     fn get_application(
@@ -99,15 +110,35 @@ impl AccessibleInterface<PlatformNode> {
     }
 
     fn get_interfaces(&self) -> fdo::Result<InterfaceSet> {
-        self.node.interfaces()
+        self.node.interfaces().map_err(self.map_error())
+    }
+}
+
+pub(crate) struct RootAccessibleInterface {
+    bus_name: OwnedUniqueName,
+    desktop_address: OwnedObjectAddress,
+    root: PlatformRoot,
+}
+
+impl RootAccessibleInterface {
+    pub fn new(
+        bus_name: OwnedUniqueName,
+        desktop_address: OwnedObjectAddress,
+        root: PlatformRoot,
+    ) -> Self {
+        Self {
+            bus_name,
+            desktop_address,
+            root,
+        }
     }
 }
 
 #[dbus_interface(name = "org.a11y.atspi.Accessible")]
-impl AccessibleInterface<PlatformRootNode> {
+impl RootAccessibleInterface {
     #[dbus_interface(property)]
     fn name(&self) -> fdo::Result<String> {
-        self.node.name()
+        self.root.name().map_err(map_root_error)
     }
 
     #[dbus_interface(property)]
@@ -116,16 +147,13 @@ impl AccessibleInterface<PlatformRootNode> {
     }
 
     #[dbus_interface(property)]
-    fn parent(&self) -> fdo::Result<OwnedObjectAddress> {
-        Ok(self
-            .node
-            .parent()?
-            .unwrap_or_else(|| OwnedObjectAddress::null(self.bus_name.clone())))
+    fn parent(&self) -> OwnedObjectAddress {
+        self.desktop_address.clone()
     }
 
     #[dbus_interface(property)]
     fn child_count(&self) -> fdo::Result<i32> {
-        self.node.child_count()
+        self.root.child_count().map_err(map_root_error)
     }
 
     #[dbus_interface(property)]
@@ -135,7 +163,7 @@ impl AccessibleInterface<PlatformRootNode> {
 
     #[dbus_interface(property)]
     fn accessible_id(&self) -> ObjectId {
-        self.node.accessible_id()
+        ObjectId::Root
     }
 
     fn get_child_at_index(
@@ -146,16 +174,21 @@ impl AccessibleInterface<PlatformRootNode> {
         let index = index
             .try_into()
             .map_err(|_| fdo::Error::InvalidArgs("Index can't be negative.".into()))?;
-        let child = self.node.child_at_index(index)?;
+        let child = self
+            .root
+            .child_at_index(index)
+            .map_err(map_root_error)?
+            .map(|child| ObjectId::from(&child));
         super::object_address(hdr.destination()?, child)
     }
 
     fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
         let children = self
-            .node
-            .children()?
+            .root
+            .children()
+            .map_err(map_root_error)?
             .drain(..)
-            .map(|child| child.to_address(self.bus_name.clone()))
+            .map(|child| ObjectId::from(&child).to_address(self.bus_name.clone()))
             .collect();
         Ok(children)
     }

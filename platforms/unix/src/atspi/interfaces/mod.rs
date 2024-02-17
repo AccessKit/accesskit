@@ -7,7 +7,6 @@ mod accessible;
 mod action;
 mod application;
 mod component;
-mod events;
 mod value;
 
 use crate::atspi::{ObjectId, OwnedObjectAddress};
@@ -15,6 +14,10 @@ use zbus::{
     fdo,
     names::{BusName, OwnedUniqueName, UniqueName},
 };
+
+fn map_root_error(error: accesskit_atspi_common::Error) -> fdo::Error {
+    crate::util::map_error(ObjectId::Root, error)
+}
 
 fn object_address(
     destination: Option<&BusName>,
@@ -35,5 +38,4 @@ pub(crate) use accessible::*;
 pub(crate) use action::*;
 pub(crate) use application::*;
 pub(crate) use component::*;
-pub(crate) use events::*;
 pub(crate) use value::*;

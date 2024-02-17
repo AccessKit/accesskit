@@ -3,21 +3,23 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::PlatformRootNode;
+use accesskit_atspi_common::PlatformRoot;
 use zbus::fdo;
 
-pub(crate) struct ApplicationInterface(pub PlatformRootNode);
+use super::map_root_error;
+
+pub(crate) struct ApplicationInterface(pub PlatformRoot);
 
 #[dbus_interface(name = "org.a11y.atspi.Application")]
 impl ApplicationInterface {
     #[dbus_interface(property)]
     fn toolkit_name(&self) -> fdo::Result<String> {
-        self.0.toolkit_name()
+        self.0.toolkit_name().map_err(map_root_error)
     }
 
     #[dbus_interface(property)]
     fn version(&self) -> fdo::Result<String> {
-        self.0.toolkit_version()
+        self.0.toolkit_version().map_err(map_root_error)
     }
 
     #[dbus_interface(property)]
@@ -27,11 +29,11 @@ impl ApplicationInterface {
 
     #[dbus_interface(property)]
     fn id(&self) -> fdo::Result<i32> {
-        self.0.id()
+        self.0.id().map_err(map_root_error)
     }
 
     #[dbus_interface(property)]
     fn set_id(&mut self, id: i32) -> fdo::Result<()> {
-        self.0.set_id(id)
+        self.0.set_id(id).map_err(map_root_error)
     }
 }

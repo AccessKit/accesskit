@@ -3,16 +3,15 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, ActionRequest};
-use accesskit_consumer::Tree;
+use accesskit_atspi_common::{AppContext, Event};
 #[cfg(not(feature = "tokio"))]
 use async_channel::{Receiver, Sender};
 use atspi::proxy::bus::StatusProxy;
 #[cfg(not(feature = "tokio"))]
 use futures_util::{pin_mut as pin, select, StreamExt};
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use std::{
-    sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak},
+    sync::{Arc, RwLock},
     thread,
 };
 #[cfg(feature = "tokio")]
@@ -26,66 +25,21 @@ use zbus::{Connection, ConnectionBuilder};
 
 use crate::{
     adapter::{LazyAdapter, Message},
-    atspi::{interfaces::Event, map_or_ignoring_broken_pipe, Bus, OwnedObjectAddress},
+    atspi::{map_or_ignoring_broken_pipe, Bus},
     executor::Executor,
-    util::{block_on, WindowBounds},
+    util::block_on,
 };
 
-pub(crate) struct Context {
-    pub(crate) tree: RwLock<Tree>,
-    pub(crate) action_handler: Mutex<Box<dyn ActionHandler + Send>>,
-    pub(crate) root_window_bounds: RwLock<WindowBounds>,
-}
-
-impl Context {
-    pub(crate) fn new(
-        tree: Tree,
-        action_handler: Box<dyn ActionHandler + Send>,
-        root_window_bounds: WindowBounds,
-    ) -> Arc<Self> {
-        Arc::new(Self {
-            tree: RwLock::new(tree),
-            action_handler: Mutex::new(action_handler),
-            root_window_bounds: RwLock::new(root_window_bounds),
-        })
-    }
-
-    pub(crate) fn read_tree(&self) -> RwLockReadGuard<'_, Tree> {
-        self.tree.read().unwrap()
-    }
-
-    pub(crate) fn read_root_window_bounds(&self) -> RwLockReadGuard<'_, WindowBounds> {
-        self.root_window_bounds.read().unwrap()
-    }
-
-    pub fn do_action(&self, request: ActionRequest) {
-        self.action_handler.lock().unwrap().do_action(request);
-    }
-}
-
-pub(crate) struct AdapterAndContext(usize, Weak<Context>);
-
-impl AdapterAndContext {
-    pub(crate) fn upgrade(&self) -> Option<(usize, Arc<Context>)> {
-        self.1.upgrade().map(|context| (self.0, context))
-    }
-}
-
 static APP_CONTEXT: OnceCell<Arc<RwLock<AppContext>>> = OnceCell::new();
+static MESSAGES: OnceCell<Sender<Message>> = OnceCell::new();
 
-pub(crate) struct AppContext {
-    pub(crate) messages: Sender<Message>,
-    pub(crate) name: Option<String>,
-    pub(crate) toolkit_name: Option<String>,
-    pub(crate) toolkit_version: Option<String>,
-    pub(crate) id: Option<i32>,
-    pub(crate) desktop_address: Option<OwnedObjectAddress>,
-    pub(crate) adapters: Vec<AdapterAndContext>,
+pub(crate) fn get_or_init_app_context<'a>() -> &'a Arc<RwLock<AppContext>> {
+    APP_CONTEXT.get_or_init(AppContext::new)
 }
 
-impl AppContext {
-    fn get_or_init<'a>() -> &'a Arc<RwLock<Self>> {
-        APP_CONTEXT.get_or_init(|| {
+pub(crate) fn get_or_init_messages() -> Sender<Message> {
+    MESSAGES
+        .get_or_init(|| {
             #[cfg(not(feature = "tokio"))]
             let (tx, rx) = async_channel::unbounded();
             #[cfg(feature = "tokio")]
@@ -103,40 +57,9 @@ impl AppContext {
                 }))
             });
 
-            Arc::new(RwLock::new(Self {
-                messages: tx,
-                name: None,
-                toolkit_name: None,
-                toolkit_version: None,
-                id: None,
-                desktop_address: None,
-                adapters: Vec::new(),
-            }))
+            tx
         })
-    }
-
-    pub(crate) fn read<'a>() -> RwLockReadGuard<'a, AppContext> {
-        AppContext::get_or_init().read().unwrap()
-    }
-
-    pub(crate) fn write<'a>() -> RwLockWriteGuard<'a, AppContext> {
-        AppContext::get_or_init().write().unwrap()
-    }
-
-    pub(crate) fn adapter_index(&self, id: usize) -> Result<usize, usize> {
-        self.adapters.binary_search_by(|adapter| adapter.0.cmp(&id))
-    }
-
-    pub(crate) fn push_adapter(&mut self, id: usize, context: &Arc<Context>) {
-        self.adapters
-            .push(AdapterAndContext(id, Arc::downgrade(context)));
-    }
-
-    pub(crate) fn remove_adapter(&mut self, id: usize) {
-        if let Ok(index) = self.adapter_index(id) {
-            self.adapters.remove(index);
-        }
-    }
+        .clone()
 }
 
 async fn run_event_loop(
@@ -178,7 +101,7 @@ async fn run_event_loop(
                 }
                 if atspi_bus.is_some() {
                     for (_, adapter) in &adapters {
-                        adapter.register_tree();
+                        Lazy::force(&*adapter);
                     }
                 }
             }
@@ -201,7 +124,7 @@ async fn process_adapter_message(
             adapters.push((id, adapter));
             if atspi_bus.is_some() {
                 let adapter = &adapters.last_mut().unwrap().1;
-                adapter.register_tree();
+                Lazy::force(&*adapter);
             }
         }
         Message::RemoveAdapter { id } => {
@@ -209,25 +132,14 @@ async fn process_adapter_message(
                 adapters.remove(index);
             }
         }
-        Message::RegisterInterfaces {
-            adapter_id,
-            context,
-            node_id,
-            interfaces,
-        } => {
+        Message::RegisterInterfaces { node, interfaces } => {
             if let Some(bus) = atspi_bus {
-                bus.register_interfaces(adapter_id, context, node_id, interfaces)
-                    .await?
+                bus.register_interfaces(node, interfaces).await?
             }
         }
-        Message::UnregisterInterfaces {
-            adapter_id,
-            node_id,
-            interfaces,
-        } => {
+        Message::UnregisterInterfaces { node, interfaces } => {
             if let Some(bus) = atspi_bus {
-                bus.unregister_interfaces(adapter_id, node_id, interfaces)
-                    .await?
+                bus.unregister_interfaces(node, interfaces).await?
             }
         }
         Message::EmitEvent(Event::Object { target, event }) => {

@@ -8,61 +8,45 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use crate::{
-    adapter::AdapterImpl,
-    atspi::{
-        interfaces::{Action as AtspiAction, ObjectEvent, Property},
-        ObjectId, OwnedObjectAddress, Rect as AtspiRect,
-    },
-    context::{AdapterAndContext, AppContext, Context},
-    filters::{filter, filter_detached},
-    util::WindowBounds,
-};
 use accesskit::{
     Action, ActionData, ActionRequest, Affine, Checked, DefaultActionVerb, Live, NodeId, Point,
     Rect, Role,
 };
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
-use atspi::{
+use atspi_common::{
     CoordType, Interface, InterfaceSet, Layer, Live as AtspiLive, Role as AtspiRole, State,
     StateSet,
 };
 use std::{
     iter::FusedIterator,
-    sync::{Arc, RwLockReadGuard, Weak},
+    sync::{Arc, RwLock, RwLockReadGuard, Weak},
 };
-use zbus::fdo;
+
+use crate::{
+    adapter::Adapter,
+    context::{AdapterAndContext, AppContext, Context},
+    filters::{filter, filter_detached},
+    util::WindowBounds,
+    Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
+};
 
 pub(crate) enum NodeWrapper<'a> {
-    Node {
-        adapter: usize,
-        node: &'a Node<'a>,
-    },
-    DetachedNode {
-        adapter: usize,
-        node: &'a DetachedNode,
-    },
+    Node(&'a Node<'a>),
+    DetachedNode(&'a DetachedNode),
 }
 
 impl<'a> NodeWrapper<'a> {
     fn node_state(&self) -> &NodeState {
         match self {
-            Self::Node { node, .. } => node.state(),
-            Self::DetachedNode { node, .. } => node.state(),
-        }
-    }
-
-    fn adapter(&self) -> usize {
-        match self {
-            Self::Node { adapter, .. } => *adapter,
-            Self::DetachedNode { adapter, .. } => *adapter,
+            Self::Node(node) => node.state(),
+            Self::DetachedNode(node) => node.state(),
         }
     }
 
     pub fn name(&self) -> Option<String> {
         match self {
-            Self::Node { node, .. } => node.name(),
-            Self::DetachedNode { node, .. } => node.name(),
+            Self::Node(node) => node.name(),
+            Self::DetachedNode(node) => node.name(),
         }
     }
 
@@ -72,19 +56,6 @@ impl<'a> NodeWrapper<'a> {
 
     pub fn parent_id(&self) -> Option<NodeId> {
         self.node_state().parent_id()
-    }
-
-    pub fn filtered_parent(&self) -> ObjectId {
-        match self {
-            Self::Node { adapter, node } => node
-                .filtered_parent(&filter)
-                .map(|parent| ObjectId::Node {
-                    adapter: *adapter,
-                    node: parent.id(),
-                })
-                .unwrap_or(ObjectId::Root),
-            _ => unreachable!(),
-        }
     }
 
     pub fn id(&self) -> NodeId {
@@ -104,7 +75,7 @@ impl<'a> NodeWrapper<'a> {
         &self,
     ) -> impl DoubleEndedIterator<Item = NodeId> + FusedIterator<Item = NodeId> + '_ {
         match self {
-            Self::Node { node, .. } => node.filtered_children(&filter).map(|child| child.id()),
+            Self::Node(node) => node.filtered_children(&filter).map(|child| child.id()),
             _ => unreachable!(),
         }
     }
@@ -326,8 +297,8 @@ impl<'a> NodeWrapper<'a> {
 
     fn is_focused(&self) -> bool {
         match self {
-            Self::Node { node, .. } => node.is_focused(),
-            Self::DetachedNode { node, .. } => node.is_focused(),
+            Self::Node(node) => node.is_focused(),
+            Self::DetachedNode(node) => node.is_focused(),
         }
     }
 
@@ -343,8 +314,8 @@ impl<'a> NodeWrapper<'a> {
             atspi_state.insert(State::Focusable);
         }
         let filter_result = match self {
-            Self::Node { node, .. } => filter(node),
-            Self::DetachedNode { node, .. } => filter_detached(node),
+            Self::Node(node) => filter(node),
+            Self::DetachedNode(node) => filter_detached(node),
         };
         if filter_result == FilterResult::Include {
             atspi_state.insert(State::Visible | State::Showing);
@@ -398,8 +369,8 @@ impl<'a> NodeWrapper<'a> {
 
     fn is_root(&self) -> bool {
         match self {
-            Self::Node { node, .. } => node.is_root(),
-            Self::DetachedNode { node, .. } => node.is_root(),
+            Self::Node(node) => node.is_root(),
+            Self::DetachedNode(node) => node.is_root(),
         }
     }
 
@@ -420,8 +391,8 @@ impl<'a> NodeWrapper<'a> {
 
     pub(crate) fn live(&self) -> AtspiLive {
         let live = match self {
-            Self::Node { node, .. } => node.live(),
-            Self::DetachedNode { node, .. } => node.live(),
+            Self::Node(node) => node.live(),
+            Self::DetachedNode(node) => node.live(),
         };
         match live {
             Live::Off => AtspiLive::None,
@@ -466,7 +437,7 @@ impl<'a> NodeWrapper<'a> {
             return window_bounds.outer.into();
         }
         match self {
-            Self::Node { node, .. } => node.bounding_box().map_or_else(
+            Self::Node(node) => node.bounding_box().map_or_else(
                 || AtspiRect::INVALID,
                 |bounds| {
                     let window_top_left = window_bounds.inner.origin();
@@ -489,7 +460,7 @@ impl<'a> NodeWrapper<'a> {
     pub(crate) fn notify_changes(
         &self,
         window_bounds: &WindowBounds,
-        adapter: &AdapterImpl,
+        adapter: &Adapter,
         old: &NodeWrapper<'_>,
     ) {
         self.notify_state_changes(adapter, old);
@@ -498,83 +469,65 @@ impl<'a> NodeWrapper<'a> {
         self.notify_children_changes(adapter, old);
     }
 
-    fn notify_state_changes(&self, adapter: &AdapterImpl, old: &NodeWrapper<'_>) {
-        let adapter_id = self.adapter();
+    fn notify_state_changes(&self, adapter: &Adapter, old: &NodeWrapper<'_>) {
         let old_state = old.state(true);
         let new_state = self.state(true);
         let changed_states = old_state ^ new_state;
         for state in changed_states.iter() {
             adapter.emit_object_event(
-                ObjectId::Node {
-                    adapter: adapter_id,
-                    node: self.id(),
-                },
+                self.id(),
                 ObjectEvent::StateChanged(state, new_state.contains(state)),
             );
         }
     }
 
-    fn notify_property_changes(&self, adapter: &AdapterImpl, old: &NodeWrapper<'_>) {
-        let adapter_id = self.adapter();
+    fn notify_property_changes(&self, adapter: &Adapter, old: &NodeWrapper<'_>) {
         let name = self.name();
         if name != old.name() {
             let name = name.unwrap_or_default();
             adapter.emit_object_event(
-                ObjectId::Node {
-                    adapter: adapter_id,
-                    node: self.id(),
-                },
+                self.id(),
                 ObjectEvent::PropertyChanged(Property::Name(name.clone())),
             );
 
             let live = self.live();
             if live != AtspiLive::None {
-                adapter.emit_object_event(
-                    ObjectId::Node {
-                        adapter: adapter_id,
-                        node: self.id(),
-                    },
-                    ObjectEvent::Announcement(name, live),
-                );
+                adapter.emit_object_event(self.id(), ObjectEvent::Announcement(name, live));
             }
         }
         let description = self.description();
         if description != old.description() {
             adapter.emit_object_event(
-                ObjectId::Node {
-                    adapter: adapter_id,
-                    node: self.id(),
-                },
+                self.id(),
                 ObjectEvent::PropertyChanged(Property::Description(description)),
             );
         }
         let parent_id = self.parent_id();
         if parent_id != old.parent_id() {
+            let node = match self {
+                NodeWrapper::Node(node) => node,
+                _ => unreachable!(),
+            };
+            let parent = match node.filtered_parent(&filter) {
+                Some(parent) => PlatformNodeOrRoot::Node(adapter.platform_node(parent.id())),
+                None => PlatformNodeOrRoot::Root(adapter.platform_root()),
+            };
             adapter.emit_object_event(
-                ObjectId::Node {
-                    adapter: adapter_id,
-                    node: self.id(),
-                },
-                ObjectEvent::PropertyChanged(Property::Parent(self.filtered_parent())),
+                self.id(),
+                ObjectEvent::PropertyChanged(Property::Parent(parent)),
             );
         }
         let role = self.role();
         if role != old.role() {
             adapter.emit_object_event(
-                ObjectId::Node {
-                    adapter: adapter_id,
-                    node: self.id(),
-                },
+                self.id(),
                 ObjectEvent::PropertyChanged(Property::Role(role)),
             );
         }
         if let Some(value) = self.current_value() {
             if Some(value) != old.current_value() {
                 adapter.emit_object_event(
-                    ObjectId::Node {
-                        adapter: adapter_id,
-                        node: self.id(),
-                    },
+                    self.id(),
                     ObjectEvent::PropertyChanged(Property::Value(value)),
                 );
             }
@@ -584,253 +537,224 @@ impl<'a> NodeWrapper<'a> {
     fn notify_bounds_changes(
         &self,
         window_bounds: &WindowBounds,
-        adapter: &AdapterImpl,
+        adapter: &Adapter,
         old: &NodeWrapper<'_>,
     ) {
         if self.raw_bounds_and_transform() != old.raw_bounds_and_transform() {
             adapter.emit_object_event(
-                ObjectId::Node {
-                    adapter: self.adapter(),
-                    node: self.id(),
-                },
+                self.id(),
                 ObjectEvent::BoundsChanged(self.extents(window_bounds)),
             );
         }
     }
 
-    fn notify_children_changes(&self, adapter: &AdapterImpl, old: &NodeWrapper<'_>) {
-        let adapter_id = self.adapter();
+    fn notify_children_changes(&self, adapter: &Adapter, old: &NodeWrapper<'_>) {
         let old_children = old.child_ids().collect::<Vec<NodeId>>();
         let filtered_children = self.filtered_child_ids().collect::<Vec<NodeId>>();
         for (index, child) in filtered_children.iter().enumerate() {
             if !old_children.contains(child) {
                 adapter.emit_object_event(
-                    ObjectId::Node {
-                        adapter: adapter_id,
-                        node: self.id(),
-                    },
-                    ObjectEvent::ChildAdded(
-                        index,
-                        ObjectId::Node {
-                            adapter: adapter_id,
-                            node: *child,
-                        },
-                    ),
+                    self.id(),
+                    ObjectEvent::ChildAdded(index, adapter.platform_node(*child)),
                 );
             }
         }
         for child in old_children.into_iter() {
             if !filtered_children.contains(&child) {
                 adapter.emit_object_event(
-                    ObjectId::Node {
-                        adapter: adapter_id,
-                        node: self.id(),
-                    },
-                    ObjectEvent::ChildRemoved(ObjectId::Node {
-                        adapter: adapter_id,
-                        node: child,
-                    }),
+                    self.id(),
+                    ObjectEvent::ChildRemoved(adapter.platform_node(child)),
                 );
             }
         }
     }
 }
 
-pub(crate) fn unknown_object(id: &ObjectId) -> fdo::Error {
-    fdo::Error::UnknownObject(id.path().to_string())
-}
-
 #[derive(Clone)]
-pub(crate) struct PlatformNode {
+pub struct PlatformNode {
     context: Weak<Context>,
     adapter_id: usize,
-    node_id: NodeId,
+    id: NodeId,
 }
 
 impl PlatformNode {
-    pub(crate) fn new(context: Weak<Context>, adapter_id: usize, node_id: NodeId) -> Self {
+    pub(crate) fn new(context: &Arc<Context>, id: NodeId) -> Self {
         Self {
-            context,
-            adapter_id,
-            node_id,
+            context: Arc::downgrade(context),
+            adapter_id: context.adapter_id,
+            id,
         }
     }
 
-    fn node_wrapper<'a>(&self, node: &'a Node) -> NodeWrapper<'a> {
-        NodeWrapper::Node {
-            adapter: self.adapter_id,
-            node,
-        }
-    }
-
-    fn upgrade_context(&self) -> fdo::Result<Arc<Context>> {
+    fn upgrade_context(&self) -> Result<Arc<Context>> {
         if let Some(context) = self.context.upgrade() {
             Ok(context)
         } else {
-            Err(unknown_object(&self.accessible_id()))
+            Err(Error::Defunct)
         }
     }
 
-    fn with_tree_state_and_context<F, T>(&self, f: F) -> fdo::Result<T>
+    fn with_tree_state_and_context<F, T>(&self, f: F) -> Result<T>
     where
-        F: FnOnce(&TreeState, &Context) -> fdo::Result<T>,
+        F: FnOnce(&TreeState, &Context) -> Result<T>,
     {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
         f(tree.state(), &context)
     }
 
-    fn resolve_with_context<F, T>(&self, f: F) -> fdo::Result<T>
+    fn resolve_with_context<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &Context) -> fdo::Result<T>,
+        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
     {
         self.with_tree_state_and_context(|state, context| {
-            if let Some(node) = state.node_by_id(self.node_id) {
+            if let Some(node) = state.node_by_id(self.id) {
                 f(node, context)
             } else {
-                Err(unknown_object(&self.accessible_id()))
+                Err(Error::Defunct)
             }
         })
     }
 
-    fn resolve<F, T>(&self, f: F) -> fdo::Result<T>
+    fn resolve<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>) -> fdo::Result<T>,
+        for<'a> F: FnOnce(Node<'a>) -> Result<T>,
     {
         self.resolve_with_context(|node, _| f(node))
     }
 
-    fn do_action_internal<F>(&self, f: F) -> fdo::Result<()>
+    fn do_action_internal<F>(&self, f: F) -> Result<()>
     where
         F: FnOnce(&TreeState, &Context) -> ActionRequest,
     {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
-        if tree.state().has_node(self.node_id) {
+        if tree.state().has_node(self.id) {
             let request = f(tree.state(), &context);
             drop(tree);
             context.do_action(request);
             Ok(())
         } else {
-            Err(unknown_object(&self.accessible_id()))
+            Err(Error::Defunct)
         }
     }
 
-    pub fn name(&self) -> fdo::Result<String> {
+    pub fn name(&self) -> Result<String> {
         self.resolve(|node| {
-            let wrapper = self.node_wrapper(&node);
+            let wrapper = NodeWrapper::Node(&node);
             Ok(wrapper.name().unwrap_or_default())
         })
     }
 
-    pub fn description(&self) -> fdo::Result<String> {
+    pub fn description(&self) -> Result<String> {
         self.resolve(|node| {
-            let wrapper = self.node_wrapper(&node);
+            let wrapper = NodeWrapper::Node(&node);
             Ok(wrapper.description())
         })
     }
 
-    pub fn parent(&self) -> fdo::Result<ObjectId> {
-        self.resolve(|node| {
-            Ok(node
-                .filtered_parent(&filter)
-                .map(|parent| ObjectId::Node {
-                    adapter: self.adapter_id,
-                    node: parent.id(),
-                })
-                .unwrap_or(ObjectId::Root))
-        })
-    }
-
-    pub fn child_count(&self) -> fdo::Result<i32> {
-        self.resolve(|node| {
-            i32::try_from(node.filtered_children(&filter).count())
-                .map_err(|_| fdo::Error::Failed("Too many children.".into()))
-        })
-    }
-
-    pub fn accessible_id(&self) -> ObjectId {
-        ObjectId::Node {
-            adapter: self.adapter_id,
-            node: self.node_id,
+    fn relative(&self, id: NodeId) -> Self {
+        Self {
+            context: self.context.clone(),
+            adapter_id: self.adapter_id,
+            id,
         }
     }
 
-    pub fn child_at_index(&self, index: usize) -> fdo::Result<Option<ObjectId>> {
+    pub fn parent(&self) -> Result<PlatformNodeOrRoot> {
+        self.resolve_with_context(|node, context| {
+            let parent = match node.filtered_parent(&filter) {
+                Some(parent) => PlatformNodeOrRoot::Node(self.relative(parent.id())),
+                None => PlatformNodeOrRoot::Root(PlatformRoot::new(&context.app_context)),
+            };
+            Ok(parent)
+        })
+    }
+
+    pub fn child_count(&self) -> Result<i32> {
+        self.resolve(|node| {
+            i32::try_from(node.filtered_children(&filter).count())
+                .map_err(|_| Error::TooManyChildren)
+        })
+    }
+
+    pub fn adapter_id(&self) -> usize {
+        self.adapter_id
+    }
+
+    pub fn id(&self) -> NodeId {
+        self.id
+    }
+
+    pub fn child_at_index(&self, index: usize) -> Result<Option<Self>> {
         self.resolve(|node| {
             let child = node
                 .filtered_children(&filter)
                 .nth(index)
-                .map(|child| ObjectId::Node {
-                    adapter: self.adapter_id,
-                    node: child.id(),
-                });
+                .map(|child| self.relative(child.id()));
             Ok(child)
         })
     }
 
-    pub fn children(&self) -> fdo::Result<Vec<ObjectId>> {
+    pub fn children(&self) -> Result<Vec<Self>> {
         self.resolve(|node| {
             let children = node
                 .filtered_children(&filter)
-                .map(|child| ObjectId::Node {
-                    adapter: self.adapter_id,
-                    node: child.id(),
-                })
+                .map(|child| self.relative(child.id()))
                 .collect();
             Ok(children)
         })
     }
 
-    pub fn index_in_parent(&self) -> fdo::Result<i32> {
+    pub fn index_in_parent(&self) -> Result<i32> {
         self.resolve(|node| {
             i32::try_from(node.preceding_filtered_siblings(&filter).count())
-                .map_err(|_| fdo::Error::Failed("Index is too big.".into()))
+                .map_err(|_| Error::IndexOutOfRange)
         })
     }
 
-    pub fn role(&self) -> fdo::Result<AtspiRole> {
+    pub fn role(&self) -> Result<AtspiRole> {
         self.resolve(|node| {
-            let wrapper = self.node_wrapper(&node);
+            let wrapper = NodeWrapper::Node(&node);
             Ok(wrapper.role())
         })
     }
 
-    pub(crate) fn localized_role_name(&self) -> fdo::Result<String> {
+    pub fn localized_role_name(&self) -> Result<String> {
         self.resolve(|node| Ok(node.state().role_description().unwrap_or_default()))
     }
 
-    pub fn state(&self) -> fdo::Result<StateSet> {
+    pub fn state(&self) -> Result<StateSet> {
         self.resolve_with_context(|node, context| {
-            let wrapper = self.node_wrapper(&node);
+            let wrapper = NodeWrapper::Node(&node);
             Ok(wrapper.state(context.read_tree().state().focus_id().is_some()))
         })
     }
 
-    pub fn interfaces(&self) -> fdo::Result<InterfaceSet> {
+    pub fn interfaces(&self) -> Result<InterfaceSet> {
         self.resolve(|node| {
-            let wrapper = self.node_wrapper(&node);
+            let wrapper = NodeWrapper::Node(&node);
             Ok(wrapper.interfaces())
         })
     }
 
-    pub fn n_actions(&self) -> fdo::Result<i32> {
+    pub fn n_actions(&self) -> Result<i32> {
         self.resolve(|node| {
-            let wrapper = self.node_wrapper(&node);
+            let wrapper = NodeWrapper::Node(&node);
             Ok(wrapper.n_actions())
         })
     }
 
-    pub fn get_action_name(&self, index: i32) -> fdo::Result<String> {
+    pub fn get_action_name(&self, index: i32) -> Result<String> {
         self.resolve(|node| {
-            let wrapper = self.node_wrapper(&node);
+            let wrapper = NodeWrapper::Node(&node);
             Ok(wrapper.get_action_name(index))
         })
     }
 
-    pub fn get_actions(&self) -> fdo::Result<Vec<AtspiAction>> {
+    pub fn get_actions(&self) -> Result<Vec<AtspiAction>> {
         self.resolve(|node| {
-            let wrapper = self.node_wrapper(&node);
+            let wrapper = NodeWrapper::Node(&node);
             let n_actions = wrapper.n_actions() as usize;
             let mut actions = Vec::with_capacity(n_actions);
             for i in 0..n_actions {
@@ -844,19 +768,19 @@ impl PlatformNode {
         })
     }
 
-    pub fn do_action(&self, index: i32) -> fdo::Result<bool> {
+    pub fn do_action(&self, index: i32) -> Result<bool> {
         if index != 0 {
             return Ok(false);
         }
         self.do_action_internal(|_, _| ActionRequest {
             action: Action::Default,
-            target: self.node_id,
+            target: self.id,
             data: None,
         })?;
         Ok(true)
     }
 
-    pub fn contains(&self, x: i32, y: i32, coord_type: CoordType) -> fdo::Result<bool> {
+    pub fn contains(&self, x: i32, y: i32, coord_type: CoordType) -> Result<bool> {
         self.resolve_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
             let bounds = match node.bounding_box() {
@@ -874,7 +798,7 @@ impl PlatformNode {
                         _ => unimplemented!(),
                     }
                 }
-                _ => return Err(unknown_object(&self.accessible_id())),
+                _ => return Err(Error::Defunct),
             };
             Ok(bounds.contains(Point::new(x.into(), y.into())))
         })
@@ -885,7 +809,7 @@ impl PlatformNode {
         x: i32,
         y: i32,
         coord_type: CoordType,
-    ) -> fdo::Result<Option<ObjectId>> {
+    ) -> Result<Option<Self>> {
         self.resolve_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
             let top_left = window_bounds.top_left(coord_type, node.is_root());
@@ -893,14 +817,11 @@ impl PlatformNode {
             let point = node.transform().inverse() * point;
             Ok(node
                 .node_at_point(point, &filter)
-                .map(|node| ObjectId::Node {
-                    adapter: self.adapter_id,
-                    node: node.id(),
-                }))
+                .map(|node| self.relative(node.id())))
         })
     }
 
-    pub fn get_extents(&self, coord_type: CoordType) -> fdo::Result<(AtspiRect,)> {
+    pub fn get_extents(&self, coord_type: CoordType) -> Result<(AtspiRect,)> {
         self.resolve_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
             match node.bounding_box() {
@@ -918,14 +839,14 @@ impl PlatformNode {
                         _ => unimplemented!(),
                     },))
                 }
-                _ => Err(unknown_object(&self.accessible_id())),
+                _ => Err(Error::Defunct),
             }
         })
     }
 
-    pub fn get_layer(&self) -> fdo::Result<Layer> {
+    pub fn get_layer(&self) -> Result<Layer> {
         self.resolve(|node| {
-            let wrapper = self.node_wrapper(&node);
+            let wrapper = NodeWrapper::Node(&node);
             if wrapper.role() == AtspiRole::Window {
                 Ok(Layer::Window)
             } else {
@@ -934,137 +855,144 @@ impl PlatformNode {
         })
     }
 
-    pub fn grab_focus(&self) -> fdo::Result<bool> {
+    pub fn grab_focus(&self) -> Result<bool> {
         self.do_action_internal(|_, _| ActionRequest {
             action: Action::Focus,
-            target: self.node_id,
+            target: self.id,
             data: None,
         })?;
         Ok(true)
     }
 
-    pub fn scroll_to_point(&self, coord_type: CoordType, x: i32, y: i32) -> fdo::Result<bool> {
+    pub fn scroll_to_point(&self, coord_type: CoordType, x: i32, y: i32) -> Result<bool> {
         self.do_action_internal(|tree_state, context| {
             let window_bounds = context.read_root_window_bounds();
-            let is_root = self.node_id == tree_state.root_id();
+            let is_root = self.id == tree_state.root_id();
             let top_left = window_bounds.top_left(coord_type, is_root);
             let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
             ActionRequest {
                 action: Action::ScrollToPoint,
-                target: self.node_id,
+                target: self.id,
                 data: Some(ActionData::ScrollToPoint(point)),
             }
         })?;
         Ok(true)
     }
 
-    pub fn minimum_value(&self) -> fdo::Result<f64> {
+    pub fn minimum_value(&self) -> Result<f64> {
         self.resolve(|node| Ok(node.state().min_numeric_value().unwrap_or(std::f64::MIN)))
     }
 
-    pub fn maximum_value(&self) -> fdo::Result<f64> {
+    pub fn maximum_value(&self) -> Result<f64> {
         self.resolve(|node| Ok(node.state().max_numeric_value().unwrap_or(std::f64::MAX)))
     }
 
-    pub fn minimum_increment(&self) -> fdo::Result<f64> {
+    pub fn minimum_increment(&self) -> Result<f64> {
         self.resolve(|node| Ok(node.state().numeric_value_step().unwrap_or(0.0)))
     }
 
-    pub fn current_value(&self) -> fdo::Result<f64> {
+    pub fn current_value(&self) -> Result<f64> {
         self.resolve(|node| {
-            let wrapper = self.node_wrapper(&node);
+            let wrapper = NodeWrapper::Node(&node);
             Ok(wrapper.current_value().unwrap_or(0.0))
         })
     }
 
-    pub fn set_current_value(&self, value: f64) -> fdo::Result<()> {
+    pub fn set_current_value(&self, value: f64) -> Result<()> {
         self.do_action_internal(|_, _| ActionRequest {
             action: Action::SetValue,
-            target: self.node_id,
+            target: self.id,
             data: Some(ActionData::NumericValue(value)),
         })
     }
 }
 
 #[derive(Clone)]
-pub(crate) struct PlatformRootNode;
+pub struct PlatformRoot {
+    app_context: Weak<RwLock<AppContext>>,
+}
 
-impl PlatformRootNode {
-    pub(crate) fn new() -> Self {
-        Self {}
+impl PlatformRoot {
+    pub fn new(app_context: &Arc<RwLock<AppContext>>) -> Self {
+        Self {
+            app_context: Arc::downgrade(app_context),
+        }
     }
 
-    fn resolve_app_context<F, T>(&self, f: F) -> fdo::Result<T>
+    fn resolve_app_context<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(RwLockReadGuard<'a, AppContext>) -> fdo::Result<T>,
+        for<'a> F: FnOnce(RwLockReadGuard<'a, AppContext>) -> Result<T>,
     {
-        let app_context = AppContext::read();
+        let app_context = match self.app_context.upgrade() {
+            Some(context) => context,
+            None => return Err(Error::Defunct),
+        };
+        let app_context = app_context.read().unwrap();
         f(app_context)
     }
 
-    pub(crate) fn name(&self) -> fdo::Result<String> {
+    pub fn name(&self) -> Result<String> {
         self.resolve_app_context(|context| Ok(context.name.clone().unwrap_or_default()))
     }
 
-    pub(crate) fn parent(&self) -> fdo::Result<Option<OwnedObjectAddress>> {
-        self.resolve_app_context(|context| Ok(context.desktop_address.clone()))
-    }
-
-    pub(crate) fn child_count(&self) -> fdo::Result<i32> {
+    pub fn child_count(&self) -> Result<i32> {
         self.resolve_app_context(|context| {
-            i32::try_from(context.adapters.len())
-                .map_err(|_| fdo::Error::Failed("Too many children.".into()))
+            i32::try_from(context.adapters.len()).map_err(|_| Error::TooManyChildren)
         })
     }
 
-    pub(crate) fn accessible_id(&self) -> ObjectId {
-        ObjectId::Root
-    }
-
-    pub(crate) fn child_at_index(&self, index: usize) -> fdo::Result<Option<ObjectId>> {
+    pub fn child_at_index(&self, index: usize) -> Result<Option<PlatformNode>> {
         self.resolve_app_context(|context| {
             let child = context
                 .adapters
                 .get(index)
                 .and_then(AdapterAndContext::upgrade)
-                .map(|(adapter, context)| ObjectId::Node {
-                    adapter,
-                    node: context.read_tree().state().root_id(),
+                .map(|(_, context)| {
+                    PlatformNode::new(&context, context.read_tree().state().root_id())
                 });
             Ok(child)
         })
     }
 
-    pub(crate) fn children(&self) -> fdo::Result<Vec<ObjectId>> {
+    pub fn children(&self) -> Result<Vec<PlatformNode>> {
         self.resolve_app_context(|context| {
             let children = context
                 .adapters
                 .iter()
                 .filter_map(AdapterAndContext::upgrade)
-                .map(|(adapter, context)| ObjectId::Node {
-                    adapter,
-                    node: context.read_tree().state().root_id(),
+                .map(|(_, context)| {
+                    PlatformNode::new(&context, context.read_tree().state().root_id())
                 })
                 .collect();
             Ok(children)
         })
     }
 
-    pub(crate) fn toolkit_name(&self) -> fdo::Result<String> {
+    pub fn toolkit_name(&self) -> Result<String> {
         self.resolve_app_context(|context| Ok(context.toolkit_name.clone().unwrap_or_default()))
     }
 
-    pub(crate) fn toolkit_version(&self) -> fdo::Result<String> {
+    pub fn toolkit_version(&self) -> Result<String> {
         self.resolve_app_context(|context| Ok(context.toolkit_version.clone().unwrap_or_default()))
     }
 
-    pub(crate) fn id(&self) -> fdo::Result<i32> {
+    pub fn id(&self) -> Result<i32> {
         self.resolve_app_context(|context| Ok(context.id.unwrap_or(-1)))
     }
 
-    pub(crate) fn set_id(&mut self, id: i32) -> fdo::Result<()> {
-        let mut app_context = AppContext::write();
+    pub fn set_id(&mut self, id: i32) -> Result<()> {
+        let app_context = match self.app_context.upgrade() {
+            Some(context) => context,
+            None => return Err(Error::Defunct),
+        };
+        let mut app_context = app_context.write().unwrap();
         app_context.id = Some(id);
         Ok(())
     }
+}
+
+#[derive(Clone)]
+pub enum PlatformNodeOrRoot {
+    Node(PlatformNode),
+    Root(PlatformRoot),
 }

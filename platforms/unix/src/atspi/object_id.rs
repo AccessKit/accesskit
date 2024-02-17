@@ -5,6 +5,7 @@
 
 use crate::atspi::OwnedObjectAddress;
 use accesskit::NodeId;
+use accesskit_atspi_common::{PlatformNode, PlatformNodeOrRoot};
 use serde::{Serialize, Serializer};
 use zbus::{
     names::OwnedUniqueName,
@@ -63,5 +64,23 @@ impl From<ObjectId> for Structure<'_> {
                 ObjectId::Node { node, .. } => node.0.to_string(),
             })
             .build()
+    }
+}
+
+impl From<&PlatformNode> for ObjectId {
+    fn from(node: &PlatformNode) -> Self {
+        Self::Node {
+            adapter: node.adapter_id(),
+            node: node.id(),
+        }
+    }
+}
+
+impl From<&PlatformNodeOrRoot> for ObjectId {
+    fn from(node_or_root: &PlatformNodeOrRoot) -> Self {
+        match node_or_root {
+            PlatformNodeOrRoot::Node(node) => Self::from(node),
+            PlatformNodeOrRoot::Root(_) => Self::Root,
+        }
     }
 }
