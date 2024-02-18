@@ -8,6 +8,7 @@ use crate::{
     context::get_or_init_app_context,
     executor::{Executor, Task},
 };
+use accesskit::NodeId;
 use accesskit_atspi_common::{
     ObjectEvent, PlatformNode, PlatformNodeOrRoot, PlatformRoot, Property, WindowEvent,
 };
@@ -140,10 +141,15 @@ impl Bus {
 
     pub(crate) async fn unregister_interfaces(
         &self,
-        node: PlatformNode,
+        adapter_id: usize,
+        node_id: NodeId,
         old_interfaces: InterfaceSet,
     ) -> zbus::Result<()> {
-        let path = ObjectId::from(&node).path();
+        let path = ObjectId::Node {
+            adapter: adapter_id,
+            node: node_id,
+        }
+        .path();
         if old_interfaces.contains(Interface::Accessible) {
             self.unregister_interface::<NodeAccessibleInterface>(&path)
                 .await?;

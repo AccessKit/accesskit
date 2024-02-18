@@ -202,10 +202,9 @@ impl Adapter {
     }
 
     fn unregister_interfaces(&self, id: NodeId, old_interfaces: InterfaceSet) {
-        let node = self.platform_node(id);
         self.context
             .callback()
-            .unregister_interfaces(node, old_interfaces);
+            .unregister_interfaces(self, id, old_interfaces);
     }
 
     pub(crate) fn emit_object_event(&self, target: NodeId, event: ObjectEvent) {
@@ -268,6 +267,10 @@ impl Adapter {
     fn window_destroyed(&self, window: NodeId) {
         let window = self.platform_node(window);
         self.emit_root_object_event(ObjectEvent::ChildRemoved(window));
+    }
+
+    pub fn id(&self) -> usize {
+        self.context.adapter_id
     }
 }
 

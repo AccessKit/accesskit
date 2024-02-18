@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, Rect, TreeUpdate};
+use accesskit::{ActionHandler, NodeId, Rect, TreeUpdate};
 use accesskit_atspi_common::{
     Adapter as AdapterImpl, AdapterCallback, Event, PlatformNode, WindowBounds,
 };
@@ -38,8 +38,17 @@ impl AdapterCallback for Callback {
         self.send_message(Message::RegisterInterfaces { node, interfaces });
     }
 
-    fn unregister_interfaces(&mut self, node: PlatformNode, interfaces: InterfaceSet) {
-        self.send_message(Message::UnregisterInterfaces { node, interfaces });
+    fn unregister_interfaces(
+        &mut self,
+        adapter: &AdapterImpl,
+        id: NodeId,
+        interfaces: InterfaceSet,
+    ) {
+        self.send_message(Message::UnregisterInterfaces {
+            adapter_id: adapter.id(),
+            node_id: id,
+            interfaces,
+        })
     }
 
     fn emit_event(&mut self, event: Event) {
@@ -152,7 +161,8 @@ pub(crate) enum Message {
         interfaces: InterfaceSet,
     },
     UnregisterInterfaces {
-        node: PlatformNode,
+        adapter_id: usize,
+        node_id: NodeId,
         interfaces: InterfaceSet,
     },
     EmitEvent(Event),

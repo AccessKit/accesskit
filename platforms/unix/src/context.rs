@@ -137,9 +137,14 @@ async fn process_adapter_message(
                 bus.register_interfaces(node, interfaces).await?
             }
         }
-        Message::UnregisterInterfaces { node, interfaces } => {
+        Message::UnregisterInterfaces {
+            adapter_id,
+            node_id,
+            interfaces,
+        } => {
             if let Some(bus) = atspi_bus {
-                bus.unregister_interfaces(node, interfaces).await?
+                bus.unregister_interfaces(adapter_id, node_id, interfaces)
+                    .await?
             }
         }
         Message::EmitEvent(Event::Object { target, event }) => {
