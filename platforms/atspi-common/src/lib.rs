@@ -15,7 +15,7 @@ mod rect;
 mod util;
 
 pub use action::*;
-pub use adapter::{Adapter, AdapterIdGuard};
+pub use adapter::{Adapter, AdapterIdToken};
 pub use callback::AdapterCallback;
 pub use context::AppContext;
 pub use error::*;

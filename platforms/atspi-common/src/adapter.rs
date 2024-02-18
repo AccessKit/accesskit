@@ -120,9 +120,9 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
 
 static NEXT_ADAPTER_ID: AtomicUsize = AtomicUsize::new(0);
 
-pub struct AdapterIdGuard(usize);
+pub struct AdapterIdToken(usize);
 
-impl AdapterIdGuard {
+impl AdapterIdToken {
     pub fn new() -> Self {
         let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::Relaxed);
         Self(id)
@@ -149,9 +149,9 @@ impl Adapter {
         root_window_bounds: WindowBounds,
         action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
-        let id_guard = AdapterIdGuard::new();
+        let id_token = AdapterIdToken::new();
         Self::with_id(
-            id_guard,
+            id_token,
             app_context,
             callback,
             initial_state,
@@ -162,7 +162,7 @@ impl Adapter {
     }
 
     pub fn with_id(
-        id_guard: AdapterIdGuard,
+        id_token: AdapterIdToken,
         app_context: &Arc<RwLock<AppContext>>,
         callback: Box<dyn AdapterCallback + Send>,
         initial_state: TreeUpdate,
@@ -170,7 +170,7 @@ impl Adapter {
         root_window_bounds: WindowBounds,
         action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
-        let id = id_guard.0;
+        let id = id_token.0;
         let tree = Tree::new(initial_state, is_window_focused);
         let context = Context::new(
             app_context,
