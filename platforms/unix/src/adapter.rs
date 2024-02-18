@@ -5,14 +5,14 @@
 
 use accesskit::{ActionHandler, NodeId, Rect, TreeUpdate};
 use accesskit_atspi_common::{
-    Adapter as AdapterImpl, AdapterCallback, Event, PlatformNode, WindowBounds,
+    Adapter as AdapterImpl, AdapterCallback, AdapterIdGuard, Event, PlatformNode, WindowBounds,
 };
 #[cfg(not(feature = "tokio"))]
 use async_channel::Sender;
 use atspi::InterfaceSet;
 use once_cell::sync::Lazy;
 use std::sync::{
-    atomic::{AtomicBool, AtomicUsize, Ordering},
+    atomic::{AtomicBool, Ordering},
     Arc, Mutex,
 };
 #[cfg(feature = "tokio")]
@@ -62,8 +62,6 @@ impl AdapterCallback for Callback {
 
 pub(crate) type LazyAdapter = Arc<Lazy<AdapterImpl, Box<dyn FnOnce() -> AdapterImpl + Send>>>;
 
-static NEXT_ADAPTER_ID: AtomicUsize = AtomicUsize::new(0);
-
 pub struct Adapter {
     messages: Sender<Message>,
     id: usize,
@@ -78,7 +76,8 @@ impl Adapter {
         source: impl 'static + FnOnce() -> TreeUpdate + Send,
         action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
-        let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::SeqCst);
+        let id_guard = AdapterIdGuard::new();
+        let id = id_guard.id();
         let messages = get_or_init_messages();
         let is_window_focused = Arc::new(AtomicBool::new(false));
         let root_window_bounds = Arc::new(Mutex::new(Default::default()));
@@ -87,7 +86,8 @@ impl Adapter {
             let is_window_focused = Arc::clone(&is_window_focused);
             let root_window_bounds = Arc::clone(&root_window_bounds);
             move || {
-                AdapterImpl::new(
+                AdapterImpl::with_id(
+                    id_guard,
                     get_or_init_app_context(),
                     Box::new(Callback { messages }),
                     source(),

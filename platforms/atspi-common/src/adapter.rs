@@ -120,6 +120,19 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
 
 static NEXT_ADAPTER_ID: AtomicUsize = AtomicUsize::new(0);
 
+pub struct AdapterIdGuard(usize);
+
+impl AdapterIdGuard {
+    pub fn new() -> Self {
+        let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::Relaxed);
+        Self(id)
+    }
+
+    pub fn id(&self) -> usize {
+        self.0
+    }
+}
+
 // Note: It would be wrong to derive Clone, or to construct additional
 // instances from the same context. We assume that there is only a single
 // instance of this struct for a given tree. See the Drop implementation.
@@ -136,7 +149,28 @@ impl Adapter {
         root_window_bounds: WindowBounds,
         action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
-        let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::SeqCst);
+        let id_guard = AdapterIdGuard::new();
+        Self::with_id(
+            id_guard,
+            app_context,
+            callback,
+            initial_state,
+            is_window_focused,
+            root_window_bounds,
+            action_handler,
+        )
+    }
+
+    pub fn with_id(
+        id_guard: AdapterIdGuard,
+        app_context: &Arc<RwLock<AppContext>>,
+        callback: Box<dyn AdapterCallback + Send>,
+        initial_state: TreeUpdate,
+        is_window_focused: bool,
+        root_window_bounds: WindowBounds,
+        action_handler: Box<dyn ActionHandler + Send>,
+    ) -> Self {
+        let id = id_guard.0;
         let tree = Tree::new(initial_state, is_window_focused);
         let context = Context::new(
             app_context,
