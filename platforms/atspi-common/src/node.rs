@@ -693,11 +693,15 @@ impl PlatformNode {
         })
     }
 
-    pub fn children(&self) -> Result<Vec<NodeId>> {
+    pub fn map_children<T, I>(&self, f: impl Fn(NodeId) -> I) -> Result<T>
+    where
+        T: FromIterator<I>,
+    {
         self.resolve(|node| {
             let children = node
                 .filtered_children(&filter)
                 .map(|child| child.id())
+                .map(f)
                 .collect();
             Ok(children)
         })
@@ -956,23 +960,31 @@ impl PlatformRoot {
         })
     }
 
-    pub fn children(&self) -> Result<Vec<PlatformNode>> {
+    pub fn map_children<T, I>(&self, f: impl Fn(PlatformNode) -> I) -> Result<T>
+    where
+        T: FromIterator<I>,
+    {
         self.resolve_app_context(|context| {
             let children = context
                 .adapters
                 .iter()
                 .map(PlatformNode::from_adapter_root)
+                .map(f)
                 .collect();
             Ok(children)
         })
     }
 
-    pub fn child_ids(&self) -> Result<Vec<(usize, NodeId)>> {
+    pub fn map_child_ids<T, I>(&self, f: impl Fn((usize, NodeId)) -> I) -> Result<T>
+    where
+        T: FromIterator<I>,
+    {
         self.resolve_app_context(|context| {
             let children = context
                 .adapters
                 .iter()
                 .map(|(adapter_id, context)| (*adapter_id, context.read_tree().state().root_id()))
+                .map(f)
                 .collect();
             Ok(children)
         })

@@ -86,19 +86,15 @@ impl NodeAccessibleInterface {
     }
 
     fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
-        Ok(self
-            .node
-            .children()
-            .map_err(self.map_error())?
-            .into_iter()
-            .map(|child| {
+        self.node
+            .map_children(|child| {
                 ObjectId::Node {
                     adapter: self.node.adapter_id(),
                     node: child,
                 }
                 .to_address(self.bus_name.clone())
             })
-            .collect())
+            .map_err(self.map_error())
     }
 
     fn get_index_in_parent(&self) -> fdo::Result<i32> {
@@ -198,16 +194,11 @@ impl RootAccessibleInterface {
     }
 
     fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
-        let children = self
-            .root
-            .child_ids()
-            .map_err(map_root_error)?
-            .into_iter()
-            .map(|(adapter, node)| {
+        self.root
+            .map_child_ids(|(adapter, node)| {
                 ObjectId::Node { adapter, node }.to_address(self.bus_name.clone())
             })
-            .collect();
-        Ok(children)
+            .map_err(map_root_error)
     }
 
     fn get_index_in_parent(&self) -> i32 {
