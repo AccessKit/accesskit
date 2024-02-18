@@ -147,18 +147,26 @@ async fn process_adapter_message(
                     .await?
             }
         }
-        Message::EmitEvent(Event::Object { target, event }) => {
+        Message::EmitEvent {
+            adapter_id,
+            event: Event::Object { target, event },
+        } => {
             if let Some(bus) = atspi_bus {
-                bus.emit_object_event(target, event).await?
+                bus.emit_object_event(adapter_id, target, event).await?
             }
         }
-        Message::EmitEvent(Event::Window {
-            target,
-            name,
-            event,
-        }) => {
+        Message::EmitEvent {
+            adapter_id,
+            event:
+                Event::Window {
+                    target,
+                    name,
+                    event,
+                },
+        } => {
             if let Some(bus) = atspi_bus {
-                bus.emit_window_event(target, name, event).await?;
+                bus.emit_window_event(adapter_id, target, name, event)
+                    .await?;
             }
         }
     }

@@ -3,17 +3,18 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use accesskit::NodeId;
 use atspi_common::{Live, Role, State};
 
-use crate::{PlatformNode, PlatformNodeOrRoot, Rect};
+use crate::{NodeIdOrRoot, Rect};
 
 pub enum Event {
     Object {
-        target: PlatformNodeOrRoot,
+        target: NodeIdOrRoot,
         event: ObjectEvent,
     },
     Window {
-        target: PlatformNode,
+        target: NodeId,
         name: String,
         event: WindowEvent,
     },
@@ -22,18 +23,18 @@ pub enum Event {
 pub enum Property {
     Name(String),
     Description(String),
-    Parent(PlatformNodeOrRoot),
+    Parent(NodeIdOrRoot),
     Role(Role),
     Value(f64),
 }
 
 #[allow(clippy::enum_variant_names)]
 pub enum ObjectEvent {
-    ActiveDescendantChanged(PlatformNode),
+    ActiveDescendantChanged(NodeId),
     Announcement(String, Live),
     BoundsChanged(Rect),
-    ChildAdded(usize, PlatformNode),
-    ChildRemoved(PlatformNode),
+    ChildAdded(usize, NodeId),
+    ChildRemoved(NodeId),
     PropertyChanged(Property),
     StateChanged(State, bool),
 }

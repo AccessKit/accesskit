@@ -508,10 +508,9 @@ impl<'a> NodeWrapper<'a> {
                 NodeWrapper::Node(node) => node,
                 _ => unreachable!(),
             };
-            let parent = match node.filtered_parent(&filter) {
-                Some(parent) => PlatformNodeOrRoot::Node(adapter.platform_node(parent.id())),
-                None => PlatformNodeOrRoot::Root(adapter.platform_root()),
-            };
+            let parent = node
+                .filtered_parent(&filter)
+                .map_or(NodeIdOrRoot::Root, |node| NodeIdOrRoot::Node(node.id()));
             adapter.emit_object_event(
                 self.id(),
                 ObjectEvent::PropertyChanged(Property::Parent(parent)),
@@ -553,18 +552,12 @@ impl<'a> NodeWrapper<'a> {
         let filtered_children = self.filtered_child_ids().collect::<Vec<NodeId>>();
         for (index, child) in filtered_children.iter().enumerate() {
             if !old_children.contains(child) {
-                adapter.emit_object_event(
-                    self.id(),
-                    ObjectEvent::ChildAdded(index, adapter.platform_node(*child)),
-                );
+                adapter.emit_object_event(self.id(), ObjectEvent::ChildAdded(index, *child));
             }
         }
         for child in old_children.into_iter() {
             if !filtered_children.contains(&child) {
-                adapter.emit_object_event(
-                    self.id(),
-                    ObjectEvent::ChildRemoved(adapter.platform_node(child)),
-                );
+                adapter.emit_object_event(self.id(), ObjectEvent::ChildRemoved(child));
             }
         }
     }
@@ -663,10 +656,9 @@ impl PlatformNode {
 
     pub fn parent(&self) -> Result<NodeIdOrRoot> {
         self.resolve(|node| {
-            let parent = match node.filtered_parent(&filter) {
-                Some(parent) => NodeIdOrRoot::Node(parent.id()),
-                None => NodeIdOrRoot::Root,
-            };
+            let parent = node
+                .filtered_parent(&filter)
+                .map_or(NodeIdOrRoot::Root, |node| NodeIdOrRoot::Node(node.id()));
             Ok(parent)
         })
     }
@@ -987,12 +979,6 @@ impl PlatformRoot {
         app_context.id = Some(id);
         Ok(())
     }
-}
-
-#[derive(Clone)]
-pub enum PlatformNodeOrRoot {
-    Node(PlatformNode),
-    Root(PlatformRoot),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

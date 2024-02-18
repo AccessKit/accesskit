@@ -14,7 +14,7 @@ use std::sync::{
 use crate::{
     context::{AppContext, Context},
     filters::{filter, filter_detached},
-    node::{NodeWrapper, PlatformNode, PlatformNodeOrRoot, PlatformRoot},
+    node::{NodeIdOrRoot, NodeWrapper, PlatformNode},
     util::WindowBounds,
     AdapterCallback, Event, ObjectEvent, WindowEvent,
 };
@@ -190,10 +190,6 @@ impl Adapter {
         PlatformNode::new(&self.context, id)
     }
 
-    pub(crate) fn platform_root(&self) -> PlatformRoot {
-        PlatformRoot::new(&self.context.app_context)
-    }
-
     fn register_interfaces(&self, id: NodeId, new_interfaces: InterfaceSet) {
         self.context
             .callback()
@@ -207,14 +203,14 @@ impl Adapter {
     }
 
     pub(crate) fn emit_object_event(&self, target: NodeId, event: ObjectEvent) {
-        let target = PlatformNodeOrRoot::Node(self.platform_node(target));
+        let target = NodeIdOrRoot::Node(target);
         self.context
             .callback()
             .emit_event(self, Event::Object { target, event });
     }
 
     fn emit_root_object_event(&self, event: ObjectEvent) {
-        let target = PlatformNodeOrRoot::Root(self.platform_root());
+        let target = NodeIdOrRoot::Root;
         self.context
             .callback()
             .emit_event(self, Event::Object { target, event });
@@ -238,7 +234,6 @@ impl Adapter {
     }
 
     fn window_created(&self, adapter_index: usize, window: NodeId) {
-        let window = self.platform_node(window);
         self.emit_root_object_event(ObjectEvent::ChildAdded(adapter_index, window));
     }
 
@@ -246,22 +241,20 @@ impl Adapter {
         self.context.callback().emit_event(
             self,
             Event::Window {
-                target: self.platform_node(window.id()),
+                target: window.id(),
                 name: window.name().unwrap_or_default(),
                 event: WindowEvent::Activated,
             },
         );
         self.emit_object_event(window.id(), ObjectEvent::StateChanged(State::Active, true));
-        self.emit_root_object_event(ObjectEvent::ActiveDescendantChanged(
-            self.platform_node(window.id()),
-        ));
+        self.emit_root_object_event(ObjectEvent::ActiveDescendantChanged(window.id()));
     }
 
     fn window_deactivated(&self, window: &NodeWrapper<'_>) {
         self.context.callback().emit_event(
             self,
             Event::Window {
-                target: self.platform_node(window.id()),
+                target: window.id(),
                 name: window.name().unwrap_or_default(),
                 event: WindowEvent::Deactivated,
             },
@@ -270,7 +263,6 @@ impl Adapter {
     }
 
     fn window_destroyed(&self, window: NodeId) {
-        let window = self.platform_node(window);
         self.emit_root_object_event(ObjectEvent::ChildRemoved(window));
     }
 

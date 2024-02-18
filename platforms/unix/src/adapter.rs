@@ -52,8 +52,11 @@ impl AdapterCallback for Callback {
         })
     }
 
-    fn emit_event(&mut self, _adapter: &AdapterImpl, event: Event) {
-        self.send_message(Message::EmitEvent(event));
+    fn emit_event(&mut self, adapter: &AdapterImpl, event: Event) {
+        self.send_message(Message::EmitEvent {
+            adapter_id: adapter.id(),
+            event,
+        });
     }
 }
 
@@ -166,5 +169,8 @@ pub(crate) enum Message {
         node_id: NodeId,
         interfaces: InterfaceSet,
     },
-    EmitEvent(Event),
+    EmitEvent {
+        adapter_id: usize,
+        event: Event,
+    },
 }

@@ -20,6 +20,6 @@ pub use callback::AdapterCallback;
 pub use context::AppContext;
 pub use error::*;
 pub use events::*;
-pub use node::{NodeIdOrRoot, PlatformNode, PlatformNodeOrRoot, PlatformRoot};
+pub use node::{NodeIdOrRoot, PlatformNode, PlatformRoot};
 pub use rect::*;
 pub use util::WindowBounds;

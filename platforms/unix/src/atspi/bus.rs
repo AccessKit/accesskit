@@ -10,7 +10,7 @@ use crate::{
 };
 use accesskit::NodeId;
 use accesskit_atspi_common::{
-    ObjectEvent, PlatformNode, PlatformNodeOrRoot, PlatformRoot, Property, WindowEvent,
+    NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot, Property, WindowEvent,
 };
 use atspi::{
     events::EventBody,
@@ -181,10 +181,17 @@ impl Bus {
 
     pub(crate) async fn emit_object_event(
         &self,
-        target: PlatformNodeOrRoot,
+        adapter_id: usize,
+        target: NodeIdOrRoot,
         event: ObjectEvent,
     ) -> Result<()> {
-        let target = ObjectId::from(&target);
+        let target = match target {
+            NodeIdOrRoot::Node(node) => ObjectId::Node {
+                adapter: adapter_id,
+                node,
+            },
+            NodeIdOrRoot::Root => ObjectId::Root,
+        };
         let interface = "org.a11y.atspi.Event.Object";
         let signal = match event {
             ObjectEvent::ActiveDescendantChanged(_) => "ActiveDescendantChanged",
@@ -197,7 +204,10 @@ impl Bus {
         let properties = HashMap::new();
         match event {
             ObjectEvent::ActiveDescendantChanged(child) => {
-                let child = ObjectId::from(&child);
+                let child = ObjectId::Node {
+                    adapter: adapter_id,
+                    node: child,
+                };
                 self.emit_event(
                     target,
                     interface,
@@ -243,7 +253,10 @@ impl Bus {
                 .await
             }
             ObjectEvent::ChildAdded(index, child) => {
-                let child = ObjectId::from(&child);
+                let child = ObjectId::Node {
+                    adapter: adapter_id,
+                    node: child,
+                };
                 self.emit_event(
                     target,
                     interface,
@@ -259,7 +272,10 @@ impl Bus {
                 .await
             }
             ObjectEvent::ChildRemoved(child) => {
-                let child = ObjectId::from(&child);
+                let child = ObjectId::Node {
+                    adapter: adapter_id,
+                    node: child,
+                };
                 self.emit_event(
                     target,
                     interface,
@@ -293,7 +309,13 @@ impl Bus {
                             Property::Name(value) => Str::from(value).into(),
                             Property::Description(value) => Str::from(value).into(),
                             Property::Parent(parent) => {
-                                let parent = ObjectId::from(&parent);
+                                let parent = match parent {
+                                    NodeIdOrRoot::Node(node) => ObjectId::Node {
+                                        adapter: adapter_id,
+                                        node,
+                                    },
+                                    NodeIdOrRoot::Root => ObjectId::Root,
+                                };
                                 parent.to_address(self.unique_name().clone()).into()
                             }
                             Property::Role(value) => Value::U32(value as u32),
@@ -324,11 +346,15 @@ impl Bus {
 
     pub(crate) async fn emit_window_event(
         &self,
-        target: PlatformNode,
+        adapter_id: usize,
+        target: NodeId,
         window_name: String,
         event: WindowEvent,
     ) -> Result<()> {
-        let target = ObjectId::from(&target);
+        let target = ObjectId::Node {
+            adapter: adapter_id,
+            node: target,
+        };
         let signal = match event {
             WindowEvent::Activated => "Activate",
             WindowEvent::Deactivated => "Deactivate",
