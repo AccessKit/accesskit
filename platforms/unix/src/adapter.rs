@@ -34,7 +34,8 @@ impl Callback {
 }
 
 impl AdapterCallback for Callback {
-    fn register_interfaces(&mut self, node: PlatformNode, interfaces: InterfaceSet) {
+    fn register_interfaces(&mut self, adapter: &AdapterImpl, id: NodeId, interfaces: InterfaceSet) {
+        let node = adapter.platform_node(id);
         self.send_message(Message::RegisterInterfaces { node, interfaces });
     }
 

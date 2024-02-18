@@ -6,10 +6,10 @@
 use accesskit::NodeId;
 use atspi_common::InterfaceSet;
 
-use crate::{Adapter, Event, PlatformNode};
+use crate::{Adapter, Event};
 
 pub trait AdapterCallback {
-    fn register_interfaces(&mut self, node: PlatformNode, interfaces: InterfaceSet);
+    fn register_interfaces(&mut self, adapter: &Adapter, id: NodeId, interfaces: InterfaceSet);
     fn unregister_interfaces(&mut self, adapter: &Adapter, id: NodeId, interfaces: InterfaceSet);
     fn emit_event(&mut self, event: Event);
 }

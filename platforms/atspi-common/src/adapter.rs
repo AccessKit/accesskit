@@ -186,7 +186,7 @@ impl Adapter {
         }
     }
 
-    pub(crate) fn platform_node(&self, id: NodeId) -> PlatformNode {
+    pub fn platform_node(&self, id: NodeId) -> PlatformNode {
         PlatformNode::new(&self.context, id)
     }
 
@@ -195,10 +195,9 @@ impl Adapter {
     }
 
     fn register_interfaces(&self, id: NodeId, new_interfaces: InterfaceSet) {
-        let node = self.platform_node(id);
         self.context
             .callback()
-            .register_interfaces(node, new_interfaces);
+            .register_interfaces(self, id, new_interfaces);
     }
 
     fn unregister_interfaces(&self, id: NodeId, old_interfaces: InterfaceSet) {
