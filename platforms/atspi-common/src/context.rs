@@ -11,7 +11,6 @@ use crate::WindowBounds;
 
 pub(crate) struct Context {
     pub(crate) app_context: Arc<RwLock<AppContext>>,
-    pub(crate) adapter_id: usize,
     pub(crate) tree: RwLock<Tree>,
     pub(crate) action_handler: Mutex<Box<dyn ActionHandler + Send>>,
     pub(crate) root_window_bounds: RwLock<WindowBounds>,
@@ -20,14 +19,12 @@ pub(crate) struct Context {
 impl Context {
     pub(crate) fn new(
         app_context: &Arc<RwLock<AppContext>>,
-        adapter_id: usize,
         tree: Tree,
         action_handler: Box<dyn ActionHandler + Send>,
         root_window_bounds: WindowBounds,
     ) -> Arc<Self> {
         Arc::new(Self {
             app_context: Arc::clone(app_context),
-            adapter_id,
             tree: RwLock::new(tree),
             action_handler: Mutex::new(action_handler),
             root_window_bounds: RwLock::new(root_window_bounds),

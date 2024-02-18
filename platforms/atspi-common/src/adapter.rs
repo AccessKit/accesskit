@@ -35,7 +35,7 @@ impl AdapterChangeHandler<'_> {
                 .adapter
                 .context
                 .read_app_context()
-                .adapter_index(self.adapter.context.adapter_id)
+                .adapter_index(self.adapter.id)
                 .unwrap();
             self.adapter.window_created(adapter_index, node.id());
         }
@@ -134,6 +134,7 @@ impl AdapterIdToken {
 }
 
 pub struct Adapter {
+    id: usize,
     callback: Box<dyn AdapterCallback + Send + Sync>,
     context: Arc<Context>,
 }
@@ -170,9 +171,13 @@ impl Adapter {
     ) -> Self {
         let id = id_token.0;
         let tree = Tree::new(initial_state, is_window_focused);
-        let context = Context::new(app_context, id, tree, action_handler, root_window_bounds);
+        let context = Context::new(app_context, tree, action_handler, root_window_bounds);
         context.write_app_context().push_adapter(id, &context);
-        let adapter = Self { callback, context };
+        let adapter = Self {
+            id,
+            callback,
+            context,
+        };
         adapter.register_tree();
         adapter
     }
@@ -197,7 +202,7 @@ impl Adapter {
             app_context.name = tree_state.app_name();
             app_context.toolkit_name = tree_state.toolkit_name();
             app_context.toolkit_version = tree_state.toolkit_version();
-            let adapter_index = app_context.adapter_index(self.context.adapter_id).unwrap();
+            let adapter_index = app_context.adapter_index(self.id).unwrap();
             let root = tree_state.root();
             let root_id = root.id();
             let wrapper = NodeWrapper::Node(&root);
@@ -215,7 +220,7 @@ impl Adapter {
     }
 
     pub fn platform_node(&self, id: NodeId) -> PlatformNode {
-        PlatformNode::new(&self.context, id)
+        PlatformNode::new(&self.context, self.id, id)
     }
 
     fn register_interfaces(&self, id: NodeId, new_interfaces: InterfaceSet) {
@@ -290,7 +295,7 @@ impl Adapter {
     }
 
     pub fn id(&self) -> usize {
-        self.context.adapter_id
+        self.id
     }
 }
 
@@ -311,8 +316,6 @@ impl Drop for Adapter {
         // Note: We deliberately do the following here, not in a Drop
         // implementation on context, because AppContext owns a second
         // strong reference to Context, and we need that to be released.
-        self.context
-            .write_app_context()
-            .remove_adapter(self.context.adapter_id);
+        self.context.write_app_context().remove_adapter(self.id);
     }
 }

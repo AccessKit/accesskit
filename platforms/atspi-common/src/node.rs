@@ -571,12 +571,17 @@ pub struct PlatformNode {
 }
 
 impl PlatformNode {
-    pub(crate) fn new(context: &Arc<Context>, id: NodeId) -> Self {
+    pub(crate) fn new(context: &Arc<Context>, adapter_id: usize, id: NodeId) -> Self {
         Self {
             context: Arc::downgrade(context),
-            adapter_id: context.adapter_id,
+            adapter_id,
             id,
         }
+    }
+
+    fn from_adapter_root(adapter_id_and_context: &(usize, Arc<Context>)) -> Self {
+        let (adapter_id, context) = adapter_id_and_context;
+        Self::new(context, *adapter_id, context.read_tree().state().root_id())
     }
 
     fn upgrade_context(&self) -> Result<Arc<Context>> {
@@ -933,9 +938,10 @@ impl PlatformRoot {
 
     pub fn child_at_index(&self, index: usize) -> Result<Option<PlatformNode>> {
         self.resolve_app_context(|context| {
-            let child = context.adapters.get(index).map(|(_, context)| {
-                PlatformNode::new(context, context.read_tree().state().root_id())
-            });
+            let child = context
+                .adapters
+                .get(index)
+                .map(PlatformNode::from_adapter_root);
             Ok(child)
         })
     }
@@ -955,9 +961,7 @@ impl PlatformRoot {
             let children = context
                 .adapters
                 .iter()
-                .map(|(_, context)| {
-                    PlatformNode::new(context, context.read_tree().state().root_id())
-                })
+                .map(PlatformNode::from_adapter_root)
                 .collect();
             Ok(children)
         })
