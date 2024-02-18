@@ -11,5 +11,5 @@ use crate::{Adapter, Event};
 pub trait AdapterCallback {
     fn register_interfaces(&mut self, adapter: &Adapter, id: NodeId, interfaces: InterfaceSet);
     fn unregister_interfaces(&mut self, adapter: &Adapter, id: NodeId, interfaces: InterfaceSet);
-    fn emit_event(&mut self, event: Event);
+    fn emit_event(&mut self, adapter: &Adapter, event: Event);
 }

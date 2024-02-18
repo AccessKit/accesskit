@@ -210,14 +210,14 @@ impl Adapter {
         let target = PlatformNodeOrRoot::Node(self.platform_node(target));
         self.context
             .callback()
-            .emit_event(Event::Object { target, event });
+            .emit_event(self, Event::Object { target, event });
     }
 
     fn emit_root_object_event(&self, event: ObjectEvent) {
         let target = PlatformNodeOrRoot::Root(self.platform_root());
         self.context
             .callback()
-            .emit_event(Event::Object { target, event });
+            .emit_event(self, Event::Object { target, event });
     }
 
     pub fn set_root_window_bounds(&self, new_bounds: WindowBounds) {
@@ -243,11 +243,14 @@ impl Adapter {
     }
 
     fn window_activated(&self, window: &NodeWrapper<'_>) {
-        self.context.callback().emit_event(Event::Window {
-            target: self.platform_node(window.id()),
-            name: window.name().unwrap_or_default(),
-            event: WindowEvent::Activated,
-        });
+        self.context.callback().emit_event(
+            self,
+            Event::Window {
+                target: self.platform_node(window.id()),
+                name: window.name().unwrap_or_default(),
+                event: WindowEvent::Activated,
+            },
+        );
         self.emit_object_event(window.id(), ObjectEvent::StateChanged(State::Active, true));
         self.emit_root_object_event(ObjectEvent::ActiveDescendantChanged(
             self.platform_node(window.id()),
@@ -255,11 +258,14 @@ impl Adapter {
     }
 
     fn window_deactivated(&self, window: &NodeWrapper<'_>) {
-        self.context.callback().emit_event(Event::Window {
-            target: self.platform_node(window.id()),
-            name: window.name().unwrap_or_default(),
-            event: WindowEvent::Deactivated,
-        });
+        self.context.callback().emit_event(
+            self,
+            Event::Window {
+                target: self.platform_node(window.id()),
+                name: window.name().unwrap_or_default(),
+                event: WindowEvent::Deactivated,
+            },
+        );
         self.emit_object_event(window.id(), ObjectEvent::StateChanged(State::Active, false));
     }
 

@@ -52,7 +52,7 @@ impl AdapterCallback for Callback {
         })
     }
 
-    fn emit_event(&mut self, event: Event) {
+    fn emit_event(&mut self, _adapter: &AdapterImpl, event: Event) {
         self.send_message(Message::EmitEvent(event));
     }
 }

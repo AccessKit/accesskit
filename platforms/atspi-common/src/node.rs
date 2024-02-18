@@ -653,7 +653,7 @@ impl PlatformNode {
         })
     }
 
-    fn relative(&self, id: NodeId) -> Self {
+    pub fn relative(&self, id: NodeId) -> Self {
         Self {
             context: self.context.clone(),
             adapter_id: self.adapter_id,
@@ -661,11 +661,11 @@ impl PlatformNode {
         }
     }
 
-    pub fn parent(&self) -> Result<PlatformNodeOrRoot> {
-        self.resolve_with_context(|node, context| {
+    pub fn parent(&self) -> Result<NodeIdOrRoot> {
+        self.resolve(|node| {
             let parent = match node.filtered_parent(&filter) {
-                Some(parent) => PlatformNodeOrRoot::Node(self.relative(parent.id())),
-                None => PlatformNodeOrRoot::Root(PlatformRoot::new(&context.app_context)),
+                Some(parent) => NodeIdOrRoot::Node(parent.id()),
+                None => NodeIdOrRoot::Root,
             };
             Ok(parent)
         })
@@ -686,21 +686,21 @@ impl PlatformNode {
         self.id
     }
 
-    pub fn child_at_index(&self, index: usize) -> Result<Option<Self>> {
+    pub fn child_at_index(&self, index: usize) -> Result<Option<NodeId>> {
         self.resolve(|node| {
             let child = node
                 .filtered_children(&filter)
                 .nth(index)
-                .map(|child| self.relative(child.id()));
+                .map(|child| child.id());
             Ok(child)
         })
     }
 
-    pub fn children(&self) -> Result<Vec<Self>> {
+    pub fn children(&self) -> Result<Vec<NodeId>> {
         self.resolve(|node| {
             let children = node
                 .filtered_children(&filter)
-                .map(|child| self.relative(child.id()))
+                .map(|child| child.id())
                 .collect();
             Ok(children)
         })
@@ -809,15 +809,13 @@ impl PlatformNode {
         x: i32,
         y: i32,
         coord_type: CoordType,
-    ) -> Result<Option<Self>> {
+    ) -> Result<Option<NodeId>> {
         self.resolve_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
             let top_left = window_bounds.top_left(coord_type, node.is_root());
             let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
             let point = node.transform().inverse() * point;
-            Ok(node
-                .node_at_point(point, &filter)
-                .map(|node| self.relative(node.id())))
+            Ok(node.node_at_point(point, &filter).map(|node| node.id()))
         })
     }
 
@@ -995,4 +993,10 @@ impl PlatformRoot {
 pub enum PlatformNodeOrRoot {
     Node(PlatformNode),
     Root(PlatformRoot),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NodeIdOrRoot {
+    Node(NodeId),
+    Root,
 }

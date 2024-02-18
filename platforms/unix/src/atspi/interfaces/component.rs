@@ -42,7 +42,10 @@ impl ComponentInterface {
             .node
             .get_accessible_at_point(x, y, coord_type)
             .map_err(self.map_error())?
-            .map(|node| ObjectId::from(&node));
+            .map(|node| ObjectId::Node {
+                adapter: self.node.adapter_id(),
+                node,
+            });
         super::object_address(hdr.destination()?, accessible)
     }
 

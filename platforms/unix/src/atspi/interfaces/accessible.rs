@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit_atspi_common::{PlatformNode, PlatformRoot};
+use accesskit_atspi_common::{NodeIdOrRoot, PlatformNode, PlatformRoot};
 use atspi::{Interface, InterfaceSet, Role, StateSet};
 use zbus::{fdo, names::OwnedUniqueName, MessageHeader};
 
@@ -39,10 +39,16 @@ impl NodeAccessibleInterface {
 
     #[dbus_interface(property)]
     fn parent(&self) -> fdo::Result<OwnedObjectAddress> {
-        self.node
-            .parent()
-            .map_err(self.map_error())
-            .map(|parent| ObjectId::from(&parent).to_address(self.bus_name.clone()))
+        self.node.parent().map_err(self.map_error()).map(|parent| {
+            match parent {
+                NodeIdOrRoot::Node(node) => ObjectId::Node {
+                    adapter: self.node.adapter_id(),
+                    node,
+                },
+                NodeIdOrRoot::Root => ObjectId::Root,
+            }
+            .to_address(self.bus_name.clone())
+        })
     }
 
     #[dbus_interface(property)]
@@ -72,7 +78,10 @@ impl NodeAccessibleInterface {
             .node
             .child_at_index(index)
             .map_err(self.map_error())?
-            .map(|child| ObjectId::from(&child));
+            .map(|child| ObjectId::Node {
+                adapter: self.node.adapter_id(),
+                node: child,
+            });
         super::object_address(hdr.destination()?, child)
     }
 
@@ -82,7 +91,13 @@ impl NodeAccessibleInterface {
             .children()
             .map_err(self.map_error())?
             .into_iter()
-            .map(|child| ObjectId::from(&child).to_address(self.bus_name.clone()))
+            .map(|child| {
+                ObjectId::Node {
+                    adapter: self.node.adapter_id(),
+                    node: child,
+                }
+                .to_address(self.bus_name.clone())
+            })
             .collect())
     }
 
