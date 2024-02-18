@@ -24,7 +24,7 @@ use std::{
 
 use crate::{
     adapter::Adapter,
-    context::{AdapterAndContext, AppContext, Context},
+    context::{AppContext, Context},
     filters::{filter, filter_detached},
     util::WindowBounds,
     Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
@@ -933,13 +933,19 @@ impl PlatformRoot {
 
     pub fn child_at_index(&self, index: usize) -> Result<Option<PlatformNode>> {
         self.resolve_app_context(|context| {
+            let child = context.adapters.get(index).map(|(_, context)| {
+                PlatformNode::new(context, context.read_tree().state().root_id())
+            });
+            Ok(child)
+        })
+    }
+
+    pub fn child_id_at_index(&self, index: usize) -> Result<Option<(usize, NodeId)>> {
+        self.resolve_app_context(|context| {
             let child = context
                 .adapters
                 .get(index)
-                .and_then(AdapterAndContext::upgrade)
-                .map(|(_, context)| {
-                    PlatformNode::new(&context, context.read_tree().state().root_id())
-                });
+                .map(|(adapter_id, context)| (*adapter_id, context.read_tree().state().root_id()));
             Ok(child)
         })
     }
@@ -949,10 +955,20 @@ impl PlatformRoot {
             let children = context
                 .adapters
                 .iter()
-                .filter_map(AdapterAndContext::upgrade)
                 .map(|(_, context)| {
-                    PlatformNode::new(&context, context.read_tree().state().root_id())
+                    PlatformNode::new(context, context.read_tree().state().root_id())
                 })
+                .collect();
+            Ok(children)
+        })
+    }
+
+    pub fn child_ids(&self) -> Result<Vec<(usize, NodeId)>> {
+        self.resolve_app_context(|context| {
+            let children = context
+                .adapters
+                .iter()
+                .map(|(adapter_id, context)| (*adapter_id, context.read_tree().state().root_id()))
                 .collect();
             Ok(children)
         })

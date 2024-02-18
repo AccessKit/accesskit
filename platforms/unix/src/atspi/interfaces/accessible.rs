@@ -191,19 +191,21 @@ impl RootAccessibleInterface {
             .map_err(|_| fdo::Error::InvalidArgs("Index can't be negative.".into()))?;
         let child = self
             .root
-            .child_at_index(index)
+            .child_id_at_index(index)
             .map_err(map_root_error)?
-            .map(|child| ObjectId::from(&child));
+            .map(|(adapter, node)| ObjectId::Node { adapter, node });
         super::object_address(hdr.destination()?, child)
     }
 
     fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
         let children = self
             .root
-            .children()
+            .child_ids()
             .map_err(map_root_error)?
-            .drain(..)
-            .map(|child| ObjectId::from(&child).to_address(self.bus_name.clone()))
+            .into_iter()
+            .map(|(adapter, node)| {
+                ObjectId::Node { adapter, node }.to_address(self.bus_name.clone())
+            })
             .collect();
         Ok(children)
     }

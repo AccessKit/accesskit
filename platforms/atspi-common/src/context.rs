@@ -5,7 +5,7 @@
 
 use accesskit::{ActionHandler, ActionRequest};
 use accesskit_consumer::Tree;
-use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::{AdapterCallback, WindowBounds};
 
@@ -62,20 +62,12 @@ impl Context {
     }
 }
 
-pub(crate) struct AdapterAndContext(usize, Weak<Context>);
-
-impl AdapterAndContext {
-    pub(crate) fn upgrade(&self) -> Option<(usize, Arc<Context>)> {
-        self.1.upgrade().map(|context| (self.0, context))
-    }
-}
-
 pub struct AppContext {
     pub(crate) name: Option<String>,
     pub(crate) toolkit_name: Option<String>,
     pub(crate) toolkit_version: Option<String>,
     pub(crate) id: Option<i32>,
-    pub(crate) adapters: Vec<AdapterAndContext>,
+    pub(crate) adapters: Vec<(usize, Arc<Context>)>,
 }
 
 impl AppContext {
@@ -94,8 +86,7 @@ impl AppContext {
     }
 
     pub(crate) fn push_adapter(&mut self, id: usize, context: &Arc<Context>) {
-        self.adapters
-            .push(AdapterAndContext(id, Arc::downgrade(context)));
+        self.adapters.push((id, Arc::clone(context)));
     }
 
     pub(crate) fn remove_adapter(&mut self, id: usize) {

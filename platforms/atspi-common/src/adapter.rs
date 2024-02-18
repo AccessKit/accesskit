@@ -120,6 +120,9 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
 
 static NEXT_ADAPTER_ID: AtomicUsize = AtomicUsize::new(0);
 
+// Note: It would be wrong to derive Clone, or to construct additional
+// instances from the same context. We assume that there is only a single
+// instance of this struct for a given tree. See the Drop implementation.
 pub struct Adapter {
     context: Arc<Context>,
 }
@@ -283,10 +286,13 @@ fn root_window(current_state: &TreeState) -> Option<Node> {
 
 impl Drop for Adapter {
     fn drop(&mut self) {
+        let root_id = self.context.read_tree().state().root_id();
+        self.window_destroyed(root_id);
+        // Note: We deliberately do the following here, not in a Drop
+        // implementation on context, because AppContext owns a second
+        // strong reference to Context, and we need that to be released.
         self.context
             .write_app_context()
             .remove_adapter(self.context.adapter_id);
-        let root_id = self.context.read_tree().state().root_id();
-        self.window_destroyed(root_id);
     }
 }
