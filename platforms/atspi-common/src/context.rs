@@ -5,14 +5,13 @@
 
 use accesskit::{ActionHandler, ActionRequest};
 use accesskit_consumer::Tree;
-use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use crate::{AdapterCallback, WindowBounds};
+use crate::WindowBounds;
 
 pub(crate) struct Context {
     pub(crate) app_context: Arc<RwLock<AppContext>>,
     pub(crate) adapter_id: usize,
-    callback: Mutex<Box<dyn AdapterCallback + Send>>,
     pub(crate) tree: RwLock<Tree>,
     pub(crate) action_handler: Mutex<Box<dyn ActionHandler + Send>>,
     pub(crate) root_window_bounds: RwLock<WindowBounds>,
@@ -22,7 +21,6 @@ impl Context {
     pub(crate) fn new(
         app_context: &Arc<RwLock<AppContext>>,
         adapter_id: usize,
-        callback: Box<dyn AdapterCallback + Send>,
         tree: Tree,
         action_handler: Box<dyn ActionHandler + Send>,
         root_window_bounds: WindowBounds,
@@ -30,7 +28,6 @@ impl Context {
         Arc::new(Self {
             app_context: Arc::clone(app_context),
             adapter_id,
-            callback: Mutex::new(callback),
             tree: RwLock::new(tree),
             action_handler: Mutex::new(action_handler),
             root_window_bounds: RwLock::new(root_window_bounds),
@@ -55,10 +52,6 @@ impl Context {
 
     pub(crate) fn write_app_context(&self) -> RwLockWriteGuard<'_, AppContext> {
         self.app_context.write().unwrap()
-    }
-
-    pub(crate) fn callback(&self) -> MutexGuard<'_, Box<dyn AdapterCallback + Send>> {
-        self.callback.lock().unwrap()
     }
 }
 

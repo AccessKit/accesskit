@@ -34,17 +34,12 @@ impl Callback {
 }
 
 impl AdapterCallback for Callback {
-    fn register_interfaces(&mut self, adapter: &AdapterImpl, id: NodeId, interfaces: InterfaceSet) {
+    fn register_interfaces(&self, adapter: &AdapterImpl, id: NodeId, interfaces: InterfaceSet) {
         let node = adapter.platform_node(id);
         self.send_message(Message::RegisterInterfaces { node, interfaces });
     }
 
-    fn unregister_interfaces(
-        &mut self,
-        adapter: &AdapterImpl,
-        id: NodeId,
-        interfaces: InterfaceSet,
-    ) {
+    fn unregister_interfaces(&self, adapter: &AdapterImpl, id: NodeId, interfaces: InterfaceSet) {
         self.send_message(Message::UnregisterInterfaces {
             adapter_id: adapter.id(),
             node_id: id,
@@ -52,7 +47,7 @@ impl AdapterCallback for Callback {
         })
     }
 
-    fn emit_event(&mut self, adapter: &AdapterImpl, event: Event) {
+    fn emit_event(&self, adapter: &AdapterImpl, event: Event) {
         self.send_message(Message::EmitEvent {
             adapter_id: adapter.id(),
             event,

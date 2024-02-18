@@ -9,7 +9,7 @@ use atspi_common::InterfaceSet;
 use crate::{Adapter, Event};
 
 pub trait AdapterCallback {
-    fn register_interfaces(&mut self, adapter: &Adapter, id: NodeId, interfaces: InterfaceSet);
-    fn unregister_interfaces(&mut self, adapter: &Adapter, id: NodeId, interfaces: InterfaceSet);
-    fn emit_event(&mut self, adapter: &Adapter, event: Event);
+    fn register_interfaces(&self, adapter: &Adapter, id: NodeId, interfaces: InterfaceSet);
+    fn unregister_interfaces(&self, adapter: &Adapter, id: NodeId, interfaces: InterfaceSet);
+    fn emit_event(&self, adapter: &Adapter, event: Event);
 }

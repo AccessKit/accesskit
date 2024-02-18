@@ -133,17 +133,15 @@ impl AdapterIdToken {
     }
 }
 
-// Note: It would be wrong to derive Clone, or to construct additional
-// instances from the same context. We assume that there is only a single
-// instance of this struct for a given tree. See the Drop implementation.
 pub struct Adapter {
+    callback: Box<dyn AdapterCallback + Send + Sync>,
     context: Arc<Context>,
 }
 
 impl Adapter {
     pub fn new(
         app_context: &Arc<RwLock<AppContext>>,
-        callback: Box<dyn AdapterCallback + Send>,
+        callback: Box<dyn AdapterCallback + Send + Sync>,
         initial_state: TreeUpdate,
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
@@ -164,7 +162,7 @@ impl Adapter {
     pub fn with_id(
         id_token: AdapterIdToken,
         app_context: &Arc<RwLock<AppContext>>,
-        callback: Box<dyn AdapterCallback + Send>,
+        callback: Box<dyn AdapterCallback + Send + Sync>,
         initial_state: TreeUpdate,
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
@@ -172,16 +170,9 @@ impl Adapter {
     ) -> Self {
         let id = id_token.0;
         let tree = Tree::new(initial_state, is_window_focused);
-        let context = Context::new(
-            app_context,
-            id,
-            callback,
-            tree,
-            action_handler,
-            root_window_bounds,
-        );
+        let context = Context::new(app_context, id, tree, action_handler, root_window_bounds);
         context.write_app_context().push_adapter(id, &context);
-        let adapter = Self { context };
+        let adapter = Self { callback, context };
         adapter.register_tree();
         adapter
     }
@@ -228,28 +219,23 @@ impl Adapter {
     }
 
     fn register_interfaces(&self, id: NodeId, new_interfaces: InterfaceSet) {
-        self.context
-            .callback()
-            .register_interfaces(self, id, new_interfaces);
+        self.callback.register_interfaces(self, id, new_interfaces);
     }
 
     fn unregister_interfaces(&self, id: NodeId, old_interfaces: InterfaceSet) {
-        self.context
-            .callback()
+        self.callback
             .unregister_interfaces(self, id, old_interfaces);
     }
 
     pub(crate) fn emit_object_event(&self, target: NodeId, event: ObjectEvent) {
         let target = NodeIdOrRoot::Node(target);
-        self.context
-            .callback()
+        self.callback
             .emit_event(self, Event::Object { target, event });
     }
 
     fn emit_root_object_event(&self, event: ObjectEvent) {
         let target = NodeIdOrRoot::Root;
-        self.context
-            .callback()
+        self.callback
             .emit_event(self, Event::Object { target, event });
     }
 
@@ -275,7 +261,7 @@ impl Adapter {
     }
 
     fn window_activated(&self, window: &NodeWrapper<'_>) {
-        self.context.callback().emit_event(
+        self.callback.emit_event(
             self,
             Event::Window {
                 target: window.id(),
@@ -288,7 +274,7 @@ impl Adapter {
     }
 
     fn window_deactivated(&self, window: &NodeWrapper<'_>) {
-        self.context.callback().emit_event(
+        self.callback.emit_event(
             self,
             Event::Window {
                 target: window.id(),
