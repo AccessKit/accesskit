@@ -13,7 +13,7 @@ impl ActionInterface {
         Self(node)
     }
 
-    fn map_error<'a>(&'a self) -> impl 'a + FnOnce(accesskit_atspi_common::Error) -> fdo::Error {
+    fn map_error(&self) -> impl '_ + FnOnce(accesskit_atspi_common::Error) -> fdo::Error {
         |error| crate::util::map_error_from_node(&self.0, error)
     }
 }
