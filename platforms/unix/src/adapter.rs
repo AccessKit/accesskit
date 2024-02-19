@@ -71,7 +71,7 @@ impl Adapter {
         source: impl 'static + FnOnce() -> TreeUpdate + Send,
         action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
-        let id_token = AdapterIdToken::new();
+        let id_token = AdapterIdToken::next();
         let id = id_token.id();
         let messages = get_or_init_messages();
         let is_window_focused = Arc::new(AtomicBool::new(false));

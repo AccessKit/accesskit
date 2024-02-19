@@ -123,7 +123,7 @@ static NEXT_ADAPTER_ID: AtomicUsize = AtomicUsize::new(0);
 pub struct AdapterIdToken(usize);
 
 impl AdapterIdToken {
-    pub fn new() -> Self {
+    pub fn next() -> Self {
         let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::Relaxed);
         Self(id)
     }
@@ -148,7 +148,7 @@ impl Adapter {
         root_window_bounds: WindowBounds,
         action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
-        let id_token = AdapterIdToken::new();
+        let id_token = AdapterIdToken::next();
         Self::with_id(
             id_token,
             app_context,
