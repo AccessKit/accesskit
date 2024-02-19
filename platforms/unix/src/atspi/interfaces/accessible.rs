@@ -5,7 +5,7 @@
 
 use accesskit_atspi_common::{NodeIdOrRoot, PlatformNode, PlatformRoot};
 use atspi::{Interface, InterfaceSet, Role, StateSet};
-use zbus::{fdo, names::OwnedUniqueName, MessageHeader};
+use zbus::{fdo, names::OwnedUniqueName};
 
 use super::map_root_error;
 use crate::atspi::{ObjectId, OwnedObjectAddress};
@@ -66,11 +66,7 @@ impl NodeAccessibleInterface {
         ObjectId::from(&self.node)
     }
 
-    fn get_child_at_index(
-        &self,
-        #[zbus(header)] hdr: MessageHeader<'_>,
-        index: i32,
-    ) -> fdo::Result<(OwnedObjectAddress,)> {
+    fn get_child_at_index(&self, index: i32) -> fdo::Result<(OwnedObjectAddress,)> {
         let index = index
             .try_into()
             .map_err(|_| fdo::Error::InvalidArgs("Index can't be negative.".into()))?;
@@ -82,7 +78,7 @@ impl NodeAccessibleInterface {
                 adapter: self.node.adapter_id(),
                 node: child,
             });
-        super::object_address(hdr.destination()?, child)
+        Ok(super::optional_object_address(&self.bus_name, child))
     }
 
     fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
@@ -113,11 +109,8 @@ impl NodeAccessibleInterface {
         self.node.state().map_err(self.map_error())
     }
 
-    fn get_application(
-        &self,
-        #[zbus(header)] hdr: MessageHeader<'_>,
-    ) -> fdo::Result<(OwnedObjectAddress,)> {
-        super::object_address(hdr.destination()?, Some(ObjectId::Root))
+    fn get_application(&self) -> (OwnedObjectAddress,) {
+        (ObjectId::Root.to_address(self.bus_name.clone()),)
     }
 
     fn get_interfaces(&self) -> fdo::Result<InterfaceSet> {
@@ -177,11 +170,7 @@ impl RootAccessibleInterface {
         ObjectId::Root
     }
 
-    fn get_child_at_index(
-        &self,
-        #[zbus(header)] hdr: MessageHeader<'_>,
-        index: i32,
-    ) -> fdo::Result<(OwnedObjectAddress,)> {
+    fn get_child_at_index(&self, index: i32) -> fdo::Result<(OwnedObjectAddress,)> {
         let index = index
             .try_into()
             .map_err(|_| fdo::Error::InvalidArgs("Index can't be negative.".into()))?;
@@ -190,7 +179,7 @@ impl RootAccessibleInterface {
             .child_id_at_index(index)
             .map_err(map_root_error)?
             .map(|(adapter, node)| ObjectId::Node { adapter, node });
-        super::object_address(hdr.destination()?, child)
+        Ok(super::optional_object_address(&self.bus_name, child))
     }
 
     fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
@@ -213,11 +202,8 @@ impl RootAccessibleInterface {
         StateSet::empty()
     }
 
-    fn get_application(
-        &self,
-        #[zbus(header)] hdr: MessageHeader<'_>,
-    ) -> fdo::Result<(OwnedObjectAddress,)> {
-        super::object_address(hdr.destination()?, Some(ObjectId::Root))
+    fn get_application(&self) -> (OwnedObjectAddress,) {
+        (ObjectId::Root.to_address(self.bus_name.clone()),)
     }
 
     fn get_interfaces(&self) -> InterfaceSet {

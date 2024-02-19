@@ -5,17 +5,18 @@
 
 use accesskit_atspi_common::{PlatformNode, Rect};
 use atspi::{CoordType, Layer};
-use zbus::{fdo, MessageHeader};
+use zbus::{fdo, names::OwnedUniqueName};
 
 use crate::atspi::{ObjectId, OwnedObjectAddress};
 
 pub(crate) struct ComponentInterface {
+    bus_name: OwnedUniqueName,
     node: PlatformNode,
 }
 
 impl ComponentInterface {
-    pub fn new(node: PlatformNode) -> Self {
-        Self { node }
+    pub fn new(bus_name: OwnedUniqueName, node: PlatformNode) -> Self {
+        Self { bus_name, node }
     }
 
     fn map_error<'a>(&'a self) -> impl 'a + FnOnce(accesskit_atspi_common::Error) -> fdo::Error {
@@ -33,7 +34,6 @@ impl ComponentInterface {
 
     fn get_accessible_at_point(
         &self,
-        #[zbus(header)] hdr: MessageHeader<'_>,
         x: i32,
         y: i32,
         coord_type: CoordType,
@@ -46,7 +46,7 @@ impl ComponentInterface {
                 adapter: self.node.adapter_id(),
                 node,
             });
-        super::object_address(hdr.destination()?, accessible)
+        Ok(super::optional_object_address(&self.bus_name, accessible))
     }
 
     fn get_extents(&self, coord_type: CoordType) -> fdo::Result<(Rect,)> {

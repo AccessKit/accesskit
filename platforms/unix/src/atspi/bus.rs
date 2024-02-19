@@ -105,10 +105,11 @@ impl Bus {
         new_interfaces: InterfaceSet,
     ) -> zbus::Result<()> {
         let path = ObjectId::from(&node).path();
+        let bus_name = self.unique_name().to_owned();
         if new_interfaces.contains(Interface::Accessible) {
             self.register_interface(
                 &path,
-                NodeAccessibleInterface::new(self.unique_name().to_owned(), node.clone()),
+                NodeAccessibleInterface::new(bus_name.clone(), node.clone()),
             )
             .await?;
         }
@@ -117,8 +118,11 @@ impl Bus {
                 .await?;
         }
         if new_interfaces.contains(Interface::Component) {
-            self.register_interface(&path, ComponentInterface::new(node.clone()))
-                .await?;
+            self.register_interface(
+                &path,
+                ComponentInterface::new(bus_name.clone(), node.clone()),
+            )
+            .await?;
         }
         if new_interfaces.contains(Interface::Value) {
             self.register_interface(&path, ValueInterface::new(node.clone()))

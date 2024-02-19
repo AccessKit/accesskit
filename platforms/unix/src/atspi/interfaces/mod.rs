@@ -10,28 +10,21 @@ mod component;
 mod value;
 
 use crate::atspi::{ObjectId, OwnedObjectAddress};
-use zbus::{
-    fdo,
-    names::{BusName, OwnedUniqueName, UniqueName},
-};
+use zbus::{fdo, names::OwnedUniqueName};
 
 fn map_root_error(error: accesskit_atspi_common::Error) -> fdo::Error {
     crate::util::map_error(ObjectId::Root, error)
 }
 
-fn object_address(
-    destination: Option<&BusName>,
+fn optional_object_address(
+    bus_name: &OwnedUniqueName,
     object_id: Option<ObjectId>,
-) -> fdo::Result<(OwnedObjectAddress,)> {
+) -> (OwnedObjectAddress,) {
+    let bus_name = bus_name.clone();
     match object_id {
-        Some(id) => Ok((id.to_address(app_name(destination)?),)),
-        None => Ok((OwnedObjectAddress::null(app_name(destination)?),)),
+        Some(id) => (id.to_address(bus_name),),
+        None => (OwnedObjectAddress::null(bus_name),),
     }
-}
-
-fn app_name(destination: Option<&BusName>) -> fdo::Result<OwnedUniqueName> {
-    let destination = destination.ok_or(fdo::Error::ZBus(zbus::Error::MissingField))?;
-    Ok(UniqueName::from_str_unchecked(destination.as_str()).into())
 }
 
 pub(crate) use accessible::*;
