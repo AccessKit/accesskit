@@ -30,11 +30,11 @@ impl ActionInterface {
     }
 
     fn get_name(&self, index: i32) -> fdo::Result<String> {
-        self.0.get_action_name(index).map_err(self.map_error())
+        self.0.action_name(index).map_err(self.map_error())
     }
 
     fn get_localized_name(&self, index: i32) -> fdo::Result<String> {
-        self.0.get_action_name(index).map_err(self.map_error())
+        self.0.action_name(index).map_err(self.map_error())
     }
 
     fn get_key_binding(&self, _index: i32) -> &str {
@@ -42,7 +42,7 @@ impl ActionInterface {
     }
 
     fn get_actions(&self) -> fdo::Result<Vec<Action>> {
-        self.0.get_actions().map_err(self.map_error())
+        self.0.actions().map_err(self.map_error())
     }
 
     fn do_action(&self, index: i32) -> fdo::Result<bool> {

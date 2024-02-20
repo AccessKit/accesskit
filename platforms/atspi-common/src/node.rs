@@ -746,14 +746,14 @@ impl PlatformNode {
         })
     }
 
-    pub fn get_action_name(&self, index: i32) -> Result<String> {
+    pub fn action_name(&self, index: i32) -> Result<String> {
         self.resolve(|node| {
             let wrapper = NodeWrapper::Node(&node);
             Ok(wrapper.get_action_name(index))
         })
     }
 
-    pub fn get_actions(&self) -> Result<Vec<AtspiAction>> {
+    pub fn actions(&self) -> Result<Vec<AtspiAction>> {
         self.resolve(|node| {
             let wrapper = NodeWrapper::Node(&node);
             let n_actions = wrapper.n_actions() as usize;
@@ -805,7 +805,7 @@ impl PlatformNode {
         })
     }
 
-    pub fn get_accessible_at_point(
+    pub fn accessible_at_point(
         &self,
         x: i32,
         y: i32,
@@ -820,7 +820,7 @@ impl PlatformNode {
         })
     }
 
-    pub fn get_extents(&self, coord_type: CoordType) -> Result<(AtspiRect,)> {
+    pub fn extents(&self, coord_type: CoordType) -> Result<(AtspiRect,)> {
         self.resolve_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
             match node.bounding_box() {
@@ -843,7 +843,7 @@ impl PlatformNode {
         })
     }
 
-    pub fn get_layer(&self) -> Result<Layer> {
+    pub fn layer(&self) -> Result<Layer> {
         self.resolve(|node| {
             let wrapper = NodeWrapper::Node(&node);
             if wrapper.role() == AtspiRole::Window {

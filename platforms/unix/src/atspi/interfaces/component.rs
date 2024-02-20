@@ -40,7 +40,7 @@ impl ComponentInterface {
     ) -> fdo::Result<(OwnedObjectAddress,)> {
         let accessible = self
             .node
-            .get_accessible_at_point(x, y, coord_type)
+            .accessible_at_point(x, y, coord_type)
             .map_err(self.map_error())?
             .map(|node| ObjectId::Node {
                 adapter: self.node.adapter_id(),
@@ -50,11 +50,11 @@ impl ComponentInterface {
     }
 
     fn get_extents(&self, coord_type: CoordType) -> fdo::Result<(Rect,)> {
-        self.node.get_extents(coord_type).map_err(self.map_error())
+        self.node.extents(coord_type).map_err(self.map_error())
     }
 
     fn get_layer(&self) -> fdo::Result<Layer> {
-        self.node.get_layer().map_err(self.map_error())
+        self.node.layer().map_err(self.map_error())
     }
 
     fn grab_focus(&self) -> fdo::Result<bool> {
