@@ -27,10 +27,7 @@ Remember to commit these changes as part of your pull request.
 
 ### CHANGELOG.md
 
-Our `CHANGELOG.md` files are auto generated using [Release Please](https://github.com/googleapis/release-please) and should not be edited manually.
-
-To control how your work will be described in the changelog, use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) when writing the title of your pull request.
-If you think one line is not enough, mention it in your pull request so that maintainers can update the description of the merge commit.
+Our `CHANGELOG.md` files were formerly auto-generated using [Release Please](https://github.com/googleapis/release-please) but are now maintained manually. For each pull request, please add a `CHANGELOG.md` entry for the relevant crate or crates.
 
 ### Testing Locally
 
