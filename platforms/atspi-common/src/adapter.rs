@@ -14,7 +14,7 @@ use std::sync::{
 use crate::{
     context::{AppContext, Context},
     filters::{filter, filter_detached},
-    node::{NodeIdOrRoot, NodeWrapper, PlatformNode},
+    node::{NodeIdOrRoot, NodeWrapper, PlatformNode, PlatformRoot},
     util::WindowBounds,
     AdapterCallback, Event, ObjectEvent, WindowEvent,
 };
@@ -221,6 +221,10 @@ impl Adapter {
 
     pub fn platform_node(&self, id: NodeId) -> PlatformNode {
         PlatformNode::new(&self.context, self.id, id)
+    }
+
+    pub fn platform_root(&self) -> PlatformRoot {
+        PlatformRoot::new(&self.context.app_context)
     }
 
     fn register_interfaces(&self, id: NodeId, new_interfaces: InterfaceSet) {
