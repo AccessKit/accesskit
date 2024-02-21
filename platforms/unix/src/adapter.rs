@@ -137,30 +137,6 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 });
             }
         }
-        if let Some(node) = new_node.map(|node| NodeWrapper::Node {
-            adapter: self.adapter.id,
-            node,
-        }) {
-            self.adapter.emit_object_event(
-                ObjectId::Node {
-                    adapter: self.adapter.id,
-                    node: node.id(),
-                },
-                ObjectEvent::StateChanged(State::Focused, true),
-            );
-        }
-        if let Some(node) = old_node.map(|node| NodeWrapper::DetachedNode {
-            adapter: self.adapter.id,
-            node,
-        }) {
-            self.adapter.emit_object_event(
-                ObjectId::Node {
-                    adapter: self.adapter.id,
-                    node: node.id(),
-                },
-                ObjectEvent::StateChanged(State::Focused, false),
-            );
-        }
     }
 
     fn node_removed(&mut self, node: &DetachedNode, _: &TreeState) {
