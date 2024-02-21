@@ -8,6 +8,7 @@ use atspi_common::{Live, Role, State};
 
 use crate::{NodeIdOrRoot, Rect};
 
+#[derive(Debug)]
 pub enum Event {
     Object {
         target: NodeIdOrRoot,
@@ -20,6 +21,7 @@ pub enum Event {
     },
 }
 
+#[derive(Debug)]
 pub enum Property {
     Name(String),
     Description(String),
@@ -29,6 +31,7 @@ pub enum Property {
 }
 
 #[allow(clippy::enum_variant_names)]
+#[derive(Debug)]
 pub enum ObjectEvent {
     ActiveDescendantChanged(NodeId),
     Announcement(String, Live),
@@ -39,6 +42,7 @@ pub enum ObjectEvent {
     StateChanged(State, bool),
 }
 
+#[derive(Debug)]
 pub enum WindowEvent {
     Activated,
     Deactivated,
