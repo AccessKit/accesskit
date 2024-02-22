@@ -8,10 +8,10 @@ use zvariant::{OwnedValue, Type, Value};
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, OwnedValue, Type, Value)]
 pub struct Rect {
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
 }
 
 impl Rect {
