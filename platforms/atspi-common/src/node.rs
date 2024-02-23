@@ -1084,6 +1084,18 @@ impl PlatformRoot {
     }
 }
 
+impl PartialEq for PlatformRoot {
+    fn eq(&self, other: &Self) -> bool {
+        self.app_context.ptr_eq(&other.app_context)
+    }
+}
+
+impl Hash for PlatformRoot {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.app_context.as_ptr().hash(state);
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NodeIdOrRoot {
     Node(NodeId),
