@@ -374,13 +374,24 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
+    fn supports_action(&self) -> bool {
+        self.node_state().default_action_verb().is_some()
+    }
+
+    fn supports_component(&self) -> bool {
+        self.node_state().raw_bounds().is_some() || self.is_root()
+    }
+
+    fn supports_value(&self) -> bool {
+        self.current_value().is_some()
+    }
+
     pub fn interfaces(&self) -> InterfaceSet {
-        let state = self.node_state();
         let mut interfaces = InterfaceSet::new(Interface::Accessible);
-        if state.default_action_verb().is_some() {
+        if self.supports_action() {
             interfaces.insert(Interface::Action);
         }
-        if state.raw_bounds().is_some() || self.is_root() {
+        if self.supports_component() {
             interfaces.insert(Interface::Component);
         }
         if self.current_value().is_some() {
@@ -731,6 +742,27 @@ impl PlatformNode {
             Ok(wrapper.state(context.read_tree().state().focus_id().is_some()))
         })
         .unwrap_or(State::Defunct.into())
+    }
+
+    pub fn supports_action(&self) -> Result<bool> {
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            Ok(wrapper.supports_action())
+        })
+    }
+
+    pub fn supports_component(&self) -> Result<bool> {
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            Ok(wrapper.supports_component())
+        })
+    }
+
+    pub fn supports_value(&self) -> Result<bool> {
+        self.resolve(|node| {
+            let wrapper = NodeWrapper::Node(&node);
+            Ok(wrapper.supports_value())
+        })
     }
 
     pub fn interfaces(&self) -> Result<InterfaceSet> {
