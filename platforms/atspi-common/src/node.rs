@@ -395,7 +395,7 @@ impl<'a> NodeWrapper<'a> {
         if self.supports_component() {
             interfaces.insert(Interface::Component);
         }
-        if self.current_value().is_some() {
+        if self.supports_value() {
             interfaces.insert(Interface::Value);
         }
         interfaces
