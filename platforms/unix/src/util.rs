@@ -25,7 +25,9 @@ pub(crate) fn block_on<F: std::future::Future>(future: F) -> F::Output {
 
 pub(crate) fn map_error(source: ObjectId, error: InternalError) -> FdoError {
     match error {
-        InternalError::Defunct => FdoError::UnknownObject(source.path().to_string()),
+        InternalError::Defunct | InternalError::UnsupportedInterface => {
+            FdoError::UnknownObject(source.path().to_string())
+        }
         InternalError::TooManyChildren => FdoError::Failed("Too many children.".into()),
         InternalError::IndexOutOfRange => FdoError::Failed("Index is too big.".into()),
     }

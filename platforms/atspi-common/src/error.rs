@@ -7,6 +7,8 @@
 pub enum Error {
     #[error("defunct")]
     Defunct,
+    #[error("unsupported interface")]
+    UnsupportedInterface,
     #[error("too many children")]
     TooManyChildren,
     #[error("index out of range")]

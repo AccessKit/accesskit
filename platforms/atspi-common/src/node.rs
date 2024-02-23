@@ -837,7 +837,7 @@ impl PlatformNode {
                         _ => unimplemented!(),
                     }
                 }
-                _ => return Err(Error::Defunct),
+                _ => return Err(Error::UnsupportedInterface),
             };
             Ok(bounds.contains(Point::new(x.into(), y.into())))
         })
@@ -876,7 +876,7 @@ impl PlatformNode {
                         _ => unimplemented!(),
                     },))
                 }
-                _ => Err(Error::Defunct),
+                _ => Err(Error::UnsupportedInterface),
             }
         })
     }
