@@ -603,6 +603,15 @@ impl PlatformNode {
         }
     }
 
+    fn with_tree_state<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(&TreeState) -> Result<T>,
+    {
+        let context = self.upgrade_context()?;
+        let tree = context.read_tree();
+        f(tree.state())
+    }
+
     fn with_tree_state_and_context<F, T>(&self, f: F) -> Result<T>
     where
         F: FnOnce(&TreeState, &Context) -> Result<T>,
@@ -673,6 +682,14 @@ impl PlatformNode {
     pub fn root(&self) -> Result<PlatformRoot> {
         let context = self.upgrade_context()?;
         Ok(PlatformRoot::new(&context.app_context))
+    }
+
+    pub fn toolkit_name(&self) -> Result<String> {
+        self.with_tree_state(|state| Ok(state.toolkit_name().unwrap_or_default()))
+    }
+
+    pub fn toolkit_version(&self) -> Result<String> {
+        self.with_tree_state(|state| Ok(state.toolkit_version().unwrap_or_default()))
     }
 
     pub fn parent(&self) -> Result<NodeIdOrRoot> {
