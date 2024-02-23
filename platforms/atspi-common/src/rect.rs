@@ -6,7 +6,9 @@
 use serde::{Deserialize, Serialize};
 use zvariant::{OwnedValue, Type, Value};
 
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, OwnedValue, Type, Value)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, OwnedValue, Type, Value,
+)]
 pub struct Rect {
     pub x: i32,
     pub y: i32,
