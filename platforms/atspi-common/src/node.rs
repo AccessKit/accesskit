@@ -18,6 +18,7 @@ use atspi_common::{
     StateSet,
 };
 use std::{
+    hash::{Hash, Hasher},
     iter::FusedIterator,
     sync::{Arc, RwLock, RwLockReadGuard, Weak},
 };
@@ -958,6 +959,21 @@ impl PlatformNode {
             target: self.id,
             data: Some(ActionData::NumericValue(value)),
         })
+    }
+}
+
+impl PartialEq for PlatformNode {
+    fn eq(&self, other: &Self) -> bool {
+        self.adapter_id == other.adapter_id && self.id == other.id
+    }
+}
+
+impl Eq for PlatformNode {}
+
+impl Hash for PlatformNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.adapter_id.hash(state);
+        self.id.hash(state);
     }
 }
 
