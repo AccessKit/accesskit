@@ -105,8 +105,8 @@ impl NodeAccessibleInterface {
         self.node.localized_role_name().map_err(self.map_error())
     }
 
-    fn get_state(&self) -> fdo::Result<StateSet> {
-        self.node.state().map_err(self.map_error())
+    fn get_state(&self) -> StateSet {
+        self.node.state()
     }
 
     fn get_application(&self) -> (OwnedObjectAddress,) {

@@ -725,11 +725,12 @@ impl PlatformNode {
         self.resolve(|node| Ok(node.state().role_description().unwrap_or_default()))
     }
 
-    pub fn state(&self) -> Result<StateSet> {
+    pub fn state(&self) -> StateSet {
         self.resolve_with_context(|node, context| {
             let wrapper = NodeWrapper::Node(&node);
             Ok(wrapper.state(context.read_tree().state().focus_id().is_some()))
         })
+        .unwrap_or(State::Defunct.into())
     }
 
     pub fn interfaces(&self) -> Result<InterfaceSet> {
