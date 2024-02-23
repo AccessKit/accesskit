@@ -670,6 +670,11 @@ impl PlatformNode {
         }
     }
 
+    pub fn root(&self) -> Result<PlatformRoot> {
+        let context = self.upgrade_context()?;
+        Ok(PlatformRoot::new(&context.app_context))
+    }
+
     pub fn parent(&self) -> Result<NodeIdOrRoot> {
         self.resolve(|node| {
             let parent = node
