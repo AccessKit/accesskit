@@ -29,6 +29,14 @@
     * accesskit bumped from 0.12.0 to 0.12.1
     * accesskit_consumer bumped from 0.16.0 to 0.16.1
 
+## [0.7.2](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.7.1...accesskit_unix-v0.7.2) (2024-02-24)
+
+
+### Bug Fixes
+
+* Don't emit focus event twice on Unix ([#354](https://github.com/AccessKit/accesskit/issues/354)) ([b39216c](https://github.com/AccessKit/accesskit/commit/b39216cb31df692fef377f9b3c3c718fd225cc3c))
+* Use the new accesskit_atspi_common crate in the Unix adapter ([#356](https://github.com/AccessKit/accesskit/issues/356)) ([b2a468c](https://github.com/AccessKit/accesskit/commit/b2a468ccb91ee4e6d3435e73eb00c65cbe75060a))
+
 ## [0.7.1](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.7.0...accesskit_unix-v0.7.1) (2024-01-11)
 
 
