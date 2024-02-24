@@ -3,8 +3,10 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{Point, Rect};
-use atspi::CoordType;
+use accesskit_atspi_common::{Error as InternalError, PlatformNode};
+use zbus::fdo::Error as FdoError;
+
+use crate::atspi::ObjectId;
 
 #[cfg(not(feature = "tokio"))]
 pub(crate) fn block_on<F: std::future::Future>(future: F) -> F::Output {
@@ -21,31 +23,16 @@ pub(crate) fn block_on<F: std::future::Future>(future: F) -> F::Output {
     runtime.block_on(future)
 }
 
-#[derive(Clone, Copy, Default)]
-pub(crate) struct WindowBounds {
-    pub(crate) outer: Rect,
-    pub(crate) inner: Rect,
+pub(crate) fn map_error(source: ObjectId, error: InternalError) -> FdoError {
+    match error {
+        InternalError::Defunct | InternalError::UnsupportedInterface => {
+            FdoError::UnknownObject(source.path().to_string())
+        }
+        InternalError::TooManyChildren => FdoError::Failed("Too many children.".into()),
+        InternalError::IndexOutOfRange => FdoError::Failed("Index is too big.".into()),
+    }
 }
 
-impl WindowBounds {
-    pub(crate) fn new(outer: Rect, inner: Rect) -> Self {
-        Self { outer, inner }
-    }
-
-    pub(crate) fn top_left(&self, coord_type: CoordType, is_root: bool) -> Point {
-        match coord_type {
-            CoordType::Screen if is_root => self.outer.origin(),
-            CoordType::Screen => self.inner.origin(),
-            CoordType::Window if is_root => Point::ZERO,
-            CoordType::Window => {
-                let outer_position = self.outer.origin();
-                let inner_position = self.inner.origin();
-                Point::new(
-                    inner_position.x - outer_position.x,
-                    inner_position.y - outer_position.y,
-                )
-            }
-            _ => unimplemented!(),
-        }
-    }
+pub(crate) fn map_error_from_node(source: &PlatformNode, error: InternalError) -> FdoError {
+    map_error(ObjectId::from(source), error)
 }

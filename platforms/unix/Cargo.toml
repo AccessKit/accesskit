@@ -18,7 +18,7 @@ tokio = ["dep:tokio", "dep:tokio-stream", "atspi/tokio", "zbus/tokio"]
 
 [dependencies]
 accesskit = { version = "0.12.2", path = "../../common" }
-accesskit_consumer = { version = "0.17.0", path = "../../consumer" }
+accesskit_atspi_common = { version = "0.1.0", path = "../atspi-common" }
 atspi = { version = "0.19", default-features = false }
 futures-lite = "1.13"
 once_cell = "1.17.1"

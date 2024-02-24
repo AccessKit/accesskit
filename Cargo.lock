@@ -85,7 +85,7 @@ name = "accesskit_unix"
 version = "0.7.1"
 dependencies = [
  "accesskit",
- "accesskit_consumer",
+ "accesskit_atspi_common",
  "async-channel 2.1.1",
  "async-executor",
  "async-task",
