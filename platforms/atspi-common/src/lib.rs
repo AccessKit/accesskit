@@ -12,7 +12,10 @@ mod events;
 mod filters;
 mod node;
 mod rect;
+pub mod simplified;
 mod util;
+
+pub use atspi_common::{InterfaceSet, Role, StateSet};
 
 pub use action::*;
 pub use adapter::{Adapter, AdapterIdToken};
