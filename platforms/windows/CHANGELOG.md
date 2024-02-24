@@ -28,6 +28,13 @@
     * accesskit bumped from 0.11.1 to 0.11.2
     * accesskit_consumer bumped from 0.15.1 to 0.15.2
 
+## [0.16.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.16.0...accesskit_windows-v0.16.1) (2024-02-24)
+
+
+### Bug Fixes
+
+* Avoid `unnecessary_literal_unwrap` clippy lint ([#346](https://github.com/AccessKit/accesskit/issues/346)) ([59a6eae](https://github.com/AccessKit/accesskit/commit/59a6eae40ba35069b90d4cc0b765d838f8477c66))
+
 ## [0.16.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.15.1...accesskit_windows-v0.16.0) (2024-01-03)
 
 
