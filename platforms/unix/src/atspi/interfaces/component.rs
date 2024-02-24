@@ -50,7 +50,10 @@ impl ComponentInterface {
     }
 
     fn get_extents(&self, coord_type: CoordType) -> fdo::Result<(Rect,)> {
-        self.node.extents(coord_type).map_err(self.map_error())
+        self.node
+            .extents(coord_type)
+            .map(|rect| (rect,))
+            .map_err(self.map_error())
     }
 
     fn get_layer(&self) -> fdo::Result<Layer> {

@@ -876,7 +876,7 @@ impl PlatformNode {
         })
     }
 
-    pub fn extents(&self, coord_type: CoordType) -> Result<(AtspiRect,)> {
+    pub fn extents(&self, coord_type: CoordType) -> Result<AtspiRect> {
         self.resolve_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
             match node.bounding_box() {
@@ -884,15 +884,15 @@ impl PlatformNode {
                     let top_left = window_bounds.top_left(coord_type, node.is_root());
                     let new_origin =
                         Point::new(top_left.x + node_bounds.x0, top_left.y + node_bounds.y0);
-                    Ok((node_bounds.with_origin(new_origin).into(),))
+                    Ok(node_bounds.with_origin(new_origin).into())
                 }
                 None if node.is_root() => {
                     let bounds = window_bounds.outer;
-                    Ok((match coord_type {
+                    Ok(match coord_type {
                         CoordType::Screen => bounds.into(),
                         CoordType::Window => bounds.with_origin(Point::ZERO).into(),
                         _ => unimplemented!(),
-                    },))
+                    })
                 }
                 _ => Err(Error::UnsupportedInterface),
             }

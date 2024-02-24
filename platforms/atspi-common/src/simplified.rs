@@ -12,7 +12,7 @@ use crate::{
     WindowEvent,
 };
 
-pub use crate::{Error, Rect, Result, Role, StateSet};
+pub use crate::{CoordType, Error, Layer, Rect, Result, Role, StateSet};
 
 #[derive(Clone, Hash, PartialEq)]
 pub enum Accessible {
@@ -119,6 +119,90 @@ impl Accessible {
         match self {
             Self::Node(node) => node.toolkit_version(),
             Self::Root(root) => root.toolkit_version(),
+        }
+    }
+
+    pub fn supports_action(&self) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.supports_action(),
+            Self::Root(_) => Ok(false),
+        }
+    }
+
+    pub fn n_actions(&self) -> Result<i32> {
+        match self {
+            Self::Node(node) => node.n_actions(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn action_name(&self, index: i32) -> Result<String> {
+        match self {
+            Self::Node(node) => node.action_name(index),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn do_action(&self, index: i32) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.do_action(index),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn supports_component(&self) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.supports_component(),
+            Self::Root(_) => Ok(false),
+        }
+    }
+
+    pub fn contains(&self, x: i32, y: i32, coord_type: CoordType) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.contains(x, y, coord_type),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn accessible_at_point(
+        &self,
+        x: i32,
+        y: i32,
+        coord_type: CoordType,
+    ) -> Result<Option<Self>> {
+        match self {
+            Self::Node(node) => node
+                .accessible_at_point(x, y, coord_type)
+                .map(|id| id.map(|id| Self::Node(node.relative(id)))),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn extents(&self, coord_type: CoordType) -> Result<Rect> {
+        match self {
+            Self::Node(node) => node.extents(coord_type),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn layer(&self) -> Result<Layer> {
+        match self {
+            Self::Node(node) => node.layer(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn grab_focus(&self) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.grab_focus(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn scroll_to_point(&self, coord_type: CoordType, x: i32, y: i32) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.scroll_to_point(coord_type, x, y),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
         }
     }
 
