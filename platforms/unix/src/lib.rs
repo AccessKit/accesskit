@@ -25,6 +25,9 @@ mod adapter;
 mod atspi;
 mod context;
 mod executor;
+mod filters;
+mod node;
 mod util;
 
 pub use adapter::Adapter;
+pub(crate) use node::{PlatformNode, PlatformRootNode};

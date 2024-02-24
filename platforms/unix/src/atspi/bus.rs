@@ -5,20 +5,18 @@
 
 use crate::{
     atspi::{interfaces::*, ObjectId},
-    context::get_or_init_app_context,
+    context::{AppContext, Context},
     executor::{Executor, Task},
+    PlatformNode, PlatformRootNode,
 };
 use accesskit::NodeId;
-use accesskit_atspi_common::{
-    NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot, Property, WindowEvent,
-};
 use atspi::{
     events::EventBody,
     proxy::{bus::BusProxy, socket::SocketProxy},
     Interface, InterfaceSet,
 };
 use serde::Serialize;
-use std::{collections::HashMap, env::var, io};
+use std::{collections::HashMap, env::var, io, sync::Weak};
 use zbus::{
     names::{BusName, InterfaceName, MemberName, OwnedUniqueName},
     zvariant::{Str, Value},
@@ -69,31 +67,30 @@ impl Bus {
     }
 
     async fn register_root_node(&mut self) -> Result<()> {
-        let node = PlatformRoot::new(get_or_init_app_context());
+        let node = PlatformRootNode::new();
         let path = ObjectId::Root.path();
 
-        if self
+        let app_node_added = self
             .conn
             .object_server()
             .at(path.clone(), ApplicationInterface(node.clone()))
             .await?
-        {
+            && self
+                .conn
+                .object_server()
+                .at(
+                    path,
+                    AccessibleInterface::new(self.unique_name().to_owned(), node),
+                )
+                .await?;
+
+        if app_node_added {
             let desktop = self
                 .socket_proxy
                 .embed(&(self.unique_name().as_str(), ObjectId::Root.path().into()))
                 .await?;
-
-            self.conn
-                .object_server()
-                .at(
-                    path,
-                    RootAccessibleInterface::new(
-                        self.unique_name().to_owned(),
-                        desktop.into(),
-                        node,
-                    ),
-                )
-                .await?;
+            let mut app_context = AppContext::write();
+            app_context.desktop_address = Some(desktop.into());
         }
 
         Ok(())
@@ -101,32 +98,46 @@ impl Bus {
 
     pub(crate) async fn register_interfaces(
         &self,
-        node: PlatformNode,
+        adapter_id: usize,
+        context: Weak<Context>,
+        node_id: NodeId,
         new_interfaces: InterfaceSet,
     ) -> zbus::Result<()> {
-        let path = ObjectId::from(&node).path();
-        let bus_name = self.unique_name().to_owned();
+        let path = ObjectId::Node {
+            adapter: adapter_id,
+            node: node_id,
+        }
+        .path();
         if new_interfaces.contains(Interface::Accessible) {
             self.register_interface(
                 &path,
-                NodeAccessibleInterface::new(bus_name.clone(), node.clone()),
+                AccessibleInterface::new(
+                    self.unique_name().to_owned(),
+                    PlatformNode::new(context.clone(), adapter_id, node_id),
+                ),
             )
             .await?;
         }
         if new_interfaces.contains(Interface::Action) {
-            self.register_interface(&path, ActionInterface::new(node.clone()))
-                .await?;
+            self.register_interface(
+                &path,
+                ActionInterface::new(PlatformNode::new(context.clone(), adapter_id, node_id)),
+            )
+            .await?;
         }
         if new_interfaces.contains(Interface::Component) {
             self.register_interface(
                 &path,
-                ComponentInterface::new(bus_name.clone(), node.clone()),
+                ComponentInterface::new(PlatformNode::new(context.clone(), adapter_id, node_id)),
             )
             .await?;
         }
         if new_interfaces.contains(Interface::Value) {
-            self.register_interface(&path, ValueInterface::new(node.clone()))
-                .await?;
+            self.register_interface(
+                &path,
+                ValueInterface::new(PlatformNode::new(context, adapter_id, node_id)),
+            )
+            .await?;
         }
 
         Ok(())
@@ -155,7 +166,7 @@ impl Bus {
         }
         .path();
         if old_interfaces.contains(Interface::Accessible) {
-            self.unregister_interface::<NodeAccessibleInterface>(&path)
+            self.unregister_interface::<AccessibleInterface<PlatformNode>>(&path)
                 .await?;
         }
         if old_interfaces.contains(Interface::Action) {
@@ -185,17 +196,9 @@ impl Bus {
 
     pub(crate) async fn emit_object_event(
         &self,
-        adapter_id: usize,
-        target: NodeIdOrRoot,
+        target: ObjectId,
         event: ObjectEvent,
     ) -> Result<()> {
-        let target = match target {
-            NodeIdOrRoot::Node(node) => ObjectId::Node {
-                adapter: adapter_id,
-                node,
-            },
-            NodeIdOrRoot::Root => ObjectId::Root,
-        };
         let interface = "org.a11y.atspi.Event.Object";
         let signal = match event {
             ObjectEvent::ActiveDescendantChanged(_) => "ActiveDescendantChanged",
@@ -208,10 +211,6 @@ impl Bus {
         let properties = HashMap::new();
         match event {
             ObjectEvent::ActiveDescendantChanged(child) => {
-                let child = ObjectId::Node {
-                    adapter: adapter_id,
-                    node: child,
-                };
                 self.emit_event(
                     target,
                     interface,
@@ -257,10 +256,6 @@ impl Bus {
                 .await
             }
             ObjectEvent::ChildAdded(index, child) => {
-                let child = ObjectId::Node {
-                    adapter: adapter_id,
-                    node: child,
-                };
                 self.emit_event(
                     target,
                     interface,
@@ -276,10 +271,6 @@ impl Bus {
                 .await
             }
             ObjectEvent::ChildRemoved(child) => {
-                let child = ObjectId::Node {
-                    adapter: adapter_id,
-                    node: child,
-                };
                 self.emit_event(
                     target,
                     interface,
@@ -313,13 +304,6 @@ impl Bus {
                             Property::Name(value) => Str::from(value).into(),
                             Property::Description(value) => Str::from(value).into(),
                             Property::Parent(parent) => {
-                                let parent = match parent {
-                                    NodeIdOrRoot::Node(node) => ObjectId::Node {
-                                        adapter: adapter_id,
-                                        node,
-                                    },
-                                    NodeIdOrRoot::Root => ObjectId::Root,
-                                };
                                 parent.to_address(self.unique_name().clone()).into()
                             }
                             Property::Role(value) => Value::U32(value as u32),
@@ -350,15 +334,10 @@ impl Bus {
 
     pub(crate) async fn emit_window_event(
         &self,
-        adapter_id: usize,
-        target: NodeId,
+        target: ObjectId,
         window_name: String,
         event: WindowEvent,
     ) -> Result<()> {
-        let target = ObjectId::Node {
-            adapter: adapter_id,
-            node: target,
-        };
         let signal = match event {
             WindowEvent::Activated => "Activate",
             WindowEvent::Deactivated => "Deactivate",
