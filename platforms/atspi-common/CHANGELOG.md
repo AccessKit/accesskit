@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.1.0...accesskit_atspi_common-v0.1.1) (2024-02-24)
+
+
+### Bug Fixes
+
+* Add missing README ([#357](https://github.com/AccessKit/accesskit/issues/357)) ([e8cf48e](https://github.com/AccessKit/accesskit/commit/e8cf48e21be0146768b2d14289164d192823fd1f))
+
 ## 0.1.0 (2024-02-24)
 
 
