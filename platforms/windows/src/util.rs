@@ -14,7 +14,7 @@ use windows::{
     Win32::{
         Foundation::*,
         Graphics::Gdi::*,
-        System::{Com::*, Ole::*},
+        System::{Com::*, Ole::*, Variant::*},
         UI::{Accessibility::*, WindowsAndMessaging::*},
     },
 };

@@ -22,7 +22,7 @@ static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
 
     let wc = WNDCLASSW {
         hCursor: unsafe { LoadCursorW(None, IDC_ARROW) }.unwrap(),
-        hInstance: unsafe { GetModuleHandleW(None) }.unwrap(),
+        hInstance: unsafe { GetModuleHandleW(None) }.unwrap().into(),
         lpszClassName: class_name,
         style: CS_HREDRAW | CS_VREDRAW,
         lpfnWndProc: Some(wndproc),
@@ -218,7 +218,8 @@ impl ActionHandler for SimpleActionHandler {
                         WPARAM(0),
                         LPARAM(request.target.0 as _),
                     )
-                };
+                }
+                .unwrap();
             }
             Action::Default => {
                 unsafe {
@@ -228,7 +229,8 @@ impl ActionHandler for SimpleActionHandler {
                         WPARAM(0),
                         LPARAM(request.target.0 as _),
                     )
-                };
+                }
+                .unwrap();
             }
             _ => (),
         }

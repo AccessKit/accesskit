@@ -18,7 +18,11 @@ use paste::paste;
 use std::sync::{Arc, Weak};
 use windows::{
     core::*,
-    Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
+    Win32::{
+        Foundation::*,
+        System::{Com::*, Variant::*},
+        UI::Accessibility::*,
+    },
 };
 
 use crate::{
