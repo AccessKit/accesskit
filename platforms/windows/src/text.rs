@@ -12,7 +12,11 @@ use accesskit_consumer::{
 use std::sync::{Arc, RwLock, Weak};
 use windows::{
     core::*,
-    Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
+    Win32::{
+        Foundation::*,
+        System::{Com::*, Variant::*},
+        UI::Accessibility::*,
+    },
 };
 
 use crate::{context::Context, node::PlatformNode, util::*};
@@ -329,7 +333,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
     }
 
     fn Compare(&self, other: Option<&ITextRangeProvider>) -> Result<BOOL> {
-        let other = required_param(other)?.as_impl();
+        let other = unsafe { required_param(other)?.as_impl() };
         Ok((self.context.ptr_eq(&other.context)
             && *self.state.read().unwrap() == *other.state.read().unwrap())
         .into())
@@ -341,7 +345,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
         other: Option<&ITextRangeProvider>,
         other_endpoint: TextPatternRangeEndpoint,
     ) -> Result<i32> {
-        let other = required_param(other)?.as_impl();
+        let other = unsafe { required_param(other)?.as_impl() };
         if std::ptr::eq(other as *const _, self as *const _) {
             // Comparing endpoints within the same range can be done
             // safely without upgrading the range. This allows ATs
@@ -530,7 +534,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
         other: Option<&ITextRangeProvider>,
         other_endpoint: TextPatternRangeEndpoint,
     ) -> Result<()> {
-        let other = required_param(other)?.as_impl();
+        let other = unsafe { required_param(other)?.as_impl() };
         self.require_same_context(other)?;
         // We have to obtain the tree state and ranges manually to avoid
         // lifetime issues, and work with the two locks in a specific order

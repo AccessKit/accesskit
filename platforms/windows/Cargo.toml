@@ -19,7 +19,7 @@ paste = "1.0"
 static_assertions = "1.1.0"
 
 [dependencies.windows]
-version = "0.48.0"
+version = "0.52"
 features = [
     "implement",
     "Win32_Foundation",
@@ -27,6 +27,7 @@ features = [
     "Win32_System_Com",
     "Win32_System_LibraryLoader",
     "Win32_System_Ole",
+    "Win32_System_Variant",
     "Win32_UI_Accessibility",
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_WindowsAndMessaging",

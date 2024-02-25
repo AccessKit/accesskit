@@ -32,7 +32,7 @@ static WINDOW_CLASS_ATOM: SyncLazy<u16> = SyncLazy::new(|| {
 
     let wc = WNDCLASSW {
         hCursor: unsafe { LoadCursorW(None, IDC_ARROW) }.unwrap(),
-        hInstance: unsafe { GetModuleHandleW(None) }.unwrap(),
+        hInstance: unsafe { GetModuleHandleW(None) }.unwrap().into(),
         lpszClassName: class_name,
         style: CS_HREDRAW | CS_VREDRAW,
         lpfnWndProc: Some(wndproc),
