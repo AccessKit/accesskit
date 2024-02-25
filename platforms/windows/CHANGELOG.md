@@ -28,6 +28,13 @@
     * accesskit bumped from 0.11.1 to 0.11.2
     * accesskit_consumer bumped from 0.15.1 to 0.15.2
 
+## [0.16.2](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.16.1...accesskit_windows-v0.16.2) (2024-02-25)
+
+
+### Bug Fixes
+
+* Bump windows-rs dependency to 0.52 ([#359](https://github.com/AccessKit/accesskit/issues/359)) ([69d74f6](https://github.com/AccessKit/accesskit/commit/69d74f6947922b76d4aee683eb53d8fbdd2259f2))
+
 ## [0.16.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.16.0...accesskit_windows-v0.16.1) (2024-02-24)
 
 
