@@ -13,7 +13,7 @@
 use accesskit::{
     Action, ActionData, ActionRequest, Live, NodeId, NodeIdContent, Point, Role, Toggled,
 };
-use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
+use accesskit_consumer::{FilterResult, Node, TreeState};
 use paste::paste;
 use std::sync::{atomic::Ordering, Arc, Weak};
 use windows::{
@@ -23,7 +23,7 @@ use windows::{
 
 use crate::{
     context::Context,
-    filters::{filter, filter_detached, filter_with_root_exception},
+    filters::{filter, filter_with_root_exception},
     text::PlatformRange as PlatformTextRange,
     util::*,
 };
@@ -40,21 +40,11 @@ fn runtime_id_from_node_id(id: NodeId) -> [i32; RUNTIME_ID_SIZE] {
     ]
 }
 
-pub(crate) enum NodeWrapper<'a> {
-    Node(&'a Node<'a>),
-    DetachedNode(&'a DetachedNode),
-}
+pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
 
 impl<'a> NodeWrapper<'a> {
-    fn node_state(&self) -> &'a NodeState {
-        match self {
-            Self::Node(node) => node.state(),
-            Self::DetachedNode(node) => node.state(),
-        }
-    }
-
     fn control_type(&self) -> UIA_CONTROLTYPE_ID {
-        let role = self.node_state().role();
+        let role = self.0.role();
         // TODO: Handle special cases. (#14)
         match role {
             Role::Unknown => UIA_CustomControlTypeId,
@@ -264,51 +254,35 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn localized_control_type(&self) -> Option<String> {
-        self.node_state().role_description()
+        self.0.role_description()
     }
 
     fn name(&self) -> Option<String> {
-        match self {
-            Self::Node(node) => node.name(),
-            Self::DetachedNode(node) => node.name(),
-        }
+        self.0.name()
     }
 
     fn description(&self) -> Option<String> {
-        match self {
-            Self::Node(node) => node.description(),
-            Self::DetachedNode(node) => node.description(),
-        }
+        self.0.description()
     }
 
     fn is_content_element(&self) -> bool {
-        let result = match self {
-            Self::Node(node) => filter(node),
-            Self::DetachedNode(node) => filter_detached(node),
-        };
-        result == FilterResult::Include
+        filter(self.0) == FilterResult::Include
     }
 
     fn is_enabled(&self) -> bool {
-        !self.node_state().is_disabled()
+        !self.0.is_disabled()
     }
 
     fn is_focusable(&self) -> bool {
-        self.node_state().is_focusable()
+        self.0.is_focusable()
     }
 
     fn is_focused(&self) -> bool {
-        match self {
-            Self::Node(node) => node.is_focused(),
-            Self::DetachedNode(node) => node.is_focused(),
-        }
+        self.0.is_focused()
     }
 
     fn live_setting(&self) -> LiveSetting {
-        let live = match self {
-            Self::Node(node) => node.live(),
-            Self::DetachedNode(node) => node.live(),
-        };
+        let live = self.0.live();
         match live {
             Live::Off => Off,
             Live::Polite => Polite,
@@ -317,15 +291,15 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn class_name(&self) -> Option<&str> {
-        self.node_state().class_name()
+        self.0.class_name()
     }
 
     fn is_toggle_pattern_supported(&self) -> bool {
-        self.node_state().toggled().is_some() && !self.is_selection_item_pattern_supported()
+        self.0.toggled().is_some() && !self.is_selection_item_pattern_supported()
     }
 
     fn toggle_state(&self) -> ToggleState {
-        match self.node_state().toggled().unwrap() {
+        match self.0.toggled().unwrap() {
             Toggled::False => ToggleState_Off,
             Toggled::True => ToggleState_On,
             Toggled::Mixed => ToggleState_Indeterminate,
@@ -333,94 +307,82 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn is_invoke_pattern_supported(&self) -> bool {
-        self.node_state().is_invocable()
+        self.0.is_invocable()
     }
 
     fn is_value_pattern_supported(&self) -> bool {
-        match self {
-            Self::Node(node) => node.has_value(),
-            Self::DetachedNode(node) => node.has_value(),
-        }
+        self.0.has_value()
     }
 
     fn is_range_value_pattern_supported(&self) -> bool {
-        self.node_state().numeric_value().is_some()
+        self.0.numeric_value().is_some()
     }
 
     fn value(&self) -> String {
-        match self {
-            Self::Node(node) => node.value().unwrap(),
-            Self::DetachedNode(node) => node.value().unwrap(),
-        }
+        self.0.value().unwrap()
     }
 
     fn is_read_only(&self) -> bool {
-        self.node_state().is_read_only()
+        self.0.is_read_only()
     }
 
     fn numeric_value(&self) -> f64 {
-        self.node_state().numeric_value().unwrap()
+        self.0.numeric_value().unwrap()
     }
 
     fn min_numeric_value(&self) -> f64 {
-        self.node_state().min_numeric_value().unwrap_or(0.0)
+        self.0.min_numeric_value().unwrap_or(0.0)
     }
 
     fn max_numeric_value(&self) -> f64 {
-        self.node_state().max_numeric_value().unwrap_or(0.0)
+        self.0.max_numeric_value().unwrap_or(0.0)
     }
 
     fn numeric_value_step(&self) -> f64 {
-        self.node_state().numeric_value_step().unwrap_or(0.0)
+        self.0.numeric_value_step().unwrap_or(0.0)
     }
 
     fn numeric_value_jump(&self) -> f64 {
-        self.node_state()
+        self.0
             .numeric_value_jump()
             .unwrap_or_else(|| self.numeric_value_step())
     }
 
     fn is_selection_item_pattern_supported(&self) -> bool {
-        match self.node_state().role() {
+        match self.0.role() {
             // TODO: tables (#29)
             // https://www.w3.org/TR/core-aam-1.1/#mapping_state-property_table
             // SelectionItem.IsSelected is exposed when aria-checked is True or
             // False, for 'radio' and 'menuitemradio' roles.
-            Role::RadioButton | Role::MenuItemRadio => matches!(
-                self.node_state().toggled(),
-                Some(Toggled::True | Toggled::False)
-            ),
+            Role::RadioButton | Role::MenuItemRadio => {
+                matches!(self.0.toggled(), Some(Toggled::True | Toggled::False))
+            }
             // https://www.w3.org/TR/wai-aria-1.1/#aria-selected
             // SelectionItem.IsSelected is exposed when aria-select is True or False.
             Role::ListBoxOption
             | Role::ListItem
             | Role::MenuListOption
             | Role::Tab
-            | Role::TreeItem => self.node_state().is_selected().is_some(),
+            | Role::TreeItem => self.0.is_selected().is_some(),
             _ => false,
         }
     }
 
     fn is_selected(&self) -> bool {
-        match self.node_state().role() {
+        match self.0.role() {
             // https://www.w3.org/TR/core-aam-1.1/#mapping_state-property_table
             // SelectionItem.IsSelected is set according to the True or False
             // value of aria-checked for 'radio' and 'menuitemradio' roles.
-            Role::RadioButton | Role::MenuItemRadio => {
-                self.node_state().toggled() == Some(Toggled::True)
-            }
+            Role::RadioButton | Role::MenuItemRadio => self.0.toggled() == Some(Toggled::True),
             // https://www.w3.org/TR/wai-aria-1.1/#aria-selected
             // SelectionItem.IsSelected is set according to the True or False
             // value of aria-selected.
-            _ => self.node_state().is_selected().unwrap_or(false),
+            _ => self.0.is_selected().unwrap_or(false),
         }
     }
 
     fn is_text_pattern_supported(&self) -> bool {
-        match self {
-            Self::Node(node) => node.supports_text_ranges(),
-            Self::DetachedNode(node) => node.supports_text_ranges(),
-        }
+        self.0.supports_text_ranges()
     }
 
     pub(crate) fn enqueue_property_changes(
@@ -451,7 +413,7 @@ impl<'a> NodeWrapper<'a> {
         }
         if self.is_text_pattern_supported()
             && old.is_text_pattern_supported()
-            && self.node_state().raw_text_selection() != old.node_state().raw_text_selection()
+            && self.0.raw_text_selection() != old.0.raw_text_selection()
         {
             queue.push(QueuedEvent::Simple {
                 element: element.clone(),
@@ -646,7 +608,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
 
     fn GetPropertyValue(&self, property_id: UIA_PROPERTY_ID) -> Result<VARIANT> {
         self.resolve_with_tree_state_and_context(|node, state, context| {
-            let wrapper = NodeWrapper::Node(&node);
+            let wrapper = NodeWrapper(&node);
             let mut result = wrapper.get_property_value(property_id);
             if result.is_empty() {
                 if node.is_root() {
@@ -830,7 +792,7 @@ macro_rules! patterns {
         impl PlatformNode {
             fn pattern_provider(&self, pattern_id: UIA_PATTERN_ID) -> Result<IUnknown> {
                 self.resolve(|node| {
-                    let wrapper = NodeWrapper::Node(&node);
+                    let wrapper = NodeWrapper(&node);
                     match pattern_id {
                         $(paste! { [< UIA_ $base_pattern_id PatternId>] } => {
                             if wrapper.$is_supported() {
@@ -875,7 +837,7 @@ macro_rules! patterns {
             impl [< I $base_pattern_id Provider_Impl>] for PlatformNode {
                 $(fn $base_property_id(&self) -> Result<$com_type> {
                     self.resolve(|node| {
-                        let wrapper = NodeWrapper::Node(&node);
+                        let wrapper = NodeWrapper(&node);
                         Ok(wrapper.$getter().into())
                     })
                 })*

@@ -5,7 +5,7 @@
 
 use accesskit::Role;
 
-use crate::node::{DetachedNode, Node, NodeState};
+use crate::node::Node;
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FilterResult {
@@ -14,7 +14,11 @@ pub enum FilterResult {
     ExcludeSubtree,
 }
 
-fn common_filter_base(node: &NodeState) -> FilterResult {
+pub fn common_filter(node: &Node) -> FilterResult {
+    if node.is_focused() {
+        return FilterResult::Include;
+    }
+
     if node.is_hidden() {
         return FilterResult::ExcludeSubtree;
     }
@@ -25,20 +29,6 @@ fn common_filter_base(node: &NodeState) -> FilterResult {
     }
 
     FilterResult::Include
-}
-
-pub fn common_filter(node: &Node) -> FilterResult {
-    if node.is_focused() {
-        return FilterResult::Include;
-    }
-    common_filter_base(node.state())
-}
-
-pub fn common_filter_detached(node: &DetachedNode) -> FilterResult {
-    if node.is_focused() {
-        return FilterResult::Include;
-    }
-    common_filter_base(node.state())
 }
 
 pub fn common_filter_with_root_exception(node: &Node) -> FilterResult {

@@ -7,12 +7,10 @@ pub(crate) mod tree;
 pub use tree::{ChangeHandler as TreeChangeHandler, State as TreeState, Tree};
 
 pub(crate) mod node;
-pub use node::{DetachedNode, Node, NodeState};
+pub use node::Node;
 
 pub(crate) mod filters;
-pub use filters::{
-    common_filter, common_filter_detached, common_filter_with_root_exception, FilterResult,
-};
+pub use filters::{common_filter, common_filter_with_root_exception, FilterResult};
 
 pub(crate) mod iterators;
 
