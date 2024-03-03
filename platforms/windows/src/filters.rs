@@ -4,6 +4,5 @@
 // the LICENSE-MIT file), at your option.
 
 pub(crate) use accesskit_consumer::{
-    common_filter as filter, common_filter_detached as filter_detached,
-    common_filter_with_root_exception as filter_with_root_exception,
+    common_filter as filter, common_filter_with_root_exception as filter_with_root_exception,
 };

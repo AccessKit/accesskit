@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{ActionHandler, Live, NodeId, Role, TreeUpdate};
-use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
+use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler};
 use std::{collections::HashSet, sync::Arc};
 use windows::Win32::{
     Foundation::*,
@@ -13,7 +13,7 @@ use windows::Win32::{
 
 use crate::{
     context::Context,
-    filters::{filter, filter_detached},
+    filters::filter,
     init::UiaInitMarker,
     node::{NodeWrapper, PlatformNode},
     util::QueuedEvent,
@@ -58,18 +58,12 @@ impl AdapterChangeHandler<'_> {
         }
     }
 
-    fn insert_text_change_if_needed_for_removed_node(
-        &mut self,
-        node: &DetachedNode,
-        current_state: &TreeState,
-    ) {
+    fn insert_text_change_if_needed_for_removed_node(&mut self, node: &Node) {
         if node.role() != Role::InlineTextBox {
             return;
         }
-        if let Some(id) = node.parent_id() {
-            if let Some(node) = current_state.node_by_id(id) {
-                self.insert_text_change_if_needed_parent(node);
-            }
+        if let Some(parent) = node.parent() {
+            self.insert_text_change_if_needed_parent(parent);
         }
     }
 }
@@ -90,7 +84,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
     }
 
-    fn node_updated(&mut self, old_node: &DetachedNode, new_node: &Node) {
+    fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
         if old_node.raw_value() != new_node.raw_value() {
             self.insert_text_change_if_needed(new_node);
         }
@@ -99,14 +93,14 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
         let platform_node = PlatformNode::new(self.context, new_node.id());
         let element: IRawElementProviderSimple = platform_node.into();
-        let old_wrapper = NodeWrapper::DetachedNode(old_node);
-        let new_wrapper = NodeWrapper::Node(new_node);
+        let old_wrapper = NodeWrapper(old_node);
+        let new_wrapper = NodeWrapper(new_node);
         new_wrapper.enqueue_property_changes(&mut self.queue, &element, &old_wrapper);
         if new_node.name().is_some()
             && new_node.live() != Live::Off
             && (new_node.name() != old_node.name()
                 || new_node.live() != old_node.live()
-                || filter_detached(old_node) != FilterResult::Include)
+                || filter(old_node) != FilterResult::Include)
         {
             self.queue.push(QueuedEvent::Simple {
                 element,
@@ -115,12 +109,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
     }
 
-    fn focus_moved(
-        &mut self,
-        _old_node: Option<&DetachedNode>,
-        new_node: Option<&Node>,
-        _current_state: &TreeState,
-    ) {
+    fn focus_moved(&mut self, _old_node: Option<&Node>, new_node: Option<&Node>) {
         if let Some(new_node) = new_node {
             let platform_node = PlatformNode::new(self.context, new_node.id());
             let element: IRawElementProviderSimple = platform_node.into();
@@ -131,8 +120,8 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
     }
 
-    fn node_removed(&mut self, node: &DetachedNode, current_state: &TreeState) {
-        self.insert_text_change_if_needed_for_removed_node(node, current_state);
+    fn node_removed(&mut self, node: &Node) {
+        self.insert_text_change_if_needed_for_removed_node(node);
     }
 
     // TODO: handle other events (#20)

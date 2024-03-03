@@ -3,36 +3,31 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{Live, Node as NodeData, NodeId, Tree as TreeData, TreeUpdate};
+use accesskit::{Node as NodeData, NodeId, Tree as TreeData, TreeUpdate};
+use immutable_chunkmap::map::MapM as ChunkMap;
 use std::collections::{HashMap, HashSet};
 
-use crate::node::{DetachedNode, Node, NodeState, ParentAndIndex};
+use crate::node::{Node, NodeState, ParentAndIndex};
 
 #[derive(Clone)]
 pub struct State {
-    pub(crate) nodes: HashMap<NodeId, NodeState>,
+    pub(crate) nodes: ChunkMap<NodeId, NodeState>,
     pub(crate) data: TreeData,
     focus: NodeId,
     is_host_focused: bool,
 }
 
-struct InternalFocusChange {
-    old_focus: Option<DetachedNode>,
-    new_focus_old_node: Option<DetachedNode>,
-}
-
 #[derive(Default)]
 struct InternalChanges {
     added_node_ids: HashSet<NodeId>,
-    updated_nodes: HashMap<NodeId, DetachedNode>,
-    focus_change: Option<InternalFocusChange>,
-    removed_nodes: HashMap<NodeId, DetachedNode>,
+    updated_node_ids: HashSet<NodeId>,
+    removed_node_ids: HashSet<NodeId>,
 }
 
 impl State {
     fn validate_global(&self) {
-        assert!(self.nodes.contains_key(&self.data.root));
-        assert!(self.nodes.contains_key(&self.focus));
+        assert!(self.nodes.get(&self.data.root).is_some());
+        assert!(self.nodes.get(&self.focus).is_some());
     }
 
     fn update(
@@ -41,20 +36,17 @@ impl State {
         is_host_focused: bool,
         mut changes: Option<&mut InternalChanges>,
     ) {
-        // First, if we're collecting changes, get the accurate state
-        // of any updated nodes.
+        // First, if we're collecting changes, collect the IDS of any nodes
+        // in the update that were in the previous state.
         if let Some(changes) = &mut changes {
             for (node_id, _) in &update.nodes {
-                if let Some(old_node) = self.node_by_id(*node_id) {
-                    let old_node = old_node.detached();
-                    changes.updated_nodes.insert(*node_id, old_node);
+                if self.nodes.get(node_id).is_some() {
+                    changes.updated_node_ids.insert(*node_id);
                 }
             }
         }
 
         let mut orphans = HashSet::new();
-        let old_focus_id = self.is_host_focused.then_some(self.focus);
-        let old_root_id = self.data.root;
 
         if let Some(tree) = update.tree {
             if tree.root != self.data.root {
@@ -68,18 +60,17 @@ impl State {
         let mut pending_children = HashMap::new();
 
         fn add_node(
-            nodes: &mut HashMap<NodeId, NodeState>,
+            nodes: &mut ChunkMap<NodeId, NodeState>,
             changes: &mut Option<&mut InternalChanges>,
             parent_and_index: Option<ParentAndIndex>,
             id: NodeId,
             data: NodeData,
         ) {
             let state = NodeState {
-                id,
                 parent_and_index,
                 data,
             };
-            nodes.insert(id, state);
+            nodes.insert_cow(id, state);
             if let Some(changes) = changes {
                 changes.added_node_ids.insert(id);
             }
@@ -93,7 +84,7 @@ impl State {
                 assert!(!seen_child_ids.contains(child_id));
                 orphans.remove(child_id);
                 let parent_and_index = ParentAndIndex(node_id, child_index);
-                if let Some(child_state) = self.nodes.get_mut(child_id) {
+                if let Some(child_state) = self.nodes.get_mut_cow(child_id) {
                     if child_state.parent_and_index != Some(parent_and_index) {
                         child_state.parent_and_index = Some(parent_and_index);
                     }
@@ -111,7 +102,7 @@ impl State {
                 seen_child_ids.insert(child_id);
             }
 
-            if let Some(node_state) = self.nodes.get_mut(&node_id) {
+            if let Some(node_state) = self.nodes.get_mut_cow(&node_id) {
                 if node_id == root {
                     node_state.parent_and_index = None;
                 }
@@ -139,29 +130,14 @@ impl State {
         assert_eq!(pending_nodes.len(), 0);
         assert_eq!(pending_children.len(), 0);
 
-        if update.focus != self.focus || is_host_focused != self.is_host_focused {
-            let old_focus = old_focus_id.map(|id| self.node_by_id(id).unwrap().detached());
-            let new_focus = is_host_focused.then_some(update.focus);
-            if let Some(changes) = &mut changes {
-                changes.focus_change = Some(InternalFocusChange {
-                    old_focus,
-                    new_focus_old_node: new_focus
-                        .and_then(|id| {
-                            (!changes.updated_nodes.contains_key(&id))
-                                .then(|| self.node_by_id(id).map(|node| node.detached()))
-                        })
-                        .flatten(),
-                });
-            }
-            self.focus = update.focus;
-            self.is_host_focused = is_host_focused;
-        }
+        self.focus = update.focus;
+        self.is_host_focused = is_host_focused;
 
         if !orphans.is_empty() {
             let mut to_remove = HashSet::new();
 
             fn traverse_orphan(
-                nodes: &HashMap<NodeId, NodeState>,
+                nodes: &ChunkMap<NodeId, NodeState>,
                 to_remove: &mut HashSet<NodeId>,
                 id: NodeId,
             ) {
@@ -177,18 +153,9 @@ impl State {
             }
 
             for id in to_remove {
-                if let Some(old_node_state) = self.nodes.remove(&id) {
+                if self.nodes.remove_cow(&id).is_some() {
                     if let Some(changes) = &mut changes {
-                        let old_node = DetachedNode {
-                            state: old_node_state,
-                            is_focused: old_focus_id == Some(id),
-                            is_root: old_root_id == id,
-                            name: None,
-                            value: None,
-                            live: Live::Off,
-                            supports_text_ranges: false,
-                        };
-                        changes.removed_nodes.insert(id, old_node);
+                        changes.removed_node_ids.insert(id);
                     }
                 }
             }
@@ -233,12 +200,13 @@ impl State {
     }
 
     pub fn has_node(&self, id: NodeId) -> bool {
-        self.nodes.contains_key(&id)
+        self.nodes.get(&id).is_some()
     }
 
     pub fn node_by_id(&self, id: NodeId) -> Option<Node<'_>> {
         self.nodes.get(&id).map(|node_state| Node {
             tree_state: self,
+            id,
             state: node_state,
         })
     }
@@ -274,21 +242,9 @@ impl State {
 
 pub trait ChangeHandler {
     fn node_added(&mut self, node: &Node);
-    fn node_updated(&mut self, old_node: &DetachedNode, new_node: &Node);
-    fn focus_moved(
-        &mut self,
-        old_node: Option<&DetachedNode>,
-        new_node: Option<&Node>,
-        current_state: &State,
-    );
-    /// The tree update process doesn't currently collect all possible information
-    /// about removed nodes. The following methods don't accurately reflect
-    /// the full state of the old node:
-    ///
-    /// * [`DetachedNode::name`]
-    /// * [`DetachedNode::live`]
-    /// * [`DetachedNode::supports_text_ranges`]
-    fn node_removed(&mut self, node: &DetachedNode, current_state: &State);
+    fn node_updated(&mut self, old_node: &Node, new_node: &Node);
+    fn focus_moved(&mut self, old_node: Option<&Node>, new_node: Option<&Node>);
+    fn node_removed(&mut self, node: &Node);
 }
 
 pub struct Tree {
@@ -298,7 +254,7 @@ pub struct Tree {
 impl Tree {
     pub fn new(mut initial_state: TreeUpdate, is_host_focused: bool) -> Self {
         let mut state = State {
-            nodes: HashMap::new(),
+            nodes: ChunkMap::new(),
             data: initial_state.tree.take().unwrap(),
             focus: initial_state.focus,
             is_host_focused,
@@ -317,9 +273,10 @@ impl Tree {
         handler: &mut impl ChangeHandler,
     ) {
         let mut changes = InternalChanges::default();
+        let old_state = self.state.clone();
         self.state
             .update(update, self.state.is_host_focused, Some(&mut changes));
-        self.process_changes(changes, handler);
+        self.process_changes(old_state, changes, handler);
     }
 
     pub fn update_host_focus_state(&mut self, is_host_focused: bool) {
@@ -332,25 +289,33 @@ impl Tree {
         handler: &mut impl ChangeHandler,
     ) {
         let mut changes = InternalChanges::default();
+        let old_state = self.state.clone();
         self.state
             .update_host_focus_state(is_host_focused, Some(&mut changes));
-        self.process_changes(changes, handler);
+        self.process_changes(old_state, changes, handler);
     }
 
-    fn process_changes(&self, changes: InternalChanges, handler: &mut impl ChangeHandler) {
+    fn process_changes(
+        &self,
+        old_state: State,
+        changes: InternalChanges,
+        handler: &mut impl ChangeHandler,
+    ) {
         for id in &changes.added_node_ids {
             let node = self.state.node_by_id(*id).unwrap();
             handler.node_added(&node);
         }
-        for (id, old_node) in &changes.updated_nodes {
+        for id in &changes.updated_node_ids {
+            let old_node = old_state.node_by_id(*id).unwrap();
             let new_node = self.state.node_by_id(*id).unwrap();
-            handler.node_updated(old_node, &new_node);
+            handler.node_updated(&old_node, &new_node);
         }
-        if let Some(focus_change) = changes.focus_change {
-            if let Some(old_node) = &focus_change.old_focus {
+        if old_state.focus_id() != self.state.focus_id() {
+            let old_node = old_state.focus();
+            if let Some(old_node) = &old_node {
                 let id = old_node.id();
-                if !changes.updated_nodes.contains_key(&id)
-                    && !changes.removed_nodes.contains_key(&id)
+                if !changes.updated_node_ids.contains(&id)
+                    && !changes.removed_node_ids.contains(&id)
                 {
                     if let Some(old_node_new_version) = self.state.node_by_id(id) {
                         handler.node_updated(old_node, &old_node_new_version);
@@ -358,23 +323,20 @@ impl Tree {
                 }
             }
             let new_node = self.state.focus();
-            if let Some(new_node) = new_node {
+            if let Some(new_node) = &new_node {
                 let id = new_node.id();
-                if !changes.added_node_ids.contains(&id) && !changes.updated_nodes.contains_key(&id)
+                if !changes.added_node_ids.contains(&id) && !changes.updated_node_ids.contains(&id)
                 {
-                    if let Some(new_node_old_version) = focus_change.new_focus_old_node {
-                        handler.node_updated(&new_node_old_version, &new_node);
+                    if let Some(new_node_old_version) = old_state.node_by_id(id) {
+                        handler.node_updated(&new_node_old_version, new_node);
                     }
                 }
             }
-            handler.focus_moved(
-                focus_change.old_focus.as_ref(),
-                new_node.as_ref(),
-                &self.state,
-            );
+            handler.focus_moved(old_node.as_ref(), new_node.as_ref());
         }
-        for node in changes.removed_nodes.values() {
-            handler.node_removed(node, &self.state);
+        for id in &changes.removed_node_ids {
+            let node = old_state.node_by_id(*id).unwrap();
+            handler.node_removed(&node);
         }
     }
 
@@ -480,7 +442,7 @@ mod tests {
                 }
                 unexpected_change();
             }
-            fn node_updated(&mut self, old_node: &crate::DetachedNode, new_node: &crate::Node) {
+            fn node_updated(&mut self, old_node: &crate::Node, new_node: &crate::Node) {
                 if new_node.id() == NodeId(0)
                     && old_node.data().children().is_empty()
                     && new_node.data().children() == [NodeId(1)]
@@ -492,17 +454,12 @@ mod tests {
             }
             fn focus_moved(
                 &mut self,
-                _old_node: Option<&crate::DetachedNode>,
+                _old_node: Option<&crate::Node>,
                 _new_node: Option<&crate::Node>,
-                _current_state: &crate::TreeState,
             ) {
                 unexpected_change();
             }
-            fn node_removed(
-                &mut self,
-                _node: &crate::DetachedNode,
-                _current_state: &crate::TreeState,
-            ) {
+            fn node_removed(&mut self, _node: &crate::Node) {
                 unexpected_change();
             }
         }
@@ -559,7 +516,7 @@ mod tests {
             fn node_added(&mut self, _node: &crate::Node) {
                 unexpected_change();
             }
-            fn node_updated(&mut self, old_node: &crate::DetachedNode, new_node: &crate::Node) {
+            fn node_updated(&mut self, old_node: &crate::Node, new_node: &crate::Node) {
                 if new_node.id() == NodeId(0)
                     && old_node.data().children() == [NodeId(1)]
                     && new_node.data().children().is_empty()
@@ -571,17 +528,12 @@ mod tests {
             }
             fn focus_moved(
                 &mut self,
-                _old_node: Option<&crate::DetachedNode>,
+                _old_node: Option<&crate::Node>,
                 _new_node: Option<&crate::Node>,
-                _current_state: &crate::TreeState,
             ) {
                 unexpected_change();
             }
-            fn node_removed(
-                &mut self,
-                node: &crate::DetachedNode,
-                _current_state: &crate::TreeState,
-            ) {
+            fn node_removed(&mut self, node: &crate::Node) {
                 if node.id() == NodeId(1) {
                     self.got_removed_child_node = true;
                     return;
@@ -641,7 +593,7 @@ mod tests {
             fn node_added(&mut self, _node: &crate::Node) {
                 unexpected_change();
             }
-            fn node_updated(&mut self, old_node: &crate::DetachedNode, new_node: &crate::Node) {
+            fn node_updated(&mut self, old_node: &crate::Node, new_node: &crate::Node) {
                 if old_node.id() == NodeId(1)
                     && new_node.id() == NodeId(1)
                     && old_node.is_focused()
@@ -662,9 +614,8 @@ mod tests {
             }
             fn focus_moved(
                 &mut self,
-                old_node: Option<&crate::DetachedNode>,
+                old_node: Option<&crate::Node>,
                 new_node: Option<&crate::Node>,
-                _current_state: &crate::TreeState,
             ) {
                 if let (Some(old_node), Some(new_node)) = (old_node, new_node) {
                     if old_node.id() == NodeId(1) && new_node.id() == NodeId(2) {
@@ -674,11 +625,7 @@ mod tests {
                 }
                 unexpected_change();
             }
-            fn node_removed(
-                &mut self,
-                _node: &crate::DetachedNode,
-                _current_state: &crate::TreeState,
-            ) {
+            fn node_removed(&mut self, _node: &crate::Node) {
                 unexpected_change();
             }
         }
@@ -739,7 +686,7 @@ mod tests {
             fn node_added(&mut self, _node: &crate::Node) {
                 unexpected_change();
             }
-            fn node_updated(&mut self, old_node: &crate::DetachedNode, new_node: &crate::Node) {
+            fn node_updated(&mut self, old_node: &crate::Node, new_node: &crate::Node) {
                 if new_node.id() == NodeId(1)
                     && old_node.name() == Some("foo".into())
                     && new_node.name() == Some("bar".into())
@@ -751,17 +698,12 @@ mod tests {
             }
             fn focus_moved(
                 &mut self,
-                _old_node: Option<&crate::DetachedNode>,
+                _old_node: Option<&crate::Node>,
                 _new_node: Option<&crate::Node>,
-                _current_state: &crate::TreeState,
             ) {
                 unexpected_change();
             }
-            fn node_removed(
-                &mut self,
-                _node: &crate::DetachedNode,
-                _current_state: &crate::TreeState,
-            ) {
+            fn node_removed(&mut self, _node: &crate::Node) {
                 unexpected_change();
             }
         }
