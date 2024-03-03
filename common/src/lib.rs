@@ -707,7 +707,7 @@ pub enum TextDecoration {
 pub type NodeIdContent = u64;
 
 /// The stable identity of a [`Node`], unique within the node's tree.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[repr(transparent)]
