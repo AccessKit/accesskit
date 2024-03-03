@@ -95,7 +95,7 @@ impl macos_adapter {
         BoxCastPtr::to_mut_ptr(events)
     }
 
-    /// Returns a pointer to an `NSArray`. Ownership of the pointer is not transfered.
+    /// Returns a pointer to an `NSArray`. Ownership of the pointer is not transferred.
     #[no_mangle]
     pub extern "C" fn accesskit_macos_adapter_view_children(
         adapter: *const macos_adapter,
@@ -104,14 +104,14 @@ impl macos_adapter {
         adapter.view_children() as *mut _
     }
 
-    /// Returns a pointer to an `NSObject`. Ownership of the pointer is not transfered.
+    /// Returns a pointer to an `NSObject`. Ownership of the pointer is not transferred.
     #[no_mangle]
     pub extern "C" fn accesskit_macos_adapter_focus(adapter: *const macos_adapter) -> *mut c_void {
         let adapter = ref_from_ptr(adapter);
         adapter.focus() as *mut _
     }
 
-    /// Returns a pointer to an `NSObject`. Ownership of the pointer is not transfered.
+    /// Returns a pointer to an `NSObject`. Ownership of the pointer is not transferred.
     #[no_mangle]
     pub extern "C" fn accesskit_macos_adapter_hit_test(
         adapter: *const macos_adapter,
