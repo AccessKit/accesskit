@@ -3,6 +3,4 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-pub(crate) use accesskit_consumer::{
-    common_filter as filter, common_filter_detached as filter_detached,
-};
+pub(crate) use accesskit_consumer::common_filter as filter;

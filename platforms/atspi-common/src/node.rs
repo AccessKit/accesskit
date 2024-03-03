@@ -12,7 +12,7 @@ use accesskit::{
     Action, ActionData, ActionRequest, Affine, Checked, DefaultActionVerb, Live, NodeId, Point,
     Rect, Role,
 };
-use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
+use accesskit_consumer::{FilterResult, Node, TreeState};
 use atspi_common::{
     CoordType, Interface, InterfaceSet, Layer, Live as AtspiLive, Role as AtspiRole, State,
     StateSet,
@@ -26,29 +26,16 @@ use std::{
 use crate::{
     adapter::Adapter,
     context::{AppContext, Context},
-    filters::{filter, filter_detached},
+    filters::filter,
     util::WindowBounds,
     Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
 };
 
-pub(crate) enum NodeWrapper<'a> {
-    Node(&'a Node<'a>),
-    DetachedNode(&'a DetachedNode),
-}
+pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
 
 impl<'a> NodeWrapper<'a> {
-    fn node_state(&self) -> &NodeState {
-        match self {
-            Self::Node(node) => node.state(),
-            Self::DetachedNode(node) => node.state(),
-        }
-    }
-
     pub fn name(&self) -> Option<String> {
-        match self {
-            Self::Node(node) => node.name(),
-            Self::DetachedNode(node) => node.name(),
-        }
+        self.0.name()
     }
 
     pub fn description(&self) -> String {
@@ -56,11 +43,11 @@ impl<'a> NodeWrapper<'a> {
     }
 
     pub fn parent_id(&self) -> Option<NodeId> {
-        self.node_state().parent_id()
+        self.0.parent_id()
     }
 
     pub fn id(&self) -> NodeId {
-        self.node_state().id()
+        self.0.id()
     }
 
     fn child_ids(
@@ -69,24 +56,21 @@ impl<'a> NodeWrapper<'a> {
            + ExactSizeIterator<Item = NodeId>
            + FusedIterator<Item = NodeId>
            + '_ {
-        self.node_state().child_ids()
+        self.0.child_ids()
     }
 
     fn filtered_child_ids(
         &self,
     ) -> impl DoubleEndedIterator<Item = NodeId> + FusedIterator<Item = NodeId> + '_ {
-        match self {
-            Self::Node(node) => node.filtered_children(&filter).map(|child| child.id()),
-            _ => unreachable!(),
-        }
+        self.0.filtered_children(&filter).map(|child| child.id())
     }
 
     pub fn role(&self) -> AtspiRole {
-        if self.node_state().has_role_description() {
+        if self.0.has_role_description() {
             return AtspiRole::Extended;
         }
 
-        match self.node_state().role() {
+        match self.0.role() {
             Role::Alert => AtspiRole::Notification,
             Role::AlertDialog => AtspiRole::Alert,
             Role::Comment | Role::Suggestion => AtspiRole::Section,
@@ -200,7 +184,6 @@ impl<'a> NodeWrapper<'a> {
             // only if it still has non-ignored descendants, which happens only when =>
             // - The list marker itself is ignored but the descendants are not
             // - Or the list marker contains images
-            // TODO: How to check for unignored children when the node is detached?
             Role::ListMarker => AtspiRole::Static,
             Role::Log => AtspiRole::Log,
             Role::Main => AtspiRole::Landmark,
@@ -297,14 +280,11 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn is_focused(&self) -> bool {
-        match self {
-            Self::Node(node) => node.is_focused(),
-            Self::DetachedNode(node) => node.is_focused(),
-        }
+        self.0.is_focused()
     }
 
     pub fn state(&self, is_window_focused: bool) -> StateSet {
-        let state = self.node_state();
+        let state = self.0;
         let atspi_role = self.role();
         let mut atspi_state = StateSet::empty();
         if state.parent_id().is_none() && state.role() == Role::Window && is_window_focused {
@@ -314,10 +294,7 @@ impl<'a> NodeWrapper<'a> {
         if state.is_focusable() {
             atspi_state.insert(State::Focusable);
         }
-        let filter_result = match self {
-            Self::Node(node) => filter(node),
-            Self::DetachedNode(node) => filter_detached(node),
-        };
+        let filter_result = filter(self.0);
         if filter_result == FilterResult::Include {
             atspi_state.insert(State::Visible | State::Showing);
         }
@@ -369,18 +346,15 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn is_root(&self) -> bool {
-        match self {
-            Self::Node(node) => node.is_root(),
-            Self::DetachedNode(node) => node.is_root(),
-        }
+        self.0.is_root()
     }
 
     fn supports_action(&self) -> bool {
-        self.node_state().default_action_verb().is_some()
+        self.0.default_action_verb().is_some()
     }
 
     fn supports_component(&self) -> bool {
-        self.node_state().raw_bounds().is_some() || self.is_root()
+        self.0.raw_bounds().is_some() || self.is_root()
     }
 
     fn supports_value(&self) -> bool {
@@ -402,10 +376,7 @@ impl<'a> NodeWrapper<'a> {
     }
 
     pub(crate) fn live(&self) -> AtspiLive {
-        let live = match self {
-            Self::Node(node) => node.live(),
-            Self::DetachedNode(node) => node.live(),
-        };
+        let live = self.0.live();
         match live {
             Live::Off => AtspiLive::None,
             Live::Polite => AtspiLive::Polite,
@@ -414,7 +385,7 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn n_actions(&self) -> i32 {
-        match self.node_state().default_action_verb() {
+        match self.0.default_action_verb() {
             Some(_) => 1,
             None => 0,
         }
@@ -424,7 +395,7 @@ impl<'a> NodeWrapper<'a> {
         if index != 0 {
             return String::new();
         }
-        String::from(match self.node_state().default_action_verb() {
+        String::from(match self.0.default_action_verb() {
             Some(DefaultActionVerb::Click) => "click",
             Some(DefaultActionVerb::Focus) => "focus",
             Some(DefaultActionVerb::Check) => "check",
@@ -440,7 +411,7 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn raw_bounds_and_transform(&self) -> (Option<Rect>, Affine) {
-        let state = self.node_state();
+        let state = self.0;
         (state.raw_bounds(), state.direct_transform())
     }
 
@@ -448,25 +419,22 @@ impl<'a> NodeWrapper<'a> {
         if self.is_root() {
             return window_bounds.outer.into();
         }
-        match self {
-            Self::Node(node) => node.bounding_box().map_or_else(
-                || AtspiRect::INVALID,
-                |bounds| {
-                    let window_top_left = window_bounds.inner.origin();
-                    let node_origin = bounds.origin();
-                    let new_origin = Point::new(
-                        window_top_left.x + node_origin.x,
-                        window_top_left.y + node_origin.y,
-                    );
-                    bounds.with_origin(new_origin).into()
-                },
-            ),
-            _ => unreachable!(),
-        }
+        self.0.bounding_box().map_or_else(
+            || AtspiRect::INVALID,
+            |bounds| {
+                let window_top_left = window_bounds.inner.origin();
+                let node_origin = bounds.origin();
+                let new_origin = Point::new(
+                    window_top_left.x + node_origin.x,
+                    window_top_left.y + node_origin.y,
+                );
+                bounds.with_origin(new_origin).into()
+            },
+        )
     }
 
     fn current_value(&self) -> Option<f64> {
-        self.node_state().numeric_value()
+        self.0.numeric_value()
     }
 
     pub(crate) fn notify_changes(
@@ -516,11 +484,8 @@ impl<'a> NodeWrapper<'a> {
         }
         let parent_id = self.parent_id();
         if parent_id != old.parent_id() {
-            let node = match self {
-                NodeWrapper::Node(node) => node,
-                _ => unreachable!(),
-            };
-            let parent = node
+            let parent = self
+                .0
                 .filtered_parent(&filter)
                 .map_or(NodeIdOrRoot::Root, |node| NodeIdOrRoot::Node(node.id()));
             adapter.emit_object_event(
@@ -660,14 +625,14 @@ impl PlatformNode {
 
     pub fn name(&self) -> Result<String> {
         self.resolve(|node| {
-            let wrapper = NodeWrapper::Node(&node);
+            let wrapper = NodeWrapper(&node);
             Ok(wrapper.name().unwrap_or_default())
         })
     }
 
     pub fn description(&self) -> Result<String> {
         self.resolve(|node| {
-            let wrapper = NodeWrapper::Node(&node);
+            let wrapper = NodeWrapper(&node);
             Ok(wrapper.description())
         })
     }
@@ -750,18 +715,18 @@ impl PlatformNode {
 
     pub fn role(&self) -> Result<AtspiRole> {
         self.resolve(|node| {
-            let wrapper = NodeWrapper::Node(&node);
+            let wrapper = NodeWrapper(&node);
             Ok(wrapper.role())
         })
     }
 
     pub fn localized_role_name(&self) -> Result<String> {
-        self.resolve(|node| Ok(node.state().role_description().unwrap_or_default()))
+        self.resolve(|node| Ok(node.role_description().unwrap_or_default()))
     }
 
     pub fn state(&self) -> StateSet {
         self.resolve_with_context(|node, context| {
-            let wrapper = NodeWrapper::Node(&node);
+            let wrapper = NodeWrapper(&node);
             Ok(wrapper.state(context.read_tree().state().focus_id().is_some()))
         })
         .unwrap_or(State::Defunct.into())
@@ -769,49 +734,49 @@ impl PlatformNode {
 
     pub fn supports_action(&self) -> Result<bool> {
         self.resolve(|node| {
-            let wrapper = NodeWrapper::Node(&node);
+            let wrapper = NodeWrapper(&node);
             Ok(wrapper.supports_action())
         })
     }
 
     pub fn supports_component(&self) -> Result<bool> {
         self.resolve(|node| {
-            let wrapper = NodeWrapper::Node(&node);
+            let wrapper = NodeWrapper(&node);
             Ok(wrapper.supports_component())
         })
     }
 
     pub fn supports_value(&self) -> Result<bool> {
         self.resolve(|node| {
-            let wrapper = NodeWrapper::Node(&node);
+            let wrapper = NodeWrapper(&node);
             Ok(wrapper.supports_value())
         })
     }
 
     pub fn interfaces(&self) -> Result<InterfaceSet> {
         self.resolve(|node| {
-            let wrapper = NodeWrapper::Node(&node);
+            let wrapper = NodeWrapper(&node);
             Ok(wrapper.interfaces())
         })
     }
 
     pub fn n_actions(&self) -> Result<i32> {
         self.resolve(|node| {
-            let wrapper = NodeWrapper::Node(&node);
+            let wrapper = NodeWrapper(&node);
             Ok(wrapper.n_actions())
         })
     }
 
     pub fn action_name(&self, index: i32) -> Result<String> {
         self.resolve(|node| {
-            let wrapper = NodeWrapper::Node(&node);
+            let wrapper = NodeWrapper(&node);
             Ok(wrapper.get_action_name(index))
         })
     }
 
     pub fn actions(&self) -> Result<Vec<AtspiAction>> {
         self.resolve(|node| {
-            let wrapper = NodeWrapper::Node(&node);
+            let wrapper = NodeWrapper(&node);
             let n_actions = wrapper.n_actions() as usize;
             let mut actions = Vec::with_capacity(n_actions);
             for i in 0..n_actions {
@@ -901,7 +866,7 @@ impl PlatformNode {
 
     pub fn layer(&self) -> Result<Layer> {
         self.resolve(|node| {
-            let wrapper = NodeWrapper::Node(&node);
+            let wrapper = NodeWrapper(&node);
             if wrapper.role() == AtspiRole::Window {
                 Ok(Layer::Window)
             } else {
@@ -935,20 +900,20 @@ impl PlatformNode {
     }
 
     pub fn minimum_value(&self) -> Result<f64> {
-        self.resolve(|node| Ok(node.state().min_numeric_value().unwrap_or(std::f64::MIN)))
+        self.resolve(|node| Ok(node.min_numeric_value().unwrap_or(std::f64::MIN)))
     }
 
     pub fn maximum_value(&self) -> Result<f64> {
-        self.resolve(|node| Ok(node.state().max_numeric_value().unwrap_or(std::f64::MAX)))
+        self.resolve(|node| Ok(node.max_numeric_value().unwrap_or(std::f64::MAX)))
     }
 
     pub fn minimum_increment(&self) -> Result<f64> {
-        self.resolve(|node| Ok(node.state().numeric_value_step().unwrap_or(0.0)))
+        self.resolve(|node| Ok(node.numeric_value_step().unwrap_or(0.0)))
     }
 
     pub fn current_value(&self) -> Result<f64> {
         self.resolve(|node| {
-            let wrapper = NodeWrapper::Node(&node);
+            let wrapper = NodeWrapper(&node);
             Ok(wrapper.current_value().unwrap_or(0.0))
         })
     }
