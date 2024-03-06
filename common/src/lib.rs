@@ -1004,33 +1004,11 @@ impl NodeClassSet {
 
     /// Accesses a shared class set guarded by a mutex.
     pub fn lock_global() -> impl DerefMut<Target = Self> {
-        use std::{
-            ops::Deref,
-            sync::{Mutex, MutexGuard},
-        };
+        use std::sync::Mutex;
 
         static INSTANCE: Mutex<NodeClassSet> = Mutex::new(NodeClassSet::new());
 
-        struct Guard<'a>(MutexGuard<'a, NodeClassSet>);
-
-        impl<'a> Deref for Guard<'a> {
-            type Target = NodeClassSet;
-
-            #[inline]
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-
-        impl<'a> DerefMut for Guard<'a> {
-            #[inline]
-            fn deref_mut(&mut self) -> &mut Self::Target {
-                &mut self.0
-            }
-        }
-
-        let instance = INSTANCE.lock().unwrap();
-        Guard(instance)
+        INSTANCE.lock().unwrap()
     }
 }
 
