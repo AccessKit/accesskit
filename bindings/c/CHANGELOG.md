@@ -46,6 +46,23 @@
   * dependencies
     * accesskit_windows bumped from 0.16.1 to 0.16.2
 
+## [0.7.5](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.7.4...accesskit_c-v0.7.5) (2024-03-07)
+
+
+### Bug Fixes
+
+* Spelling of `transferred` in C bindings documentation ([#361](https://github.com/AccessKit/accesskit/issues/361)) ([f27ce99](https://github.com/AccessKit/accesskit/commit/f27ce99860b02c64367065c6b7dad6e9cbd11f74))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.12.2 to 0.12.3
+    * accesskit_windows bumped from 0.16.2 to 0.16.3
+    * accesskit_macos bumped from 0.11.0 to 0.11.1
+    * accesskit_unix bumped from 0.7.3 to 0.7.4
+
 ## [0.7.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.6.2...accesskit_c-v0.7.0) (2024-01-03)
 
 
