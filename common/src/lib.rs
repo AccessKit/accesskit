@@ -992,44 +992,17 @@ pub struct NodeClassSet(BTreeSet<Arc<NodeClass>>);
 
 impl NodeClassSet {
     #[inline]
-    pub fn new() -> Self {
-        Default::default()
+    pub const fn new() -> Self {
+        Self(BTreeSet::new())
     }
 
     /// Accesses a shared class set guarded by a mutex.
     pub fn lock_global() -> impl DerefMut<Target = Self> {
-        use std::{
-            ops::Deref,
-            sync::{Mutex, MutexGuard},
-        };
+        use std::sync::Mutex;
 
-        // We don't want to add a dependency like once_cell just like this, and
-        // once_cell would add a second level of synchronization anyway. We could
-        // use const initialization of BTreeSet, but that wasn't stabilized until
-        // Rust 1.66. So we just use Option.
-        static INSTANCE: Mutex<Option<NodeClassSet>> = Mutex::new(None);
+        static INSTANCE: Mutex<NodeClassSet> = Mutex::new(NodeClassSet::new());
 
-        struct Guard<'a>(MutexGuard<'a, Option<NodeClassSet>>);
-
-        impl<'a> Deref for Guard<'a> {
-            type Target = NodeClassSet;
-
-            #[inline]
-            fn deref(&self) -> &Self::Target {
-                self.0.as_ref().unwrap()
-            }
-        }
-
-        impl<'a> DerefMut for Guard<'a> {
-            #[inline]
-            fn deref_mut(&mut self) -> &mut Self::Target {
-                self.0.as_mut().unwrap()
-            }
-        }
-
-        let mut instance = INSTANCE.lock().unwrap();
-        instance.get_or_insert_with(Default::default);
-        Guard(instance)
+        INSTANCE.lock().unwrap()
     }
 }
 
