@@ -1176,13 +1176,14 @@ mod tests {
                         x1: 158.9188995361328,
                         y1: 107.0,
                     });
-                    // Use an arbitrary emoji that encodes to two
-                    // UTF-16 code units to fully test conversion between
-                    // UTF-8, UTF-16, and character indices.
-                    builder.set_value("Last non-blank line\u{1f60a}\n");
+                    // Use an arbitrary emoji consisting of two code points
+                    // (combining characters), each of which encodes to two
+                    // UTF-16 code units, to fully test conversion between
+                    // UTF-8, UTF-16, and AccessKit character indices.
+                    builder.set_value("Last non-blank line\u{1f44d}\u{1f3fb}\n");
                     builder.set_text_direction(TextDirection::LeftToRight);
                     builder.set_character_lengths([
-                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 1,
+                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 8, 1,
                     ]);
                     builder.set_character_positions([
                         0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
@@ -1310,7 +1311,7 @@ mod tests {
         assert!(end.is_paragraph_start());
         assert!(!end.is_document_start());
         assert!(end.is_document_end());
-        assert_eq!(range.text(), "This paragraph is\u{a0}long enough to wrap to another line.\nAnother paragraph.\n\nLast non-blank line\u{1f60a}\n");
+        assert_eq!(range.text(), "This paragraph is\u{a0}long enough to wrap to another line.\nAnother paragraph.\n\nLast non-blank line\u{1f44d}\u{1f3fb}\n");
         assert_eq!(
             range.bounding_boxes(),
             vec![
@@ -1673,7 +1674,7 @@ mod tests {
         {
             let range = node.document_range();
             assert_eq!(range.start().to_global_utf16_index(), 0);
-            assert_eq!(range.end().to_global_utf16_index(), 97);
+            assert_eq!(range.end().to_global_utf16_index(), 99);
         }
 
         {
@@ -1743,7 +1744,7 @@ mod tests {
 
         {
             let range = node.line_range_from_index(4).unwrap();
-            assert_eq!(range.text(), "Last non-blank line\u{1f60a}\n");
+            assert_eq!(range.text(), "Last non-blank line\u{1f44d}\u{1f3fb}\n");
         }
 
         {
@@ -1811,32 +1812,25 @@ mod tests {
             assert_eq!(range.text(), "A");
         }
 
-        {
-            let pos = node.text_position_from_global_utf16_index(94).unwrap();
+        for i in 94..=97 {
+            let pos = node.text_position_from_global_utf16_index(i).unwrap();
             let mut range = pos.to_degenerate_range();
             range.set_end(pos.forward_to_character_end());
-            assert_eq!(range.text(), "\u{1f60a}");
+            assert_eq!(range.text(), "\u{1f44d}\u{1f3fb}");
         }
 
         {
-            let pos = node.text_position_from_global_utf16_index(95).unwrap();
-            let mut range = pos.to_degenerate_range();
-            range.set_end(pos.forward_to_character_end());
-            assert_eq!(range.text(), "\u{1f60a}");
-        }
-
-        {
-            let pos = node.text_position_from_global_utf16_index(96).unwrap();
+            let pos = node.text_position_from_global_utf16_index(98).unwrap();
             let mut range = pos.to_degenerate_range();
             range.set_end(pos.forward_to_character_end());
             assert_eq!(range.text(), "\n");
         }
 
         {
-            let pos = node.text_position_from_global_utf16_index(97).unwrap();
+            let pos = node.text_position_from_global_utf16_index(99).unwrap();
             assert!(pos.is_document_end());
         }
 
-        assert!(node.text_position_from_global_utf16_index(98).is_none());
+        assert!(node.text_position_from_global_utf16_index(100).is_none());
     }
 }
