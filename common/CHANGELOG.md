@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.3](https://github.com/AccessKit/accesskit/compare/accesskit-v0.12.2...accesskit-v0.12.3) (2024-03-07)
+
+
+### Bug Fixes
+
+* Derive `PartialOrd` and `Ord` on `NodeId` ([#363](https://github.com/AccessKit/accesskit/issues/363)) ([ce3bba1](https://github.com/AccessKit/accesskit/commit/ce3bba1e043d650c406d8814b4f33e9104199c8b))
+* Make `NodeClassSet::new` const ([#368](https://github.com/AccessKit/accesskit/issues/368)) ([11d2968](https://github.com/AccessKit/accesskit/commit/11d2968464d50c3e3f55e9a872d0d454c19e7e51))
+
 ## [0.12.2](https://github.com/AccessKit/accesskit/compare/accesskit-v0.12.1...accesskit-v0.12.2) (2024-01-03)
 
 

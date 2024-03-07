@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_python"
-version = "0.1.5"
+version = "0.1.6"
 authors.workspace = true
 license.workspace = true
 description = "Python bindings to the AccessKit library"
@@ -17,15 +17,15 @@ doc = false
 extension-module = ["pyo3/extension-module"]
 
 [dependencies]
-accesskit = { version = "0.12.2", path = "../../common", features = ["pyo3"] }
+accesskit = { version = "0.12.3", path = "../../common", features = ["pyo3"] }
 pyo3 = { version = "0.20", features = ["abi3-py38", "multiple-pymethods"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-accesskit_windows = { version = "0.16.2", path = "../../platforms/windows" }
+accesskit_windows = { version = "0.16.3", path = "../../platforms/windows" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-accesskit_macos = { version = "0.11.0", path = "../../platforms/macos" }
+accesskit_macos = { version = "0.11.1", path = "../../platforms/macos" }
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
-accesskit_unix = { version = "0.7.3", path = "../../platforms/unix" }
+accesskit_unix = { version = "0.7.4", path = "../../platforms/unix" }
 
