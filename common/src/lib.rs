@@ -39,7 +39,7 @@ pub use geometry::{Affine, Point, Rect, Size, Vec2};
 /// is ordered roughly by expected usage frequency (with the notable exception
 /// of [`Role::Unknown`]). This is more efficient in serialization formats
 /// where integers use a variable-length encoding.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
@@ -50,6 +50,7 @@ pub use geometry::{Affine, Point, Rect, Size, Vec2};
 )]
 #[repr(u8)]
 pub enum Role {
+    #[default]
     Unknown,
     InlineTextBox,
     Cell,
@@ -264,13 +265,6 @@ pub enum Role {
     /// technologies should implement behavior specific to a VT-100-style
     /// terminal.
     Terminal,
-}
-
-impl Default for Role {
-    #[inline]
-    fn default() -> Self {
-        Self::Unknown
-    }
 }
 
 /// An action to be taken on an accessibility node.
