@@ -1027,6 +1027,21 @@ impl PlatformNode {
         })
     }
 
+    pub fn text_attribute_value(&self, _offset: i32, _attribute_name: &str) -> Result<String> {
+        // TODO: Implement rich text.
+        Err(Error::UnsupportedInterface)
+    }
+
+    pub fn text_attributes(&self, _offset: i32) -> Result<(HashMap<String, String>, i32, i32)> {
+        // TODO: Implement rich text.
+        Err(Error::UnsupportedInterface)
+    }
+
+    pub fn default_text_attributes(&self) -> Result<HashMap<String, String>> {
+        // TODO: Implement rich text.
+        Err(Error::UnsupportedInterface)
+    }
+
     pub fn character_extents(&self, offset: i32, coord_type: CoordType) -> Result<AtspiRect> {
         self.resolve_with_context(|node, context| {
             let start = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
@@ -1155,6 +1170,18 @@ impl PlatformNode {
                 Ok(AtspiRect::INVALID)
             }
         })
+    }
+
+    pub fn text_attribute_run(
+        &self,
+        _offset: i32,
+        _include_defaults: bool,
+    ) -> Result<(HashMap<String, String>, i32, i32)> {
+        // TODO: Implement rich text.
+        // For now, just report a range spanning the entire text with no attributes,
+        // this is required by Orca to announce selection content and caret movements.
+        let character_count = self.character_count()?;
+        Ok((HashMap::new(), 0, character_count))
     }
 
     pub fn scroll_substring_to(
