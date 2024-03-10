@@ -640,11 +640,32 @@ impl PlatformNode {
         })
     }
 
+    fn resolve_for_text_with_context<F, T>(&self, f: F) -> Result<T>
+    where
+        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
+    {
+        self.resolve_with_context(|node, context| {
+            let wrapper = NodeWrapper::Node(&node);
+            if wrapper.supports_text() {
+                f(node, context)
+            } else {
+                Err(Error::UnsupportedInterface)
+            }
+        })
+    }
+
     fn resolve<F, T>(&self, f: F) -> Result<T>
     where
         for<'a> F: FnOnce(Node<'a>) -> Result<T>,
     {
         self.resolve_with_context(|node, _| f(node))
+    }
+
+    fn resolve_for_text<F, T>(&self, f: F) -> Result<T>
+    where
+        for<'a> F: FnOnce(Node<'a>) -> Result<T>,
+    {
+        self.resolve_for_text_with_context(|node, _| f(node))
     }
 
     fn do_action_internal<F>(&self, f: F) -> Result<()>
@@ -935,7 +956,7 @@ impl PlatformNode {
     }
 
     pub fn character_count(&self) -> Result<i32> {
-        self.resolve(|node| {
+        self.resolve_for_text(|node| {
             node.document_range()
                 .end()
                 .to_global_usv_index()
@@ -945,7 +966,7 @@ impl PlatformNode {
     }
 
     pub fn caret_offset(&self) -> Result<i32> {
-        self.resolve(|node| {
+        self.resolve_for_text(|node| {
             node.text_selection_focus().map_or(Ok(-1), |focus| {
                 focus
                     .to_global_usv_index()
@@ -960,7 +981,7 @@ impl PlatformNode {
         offset: i32,
         granularity: Granularity,
     ) -> Result<(String, i32, i32)> {
-        self.resolve(|node| {
+        self.resolve_for_text(|node| {
             let start_offset =
                 text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
             let start = match granularity {
@@ -997,7 +1018,7 @@ impl PlatformNode {
     }
 
     pub fn text(&self, start_offset: i32, end_offset: i32) -> Result<String> {
-        self.resolve(|node| {
+        self.resolve_for_text(|node| {
             let range = text_range_from_offsets(&node, start_offset, end_offset)
                 .ok_or(Error::IndexOutOfRange)?;
             Ok(range.text())
@@ -1005,7 +1026,7 @@ impl PlatformNode {
     }
 
     pub fn set_caret_offset(&self, offset: i32) -> Result<bool> {
-        self.resolve_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, context| {
             let offset = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
             context.do_action(ActionRequest {
                 action: Action::SetTextSelection,
@@ -1019,7 +1040,7 @@ impl PlatformNode {
     }
 
     pub fn character_at_offset(&self, offset: i32) -> Result<i32> {
-        self.resolve(|node| {
+        self.resolve_for_text(|node| {
             let start = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
             let mut range = start.to_degenerate_range();
             range.set_end(start.forward_to_character_end());
@@ -1043,7 +1064,7 @@ impl PlatformNode {
     }
 
     pub fn character_extents(&self, offset: i32, coord_type: CoordType) -> Result<AtspiRect> {
-        self.resolve_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, context| {
             let start = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
             let mut range = start.to_degenerate_range();
             range.set_end(start.forward_to_character_end());
@@ -1059,7 +1080,7 @@ impl PlatformNode {
     }
 
     pub fn offset_at_point(&self, x: i32, y: i32, coord_type: CoordType) -> Result<i32> {
-        self.resolve_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
             let top_left = window_bounds.top_left(coord_type, node.is_root());
             let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
@@ -1072,13 +1093,11 @@ impl PlatformNode {
     }
 
     pub fn n_selections(&self) -> Result<i32> {
-        self.resolve(|node| {
-            Ok(
-                match node.text_selection().filter(|range| !range.is_degenerate()) {
-                    Some(_) => 1,
-                    None => 0,
-                },
-            )
+        self.resolve_for_text(|node| {
+            match node.text_selection().filter(|range| !range.is_degenerate()) {
+                Some(_) => Ok(1),
+                None => Ok(0),
+            }
         })
     }
 
@@ -1086,7 +1105,8 @@ impl PlatformNode {
         if selection_num != 0 {
             return Ok((-1, -1));
         }
-        self.resolve(|node| {
+
+        self.resolve_for_text(|node| {
             node.text_selection()
                 .filter(|range| !range.is_degenerate())
                 .map_or(Ok((-1, -1)), |range| {
@@ -1116,7 +1136,7 @@ impl PlatformNode {
             return Ok(false);
         }
 
-        self.resolve_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, context| {
             // Simply collapse the selection to the position of the caret if a caret is
             // visible, otherwise set the selection to 0.
             let selection_end = node
@@ -1142,7 +1162,8 @@ impl PlatformNode {
         if selection_num != 0 {
             return Ok(false);
         }
-        self.resolve_with_context(|node, context| {
+
+        self.resolve_for_text_with_context(|node, context| {
             let range = text_range_from_offsets(&node, start_offset, end_offset)
                 .ok_or(Error::IndexOutOfRange)?;
             context.do_action(ActionRequest {
@@ -1160,7 +1181,7 @@ impl PlatformNode {
         end_offset: i32,
         coord_type: CoordType,
     ) -> Result<AtspiRect> {
-        self.resolve_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, context| {
             if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
                 let window_bounds = context.read_root_window_bounds();
                 let top_left = window_bounds.top_left(coord_type, node.is_root());
@@ -1190,7 +1211,7 @@ impl PlatformNode {
         end_offset: i32,
         _: ScrollType,
     ) -> Result<bool> {
-        self.resolve_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, context| {
             if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
                 context.do_action(ActionRequest {
                     action: Action::ScrollIntoView,
@@ -1212,7 +1233,7 @@ impl PlatformNode {
         x: i32,
         y: i32,
     ) -> Result<bool> {
-        self.resolve_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
             let top_left = window_bounds.top_left(coord_type, node.is_root());
 
