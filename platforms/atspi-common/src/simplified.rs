@@ -7,6 +7,8 @@
 //! intended to be used by bindings to languages with less rich
 //! type systems.
 
+use std::collections::HashMap;
+
 use crate::{
     Adapter, Event as EventEnum, NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot, Property,
     WindowEvent,
@@ -259,6 +261,27 @@ impl Accessible {
         }
     }
 
+    pub fn text_attribute_value(&self, offset: i32, attribute_name: &str) -> Result<String> {
+        match self {
+            Self::Node(node) => node.text_attribute_value(offset, attribute_name),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn text_attributes(&self, offset: i32) -> Result<(HashMap<String, String>, i32, i32)> {
+        match self {
+            Self::Node(node) => node.text_attributes(offset),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn default_text_attributes(&self) -> Result<HashMap<String, String>> {
+        match self {
+            Self::Node(node) => node.default_text_attributes(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
     pub fn character_extents(&self, offset: i32, coord_type: CoordType) -> Result<Rect> {
         match self {
             Self::Node(node) => node.character_extents(offset, coord_type),
@@ -321,6 +344,17 @@ impl Accessible {
     ) -> Result<Rect> {
         match self {
             Self::Node(node) => node.range_extents(start_offset, end_offset, coord_type),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn text_attribute_run(
+        &self,
+        offset: i32,
+        include_defaults: bool,
+    ) -> Result<(HashMap<String, String>, i32, i32)> {
+        match self {
+            Self::Node(node) => node.text_attribute_run(offset, include_defaults),
             Self::Root(_) => Err(Error::UnsupportedInterface),
         }
     }

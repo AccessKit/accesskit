@@ -60,6 +60,22 @@ impl TextInterface {
             .map_err(self.map_error())
     }
 
+    fn get_attribute_value(&self, offset: i32, attribute_name: &str) -> fdo::Result<String> {
+        self.node
+            .text_attribute_value(offset, attribute_name)
+            .map_err(self.map_error())
+    }
+
+    fn get_attributes(&self, offset: i32) -> fdo::Result<(HashMap<String, String>, i32, i32)> {
+        self.node.text_attributes(offset).map_err(self.map_error())
+    }
+
+    fn get_default_attributes(&self) -> fdo::Result<HashMap<String, String>> {
+        self.node
+            .default_text_attributes()
+            .map_err(self.map_error())
+    }
+
     fn get_character_extents(&self, offset: i32, coord_type: CoordType) -> fdo::Result<(Rect,)> {
         self.node
             .character_extents(offset, coord_type)
@@ -118,14 +134,12 @@ impl TextInterface {
 
     fn get_attribute_run(
         &self,
-        _offset: i32,
-        _include_defaults: bool,
+        offset: i32,
+        include_defaults: bool,
     ) -> fdo::Result<(HashMap<String, String>, i32, i32)> {
-        // TODO: Implement rich text.
-        // For now, just report a range spanning the entire text with no attributes,
-        // this is required by Orca to announce selection content and caret movements.
-        let character_count = self.character_count()?;
-        Ok((HashMap::new(), 0, character_count))
+        self.node
+            .text_attribute_run(offset, include_defaults)
+            .map_err(self.map_error())
     }
 
     fn scroll_substring_to(
