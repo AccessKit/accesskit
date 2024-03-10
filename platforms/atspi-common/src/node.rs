@@ -598,7 +598,7 @@ impl<'a> NodeWrapper<'a> {
             let old_caret_position = old.raw_text_selection().map(|selection| selection.focus);
             let new_caret_position = self.raw_text_selection().map(|selection| selection.focus);
             if old_caret_position != new_caret_position {
-                if let Ok(offset) = selection.end().to_global_character_index().try_into() {
+                if let Ok(offset) = selection.end().to_global_usv_index().try_into() {
                     adapter.emit_object_event(self.id(), ObjectEvent::CaretMoved(offset));
                 }
             }
@@ -991,7 +991,7 @@ impl PlatformNode {
         self.resolve(|node| {
             node.document_range()
                 .end()
-                .to_global_character_index()
+                .to_global_usv_index()
                 .try_into()
                 .map_err(|_| Error::TooManyCharacters)
         })
@@ -1001,7 +1001,7 @@ impl PlatformNode {
         self.resolve(|node| {
             node.text_selection_focus().map_or(Ok(-1), |focus| {
                 focus
-                    .to_global_character_index()
+                    .to_global_usv_index()
                     .try_into()
                     .map_err(|_| Error::TooManyCharacters)
             })
@@ -1037,11 +1037,11 @@ impl PlatformNode {
             range.set_end(end);
             let text = range.text();
             let start = start
-                .to_global_character_index()
+                .to_global_usv_index()
                 .try_into()
                 .map_err(|_| Error::TooManyCharacters)?;
             let end = end
-                .to_global_character_index()
+                .to_global_usv_index()
                 .try_into()
                 .map_err(|_| Error::TooManyCharacters)?;
 
@@ -1103,7 +1103,7 @@ impl PlatformNode {
             let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
             let point = node.transform().inverse() * point;
             node.text_position_at_point(point)
-                .to_global_character_index()
+                .to_global_usv_index()
                 .try_into()
                 .map_err(|_| Error::TooManyCharacters)
         })
@@ -1130,12 +1130,12 @@ impl PlatformNode {
                 .map_or(Ok((-1, -1)), |range| {
                     let start = range
                         .start()
-                        .to_global_character_index()
+                        .to_global_usv_index()
                         .try_into()
                         .map_err(|_| Error::TooManyCharacters)?;
                     let end = range
                         .end()
-                        .to_global_character_index()
+                        .to_global_usv_index()
                         .try_into()
                         .map_err(|_| Error::TooManyCharacters)?;
 
