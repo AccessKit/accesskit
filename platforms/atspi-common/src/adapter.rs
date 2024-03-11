@@ -223,6 +223,10 @@ impl Adapter {
         PlatformNode::new(&self.context, self.id, id)
     }
 
+    pub fn root_id(&self) -> NodeId {
+        self.context.read_tree().state().root_id()
+    }
+
     pub fn platform_root(&self) -> PlatformRoot {
         PlatformRoot::new(&self.context.app_context)
     }
