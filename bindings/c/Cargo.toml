@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_c"
-version = "0.7.5"
+version = "0.7.6"
 authors.workspace = true
 license.workspace = true
 publish = false
@@ -25,5 +25,5 @@ accesskit_windows = { version = "0.16.3", path = "../../platforms/windows" }
 accesskit_macos = { version = "0.11.1", path = "../../platforms/macos" }
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
-accesskit_unix = { version = "0.7.4", path = "../../platforms/unix" }
+accesskit_unix = { version = "0.7.5", path = "../../platforms/unix" }
 
