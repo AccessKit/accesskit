@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_python"
-version = "0.1.6"
+version = "0.1.7"
 authors.workspace = true
 license.workspace = true
 description = "Python bindings to the AccessKit library"
@@ -27,5 +27,5 @@ accesskit_windows = { version = "0.16.3", path = "../../platforms/windows" }
 accesskit_macos = { version = "0.11.1", path = "../../platforms/macos" }
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
-accesskit_unix = { version = "0.7.4", path = "../../platforms/unix" }
+accesskit_unix = { version = "0.7.5", path = "../../platforms/unix" }
 

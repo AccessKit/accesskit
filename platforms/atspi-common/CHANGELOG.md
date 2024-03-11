@@ -5,6 +5,13 @@
     * accesskit bumped from 0.12.2 to 0.12.3
     * accesskit_consumer bumped from 0.17.0 to 0.17.1
 
+## [0.2.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.1.2...accesskit_atspi_common-v0.2.0) (2024-03-11)
+
+
+### Features
+
+* Expose root node ID in `accesskit_atspi_common::Adapter` ([#370](https://github.com/AccessKit/accesskit/issues/370)) ([a43b497](https://github.com/AccessKit/accesskit/commit/a43b497afbbbcf90e9d15259635a329164d6a791))
+
 ## [0.1.1](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.1.0...accesskit_atspi_common-v0.1.1) (2024-02-24)
 
 
