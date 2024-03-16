@@ -165,11 +165,11 @@ pub(crate) fn required_param<T>(param: Option<&T>) -> Result<&T> {
 }
 
 pub(crate) fn element_not_available() -> Error {
-    HRESULT::from_win32(UIA_E_ELEMENTNOTAVAILABLE).into()
+    HRESULT(UIA_E_ELEMENTNOTAVAILABLE as _).into()
 }
 
 pub(crate) fn invalid_operation() -> Error {
-    HRESULT::from_win32(UIA_E_INVALIDOPERATION).into()
+    HRESULT(UIA_E_INVALIDOPERATION as _).into()
 }
 
 pub(crate) fn client_top_left(hwnd: HWND) -> Point {
