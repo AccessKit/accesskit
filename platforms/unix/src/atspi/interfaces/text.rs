@@ -76,10 +76,9 @@ impl TextInterface {
             .map_err(self.map_error())
     }
 
-    fn get_character_extents(&self, offset: i32, coord_type: CoordType) -> fdo::Result<(Rect,)> {
+    fn get_character_extents(&self, offset: i32, coord_type: CoordType) -> fdo::Result<Rect> {
         self.node
             .character_extents(offset, coord_type)
-            .map(|rect| (rect,))
             .map_err(self.map_error())
     }
 
@@ -125,10 +124,9 @@ impl TextInterface {
         start_offset: i32,
         end_offset: i32,
         coord_type: CoordType,
-    ) -> fdo::Result<(Rect,)> {
+    ) -> fdo::Result<Rect> {
         self.node
             .range_extents(start_offset, end_offset, coord_type)
-            .map(|rect| (rect,))
             .map_err(self.map_error())
     }
 
