@@ -18,11 +18,7 @@ use paste::paste;
 use std::sync::{Arc, Weak};
 use windows::{
     core::*,
-    Win32::{
-        Foundation::*,
-        System::{Com::*, Variant::*},
-        UI::Accessibility::*,
-    },
+    Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
 };
 
 use crate::{
@@ -461,8 +457,8 @@ impl<'a> NodeWrapper<'a> {
         queue: &mut Vec<QueuedEvent>,
         element: &IRawElementProviderSimple,
         property_id: UIA_PROPERTY_ID,
-        old_value: VariantFactory,
-        new_value: VariantFactory,
+        old_value: Variant,
+        new_value: Variant,
     ) {
         let old_value: VARIANT = old_value.into();
         let new_value: VARIANT = new_value.into();
@@ -650,7 +646,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
             if self.node_id == state.root_id() {
                 unsafe { UiaHostProviderFromHwnd(context.hwnd) }
             } else {
-                Err(Error::OK)
+                Err(Error::empty())
             }
         })
     }
@@ -672,7 +668,7 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
             };
             match result {
                 Some(result) => Ok(self.relative(result.id()).into()),
-                None => Err(Error::OK),
+                None => Err(Error::empty()),
             }
         })
     }
@@ -730,7 +726,7 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
             let point = Point::new(x - client_top_left.x, y - client_top_left.y);
             let point = node.transform().inverse() * point;
             node.node_at_point(point, &filter).map_or_else(
-                || Err(Error::OK),
+                || Err(Error::empty()),
                 |node| Ok(self.relative(node.id()).into()),
             )
         })
@@ -743,7 +739,7 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
                     return Ok(self.relative(id).into());
                 }
             }
-            Err(Error::OK)
+            Err(Error::empty())
         })
     }
 }
@@ -751,12 +747,12 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
 macro_rules! properties {
     ($(($base_id:ident, $m:ident)),+) => {
         impl NodeWrapper<'_> {
-            fn get_property_value(&self, property_id: UIA_PROPERTY_ID) -> VariantFactory {
+            fn get_property_value(&self, property_id: UIA_PROPERTY_ID) -> Variant {
                 match property_id {
                     $(paste! { [< UIA_ $base_id PropertyId>] } => {
                         self.$m().into()
                     })*
-                    _ => VariantFactory::empty()
+                    _ => Variant::empty()
                 }
             }
             fn enqueue_simple_property_changes(
@@ -804,7 +800,7 @@ macro_rules! patterns {
                         })*
                         _ => (),
                     }
-                    Err(Error::OK)
+                    Err(Error::empty())
                 })
             }
         }
@@ -926,7 +922,7 @@ patterns! {
             // TODO: implement when we work on list boxes (#23)
             // We return E_FAIL here because that's what Chromium does
             // if it can't find a container.
-            Err(Error::new(E_FAIL, "".into()))
+            Err(E_FAIL.into())
         }
     )),
     (Text, is_text_pattern_supported, (), (

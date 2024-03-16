@@ -12,11 +12,7 @@ use accesskit_consumer::{
 use std::sync::{Arc, RwLock, Weak};
 use windows::{
     core::*,
-    Win32::{
-        Foundation::*,
-        System::{Com::*, Variant::*},
-        UI::Accessibility::*,
-    },
+    Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
 };
 
 use crate::{context::Context, node::PlatformNode, util::*};
@@ -411,7 +407,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
     ) -> Result<ITextRangeProvider> {
         // TODO: implement when we support variable formatting (part of rich text)
         // Justification: JUCE doesn't implement this.
-        Err(Error::OK)
+        Err(Error::empty())
     }
 
     fn FindText(
@@ -423,7 +419,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
         // TODO: implement when there's a real-world use case that requires it
         // Justification: Quorum doesn't implement this and is being used
         // by blind students.
-        Err(Error::OK)
+        Err(Error::empty())
     }
 
     fn GetAttributeValue(&self, id: UIA_TEXTATTRIBUTE_ID) -> Result<VARIANT> {
@@ -432,7 +428,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
                 // TBD: do we ever want to support mixed read-only/editable text?
                 self.with_node(|node| {
                     let value = node.is_read_only();
-                    Ok(VariantFactory::from(value).into())
+                    Ok(value.into())
                 })
             }
             UIA_CaretPositionAttributeId => self.read(|range| {
@@ -445,12 +441,12 @@ impl ITextRangeProvider_Impl for PlatformRange {
                         value = CaretPosition_EndOfLine;
                     }
                 }
-                Ok(VariantFactory::from(value).into())
+                Ok(value.0.into())
             }),
             // TODO: implement more attributes
             _ => {
                 let value = unsafe { UiaGetReservedNotSupportedValue() }.unwrap();
-                Ok(VariantFactory::from(value).into())
+                Ok(value.into())
             }
         }
     }
