@@ -158,10 +158,10 @@ fn navigation() -> Result<()> {
         assert!(equal);
 
         let wrapped_child = unsafe { walker.GetFirstChildElement(&button_1_forward) };
-        assert_eq!(Err(Error::OK), wrapped_child);
+        assert_eq!(Err(Error::empty()), wrapped_child);
 
         let wrapped_child = unsafe { walker.GetLastChildElement(&button_1_forward) };
-        assert_eq!(Err(Error::OK), wrapped_child);
+        assert_eq!(Err(Error::empty()), wrapped_child);
 
         Ok(())
     })

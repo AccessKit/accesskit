@@ -19,7 +19,7 @@ paste = "1.0"
 static_assertions = "1.1.0"
 
 [dependencies.windows]
-version = "0.52"
+version = "0.54"
 features = [
     "implement",
     "Win32_Foundation",
