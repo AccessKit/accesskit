@@ -33,6 +33,13 @@
     * accesskit bumped from 0.12.2 to 0.12.3
     * accesskit_consumer bumped from 0.17.0 to 0.17.1
 
+## [0.16.4](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.16.3...accesskit_windows-v0.16.4) (2024-03-18)
+
+
+### Bug Fixes
+
+* Update `windows` to `0.54` ([#373](https://github.com/AccessKit/accesskit/issues/373)) ([50f112f](https://github.com/AccessKit/accesskit/commit/50f112f0085a03f0180f86915d2ac4e5845f6b63))
+
 ## [0.16.2](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.16.1...accesskit_windows-v0.16.2) (2024-02-25)
 
 
