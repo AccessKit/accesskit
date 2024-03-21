@@ -3,11 +3,10 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, TreeUpdate};
-use once_cell::{sync::Lazy as SyncLazy, unsync::Lazy};
+use accesskit::{ActionHandler, ActivationHandler};
+use once_cell::sync::Lazy;
 use std::{
     cell::RefCell,
-    rc::Rc,
     sync::{Arc, Condvar, Mutex},
     thread,
     time::Duration,
@@ -23,11 +22,11 @@ use windows::{
     },
 };
 
-use super::{Adapter, UiaInitMarker};
+use super::Adapter;
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
 
-static WINDOW_CLASS_ATOM: SyncLazy<u16> = SyncLazy::new(|| {
+static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
     let class_name = w!("AccessKitTest");
 
     let wc = WNDCLASSW {
@@ -46,33 +45,27 @@ static WINDOW_CLASS_ATOM: SyncLazy<u16> = SyncLazy::new(|| {
     atom
 });
 
-struct InnerWindowState {
-    is_window_focused: bool,
-}
-
-type LazyAdapter = Lazy<Adapter, Box<dyn FnOnce() -> Adapter>>;
-
 struct WindowState {
-    adapter: LazyAdapter,
-    inner_state: Rc<RefCell<InnerWindowState>>,
+    activation_handler: RefCell<Box<dyn ActivationHandler>>,
+    adapter: RefCell<Adapter>,
 }
 
 unsafe fn get_window_state(window: HWND) -> *const WindowState {
     GetWindowLongPtrW(window, GWLP_USERDATA) as _
 }
 
-fn update_window_focus_state(window: HWND, is_window_focused: bool) {
-    let window_state = unsafe { &*get_window_state(window) };
-    let mut inner_state = window_state.inner_state.borrow_mut();
-    inner_state.is_window_focused = is_window_focused;
-    drop(inner_state);
-    if let Some(adapter) = Lazy::get(&window_state.adapter) {
-        let events = adapter.update_window_focus_state(is_window_focused);
+fn update_window_focus_state(window: HWND, is_focused: bool) {
+    let state = unsafe { &*get_window_state(window) };
+    let mut adapter = state.adapter.borrow_mut();
+    if let Some(events) = adapter.update_window_focus_state(is_focused) {
         events.raise();
     }
 }
 
-struct WindowCreateParams(TreeUpdate, Box<dyn ActionHandler + Send + Sync>);
+struct WindowCreateParams {
+    activation_handler: Box<dyn ActivationHandler>,
+    action_handler: Box<dyn ActionHandler + Send>,
+}
 
 extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     match message {
@@ -80,24 +73,14 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             let create_struct: &CREATESTRUCTW = unsafe { &mut *(lparam.0 as *mut _) };
             let create_params: Box<WindowCreateParams> =
                 unsafe { Box::from_raw(create_struct.lpCreateParams as _) };
-            let WindowCreateParams(initial_state, action_handler) = *create_params;
-            let inner_state = Rc::new(RefCell::new(InnerWindowState {
-                is_window_focused: false,
-            }));
-            let inner_state_for_tree_init = inner_state.clone();
-            let uia_init_marker = UiaInitMarker::new();
+            let WindowCreateParams {
+                activation_handler,
+                action_handler,
+            } = *create_params;
+            let adapter = Adapter::new(window, false, action_handler);
             let state = Box::new(WindowState {
-                adapter: Lazy::new(Box::new(move || {
-                    let state = inner_state_for_tree_init.borrow();
-                    Adapter::new(
-                        window,
-                        initial_state,
-                        state.is_window_focused,
-                        action_handler,
-                        uia_init_marker,
-                    )
-                })),
-                inner_state,
+                activation_handler: RefCell::new(activation_handler),
+                adapter: RefCell::new(adapter),
             });
             unsafe { SetWindowLongPtrW(window, GWLP_USERDATA, Box::into_raw(state) as _) };
             unsafe { DefWindowProcW(window, message, wparam, lparam) }
@@ -109,22 +92,25 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
         WM_DESTROY => {
             let ptr = unsafe { SetWindowLongPtrW(window, GWLP_USERDATA, 0) };
             if ptr != 0 {
-                let _dropped: Box<WindowState> = unsafe { Box::from_raw(ptr as _) };
+                drop(unsafe { Box::<WindowState>::from_raw(ptr as _) });
             }
             unsafe { PostQuitMessage(0) };
             LRESULT(0)
         }
         WM_GETOBJECT => {
-            let window_state = unsafe { get_window_state(window) };
-            if window_state.is_null() {
+            let state_ptr = unsafe { get_window_state(window) };
+            if state_ptr.is_null() {
                 // We need to be prepared to gracefully handle WM_GETOBJECT
                 // while the window is being destroyed; this can happen if
                 // the thread is using a COM STA.
                 return unsafe { DefWindowProcW(window, message, wparam, lparam) };
             }
-            let window_state = unsafe { &*window_state };
-            let adapter = Lazy::force(&window_state.adapter);
-            let result = adapter.handle_wm_getobject(wparam, lparam);
+            let state = unsafe { &*state_ptr };
+            let mut adapter = state.adapter.borrow_mut();
+            let mut activation_handler = state.activation_handler.borrow_mut();
+            let result = adapter.handle_wm_getobject(wparam, lparam, &mut **activation_handler);
+            drop(activation_handler);
+            drop(adapter);
             result.map_or_else(
                 || unsafe { DefWindowProcW(window, message, wparam, lparam) },
                 |result| result.into(),
@@ -144,10 +130,13 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
 
 fn create_window(
     title: &str,
-    initial_state: TreeUpdate,
-    action_handler: Box<dyn ActionHandler + Send + Sync>,
+    activation_handler: Box<dyn ActivationHandler>,
+    action_handler: Box<dyn ActionHandler + Send>,
 ) -> Result<HWND> {
-    let create_params = Box::new(WindowCreateParams(initial_state, action_handler));
+    let create_params = Box::new(WindowCreateParams {
+        activation_handler,
+        action_handler,
+    });
 
     let window = unsafe {
         CreateWindowExW(
@@ -189,8 +178,8 @@ pub(crate) static MUTEX: Mutex<()> = Mutex::new(());
 
 pub(crate) fn scope<F>(
     window_title: &str,
-    initial_state: TreeUpdate,
-    action_handler: Box<dyn ActionHandler + Send + Sync>,
+    activation_handler: Box<dyn ActivationHandler + Send>,
+    action_handler: Box<dyn ActionHandler + Send>,
     f: F,
 ) -> Result<()>
 where
@@ -210,7 +199,7 @@ where
             // initialized after the window is shown (as is the case,
             // at least on some Windows 10 machines, due to IME support).
 
-            let window = create_window(window_title, initial_state, action_handler).unwrap();
+            let window = create_window(window_title, activation_handler, action_handler).unwrap();
 
             {
                 let mut state = window_mutex.lock().unwrap();

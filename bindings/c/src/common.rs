@@ -1075,6 +1075,61 @@ impl From<ActionRequest> for action_request {
     }
 }
 
+pub(crate) type ActivationHandlerCallbackUnwrapped =
+    extern "C" fn(userdata: *mut c_void) -> *mut tree_update;
+pub type ActivationHandlerCallback =
+    Option<extern "C" fn(userdata: *mut c_void) -> *mut tree_update>;
+
+pub(crate) struct FfiActivationHandlerUserdata(pub(crate) *mut c_void);
+
+unsafe impl Send for FfiActivationHandlerUserdata {}
+
+pub(crate) struct FfiActivationHandler {
+    pub(crate) callback: ActivationHandlerCallbackUnwrapped,
+    pub(crate) userdata: FfiActivationHandlerUserdata,
+}
+
+pub struct activation_handler {
+    _private: [u8; 0],
+}
+
+impl CastPtr for activation_handler {
+    type RustType = FfiActivationHandler;
+}
+
+impl BoxCastPtr for activation_handler {}
+
+impl activation_handler {
+    #[no_mangle]
+    pub extern "C" fn accesskit_activation_handler_new(
+        callback: ActivationHandlerCallback,
+        userdata: *mut c_void,
+    ) -> *mut activation_handler {
+        let callback = callback.unwrap();
+        let userdata = FfiActivationHandlerUserdata(userdata);
+        let handler = FfiActivationHandler { callback, userdata };
+        BoxCastPtr::to_mut_ptr(handler)
+    }
+
+    #[no_mangle]
+    pub extern "C" fn accesskit_activation_handler_free(handler: *mut activation_handler) {
+        drop(box_from_ptr(handler));
+    }
+}
+
+impl ActivationHandler for FfiActivationHandler {
+    fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
+        let result = (self.callback)(self.userdata.0);
+        if result.is_null() {
+            None
+        } else {
+            Some(*box_from_ptr(result))
+        }
+    }
+}
+
+pub(crate) type ActionHandlerCallbackUnwrapped =
+    extern "C" fn(request: *const action_request, userdata: *mut c_void);
 pub type ActionHandlerCallback =
     Option<extern "C" fn(request: *const action_request, userdata: *mut c_void)>;
 
@@ -1083,7 +1138,7 @@ struct FfiActionHandlerUserdata(*mut c_void);
 unsafe impl Send for FfiActionHandlerUserdata {}
 
 pub(crate) struct FfiActionHandler {
-    callback: ActionHandlerCallback,
+    callback: ActionHandlerCallbackUnwrapped,
     userdata: FfiActionHandlerUserdata,
 }
 
@@ -1103,6 +1158,7 @@ impl action_handler {
         callback: ActionHandlerCallback,
         userdata: *mut c_void,
     ) -> *mut action_handler {
+        let callback = callback.unwrap();
         let userdata = FfiActionHandlerUserdata(userdata);
         let handler = FfiActionHandler { callback, userdata };
         BoxCastPtr::to_mut_ptr(handler)
@@ -1116,10 +1172,54 @@ impl action_handler {
 
 impl ActionHandler for FfiActionHandler {
     fn do_action(&mut self, request: ActionRequest) {
-        if let Some(callback) = self.callback {
-            let request = request.into();
-            callback(&request, self.userdata.0);
-        }
+        let request = request.into();
+        (self.callback)(&request, self.userdata.0);
+    }
+}
+
+pub(crate) type DeactivationHandlerCallbackUnwrapped = extern "C" fn(userdata: *mut c_void);
+pub type DeactivationHandlerCallback = Option<extern "C" fn(userdata: *mut c_void)>;
+
+struct FfiDeactivationHandlerUserdata(*mut c_void);
+
+unsafe impl Send for FfiDeactivationHandlerUserdata {}
+
+pub(crate) struct FfiDeactivationHandler {
+    callback: DeactivationHandlerCallbackUnwrapped,
+    userdata: FfiDeactivationHandlerUserdata,
+}
+
+pub struct deactivation_handler {
+    _private: [u8; 0],
+}
+
+impl CastPtr for deactivation_handler {
+    type RustType = FfiDeactivationHandler;
+}
+
+impl BoxCastPtr for deactivation_handler {}
+
+impl deactivation_handler {
+    #[no_mangle]
+    pub extern "C" fn accesskit_deactivation_handler_new(
+        callback: DeactivationHandlerCallback,
+        userdata: *mut c_void,
+    ) -> *mut deactivation_handler {
+        let callback = callback.unwrap();
+        let userdata = FfiDeactivationHandlerUserdata(userdata);
+        let handler = FfiDeactivationHandler { callback, userdata };
+        BoxCastPtr::to_mut_ptr(handler)
+    }
+
+    #[no_mangle]
+    pub extern "C" fn accesskit_deactivation_handler_free(handler: *mut deactivation_handler) {
+        drop(box_from_ptr(handler));
+    }
+}
+
+impl DeactivationHandler for FfiDeactivationHandler {
+    fn deactivate_accessibility(&mut self) {
+        (self.callback)(self.userdata.0);
     }
 }
 

@@ -95,6 +95,10 @@ pub(crate) trait BoxCastPtr: CastPtr + Sized {
         Box::into_raw(Box::new(src)) as *mut _
     }
 
+    fn to_nullable_mut_ptr(src: Option<Self::RustType>) -> *mut Self {
+        src.map_or_else(std::ptr::null_mut, Self::to_mut_ptr)
+    }
+
     fn set_mut_ptr(dst: *mut *mut Self, src: Self::RustType) {
         unsafe {
             *dst = Self::to_mut_ptr(src);

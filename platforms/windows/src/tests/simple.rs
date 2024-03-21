@@ -4,8 +4,8 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    Action, ActionHandler, ActionRequest, Node, NodeBuilder, NodeClassSet, NodeId, Role, Tree,
-    TreeUpdate,
+    Action, ActionHandler, ActionRequest, ActivationHandler, Node, NodeBuilder, NodeClassSet,
+    NodeId, Role, Tree, TreeUpdate,
 };
 use windows::{core::*, Win32::UI::Accessibility::*};
 
@@ -50,13 +50,21 @@ impl ActionHandler for NullActionHandler {
     fn do_action(&mut self, _request: ActionRequest) {}
 }
 
+struct SimpleActivationHandler;
+
+impl ActivationHandler for SimpleActivationHandler {
+    fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
+        Some(get_initial_state())
+    }
+}
+
 fn scope<F>(f: F) -> Result<()>
 where
     F: FnOnce(&Scope) -> Result<()>,
 {
     super::scope(
         WINDOW_TITLE,
-        get_initial_state(),
+        Box::new(SimpleActivationHandler {}),
         Box::new(NullActionHandler {}),
         f,
     )

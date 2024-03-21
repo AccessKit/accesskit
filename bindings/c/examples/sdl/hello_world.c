@@ -63,27 +63,26 @@ struct accesskit_sdl_adapter {
 #endif
 };
 
-void accesskit_sdl_adapter_init(struct accesskit_sdl_adapter *adapter,
-                                SDL_Window *window,
-                                accesskit_tree_update_factory source,
-                                void *source_userdata,
-                                accesskit_action_handler *handler) {
+void accesskit_sdl_adapter_init(
+    struct accesskit_sdl_adapter *adapter, SDL_Window *window,
+    accesskit_activation_handler *activation_handler,
+    accesskit_action_handler *action_handler) {
 #if defined(__APPLE__)
   accesskit_macos_add_focus_forwarder_to_window_class("SDLWindow");
   SDL_SysWMinfo wmInfo;
   SDL_VERSION(&wmInfo.version);
   SDL_GetWindowWMInfo(window, &wmInfo);
   adapter->adapter = accesskit_macos_subclassing_adapter_for_window(
-      (void *)wmInfo.info.cocoa.window, source, source_userdata, handler);
+      (void *)wmInfo.info.cocoa.window, activation_handler, action_handler);
 #elif defined(UNIX)
   adapter->adapter =
-      accesskit_unix_adapter_new(source, source_userdata, handler);
+      accesskit_unix_adapter_new(activation_handler, action_handler);
 #elif defined(_WIN32)
   SDL_SysWMinfo wmInfo;
   SDL_VERSION(&wmInfo.version);
   SDL_GetWindowWMInfo(window, &wmInfo);
   adapter->adapter = accesskit_windows_subclassing_adapter_new(
-      wmInfo.info.win.window, source, source_userdata, handler);
+      wmInfo.info.win.window, activation_handler, action_handler);
 #endif
 }
 
@@ -100,7 +99,7 @@ void accesskit_sdl_adapter_destroy(struct accesskit_sdl_adapter *adapter) {
 }
 
 void accesskit_sdl_adapter_update_if_active(
-    const struct accesskit_sdl_adapter *adapter,
+    struct accesskit_sdl_adapter *adapter,
     accesskit_tree_update_factory update_factory,
     void *update_factory_userdata) {
 #if defined(__APPLE__)
@@ -124,7 +123,7 @@ void accesskit_sdl_adapter_update_if_active(
 }
 
 void accesskit_sdl_adapter_update_window_focus_state(
-    const struct accesskit_sdl_adapter *adapter, bool is_focused) {
+    struct accesskit_sdl_adapter *adapter, bool is_focused) {
 #if defined(__APPLE__)
   accesskit_macos_queued_events *events =
       accesskit_macos_subclassing_adapter_update_view_focus_state(
@@ -140,7 +139,7 @@ void accesskit_sdl_adapter_update_window_focus_state(
 }
 
 void accesskit_sdl_adapter_update_root_window_bounds(
-    const struct accesskit_sdl_adapter *adapter, SDL_Window *window) {
+    struct accesskit_sdl_adapter *adapter, SDL_Window *window) {
 #if defined(UNIX)
   int x, y, width, height;
   SDL_GetWindowPosition(window, &x, &y);
@@ -319,7 +318,8 @@ int main(int argc, char *argv[]) {
   struct action_handler_state action_handler = {user_event, window_id};
   struct accesskit_sdl_adapter adapter;
   accesskit_sdl_adapter_init(
-      &adapter, window, build_initial_tree, &state,
+      &adapter, window,
+      accesskit_activation_handler_new(build_initial_tree, &state),
       accesskit_action_handler_new(do_action, &action_handler));
   SDL_ShowWindow(window);
 

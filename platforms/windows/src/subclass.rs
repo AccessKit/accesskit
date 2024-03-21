@@ -3,15 +3,18 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, TreeUpdate};
-use once_cell::unsync::Lazy;
-use std::{cell::Cell, ffi::c_void, mem::transmute, rc::Rc};
+use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
+use std::{
+    cell::{Cell, RefCell},
+    ffi::c_void,
+    mem::transmute,
+};
 use windows::{
     core::*,
     Win32::{Foundation::*, UI::WindowsAndMessaging::*},
 };
 
-use crate::{Adapter, QueuedEvents, UiaInitMarker};
+use crate::{Adapter, QueuedEvents};
 
 fn win32_error() -> ! {
     panic!("{}", Error::from_win32())
@@ -26,12 +29,14 @@ type LongPtr = i32;
 
 const PROP_NAME: PCWSTR = w!("AccessKitAdapter");
 
-type LazyAdapter = Lazy<Adapter, Box<dyn FnOnce() -> Adapter>>;
+struct SubclassState {
+    adapter: Adapter,
+    activation_handler: Box<dyn ActivationHandler>,
+}
 
 struct SubclassImpl {
     hwnd: HWND,
-    is_window_focused: Rc<Cell<bool>>,
-    adapter: LazyAdapter,
+    state: RefCell<SubclassState>,
     prev_wnd_proc: WNDPROC,
     window_destroyed: Cell<bool>,
 }
@@ -43,8 +48,14 @@ extern "system" fn wnd_proc(window: HWND, message: u32, wparam: WPARAM, lparam: 
     let r#impl = unsafe { &*impl_ptr };
     match message {
         WM_GETOBJECT => {
-            let adapter = Lazy::force(&r#impl.adapter);
-            if let Some(result) = adapter.handle_wm_getobject(wparam, lparam) {
+            let mut state = r#impl.state.borrow_mut();
+            let state_mut = &mut *state;
+            if let Some(result) = state_mut.adapter.handle_wm_getobject(
+                wparam,
+                lparam,
+                &mut *state_mut.activation_handler,
+            ) {
+                drop(state);
                 return result.into();
             }
         }
@@ -65,27 +76,17 @@ extern "system" fn wnd_proc(window: HWND, message: u32, wparam: WPARAM, lparam: 
 impl SubclassImpl {
     fn new(
         hwnd: HWND,
-        source: impl 'static + FnOnce() -> TreeUpdate,
+        activation_handler: Box<dyn ActivationHandler>,
         action_handler: Box<dyn ActionHandler + Send>,
     ) -> Box<Self> {
-        let is_window_focused = Rc::new(Cell::new(false));
-        let uia_init_marker = UiaInitMarker::new();
-        let adapter: LazyAdapter = Lazy::new(Box::new({
-            let is_window_focused = Rc::clone(&is_window_focused);
-            move || {
-                Adapter::new(
-                    hwnd,
-                    source(),
-                    is_window_focused.get(),
-                    action_handler,
-                    uia_init_marker,
-                )
-            }
-        }));
+        let adapter = Adapter::new(hwnd, false, action_handler);
+        let state = RefCell::new(SubclassState {
+            adapter,
+            activation_handler,
+        });
         Box::new(Self {
             hwnd,
-            is_window_focused,
-            adapter,
+            state,
             prev_wnd_proc: None,
             window_destroyed: Cell::new(false),
         })
@@ -109,9 +110,9 @@ impl SubclassImpl {
     }
 
     fn update_window_focus_state(&self, is_focused: bool) {
-        self.is_window_focused.set(is_focused);
-        if let Some(adapter) = Lazy::get(&self.adapter) {
-            let events = adapter.update_window_focus_state(is_focused);
+        let mut state = self.state.borrow_mut();
+        if let Some(events) = state.adapter.update_window_focus_state(is_focused) {
+            drop(state);
             events.raise();
         }
     }
@@ -145,45 +146,38 @@ impl SubclassingAdapter {
     /// This must be done before the window is shown or focused
     /// for the first time.
     ///
-    /// The action handler may or may not be called on the thread that owns
-    /// the window.
+    /// This must be called on the thread that owns the window. The activation
+    /// handler will always be called on that thread. The action handler
+    /// may or may not be called on that thread.
     pub fn new(
         hwnd: HWND,
-        source: impl 'static + FnOnce() -> TreeUpdate,
+        activation_handler: Box<dyn ActivationHandler>,
         action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
-        let mut r#impl = SubclassImpl::new(hwnd, source, action_handler);
+        let mut r#impl = SubclassImpl::new(hwnd, activation_handler, action_handler);
         r#impl.install();
         Self(r#impl)
     }
 
-    /// Initialize the tree if it hasn't been initialized already, then apply
-    /// the provided update.
-    ///
-    /// The caller must call [`QueuedEvents::raise`] on the return value.
-    ///
-    /// This method may be safely called on any thread, but refer to
-    /// [`QueuedEvents::raise`] for restrictions on the context in which
-    /// it should be called.
-    pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
-        let adapter = Lazy::force(&self.0.adapter);
-        adapter.update(update)
-    }
-
     /// If and only if the tree has been initialized, call the provided function
-    /// and apply the resulting update.
+    /// and apply the resulting update. Note: If the caller's implementation of
+    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
+    /// the [`TreeUpdate`] returned by the provided function must contain
+    /// a full tree.
     ///
     /// If a [`QueuedEvents`] instance is returned, the caller must call
     /// [`QueuedEvents::raise`] on it.
-    ///
-    /// This method may be safely called on any thread, but refer to
-    /// [`QueuedEvents::raise`] for restrictions on the context in which
-    /// it should be called.
     pub fn update_if_active(
-        &self,
+        &mut self,
         update_factory: impl FnOnce() -> TreeUpdate,
     ) -> Option<QueuedEvents> {
-        Lazy::get(&self.0.adapter).map(|adapter| adapter.update(update_factory()))
+        // SAFETY: We use `RefCell::borrow_mut` here, even though
+        // `RefCell::get_mut` is allowed (because this method takes
+        // a mutable self reference), just in case there's some way
+        // this method can be called from within the subclassed window
+        // procedure, e.g. via `ActivationHandler`.
+        let mut state = self.0.state.borrow_mut();
+        state.adapter.update_if_active(update_factory)
     }
 }
 

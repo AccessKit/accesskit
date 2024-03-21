@@ -4,8 +4,8 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    Action, ActionHandler, ActionRequest, Node, NodeBuilder, NodeClassSet, NodeId, Role, Tree,
-    TreeUpdate,
+    Action, ActionHandler, ActionRequest, ActivationHandler, Node, NodeBuilder, NodeClassSet,
+    NodeId, Role, Tree, TreeUpdate,
 };
 use windows::Win32::{Foundation::*, UI::Accessibility::*};
 use winit::{
@@ -58,6 +58,14 @@ impl ActionHandler for NullActionHandler {
     fn do_action(&mut self, _request: ActionRequest) {}
 }
 
+struct SimpleActivationHandler;
+
+impl ActivationHandler for SimpleActivationHandler {
+    fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
+        Some(get_initial_state())
+    }
+}
+
 // This module uses winit for the purpose of testing with a real third-party
 // window implementation that we don't control.
 
@@ -82,7 +90,11 @@ fn has_native_uia() {
         RawWindowHandle::WinRt(_) => unimplemented!(),
         _ => unreachable!(),
     };
-    let adapter = SubclassingAdapter::new(hwnd, get_initial_state, Box::new(NullActionHandler {}));
+    let adapter = SubclassingAdapter::new(
+        hwnd,
+        Box::new(SimpleActivationHandler {}),
+        Box::new(NullActionHandler {}),
+    );
     assert!(unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
     drop(window);
     drop(adapter);
