@@ -22,7 +22,10 @@ use windows::{
     },
 };
 
-use super::Adapter;
+use super::{
+    context::{ActionHandlerNoMut, ActionHandlerWrapper},
+    Adapter,
+};
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -64,7 +67,7 @@ fn update_window_focus_state(window: HWND, is_focused: bool) {
 
 struct WindowCreateParams {
     activation_handler: Box<dyn ActivationHandler>,
-    action_handler: Box<dyn ActionHandler + Send>,
+    action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
 }
 
 extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
@@ -135,7 +138,7 @@ fn create_window(
 ) -> Result<HWND> {
     let create_params = Box::new(WindowCreateParams {
         activation_handler: Box::new(activation_handler),
-        action_handler: Box::new(action_handler),
+        action_handler: Arc::new(ActionHandlerWrapper::new(action_handler)),
     });
 
     let window = unsafe {

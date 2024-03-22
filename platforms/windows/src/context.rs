@@ -10,22 +10,40 @@ use windows::Win32::Foundation::*;
 
 use crate::util::*;
 
+pub(crate) trait ActionHandlerNoMut {
+    fn do_action(&self, request: ActionRequest);
+}
+
+pub(crate) struct ActionHandlerWrapper<H: ActionHandler + Send>(Mutex<H>);
+
+impl<H: 'static + ActionHandler + Send> ActionHandlerWrapper<H> {
+    pub(crate) fn new(inner: H) -> Self {
+        Self(Mutex::new(inner))
+    }
+}
+
+impl<H: ActionHandler + Send> ActionHandlerNoMut for ActionHandlerWrapper<H> {
+    fn do_action(&self, request: ActionRequest) {
+        self.0.lock().unwrap().do_action(request)
+    }
+}
+
 pub(crate) struct Context {
     pub(crate) hwnd: HWND,
     pub(crate) tree: RwLock<Tree>,
-    pub(crate) action_handler: Mutex<Box<dyn ActionHandler + Send>>,
+    pub(crate) action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
 }
 
 impl Context {
     pub(crate) fn new(
         hwnd: HWND,
         tree: Tree,
-        action_handler: Box<dyn ActionHandler + Send>,
+        action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
     ) -> Arc<Self> {
         Arc::new(Self {
             hwnd,
             tree: RwLock::new(tree),
-            action_handler: Mutex::new(action_handler),
+            action_handler,
         })
     }
 
@@ -38,6 +56,6 @@ impl Context {
     }
 
     pub(crate) fn do_action(&self, request: ActionRequest) {
-        self.action_handler.lock().unwrap().do_action(request);
+        self.action_handler.do_action(request);
     }
 }

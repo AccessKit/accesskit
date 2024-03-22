@@ -15,7 +15,7 @@ use windows::Win32::{
 };
 
 use crate::{
-    context::Context,
+    context::{ActionHandlerNoMut, ActionHandlerWrapper, Context},
     filters::{filter, filter_detached},
     node::{NodeWrapper, PlatformNode},
     util::QueuedEvent,
@@ -159,12 +159,12 @@ const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
 enum State {
     Inactive {
         is_window_focused: bool,
-        action_handler: Box<dyn ActionHandler + Send>,
+        action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
     },
     Placeholder {
         placeholder_context: Arc<Context>,
         is_window_focused: bool,
-        action_handler: Box<dyn ActionHandler + Send>,
+        action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
     },
     Active(Arc<Context>),
 }
@@ -177,10 +177,7 @@ impl ActionHandler for PlaceholderActionHandler {
 
 pub struct Adapter {
     hwnd: HWND,
-    // NOTE: The state isn't really optional, but there doesn't seem to be
-    // any other safe way to move from one state to the next, since some
-    // non-copyable values have to be moved between states.
-    state: Option<State>,
+    state: State,
 }
 
 impl Adapter {
@@ -201,21 +198,25 @@ impl Adapter {
         is_window_focused: bool,
         action_handler: impl 'static + ActionHandler + Send,
     ) -> Self {
-        Self::with_boxed_action_handler(hwnd, is_window_focused, Box::new(action_handler))
+        Self::with_boxed_action_handler(
+            hwnd,
+            is_window_focused,
+            Arc::new(ActionHandlerWrapper::new(action_handler)),
+        )
     }
 
     // Currently required by the test infrastructure
     pub(crate) fn with_boxed_action_handler(
         hwnd: HWND,
         is_window_focused: bool,
-        action_handler: Box<dyn ActionHandler + Send>,
+        action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
     ) -> Self {
         init_uia();
 
-        let state = Some(State::Inactive {
+        let state = State::Inactive {
             is_window_focused,
             action_handler,
-        });
+        };
         Self { hwnd, state }
     }
 
@@ -235,42 +236,30 @@ impl Adapter {
         &mut self,
         update_factory: impl FnOnce() -> TreeUpdate,
     ) -> Option<QueuedEvents> {
-        let (new_state, result) = match self.state.take().unwrap() {
-            State::Inactive {
-                is_window_focused,
-                action_handler,
-            } => {
-                let new_state = State::Inactive {
-                    is_window_focused,
-                    action_handler,
-                };
-                (new_state, None)
-            }
+        match &self.state {
+            State::Inactive { .. } => None,
             State::Placeholder {
                 is_window_focused,
                 action_handler,
                 ..
             } => {
-                let tree = Tree::new(update_factory(), is_window_focused);
-                let context = Context::new(self.hwnd, tree, action_handler);
+                let tree = Tree::new(update_factory(), *is_window_focused);
+                let context = Context::new(self.hwnd, tree, Arc::clone(action_handler));
                 let result = context
                     .read_tree()
                     .state()
                     .focus_id()
                     .map(|id| QueuedEvents(vec![focus_event(&context, id)]));
-                (State::Active(context), result)
+                self.state = State::Active(context);
+                result
             }
             State::Active(context) => {
-                let mut handler = AdapterChangeHandler::new(&context);
+                let mut handler = AdapterChangeHandler::new(context);
                 let mut tree = context.tree.write().unwrap();
                 tree.update_and_process_changes(update_factory(), &mut handler);
-                let result = Some(QueuedEvents(handler.queue));
-                drop(tree);
-                (State::Active(context), result)
+                Some(QueuedEvents(handler.queue))
             }
-        };
-        self.state = Some(new_state);
-        result
+        }
     }
 
     /// Update the tree state based on whether the window is focused.
@@ -282,7 +271,7 @@ impl Adapter {
     /// [`QueuedEvents::raise`] for restrictions on the context in which
     /// it should be called.
     pub fn update_window_focus_state(&mut self, is_focused: bool) -> Option<QueuedEvents> {
-        match self.state.as_mut().unwrap() {
+        match &mut self.state {
             State::Inactive {
                 is_window_focused, ..
             } => {
@@ -308,17 +297,18 @@ impl Adapter {
         &mut self,
         activation_handler: &mut H,
     ) -> PlatformNode {
-        let (new_state, result) = match self.state.take().unwrap() {
+        match &self.state {
             State::Inactive {
                 is_window_focused,
                 action_handler,
             } => match activation_handler.request_initial_tree() {
                 Some(initial_state) => {
-                    let tree = Tree::new(initial_state, is_window_focused);
-                    let context = Context::new(self.hwnd, tree, action_handler);
+                    let tree = Tree::new(initial_state, *is_window_focused);
+                    let context = Context::new(self.hwnd, tree, Arc::clone(action_handler));
                     let node_id = context.read_tree().state().root_id();
                     let result = PlatformNode::new(&context, node_id);
-                    (State::Active(context), result)
+                    self.state = State::Active(context);
+                    result
                 }
                 None => {
                     let placeholder_update = TreeUpdate {
@@ -333,38 +323,26 @@ impl Adapter {
                     let placeholder_context = Context::new(
                         self.hwnd,
                         placeholder_tree,
-                        Box::new(PlaceholderActionHandler {}),
+                        Arc::new(ActionHandlerWrapper::new(PlaceholderActionHandler {})),
                     );
                     let result = PlatformNode::new(&placeholder_context, PLACEHOLDER_ROOT_ID);
-                    let new_state = State::Placeholder {
+                    self.state = State::Placeholder {
                         placeholder_context,
-                        is_window_focused,
-                        action_handler,
+                        is_window_focused: *is_window_focused,
+                        action_handler: Arc::clone(action_handler),
                     };
-                    (new_state, result)
+                    result
                 }
             },
             State::Placeholder {
                 placeholder_context,
-                is_window_focused,
-                action_handler,
-            } => {
-                let result = PlatformNode::new(&placeholder_context, PLACEHOLDER_ROOT_ID);
-                let new_state = State::Placeholder {
-                    placeholder_context,
-                    is_window_focused,
-                    action_handler,
-                };
-                (new_state, result)
-            }
+                ..
+            } => PlatformNode::new(placeholder_context, PLACEHOLDER_ROOT_ID),
             State::Active(context) => {
                 let node_id = context.read_tree().state().root_id();
-                let result = PlatformNode::new(&context, node_id);
-                (State::Active(context), result)
+                PlatformNode::new(context, node_id)
             }
-        };
-        self.state = Some(new_state);
-        result
+        }
     }
 
     /// Handle the `WM_GETOBJECT` window message. The accessibility tree
