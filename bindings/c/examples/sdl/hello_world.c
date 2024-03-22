@@ -229,7 +229,7 @@ accesskit_tree_update *build_tree_update_for_button_press(void *userdata) {
 }
 
 void window_state_press_button(struct window_state *state,
-                               const struct accesskit_sdl_adapter *adapter,
+                               struct accesskit_sdl_adapter *adapter,
                                accesskit_node_id id) {
   const char *text;
   if (id == BUTTON_1_ID) {
@@ -250,7 +250,7 @@ accesskit_tree_update *build_tree_update_for_focus_update(void *userdata) {
 }
 
 void window_state_set_focus(struct window_state *state,
-                            const struct accesskit_sdl_adapter *adapter,
+                            struct accesskit_sdl_adapter *adapter,
                             accesskit_node_id focus) {
   state->focus = focus;
   accesskit_sdl_adapter_update_if_active(

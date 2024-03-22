@@ -16,7 +16,7 @@ pub(crate) struct Context {
     pub(crate) tree: RefCell<Tree>,
     pub(crate) action_handler: RefCell<Box<dyn ActionHandler>>,
     platform_nodes: RefCell<HashMap<NodeId, Id<PlatformNode>>>,
-    _mtm: MainThreadMarker,
+    pub(crate) mtm: MainThreadMarker,
 }
 
 impl Context {
@@ -31,7 +31,7 @@ impl Context {
             tree: RefCell::new(tree),
             action_handler: RefCell::new(action_handler),
             platform_nodes: RefCell::new(HashMap::new()),
-            _mtm: mtm,
+            mtm,
         })
     }
 
