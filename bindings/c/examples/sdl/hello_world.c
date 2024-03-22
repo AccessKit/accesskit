@@ -65,24 +65,29 @@ struct accesskit_sdl_adapter {
 
 void accesskit_sdl_adapter_init(
     struct accesskit_sdl_adapter *adapter, SDL_Window *window,
-    accesskit_activation_handler *activation_handler,
-    accesskit_action_handler *action_handler) {
+    accesskit_activation_handler_callback activation_handler,
+    void *activation_handler_userdata,
+    accesskit_action_handler_callback action_handler,
+    void *action_handler_userdata) {
 #if defined(__APPLE__)
   accesskit_macos_add_focus_forwarder_to_window_class("SDLWindow");
   SDL_SysWMinfo wmInfo;
   SDL_VERSION(&wmInfo.version);
   SDL_GetWindowWMInfo(window, &wmInfo);
   adapter->adapter = accesskit_macos_subclassing_adapter_for_window(
-      (void *)wmInfo.info.cocoa.window, activation_handler, action_handler);
+      (void *)wmInfo.info.cocoa.window, activation_handler,
+      activation_handler_userdata, action_handler, action_handler_userdata);
 #elif defined(UNIX)
-  adapter->adapter =
-      accesskit_unix_adapter_new(activation_handler, action_handler);
+  adapter->adapter = accesskit_unix_adapter_new(
+      activation_handler, activation_handler_userdata, action_handler,
+      action_handler_userdata);
 #elif defined(_WIN32)
   SDL_SysWMinfo wmInfo;
   SDL_VERSION(&wmInfo.version);
   SDL_GetWindowWMInfo(window, &wmInfo);
   adapter->adapter = accesskit_windows_subclassing_adapter_new(
-      wmInfo.info.win.window, activation_handler, action_handler);
+      wmInfo.info.win.window, activation_handler, activation_handler_userdata,
+      action_handler, action_handler_userdata);
 #endif
 }
 
@@ -317,10 +322,8 @@ int main(int argc, char *argv[]) {
   Uint32 window_id = SDL_GetWindowID(window);
   struct action_handler_state action_handler = {user_event, window_id};
   struct accesskit_sdl_adapter adapter;
-  accesskit_sdl_adapter_init(
-      &adapter, window,
-      accesskit_activation_handler_new(build_initial_tree, &state),
-      accesskit_action_handler_new(do_action, &action_handler));
+  accesskit_sdl_adapter_init(&adapter, window, build_initial_tree, &state,
+                             do_action, &action_handler);
   SDL_ShowWindow(window);
 
   SDL_Event event;

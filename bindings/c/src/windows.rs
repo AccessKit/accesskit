@@ -4,9 +4,9 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    action_handler, activation_handler, box_from_ptr, mut_from_ptr, opt_struct,
-    tree_update_factory, tree_update_factory_userdata, ActivationHandlerCallback, BoxCastPtr,
-    CastPtr, FfiActivationHandler, FfiActivationHandlerUserdata,
+    box_from_ptr, mut_from_ptr, opt_struct, tree_update_factory, tree_update_factory_userdata,
+    ActionHandlerCallback, ActivationHandlerCallback, BoxCastPtr, CastPtr, FfiActionHandler,
+    FfiActivationHandler,
 };
 use accesskit_windows::*;
 use std::os::raw::c_void;
@@ -43,15 +43,15 @@ impl CastPtr for windows_adapter {
 impl BoxCastPtr for windows_adapter {}
 
 impl windows_adapter {
-    /// This function takes ownership of `action_handler`.
     #[no_mangle]
     pub extern "C" fn accesskit_windows_adapter_new(
         hwnd: HWND,
         is_window_focused: bool,
-        action_handler: *mut action_handler,
+        action_handler: ActionHandlerCallback,
+        action_handler_userdata: *mut c_void,
     ) -> *mut windows_adapter {
-        let action_handler = box_from_ptr(action_handler);
-        let adapter = Adapter::new(hwnd, is_window_focused, action_handler);
+        let action_handler = FfiActionHandler::new(action_handler, action_handler_userdata);
+        let adapter = Adapter::new(hwnd, is_window_focused, Box::new(action_handler));
         BoxCastPtr::to_mut_ptr(adapter)
     }
 
@@ -99,14 +99,12 @@ impl windows_adapter {
         adapter: *mut windows_adapter,
         wparam: WPARAM,
         lparam: LPARAM,
-        activation_handler_callback: ActivationHandlerCallback,
+        activation_handler: ActivationHandlerCallback,
         activation_handler_userdata: *mut c_void,
     ) -> opt_lresult {
         let adapter = mut_from_ptr(adapter);
-        let mut activation_handler = FfiActivationHandler {
-            callback: activation_handler_callback.unwrap(),
-            userdata: FfiActivationHandlerUserdata(activation_handler_userdata),
-        };
+        let mut activation_handler =
+            FfiActivationHandler::new(activation_handler, activation_handler_userdata);
         let lresult = adapter.handle_wm_getobject(wparam, lparam, &mut activation_handler);
         opt_lresult::from(lresult)
     }
@@ -123,16 +121,19 @@ impl CastPtr for windows_subclassing_adapter {
 impl BoxCastPtr for windows_subclassing_adapter {}
 
 impl windows_subclassing_adapter {
-    /// This function takes ownership of all pointers passed to it.
     #[no_mangle]
     pub extern "C" fn accesskit_windows_subclassing_adapter_new(
         hwnd: HWND,
-        activation_handler: *mut activation_handler,
-        action_handler: *mut action_handler,
+        activation_handler: ActivationHandlerCallback,
+        activation_handler_userdata: *mut c_void,
+        action_handler: ActionHandlerCallback,
+        action_handler_userdata: *mut c_void,
     ) -> *mut windows_subclassing_adapter {
-        let activation_handler = box_from_ptr(activation_handler);
-        let action_handler = box_from_ptr(action_handler);
-        let adapter = SubclassingAdapter::new(hwnd, activation_handler, action_handler);
+        let activation_handler =
+            FfiActivationHandler::new(activation_handler, activation_handler_userdata);
+        let action_handler = FfiActionHandler::new(action_handler, action_handler_userdata);
+        let adapter =
+            SubclassingAdapter::new(hwnd, Box::new(activation_handler), Box::new(action_handler));
         BoxCastPtr::to_mut_ptr(adapter)
     }
 

@@ -177,9 +177,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     struct window_create_params *create_params =
         (struct window_create_params *)create_struct->lpCreateParams;
     struct window_state *state = malloc(sizeof(struct window_state));
-    accesskit_action_handler *action_handler =
-        accesskit_action_handler_new(do_action, (void *)hwnd);
-    state->adapter = accesskit_windows_adapter_new(hwnd, false, action_handler);
+    state->adapter =
+        accesskit_windows_adapter_new(hwnd, false, do_action, (void *)hwnd);
     state->focus = create_params->initial_focus;
     state->announcement = NULL;
     state->node_classes = accesskit_node_class_set_new();
