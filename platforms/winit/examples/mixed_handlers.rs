@@ -169,11 +169,8 @@ fn main() -> Result<(), impl std::error::Error> {
     let activation_handler = TearoffActivationHandler {
         state: Arc::clone(&state),
     };
-    let mut adapter = Adapter::with_mixed_handlers(
-        &window,
-        Box::new(activation_handler),
-        event_loop.create_proxy(),
-    );
+    let mut adapter =
+        Adapter::with_mixed_handlers(&window, activation_handler, event_loop.create_proxy());
     window.set_visible(true);
 
     event_loop.run(move |event, event_loop| {
