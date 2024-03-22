@@ -76,13 +76,13 @@ extern "system" fn wnd_proc(window: HWND, message: u32, wparam: WPARAM, lparam: 
 impl SubclassImpl {
     fn new(
         hwnd: HWND,
-        activation_handler: Box<dyn ActivationHandler>,
-        action_handler: Box<dyn ActionHandler + Send>,
+        activation_handler: impl 'static + ActivationHandler,
+        action_handler: impl 'static + ActionHandler + Send,
     ) -> Box<Self> {
         let adapter = Adapter::new(hwnd, false, action_handler);
         let state = RefCell::new(SubclassState {
             adapter,
-            activation_handler,
+            activation_handler: Box::new(activation_handler),
         });
         Box::new(Self {
             hwnd,
@@ -151,8 +151,8 @@ impl SubclassingAdapter {
     /// may or may not be called on that thread.
     pub fn new(
         hwnd: HWND,
-        activation_handler: Box<dyn ActivationHandler>,
-        action_handler: Box<dyn ActionHandler + Send>,
+        activation_handler: impl 'static + ActivationHandler,
+        action_handler: impl 'static + ActionHandler + Send,
     ) -> Self {
         let mut r#impl = SubclassImpl::new(hwnd, activation_handler, action_handler);
         r#impl.install();

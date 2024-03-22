@@ -40,7 +40,7 @@ impl Adapter {
         Self(accesskit_windows::Adapter::new(
             HWND(cast::<isize>(hwnd)),
             is_window_focused,
-            Box::new(PythonActionHandler(action_handler)),
+            PythonActionHandler(action_handler),
         ))
     }
 
@@ -99,8 +99,8 @@ impl SubclassingAdapter {
     pub fn new(hwnd: &PyAny, activation_handler: Py<PyAny>, action_handler: Py<PyAny>) -> Self {
         Self(accesskit_windows::SubclassingAdapter::new(
             HWND(cast::<isize>(hwnd)),
-            Box::new(PythonActivationHandler(activation_handler)),
-            Box::new(PythonActionHandler(action_handler)),
+            PythonActivationHandler(activation_handler),
+            PythonActionHandler(action_handler),
         ))
     }
 

@@ -10,10 +10,6 @@ use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, TreeUpdat
 use accesskit_windows::{SubclassingAdapter, HWND};
 use winit::{event::WindowEvent, window::Window};
 
-pub type ActivationHandlerBox = Box<dyn ActivationHandler>;
-pub type ActionHandlerBox = Box<dyn ActionHandler + Send>;
-pub type DeactivationHandlerBox = Box<dyn DeactivationHandler>;
-
 pub struct Adapter {
     adapter: SubclassingAdapter,
 }
@@ -21,9 +17,9 @@ pub struct Adapter {
 impl Adapter {
     pub fn new(
         window: &Window,
-        activation_handler: ActivationHandlerBox,
-        action_handler: ActionHandlerBox,
-        _deactivation_handler: DeactivationHandlerBox,
+        activation_handler: impl 'static + ActivationHandler,
+        action_handler: impl 'static + ActionHandler + Send,
+        _deactivation_handler: impl 'static + DeactivationHandler,
     ) -> Self {
         #[cfg(feature = "rwh_05")]
         let hwnd = match window.raw_window_handle() {

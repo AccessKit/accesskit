@@ -158,9 +158,9 @@ impl Adapter {
         let deactivation_handler = WinitDeactivationHandler { window_id, proxy };
         Self::with_direct_handlers(
             window,
-            Box::new(activation_handler),
-            Box::new(action_handler),
-            Box::new(deactivation_handler),
+            activation_handler,
+            action_handler,
+            deactivation_handler,
         )
     }
 
@@ -179,9 +179,9 @@ impl Adapter {
     /// called on any thread, depending on the underlying platform adapter.
     pub fn with_direct_handlers(
         window: &Window,
-        activation_handler: platform_impl::ActivationHandlerBox,
-        action_handler: platform_impl::ActionHandlerBox,
-        deactivation_handler: platform_impl::DeactivationHandlerBox,
+        activation_handler: impl 'static + ActivationHandler + Send,
+        action_handler: impl 'static + ActionHandler + Send,
+        deactivation_handler: impl 'static + DeactivationHandler + Send,
     ) -> Self {
         let inner = platform_impl::Adapter::new(
             window,
@@ -206,7 +206,7 @@ impl Adapter {
     /// the activation handler is called is platform-dependent.
     pub fn with_mixed_handlers<T: From<Event> + Send + 'static>(
         window: &Window,
-        activation_handler: platform_impl::ActivationHandlerBox,
+        activation_handler: impl 'static + ActivationHandler + Send,
         proxy: EventLoopProxy<T>,
     ) -> Self {
         let window_id = window.id();
@@ -218,8 +218,8 @@ impl Adapter {
         Self::with_direct_handlers(
             window,
             activation_handler,
-            Box::new(action_handler),
-            Box::new(deactivation_handler),
+            action_handler,
+            deactivation_handler,
         )
     }
 
