@@ -16,7 +16,7 @@ use objc2::rc::{Id, WeakId};
 use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
 use crate::{
-    context::Context,
+    context::{ActionHandlerNoMut, ActionHandlerWrapper, Context},
     event::{focus_event, EventGenerator, QueuedEvents},
     filters::filter,
     node::can_be_focused,
@@ -29,13 +29,13 @@ enum State {
     Inactive {
         view: WeakId<NSView>,
         is_view_focused: bool,
-        action_handler: Box<dyn ActionHandler>,
+        action_handler: Rc<dyn ActionHandlerNoMut>,
         mtm: MainThreadMarker,
     },
     Placeholder {
         placeholder_context: Rc<Context>,
         is_view_focused: bool,
-        action_handler: Box<dyn ActionHandler>,
+        action_handler: Rc<dyn ActionHandlerNoMut>,
     },
     Active(Rc<Context>),
 }
@@ -47,10 +47,7 @@ impl ActionHandler for PlaceholderActionHandler {
 }
 
 pub struct Adapter {
-    // NOTE: The state isn't really optional, but there doesn't seem to be
-    // any other safe way to move from one state to the next, since some
-    // non-copyable values have to be moved between states.
-    state: Option<State>,
+    state: State,
 }
 
 impl Adapter {
@@ -70,12 +67,12 @@ impl Adapter {
         let view = unsafe { Id::retain(view as *mut NSView) }.unwrap();
         let view = WeakId::from_id(&view);
         let mtm = MainThreadMarker::new().unwrap();
-        let state = Some(State::Inactive {
+        let state = State::Inactive {
             view,
             is_view_focused,
-            action_handler: Box::new(action_handler),
+            action_handler: Rc::new(ActionHandlerWrapper::new(action_handler)),
             mtm,
-        });
+        };
         Self { state }
     }
 
@@ -91,51 +88,36 @@ impl Adapter {
         &mut self,
         update_factory: impl FnOnce() -> TreeUpdate,
     ) -> Option<QueuedEvents> {
-        let (new_state, result) =
-            match self.state.take().unwrap() {
-                State::Inactive {
-                    view,
-                    is_view_focused,
-                    action_handler,
-                    mtm,
-                } => {
-                    let new_state = State::Inactive {
-                        view,
-                        is_view_focused,
-                        action_handler,
-                        mtm,
-                    };
-                    (new_state, None)
-                }
-                State::Placeholder {
-                    placeholder_context,
-                    is_view_focused,
-                    action_handler,
-                } => {
-                    let tree = Tree::new(update_factory(), is_view_focused);
-                    let context = Context::new(
-                        placeholder_context.view.clone(),
-                        tree,
-                        action_handler,
-                        placeholder_context.mtm,
-                    );
-                    let result =
-                        context.tree.borrow().state().focus_id().map(|id| {
-                            QueuedEvents::new(Rc::clone(&context), vec![focus_event(id)])
-                        });
-                    (State::Active(context), result)
-                }
-                State::Active(context) => {
-                    let mut event_generator = EventGenerator::new(context.clone());
-                    let mut tree = context.tree.borrow_mut();
-                    tree.update_and_process_changes(update_factory(), &mut event_generator);
-                    let result = Some(event_generator.into_result());
-                    drop(tree);
-                    (State::Active(context), result)
-                }
-            };
-        self.state = Some(new_state);
-        result
+        match &self.state {
+            State::Inactive { .. } => None,
+            State::Placeholder {
+                placeholder_context,
+                is_view_focused,
+                action_handler,
+            } => {
+                let tree = Tree::new(update_factory(), *is_view_focused);
+                let context = Context::new(
+                    placeholder_context.view.clone(),
+                    tree,
+                    Rc::clone(action_handler),
+                    placeholder_context.mtm,
+                );
+                let result = context
+                    .tree
+                    .borrow()
+                    .state()
+                    .focus_id()
+                    .map(|id| QueuedEvents::new(Rc::clone(&context), vec![focus_event(id)]));
+                self.state = State::Active(context);
+                result
+            }
+            State::Active(context) => {
+                let mut event_generator = EventGenerator::new(context.clone());
+                let mut tree = context.tree.borrow_mut();
+                tree.update_and_process_changes(update_factory(), &mut event_generator);
+                Some(event_generator.into_result())
+            }
+        }
     }
 
     /// Update the tree state based on whether the window is focused.
@@ -143,7 +125,7 @@ impl Adapter {
     /// If a [`QueuedEvents`] instance is returned, the caller must call
     /// [`QueuedEvents::raise`] on it.
     pub fn update_view_focus_state(&mut self, is_focused: bool) -> Option<QueuedEvents> {
-        match self.state.as_mut().unwrap() {
+        match &mut self.state {
             State::Inactive {
                 is_view_focused, ..
             } => {
@@ -169,7 +151,7 @@ impl Adapter {
         &mut self,
         activation_handler: &mut H,
     ) -> Rc<Context> {
-        let (new_state, result) = match self.state.take().unwrap() {
+        match &self.state {
             State::Inactive {
                 view,
                 is_view_focused,
@@ -177,10 +159,11 @@ impl Adapter {
                 mtm,
             } => match activation_handler.request_initial_tree() {
                 Some(initial_state) => {
-                    let tree = Tree::new(initial_state, is_view_focused);
-                    let context = Context::new(view, tree, action_handler, mtm);
+                    let tree = Tree::new(initial_state, *is_view_focused);
+                    let context = Context::new(view.clone(), tree, Rc::clone(action_handler), *mtm);
                     let result = Rc::clone(&context);
-                    (State::Active(context), result)
+                    self.state = State::Active(context);
+                    result
                 }
                 None => {
                     let placeholder_update = TreeUpdate {
@@ -193,40 +176,26 @@ impl Adapter {
                     };
                     let placeholder_tree = Tree::new(placeholder_update, false);
                     let placeholder_context = Context::new(
-                        view,
+                        view.clone(),
                         placeholder_tree,
-                        Box::new(PlaceholderActionHandler {}),
-                        mtm,
+                        Rc::new(ActionHandlerWrapper::new(PlaceholderActionHandler {})),
+                        *mtm,
                     );
                     let result = Rc::clone(&placeholder_context);
-                    let new_state = State::Placeholder {
+                    self.state = State::Placeholder {
                         placeholder_context,
-                        is_view_focused,
-                        action_handler,
+                        is_view_focused: *is_view_focused,
+                        action_handler: Rc::clone(action_handler),
                     };
-                    (new_state, result)
+                    result
                 }
             },
             State::Placeholder {
                 placeholder_context,
-                is_view_focused,
-                action_handler,
-            } => {
-                let result = Rc::clone(&placeholder_context);
-                let new_state = State::Placeholder {
-                    placeholder_context,
-                    is_view_focused,
-                    action_handler,
-                };
-                (new_state, result)
-            }
-            State::Active(context) => {
-                let result = Rc::clone(&context);
-                (State::Active(context), result)
-            }
-        };
-        self.state = Some(new_state);
-        result
+                ..
+            } => Rc::clone(placeholder_context),
+            State::Active(context) => Rc::clone(context),
+        }
     }
 
     pub fn view_children<H: ActivationHandler + ?Sized>(
@@ -271,7 +240,7 @@ impl Adapter {
     }
 
     fn weak_view(&self) -> &WeakId<NSView> {
-        match self.state.as_ref().unwrap() {
+        match &self.state {
             State::Inactive { view, .. } => view,
             State::Placeholder {
                 placeholder_context,

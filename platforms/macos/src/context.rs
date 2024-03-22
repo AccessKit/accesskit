@@ -11,10 +11,28 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::node::PlatformNode;
 
+pub(crate) trait ActionHandlerNoMut {
+    fn do_action(&self, request: ActionRequest);
+}
+
+pub(crate) struct ActionHandlerWrapper<H: ActionHandler>(RefCell<H>);
+
+impl<H: 'static + ActionHandler> ActionHandlerWrapper<H> {
+    pub(crate) fn new(inner: H) -> Self {
+        Self(RefCell::new(inner))
+    }
+}
+
+impl<H: ActionHandler> ActionHandlerNoMut for ActionHandlerWrapper<H> {
+    fn do_action(&self, request: ActionRequest) {
+        self.0.borrow_mut().do_action(request)
+    }
+}
+
 pub(crate) struct Context {
     pub(crate) view: WeakId<NSView>,
     pub(crate) tree: RefCell<Tree>,
-    pub(crate) action_handler: RefCell<Box<dyn ActionHandler>>,
+    pub(crate) action_handler: Rc<dyn ActionHandlerNoMut>,
     platform_nodes: RefCell<HashMap<NodeId, Id<PlatformNode>>>,
     pub(crate) mtm: MainThreadMarker,
 }
@@ -23,13 +41,13 @@ impl Context {
     pub(crate) fn new(
         view: WeakId<NSView>,
         tree: Tree,
-        action_handler: Box<dyn ActionHandler>,
+        action_handler: Rc<dyn ActionHandlerNoMut>,
         mtm: MainThreadMarker,
     ) -> Rc<Self> {
         Rc::new(Self {
             view,
             tree: RefCell::new(tree),
-            action_handler: RefCell::new(action_handler),
+            action_handler,
             platform_nodes: RefCell::new(HashMap::new()),
             mtm,
         })
@@ -52,7 +70,7 @@ impl Context {
     }
 
     pub(crate) fn do_action(&self, request: ActionRequest) {
-        self.action_handler.borrow_mut().do_action(request);
+        self.action_handler.do_action(request);
     }
 }
 
