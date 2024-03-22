@@ -64,8 +64,8 @@ where
 {
     super::scope(
         WINDOW_TITLE,
-        SimpleActivationHandler {},
-        NullActionHandler {},
+        Box::new(SimpleActivationHandler {}),
+        Box::new(NullActionHandler {}),
         f,
     )
 }

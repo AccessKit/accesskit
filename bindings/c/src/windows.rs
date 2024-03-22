@@ -51,7 +51,7 @@ impl windows_adapter {
         action_handler_userdata: *mut c_void,
     ) -> *mut windows_adapter {
         let action_handler = FfiActionHandler::new(action_handler, action_handler_userdata);
-        let adapter = Adapter::new(hwnd, is_window_focused, action_handler);
+        let adapter = Adapter::new(hwnd, is_window_focused, Box::new(action_handler));
         BoxCastPtr::to_mut_ptr(adapter)
     }
 
@@ -133,7 +133,7 @@ impl windows_subclassing_adapter {
             FfiActivationHandler::new(activation_handler, activation_handler_userdata);
         let action_handler = FfiActionHandler::new(action_handler, action_handler_userdata);
         let adapter =
-            SubclassingAdapter::new(hwnd, activation_handler, action_handler);
+            SubclassingAdapter::new(hwnd, Box::new(activation_handler), Box::new(action_handler));
         BoxCastPtr::to_mut_ptr(adapter)
     }
 

@@ -199,15 +199,6 @@ impl Adapter {
     pub fn new(
         hwnd: HWND,
         is_window_focused: bool,
-        action_handler: impl 'static + ActionHandler + Send,
-    ) -> Self {
-        Self::with_boxed_action_handler(hwnd, is_window_focused, Box::new(action_handler))
-    }
-
-    // Currently required by the test infrastructure
-    pub(crate) fn with_boxed_action_handler(
-        hwnd: HWND,
-        is_window_focused: bool,
         action_handler: Box<dyn ActionHandler + Send>,
     ) -> Self {
         init_uia();

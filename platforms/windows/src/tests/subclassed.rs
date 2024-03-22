@@ -90,7 +90,11 @@ fn has_native_uia() {
         RawWindowHandle::WinRt(_) => unimplemented!(),
         _ => unreachable!(),
     };
-    let adapter = SubclassingAdapter::new(hwnd, SimpleActivationHandler {}, NullActionHandler {});
+    let adapter = SubclassingAdapter::new(
+        hwnd,
+        Box::new(SimpleActivationHandler {}),
+        Box::new(NullActionHandler {}),
+    );
     assert!(unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
     drop(window);
     drop(adapter);

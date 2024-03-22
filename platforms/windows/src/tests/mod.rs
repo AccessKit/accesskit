@@ -77,7 +77,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 activation_handler,
                 action_handler,
             } = *create_params;
-            let adapter = Adapter::with_boxed_action_handler(window, false, action_handler);
+            let adapter = Adapter::new(window, false, action_handler);
             let state = Box::new(WindowState {
                 activation_handler: RefCell::new(activation_handler),
                 adapter: RefCell::new(adapter),
@@ -130,12 +130,12 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
 
 fn create_window(
     title: &str,
-    activation_handler: impl 'static + ActivationHandler,
-    action_handler: impl 'static + ActionHandler + Send,
+    activation_handler: Box<dyn ActivationHandler>,
+    action_handler: Box<dyn ActionHandler + Send>,
 ) -> Result<HWND> {
     let create_params = Box::new(WindowCreateParams {
-        activation_handler: Box::new(activation_handler),
-        action_handler: Box::new(action_handler),
+        activation_handler,
+        action_handler,
     });
 
     let window = unsafe {
@@ -178,8 +178,8 @@ pub(crate) static MUTEX: Mutex<()> = Mutex::new(());
 
 pub(crate) fn scope<F>(
     window_title: &str,
-    activation_handler: impl 'static + ActivationHandler + Send,
-    action_handler: impl 'static + ActionHandler + Send,
+    activation_handler: Box<dyn ActivationHandler + Send>,
+    action_handler: Box<dyn ActionHandler + Send>,
     f: F,
 ) -> Result<()>
 where

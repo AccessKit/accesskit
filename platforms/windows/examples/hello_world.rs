@@ -233,7 +233,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 announcement: None,
                 node_classes: NodeClassSet::new(),
             });
-            let adapter = Adapter::new(window, false, SimpleActionHandler { window });
+            let adapter = Adapter::new(window, false, Box::new(SimpleActionHandler { window }));
             let state = Box::new(WindowState {
                 adapter: RefCell::new(adapter),
                 inner_state,
