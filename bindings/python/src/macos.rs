@@ -46,7 +46,7 @@ impl Adapter {
         Self(accesskit_macos::Adapter::new(
             to_void_ptr(view),
             is_view_focused,
-            Box::new(PythonActionHandler(action_handler)),
+            PythonActionHandler(action_handler),
         ))
     }
 
@@ -134,8 +134,8 @@ impl SubclassingAdapter {
     ) -> Self {
         Self(accesskit_macos::SubclassingAdapter::new(
             to_void_ptr(view),
-            Box::new(PythonActivationHandler(activation_handler)),
-            Box::new(PythonActionHandler(action_handler)),
+            PythonActivationHandler(activation_handler),
+            PythonActionHandler(action_handler),
         ))
     }
 
@@ -160,8 +160,8 @@ impl SubclassingAdapter {
     ) -> Self {
         Self(accesskit_macos::SubclassingAdapter::for_window(
             to_void_ptr(window),
-            Box::new(PythonActivationHandler(activation_handler)),
-            Box::new(PythonActionHandler(action_handler)),
+            PythonActivationHandler(activation_handler),
+            PythonActionHandler(action_handler),
         ))
     }
 

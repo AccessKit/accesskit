@@ -4,9 +4,9 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    action_handler, activation_handler, box_from_ptr, mut_from_ptr, tree_update_factory,
-    tree_update_factory_userdata, ActivationHandlerCallback, BoxCastPtr, CastPtr,
-    FfiActivationHandler, FfiActivationHandlerUserdata,
+    box_from_ptr, mut_from_ptr, tree_update_factory, tree_update_factory_userdata,
+    ActionHandlerCallback, ActivationHandlerCallback, BoxCastPtr, CastPtr, FfiActionHandler,
+    FfiActivationHandler,
 };
 use accesskit_macos::{
     add_focus_forwarder_to_window_class, Adapter, NSPoint, QueuedEvents, SubclassingAdapter,
@@ -46,8 +46,6 @@ impl CastPtr for macos_adapter {
 impl BoxCastPtr for macos_adapter {}
 
 impl macos_adapter {
-    /// This function takes ownership of `action_handler`.
-    ///
     /// # Safety
     ///
     /// `view` must be a valid, unreleased pointer to an `NSView`.
@@ -55,9 +53,10 @@ impl macos_adapter {
     pub unsafe extern "C" fn accesskit_macos_adapter_new(
         view: *mut c_void,
         is_view_focused: bool,
-        action_handler: *mut action_handler,
+        action_handler: ActionHandlerCallback,
+        action_handler_userdata: *mut c_void,
     ) -> *mut macos_adapter {
-        let action_handler = box_from_ptr(action_handler);
+        let action_handler = FfiActionHandler::new(action_handler, action_handler_userdata);
         let adapter = Adapter::new(view, is_view_focused, action_handler);
         BoxCastPtr::to_mut_ptr(adapter)
     }
@@ -105,14 +104,12 @@ impl macos_adapter {
     #[no_mangle]
     pub extern "C" fn accesskit_macos_adapter_view_children(
         adapter: *mut macos_adapter,
-        activation_handler_callback: ActivationHandlerCallback,
+        activation_handler: ActivationHandlerCallback,
         activation_handler_userdata: *mut c_void,
     ) -> *mut c_void {
         let adapter = mut_from_ptr(adapter);
-        let mut activation_handler = FfiActivationHandler {
-            callback: activation_handler_callback.unwrap(),
-            userdata: FfiActivationHandlerUserdata(activation_handler_userdata),
-        };
+        let mut activation_handler =
+            FfiActivationHandler::new(activation_handler, activation_handler_userdata);
         adapter.view_children(&mut activation_handler) as *mut _
     }
 
@@ -120,14 +117,12 @@ impl macos_adapter {
     #[no_mangle]
     pub extern "C" fn accesskit_macos_adapter_focus(
         adapter: *mut macos_adapter,
-        activation_handler_callback: ActivationHandlerCallback,
+        activation_handler: ActivationHandlerCallback,
         activation_handler_userdata: *mut c_void,
     ) -> *mut c_void {
         let adapter = mut_from_ptr(adapter);
-        let mut activation_handler = FfiActivationHandler {
-            callback: activation_handler_callback.unwrap(),
-            userdata: FfiActivationHandlerUserdata(activation_handler_userdata),
-        };
+        let mut activation_handler =
+            FfiActivationHandler::new(activation_handler, activation_handler_userdata);
         adapter.focus(&mut activation_handler) as *mut _
     }
 
@@ -137,14 +132,12 @@ impl macos_adapter {
         adapter: *mut macos_adapter,
         x: f64,
         y: f64,
-        activation_handler_callback: ActivationHandlerCallback,
+        activation_handler: ActivationHandlerCallback,
         activation_handler_userdata: *mut c_void,
     ) -> *mut c_void {
         let adapter = mut_from_ptr(adapter);
-        let mut activation_handler = FfiActivationHandler {
-            callback: activation_handler_callback.unwrap(),
-            userdata: FfiActivationHandlerUserdata(activation_handler_userdata),
-        };
+        let mut activation_handler =
+            FfiActivationHandler::new(activation_handler, activation_handler_userdata);
         adapter.hit_test(NSPoint::new(x, y), &mut activation_handler) as *mut _
     }
 }
@@ -160,25 +153,24 @@ impl CastPtr for macos_subclassing_adapter {
 impl BoxCastPtr for macos_subclassing_adapter {}
 
 impl macos_subclassing_adapter {
-    /// This function takes ownership of `activation_handler` and `action_handler`.
-    ///
     /// # Safety
     ///
     /// `view` must be a valid, unreleased pointer to an `NSView`.
     #[no_mangle]
     pub unsafe extern "C" fn accesskit_macos_subclassing_adapter_new(
         view: *mut c_void,
-        activation_handler: *mut activation_handler,
-        action_handler: *mut action_handler,
+        activation_handler: ActivationHandlerCallback,
+        activation_handler_userdata: *mut c_void,
+        action_handler: ActionHandlerCallback,
+        action_handler_userdata: *mut c_void,
     ) -> *mut macos_subclassing_adapter {
-        let activation_handler = box_from_ptr(activation_handler);
-        let action_handler = box_from_ptr(action_handler);
+        let activation_handler =
+            FfiActivationHandler::new(activation_handler, activation_handler_userdata);
+        let action_handler = FfiActionHandler::new(action_handler, action_handler_userdata);
         let adapter = SubclassingAdapter::new(view, activation_handler, action_handler);
         BoxCastPtr::to_mut_ptr(adapter)
     }
 
-    /// This function takes ownership of `activation_handler` and `action_handler`.
-    ///
     /// # Safety
     ///
     /// `window` must be a valid, unreleased pointer to an `NSWindow`.
@@ -190,11 +182,14 @@ impl macos_subclassing_adapter {
     #[no_mangle]
     pub unsafe extern "C" fn accesskit_macos_subclassing_adapter_for_window(
         window: *mut c_void,
-        activation_handler: *mut activation_handler,
-        action_handler: *mut action_handler,
+        activation_handler: ActivationHandlerCallback,
+        activation_handler_userdata: *mut c_void,
+        action_handler: ActionHandlerCallback,
+        action_handler_userdata: *mut c_void,
     ) -> *mut macos_subclassing_adapter {
-        let activation_handler = box_from_ptr(activation_handler);
-        let action_handler = box_from_ptr(action_handler);
+        let activation_handler =
+            FfiActivationHandler::new(activation_handler, activation_handler_userdata);
+        let action_handler = FfiActionHandler::new(action_handler, action_handler_userdata);
         let adapter = SubclassingAdapter::for_window(window, activation_handler, action_handler);
         BoxCastPtr::to_mut_ptr(adapter)
     }

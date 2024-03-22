@@ -62,12 +62,12 @@ declare_class!(
 impl AssociatedObject {
     fn new(
         adapter: Adapter,
-        activation_handler: Box<dyn ActivationHandler>,
+        activation_handler: impl 'static + ActivationHandler,
         prev_class: &'static AnyClass,
     ) -> Id<Self> {
         let state = RefCell::new(AssociatedObjectState {
             adapter,
-            activation_handler,
+            activation_handler: Box::new(activation_handler),
         });
         let this = Self::alloc().set_ivars(AssociatedObjectIvars { state, prev_class });
 
@@ -136,8 +136,8 @@ impl SubclassingAdapter {
     /// `view` must be a valid, unreleased pointer to an `NSView`.
     pub unsafe fn new(
         view: *mut c_void,
-        activation_handler: Box<dyn ActivationHandler>,
-        action_handler: Box<dyn ActionHandler>,
+        activation_handler: impl 'static + ActivationHandler,
+        action_handler: impl 'static + ActionHandler,
     ) -> Self {
         let view = view as *mut NSView;
         let retained_view = unsafe { Id::retain(view) }.unwrap();
@@ -146,8 +146,8 @@ impl SubclassingAdapter {
 
     fn new_internal(
         retained_view: Id<NSView>,
-        activation_handler: Box<dyn ActivationHandler>,
-        action_handler: Box<dyn ActionHandler>,
+        activation_handler: impl 'static + ActivationHandler,
+        action_handler: impl 'static + ActionHandler,
     ) -> Self {
         let view = Id::as_ptr(&retained_view) as *mut NSView;
         let adapter = unsafe { Adapter::new(view as *mut c_void, false, action_handler) };
@@ -214,8 +214,8 @@ impl SubclassingAdapter {
     /// a content view.
     pub unsafe fn for_window(
         window: *mut c_void,
-        activation_handler: Box<dyn ActivationHandler>,
-        action_handler: Box<dyn ActionHandler>,
+        activation_handler: impl 'static + ActivationHandler,
+        action_handler: impl 'static + ActionHandler,
     ) -> Self {
         let window = unsafe { &*(window as *const NSWindow) };
         let retained_view = window.contentView().unwrap();

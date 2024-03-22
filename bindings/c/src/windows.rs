@@ -132,8 +132,7 @@ impl windows_subclassing_adapter {
         let activation_handler =
             FfiActivationHandler::new(activation_handler, activation_handler_userdata);
         let action_handler = FfiActionHandler::new(action_handler, action_handler_userdata);
-        let adapter =
-            SubclassingAdapter::new(hwnd, activation_handler, action_handler);
+        let adapter = SubclassingAdapter::new(hwnd, activation_handler, action_handler);
         BoxCastPtr::to_mut_ptr(adapter)
     }
 

@@ -65,7 +65,7 @@ impl Adapter {
     pub unsafe fn new(
         view: *mut c_void,
         is_view_focused: bool,
-        action_handler: Box<dyn ActionHandler>,
+        action_handler: impl 'static + ActionHandler,
     ) -> Self {
         let view = unsafe { Id::retain(view as *mut NSView) }.unwrap();
         let view = WeakId::from_id(&view);
@@ -73,7 +73,7 @@ impl Adapter {
         let state = Some(State::Inactive {
             view,
             is_view_focused,
-            action_handler,
+            action_handler: Box::new(action_handler),
             mtm,
         });
         Self { state }
