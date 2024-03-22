@@ -158,6 +158,7 @@ const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
 
 enum State {
     Inactive {
+        hwnd: HWND,
         is_window_focused: bool,
         action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
     },
@@ -176,7 +177,6 @@ impl ActionHandler for PlaceholderActionHandler {
 }
 
 pub struct Adapter {
-    hwnd: HWND,
     state: State,
 }
 
@@ -214,10 +214,11 @@ impl Adapter {
         init_uia();
 
         let state = State::Inactive {
+            hwnd,
             is_window_focused,
             action_handler,
         };
-        Self { hwnd, state }
+        Self { state }
     }
 
     /// If and only if the tree has been initialized, call the provided function
@@ -239,12 +240,13 @@ impl Adapter {
         match &self.state {
             State::Inactive { .. } => None,
             State::Placeholder {
+                placeholder_context,
                 is_window_focused,
                 action_handler,
-                ..
             } => {
                 let tree = Tree::new(update_factory(), *is_window_focused);
-                let context = Context::new(self.hwnd, tree, Arc::clone(action_handler));
+                let context =
+                    Context::new(placeholder_context.hwnd, tree, Arc::clone(action_handler));
                 let result = context
                     .read_tree()
                     .state()
@@ -293,58 +295,6 @@ impl Adapter {
         }
     }
 
-    fn get_or_init_root_platform_node<H: ActivationHandler + ?Sized>(
-        &mut self,
-        activation_handler: &mut H,
-    ) -> PlatformNode {
-        match &self.state {
-            State::Inactive {
-                is_window_focused,
-                action_handler,
-            } => match activation_handler.request_initial_tree() {
-                Some(initial_state) => {
-                    let tree = Tree::new(initial_state, *is_window_focused);
-                    let context = Context::new(self.hwnd, tree, Arc::clone(action_handler));
-                    let node_id = context.read_tree().state().root_id();
-                    let result = PlatformNode::new(&context, node_id);
-                    self.state = State::Active(context);
-                    result
-                }
-                None => {
-                    let placeholder_update = TreeUpdate {
-                        nodes: vec![(
-                            PLACEHOLDER_ROOT_ID,
-                            NodeBuilder::new(Role::Window).build(&mut Default::default()),
-                        )],
-                        tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
-                        focus: PLACEHOLDER_ROOT_ID,
-                    };
-                    let placeholder_tree = Tree::new(placeholder_update, false);
-                    let placeholder_context = Context::new(
-                        self.hwnd,
-                        placeholder_tree,
-                        Arc::new(ActionHandlerWrapper::new(PlaceholderActionHandler {})),
-                    );
-                    let result = PlatformNode::new(&placeholder_context, PLACEHOLDER_ROOT_ID);
-                    self.state = State::Placeholder {
-                        placeholder_context,
-                        is_window_focused: *is_window_focused,
-                        action_handler: Arc::clone(action_handler),
-                    };
-                    result
-                }
-            },
-            State::Placeholder {
-                placeholder_context,
-                ..
-            } => PlatformNode::new(placeholder_context, PLACEHOLDER_ROOT_ID),
-            State::Active(context) => {
-                let node_id = context.read_tree().state().root_id();
-                PlatformNode::new(context, node_id)
-            }
-        }
-    }
-
     /// Handle the `WM_GETOBJECT` window message. The accessibility tree
     /// is lazily initialized if necessary using the provided
     /// [`ActivationHandler`] implementation.
@@ -371,11 +321,62 @@ impl Adapter {
             return None;
         }
 
-        let el: IRawElementProviderSimple = self
-            .get_or_init_root_platform_node(activation_handler)
-            .into();
+        let (hwnd, platform_node) = match &self.state {
+            State::Inactive {
+                hwnd,
+                is_window_focused,
+                action_handler,
+            } => match activation_handler.request_initial_tree() {
+                Some(initial_state) => {
+                    let hwnd = *hwnd;
+                    let tree = Tree::new(initial_state, *is_window_focused);
+                    let context = Context::new(hwnd, tree, Arc::clone(action_handler));
+                    let node_id = context.read_tree().state().root_id();
+                    let platform_node = PlatformNode::new(&context, node_id);
+                    self.state = State::Active(context);
+                    (hwnd, platform_node)
+                }
+                None => {
+                    let hwnd = *hwnd;
+                    let placeholder_update = TreeUpdate {
+                        nodes: vec![(
+                            PLACEHOLDER_ROOT_ID,
+                            NodeBuilder::new(Role::Window).build(&mut Default::default()),
+                        )],
+                        tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
+                        focus: PLACEHOLDER_ROOT_ID,
+                    };
+                    let placeholder_tree = Tree::new(placeholder_update, false);
+                    let placeholder_context = Context::new(
+                        hwnd,
+                        placeholder_tree,
+                        Arc::new(ActionHandlerWrapper::new(PlaceholderActionHandler {})),
+                    );
+                    let platform_node =
+                        PlatformNode::new(&placeholder_context, PLACEHOLDER_ROOT_ID);
+                    self.state = State::Placeholder {
+                        placeholder_context,
+                        is_window_focused: *is_window_focused,
+                        action_handler: Arc::clone(action_handler),
+                    };
+                    (hwnd, platform_node)
+                }
+            },
+            State::Placeholder {
+                placeholder_context,
+                ..
+            } => (
+                placeholder_context.hwnd,
+                PlatformNode::new(placeholder_context, PLACEHOLDER_ROOT_ID),
+            ),
+            State::Active(context) => {
+                let node_id = context.read_tree().state().root_id();
+                (context.hwnd, PlatformNode::new(context, node_id))
+            }
+        };
+        let el: IRawElementProviderSimple = platform_node.into();
         Some(WmGetObjectResult {
-            hwnd: self.hwnd,
+            hwnd,
             wparam,
             lparam,
             el,
