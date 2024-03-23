@@ -198,7 +198,7 @@ impl Adapter {
         is_window_focused: bool,
         action_handler: impl 'static + ActionHandler + Send,
     ) -> Self {
-        Self::with_boxed_action_handler(
+        Self::with_wrapped_action_handler(
             hwnd,
             is_window_focused,
             Arc::new(ActionHandlerWrapper::new(action_handler)),
@@ -206,7 +206,7 @@ impl Adapter {
     }
 
     // Currently required by the test infrastructure
-    pub(crate) fn with_boxed_action_handler(
+    pub(crate) fn with_wrapped_action_handler(
         hwnd: HWND,
         is_window_focused: bool,
         action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,

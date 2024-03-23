@@ -80,7 +80,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 activation_handler,
                 action_handler,
             } = *create_params;
-            let adapter = Adapter::with_boxed_action_handler(window, false, action_handler);
+            let adapter = Adapter::with_wrapped_action_handler(window, false, action_handler);
             let state = Box::new(WindowState {
                 activation_handler: RefCell::new(activation_handler),
                 adapter: RefCell::new(adapter),
