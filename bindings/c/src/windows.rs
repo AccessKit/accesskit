@@ -60,12 +60,6 @@ impl windows_adapter {
         drop(box_from_ptr(adapter));
     }
 
-    /// If and only if the tree has been initialized, call the provided function
-    /// and apply the resulting update. Note: If the caller's implementation of
-    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
-    /// the [`TreeUpdate`] returned by the provided function must contain
-    /// a full tree.
-    ///
     /// You must call `accesskit_windows_queued_events_raise` on the returned pointer. It can be null if the adapter is not active.
     #[no_mangle]
     pub extern "C" fn accesskit_windows_adapter_update_if_active(
@@ -143,12 +137,6 @@ impl windows_subclassing_adapter {
         drop(box_from_ptr(adapter));
     }
 
-    /// If and only if the tree has been initialized, call the provided function
-    /// and apply the resulting update. Note: If the caller's implementation of
-    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
-    /// the [`TreeUpdate`] returned by the provided function must contain
-    /// a full tree.
-    ///
     /// You must call `accesskit_windows_queued_events_raise` on the returned pointer. It can be null if the adapter is not active.
     #[no_mangle]
     pub extern "C" fn accesskit_windows_subclassing_adapter_update_if_active(

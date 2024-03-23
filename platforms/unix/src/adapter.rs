@@ -3,28 +3,30 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, NodeId, Rect, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, NodeId, Rect, TreeUpdate};
 use accesskit_atspi_common::{
-    Adapter as AdapterImpl, AdapterCallback, AdapterIdToken, Event, PlatformNode, WindowBounds,
+    next_adapter_id, ActionHandlerNoMut, ActionHandlerWrapper, Adapter as AdapterImpl,
+    AdapterCallback, Event, PlatformNode, WindowBounds,
 };
 #[cfg(not(feature = "tokio"))]
 use async_channel::Sender;
 use atspi::InterfaceSet;
-use once_cell::sync::Lazy;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
-};
+use std::sync::{Arc, Mutex};
 #[cfg(feature = "tokio")]
 use tokio::sync::mpsc::UnboundedSender as Sender;
 
 use crate::context::{get_or_init_app_context, get_or_init_messages};
 
-struct Callback {
+pub(crate) struct Callback {
     messages: Sender<Message>,
 }
 
 impl Callback {
+    pub(crate) fn new() -> Self {
+        let messages = get_or_init_messages();
+        Self { messages }
+    }
+
     fn send_message(&self, message: Message) {
         #[cfg(not(feature = "tokio"))]
         let _ = self.messages.try_send(message);
@@ -55,53 +57,52 @@ impl AdapterCallback for Callback {
     }
 }
 
-pub(crate) type LazyAdapter = Arc<Lazy<AdapterImpl, Box<dyn FnOnce() -> AdapterImpl + Send>>>;
+pub(crate) enum AdapterState {
+    Inactive {
+        is_window_focused: bool,
+        root_window_bounds: WindowBounds,
+        action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
+    },
+    Pending {
+        is_window_focused: bool,
+        root_window_bounds: WindowBounds,
+        action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
+    },
+    Active(AdapterImpl),
+}
 
 pub struct Adapter {
     messages: Sender<Message>,
     id: usize,
-    r#impl: LazyAdapter,
-    is_window_focused: Arc<AtomicBool>,
-    root_window_bounds: Arc<Mutex<WindowBounds>>,
+    state: Arc<Mutex<AdapterState>>,
 }
 
 impl Adapter {
     /// Create a new Unix adapter.
+    ///
+    /// All of the handlers will always be called from another thread.
     pub fn new(
-        source: impl 'static + FnOnce() -> TreeUpdate + Send,
-        action_handler: Box<dyn ActionHandler + Send>,
+        activation_handler: impl 'static + ActivationHandler + Send,
+        action_handler: impl 'static + ActionHandler + Send,
+        deactivation_handler: impl 'static + DeactivationHandler + Send,
     ) -> Self {
-        let id_token = AdapterIdToken::next();
-        let id = id_token.id();
+        let id = next_adapter_id();
         let messages = get_or_init_messages();
-        let is_window_focused = Arc::new(AtomicBool::new(false));
-        let root_window_bounds = Arc::new(Mutex::new(Default::default()));
-        let r#impl: LazyAdapter = Arc::new(Lazy::new(Box::new({
-            let messages = messages.clone();
-            let is_window_focused = Arc::clone(&is_window_focused);
-            let root_window_bounds = Arc::clone(&root_window_bounds);
-            move || {
-                AdapterImpl::with_id(
-                    id_token,
-                    get_or_init_app_context(),
-                    Box::new(Callback { messages }),
-                    source(),
-                    is_window_focused.load(Ordering::Relaxed),
-                    *root_window_bounds.lock().unwrap(),
-                    action_handler,
-                )
-            }
-        })));
+        let state = Arc::new(Mutex::new(AdapterState::Inactive {
+            is_window_focused: false,
+            root_window_bounds: Default::default(),
+            action_handler: Arc::new(ActionHandlerWrapper::new(action_handler)),
+        }));
         let adapter = Self {
             id,
             messages,
-            r#impl: r#impl.clone(),
-            is_window_focused,
-            root_window_bounds,
+            state: Arc::clone(&state),
         };
         adapter.send_message(Message::AddAdapter {
             id,
-            adapter: r#impl,
+            activation_handler: Box::new(activation_handler),
+            deactivation_handler: Box::new(deactivation_handler),
+            state,
         });
         adapter
     }
@@ -113,30 +114,69 @@ impl Adapter {
         let _ = self.messages.send(message);
     }
 
-    pub fn set_root_window_bounds(&self, outer: Rect, inner: Rect) {
+    pub fn set_root_window_bounds(&mut self, outer: Rect, inner: Rect) {
         let new_bounds = WindowBounds::new(outer, inner);
-        {
-            let mut bounds = self.root_window_bounds.lock().unwrap();
-            *bounds = new_bounds;
-        }
-        if let Some(r#impl) = Lazy::get(&self.r#impl) {
-            r#impl.set_root_window_bounds(new_bounds);
+        let mut state = self.state.lock().unwrap();
+        match &mut *state {
+            AdapterState::Inactive {
+                root_window_bounds, ..
+            } => {
+                *root_window_bounds = new_bounds;
+            }
+            AdapterState::Pending {
+                root_window_bounds, ..
+            } => {
+                *root_window_bounds = new_bounds;
+            }
+            AdapterState::Active(r#impl) => r#impl.set_root_window_bounds(new_bounds),
         }
     }
 
     /// If and only if the tree has been initialized, call the provided function
-    /// and apply the resulting update.
-    pub fn update_if_active(&self, update_factory: impl FnOnce() -> TreeUpdate) {
-        if let Some(r#impl) = Lazy::get(&self.r#impl) {
-            r#impl.update(update_factory());
+    /// and apply the resulting update. Note: If the caller's implementation of
+    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
+    /// the [`TreeUpdate`] returned by the provided function must contain
+    /// a full tree.
+    pub fn update_if_active(&mut self, update_factory: impl FnOnce() -> TreeUpdate) {
+        let mut state = self.state.lock().unwrap();
+        match &*state {
+            AdapterState::Inactive { .. } => (),
+            AdapterState::Pending {
+                is_window_focused,
+                root_window_bounds,
+                action_handler,
+            } => {
+                let initial_state = update_factory();
+                let r#impl = AdapterImpl::with_wrapped_action_handler(
+                    self.id,
+                    get_or_init_app_context(),
+                    Callback::new(),
+                    initial_state,
+                    *is_window_focused,
+                    *root_window_bounds,
+                    Arc::clone(action_handler),
+                );
+                *state = AdapterState::Active(r#impl);
+            }
+            AdapterState::Active(r#impl) => r#impl.update(update_factory()),
         }
     }
 
     /// Update the tree state based on whether the window is focused.
-    pub fn update_window_focus_state(&self, is_focused: bool) {
-        self.is_window_focused.store(is_focused, Ordering::SeqCst);
-        if let Some(r#impl) = Lazy::get(&self.r#impl) {
-            r#impl.update_window_focus_state(is_focused);
+    pub fn update_window_focus_state(&mut self, is_focused: bool) {
+        let mut state = self.state.lock().unwrap();
+        match &mut *state {
+            AdapterState::Inactive {
+                is_window_focused, ..
+            } => {
+                *is_window_focused = is_focused;
+            }
+            AdapterState::Pending {
+                is_window_focused, ..
+            } => {
+                *is_window_focused = is_focused;
+            }
+            AdapterState::Active(r#impl) => r#impl.update_window_focus_state(is_focused),
         }
     }
 }
@@ -150,7 +190,9 @@ impl Drop for Adapter {
 pub(crate) enum Message {
     AddAdapter {
         id: usize,
-        adapter: LazyAdapter,
+        activation_handler: Box<dyn ActivationHandler + Send>,
+        deactivation_handler: Box<dyn DeactivationHandler + Send>,
+        state: Arc<Mutex<AdapterState>>,
     },
     RemoveAdapter {
         id: usize,

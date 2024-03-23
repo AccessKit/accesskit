@@ -3,15 +3,16 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit_atspi_common::{AppContext, Event};
+use accesskit::{ActivationHandler, DeactivationHandler};
+use accesskit_atspi_common::{Adapter as AdapterImpl, AppContext, Event};
 #[cfg(not(feature = "tokio"))]
 use async_channel::{Receiver, Sender};
 use atspi::proxy::bus::StatusProxy;
 #[cfg(not(feature = "tokio"))]
 use futures_util::{pin_mut as pin, select, StreamExt};
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::OnceCell;
 use std::{
-    sync::{Arc, RwLock},
+    sync::{Arc, Mutex, RwLock},
     thread,
 };
 #[cfg(feature = "tokio")]
@@ -24,7 +25,7 @@ use tokio_stream::{wrappers::UnboundedReceiverStream, StreamExt};
 use zbus::{Connection, ConnectionBuilder};
 
 use crate::{
-    adapter::{LazyAdapter, Message},
+    adapter::{AdapterState, Callback, Message},
     atspi::{map_or_ignoring_broken_pipe, Bus},
     executor::Executor,
     util::block_on,
@@ -62,6 +63,72 @@ pub(crate) fn get_or_init_messages() -> Sender<Message> {
         .clone()
 }
 
+struct AdapterEntry {
+    id: usize,
+    activation_handler: Box<dyn ActivationHandler>,
+    deactivation_handler: Box<dyn DeactivationHandler>,
+    state: Arc<Mutex<AdapterState>>,
+}
+
+fn activate_adapter(entry: &mut AdapterEntry) {
+    let mut state = entry.state.lock().unwrap();
+    if let AdapterState::Inactive {
+        is_window_focused,
+        root_window_bounds,
+        action_handler,
+    } = &*state
+    {
+        *state = match entry.activation_handler.request_initial_tree() {
+            Some(initial_state) => {
+                let r#impl = AdapterImpl::with_wrapped_action_handler(
+                    entry.id,
+                    get_or_init_app_context(),
+                    Callback::new(),
+                    initial_state,
+                    *is_window_focused,
+                    *root_window_bounds,
+                    Arc::clone(action_handler),
+                );
+                AdapterState::Active(r#impl)
+            }
+            None => AdapterState::Pending {
+                is_window_focused: *is_window_focused,
+                root_window_bounds: *root_window_bounds,
+                action_handler: Arc::clone(action_handler),
+            },
+        };
+    }
+}
+
+fn deactivate_adapter(entry: &mut AdapterEntry) {
+    let mut state = entry.state.lock().unwrap();
+    match &*state {
+        AdapterState::Inactive { .. } => (),
+        AdapterState::Pending {
+            is_window_focused,
+            root_window_bounds,
+            action_handler,
+        } => {
+            *state = AdapterState::Inactive {
+                is_window_focused: *is_window_focused,
+                root_window_bounds: *root_window_bounds,
+                action_handler: Arc::clone(action_handler),
+            };
+            drop(state);
+            entry.deactivation_handler.deactivate_accessibility();
+        }
+        AdapterState::Active(r#impl) => {
+            *state = AdapterState::Inactive {
+                is_window_focused: r#impl.is_window_focused(),
+                root_window_bounds: r#impl.root_window_bounds(),
+                action_handler: r#impl.wrapped_action_handler(),
+            };
+            drop(state);
+            entry.deactivation_handler.deactivate_accessibility();
+        }
+    }
+}
+
 async fn run_event_loop(
     executor: &Executor<'_>,
     session_bus: Connection,
@@ -88,7 +155,7 @@ async fn run_event_loop(
     pin!(messages);
 
     let mut atspi_bus = None;
-    let mut adapters: Vec<(usize, LazyAdapter)> = Vec::new();
+    let mut adapters: Vec<AdapterEntry> = Vec::new();
 
     loop {
         select! {
@@ -99,9 +166,11 @@ async fn run_event_loop(
                         atspi_bus = map_or_ignoring_broken_pipe(Bus::new(&session_bus, executor).await, None, Some)?;
                     }
                 }
-                if atspi_bus.is_some() {
-                    for (_, adapter) in &adapters {
-                        Lazy::force(adapter);
+                for entry in &mut adapters {
+                    if atspi_bus.is_some() {
+                        activate_adapter(entry);
+                    } else {
+                        deactivate_adapter(entry);
                     }
                 }
             }
@@ -116,19 +185,29 @@ async fn run_event_loop(
 
 async fn process_adapter_message(
     atspi_bus: &Option<Bus>,
-    adapters: &mut Vec<(usize, LazyAdapter)>,
+    adapters: &mut Vec<AdapterEntry>,
     message: Message,
 ) -> zbus::Result<()> {
     match message {
-        Message::AddAdapter { id, adapter } => {
-            adapters.push((id, adapter));
+        Message::AddAdapter {
+            id,
+            activation_handler,
+            deactivation_handler,
+            state,
+        } => {
+            adapters.push(AdapterEntry {
+                id,
+                activation_handler,
+                deactivation_handler,
+                state,
+            });
             if atspi_bus.is_some() {
-                let adapter = &adapters.last_mut().unwrap().1;
-                Lazy::force(adapter);
+                let entry = adapters.last_mut().unwrap();
+                activate_adapter(entry);
             }
         }
         Message::RemoveAdapter { id } => {
-            if let Ok(index) = adapters.binary_search_by(|adapter| adapter.0.cmp(&id)) {
+            if let Ok(index) = adapters.binary_search_by(|entry| entry.id.cmp(&id)) {
                 adapters.remove(index);
             }
         }

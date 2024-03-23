@@ -68,7 +68,9 @@ void accesskit_sdl_adapter_init(
     accesskit_activation_handler_callback activation_handler,
     void *activation_handler_userdata,
     accesskit_action_handler_callback action_handler,
-    void *action_handler_userdata) {
+    void *action_handler_userdata,
+    accesskit_deactivation_handler_callback deactivation_handler,
+    void *deactivation_handler_userdata) {
 #if defined(__APPLE__)
   accesskit_macos_add_focus_forwarder_to_window_class("SDLWindow");
   SDL_SysWMinfo wmInfo;
@@ -80,7 +82,8 @@ void accesskit_sdl_adapter_init(
 #elif defined(UNIX)
   adapter->adapter = accesskit_unix_adapter_new(
       activation_handler, activation_handler_userdata, action_handler,
-      action_handler_userdata);
+      action_handler_userdata, deactivation_handler,
+      deactivation_handler_userdata);
 #elif defined(_WIN32)
   SDL_SysWMinfo wmInfo;
   SDL_VERSION(&wmInfo.version);
@@ -291,6 +294,11 @@ accesskit_tree_update *build_initial_tree(void *userdata) {
   return update;
 }
 
+void deactivate_accessibility(void *userdata) {
+  /* There's nothing in the state that depends on whether the adapter
+     is active, so there's nothing to do here. */
+}
+
 int main(int argc, char *argv[]) {
   printf("This example has no visible GUI, and a keyboard interface:\n");
   printf("- [Tab] switches focus between two logical buttons.\n");
@@ -323,7 +331,8 @@ int main(int argc, char *argv[]) {
   struct action_handler_state action_handler = {user_event, window_id};
   struct accesskit_sdl_adapter adapter;
   accesskit_sdl_adapter_init(&adapter, window, build_initial_tree, &state,
-                             do_action, &action_handler);
+                             do_action, &action_handler,
+                             deactivate_accessibility, &state);
   SDL_ShowWindow(window);
 
   SDL_Event event;

@@ -41,19 +41,21 @@ def build_announcement(text, classes):
 
 
 class PygameAdapter:
-    def __init__(self, source, action_handler):
+    def __init__(self, activation_handler, action_handler, deactivation_handler):
         if PLATFORM_SYSTEM == "Darwin":
             accesskit.macos.add_focus_forwarder_to_window_class("SDLWindow")
             window = pygame.display.get_wm_info()["window"]
             self.adapter = accesskit.macos.SubclassingAdapter.for_window(
-                window, source, action_handler
+                window, activation_handler, action_handler
             )
         elif os.name == "posix":
-            self.adapter = accesskit.unix.Adapter(source, action_handler)
+            self.adapter = accesskit.unix.Adapter(
+                activation_handler, action_handler, deactivation_handler
+            )
         elif PLATFORM_SYSTEM == "Windows":
             hwnd = pygame.display.get_wm_info()["window"]
             self.adapter = accesskit.windows.SubclassingAdapter(
-                hwnd, source, action_handler
+                hwnd, activation_handler, action_handler
             )
 
     def update_if_active(self, update_factory):
@@ -125,6 +127,11 @@ class WindowState:
     def build_tree_update_for_focus_update(self):
         return accesskit.TreeUpdate(self.focus)
 
+    def deactivate_accessibility(self):
+        # There's nothing in the state that depends on whether the adapter
+        # is active, so there's nothing to do here.
+        pass
+
 
 def do_action(request):
     if request.action in [accesskit.Action.DEFAULT, accesskit.Action.FOCUS]:
@@ -154,7 +161,9 @@ def main():
     state = WindowState()
     pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.HIDDEN)
     pygame.display.set_caption(WINDOW_TITLE)
-    adapter = PygameAdapter(state.build_initial_tree, do_action)
+    adapter = PygameAdapter(
+        state.build_initial_tree, do_action, state.deactivate_accessibility
+    )
     pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SHOWN)
     is_running = True
     while is_running:
