@@ -33,7 +33,7 @@ static SUBCLASSES: SyncLazy<Mutex<HashMap<&'static AnyClass, &'static AnyClass>>
 static mut ASSOCIATED_OBJECT_KEY: u8 = 0;
 
 fn associated_object_key() -> *const c_void {
-    unsafe { &ASSOCIATED_OBJECT_KEY as *const u8 as *const _ }
+    unsafe { std::ptr::addr_of_mut!(ASSOCIATED_OBJECT_KEY) as *const u8 as *const _ }
 }
 
 type LazyAdapter = Lazy<Adapter, Box<dyn FnOnce() -> Adapter>>;
