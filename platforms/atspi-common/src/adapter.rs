@@ -270,18 +270,18 @@ impl Adapter {
             .emit_event(self, Event::Object { target, event });
     }
 
-    pub fn set_root_window_bounds(&self, new_bounds: WindowBounds) {
+    pub fn set_root_window_bounds(&mut self, new_bounds: WindowBounds) {
         let mut bounds = self.context.root_window_bounds.write().unwrap();
         *bounds = new_bounds;
     }
 
-    pub fn update(&self, update: TreeUpdate) {
+    pub fn update(&mut self, update: TreeUpdate) {
         let mut handler = AdapterChangeHandler { adapter: self };
         let mut tree = self.context.tree.write().unwrap();
         tree.update_and_process_changes(update, &mut handler);
     }
 
-    pub fn update_window_focus_state(&self, is_focused: bool) {
+    pub fn update_window_focus_state(&mut self, is_focused: bool) {
         let mut handler = AdapterChangeHandler { adapter: self };
         let mut tree = self.context.tree.write().unwrap();
         tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);

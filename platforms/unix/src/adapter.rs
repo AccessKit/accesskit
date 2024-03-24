@@ -139,7 +139,7 @@ impl Adapter {
     /// a full tree.
     pub fn update_if_active(&mut self, update_factory: impl FnOnce() -> TreeUpdate) {
         let mut state = self.state.lock().unwrap();
-        match &*state {
+        match &mut *state {
             AdapterState::Inactive { .. } => (),
             AdapterState::Pending {
                 is_window_focused,
