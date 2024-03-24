@@ -29,11 +29,10 @@ use crate::{event::QueuedEvents, Adapter};
 static SUBCLASSES: SyncLazy<Mutex<HashMap<&'static AnyClass, &'static AnyClass>>> =
     SyncLazy::new(|| Mutex::new(HashMap::new()));
 
-// Declare as mutable to ensure the address is unique.
-static mut ASSOCIATED_OBJECT_KEY: u8 = 0;
+static ASSOCIATED_OBJECT_KEY: u8 = 0;
 
 fn associated_object_key() -> *const c_void {
-    unsafe { std::ptr::addr_of!(ASSOCIATED_OBJECT_KEY).cast() }
+    std::ptr::addr_of!(ASSOCIATED_OBJECT_KEY).cast()
 }
 
 type LazyAdapter = Lazy<Adapter, Box<dyn FnOnce() -> Adapter>>;
