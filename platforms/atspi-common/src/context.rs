@@ -9,10 +9,32 @@ use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::WindowBounds;
 
+/// This is an implementation detail of `accesskit_unix`, required for robust
+/// state transitions with minimal overhead.
+pub trait ActionHandlerNoMut {
+    fn do_action(&self, request: ActionRequest);
+}
+
+/// This is an implementation detail of `accesskit_unix`, required for robust
+/// state transitions with minimal overhead.
+pub struct ActionHandlerWrapper<H: ActionHandler + Send>(Mutex<H>);
+
+impl<H: 'static + ActionHandler + Send> ActionHandlerWrapper<H> {
+    pub fn new(inner: H) -> Self {
+        Self(Mutex::new(inner))
+    }
+}
+
+impl<H: ActionHandler + Send> ActionHandlerNoMut for ActionHandlerWrapper<H> {
+    fn do_action(&self, request: ActionRequest) {
+        self.0.lock().unwrap().do_action(request)
+    }
+}
+
 pub(crate) struct Context {
     pub(crate) app_context: Arc<RwLock<AppContext>>,
     pub(crate) tree: RwLock<Tree>,
-    pub(crate) action_handler: Mutex<Box<dyn ActionHandler + Send>>,
+    pub(crate) action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
     pub(crate) root_window_bounds: RwLock<WindowBounds>,
 }
 
@@ -20,13 +42,13 @@ impl Context {
     pub(crate) fn new(
         app_context: &Arc<RwLock<AppContext>>,
         tree: Tree,
-        action_handler: Box<dyn ActionHandler + Send>,
+        action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
         root_window_bounds: WindowBounds,
     ) -> Arc<Self> {
         Arc::new(Self {
             app_context: Arc::clone(app_context),
             tree: RwLock::new(tree),
-            action_handler: Mutex::new(action_handler),
+            action_handler,
             root_window_bounds: RwLock::new(root_window_bounds),
         })
     }
@@ -40,7 +62,7 @@ impl Context {
     }
 
     pub fn do_action(&self, request: ActionRequest) {
-        self.action_handler.lock().unwrap().do_action(request);
+        self.action_handler.do_action(request);
     }
 
     pub(crate) fn read_app_context(&self) -> RwLockReadGuard<'_, AppContext> {

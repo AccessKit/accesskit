@@ -2,11 +2,9 @@
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file).
 
-use accesskit::{ActionHandler, Rect, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, Rect, TreeUpdate};
 use accesskit_unix::Adapter as UnixAdapter;
 use winit::{event::WindowEvent, window::Window};
-
-pub type ActionHandlerBox = Box<dyn ActionHandler + Send>;
 
 pub struct Adapter {
     adapter: UnixAdapter,
@@ -15,26 +13,27 @@ pub struct Adapter {
 impl Adapter {
     pub fn new(
         _: &Window,
-        source: impl 'static + FnOnce() -> TreeUpdate + Send,
-        action_handler: ActionHandlerBox,
+        activation_handler: impl 'static + ActivationHandler + Send,
+        action_handler: impl 'static + ActionHandler + Send,
+        deactivation_handler: impl 'static + DeactivationHandler + Send,
     ) -> Self {
-        let adapter = UnixAdapter::new(source, action_handler);
+        let adapter = UnixAdapter::new(activation_handler, action_handler, deactivation_handler);
         Self { adapter }
     }
 
-    fn set_root_window_bounds(&self, outer: Rect, inner: Rect) {
+    fn set_root_window_bounds(&mut self, outer: Rect, inner: Rect) {
         self.adapter.set_root_window_bounds(outer, inner);
     }
 
-    pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
+    pub fn update_if_active(&mut self, updater: impl FnOnce() -> TreeUpdate) {
         self.adapter.update_if_active(updater);
     }
 
-    fn update_window_focus_state(&self, is_focused: bool) {
+    fn update_window_focus_state(&mut self, is_focused: bool) {
         self.adapter.update_window_focus_state(is_focused);
     }
 
-    pub fn process_event(&self, window: &Window, event: &WindowEvent) {
+    pub fn process_event(&mut self, window: &Window, event: &WindowEvent) {
         match event {
             WindowEvent::Moved(outer_position) => {
                 let outer_position: (_, _) = outer_position.cast::<f64>().into();

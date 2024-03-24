@@ -18,9 +18,9 @@ mod util;
 pub use atspi_common::{CoordType, InterfaceSet, Layer, Role, State, StateSet};
 
 pub use action::*;
-pub use adapter::{Adapter, AdapterIdToken};
+pub use adapter::{next_adapter_id, Adapter};
 pub use callback::AdapterCallback;
-pub use context::AppContext;
+pub use context::{ActionHandlerNoMut, ActionHandlerWrapper, AppContext};
 pub use error::*;
 pub use events::*;
 pub use node::{NodeIdOrRoot, PlatformNode, PlatformRoot};

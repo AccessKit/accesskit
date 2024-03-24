@@ -728,6 +728,35 @@ impl From<accesskit::ActionRequest> for ActionRequest {
     }
 }
 
+pub(crate) struct LocalPythonActivationHandler<'a> {
+    pub(crate) py: Python<'a>,
+    pub(crate) handler: Py<PyAny>,
+}
+
+impl accesskit::ActivationHandler for LocalPythonActivationHandler<'_> {
+    fn request_initial_tree(&mut self) -> Option<accesskit::TreeUpdate> {
+        let result = self.handler.call0(self.py).unwrap();
+        result
+            .extract::<Option<TreeUpdate>>(self.py)
+            .unwrap()
+            .map(Into::into)
+    }
+}
+
+pub struct PythonActivationHandler(pub(crate) Py<PyAny>);
+
+impl accesskit::ActivationHandler for PythonActivationHandler {
+    fn request_initial_tree(&mut self) -> Option<accesskit::TreeUpdate> {
+        Python::with_gil(|py| {
+            let result = self.0.call0(py).unwrap();
+            result
+                .extract::<Option<TreeUpdate>>(py)
+                .unwrap()
+                .map(Into::into)
+        })
+    }
+}
+
 pub struct PythonActionHandler(pub(crate) Py<PyAny>);
 
 impl accesskit::ActionHandler for PythonActionHandler {
@@ -735,6 +764,16 @@ impl accesskit::ActionHandler for PythonActionHandler {
         let request = ActionRequest::from(request);
         Python::with_gil(|py| {
             self.0.call(py, (request,), None).unwrap();
+        });
+    }
+}
+
+pub struct PythonDeactivationHandler(pub(crate) Py<PyAny>);
+
+impl accesskit::DeactivationHandler for PythonDeactivationHandler {
+    fn deactivate_accessibility(&mut self) {
+        Python::with_gil(|py| {
+            self.0.call(py, (), None).unwrap();
         });
     }
 }

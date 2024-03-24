@@ -3,7 +3,9 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use crate::{PythonActionHandler, TreeUpdate};
+use crate::{
+    LocalPythonActivationHandler, PythonActionHandler, PythonActivationHandler, TreeUpdate,
+};
 use accesskit_macos::NSPoint;
 use pyo3::{prelude::*, types::PyCapsule};
 use std::ffi::c_void;
@@ -40,42 +42,71 @@ impl Adapter {
     ///
     /// `view` must be a valid, unreleased pointer to an `NSView`.
     #[new]
-    pub unsafe fn new(
-        view: &PyAny,
-        initial_state: TreeUpdate,
-        is_view_focused: bool,
-        handler: Py<PyAny>,
-    ) -> Self {
+    pub unsafe fn new(view: &PyAny, is_view_focused: bool, action_handler: Py<PyAny>) -> Self {
         Self(accesskit_macos::Adapter::new(
             to_void_ptr(view),
-            initial_state.into(),
             is_view_focused,
-            Box::new(PythonActionHandler(handler)),
+            PythonActionHandler(action_handler),
         ))
     }
 
-    /// You must call `accesskit.macos.QueuedEvents.raise_events` on the returned value.
-    pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
-        self.0.update(update.into()).into()
+    /// You must call `accesskit.macos.QueuedEvents.raise_events` on the returned value. It can be `None` if the window is not active.
+    pub fn update_if_active(
+        &mut self,
+        py: Python<'_>,
+        update_factory: Py<PyAny>,
+    ) -> Option<QueuedEvents> {
+        self.0
+            .update_if_active(|| {
+                let update = update_factory.call0(py).unwrap();
+                update.extract::<TreeUpdate>(py).unwrap().into()
+            })
+            .map(Into::into)
     }
 
-    /// You must call `accesskit.macos.QueuedEvents.raise_events` on the returned value.
-    pub fn update_view_focus_state(&self, is_focused: bool) -> QueuedEvents {
-        self.0.update_view_focus_state(is_focused).into()
+    /// You must call `accesskit.macos.QueuedEvents.raise_events` on the returned value. It can be `None` if the window is not active.
+    pub fn update_view_focus_state(&mut self, is_focused: bool) -> Option<QueuedEvents> {
+        self.0.update_view_focus_state(is_focused).map(Into::into)
     }
 
-    pub fn view_children(&self, py: Python<'_>) -> PyResult<Py<PyCapsule>> {
-        let ptr: isize = self.0.view_children() as _;
+    pub fn view_children(
+        &mut self,
+        py: Python<'_>,
+        activation_handler: Py<PyAny>,
+    ) -> PyResult<Py<PyCapsule>> {
+        let mut activation_handler = LocalPythonActivationHandler {
+            py,
+            handler: activation_handler,
+        };
+        let ptr: isize = self.0.view_children(&mut activation_handler) as _;
         Ok(PyCapsule::new(py, ptr, None)?.into())
     }
 
-    pub fn focus(&self, py: Python<'_>) -> PyResult<Py<PyCapsule>> {
-        let ptr: isize = self.0.focus() as _;
+    pub fn focus(
+        &mut self,
+        py: Python<'_>,
+        activation_handler: Py<PyAny>,
+    ) -> PyResult<Py<PyCapsule>> {
+        let mut activation_handler = LocalPythonActivationHandler {
+            py,
+            handler: activation_handler,
+        };
+        let ptr: isize = self.0.focus(&mut activation_handler) as _;
         Ok(PyCapsule::new(py, ptr, None)?.into())
     }
 
-    pub fn hit_test(&self, py: Python<'_>, x: f64, y: f64) -> PyResult<Py<PyCapsule>> {
-        let ptr: isize = self.0.hit_test(NSPoint::new(x, y)) as _;
+    pub fn hit_test(
+        &mut self,
+        py: Python<'_>,
+        x: f64,
+        y: f64,
+        activation_handler: Py<PyAny>,
+    ) -> PyResult<Py<PyCapsule>> {
+        let mut activation_handler = LocalPythonActivationHandler {
+            py,
+            handler: activation_handler,
+        };
+        let ptr: isize = self.0.hit_test(NSPoint::new(x, y), &mut activation_handler) as _;
         Ok(PyCapsule::new(py, ptr, None)?.into())
     }
 }
@@ -96,20 +127,15 @@ impl SubclassingAdapter {
     ///
     /// `view` must be a valid, unreleased pointer to an `NSView`.
     #[new]
-    pub unsafe fn new(view: &PyAny, source: Py<PyAny>, handler: Py<PyAny>) -> Self {
+    pub unsafe fn new(
+        view: &PyAny,
+        activation_handler: Py<PyAny>,
+        action_handler: Py<PyAny>,
+    ) -> Self {
         Self(accesskit_macos::SubclassingAdapter::new(
             to_void_ptr(view),
-            move || {
-                Python::with_gil(|py| {
-                    source
-                        .call0(py)
-                        .unwrap()
-                        .extract::<TreeUpdate>(py)
-                        .unwrap()
-                        .into()
-                })
-            },
-            Box::new(PythonActionHandler(handler)),
+            PythonActivationHandler(activation_handler),
+            PythonActionHandler(action_handler),
         ))
     }
 
@@ -127,31 +153,21 @@ impl SubclassingAdapter {
     /// This function panics if the specified window doesn't currently have
     /// a content view.
     #[staticmethod]
-    pub unsafe fn for_window(window: &PyAny, source: Py<PyAny>, handler: Py<PyAny>) -> Self {
+    pub unsafe fn for_window(
+        window: &PyAny,
+        activation_handler: Py<PyAny>,
+        action_handler: Py<PyAny>,
+    ) -> Self {
         Self(accesskit_macos::SubclassingAdapter::for_window(
             to_void_ptr(window),
-            move || {
-                Python::with_gil(|py| {
-                    source
-                        .call0(py)
-                        .unwrap()
-                        .extract::<crate::TreeUpdate>(py)
-                        .unwrap()
-                        .into()
-                })
-            },
-            Box::new(PythonActionHandler(handler)),
+            PythonActivationHandler(activation_handler),
+            PythonActionHandler(action_handler),
         ))
-    }
-
-    /// You must call `accesskit.macos.QueuedEvents.raise_events` on the returned value.
-    pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
-        self.0.update(update.into()).into()
     }
 
     /// You must call `accesskit.macos.QueuedEvents.raise_events` on the returned value. It can be `None` if the window is not active.
     pub fn update_if_active(
-        &self,
+        &mut self,
         py: Python<'_>,
         update_factory: Py<PyAny>,
     ) -> Option<QueuedEvents> {
@@ -164,7 +180,7 @@ impl SubclassingAdapter {
     }
 
     /// You must call `accesskit.macos.QueuedEvents.raise_events` on the returned value. It can be `None` if the window is not active.
-    pub fn update_view_focus_state(&self, is_focused: bool) -> Option<QueuedEvents> {
+    pub fn update_view_focus_state(&mut self, is_focused: bool) -> Option<QueuedEvents> {
         self.0.update_view_focus_state(is_focused).map(Into::into)
     }
 }

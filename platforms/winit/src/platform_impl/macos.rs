@@ -6,11 +6,9 @@ use crate::raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 #[cfg(feature = "rwh_06")]
 use crate::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
-use accesskit::{ActionHandler, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, TreeUpdate};
 use accesskit_macos::SubclassingAdapter;
 use winit::{event::WindowEvent, window::Window};
-
-pub type ActionHandlerBox = Box<dyn ActionHandler>;
 
 pub struct Adapter {
     adapter: SubclassingAdapter,
@@ -19,8 +17,9 @@ pub struct Adapter {
 impl Adapter {
     pub fn new(
         window: &Window,
-        source: impl 'static + FnOnce() -> TreeUpdate,
-        action_handler: ActionHandlerBox,
+        activation_handler: impl 'static + ActivationHandler,
+        action_handler: impl 'static + ActionHandler,
+        _deactivation_handler: impl 'static + DeactivationHandler,
     ) -> Self {
         #[cfg(feature = "rwh_05")]
         let view = match window.raw_window_handle() {
@@ -35,17 +34,17 @@ impl Adapter {
             _ => unreachable!(),
         };
 
-        let adapter = unsafe { SubclassingAdapter::new(view, source, action_handler) };
+        let adapter = unsafe { SubclassingAdapter::new(view, activation_handler, action_handler) };
         Self { adapter }
     }
 
-    pub fn update_if_active(&self, updater: impl FnOnce() -> TreeUpdate) {
+    pub fn update_if_active(&mut self, updater: impl FnOnce() -> TreeUpdate) {
         if let Some(events) = self.adapter.update_if_active(updater) {
             events.raise();
         }
     }
 
-    pub fn process_event(&self, _window: &Window, event: &WindowEvent) {
+    pub fn process_event(&mut self, _window: &Window, event: &WindowEvent) {
         if let WindowEvent::Focused(is_focused) = event {
             if let Some(events) = self.adapter.update_view_focus_state(*is_focused) {
                 events.raise();

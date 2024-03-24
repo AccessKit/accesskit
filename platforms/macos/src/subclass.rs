@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
 use icrate::{
     AppKit::{NSView, NSWindow},
     Foundation::{NSArray, NSObject, NSPoint},
@@ -21,13 +21,13 @@ use objc2::{
     runtime::{AnyClass, Sel},
     sel, ClassType, DeclaredClass,
 };
-use once_cell::{sync::Lazy as SyncLazy, unsync::Lazy};
-use std::{cell::Cell, collections::HashMap, ffi::c_void, rc::Rc, sync::Mutex};
+use once_cell::sync::Lazy;
+use std::{cell::RefCell, collections::HashMap, ffi::c_void, sync::Mutex};
 
 use crate::{event::QueuedEvents, Adapter};
 
-static SUBCLASSES: SyncLazy<Mutex<HashMap<&'static AnyClass, &'static AnyClass>>> =
-    SyncLazy::new(|| Mutex::new(HashMap::new()));
+static SUBCLASSES: Lazy<Mutex<HashMap<&'static AnyClass, &'static AnyClass>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 static ASSOCIATED_OBJECT_KEY: u8 = 0;
 
@@ -35,10 +35,13 @@ fn associated_object_key() -> *const c_void {
     (&ASSOCIATED_OBJECT_KEY as *const u8).cast()
 }
 
-type LazyAdapter = Lazy<Adapter, Box<dyn FnOnce() -> Adapter>>;
+struct AssociatedObjectState {
+    adapter: Adapter,
+    activation_handler: Box<dyn ActivationHandler>,
+}
 
 struct AssociatedObjectIvars {
-    adapter: LazyAdapter,
+    state: RefCell<AssociatedObjectState>,
     prev_class: &'static AnyClass,
 }
 
@@ -57,11 +60,16 @@ declare_class!(
 );
 
 impl AssociatedObject {
-    fn new(adapter: LazyAdapter, prev_class: &'static AnyClass) -> Id<Self> {
-        let this = Self::alloc().set_ivars(AssociatedObjectIvars {
+    fn new(
+        adapter: Adapter,
+        activation_handler: impl 'static + ActivationHandler,
+        prev_class: &'static AnyClass,
+    ) -> Id<Self> {
+        let state = RefCell::new(AssociatedObjectState {
             adapter,
-            prev_class,
+            activation_handler: Box::new(activation_handler),
         });
+        let this = Self::alloc().set_ivars(AssociatedObjectIvars { state, prev_class });
 
         unsafe { msg_send_id![super(this), init] }
     }
@@ -86,27 +94,33 @@ unsafe extern "C" fn superclass(this: &NSView, _cmd: Sel) -> Option<&AnyClass> {
 
 unsafe extern "C" fn children(this: &NSView, _cmd: Sel) -> *mut NSArray<NSObject> {
     let associated = associated_object(this);
-    let adapter = Lazy::force(&associated.ivars().adapter);
-    adapter.view_children()
+    let mut state = associated.ivars().state.borrow_mut();
+    let state_mut = &mut *state;
+    state_mut
+        .adapter
+        .view_children(&mut *state_mut.activation_handler)
 }
 
 unsafe extern "C" fn focus(this: &NSView, _cmd: Sel) -> *mut NSObject {
     let associated = associated_object(this);
-    let adapter = Lazy::force(&associated.ivars().adapter);
-    adapter.focus()
+    let mut state = associated.ivars().state.borrow_mut();
+    let state_mut = &mut *state;
+    state_mut.adapter.focus(&mut *state_mut.activation_handler)
 }
 
 unsafe extern "C" fn hit_test(this: &NSView, _cmd: Sel, point: NSPoint) -> *mut NSObject {
     let associated = associated_object(this);
-    let adapter = Lazy::force(&associated.ivars().adapter);
-    adapter.hit_test(point)
+    let mut state = associated.ivars().state.borrow_mut();
+    let state_mut = &mut *state;
+    state_mut
+        .adapter
+        .hit_test(point, &mut *state_mut.activation_handler)
 }
 
 /// Uses dynamic Objective-C subclassing to implement the NSView
 /// accessibility methods when normal subclassing isn't an option.
 pub struct SubclassingAdapter {
     view: Id<NSView>,
-    is_view_focused: Rc<Cell<bool>>,
     associated: Id<AssociatedObject>,
 }
 
@@ -122,34 +136,26 @@ impl SubclassingAdapter {
     /// `view` must be a valid, unreleased pointer to an `NSView`.
     pub unsafe fn new(
         view: *mut c_void,
-        source: impl 'static + FnOnce() -> TreeUpdate,
-        action_handler: Box<dyn ActionHandler>,
+        activation_handler: impl 'static + ActivationHandler,
+        action_handler: impl 'static + ActionHandler,
     ) -> Self {
         let view = view as *mut NSView;
         let retained_view = unsafe { Id::retain(view) }.unwrap();
-        Self::new_internal(retained_view, source, action_handler)
+        Self::new_internal(retained_view, activation_handler, action_handler)
     }
 
     fn new_internal(
         retained_view: Id<NSView>,
-        source: impl 'static + FnOnce() -> TreeUpdate,
-        action_handler: Box<dyn ActionHandler>,
+        activation_handler: impl 'static + ActivationHandler,
+        action_handler: impl 'static + ActionHandler,
     ) -> Self {
-        let is_view_focused = Rc::new(Cell::new(false));
-        let adapter: LazyAdapter = {
-            let retained_view = retained_view.clone();
-            let is_view_focused = Rc::clone(&is_view_focused);
-            Lazy::new(Box::new(move || {
-                let view = Id::as_ptr(&retained_view) as *mut c_void;
-                unsafe { Adapter::new(view, source(), is_view_focused.get(), action_handler) }
-            }))
-        };
         let view = Id::as_ptr(&retained_view) as *mut NSView;
+        let adapter = unsafe { Adapter::new(view as *mut c_void, false, action_handler) };
         // Cast to a pointer and back to force the lifetime to 'static
         // SAFETY: We know the class will live as long as the instance,
         // and we only use this reference while the instance is alive.
         let prev_class = unsafe { &*((*view).class() as *const AnyClass) };
-        let associated = AssociatedObject::new(adapter, prev_class);
+        let associated = AssociatedObject::new(adapter, activation_handler, prev_class);
         unsafe {
             objc_setAssociatedObject(
                 view as *mut _,
@@ -189,7 +195,6 @@ impl SubclassingAdapter {
         unsafe { object_setClass(view as *mut _, (*subclass as *const AnyClass).cast()) };
         Self {
             view: retained_view,
-            is_view_focused,
             associated,
         }
     }
@@ -209,43 +214,37 @@ impl SubclassingAdapter {
     /// a content view.
     pub unsafe fn for_window(
         window: *mut c_void,
-        source: impl 'static + FnOnce() -> TreeUpdate,
-        action_handler: Box<dyn ActionHandler>,
+        activation_handler: impl 'static + ActivationHandler,
+        action_handler: impl 'static + ActionHandler,
     ) -> Self {
         let window = unsafe { &*(window as *const NSWindow) };
         let retained_view = window.contentView().unwrap();
-        Self::new_internal(retained_view, source, action_handler)
-    }
-
-    /// Initialize the tree if it hasn't been initialized already, then apply
-    /// the provided update.
-    ///
-    /// The caller must call [`QueuedEvents::raise`] on the return value.
-    pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
-        let adapter = Lazy::force(&self.associated.ivars().adapter);
-        adapter.update(update)
+        Self::new_internal(retained_view, activation_handler, action_handler)
     }
 
     /// If and only if the tree has been initialized, call the provided function
-    /// and apply the resulting update.
+    /// and apply the resulting update. Note: If the caller's implementation of
+    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
+    /// the [`TreeUpdate`] returned by the provided function must contain
+    /// a full tree.
     ///
     /// If a [`QueuedEvents`] instance is returned, the caller must call
     /// [`QueuedEvents::raise`] on it.
     pub fn update_if_active(
-        &self,
+        &mut self,
         update_factory: impl FnOnce() -> TreeUpdate,
     ) -> Option<QueuedEvents> {
-        Lazy::get(&self.associated.ivars().adapter).map(|adapter| adapter.update(update_factory()))
+        let mut state = self.associated.ivars().state.borrow_mut();
+        state.adapter.update_if_active(update_factory)
     }
 
     /// Update the tree state based on whether the window is focused.
     ///
     /// If a [`QueuedEvents`] instance is returned, the caller must call
     /// [`QueuedEvents::raise`] on it.
-    pub fn update_view_focus_state(&self, is_focused: bool) -> Option<QueuedEvents> {
-        self.is_view_focused.set(is_focused);
-        Lazy::get(&self.associated.ivars().adapter)
-            .map(|adapter| adapter.update_view_focus_state(is_focused))
+    pub fn update_view_focus_state(&mut self, is_focused: bool) -> Option<QueuedEvents> {
+        let mut state = self.associated.ivars().state.borrow_mut();
+        state.adapter.update_view_focus_state(is_focused)
     }
 }
 

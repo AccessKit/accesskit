@@ -31,10 +31,12 @@ renaming_overrides_prefixing = true
 [export.rename]
 "Action" = "accesskit_action"
 "ActionHandlerCallback" = "accesskit_action_handler_callback"
+"ActivationHandlerCallback" = "accesskit_activation_handler_callback"
 "Affine" = "accesskit_affine"
 "AriaCurrent" = "accesskit_aria_current"
 "AutoComplete" = "accesskit_auto_complete"
 "Checked" = "accesskit_checked"
+"DeactivationHandlerCallback" = "accesskit_deactivation_handler_callback"
 "DefaultActionVerb" = "accesskit_default_action_verb"
 "HWND" = "HWND"
 "HasPopup" = "accesskit_has_popup"

@@ -1,11 +1,11 @@
 // Based on the create_window sample in windows-samples-rs.
 
 use accesskit::{
-    Action, ActionHandler, ActionRequest, DefaultActionVerb, Live, Node, NodeBuilder, NodeClassSet,
-    NodeId, Rect, Role, Tree, TreeUpdate,
+    Action, ActionHandler, ActionRequest, ActivationHandler, DefaultActionVerb, Live, Node,
+    NodeBuilder, NodeClassSet, NodeId, Rect, Role, Tree, TreeUpdate,
 };
-use accesskit_windows::UiaInitMarker;
-use once_cell::{sync::Lazy, unsync::OnceCell};
+use accesskit_windows::Adapter;
+use once_cell::sync::Lazy;
 use std::cell::RefCell;
 use windows::{
     core::*,
@@ -85,7 +85,6 @@ fn build_announcement(text: &str, classes: &mut NodeClassSet) -> Node {
 
 struct InnerWindowState {
     focus: NodeId,
-    is_window_focused: bool,
     announcement: Option<String>,
     node_classes: NodeClassSet,
 }
@@ -99,8 +98,11 @@ impl InnerWindowState {
         }
         builder.build(&mut self.node_classes)
     }
+}
 
-    fn build_initial_tree(&mut self) -> TreeUpdate {
+impl ActivationHandler for InnerWindowState {
+    fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
+        println!("Initial tree requested");
         let root = self.build_root();
         let button_1 = build_button(BUTTON_1_ID, "Button 1", &mut self.node_classes);
         let button_2 = build_button(BUTTON_2_ID, "Button 2", &mut self.node_classes);
@@ -122,44 +124,25 @@ impl InnerWindowState {
                 build_announcement(announcement, &mut self.node_classes),
             ));
         }
-        result
+        Some(result)
     }
 }
 
 struct WindowState {
-    uia_init_marker: UiaInitMarker,
-    adapter: OnceCell<accesskit_windows::Adapter>,
+    adapter: RefCell<Adapter>,
     inner_state: RefCell<InnerWindowState>,
 }
 
 impl WindowState {
-    fn get_or_init_accesskit_adapter(&self, window: HWND) -> &accesskit_windows::Adapter {
-        self.adapter.get_or_init(|| {
-            let mut inner_state = self.inner_state.borrow_mut();
-            let initial_tree = inner_state.build_initial_tree();
-            let is_window_focused = inner_state.is_window_focused;
-            drop(inner_state);
-            let action_handler = Box::new(SimpleActionHandler { window });
-            accesskit_windows::Adapter::new(
-                window,
-                initial_tree,
-                is_window_focused,
-                action_handler,
-                self.uia_init_marker,
-            )
-        })
-    }
-
     fn set_focus(&self, focus: NodeId) {
-        let mut inner_state = self.inner_state.borrow_mut();
-        inner_state.focus = focus;
-        if let Some(adapter) = self.adapter.get() {
-            let update = TreeUpdate {
-                nodes: vec![],
-                tree: None,
-                focus,
-            };
-            let events = adapter.update(update);
+        self.inner_state.borrow_mut().focus = focus;
+        let mut adapter = self.adapter.borrow_mut();
+        if let Some(events) = adapter.update_if_active(|| TreeUpdate {
+            nodes: vec![],
+            tree: None,
+            focus,
+        }) {
+            drop(adapter);
             events.raise();
         }
     }
@@ -172,15 +155,18 @@ impl WindowState {
             "You pressed button 2"
         };
         inner_state.announcement = Some(text.into());
-        if let Some(adapter) = self.adapter.get() {
+        let mut adapter = self.adapter.borrow_mut();
+        if let Some(events) = adapter.update_if_active(|| {
             let announcement = build_announcement(text, &mut inner_state.node_classes);
             let root = inner_state.build_root();
-            let update = TreeUpdate {
+            TreeUpdate {
                 nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],
                 tree: None,
                 focus: inner_state.focus,
-            };
-            let events = adapter.update(update);
+            }
+        }) {
+            drop(adapter);
+            drop(inner_state);
             events.raise();
         }
     }
@@ -190,13 +176,11 @@ unsafe fn get_window_state(window: HWND) -> *const WindowState {
     GetWindowLongPtrW(window, GWLP_USERDATA) as _
 }
 
-fn update_window_focus_state(window: HWND, is_window_focused: bool) {
-    let window_state = unsafe { &*get_window_state(window) };
-    let mut inner_state = window_state.inner_state.borrow_mut();
-    inner_state.is_window_focused = is_window_focused;
-    drop(inner_state);
-    if let Some(adapter) = window_state.adapter.get() {
-        let events = adapter.update_window_focus_state(is_window_focused);
+fn update_window_focus_state(window: HWND, is_focused: bool) {
+    let state = unsafe { &*get_window_state(window) };
+    let mut adapter = state.adapter.borrow_mut();
+    if let Some(events) = adapter.update_window_focus_state(is_focused) {
+        drop(adapter);
         events.raise();
     }
 }
@@ -246,13 +230,12 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             let WindowCreateParams(initial_focus) = *create_params;
             let inner_state = RefCell::new(InnerWindowState {
                 focus: initial_focus,
-                is_window_focused: false,
                 announcement: None,
                 node_classes: NodeClassSet::new(),
             });
+            let adapter = Adapter::new(window, false, SimpleActionHandler { window });
             let state = Box::new(WindowState {
-                uia_init_marker: UiaInitMarker::new(),
-                adapter: OnceCell::new(),
+                adapter: RefCell::new(adapter),
                 inner_state,
             });
             unsafe { SetWindowLongPtrW(window, GWLP_USERDATA, Box::into_raw(state) as _) };
@@ -265,22 +248,25 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
         WM_DESTROY => {
             let ptr = unsafe { SetWindowLongPtrW(window, GWLP_USERDATA, 0) };
             if ptr != 0 {
-                let _dropped: Box<WindowState> = unsafe { Box::from_raw(ptr as _) };
+                drop(unsafe { Box::<WindowState>::from_raw(ptr as _) });
             }
             unsafe { PostQuitMessage(0) };
             LRESULT(0)
         }
         WM_GETOBJECT => {
-            let window_state = unsafe { get_window_state(window) };
-            if window_state.is_null() {
+            let state_ptr = unsafe { get_window_state(window) };
+            if state_ptr.is_null() {
                 // We need to be prepared to gracefully handle WM_GETOBJECT
                 // while the window is being destroyed; this can happen if
                 // the thread is using a COM STA.
                 return unsafe { DefWindowProcW(window, message, wparam, lparam) };
             }
-            let window_state = unsafe { &*window_state };
-            let adapter = window_state.get_or_init_accesskit_adapter(window);
-            let result = adapter.handle_wm_getobject(wparam, lparam);
+            let state = unsafe { &*state_ptr };
+            let mut adapter = state.adapter.borrow_mut();
+            let mut inner_state = state.inner_state.borrow_mut();
+            let result = adapter.handle_wm_getobject(wparam, lparam, &mut *inner_state);
+            drop(inner_state);
+            drop(adapter);
             result.map_or_else(
                 || unsafe { DefWindowProcW(window, message, wparam, lparam) },
                 |result| result.into(),
@@ -296,20 +282,20 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
         }
         WM_KEYDOWN => match VIRTUAL_KEY(wparam.0 as u16) {
             VK_TAB => {
-                let window_state = unsafe { &*get_window_state(window) };
-                let old_focus = window_state.inner_state.borrow().focus;
+                let state = unsafe { &*get_window_state(window) };
+                let old_focus = state.inner_state.borrow().focus;
                 let new_focus = if old_focus == BUTTON_1_ID {
                     BUTTON_2_ID
                 } else {
                     BUTTON_1_ID
                 };
-                window_state.set_focus(new_focus);
+                state.set_focus(new_focus);
                 LRESULT(0)
             }
             VK_SPACE => {
-                let window_state = unsafe { &*get_window_state(window) };
-                let id = window_state.inner_state.borrow().focus;
-                window_state.press_button(id);
+                let state = unsafe { &*get_window_state(window) };
+                let id = state.inner_state.borrow().focus;
+                state.press_button(id);
                 LRESULT(0)
             }
             _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
@@ -317,16 +303,16 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
         SET_FOCUS_MSG => {
             let id = NodeId(lparam.0 as _);
             if id == BUTTON_1_ID || id == BUTTON_2_ID {
-                let window_state = unsafe { &*get_window_state(window) };
-                window_state.set_focus(id);
+                let state = unsafe { &*get_window_state(window) };
+                state.set_focus(id);
             }
             LRESULT(0)
         }
         DO_DEFAULT_ACTION_MSG => {
             let id = NodeId(lparam.0 as _);
             if id == BUTTON_1_ID || id == BUTTON_2_ID {
-                let window_state = unsafe { &*get_window_state(window) };
-                window_state.press_button(id);
+                let state = unsafe { &*get_window_state(window) };
+                state.press_button(id);
             }
             LRESULT(0)
         }

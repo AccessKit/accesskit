@@ -2329,12 +2329,6 @@ pub struct TreeUpdate {
     pub focus: NodeId,
 }
 
-impl<T: FnOnce() -> TreeUpdate> From<T> for TreeUpdate {
-    fn from(factory: T) -> Self {
-        factory()
-    }
-}
-
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
@@ -2367,6 +2361,32 @@ pub struct ActionRequest {
     pub data: Option<ActionData>,
 }
 
+/// Handles activation of the application's accessibility implementation.
+pub trait ActivationHandler {
+    /// Requests a [`TreeUpdate`] with a full tree. If the application
+    /// can generate the tree synchronously within this method call,
+    /// it should do so and return the [`TreeUpdate`]. Otherwise,
+    /// it must send the update to the platform adapter asynchronously,
+    /// no later than the next display refresh, even if a frame would not
+    /// normally be rendered due to user input or other activity.
+    /// The application should not return or send a placeholder [`TreeUpdate`];
+    /// the platform adapter will provide one if necessary until the real
+    /// tree is sent.
+    ///
+    /// The primary purpose of this method is to allow the application
+    /// to lazily initialize its accessibility implementation. However,
+    /// this method may be called consecutively without any call to
+    /// [`DeactivationHandler::deactivate_accessibility`]; this typically happens
+    /// if the platform adapter merely forwards tree updates to assistive
+    /// technologies without maintaining any state. A call to this method
+    /// must always generate a [`TreeUpdate`] with a full tree, even if
+    /// the application normally sends incremental updates.
+    ///
+    /// The thread on which this method is called is platform-dependent.
+    /// Refer to the platform adapter documentation for more details.
+    fn request_initial_tree(&mut self) -> Option<TreeUpdate>;
+}
+
 /// Handles requests from assistive technologies or other clients.
 pub trait ActionHandler {
     /// Perform the requested action. If the requested action is not supported,
@@ -2379,4 +2399,16 @@ pub trait ActionHandler {
     /// This behavior is preferred over blocking, e.g. when dispatching
     /// the request to another thread.
     fn do_action(&mut self, request: ActionRequest);
+}
+
+/// Handles deactivation of the application's accessibility implementation.
+pub trait DeactivationHandler {
+    /// Deactivate the application's accessibility implementation and drop any
+    /// associated data that can be reconstructed later. After this method
+    /// is called, if an accessibility tree is needed again, the platform
+    /// adapter will call [`ActivationHandler::request_initial_tree`] again.
+    ///
+    /// The thread on which this method is called is platform-dependent.
+    /// Refer to the platform adapter documentation for more details.
+    fn deactivate_accessibility(&mut self);
 }
