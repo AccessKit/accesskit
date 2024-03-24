@@ -23,6 +23,13 @@
     * accesskit bumped from 0.12.2 to 0.12.3
     * accesskit_consumer bumped from 0.17.0 to 0.17.1
 
+## [0.11.2](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.11.1...accesskit_macos-v0.11.2) (2024-03-24)
+
+
+### Bug Fixes
+
+* Fix new compiler warning in Rust 1.77 ([#376](https://github.com/AccessKit/accesskit/issues/376)) ([1de7c63](https://github.com/AccessKit/accesskit/commit/1de7c63e7db12bc7eda57a191e913fef0e572f43))
+
 ## [0.11.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.10.1...accesskit_macos-v0.11.0) (2024-01-03)
 
 
