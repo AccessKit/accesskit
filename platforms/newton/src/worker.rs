@@ -7,7 +7,7 @@
 // Copyright (c) 2018 Lucas Timmins & Victor Berger
 // Licensed under the MIT license (found in the LICENSE-MIT file).
 
-use accesskit::{ActionHandler, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler};
 use sctk::reexports::{
     calloop::{
         channel::{self, Channel},
@@ -28,8 +28,9 @@ use crate::state::State;
 pub(crate) fn spawn(
     connection: Connection,
     surface: WlSurface,
-    source: impl 'static + FnOnce() -> TreeUpdate + Send,
-    action_handler: Box<dyn ActionHandler + Send>,
+    activation_handler: impl 'static + ActivationHandler + Send,
+    action_handler: impl 'static + ActionHandler + Send,
+    deactivation_handler: impl 'static + DeactivationHandler + Send,
     request_rx: Channel<Command>,
     update_receivers: Arc<Mutex<HashSet<WpA11yUpdatesV1>>>,
 ) -> Option<std::thread::JoinHandle<()>> {
@@ -39,8 +40,9 @@ pub(crate) fn spawn(
             worker_impl(
                 connection,
                 surface,
-                source,
+                activation_handler,
                 action_handler,
+                deactivation_handler,
                 request_rx,
                 update_receivers,
             );
@@ -49,7 +51,6 @@ pub(crate) fn spawn(
 }
 
 pub(crate) enum Command {
-    UpdateTree(TreeUpdate),
     WriteUpdate(OwnedFd, Arc<Vec<u8>>),
     Exit,
 }
@@ -57,8 +58,9 @@ pub(crate) enum Command {
 fn worker_impl(
     connection: Connection,
     surface: WlSurface,
-    source: impl 'static + FnOnce() -> TreeUpdate + Send,
-    action_handler: Box<dyn ActionHandler + Send>,
+    activation_handler: impl 'static + ActivationHandler,
+    action_handler: impl 'static + ActionHandler,
+    deactivation_handler: impl 'static + DeactivationHandler,
     request_rx: Channel<Command>,
     update_receivers: Arc<Mutex<HashSet<WpA11yUpdatesV1>>>,
 ) {
@@ -80,8 +82,9 @@ fn worker_impl(
         &event_queue.handle(),
         loop_handle.clone(),
         surface,
-        source,
+        activation_handler,
         action_handler,
+        deactivation_handler,
         update_receivers,
         a11y_manager,
     );
@@ -90,7 +93,6 @@ fn worker_impl(
         .insert_source(request_rx, |event, _, state| {
             if let channel::Event::Msg(event) = event {
                 match event {
-                    Command::UpdateTree(update) => state.update_tree(update),
                     Command::WriteUpdate(fd, serialized) => state.write_update(fd, serialized),
                     Command::Exit => state.exit = true,
                 }

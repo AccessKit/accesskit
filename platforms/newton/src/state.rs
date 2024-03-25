@@ -7,9 +7,7 @@
 // Copyright (c) 2018 Lucas Timmins & Victor Berger
 // Licensed under the MIT license (found in the LICENSE-MIT file).
 
-use accesskit::{ActionHandler, TreeUpdate};
-use accesskit_consumer::Tree;
-use once_cell::unsync::Lazy;
+use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler};
 use sctk::{
     data_device_manager::{ReadPipe, WritePipe},
     delegate_registry,
@@ -35,16 +33,15 @@ use wayland_protocols::wp::a11y::v1::client::{
     wp_a11y_updates_v1::{Event as UpdatesEvent, WpA11yUpdatesV1},
 };
 
-type LazyTree = Lazy<Tree, Box<dyn FnOnce() -> Tree>>;
-
 pub(crate) struct State {
     registry_state: RegistryState,
     loop_handle: LoopHandle<'static, Self>,
     pub(crate) exit: bool,
     surface: WlSurface,
     a11y_surface: WpA11ySurfaceV1,
-    tree: LazyTree,
-    action_handler: Box<dyn ActionHandler + Send>,
+    activation_handler: Box<dyn ActivationHandler>,
+    action_handler: Box<dyn ActionHandler>,
+    deactivation_handler: Box<dyn DeactivationHandler>,
     update_receivers: Arc<Mutex<HashSet<WpA11yUpdatesV1>>>,
 }
 
@@ -55,14 +52,14 @@ impl State {
         qh: &QueueHandle<Self>,
         loop_handle: LoopHandle<'static, Self>,
         surface: WlSurface,
-        source: impl 'static + FnOnce() -> TreeUpdate + Send,
-        action_handler: Box<dyn ActionHandler + Send>,
+        activation_handler: impl 'static + ActivationHandler,
+        action_handler: impl 'static + ActionHandler,
+        deactivation_handler: impl 'static + DeactivationHandler,
         update_receivers: Arc<Mutex<HashSet<WpA11yUpdatesV1>>>,
         a11y_manager: WpA11yManagerV1,
     ) -> Self {
         let a11y_surface = a11y_manager.get_a11y_surface(&surface, qh, ());
         a11y_manager.destroy();
-        let tree: LazyTree = Lazy::new(Box::new(move || Tree::new(source(), true)));
 
         Self {
             registry_state: RegistryState::new(globals),
@@ -70,15 +67,10 @@ impl State {
             exit: false,
             surface,
             a11y_surface,
-            tree,
-            action_handler,
+            activation_handler: Box::new(activation_handler),
+            action_handler: Box::new(action_handler),
+            deactivation_handler: Box::new(deactivation_handler),
             update_receivers,
-        }
-    }
-
-    pub(crate) fn update_tree(&mut self, update: TreeUpdate) {
-        if let Some(tree) = Lazy::get_mut(&mut self.tree) {
-            tree.update(update);
         }
     }
 
@@ -114,13 +106,13 @@ impl State {
         use rustix::pipe::{pipe_with, PipeFlags};
 
         let mut receivers = self.update_receivers.lock().unwrap();
-        let tree = Lazy::force(&self.tree);
-        let update = tree.state().serialize();
-        let serialized = Arc::new(serde_json::to_vec(&update).unwrap());
-        let (read_fd, write_fd) = pipe_with(PipeFlags::CLOEXEC).unwrap();
-        self.write_update(write_fd, serialized);
-        receiver.send(read_fd.as_fd());
-        self.surface.commit();
+        if let Some(update) = self.activation_handler.request_initial_tree() {
+            let serialized = Arc::new(serde_json::to_vec(&update).unwrap());
+            let (read_fd, write_fd) = pipe_with(PipeFlags::CLOEXEC).unwrap();
+            self.write_update(write_fd, serialized);
+            receiver.send(read_fd.as_fd());
+            self.surface.commit();
+        }
         receivers.insert(receiver);
     }
 
@@ -159,6 +151,15 @@ impl State {
                     };
                 }
             });
+    }
+
+    fn handle_deactivated_update_receiver(&mut self, receiver: &WpA11yUpdatesV1) {
+        let mut receivers = self.update_receivers.lock().unwrap();
+        receivers.remove(receiver);
+        if receivers.is_empty() {
+            drop(receivers);
+            self.deactivation_handler.deactivate_accessibility();
+        }
     }
 }
 
@@ -220,7 +221,7 @@ impl Dispatch<WpA11yUpdatesV1, ()> for State {
         _: &QueueHandle<State>,
     ) {
         if let UpdatesEvent::Unwanted = event {
-            state.update_receivers.lock().unwrap().remove(receiver);
+            state.handle_deactivated_update_receiver(receiver);
         }
     }
 }

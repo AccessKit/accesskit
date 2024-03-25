@@ -7,7 +7,7 @@
 // Copyright (c) 2018 Lucas Timmins & Victor Berger
 // Licensed under the MIT license (found in the LICENSE-MIT file).
 
-use accesskit::{ActionHandler, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, TreeUpdate};
 use sctk::reexports::{
     calloop::channel::{self, Sender},
     client::{
@@ -36,8 +36,8 @@ pub struct Adapter {
 impl Adapter {
     /// Creates an AccessKit adapter for the specified Wayland display
     /// and surface. The adapter will run on a worker thread with its own
-    /// libwayland event queue. Both the tree source and the action handler
-    /// will always be called on that worker thread.
+    /// libwayland event queue. All of the handlers will always be called
+    /// on that worker thread.
     ///
     /// # Safety
     ///
@@ -47,8 +47,9 @@ impl Adapter {
     pub unsafe fn new(
         display: *mut c_void,
         surface: *mut c_void,
-        source: impl 'static + FnOnce() -> TreeUpdate + Send,
-        action_handler: Box<dyn ActionHandler + Send>,
+        activation_handler: impl 'static + ActivationHandler + Send,
+        action_handler: impl 'static + ActionHandler + Send,
+        deactivation_handler: impl 'static + DeactivationHandler + Send,
     ) -> Self {
         let backend = unsafe { Backend::from_foreign_display(display.cast()) };
         let connection = Connection::from_backend(backend);
@@ -60,8 +61,9 @@ impl Adapter {
         let worker_thread = worker::spawn(
             connection,
             surface,
-            source,
+            activation_handler,
             action_handler,
+            deactivation_handler,
             request_rx,
             Arc::clone(&update_receivers),
         );
@@ -74,8 +76,11 @@ impl Adapter {
     }
 
     /// If and only if the tree has been initialized, call the provided function
-    /// and apply the resulting update.
-    pub fn update_if_active(&self, update_factory: impl FnOnce() -> TreeUpdate) {
+    /// and apply the resulting update. Note: If the caller's implementation of
+    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
+    /// the [`TreeUpdate`] returned by the provided function must contain
+    /// a full tree.
+    pub fn update_if_active(&mut self, update_factory: impl FnOnce() -> TreeUpdate) {
         use rustix::pipe::{pipe_with, PipeFlags};
 
         let receivers = self.update_receivers.lock().unwrap();
@@ -84,9 +89,6 @@ impl Adapter {
         }
         let update = update_factory();
         let serialized = Arc::new(serde_json::to_vec(&update).unwrap());
-        self.request_tx
-            .send(worker::Command::UpdateTree(update))
-            .unwrap();
         for receiver in receivers.iter() {
             let (read_fd, write_fd) = pipe_with(PipeFlags::CLOEXEC).unwrap();
             self.request_tx

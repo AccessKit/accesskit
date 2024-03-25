@@ -74,9 +74,7 @@ name = "accesskit_newton"
 version = "0.1.0"
 dependencies = [
  "accesskit",
- "accesskit_consumer",
  "libc",
- "once_cell",
  "rustix 0.38.21",
  "serde_json",
  "smithay-client-toolkit 0.18.0 (git+https://github.com/mwcampbell/sctk?branch=accessibility-protocol)",
