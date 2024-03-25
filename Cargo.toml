@@ -6,6 +6,7 @@ members = [
     "platforms/atspi-common",
     "platforms/macos",
     "platforms/unix",
+    "platforms/newton",
     "platforms/windows",
     "platforms/winit",
     "bindings/c",

@@ -26,7 +26,7 @@ mod macos;
     target_os = "openbsd",
     feature = "cbindgen"
 ))]
-mod unix;
+mod newton;
 #[cfg(any(target_os = "windows", feature = "cbindgen"))]
 mod windows;
 
@@ -42,7 +42,7 @@ pub use macos::*;
     target_os = "openbsd",
     feature = "cbindgen"
 ))]
-pub use unix::*;
+pub use newton::*;
 #[cfg(any(target_os = "windows", feature = "cbindgen"))]
 pub use windows::*;
 
