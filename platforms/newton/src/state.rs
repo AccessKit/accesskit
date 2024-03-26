@@ -10,16 +10,18 @@
 use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler};
 use sctk::{
     data_device_manager::{ReadPipe, WritePipe},
-    delegate_registry,
     reexports::{
         calloop::{LoopHandle, PostAction},
         client::{
-            event_created_child, globals::GlobalList, protocol::wl_surface::WlSurface, Connection,
-            Dispatch, QueueHandle,
+            event_created_child,
+            globals::GlobalListContents,
+            protocol::{
+                wl_registry::{Event as RegistryEvent, WlRegistry},
+                wl_surface::WlSurface,
+            },
+            Connection, Dispatch, QueueHandle,
         },
     },
-    registry::{ProvidesRegistryState, RegistryState},
-    registry_handlers,
 };
 use std::{
     collections::HashSet,
@@ -34,7 +36,6 @@ use wayland_protocols::wp::a11y::v1::client::{
 };
 
 pub(crate) struct State {
-    registry_state: RegistryState,
     loop_handle: LoopHandle<'static, Self>,
     pub(crate) exit: bool,
     surface: WlSurface,
@@ -48,7 +49,6 @@ pub(crate) struct State {
 impl State {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
-        globals: &GlobalList,
         qh: &QueueHandle<Self>,
         loop_handle: LoopHandle<'static, Self>,
         surface: WlSurface,
@@ -62,7 +62,6 @@ impl State {
         a11y_manager.destroy();
 
         Self {
-            registry_state: RegistryState::new(globals),
             loop_handle,
             exit: false,
             surface,
@@ -163,15 +162,18 @@ impl State {
     }
 }
 
-impl ProvidesRegistryState for State {
-    registry_handlers![];
-
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
+impl Dispatch<WlRegistry, GlobalListContents> for State {
+    fn event(
+        _: &mut Self,
+        _: &WlRegistry,
+        _: RegistryEvent,
+        _: &GlobalListContents,
+        _: &Connection,
+        _: &QueueHandle<State>,
+    ) {
+        // We don't need to handle registry events; we already got our global.
     }
 }
-
-delegate_registry!(State);
 
 impl Dispatch<WpA11yManagerV1, ()> for State {
     fn event(

@@ -78,7 +78,6 @@ fn worker_impl(
     let loop_handle = event_loop.handle();
 
     let mut state = State::new(
-        &globals,
         &event_queue.handle(),
         loop_handle.clone(),
         surface,
