@@ -4,6 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{Point, Rect};
+use accesskit_consumer::{Node, TextPosition, TextRange};
 use atspi_common::CoordType;
 
 #[derive(Clone, Copy, Default)]
@@ -33,4 +34,40 @@ impl WindowBounds {
             _ => unimplemented!(),
         }
     }
+}
+
+pub(crate) fn text_position_from_offset<'a>(
+    node: &'a Node,
+    offset: i32,
+) -> Option<TextPosition<'a>> {
+    let index = offset.try_into().ok()?;
+    node.text_position_from_global_usv_index(index)
+}
+
+pub(crate) fn text_range_from_offsets<'a>(
+    node: &'a Node,
+    start_offset: i32,
+    end_offset: i32,
+) -> Option<TextRange<'a>> {
+    let start = text_position_from_offset(node, start_offset)?;
+    let end = if end_offset == -1 {
+        node.document_range().end()
+    } else {
+        text_position_from_offset(node, end_offset)?
+    };
+
+    let mut range = start.to_degenerate_range();
+    range.set_end(end);
+    Some(range)
+}
+
+pub(crate) fn text_range_bounds_from_offsets(
+    node: &Node,
+    start_offset: i32,
+    end_offset: i32,
+) -> Option<Rect> {
+    text_range_from_offsets(node, start_offset, end_offset)?
+        .bounding_boxes()
+        .into_iter()
+        .reduce(|rect1, rect2| rect1.union(rect2))
 }
