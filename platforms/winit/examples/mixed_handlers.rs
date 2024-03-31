@@ -1,8 +1,9 @@
 use accesskit::{
-    Action, ActionRequest, DefaultActionVerb, Live, Node, NodeBuilder, NodeClassSet, NodeId, Rect,
-    Role, Tree, TreeUpdate,
+    Action, ActionRequest, ActivationHandler, DefaultActionVerb, Live, Node, NodeBuilder,
+    NodeClassSet, NodeId, Rect, Role, Tree, TreeUpdate,
 };
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
+use std::sync::{Arc, Mutex};
 use winit::{
     event::{ElementState, Event, KeyEvent, WindowEvent},
     event_loop::{ControlFlow, EventLoopBuilder},
@@ -61,12 +62,12 @@ struct State {
 }
 
 impl State {
-    fn new() -> Self {
-        Self {
+    fn new() -> Arc<Mutex<Self>> {
+        Arc::new(Mutex::new(Self {
             focus: INITIAL_FOCUS,
             announcement: None,
             node_classes: NodeClassSet::new(),
-        }
+        }))
     }
 
     fn build_root(&mut self) -> Node {
@@ -131,6 +132,16 @@ impl State {
     }
 }
 
+struct TearoffActivationHandler {
+    state: Arc<Mutex<State>>,
+}
+
+impl ActivationHandler for TearoffActivationHandler {
+    fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
+        Some(self.state.lock().unwrap().build_initial_tree())
+    }
+}
+
 fn main() -> Result<(), impl std::error::Error> {
     println!("This example has no visible GUI, and a keyboard interface:");
     println!("- [Tab] switches focus between two logical buttons.");
@@ -150,12 +161,16 @@ fn main() -> Result<(), impl std::error::Error> {
     println!("Enable Orca with [Super]+[Alt]+[S].");
 
     let event_loop = EventLoopBuilder::with_user_event().build()?;
-    let mut state = State::new();
+    let state = State::new();
     let window = WindowBuilder::new()
         .with_title(WINDOW_TITLE)
         .with_visible(false)
         .build(&event_loop)?;
-    let mut adapter = Adapter::with_event_loop_proxy(&window, event_loop.create_proxy());
+    let activation_handler = TearoffActivationHandler {
+        state: Arc::clone(&state),
+    };
+    let mut adapter =
+        Adapter::with_mixed_handlers(&window, activation_handler, event_loop.create_proxy());
     window.set_visible(true);
 
     event_loop.run(move |event, event_loop| {
@@ -178,6 +193,7 @@ fn main() -> Result<(), impl std::error::Error> {
                         ..
                     } => match virtual_code {
                         Key::Named(winit::keyboard::NamedKey::Tab) => {
+                            let mut state = state.lock().unwrap();
                             let new_focus = if state.focus == BUTTON_1_ID {
                                 BUTTON_2_ID
                             } else {
@@ -186,6 +202,7 @@ fn main() -> Result<(), impl std::error::Error> {
                             state.set_focus(&mut adapter, new_focus);
                         }
                         Key::Named(winit::keyboard::NamedKey::Space) => {
+                            let mut state = state.lock().unwrap();
                             let id = state.focus;
                             state.press_button(&mut adapter, id);
                         }
@@ -195,11 +212,10 @@ fn main() -> Result<(), impl std::error::Error> {
                 }
             }
             Event::UserEvent(AccessKitEvent { window_event, .. }) => match window_event {
-                AccessKitWindowEvent::InitialTreeRequested => {
-                    adapter.update_if_active(|| state.build_initial_tree());
-                }
+                AccessKitWindowEvent::InitialTreeRequested => unreachable!(),
                 AccessKitWindowEvent::ActionRequested(ActionRequest { action, target, .. }) => {
                     if target == BUTTON_1_ID || target == BUTTON_2_ID {
+                        let mut state = state.lock().unwrap();
                         match action {
                             Action::Focus => {
                                 state.set_focus(&mut adapter, target);

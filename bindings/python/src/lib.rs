@@ -81,7 +81,6 @@ fn accesskit(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[cfg(target_os = "windows")]
     {
         let windows_module = PyModule::new(py, "windows")?;
-        windows_module.add_class::<windows::UiaInitMarker>()?;
         windows_module.add_class::<windows::QueuedEvents>()?;
         windows_module.add_class::<windows::Adapter>()?;
         windows_module.add_class::<windows::SubclassingAdapter>()?;

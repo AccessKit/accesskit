@@ -63,27 +63,34 @@ struct accesskit_sdl_adapter {
 #endif
 };
 
-void accesskit_sdl_adapter_init(struct accesskit_sdl_adapter *adapter,
-                                SDL_Window *window,
-                                accesskit_tree_update_factory source,
-                                void *source_userdata,
-                                accesskit_action_handler *handler) {
+void accesskit_sdl_adapter_init(
+    struct accesskit_sdl_adapter *adapter, SDL_Window *window,
+    accesskit_activation_handler_callback activation_handler,
+    void *activation_handler_userdata,
+    accesskit_action_handler_callback action_handler,
+    void *action_handler_userdata,
+    accesskit_deactivation_handler_callback deactivation_handler,
+    void *deactivation_handler_userdata) {
 #if defined(__APPLE__)
   accesskit_macos_add_focus_forwarder_to_window_class("SDLWindow");
   SDL_SysWMinfo wmInfo;
   SDL_VERSION(&wmInfo.version);
   SDL_GetWindowWMInfo(window, &wmInfo);
   adapter->adapter = accesskit_macos_subclassing_adapter_for_window(
-      (void *)wmInfo.info.cocoa.window, source, source_userdata, handler);
+      (void *)wmInfo.info.cocoa.window, activation_handler,
+      activation_handler_userdata, action_handler, action_handler_userdata);
 #elif defined(UNIX)
-  adapter->adapter =
-      accesskit_unix_adapter_new(source, source_userdata, handler);
+  adapter->adapter = accesskit_unix_adapter_new(
+      activation_handler, activation_handler_userdata, action_handler,
+      action_handler_userdata, deactivation_handler,
+      deactivation_handler_userdata);
 #elif defined(_WIN32)
   SDL_SysWMinfo wmInfo;
   SDL_VERSION(&wmInfo.version);
   SDL_GetWindowWMInfo(window, &wmInfo);
   adapter->adapter = accesskit_windows_subclassing_adapter_new(
-      wmInfo.info.win.window, source, source_userdata, handler);
+      wmInfo.info.win.window, activation_handler, activation_handler_userdata,
+      action_handler, action_handler_userdata);
 #endif
 }
 
@@ -100,7 +107,7 @@ void accesskit_sdl_adapter_destroy(struct accesskit_sdl_adapter *adapter) {
 }
 
 void accesskit_sdl_adapter_update_if_active(
-    const struct accesskit_sdl_adapter *adapter,
+    struct accesskit_sdl_adapter *adapter,
     accesskit_tree_update_factory update_factory,
     void *update_factory_userdata) {
 #if defined(__APPLE__)
@@ -124,7 +131,7 @@ void accesskit_sdl_adapter_update_if_active(
 }
 
 void accesskit_sdl_adapter_update_window_focus_state(
-    const struct accesskit_sdl_adapter *adapter, bool is_focused) {
+    struct accesskit_sdl_adapter *adapter, bool is_focused) {
 #if defined(__APPLE__)
   accesskit_macos_queued_events *events =
       accesskit_macos_subclassing_adapter_update_view_focus_state(
@@ -140,7 +147,7 @@ void accesskit_sdl_adapter_update_window_focus_state(
 }
 
 void accesskit_sdl_adapter_update_root_window_bounds(
-    const struct accesskit_sdl_adapter *adapter, SDL_Window *window) {
+    struct accesskit_sdl_adapter *adapter, SDL_Window *window) {
 #if defined(UNIX)
   int x, y, width, height;
   SDL_GetWindowPosition(window, &x, &y);
@@ -230,7 +237,7 @@ accesskit_tree_update *build_tree_update_for_button_press(void *userdata) {
 }
 
 void window_state_press_button(struct window_state *state,
-                               const struct accesskit_sdl_adapter *adapter,
+                               struct accesskit_sdl_adapter *adapter,
                                accesskit_node_id id) {
   const char *text;
   if (id == BUTTON_1_ID) {
@@ -251,7 +258,7 @@ accesskit_tree_update *build_tree_update_for_focus_update(void *userdata) {
 }
 
 void window_state_set_focus(struct window_state *state,
-                            const struct accesskit_sdl_adapter *adapter,
+                            struct accesskit_sdl_adapter *adapter,
                             accesskit_node_id focus) {
   state->focus = focus;
   accesskit_sdl_adapter_update_if_active(
@@ -287,6 +294,11 @@ accesskit_tree_update *build_initial_tree(void *userdata) {
   return update;
 }
 
+void deactivate_accessibility(void *userdata) {
+  /* There's nothing in the state that depends on whether the adapter
+     is active, so there's nothing to do here. */
+}
+
 int main(int argc, char *argv[]) {
   printf("This example has no visible GUI, and a keyboard interface:\n");
   printf("- [Tab] switches focus between two logical buttons.\n");
@@ -318,9 +330,9 @@ int main(int argc, char *argv[]) {
   Uint32 window_id = SDL_GetWindowID(window);
   struct action_handler_state action_handler = {user_event, window_id};
   struct accesskit_sdl_adapter adapter;
-  accesskit_sdl_adapter_init(
-      &adapter, window, build_initial_tree, &state,
-      accesskit_action_handler_new(do_action, &action_handler));
+  accesskit_sdl_adapter_init(&adapter, window, build_initial_tree, &state,
+                             do_action, &action_handler,
+                             deactivate_accessibility, &state);
   SDL_ShowWindow(window);
 
   SDL_Event event;

@@ -4,8 +4,9 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    action_handler, box_from_ptr, ref_from_ptr, tree_update, tree_update_factory,
-    tree_update_factory_userdata, BoxCastPtr, CastPtr,
+    box_from_ptr, mut_from_ptr, tree_update_factory, tree_update_factory_userdata,
+    ActionHandlerCallback, ActivationHandlerCallback, BoxCastPtr, CastPtr, FfiActionHandler,
+    FfiActivationHandler,
 };
 use accesskit_macos::{
     add_focus_forwarder_to_window_class, Adapter, NSPoint, QueuedEvents, SubclassingAdapter,
@@ -13,7 +14,6 @@ use accesskit_macos::{
 use std::{
     ffi::CStr,
     os::raw::{c_char, c_void},
-    ptr,
 };
 
 pub struct macos_queued_events {
@@ -46,21 +46,18 @@ impl CastPtr for macos_adapter {
 impl BoxCastPtr for macos_adapter {}
 
 impl macos_adapter {
-    /// This function takes ownership of `initial_state` and `handler`.
-    ///
     /// # Safety
     ///
     /// `view` must be a valid, unreleased pointer to an `NSView`.
     #[no_mangle]
     pub unsafe extern "C" fn accesskit_macos_adapter_new(
         view: *mut c_void,
-        initial_state: *mut tree_update,
         is_view_focused: bool,
-        handler: *mut action_handler,
+        action_handler: ActionHandlerCallback,
+        action_handler_userdata: *mut c_void,
     ) -> *mut macos_adapter {
-        let initial_state = box_from_ptr(initial_state);
-        let handler = box_from_ptr(handler);
-        let adapter = Adapter::new(view, *initial_state, is_view_focused, handler);
+        let action_handler = FfiActionHandler::new(action_handler, action_handler_userdata);
+        let adapter = Adapter::new(view, is_view_focused, action_handler);
         BoxCastPtr::to_mut_ptr(adapter)
     }
 
@@ -69,57 +66,73 @@ impl macos_adapter {
         drop(box_from_ptr(adapter));
     }
 
-    /// This function takes ownership of `update`.
-    /// You must call `accesskit_macos_queued_events_raise` on the returned pointer.
+    /// You must call `accesskit_macos_queued_events_raise` on the returned pointer. It can be null if the adapter is not active.
     #[no_mangle]
-    pub extern "C" fn accesskit_macos_adapter_update(
-        adapter: *const macos_adapter,
-        update: *mut tree_update,
+    pub extern "C" fn accesskit_macos_adapter_update_if_active(
+        adapter: *mut macos_adapter,
+        update_factory: tree_update_factory,
+        update_factory_userdata: *mut c_void,
     ) -> *mut macos_queued_events {
-        let adapter = ref_from_ptr(adapter);
-        let update = box_from_ptr(update);
-        let events = adapter.update(*update);
-        BoxCastPtr::to_mut_ptr(events)
+        let update_factory = update_factory.unwrap();
+        let update_factory_userdata = tree_update_factory_userdata(update_factory_userdata);
+        let adapter = mut_from_ptr(adapter);
+        let events =
+            adapter.update_if_active(|| *box_from_ptr(update_factory(update_factory_userdata)));
+        BoxCastPtr::to_nullable_mut_ptr(events)
     }
 
     /// Update the tree state based on whether the window is focused.
     ///
-    /// You must call `accesskit_macos_queued_events_raise` on the returned pointer.
+    /// You must call `accesskit_macos_queued_events_raise` on the returned pointer. It can be null if the adapter is not active.
     #[no_mangle]
     pub extern "C" fn accesskit_macos_adapter_update_view_focus_state(
-        adapter: *const macos_adapter,
+        adapter: *mut macos_adapter,
         is_focused: bool,
     ) -> *mut macos_queued_events {
-        let adapter = ref_from_ptr(adapter);
+        let adapter = mut_from_ptr(adapter);
         let events = adapter.update_view_focus_state(is_focused);
-        BoxCastPtr::to_mut_ptr(events)
+        BoxCastPtr::to_nullable_mut_ptr(events)
     }
 
     /// Returns a pointer to an `NSArray`. Ownership of the pointer is not transferred.
     #[no_mangle]
     pub extern "C" fn accesskit_macos_adapter_view_children(
-        adapter: *const macos_adapter,
+        adapter: *mut macos_adapter,
+        activation_handler: ActivationHandlerCallback,
+        activation_handler_userdata: *mut c_void,
     ) -> *mut c_void {
-        let adapter = ref_from_ptr(adapter);
-        adapter.view_children() as *mut _
+        let adapter = mut_from_ptr(adapter);
+        let mut activation_handler =
+            FfiActivationHandler::new(activation_handler, activation_handler_userdata);
+        adapter.view_children(&mut activation_handler) as *mut _
     }
 
     /// Returns a pointer to an `NSObject`. Ownership of the pointer is not transferred.
     #[no_mangle]
-    pub extern "C" fn accesskit_macos_adapter_focus(adapter: *const macos_adapter) -> *mut c_void {
-        let adapter = ref_from_ptr(adapter);
-        adapter.focus() as *mut _
+    pub extern "C" fn accesskit_macos_adapter_focus(
+        adapter: *mut macos_adapter,
+        activation_handler: ActivationHandlerCallback,
+        activation_handler_userdata: *mut c_void,
+    ) -> *mut c_void {
+        let adapter = mut_from_ptr(adapter);
+        let mut activation_handler =
+            FfiActivationHandler::new(activation_handler, activation_handler_userdata);
+        adapter.focus(&mut activation_handler) as *mut _
     }
 
     /// Returns a pointer to an `NSObject`. Ownership of the pointer is not transferred.
     #[no_mangle]
     pub extern "C" fn accesskit_macos_adapter_hit_test(
-        adapter: *const macos_adapter,
+        adapter: *mut macos_adapter,
         x: f64,
         y: f64,
+        activation_handler: ActivationHandlerCallback,
+        activation_handler_userdata: *mut c_void,
     ) -> *mut c_void {
-        let adapter = ref_from_ptr(adapter);
-        adapter.hit_test(NSPoint::new(x, y)) as *mut _
+        let adapter = mut_from_ptr(adapter);
+        let mut activation_handler =
+            FfiActivationHandler::new(activation_handler, activation_handler_userdata);
+        adapter.hit_test(NSPoint::new(x, y), &mut activation_handler) as *mut _
     }
 }
 
@@ -134,31 +147,24 @@ impl CastPtr for macos_subclassing_adapter {
 impl BoxCastPtr for macos_subclassing_adapter {}
 
 impl macos_subclassing_adapter {
-    /// This function takes ownership of `handler`.
-    ///
     /// # Safety
     ///
     /// `view` must be a valid, unreleased pointer to an `NSView`.
     #[no_mangle]
     pub unsafe extern "C" fn accesskit_macos_subclassing_adapter_new(
         view: *mut c_void,
-        source: tree_update_factory,
-        source_userdata: *mut c_void,
-        handler: *mut action_handler,
+        activation_handler: ActivationHandlerCallback,
+        activation_handler_userdata: *mut c_void,
+        action_handler: ActionHandlerCallback,
+        action_handler_userdata: *mut c_void,
     ) -> *mut macos_subclassing_adapter {
-        let source = source.unwrap();
-        let source_userdata = tree_update_factory_userdata(source_userdata);
-        let handler = box_from_ptr(handler);
-        let adapter = SubclassingAdapter::new(
-            view,
-            move || *box_from_ptr(source(source_userdata)),
-            handler,
-        );
+        let activation_handler =
+            FfiActivationHandler::new(activation_handler, activation_handler_userdata);
+        let action_handler = FfiActionHandler::new(action_handler, action_handler_userdata);
+        let adapter = SubclassingAdapter::new(view, activation_handler, action_handler);
         BoxCastPtr::to_mut_ptr(adapter)
     }
 
-    /// This function takes ownership of `handler`.
-    ///
     /// # Safety
     ///
     /// `window` must be a valid, unreleased pointer to an `NSWindow`.
@@ -170,18 +176,15 @@ impl macos_subclassing_adapter {
     #[no_mangle]
     pub unsafe extern "C" fn accesskit_macos_subclassing_adapter_for_window(
         window: *mut c_void,
-        source: tree_update_factory,
-        source_userdata: *mut c_void,
-        handler: *mut action_handler,
+        activation_handler: ActivationHandlerCallback,
+        activation_handler_userdata: *mut c_void,
+        action_handler: ActionHandlerCallback,
+        action_handler_userdata: *mut c_void,
     ) -> *mut macos_subclassing_adapter {
-        let source = source.unwrap();
-        let source_userdata = tree_update_factory_userdata(source_userdata);
-        let handler = box_from_ptr(handler);
-        let adapter = SubclassingAdapter::for_window(
-            window,
-            move || *box_from_ptr(source(source_userdata)),
-            handler,
-        );
+        let activation_handler =
+            FfiActivationHandler::new(activation_handler, activation_handler_userdata);
+        let action_handler = FfiActionHandler::new(action_handler, action_handler_userdata);
+        let adapter = SubclassingAdapter::for_window(window, activation_handler, action_handler);
         BoxCastPtr::to_mut_ptr(adapter)
     }
 
@@ -192,35 +195,19 @@ impl macos_subclassing_adapter {
         drop(box_from_ptr(adapter));
     }
 
-    /// This function takes ownership of `update`.
-    /// You must call `accesskit_macos_queued_events_raise` on the returned pointer.
-    #[no_mangle]
-    pub extern "C" fn accesskit_macos_subclassing_adapter_update(
-        adapter: *const macos_subclassing_adapter,
-        update: *mut tree_update,
-    ) -> *mut macos_queued_events {
-        let adapter = ref_from_ptr(adapter);
-        let update = box_from_ptr(update);
-        let events = adapter.update(*update);
-        BoxCastPtr::to_mut_ptr(events)
-    }
-
     /// You must call `accesskit_macos_queued_events_raise` on the returned pointer. It can be null if the adapter is not active.
     #[no_mangle]
     pub extern "C" fn accesskit_macos_subclassing_adapter_update_if_active(
-        adapter: *const macos_subclassing_adapter,
+        adapter: *mut macos_subclassing_adapter,
         update_factory: tree_update_factory,
         update_factory_userdata: *mut c_void,
     ) -> *mut macos_queued_events {
         let update_factory = update_factory.unwrap();
         let update_factory_userdata = tree_update_factory_userdata(update_factory_userdata);
-        let adapter = ref_from_ptr(adapter);
+        let adapter = mut_from_ptr(adapter);
         let events =
             adapter.update_if_active(|| *box_from_ptr(update_factory(update_factory_userdata)));
-        match events {
-            Some(events) => BoxCastPtr::to_mut_ptr(events),
-            None => ptr::null_mut(),
-        }
+        BoxCastPtr::to_nullable_mut_ptr(events)
     }
 
     /// Update the tree state based on whether the window is focused.
@@ -228,15 +215,12 @@ impl macos_subclassing_adapter {
     /// You must call `accesskit_macos_queued_events_raise` on the returned pointer. It can be null if the adapter is not active.
     #[no_mangle]
     pub extern "C" fn accesskit_macos_subclassing_adapter_update_view_focus_state(
-        adapter: *const macos_subclassing_adapter,
+        adapter: *mut macos_subclassing_adapter,
         is_focused: bool,
     ) -> *mut macos_queued_events {
-        let adapter = ref_from_ptr(adapter);
+        let adapter = mut_from_ptr(adapter);
         let events = adapter.update_view_focus_state(is_focused);
-        match events {
-            Some(events) => BoxCastPtr::to_mut_ptr(events),
-            None => ptr::null_mut(),
-        }
+        BoxCastPtr::to_nullable_mut_ptr(events)
     }
 }
 

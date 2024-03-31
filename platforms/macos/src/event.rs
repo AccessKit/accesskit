@@ -114,6 +114,10 @@ pub struct QueuedEvents {
 }
 
 impl QueuedEvents {
+    pub(crate) fn new(context: Rc<Context>, events: Vec<QueuedEvent>) -> Self {
+        Self { context, events }
+    }
+
     /// Raise all queued events synchronously.
     ///
     /// It is unknown whether accessibility methods on the view may be
@@ -124,6 +128,13 @@ impl QueuedEvents {
         for event in self.events {
             event.raise(&self.context);
         }
+    }
+}
+
+pub(crate) fn focus_event(node_id: NodeId) -> QueuedEvent {
+    QueuedEvent::Generic {
+        node_id,
+        notification: unsafe { NSAccessibilityFocusedUIElementChangedNotification },
     }
 }
 
@@ -143,10 +154,7 @@ impl EventGenerator {
     }
 
     pub(crate) fn into_result(self) -> QueuedEvents {
-        QueuedEvents {
-            context: self.context,
-            events: self.events,
-        }
+        QueuedEvents::new(self.context, self.events)
     }
 
     fn insert_text_change_if_needed_parent(&mut self, node: Node) {
@@ -259,10 +267,7 @@ impl TreeChangeHandler for EventGenerator {
             if filter(new_node) != FilterResult::Include {
                 return;
             }
-            self.events.push(QueuedEvent::Generic {
-                node_id: new_node.id(),
-                notification: unsafe { NSAccessibilityFocusedUIElementChangedNotification },
-            });
+            self.events.push(focus_event(new_node.id()));
         }
     }
 

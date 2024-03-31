@@ -3,7 +3,10 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, TreeUpdate};
+use accesskit::{
+    ActionHandler, ActionRequest, ActivationHandler, NodeBuilder, NodeId, Role, Tree as TreeData,
+    TreeUpdate,
+};
 use accesskit_consumer::{FilterResult, Tree};
 use icrate::{
     AppKit::NSView,
@@ -13,15 +16,38 @@ use objc2::rc::{Id, WeakId};
 use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
 use crate::{
-    context::Context,
-    event::{EventGenerator, QueuedEvents},
+    context::{ActionHandlerNoMut, ActionHandlerWrapper, Context},
+    event::{focus_event, EventGenerator, QueuedEvents},
     filters::filter,
     node::can_be_focused,
     util::*,
 };
 
+const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
+
+enum State {
+    Inactive {
+        view: WeakId<NSView>,
+        is_view_focused: bool,
+        action_handler: Rc<dyn ActionHandlerNoMut>,
+        mtm: MainThreadMarker,
+    },
+    Placeholder {
+        placeholder_context: Rc<Context>,
+        is_view_focused: bool,
+        action_handler: Rc<dyn ActionHandlerNoMut>,
+    },
+    Active(Rc<Context>),
+}
+
+struct PlaceholderActionHandler;
+
+impl ActionHandler for PlaceholderActionHandler {
+    fn do_action(&mut self, _request: ActionRequest) {}
+}
+
 pub struct Adapter {
-    context: Rc<Context>,
+    state: State,
 }
 
 impl Adapter {
@@ -35,52 +61,160 @@ impl Adapter {
     /// `view` must be a valid, unreleased pointer to an `NSView`.
     pub unsafe fn new(
         view: *mut c_void,
-        initial_state: TreeUpdate,
         is_view_focused: bool,
-        action_handler: Box<dyn ActionHandler>,
+        action_handler: impl 'static + ActionHandler,
     ) -> Self {
         let view = unsafe { Id::retain(view as *mut NSView) }.unwrap();
         let view = WeakId::from_id(&view);
-        let tree = Tree::new(initial_state, is_view_focused);
         let mtm = MainThreadMarker::new().unwrap();
-        Self {
-            context: Context::new(view, tree, action_handler, mtm),
-        }
+        let state = State::Inactive {
+            view,
+            is_view_focused,
+            action_handler: Rc::new(ActionHandlerWrapper::new(action_handler)),
+            mtm,
+        };
+        Self { state }
     }
 
-    /// Apply the provided update to the tree.
+    /// If and only if the tree has been initialized, call the provided function
+    /// and apply the resulting update. Note: If the caller's implementation of
+    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
+    /// the [`TreeUpdate`] returned by the provided function must contain
+    /// a full tree.
     ///
-    /// The caller must call [`QueuedEvents::raise`] on the return value.
-    pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
-        let mut event_generator = EventGenerator::new(self.context.clone());
-        let mut tree = self.context.tree.borrow_mut();
-        tree.update_and_process_changes(update, &mut event_generator);
-        event_generator.into_result()
+    /// If a [`QueuedEvents`] instance is returned, the caller must call
+    /// [`QueuedEvents::raise`] on it.
+    pub fn update_if_active(
+        &mut self,
+        update_factory: impl FnOnce() -> TreeUpdate,
+    ) -> Option<QueuedEvents> {
+        match &self.state {
+            State::Inactive { .. } => None,
+            State::Placeholder {
+                placeholder_context,
+                is_view_focused,
+                action_handler,
+            } => {
+                let tree = Tree::new(update_factory(), *is_view_focused);
+                let context = Context::new(
+                    placeholder_context.view.clone(),
+                    tree,
+                    Rc::clone(action_handler),
+                    placeholder_context.mtm,
+                );
+                let result = context
+                    .tree
+                    .borrow()
+                    .state()
+                    .focus_id()
+                    .map(|id| QueuedEvents::new(Rc::clone(&context), vec![focus_event(id)]));
+                self.state = State::Active(context);
+                result
+            }
+            State::Active(context) => {
+                let mut event_generator = EventGenerator::new(context.clone());
+                let mut tree = context.tree.borrow_mut();
+                tree.update_and_process_changes(update_factory(), &mut event_generator);
+                Some(event_generator.into_result())
+            }
+        }
     }
 
     /// Update the tree state based on whether the window is focused.
     ///
-    /// The caller must call [`QueuedEvents::raise`] on the return value.
-    pub fn update_view_focus_state(&self, is_focused: bool) -> QueuedEvents {
-        let mut event_generator = EventGenerator::new(self.context.clone());
-        let mut tree = self.context.tree.borrow_mut();
-        tree.update_host_focus_state_and_process_changes(is_focused, &mut event_generator);
-        event_generator.into_result()
+    /// If a [`QueuedEvents`] instance is returned, the caller must call
+    /// [`QueuedEvents::raise`] on it.
+    pub fn update_view_focus_state(&mut self, is_focused: bool) -> Option<QueuedEvents> {
+        match &mut self.state {
+            State::Inactive {
+                is_view_focused, ..
+            } => {
+                *is_view_focused = is_focused;
+                None
+            }
+            State::Placeholder {
+                is_view_focused, ..
+            } => {
+                *is_view_focused = is_focused;
+                None
+            }
+            State::Active(context) => {
+                let mut event_generator = EventGenerator::new(context.clone());
+                let mut tree = context.tree.borrow_mut();
+                tree.update_host_focus_state_and_process_changes(is_focused, &mut event_generator);
+                Some(event_generator.into_result())
+            }
+        }
     }
 
-    pub fn view_children(&self) -> *mut NSArray<NSObject> {
-        let tree = self.context.tree.borrow();
+    fn get_or_init_context<H: ActivationHandler + ?Sized>(
+        &mut self,
+        activation_handler: &mut H,
+    ) -> Rc<Context> {
+        match &self.state {
+            State::Inactive {
+                view,
+                is_view_focused,
+                action_handler,
+                mtm,
+            } => match activation_handler.request_initial_tree() {
+                Some(initial_state) => {
+                    let tree = Tree::new(initial_state, *is_view_focused);
+                    let context = Context::new(view.clone(), tree, Rc::clone(action_handler), *mtm);
+                    let result = Rc::clone(&context);
+                    self.state = State::Active(context);
+                    result
+                }
+                None => {
+                    let placeholder_update = TreeUpdate {
+                        nodes: vec![(
+                            PLACEHOLDER_ROOT_ID,
+                            NodeBuilder::new(Role::Window).build(&mut Default::default()),
+                        )],
+                        tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
+                        focus: PLACEHOLDER_ROOT_ID,
+                    };
+                    let placeholder_tree = Tree::new(placeholder_update, false);
+                    let placeholder_context = Context::new(
+                        view.clone(),
+                        placeholder_tree,
+                        Rc::new(ActionHandlerWrapper::new(PlaceholderActionHandler {})),
+                        *mtm,
+                    );
+                    let result = Rc::clone(&placeholder_context);
+                    self.state = State::Placeholder {
+                        placeholder_context,
+                        is_view_focused: *is_view_focused,
+                        action_handler: Rc::clone(action_handler),
+                    };
+                    result
+                }
+            },
+            State::Placeholder {
+                placeholder_context,
+                ..
+            } => Rc::clone(placeholder_context),
+            State::Active(context) => Rc::clone(context),
+        }
+    }
+
+    pub fn view_children<H: ActivationHandler + ?Sized>(
+        &mut self,
+        activation_handler: &mut H,
+    ) -> *mut NSArray<NSObject> {
+        let context = self.get_or_init_context(activation_handler);
+        let tree = context.tree.borrow();
         let state = tree.state();
         let node = state.root();
         let platform_nodes = if filter(&node) == FilterResult::Include {
             vec![Id::into_super(Id::into_super(
-                self.context.get_or_create_platform_node(node.id()),
+                context.get_or_create_platform_node(node.id()),
             ))]
         } else {
             node.filtered_children(filter)
                 .map(|node| {
                     Id::into_super(Id::into_super(
-                        self.context.get_or_create_platform_node(node.id()),
+                        context.get_or_create_platform_node(node.id()),
                     ))
                 })
                 .collect::<Vec<Id<NSObject>>>()
@@ -89,31 +223,51 @@ impl Adapter {
         Id::autorelease_return(array)
     }
 
-    pub fn focus(&self) -> *mut NSObject {
-        let tree = self.context.tree.borrow();
+    pub fn focus<H: ActivationHandler + ?Sized>(
+        &mut self,
+        activation_handler: &mut H,
+    ) -> *mut NSObject {
+        let context = self.get_or_init_context(activation_handler);
+        let tree = context.tree.borrow();
         let state = tree.state();
         if let Some(node) = state.focus() {
             if can_be_focused(&node) {
-                return Id::autorelease_return(self.context.get_or_create_platform_node(node.id()))
+                return Id::autorelease_return(context.get_or_create_platform_node(node.id()))
                     as *mut _;
             }
         }
         null_mut()
     }
 
-    pub fn hit_test(&self, point: NSPoint) -> *mut NSObject {
-        let view = match self.context.view.load() {
+    fn weak_view(&self) -> &WeakId<NSView> {
+        match &self.state {
+            State::Inactive { view, .. } => view,
+            State::Placeholder {
+                placeholder_context,
+                ..
+            } => &placeholder_context.view,
+            State::Active(context) => &context.view,
+        }
+    }
+
+    pub fn hit_test<H: ActivationHandler + ?Sized>(
+        &mut self,
+        point: NSPoint,
+        activation_handler: &mut H,
+    ) -> *mut NSObject {
+        let view = match self.weak_view().load() {
             Some(view) => view,
             None => {
                 return null_mut();
             }
         };
 
-        let tree = self.context.tree.borrow();
+        let context = self.get_or_init_context(activation_handler);
+        let tree = context.tree.borrow();
         let state = tree.state();
         let root = state.root();
         let point = from_ns_point(&view, &root, point);
         let node = root.node_at_point(point, &filter).unwrap_or(root);
-        Id::autorelease_return(self.context.get_or_create_platform_node(node.id())) as *mut _
+        Id::autorelease_return(context.get_or_create_platform_node(node.id())) as *mut _
     }
 }

@@ -3,7 +3,10 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, Live, NodeId, Role, TreeUpdate};
+use accesskit::{
+    ActionHandler, ActionRequest, ActivationHandler, Live, NodeBuilder, NodeId, Role,
+    Tree as TreeData, TreeUpdate,
+};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use std::{collections::HashSet, sync::Arc};
 use windows::Win32::{
@@ -12,17 +15,35 @@ use windows::Win32::{
 };
 
 use crate::{
-    context::Context,
+    context::{ActionHandlerNoMut, ActionHandlerWrapper, Context},
     filters::{filter, filter_detached},
-    init::UiaInitMarker,
     node::{NodeWrapper, PlatformNode},
     util::QueuedEvent,
 };
+
+fn focus_event(context: &Arc<Context>, node_id: NodeId) -> QueuedEvent {
+    let platform_node = PlatformNode::new(context, node_id);
+    let element: IRawElementProviderSimple = platform_node.into();
+    QueuedEvent::Simple {
+        element,
+        event_id: UIA_AutomationFocusChangedEventId,
+    }
+}
 
 struct AdapterChangeHandler<'a> {
     context: &'a Arc<Context>,
     queue: Vec<QueuedEvent>,
     text_changed: HashSet<NodeId>,
+}
+
+impl<'a> AdapterChangeHandler<'a> {
+    fn new(context: &'a Arc<Context>) -> Self {
+        Self {
+            context,
+            queue: Vec::new(),
+            text_changed: HashSet::new(),
+        }
+    }
 }
 
 impl AdapterChangeHandler<'_> {
@@ -122,12 +143,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         _current_state: &TreeState,
     ) {
         if let Some(new_node) = new_node {
-            let platform_node = PlatformNode::new(self.context, new_node.id());
-            let element: IRawElementProviderSimple = platform_node.into();
-            self.queue.push(QueuedEvent::Simple {
-                element,
-                event_id: UIA_AutomationFocusChangedEventId,
-            });
+            self.queue.push(focus_event(self.context, new_node.id()));
         }
     }
 
@@ -138,8 +154,30 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
     // TODO: handle other events (#20)
 }
 
+const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
+
+enum State {
+    Inactive {
+        hwnd: HWND,
+        is_window_focused: bool,
+        action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
+    },
+    Placeholder {
+        placeholder_context: Arc<Context>,
+        is_window_focused: bool,
+        action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
+    },
+    Active(Arc<Context>),
+}
+
+struct PlaceholderActionHandler;
+
+impl ActionHandler for PlaceholderActionHandler {
+    fn do_action(&mut self, _request: ActionRequest) {}
+}
+
 pub struct Adapter {
-    context: Arc<Context>,
+    state: State,
 }
 
 impl Adapter {
@@ -147,64 +185,119 @@ impl Adapter {
     ///
     /// The action handler may or may not be called on the thread that owns
     /// the window.
+    ///
+    /// This must not be called while handling the `WM_GETOBJECT` message,
+    /// because this function must initialize UI Automation before
+    /// that message is handled. This is necessary to prevent a race condition
+    /// that leads to nested `WM_GETOBJECT` messages and, in some cases,
+    /// assistive technologies not realizing that the window natively implements.
+    /// UIA. See [AccessKit issue #37](https://github.com/AccessKit/accesskit/issues/37)
+    /// for more details.
     pub fn new(
         hwnd: HWND,
-        initial_state: TreeUpdate,
         is_window_focused: bool,
-        action_handler: Box<dyn ActionHandler + Send>,
-        _uia_init_marker: UiaInitMarker,
+        action_handler: impl 'static + ActionHandler + Send,
     ) -> Self {
-        let context = Context::new(
+        Self::with_wrapped_action_handler(
             hwnd,
-            Tree::new(initial_state, is_window_focused),
+            is_window_focused,
+            Arc::new(ActionHandlerWrapper::new(action_handler)),
+        )
+    }
+
+    // Currently required by the test infrastructure
+    pub(crate) fn with_wrapped_action_handler(
+        hwnd: HWND,
+        is_window_focused: bool,
+        action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
+    ) -> Self {
+        init_uia();
+
+        let state = State::Inactive {
+            hwnd,
+            is_window_focused,
             action_handler,
-        );
-        Self { context }
+        };
+        Self { state }
     }
 
-    fn change_handler(&self) -> AdapterChangeHandler {
-        AdapterChangeHandler {
-            context: &self.context,
-            queue: Vec::new(),
-            text_changed: HashSet::new(),
-        }
-    }
-
-    /// Apply the provided update to the tree.
+    /// If and only if the tree has been initialized, call the provided function
+    /// and apply the resulting update. Note: If the caller's implementation of
+    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
+    /// the [`TreeUpdate`] returned by the provided function must contain
+    /// a full tree.
     ///
-    /// The caller must call [`QueuedEvents::raise`] on the return value.
+    /// If a [`QueuedEvents`] instance is returned, the caller must call
+    /// [`QueuedEvents::raise`] on it.
     ///
     /// This method may be safely called on any thread, but refer to
     /// [`QueuedEvents::raise`] for restrictions on the context in which
     /// it should be called.
-    pub fn update(&self, update: TreeUpdate) -> QueuedEvents {
-        let mut handler = self.change_handler();
-        let mut tree = self.context.tree.write().unwrap();
-        tree.update_and_process_changes(update, &mut handler);
-        QueuedEvents(handler.queue)
+    pub fn update_if_active(
+        &mut self,
+        update_factory: impl FnOnce() -> TreeUpdate,
+    ) -> Option<QueuedEvents> {
+        match &self.state {
+            State::Inactive { .. } => None,
+            State::Placeholder {
+                placeholder_context,
+                is_window_focused,
+                action_handler,
+            } => {
+                let tree = Tree::new(update_factory(), *is_window_focused);
+                let context =
+                    Context::new(placeholder_context.hwnd, tree, Arc::clone(action_handler));
+                let result = context
+                    .read_tree()
+                    .state()
+                    .focus_id()
+                    .map(|id| QueuedEvents(vec![focus_event(&context, id)]));
+                self.state = State::Active(context);
+                result
+            }
+            State::Active(context) => {
+                let mut handler = AdapterChangeHandler::new(context);
+                let mut tree = context.tree.write().unwrap();
+                tree.update_and_process_changes(update_factory(), &mut handler);
+                Some(QueuedEvents(handler.queue))
+            }
+        }
     }
 
     /// Update the tree state based on whether the window is focused.
     ///
-    /// The caller must call [`QueuedEvents::raise`] on the return value.
+    /// If a [`QueuedEvents`] instance is returned, the caller must call
+    /// [`QueuedEvents::raise`] on it.
     ///
     /// This method may be safely called on any thread, but refer to
     /// [`QueuedEvents::raise`] for restrictions on the context in which
     /// it should be called.
-    pub fn update_window_focus_state(&self, is_focused: bool) -> QueuedEvents {
-        let mut handler = self.change_handler();
-        let mut tree = self.context.tree.write().unwrap();
-        tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
-        QueuedEvents(handler.queue)
+    pub fn update_window_focus_state(&mut self, is_focused: bool) -> Option<QueuedEvents> {
+        match &mut self.state {
+            State::Inactive {
+                is_window_focused, ..
+            } => {
+                *is_window_focused = is_focused;
+                None
+            }
+            State::Placeholder {
+                is_window_focused, ..
+            } => {
+                *is_window_focused = is_focused;
+                None
+            }
+            State::Active(context) => {
+                let mut handler = AdapterChangeHandler::new(context);
+                let mut tree = context.tree.write().unwrap();
+                tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
+                Some(QueuedEvents(handler.queue))
+            }
+        }
     }
 
-    fn root_platform_node(&self) -> PlatformNode {
-        let tree = self.context.read_tree();
-        let node_id = tree.state().root_id();
-        PlatformNode::new(&self.context, node_id)
-    }
-
-    /// Handle the `WM_GETOBJECT` window message.
+    /// Handle the `WM_GETOBJECT` window message. The accessibility tree
+    /// is lazily initialized if necessary using the provided
+    /// [`ActivationHandler`] implementation.
     ///
     /// This returns an `Option` so the caller can pass the message
     /// to `DefWindowProc` if AccessKit decides not to handle it.
@@ -213,16 +306,11 @@ impl Adapter {
     /// message, can be done outside of any lock that the caller might hold
     /// on the `Adapter` or window state, while still abstracting away
     /// the details of that call to UIA.
-    ///
-    /// Callers must avoid a second deadlock scenario. The tree is lazily
-    /// initialized on the first call to this method. So if the caller
-    /// holds a lock while calling this method, it must be careful to ensure
-    /// that running its tree initialization function while holding that lock
-    /// doesn't lead to deadlock.
-    pub fn handle_wm_getobject(
-        &self,
+    pub fn handle_wm_getobject<H: ActivationHandler + ?Sized>(
+        &mut self,
         wparam: WPARAM,
         lparam: LPARAM,
+        activation_handler: &mut H,
     ) -> Option<impl Into<LRESULT>> {
         // Don't bother with MSAA object IDs that are asking for something other
         // than the client area of the window. DefWindowProc can handle those.
@@ -233,14 +321,77 @@ impl Adapter {
             return None;
         }
 
-        let el: IRawElementProviderSimple = self.root_platform_node().into();
+        let (hwnd, platform_node) = match &self.state {
+            State::Inactive {
+                hwnd,
+                is_window_focused,
+                action_handler,
+            } => match activation_handler.request_initial_tree() {
+                Some(initial_state) => {
+                    let hwnd = *hwnd;
+                    let tree = Tree::new(initial_state, *is_window_focused);
+                    let context = Context::new(hwnd, tree, Arc::clone(action_handler));
+                    let node_id = context.read_tree().state().root_id();
+                    let platform_node = PlatformNode::new(&context, node_id);
+                    self.state = State::Active(context);
+                    (hwnd, platform_node)
+                }
+                None => {
+                    let hwnd = *hwnd;
+                    let placeholder_update = TreeUpdate {
+                        nodes: vec![(
+                            PLACEHOLDER_ROOT_ID,
+                            NodeBuilder::new(Role::Window).build(&mut Default::default()),
+                        )],
+                        tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
+                        focus: PLACEHOLDER_ROOT_ID,
+                    };
+                    let placeholder_tree = Tree::new(placeholder_update, false);
+                    let placeholder_context = Context::new(
+                        hwnd,
+                        placeholder_tree,
+                        Arc::new(ActionHandlerWrapper::new(PlaceholderActionHandler {})),
+                    );
+                    let platform_node =
+                        PlatformNode::new(&placeholder_context, PLACEHOLDER_ROOT_ID);
+                    self.state = State::Placeholder {
+                        placeholder_context,
+                        is_window_focused: *is_window_focused,
+                        action_handler: Arc::clone(action_handler),
+                    };
+                    (hwnd, platform_node)
+                }
+            },
+            State::Placeholder {
+                placeholder_context,
+                ..
+            } => (
+                placeholder_context.hwnd,
+                PlatformNode::new(placeholder_context, PLACEHOLDER_ROOT_ID),
+            ),
+            State::Active(context) => {
+                let node_id = context.read_tree().state().root_id();
+                (context.hwnd, PlatformNode::new(context, node_id))
+            }
+        };
+        let el: IRawElementProviderSimple = platform_node.into();
         Some(WmGetObjectResult {
-            hwnd: self.context.hwnd,
+            hwnd,
             wparam,
             lparam,
             el,
         })
     }
+}
+
+fn init_uia() {
+    // `UiaLookupId` is a cheap way of forcing UIA to initialize itself.
+    unsafe {
+        UiaLookupId(
+            AutomationIdentifierType_Property,
+            &ControlType_Property_GUID,
+        )
+    };
 }
 
 #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]

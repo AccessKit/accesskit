@@ -12,7 +12,7 @@ use std::sync::{
 };
 
 use crate::{
-    context::{AppContext, Context},
+    context::{ActionHandlerNoMut, ActionHandlerWrapper, AppContext, Context},
     filters::{filter, filter_detached},
     node::{NodeIdOrRoot, NodeWrapper, PlatformNode, PlatformRoot},
     util::WindowBounds,
@@ -120,17 +120,10 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
 
 static NEXT_ADAPTER_ID: AtomicUsize = AtomicUsize::new(0);
 
-pub struct AdapterIdToken(usize);
-
-impl AdapterIdToken {
-    pub fn next() -> Self {
-        let id = NEXT_ADAPTER_ID.fetch_add(1, Ordering::Relaxed);
-        Self(id)
-    }
-
-    pub fn id(&self) -> usize {
-        self.0
-    }
+/// If you use this function, you must ensure that only one adapter at a time
+/// has a given ID.
+pub fn next_adapter_id() -> usize {
+    NEXT_ADAPTER_ID.fetch_add(1, Ordering::Relaxed)
 }
 
 pub struct Adapter {
@@ -142,15 +135,15 @@ pub struct Adapter {
 impl Adapter {
     pub fn new(
         app_context: &Arc<RwLock<AppContext>>,
-        callback: Box<dyn AdapterCallback + Send + Sync>,
+        callback: impl 'static + AdapterCallback + Send + Sync,
         initial_state: TreeUpdate,
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
-        action_handler: Box<dyn ActionHandler + Send>,
+        action_handler: impl 'static + ActionHandler + Send,
     ) -> Self {
-        let id_token = AdapterIdToken::next();
+        let id = next_adapter_id();
         Self::with_id(
-            id_token,
+            id,
             app_context,
             callback,
             initial_state,
@@ -161,24 +154,49 @@ impl Adapter {
     }
 
     pub fn with_id(
-        id_token: AdapterIdToken,
+        id: usize,
         app_context: &Arc<RwLock<AppContext>>,
-        callback: Box<dyn AdapterCallback + Send + Sync>,
+        callback: impl 'static + AdapterCallback + Send + Sync,
         initial_state: TreeUpdate,
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
-        action_handler: Box<dyn ActionHandler + Send>,
+        action_handler: impl 'static + ActionHandler + Send,
     ) -> Self {
-        let id = id_token.0;
+        Self::with_wrapped_action_handler(
+            id,
+            app_context,
+            callback,
+            initial_state,
+            is_window_focused,
+            root_window_bounds,
+            Arc::new(ActionHandlerWrapper::new(action_handler)),
+        )
+    }
+
+    /// This is an implementation detail of `accesskit_unix`, required for
+    /// robust state transitions with minimal overhead.
+    pub fn with_wrapped_action_handler(
+        id: usize,
+        app_context: &Arc<RwLock<AppContext>>,
+        callback: impl 'static + AdapterCallback + Send + Sync,
+        initial_state: TreeUpdate,
+        is_window_focused: bool,
+        root_window_bounds: WindowBounds,
+        action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
+    ) -> Self {
         let tree = Tree::new(initial_state, is_window_focused);
+        let focus_id = tree.state().focus_id();
         let context = Context::new(app_context, tree, action_handler, root_window_bounds);
         context.write_app_context().push_adapter(id, &context);
         let adapter = Self {
             id,
-            callback,
+            callback: Box::new(callback),
             context,
         };
         adapter.register_tree();
+        if let Some(id) = focus_id {
+            adapter.emit_object_event(id, ObjectEvent::StateChanged(State::Focused, true));
+        }
         adapter
     }
 
@@ -252,18 +270,18 @@ impl Adapter {
             .emit_event(self, Event::Object { target, event });
     }
 
-    pub fn set_root_window_bounds(&self, new_bounds: WindowBounds) {
+    pub fn set_root_window_bounds(&mut self, new_bounds: WindowBounds) {
         let mut bounds = self.context.root_window_bounds.write().unwrap();
         *bounds = new_bounds;
     }
 
-    pub fn update(&self, update: TreeUpdate) {
+    pub fn update(&mut self, update: TreeUpdate) {
         let mut handler = AdapterChangeHandler { adapter: self };
         let mut tree = self.context.tree.write().unwrap();
         tree.update_and_process_changes(update, &mut handler);
     }
 
-    pub fn update_window_focus_state(&self, is_focused: bool) {
+    pub fn update_window_focus_state(&mut self, is_focused: bool) {
         let mut handler = AdapterChangeHandler { adapter: self };
         let mut tree = self.context.tree.write().unwrap();
         tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
@@ -304,6 +322,20 @@ impl Adapter {
 
     pub fn id(&self) -> usize {
         self.id
+    }
+
+    pub fn is_window_focused(&self) -> bool {
+        self.context.read_tree().state().is_host_focused()
+    }
+
+    pub fn root_window_bounds(&self) -> WindowBounds {
+        *self.context.read_root_window_bounds()
+    }
+
+    /// This is an implementation detail of `accesskit_unix`, required for
+    /// robust state transitions with minimal overhead.
+    pub fn wrapped_action_handler(&self) -> Arc<dyn ActionHandlerNoMut + Send + Sync> {
+        Arc::clone(&self.context.action_handler)
     }
 }
 

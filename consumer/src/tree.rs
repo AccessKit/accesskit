@@ -251,6 +251,10 @@ impl State {
         self.node_by_id(self.root_id()).unwrap()
     }
 
+    pub fn is_host_focused(&self) -> bool {
+        self.is_host_focused
+    }
+
     pub fn focus_id(&self) -> Option<NodeId> {
         self.is_host_focused.then_some(self.focus)
     }
