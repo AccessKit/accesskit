@@ -98,12 +98,6 @@ pub(crate) trait BoxCastPtr: CastPtr + Sized {
     fn to_nullable_mut_ptr(src: Option<Self::RustType>) -> *mut Self {
         src.map_or_else(std::ptr::null_mut, Self::to_mut_ptr)
     }
-
-    fn set_mut_ptr(dst: *mut *mut Self, src: Self::RustType) {
-        unsafe {
-            *dst = Self::to_mut_ptr(src);
-        }
-    }
 }
 
 /// Turn a raw const pointer into a reference. This is a generic function
