@@ -8,6 +8,10 @@ set_property(
     TARGET accesskit-static
     PROPERTY IMPORTED_LOCATION "${_accesskit_static_lib}"
 )
+set_property(
+    TARGET accesskit-static
+    PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ACCESSKIT_INCLUDE_DIR}"
+)
 if (_accesskit_os STREQUAL "macos")
     target_link_libraries(accesskit-static INTERFACE "-framework AppKit" "-framework Foundation" "-framework CoreFoundation" objc c++)
 elseif (_accesskit_os STREQUAL "linux")
@@ -34,6 +38,10 @@ endif()
 set_property(
     TARGET accesskit-shared
     PROPERTY IMPORTED_LOCATION "${ACCESSKIT_LIBRARIES_DIR}/shared/${_accesskit_shared_lib}"
+)
+set_property(
+    TARGET accesskit-shared
+    PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ACCESSKIT_INCLUDE_DIR}"
 )
 
 if (BUILD_SHARED_LIBS)
