@@ -16,12 +16,6 @@ You can then require AccessKit as a dependency by adding this to your `CMakeList
 find_package(ACCESSKIT REQUIRED)
 ```
 
-The headers can be added like so:
-
-```cmake
-include_directories(YourProject ${ACCESSKIT_INCLUDE_DIR})
-```
-
 Finally, link the library to your executable:
 
 ```cmake
