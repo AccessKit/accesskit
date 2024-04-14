@@ -54,6 +54,34 @@
   * dependencies
     * accesskit_windows bumped from 0.16.3 to 0.16.4
 
+## [0.8.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.7.7...accesskit_c-v0.8.0) (2024-04-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* New approach to lazy initialization ([#375](https://github.com/AccessKit/accesskit/issues/375))
+
+### Bug Fixes
+
+* Remove unused `BoxCastPtr::set_mut_ptr` in the C bindings ([#378](https://github.com/AccessKit/accesskit/issues/378)) ([3db0fdb](https://github.com/AccessKit/accesskit/commit/3db0fdb6fcd0078c5480fb3a5bf7d5332aad82e5))
+* Set INTERFACE_INCLUDE_DIRECTORIES in CMake config ([#379](https://github.com/AccessKit/accesskit/issues/379)) ([2b52701](https://github.com/AccessKit/accesskit/commit/2b52701995816ba45dc9d91e401a6548e77bbb2a))
+* Update Corrosion to 0.4.7 ([#380](https://github.com/AccessKit/accesskit/issues/380)) ([0efcfb1](https://github.com/AccessKit/accesskit/commit/0efcfb140cef4c98ccc943f0ab692045d49bbb40))
+
+
+### Code Refactoring
+
+* New approach to lazy initialization ([#375](https://github.com/AccessKit/accesskit/issues/375)) ([9baebdc](https://github.com/AccessKit/accesskit/commit/9baebdceed7300389b6768815d7ae48f1ce401e4))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.12.3 to 0.13.0
+    * accesskit_windows bumped from 0.16.4 to 0.17.0
+    * accesskit_macos bumped from 0.11.1 to 0.12.0
+    * accesskit_unix bumped from 0.7.5 to 0.8.0
+
 ## [0.7.5](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.7.4...accesskit_c-v0.7.5) (2024-03-07)
 
 
