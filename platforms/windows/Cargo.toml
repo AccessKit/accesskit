@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_windows"
-version = "0.16.4"
+version = "0.17.0"
 authors.workspace = true
 license.workspace = true
 description = "AccessKit UI accessibility infrastructure: Windows adapter"
@@ -12,8 +12,8 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-accesskit = { version = "0.12.3", path = "../../common" }
-accesskit_consumer = { version = "0.17.1", path = "../../consumer" }
+accesskit = { version = "0.13.0", path = "../../common" }
+accesskit_consumer = { version = "0.18.0", path = "../../consumer" }
 paste = "1.0"
 static_assertions = "1.1.0"
 

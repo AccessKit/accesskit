@@ -23,6 +23,30 @@
     * accesskit bumped from 0.12.2 to 0.12.3
     * accesskit_consumer bumped from 0.17.0 to 0.17.1
 
+## [0.12.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.11.1...accesskit_macos-v0.12.0) (2024-04-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* New approach to lazy initialization ([#375](https://github.com/AccessKit/accesskit/issues/375))
+
+### Bug Fixes
+
+* Fix new compiler warning in Rust 1.77 ([#376](https://github.com/AccessKit/accesskit/issues/376)) ([1de7c63](https://github.com/AccessKit/accesskit/commit/1de7c63e7db12bc7eda57a191e913fef0e572f43))
+
+
+### Code Refactoring
+
+* New approach to lazy initialization ([#375](https://github.com/AccessKit/accesskit/issues/375)) ([9baebdc](https://github.com/AccessKit/accesskit/commit/9baebdceed7300389b6768815d7ae48f1ce401e4))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.12.3 to 0.13.0
+    * accesskit_consumer bumped from 0.17.1 to 0.18.0
+
 ## [0.11.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.10.1...accesskit_macos-v0.11.0) (2024-01-03)
 
 

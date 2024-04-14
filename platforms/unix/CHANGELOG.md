@@ -42,6 +42,25 @@
   * dependencies
     * accesskit_atspi_common bumped from 0.1.2 to 0.2.0
 
+## [0.8.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.7.5...accesskit_unix-v0.8.0) (2024-04-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* New approach to lazy initialization ([#375](https://github.com/AccessKit/accesskit/issues/375))
+
+### Code Refactoring
+
+* New approach to lazy initialization ([#375](https://github.com/AccessKit/accesskit/issues/375)) ([9baebdc](https://github.com/AccessKit/accesskit/commit/9baebdceed7300389b6768815d7ae48f1ce401e4))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.12.3 to 0.13.0
+    * accesskit_atspi_common bumped from 0.2.0 to 0.3.0
+
 ## [0.7.2](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.7.1...accesskit_unix-v0.7.2) (2024-02-24)
 
 

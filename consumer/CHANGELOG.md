@@ -20,6 +20,24 @@
   * dependencies
     * accesskit bumped from 0.12.2 to 0.12.3
 
+## [0.18.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.17.1...accesskit_consumer-v0.18.0) (2024-04-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* New approach to lazy initialization ([#375](https://github.com/AccessKit/accesskit/issues/375))
+
+### Code Refactoring
+
+* New approach to lazy initialization ([#375](https://github.com/AccessKit/accesskit/issues/375)) ([9baebdc](https://github.com/AccessKit/accesskit/commit/9baebdceed7300389b6768815d7ae48f1ce401e4))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.12.3 to 0.13.0
+
 ## [0.17.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.16.1...accesskit_consumer-v0.17.0) (2024-01-03)
 
 
