@@ -277,6 +277,13 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
+    fn description(&self) -> Option<String> {
+        match self {
+            Self::Node(node) => node.description(),
+            Self::DetachedNode(node) => node.description(),
+        }
+    }
+
     fn is_content_element(&self) -> bool {
         let result = match self {
             Self::Node(node) => filter(node),
@@ -847,6 +854,7 @@ properties! {
     (ControlType, control_type),
     (LocalizedControlType, localized_control_type),
     (Name, name),
+    (FullDescription, description),
     (IsContentElement, is_content_element),
     (IsControlElement, is_content_element),
     (IsEnabled, is_enabled),
