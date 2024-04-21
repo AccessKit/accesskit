@@ -51,11 +51,8 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
-    pub fn description(&self) -> Option<String> {
-        match self {
-            Self::Node(node) => node.description(),
-            Self::DetachedNode(node) => node.description(),
-        }
+    pub fn description(&self) -> String {
+        String::new()
     }
 
     pub fn parent_id(&self) -> Option<NodeId> {
@@ -514,9 +511,7 @@ impl<'a> NodeWrapper<'a> {
         if description != old.description() {
             adapter.emit_object_event(
                 self.id(),
-                ObjectEvent::PropertyChanged(Property::Description(
-                    description.unwrap_or_default(),
-                )),
+                ObjectEvent::PropertyChanged(Property::Description(description)),
             );
         }
         let parent_id = self.parent_id();
@@ -673,7 +668,7 @@ impl PlatformNode {
     pub fn description(&self) -> Result<String> {
         self.resolve(|node| {
             let wrapper = NodeWrapper::Node(&node);
-            Ok(wrapper.description().unwrap_or_default())
+            Ok(wrapper.description())
         })
     }
 
