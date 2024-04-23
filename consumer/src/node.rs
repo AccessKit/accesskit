@@ -51,6 +51,7 @@ impl<'a> Node<'a> {
             is_focused: self.is_focused(),
             is_root: self.is_root(),
             name: self.name(),
+            description: self.description(),
             value: self.value(),
             live: self.live(),
             supports_text_ranges: self.supports_text_ranges(),
@@ -541,6 +542,12 @@ impl<'a> Node<'a> {
         }
     }
 
+    pub fn description(&self) -> Option<String> {
+        self.data()
+            .description()
+            .map(|description| description.to_string())
+    }
+
     pub fn value(&self) -> Option<String> {
         if let Some(value) = &self.data().value() {
             Some(value.to_string())
@@ -696,6 +703,7 @@ pub struct DetachedNode {
     pub(crate) is_focused: bool,
     pub(crate) is_root: bool,
     pub(crate) name: Option<String>,
+    pub(crate) description: Option<String>,
     pub(crate) value: Option<String>,
     pub(crate) live: Live,
     pub(crate) supports_text_ranges: bool,
@@ -712,6 +720,10 @@ impl DetachedNode {
 
     pub fn name(&self) -> Option<String> {
         self.name.clone()
+    }
+
+    pub fn description(&self) -> Option<String> {
+        self.description.clone()
     }
 
     pub fn value(&self) -> Option<String> {

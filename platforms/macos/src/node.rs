@@ -278,7 +278,7 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
-    // TODO: implement proper logic for title, description, and value;
+    // TODO: implement proper logic for title and value;
     // see Chromium's content/browser/accessibility/browser_accessibility_cocoa.mm
     // and figure out how this is different in the macOS 10.10+ protocol
 
@@ -289,6 +289,13 @@ impl<'a> NodeWrapper<'a> {
             return None;
         }
         self.name()
+    }
+
+    pub(crate) fn description(&self) -> Option<String> {
+        match self {
+            Self::Node(node) => node.description(),
+            Self::DetachedNode(node) => node.description(),
+        }
     }
 
     pub(crate) fn value(&self) -> Option<Value> {
@@ -416,6 +423,15 @@ declare_class!(
             self.resolve(|node| {
                 let wrapper = NodeWrapper::Node(node);
                 wrapper.title().map(|title| NSString::from_str(&title))
+            })
+            .flatten()
+        }
+
+        #[method_id(accessibilityHelp)]
+        fn description(&self) -> Option<Id<NSString>> {
+            self.resolve(|node| {
+                let wrapper = NodeWrapper::Node(node);
+                wrapper.description().map(|description| NSString::from_str(&description))
             })
             .flatten()
         }
@@ -758,6 +774,7 @@ declare_class!(
                     || selector == sel!(accessibilityRole)
                     || selector == sel!(accessibilityRoleDescription)
                     || selector == sel!(accessibilityTitle)
+                    || selector == sel!(accessibilityHelp)
                     || selector == sel!(accessibilityValue)
                     || selector == sel!(accessibilityMinValue)
                     || selector == sel!(accessibilityMaxValue)

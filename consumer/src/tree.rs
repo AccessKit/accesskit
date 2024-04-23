@@ -184,6 +184,7 @@ impl State {
                             is_focused: old_focus_id == Some(id),
                             is_root: old_root_id == id,
                             name: None,
+                            description: None,
                             value: None,
                             live: Live::Off,
                             supports_text_ranges: false,
