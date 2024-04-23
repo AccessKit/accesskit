@@ -51,7 +51,7 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
-    pub fn description(&self) -> Option<String> {
+    pub(crate) fn description(&self) -> Option<String> {
         match self {
             Self::Node(node) => node.description(),
             Self::DetachedNode(node) => node.description(),
