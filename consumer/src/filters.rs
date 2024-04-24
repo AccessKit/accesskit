@@ -20,7 +20,10 @@ fn common_filter_base(node: &NodeState) -> FilterResult {
     }
 
     let role = node.role();
-    if role == Role::GenericContainer || role == Role::InlineTextBox {
+    if matches!(
+        role,
+        Role::AuthorControlledParent | Role::GenericContainer | Role::InlineTextBox
+    ) {
         return FilterResult::ExcludeNode;
     }
 

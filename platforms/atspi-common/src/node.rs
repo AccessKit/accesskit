@@ -167,6 +167,7 @@ impl<'a> NodeWrapper<'a> {
             Role::Form => AtspiRole::Form,
             Role::Figure | Role::Feed => AtspiRole::Panel,
             Role::GenericContainer
+            | Role::AuthorControlledParent
             | Role::FooterAsNonLandmark
             | Role::HeaderAsNonLandmark
             | Role::Ruby => AtspiRole::Section,

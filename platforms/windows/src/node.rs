@@ -114,6 +114,7 @@ impl<'a> NodeWrapper<'a> {
             Role::Application => UIA_PaneControlTypeId,
             Role::Article => UIA_GroupControlTypeId,
             Role::Audio => UIA_GroupControlTypeId,
+            Role::AuthorControlledParent => UIA_GroupControlTypeId,
             Role::Banner => UIA_GroupControlTypeId,
             Role::Blockquote => UIA_GroupControlTypeId,
             Role::Canvas => UIA_ImageControlTypeId,

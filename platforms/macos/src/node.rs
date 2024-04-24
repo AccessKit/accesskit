@@ -85,6 +85,7 @@ fn ns_role(node_state: &NodeState) -> &'static NSAccessibilityRole {
             Role::Application => NSAccessibilityGroupRole,
             Role::Article => NSAccessibilityGroupRole,
             Role::Audio => NSAccessibilityGroupRole,
+            Role::AuthorControlledParent => NSAccessibilityUnknownRole,
             Role::Banner => NSAccessibilityGroupRole,
             Role::Blockquote => NSAccessibilityGroupRole,
             Role::Canvas => NSAccessibilityImageRole,

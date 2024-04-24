@@ -113,6 +113,16 @@ pub enum Role {
     Application,
     Article,
     Audio,
+    /// This role is for cases where a specialized widget, such as a menu
+    /// button, merely serves as a parent for a more generic widget, such as
+    /// a toggle button, which is the actual focusable widget, but the parent
+    /// widget is the one where the application developer sets the essential
+    /// name and description properties, or their corresponding relations.
+    /// When this role is used, this node is filtered out of the platform
+    /// accessibility tree, but the child inherits this node's name and
+    /// description (or their corresponding relations) if it doesn't
+    /// already have them set.
+    AuthorControlledParent,
     Banner,
     Blockquote,
     Canvas,

@@ -8,7 +8,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use std::{iter::FusedIterator, ops::Deref};
+use std::{
+    iter::{once, FusedIterator},
+    ops::Deref,
+};
 
 use accesskit::{
     Action, Affine, Checked, DefaultActionVerb, Live, Node as NodeData, NodeId, Point, Rect, Role,
@@ -518,15 +521,27 @@ impl<'a> Node<'a> {
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
         let explicit = &self.state.data.labelled_by();
-        if explicit.is_empty()
-            && matches!(self.role(), Role::Button | Role::DefaultButton | Role::Link)
-        {
-            LabelledBy::FromDescendants(FilteredChildren::new(*self, &descendant_label_filter))
-        } else {
-            LabelledBy::Explicit {
-                ids: explicit.iter(),
-                tree_state: self.tree_state,
+        if explicit.is_empty() && self.data.name().is_none() {
+            if matches!(self.role(), Role::Button | Role::DefaultButton | Role::Link)
+                && self
+                    .filtered_children(&descendant_label_filter)
+                    .next()
+                    .is_some()
+            {
+                return LabelledBy::FromDescendants(FilteredChildren::new(
+                    *self,
+                    &descendant_label_filter,
+                ));
             }
+            if let Some(parent) = self.parent() {
+                if parent.role() == Role::AuthorControlledParent {
+                    return LabelledBy::Single(once(parent));
+                }
+            }
+        }
+        LabelledBy::Explicit {
+            ids: explicit.iter(),
+            tree_state: self.tree_state,
         }
     }
 
@@ -1041,6 +1056,36 @@ mod tests {
     }
 
     #[test]
+    // Like the previous test, but adds an AuthorControlledParent node,
+    // to make sure we gracefully handle the too-common case where the
+    // application developer doesn't actually provide a label.
+    fn no_name_or_labelled_by_with_author_controlled_parent() {
+        let mut classes = NodeClassSet::new();
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_children(vec![NodeId(1)]);
+                    builder.build(&mut classes)
+                }),
+                (NodeId(1), {
+                    let mut builder = NodeBuilder::new(Role::AuthorControlledParent);
+                    builder.set_children(vec![NodeId(2)]);
+                    builder.build(&mut classes)
+                }),
+                (
+                    NodeId(2),
+                    NodeBuilder::new(Role::Button).build(&mut classes),
+                ),
+            ],
+            tree: Some(Tree::new(NodeId(0))),
+            focus: NodeId(0),
+        };
+        let tree = crate::Tree::new(update, false);
+        assert_eq!(None, tree.state().node_by_id(NodeId(2)).unwrap().name());
+    }
+
+    #[test]
     fn name_from_labelled_by() {
         // The following mock UI probably isn't very localization-friendly,
         // but it's good for this test.
@@ -1140,6 +1185,116 @@ mod tests {
         assert_eq!(
             Some(LINK_LABEL.into()),
             tree.state().node_by_id(NodeId(3)).unwrap().name()
+        );
+    }
+
+    #[test]
+    fn name_from_author_controlled_parent() {
+        const MENU_BUTTON_LABEL: &str = "Primary menu";
+
+        let mut classes = NodeClassSet::new();
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_children(vec![NodeId(1)]);
+                    builder.build(&mut classes)
+                }),
+                (NodeId(1), {
+                    let mut builder = NodeBuilder::new(Role::AuthorControlledParent);
+                    builder.push_child(NodeId(2));
+                    builder.set_name(MENU_BUTTON_LABEL);
+                    builder.build(&mut classes)
+                }),
+                (NodeId(2), {
+                    let builder = NodeBuilder::new(Role::Button);
+                    builder.build(&mut classes)
+                }),
+            ],
+            tree: Some(Tree::new(NodeId(0))),
+            focus: NodeId(0),
+        };
+        let tree = crate::Tree::new(update, false);
+        assert_eq!(
+            Some(MENU_BUTTON_LABEL.into()),
+            tree.state().node_by_id(NodeId(2)).unwrap().name()
+        );
+    }
+
+    #[test]
+    // Verifies that even with an AuthorControlledParent node, the name on
+    // the child, if any, has priority.
+    fn name_from_child_of_author_controlled_parent() {
+        const MENU_BUTTON_LABEL: &str = "Primary menu";
+
+        let mut classes = NodeClassSet::new();
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_children(vec![NodeId(1)]);
+                    builder.build(&mut classes)
+                }),
+                (NodeId(1), {
+                    let mut builder = NodeBuilder::new(Role::AuthorControlledParent);
+                    builder.push_child(NodeId(2));
+                    builder.set_name("should be ignored");
+                    builder.build(&mut classes)
+                }),
+                (NodeId(2), {
+                    let mut builder = NodeBuilder::new(Role::Button);
+                    builder.set_name(MENU_BUTTON_LABEL);
+                    builder.build(&mut classes)
+                }),
+            ],
+            tree: Some(Tree::new(NodeId(0))),
+            focus: NodeId(0),
+        };
+        let tree = crate::Tree::new(update, false);
+        assert_eq!(
+            Some(MENU_BUTTON_LABEL.into()),
+            tree.state().node_by_id(NodeId(2)).unwrap().name()
+        );
+    }
+
+    #[test]
+    // Like the previous test, but should pull the name from the static text
+    // under the child button.
+    fn name_from_content_in_child_of_author_controlled_parent() {
+        const MENU_BUTTON_LABEL: &str = "Primary menu";
+
+        let mut classes = NodeClassSet::new();
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_children(vec![NodeId(1)]);
+                    builder.build(&mut classes)
+                }),
+                (NodeId(1), {
+                    let mut builder = NodeBuilder::new(Role::AuthorControlledParent);
+                    builder.push_child(NodeId(2));
+                    builder.set_name("should be ignored");
+                    builder.build(&mut classes)
+                }),
+                (NodeId(2), {
+                    let mut builder = NodeBuilder::new(Role::Button);
+                    builder.push_child(NodeId(3));
+                    builder.build(&mut classes)
+                }),
+                (NodeId(3), {
+                    let mut builder = NodeBuilder::new(Role::StaticText);
+                    builder.set_name(MENU_BUTTON_LABEL);
+                    builder.build(&mut classes)
+                }),
+            ],
+            tree: Some(Tree::new(NodeId(0))),
+            focus: NodeId(0),
+        };
+        let tree = crate::Tree::new(update, false);
+        assert_eq!(
+            Some(MENU_BUTTON_LABEL.into()),
+            tree.state().node_by_id(NodeId(2)).unwrap().name()
         );
     }
 }
