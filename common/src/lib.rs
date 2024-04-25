@@ -91,7 +91,6 @@ pub enum Role {
     LayoutTableRow,
     LayoutTable,
     Switch,
-    ToggleButton,
     Menu,
 
     MultilineTextInput,
@@ -501,7 +500,7 @@ pub enum Invalid {
     pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
 )]
 #[repr(u8)]
-pub enum Checked {
+pub enum Toggled {
     False,
     True,
     Mixed,
@@ -817,7 +816,7 @@ enum PropertyValue {
     CoordSlice(Box<[f32]>),
     Bool(bool),
     Invalid(Invalid),
-    Checked(Checked),
+    Toggled(Toggled),
     Live(Live),
     DefaultActionVerb(DefaultActionVerb),
     TextDirection(TextDirection),
@@ -931,7 +930,7 @@ enum PropertyId {
 
     // Unique enums
     Invalid,
-    Checked,
+    Toggled,
     Live,
     DefaultActionVerb,
     TextDirection,
@@ -1733,7 +1732,7 @@ bool_property_methods! {
 
 unique_enum_property_methods! {
     (Invalid, invalid, set_invalid, clear_invalid),
-    (Checked, checked, set_checked, clear_checked),
+    (Toggled, toggled, set_toggled, clear_toggled),
     (Live, live, set_live, clear_live),
     (DefaultActionVerb, default_action_verb, set_default_action_verb, clear_default_action_verb),
     (TextDirection, text_direction, set_text_direction, clear_text_direction),
@@ -1883,7 +1882,7 @@ impl Serialize for Node {
                 CoordSlice,
                 Bool,
                 Invalid,
-                Checked,
+                Toggled,
                 Live,
                 DefaultActionVerb,
                 TextDirection,
@@ -2028,7 +2027,7 @@ impl<'de> Visitor<'de> for NodeVisitor {
                             Selected
                         },
                         Invalid { Invalid },
-                        Checked { Checked },
+                        Toggled { Toggled },
                         Live { Live },
                         DefaultActionVerb { DefaultActionVerb },
                         TextDirection { TextDirection },
@@ -2214,7 +2213,7 @@ impl JsonSchema for Node {
                 Selected
             },
             Invalid { Invalid },
-            Checked { Checked },
+            Toggled { Toggled },
             Live { Live },
             DefaultActionVerb { DefaultActionVerb },
             TextDirection { TextDirection },

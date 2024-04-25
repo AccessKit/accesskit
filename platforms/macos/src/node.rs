@@ -10,7 +10,7 @@
 
 #![allow(non_upper_case_globals)]
 
-use accesskit::{Action, ActionData, ActionRequest, Checked, NodeId, Role, TextSelection};
+use accesskit::{Action, ActionData, ActionRequest, NodeId, Role, TextSelection, Toggled};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState};
 use objc2::{
     declare_class, msg_send_id,
@@ -57,7 +57,14 @@ fn ns_role(node_state: &NodeState) -> &'static NSAccessibilityRole {
             | Role::PasswordInput
             | Role::PhoneNumberInput
             | Role::UrlInput => NSAccessibilityTextFieldRole,
-            Role::Button | Role::DefaultButton => NSAccessibilityButtonRole,
+            Role::Button => {
+                if node_state.toggled().is_some() {
+                    NSAccessibilityCheckBoxRole
+                } else {
+                    NSAccessibilityButtonRole
+                }
+            }
+            Role::DefaultButton => NSAccessibilityButtonRole,
             Role::Pane => NSAccessibilityUnknownRole,
             Role::RowHeader => NSAccessibilityCellRole,
             Role::ColumnHeader => NSAccessibilityCellRole,
@@ -70,7 +77,6 @@ fn ns_role(node_state: &NodeState) -> &'static NSAccessibilityRole {
             Role::LayoutTableRow => NSAccessibilityGroupRole,
             Role::LayoutTable => NSAccessibilityGroupRole,
             Role::Switch => NSAccessibilityCheckBoxRole,
-            Role::ToggleButton => NSAccessibilityCheckBoxRole,
             Role::Menu => NSAccessibilityMenuRole,
             Role::MultilineTextInput => NSAccessibilityTextAreaRole,
             Role::DateInput | Role::DateTimeInput | Role::WeekInput | Role::MonthInput => {
@@ -298,8 +304,8 @@ impl<'a> NodeWrapper<'a> {
 
     pub(crate) fn value(&self) -> Option<Value> {
         let state = self.node_state();
-        if let Some(checked) = state.checked() {
-            return Some(Value::Bool(checked != Checked::False));
+        if let Some(toggled) = state.toggled() {
+            return Some(Value::Bool(toggled != Toggled::False));
         }
         if let Some(value) = self.node_value() {
             return Some(Value::String(value));

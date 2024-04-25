@@ -9,8 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionRequest, Affine, Checked, DefaultActionVerb, Live, NodeId, Point,
-    Rect, Role,
+    Action, ActionData, ActionRequest, Affine, DefaultActionVerb, Live, NodeId, Point, Rect, Role,
+    Toggled,
 };
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
 use atspi_common::{
@@ -100,7 +100,14 @@ impl<'a> NodeWrapper<'a> {
             Role::Banner | Role::Header => AtspiRole::Landmark,
             Role::Blockquote => AtspiRole::BlockQuote,
             Role::Caret => AtspiRole::Unknown,
-            Role::Button | Role::DefaultButton => AtspiRole::PushButton,
+            Role::Button => {
+                if self.node_state().toggled().is_some() {
+                    AtspiRole::ToggleButton
+                } else {
+                    AtspiRole::PushButton
+                }
+            }
+            Role::DefaultButton => AtspiRole::PushButton,
             Role::Canvas => AtspiRole::Canvas,
             Role::Caption => AtspiRole::Caption,
             Role::Cell => AtspiRole::TableCell,
@@ -279,7 +286,6 @@ impl<'a> NodeWrapper<'a> {
                 AtspiRole::Static
             }
             Role::Timer => AtspiRole::Timer,
-            Role::ToggleButton => AtspiRole::ToggleButton,
             Role::Toolbar => AtspiRole::ToolBar,
             Role::Tooltip => AtspiRole::ToolTip,
             Role::Tree => AtspiRole::Tree,
@@ -324,7 +330,7 @@ impl<'a> NodeWrapper<'a> {
         if filter_result == FilterResult::Include {
             atspi_state.insert(State::Visible | State::Showing);
         }
-        if atspi_role != AtspiRole::ToggleButton && state.checked().is_some() {
+        if atspi_role != AtspiRole::ToggleButton && state.toggled().is_some() {
             atspi_state.insert(State::Checkable);
         }
         if let Some(selected) = state.is_selected() {
@@ -348,13 +354,13 @@ impl<'a> NodeWrapper<'a> {
             atspi_state.insert(State::Indeterminate);
         }
 
-        // Checked state
-        match state.checked() {
-            Some(Checked::Mixed) => atspi_state.insert(State::Indeterminate),
-            Some(Checked::True) if atspi_role == AtspiRole::ToggleButton => {
+        // Toggled state
+        match state.toggled() {
+            Some(Toggled::Mixed) => atspi_state.insert(State::Indeterminate),
+            Some(Toggled::True) if atspi_role == AtspiRole::ToggleButton => {
                 atspi_state.insert(State::Pressed)
             }
-            Some(Checked::True) => atspi_state.insert(State::Checked),
+            Some(Toggled::True) => atspi_state.insert(State::Checked),
             _ => {}
         }
 

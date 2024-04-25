@@ -11,8 +11,8 @@
 use std::{iter::FusedIterator, ops::Deref};
 
 use accesskit::{
-    Action, Affine, Checked, DefaultActionVerb, Live, Node as NodeData, NodeId, Point, Rect, Role,
-    TextSelection,
+    Action, Affine, DefaultActionVerb, Live, Node as NodeData, NodeId, Point, Rect, Role,
+    TextSelection, Toggled,
 };
 
 use crate::filters::FilterResult;
@@ -384,8 +384,8 @@ impl NodeState {
         self.is_read_only() || self.is_disabled()
     }
 
-    pub fn checked(&self) -> Option<Checked> {
-        self.data().checked()
+    pub fn toggled(&self) -> Option<Toggled> {
+        self.data().toggled()
     }
 
     pub fn numeric_value(&self) -> Option<f64> {
@@ -461,7 +461,7 @@ impl NodeState {
     }
 
     pub fn supports_toggle(&self) -> bool {
-        self.checked().is_some()
+        self.toggled().is_some()
     }
 
     pub fn supports_expand_collapse(&self) -> bool {
@@ -580,7 +580,6 @@ impl NodeState {
                     | Role::RadioGroup
                     | Role::Slider
                     | Role::Switch
-                    | Role::ToggleButton
                     | Role::TreeGrid
             )
     }
