@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit::{
-    Action, ActionData, ActionRequest, Checked, Live, NodeId, NodeIdContent, Point, Role,
+    Action, ActionData, ActionRequest, Live, NodeId, NodeIdContent, Point, Role, Toggled,
 };
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
 use paste::paste;
@@ -100,7 +100,6 @@ impl<'a> NodeWrapper<'a> {
             Role::LayoutTableRow => UIA_DataItemControlTypeId,
             Role::LayoutTable => UIA_TableControlTypeId,
             Role::Switch => UIA_ButtonControlTypeId,
-            Role::ToggleButton => UIA_ButtonControlTypeId,
             Role::Menu => UIA_MenuControlTypeId,
             Role::Abbr => UIA_TextControlTypeId,
             Role::Alert => UIA_TextControlTypeId,
@@ -320,14 +319,14 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn is_toggle_pattern_supported(&self) -> bool {
-        self.node_state().checked().is_some() && !self.is_selection_item_pattern_supported()
+        self.node_state().toggled().is_some() && !self.is_selection_item_pattern_supported()
     }
 
     fn toggle_state(&self) -> ToggleState {
-        match self.node_state().checked().unwrap() {
-            Checked::False => ToggleState_Off,
-            Checked::True => ToggleState_On,
-            Checked::Mixed => ToggleState_Indeterminate,
+        match self.node_state().toggled().unwrap() {
+            Toggled::False => ToggleState_Off,
+            Toggled::True => ToggleState_On,
+            Toggled::Mixed => ToggleState_Indeterminate,
         }
     }
 
@@ -386,8 +385,8 @@ impl<'a> NodeWrapper<'a> {
             // SelectionItem.IsSelected is exposed when aria-checked is True or
             // False, for 'radio' and 'menuitemradio' roles.
             Role::RadioButton | Role::MenuItemRadio => matches!(
-                self.node_state().checked(),
-                Some(Checked::True | Checked::False)
+                self.node_state().toggled(),
+                Some(Toggled::True | Toggled::False)
             ),
             // https://www.w3.org/TR/wai-aria-1.1/#aria-selected
             // SelectionItem.IsSelected is exposed when aria-select is True or False.
@@ -406,7 +405,7 @@ impl<'a> NodeWrapper<'a> {
             // SelectionItem.IsSelected is set according to the True or False
             // value of aria-checked for 'radio' and 'menuitemradio' roles.
             Role::RadioButton | Role::MenuItemRadio => {
-                self.node_state().checked() == Some(Checked::True)
+                self.node_state().toggled() == Some(Toggled::True)
             }
             // https://www.w3.org/TR/wai-aria-1.1/#aria-selected
             // SelectionItem.IsSelected is set according to the True or False

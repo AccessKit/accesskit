@@ -664,7 +664,7 @@ bool_property_methods! {
 
 unique_enum_property_methods! {
     (Invalid, invalid, set_invalid, clear_invalid),
-    (Checked, checked, set_checked, clear_checked),
+    (Toggled, toggled, set_toggled, clear_toggled),
     (Live, live, set_live, clear_live),
     (DefaultActionVerb, default_action_verb, set_default_action_verb, clear_default_action_verb),
     (TextDirection, text_direction, set_text_direction, clear_text_direction),

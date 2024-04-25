@@ -31,7 +31,7 @@ fn accesskit(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<::accesskit::Orientation>()?;
     m.add_class::<::accesskit::TextDirection>()?;
     m.add_class::<::accesskit::Invalid>()?;
-    m.add_class::<::accesskit::Checked>()?;
+    m.add_class::<::accesskit::Toggled>()?;
     m.add_class::<::accesskit::DefaultActionVerb>()?;
     m.add_class::<::accesskit::SortDirection>()?;
     m.add_class::<::accesskit::AriaCurrent>()?;

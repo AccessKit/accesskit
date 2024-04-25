@@ -573,7 +573,7 @@ bool_property_methods! {
 
 unique_enum_property_methods! {
     (accesskit::Invalid, invalid, set_invalid, clear_invalid),
-    (accesskit::Checked, checked, set_checked, clear_checked),
+    (accesskit::Toggled, toggled, set_toggled, clear_toggled),
     (accesskit::Live, live, set_live, clear_live),
     (accesskit::DefaultActionVerb, default_action_verb, set_default_action_verb, clear_default_action_verb),
     (accesskit::TextDirection, text_direction, set_text_direction, clear_text_direction),
