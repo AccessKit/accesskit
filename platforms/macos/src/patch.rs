@@ -3,7 +3,6 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use icrate::AppKit::NSWindow;
 use objc2::{
     encode::{Encode, EncodeArguments, EncodeReturn, Encoding},
     ffi::class_addMethod,
@@ -11,6 +10,7 @@ use objc2::{
     runtime::{AnyClass, AnyObject, Bool, MethodImplementation, Sel},
     sel, Message,
 };
+use objc2_app_kit::NSWindow;
 use std::{ffi::CString, ptr::null_mut};
 
 extern "C" fn focus_forwarder(this: &NSWindow, _cmd: Sel) -> *mut AnyObject {

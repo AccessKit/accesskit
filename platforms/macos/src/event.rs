@@ -5,11 +5,9 @@
 
 use accesskit::{Live, NodeId, Role};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, TreeChangeHandler, TreeState};
-use icrate::{
-    AppKit::*,
-    Foundation::{NSMutableDictionary, NSNumber, NSString},
-};
 use objc2::runtime::{AnyObject, ProtocolObject};
+use objc2_app_kit::*;
+use objc2_foundation::{NSMutableDictionary, NSNumber, NSString};
 use std::{collections::HashSet, rc::Rc};
 
 use crate::{
@@ -37,9 +35,9 @@ impl QueuedEvent {
         Self::Announcement {
             text: node.name().unwrap(),
             priority: if node.live() == Live::Assertive {
-                NSAccessibilityPriorityHigh
+                NSAccessibilityPriorityLevel::NSAccessibilityPriorityHigh
             } else {
-                NSAccessibilityPriorityMedium
+                NSAccessibilityPriorityLevel::NSAccessibilityPriorityMedium
             },
         }
     }
@@ -86,7 +84,7 @@ impl QueuedEvent {
                         ProtocolObject::from_ref(NSAccessibilityAnnouncementKey),
                     )
                 };
-                let priority = NSNumber::new_isize(priority);
+                let priority = NSNumber::new_isize(priority.0);
                 unsafe {
                     user_info.setObject_forKey(
                         &*priority,

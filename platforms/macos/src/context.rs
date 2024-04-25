@@ -5,8 +5,9 @@
 
 use accesskit::{ActionHandler, ActionRequest, NodeId};
 use accesskit_consumer::Tree;
-use icrate::{AppKit::*, Foundation::MainThreadMarker};
 use objc2::rc::{Id, WeakId};
+use objc2_app_kit::*;
+use objc2_foundation::MainThreadMarker;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::node::PlatformNode;

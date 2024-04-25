@@ -12,19 +12,17 @@
 
 use accesskit::{Action, ActionData, ActionRequest, Checked, NodeId, Role, TextSelection};
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState};
-use icrate::{
-    AppKit::*,
-    Foundation::{
-        ns_string, NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSPoint, NSRange, NSRect,
-        NSString,
-    },
-};
 use objc2::{
     declare_class, msg_send_id,
     mutability::InteriorMutable,
     rc::Id,
     runtime::{AnyObject, Sel},
     sel, ClassType, DeclaredClass,
+};
+use objc2_app_kit::*;
+use objc2_foundation::{
+    ns_string, NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSPoint, NSRange, NSRect,
+    NSString,
 };
 use std::rc::{Rc, Weak};
 

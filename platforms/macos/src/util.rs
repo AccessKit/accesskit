@@ -5,10 +5,8 @@
 
 use accesskit::{Point, Rect};
 use accesskit_consumer::{Node, TextPosition, TextRange};
-use icrate::{
-    AppKit::*,
-    Foundation::{NSPoint, NSRange, NSRect, NSSize},
-};
+use objc2_app_kit::*;
+use objc2_foundation::{NSPoint, NSRange, NSRect, NSSize};
 
 pub(crate) fn from_ns_range<'a>(node: &'a Node<'a>, ns_range: NSRange) -> Option<TextRange<'a>> {
     let pos = node.text_position_from_global_utf16_index(ns_range.location)?;
@@ -37,14 +35,14 @@ pub(crate) fn to_ns_range_for_character(pos: &TextPosition) -> NSRange {
 
 pub(crate) fn from_ns_point(view: &NSView, node: &Node, point: NSPoint) -> Point {
     let window = view.window().unwrap();
-    let point = unsafe { window.convertPointFromScreen(point) };
+    let point = window.convertPointFromScreen(point);
     let point = view.convertPoint_fromView(point, None);
     // AccessKit coordinates are in physical (DPI-dependent) pixels, but
     // macOS provides logical (DPI-independent) coordinates here.
     let factor = window.backingScaleFactor();
     let point = Point::new(
         point.x * factor,
-        if unsafe { view.isFlipped() } {
+        if view.isFlipped() {
             point.y * factor
         } else {
             let view_bounds = view.bounds();
@@ -63,7 +61,7 @@ pub(crate) fn to_ns_rect(view: &NSView, rect: Rect) -> NSRect {
     let rect = NSRect {
         origin: NSPoint {
             x: rect.x0 / factor,
-            y: if unsafe { view.isFlipped() } {
+            y: if view.isFlipped() {
                 rect.y0 / factor
             } else {
                 let view_bounds = view.bounds();
@@ -75,7 +73,7 @@ pub(crate) fn to_ns_rect(view: &NSView, rect: Rect) -> NSRect {
             height: rect.height() / factor,
         },
     };
-    let rect = unsafe { view.convertRect_toView(rect, None) };
+    let rect = view.convertRect_toView(rect, None);
     let window = view.window().unwrap();
-    unsafe { window.convertRectToScreen(rect) }
+    window.convertRectToScreen(rect)
 }

@@ -4,10 +4,6 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
-use icrate::{
-    AppKit::{NSView, NSWindow},
-    Foundation::{NSArray, NSObject, NSPoint},
-};
 use objc2::{
     declare::ClassBuilder,
     declare_class,
@@ -21,6 +17,8 @@ use objc2::{
     runtime::{AnyClass, Sel},
     sel, ClassType, DeclaredClass,
 };
+use objc2_app_kit::{NSView, NSWindow};
+use objc2_foundation::{NSArray, NSObject, NSPoint};
 use once_cell::sync::Lazy;
 use std::{cell::RefCell, collections::HashMap, ffi::c_void, sync::Mutex};
 

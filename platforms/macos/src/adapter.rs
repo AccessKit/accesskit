@@ -8,11 +8,9 @@ use accesskit::{
     TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Tree};
-use icrate::{
-    AppKit::NSView,
-    Foundation::{MainThreadMarker, NSArray, NSObject, NSPoint},
-};
 use objc2::rc::{Id, WeakId};
+use objc2_app_kit::NSView;
+use objc2_foundation::{MainThreadMarker, NSArray, NSObject, NSPoint};
 use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
 use crate::{
