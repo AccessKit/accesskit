@@ -24,20 +24,20 @@ SET_FOCUS_MSG = 0
 DO_DEFAULT_ACTION_MSG = 1
 
 
-def build_button(id, name, classes):
+def build_button(id, name):
     builder = accesskit.NodeBuilder(accesskit.Role.BUTTON)
     builder.set_bounds(BUTTON_1_RECT if id == BUTTON_1_ID else BUTTON_2_RECT)
     builder.set_name(name)
     builder.add_action(accesskit.Action.FOCUS)
     builder.set_default_action_verb(accesskit.DefaultActionVerb.CLICK)
-    return builder.build(classes)
+    return builder.build()
 
 
-def build_announcement(text, classes):
+def build_announcement(text):
     builder = accesskit.NodeBuilder(accesskit.Role.STATIC_TEXT)
     builder.set_name(text)
     builder.set_live(accesskit.Live.POLITE)
-    return builder.build(classes)
+    return builder.build()
 
 
 class PygameAdapter:
@@ -76,7 +76,6 @@ class WindowState:
     def __init__(self):
         self.focus = INITIAL_FOCUS
         self.announcement = None
-        self.node_classes = accesskit.NodeClassSet()
 
     def build_root(self):
         builder = accesskit.NodeBuilder(accesskit.Role.WINDOW)
@@ -84,12 +83,12 @@ class WindowState:
         if self.announcement is not None:
             builder.push_child(ANNOUNCEMENT_ID)
         builder.set_name(WINDOW_TITLE)
-        return builder.build(self.node_classes)
+        return builder.build()
 
     def build_initial_tree(self):
         root = self.build_root()
-        button_1 = build_button(BUTTON_1_ID, "Button 1", self.node_classes)
-        button_2 = build_button(BUTTON_2_ID, "Button 2", self.node_classes)
+        button_1 = build_button(BUTTON_1_ID, "Button 1")
+        button_2 = build_button(BUTTON_2_ID, "Button 2")
         result = accesskit.TreeUpdate(self.focus)
         tree = accesskit.Tree(WINDOW_ID)
         tree.app_name = "Hello world"
@@ -101,7 +100,7 @@ class WindowState:
             result.nodes.append(
                 (
                     ANNOUNCEMENT_ID,
-                    build_announcement(self.announcement, self.node_classes),
+                    build_announcement(self.announcement),
                 )
             )
         return result
@@ -114,9 +113,7 @@ class WindowState:
 
     def build_tree_update_for_button_press(self):
         update = accesskit.TreeUpdate(self.focus)
-        update.nodes.append(
-            (ANNOUNCEMENT_ID, build_announcement(self.announcement, self.node_classes))
-        )
+        update.nodes.append((ANNOUNCEMENT_ID, build_announcement(self.announcement)))
         update.nodes.append((WINDOW_ID, self.build_root()))
         return update
 

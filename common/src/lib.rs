@@ -22,7 +22,7 @@ use serde::{
     ser::{SerializeMap, SerializeSeq, Serializer},
     Deserialize, Serialize,
 };
-use std::{collections::BTreeSet, ops::DerefMut, sync::Arc};
+use std::sync::Arc;
 #[cfg(feature = "serde")]
 use std::{fmt, mem::size_of_val};
 
@@ -953,7 +953,7 @@ enum PropertyId {
     Unset,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(transparent)]
 struct PropertyIndices([u8; PropertyId::Unset as usize]);
 
@@ -963,46 +963,11 @@ impl Default for PropertyIndices {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 struct NodeClass {
     role: Role,
     actions: Actions,
     indices: PropertyIndices,
-}
-
-/// Allows nodes that have the same role, actions, and set of defined properties
-/// to share metadata. Each node has a class which is created by [`NodeBuilder`],
-/// and when [`NodeBuilder::build`] is called, the node's class is added
-/// to the provided instance of this struct if an identical class isn't
-/// in that set already. Once a class is added to a class set, it currently
-/// remains in that set for the life of that set, whether or not any nodes
-/// are still using the class.
-///
-/// It's not an error for different nodes in the same tree, or even subsequent
-/// versions of the same node, to be built from different class sets;
-/// it's merely suboptimal.
-///
-/// Note: This struct's `Default` implementation doesn't provide access to
-/// a shared set, as one might assume; it creates a new set. For a shared set,
-/// use [`NodeClassSet::lock_global`].
-#[derive(Clone, Default)]
-#[repr(transparent)]
-pub struct NodeClassSet(BTreeSet<Arc<NodeClass>>);
-
-impl NodeClassSet {
-    #[inline]
-    pub const fn new() -> Self {
-        Self(BTreeSet::new())
-    }
-
-    /// Accesses a shared class set guarded by a mutex.
-    pub fn lock_global() -> impl DerefMut<Target = Self> {
-        use std::sync::Mutex;
-
-        static INSTANCE: Mutex<NodeClassSet> = Mutex::new(NodeClassSet::new());
-
-        INSTANCE.lock().unwrap()
-    }
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
@@ -1013,7 +978,7 @@ impl NodeClassSet {
 /// as properties.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Node {
-    class: Arc<NodeClass>,
+    class: NodeClass,
     flags: u32,
     props: Arc<[PropertyValue]>,
 }
@@ -1364,16 +1329,9 @@ impl NodeBuilder {
         }
     }
 
-    pub fn build(self, classes: &mut NodeClassSet) -> Node {
-        let class = if let Some(class) = classes.0.get(&self.class) {
-            Arc::clone(class)
-        } else {
-            let class = Arc::new(self.class);
-            classes.0.insert(Arc::clone(&class));
-            class
-        };
+    pub fn build(self) -> Node {
         Node {
-            class,
+            class: self.class,
             flags: self.flags,
             props: self.props.into(),
         }
@@ -2051,7 +2009,7 @@ impl<'de> Visitor<'de> for NodeVisitor {
             }
         }
 
-        Ok(builder.build(&mut NodeClassSet::lock_global()))
+        Ok(builder.build())
     }
 }
 

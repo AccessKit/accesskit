@@ -24,9 +24,7 @@ pub use text::{
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{
-        Affine, NodeBuilder, NodeClassSet, NodeId, Rect, Role, Tree, TreeUpdate, Vec2,
-    };
+    use accesskit::{Affine, NodeBuilder, NodeId, Rect, Role, Tree, TreeUpdate, Vec2};
 
     use crate::FilterResult;
 
@@ -45,7 +43,6 @@ mod tests {
     pub const EMPTY_CONTAINER_3_3_IGNORED_ID: NodeId = NodeId(12);
 
     pub fn test_tree() -> crate::tree::Tree {
-        let mut classes = NodeClassSet::new();
         let root = {
             let mut builder = NodeBuilder::new(Role::RootWebArea);
             builder.set_children(vec![
@@ -54,17 +51,17 @@ mod tests {
                 PARAGRAPH_2_ID,
                 PARAGRAPH_3_IGNORED_ID,
             ]);
-            builder.build(&mut classes)
+            builder.build()
         };
         let paragraph_0 = {
             let mut builder = NodeBuilder::new(Role::Paragraph);
             builder.set_children(vec![STATIC_TEXT_0_0_IGNORED_ID]);
-            builder.build(&mut classes)
+            builder.build()
         };
         let static_text_0_0_ignored = {
             let mut builder = NodeBuilder::new(Role::StaticText);
             builder.set_name("static_text_0_0_ignored");
-            builder.build(&mut classes)
+            builder.build()
         };
         let paragraph_1_ignored = {
             let mut builder = NodeBuilder::new(Role::Paragraph);
@@ -76,7 +73,7 @@ mod tests {
                 y1: 40.0,
             });
             builder.set_children(vec![STATIC_TEXT_1_0_ID]);
-            builder.build(&mut classes)
+            builder.build()
         };
         let static_text_1_0 = {
             let mut builder = NodeBuilder::new(Role::StaticText);
@@ -87,17 +84,17 @@ mod tests {
                 y1: 30.0,
             });
             builder.set_name("static_text_1_0");
-            builder.build(&mut classes)
+            builder.build()
         };
         let paragraph_2 = {
             let mut builder = NodeBuilder::new(Role::Paragraph);
             builder.set_children(vec![STATIC_TEXT_2_0_ID]);
-            builder.build(&mut classes)
+            builder.build()
         };
         let static_text_2_0 = {
             let mut builder = NodeBuilder::new(Role::StaticText);
             builder.set_name("static_text_2_0");
-            builder.build(&mut classes)
+            builder.build()
         };
         let paragraph_3_ignored = {
             let mut builder = NodeBuilder::new(Role::Paragraph);
@@ -107,28 +104,26 @@ mod tests {
                 BUTTON_3_2_ID,
                 EMPTY_CONTAINER_3_3_IGNORED_ID,
             ]);
-            builder.build(&mut classes)
+            builder.build()
         };
-        let empty_container_3_0_ignored =
-            NodeBuilder::new(Role::GenericContainer).build(&mut classes);
+        let empty_container_3_0_ignored = NodeBuilder::new(Role::GenericContainer).build();
         let link_3_1_ignored = {
             let mut builder = NodeBuilder::new(Role::Link);
             builder.set_children(vec![STATIC_TEXT_3_1_0_ID]);
             builder.set_linked();
-            builder.build(&mut classes)
+            builder.build()
         };
         let static_text_3_1_0 = {
             let mut builder = NodeBuilder::new(Role::StaticText);
             builder.set_name("static_text_3_1_0");
-            builder.build(&mut classes)
+            builder.build()
         };
         let button_3_2 = {
             let mut builder = NodeBuilder::new(Role::Button);
             builder.set_name("button_3_2");
-            builder.build(&mut classes)
+            builder.build()
         };
-        let empty_container_3_3_ignored =
-            NodeBuilder::new(Role::GenericContainer).build(&mut classes);
+        let empty_container_3_3_ignored = NodeBuilder::new(Role::GenericContainer).build();
         let initial_update = TreeUpdate {
             nodes: vec![
                 (ROOT_ID, root),

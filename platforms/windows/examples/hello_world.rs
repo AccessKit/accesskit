@@ -2,7 +2,7 @@
 
 use accesskit::{
     Action, ActionHandler, ActionRequest, ActivationHandler, DefaultActionVerb, Live, Node,
-    NodeBuilder, NodeClassSet, NodeId, Rect, Role, Tree, TreeUpdate,
+    NodeBuilder, NodeId, Rect, Role, Tree, TreeUpdate,
 };
 use accesskit_windows::Adapter;
 use once_cell::sync::Lazy;
@@ -61,7 +61,7 @@ const BUTTON_2_RECT: Rect = Rect {
 const SET_FOCUS_MSG: u32 = WM_USER;
 const DO_DEFAULT_ACTION_MSG: u32 = WM_USER + 1;
 
-fn build_button(id: NodeId, name: &str, classes: &mut NodeClassSet) -> Node {
+fn build_button(id: NodeId, name: &str) -> Node {
     let rect = match id {
         BUTTON_1_ID => BUTTON_1_RECT,
         BUTTON_2_ID => BUTTON_2_RECT,
@@ -73,20 +73,19 @@ fn build_button(id: NodeId, name: &str, classes: &mut NodeClassSet) -> Node {
     builder.set_name(name);
     builder.add_action(Action::Focus);
     builder.set_default_action_verb(DefaultActionVerb::Click);
-    builder.build(classes)
+    builder.build()
 }
 
-fn build_announcement(text: &str, classes: &mut NodeClassSet) -> Node {
+fn build_announcement(text: &str) -> Node {
     let mut builder = NodeBuilder::new(Role::StaticText);
     builder.set_name(text);
     builder.set_live(Live::Polite);
-    builder.build(classes)
+    builder.build()
 }
 
 struct InnerWindowState {
     focus: NodeId,
     announcement: Option<String>,
-    node_classes: NodeClassSet,
 }
 
 impl InnerWindowState {
@@ -96,7 +95,7 @@ impl InnerWindowState {
         if self.announcement.is_some() {
             builder.push_child(ANNOUNCEMENT_ID);
         }
-        builder.build(&mut self.node_classes)
+        builder.build()
     }
 }
 
@@ -104,8 +103,8 @@ impl ActivationHandler for InnerWindowState {
     fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
         println!("Initial tree requested");
         let root = self.build_root();
-        let button_1 = build_button(BUTTON_1_ID, "Button 1", &mut self.node_classes);
-        let button_2 = build_button(BUTTON_2_ID, "Button 2", &mut self.node_classes);
+        let button_1 = build_button(BUTTON_1_ID, "Button 1");
+        let button_2 = build_button(BUTTON_2_ID, "Button 2");
         let mut tree = Tree::new(WINDOW_ID);
         tree.app_name = Some("hello_world".to_string());
 
@@ -119,10 +118,9 @@ impl ActivationHandler for InnerWindowState {
             focus: self.focus,
         };
         if let Some(announcement) = &self.announcement {
-            result.nodes.push((
-                ANNOUNCEMENT_ID,
-                build_announcement(announcement, &mut self.node_classes),
-            ));
+            result
+                .nodes
+                .push((ANNOUNCEMENT_ID, build_announcement(announcement)));
         }
         Some(result)
     }
@@ -157,7 +155,7 @@ impl WindowState {
         inner_state.announcement = Some(text.into());
         let mut adapter = self.adapter.borrow_mut();
         if let Some(events) = adapter.update_if_active(|| {
-            let announcement = build_announcement(text, &mut inner_state.node_classes);
+            let announcement = build_announcement(text);
             let root = inner_state.build_root();
             TreeUpdate {
                 nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],
@@ -231,7 +229,6 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             let inner_state = RefCell::new(InnerWindowState {
                 focus: initial_focus,
                 announcement: None,
-                node_classes: NodeClassSet::new(),
             });
             let adapter = Adapter::new(window, false, SimpleActionHandler { window });
             let state = Box::new(WindowState {

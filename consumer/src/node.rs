@@ -756,7 +756,7 @@ impl Deref for DetachedNode {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{NodeBuilder, NodeClassSet, NodeId, Point, Rect, Role, Tree, TreeUpdate};
+    use accesskit::{NodeBuilder, NodeId, Point, Rect, Role, Tree, TreeUpdate};
 
     use crate::tests::*;
 
@@ -1019,18 +1019,14 @@ mod tests {
 
     #[test]
     fn no_name_or_labelled_by() {
-        let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
                     let mut builder = NodeBuilder::new(Role::Window);
                     builder.set_children(vec![NodeId(1)]);
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
-                (
-                    NodeId(1),
-                    NodeBuilder::new(Role::Button).build(&mut classes),
-                ),
+                (NodeId(1), NodeBuilder::new(Role::Button).build()),
             ],
             tree: Some(Tree::new(NodeId(0))),
             focus: NodeId(0),
@@ -1046,33 +1042,32 @@ mod tests {
         const LABEL_1: &str = "Check email every";
         const LABEL_2: &str = "minutes";
 
-        let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
                     let mut builder = NodeBuilder::new(Role::Window);
                     builder.set_children(vec![NodeId(1), NodeId(2), NodeId(3), NodeId(4)]);
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
                 (NodeId(1), {
                     let mut builder = NodeBuilder::new(Role::CheckBox);
                     builder.set_labelled_by(vec![NodeId(2), NodeId(4)]);
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
                 (NodeId(2), {
                     let mut builder = NodeBuilder::new(Role::StaticText);
                     builder.set_name(LABEL_1);
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
                 (NodeId(3), {
                     let mut builder = NodeBuilder::new(Role::TextInput);
                     builder.push_labelled_by(NodeId(4));
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
                 (NodeId(4), {
                     let mut builder = NodeBuilder::new(Role::StaticText);
                     builder.set_name(LABEL_2);
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
@@ -1094,38 +1089,37 @@ mod tests {
         const BUTTON_LABEL: &str = "Play";
         const LINK_LABEL: &str = "Watch in browser";
 
-        let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
                     let mut builder = NodeBuilder::new(Role::Window);
                     builder.set_children(vec![NodeId(1), NodeId(3)]);
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
                 (NodeId(1), {
                     let mut builder = NodeBuilder::new(Role::Button);
                     builder.push_child(NodeId(2));
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
                 (NodeId(2), {
                     let mut builder = NodeBuilder::new(Role::Image);
                     builder.set_name(BUTTON_LABEL);
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
                 (NodeId(3), {
                     let mut builder = NodeBuilder::new(Role::Link);
                     builder.push_child(NodeId(4));
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
                 (NodeId(4), {
                     let mut builder = NodeBuilder::new(Role::GenericContainer);
                     builder.push_child(NodeId(5));
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
                 (NodeId(5), {
                     let mut builder = NodeBuilder::new(Role::StaticText);
                     builder.set_name(LINK_LABEL);
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
