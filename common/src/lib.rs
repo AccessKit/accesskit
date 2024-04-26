@@ -902,7 +902,7 @@ enum PropertyId {
     TableCellColumnSpan,
     TableCellRowIndex,
     TableCellRowSpan,
-    HierarchicalLevel,
+    Level,
     SizeOfSet,
     PositionInSet,
 
@@ -1605,7 +1605,7 @@ usize_property_methods! {
     (TableCellColumnSpan, table_cell_column_span, set_table_cell_column_span, clear_table_cell_column_span),
     (TableCellRowIndex, table_cell_row_index, set_table_cell_row_index, clear_table_cell_row_index),
     (TableCellRowSpan, table_cell_row_span, set_table_cell_row_span, clear_table_cell_row_span),
-    (HierarchicalLevel, hierarchical_level, set_hierarchical_level, clear_hierarchical_level),
+    (Level, level, set_level, clear_level),
     (SizeOfSet, size_of_set, set_size_of_set, clear_size_of_set),
     (PositionInSet, position_in_set, set_position_in_set, clear_position_in_set)
 }
@@ -2000,7 +2000,7 @@ impl<'de> Visitor<'de> for NodeVisitor {
                             TableCellColumnSpan,
                             TableCellRowIndex,
                             TableCellRowSpan,
-                            HierarchicalLevel,
+                            Level,
                             SizeOfSet,
                             PositionInSet
                         },
@@ -2186,7 +2186,7 @@ impl JsonSchema for Node {
                 TableCellColumnSpan,
                 TableCellRowIndex,
                 TableCellRowSpan,
-                HierarchicalLevel,
+                Level,
                 SizeOfSet,
                 PositionInSet
             },
