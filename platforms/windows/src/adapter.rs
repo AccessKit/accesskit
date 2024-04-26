@@ -339,10 +339,7 @@ impl Adapter {
                 None => {
                     let hwnd = *hwnd;
                     let placeholder_update = TreeUpdate {
-                        nodes: vec![(
-                            PLACEHOLDER_ROOT_ID,
-                            NodeBuilder::new(Role::Window).build(&mut Default::default()),
-                        )],
+                        nodes: vec![(PLACEHOLDER_ROOT_ID, NodeBuilder::new(Role::Window).build())],
                         tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
                         focus: PLACEHOLDER_ROOT_ID,
                     };
