@@ -550,7 +550,6 @@ pub enum DefaultActionVerb {
 )]
 #[repr(u8)]
 pub enum SortDirection {
-    Unsorted,
     Ascending,
     Descending,
     Other,
