@@ -114,7 +114,6 @@ impl<'a> NodeWrapper<'a> {
             Role::CheckBox => AtspiRole::CheckBox,
             Role::Switch => AtspiRole::ToggleButton,
             Role::ColorWell => AtspiRole::PushButton,
-            Role::Column => AtspiRole::Unknown,
             Role::ColumnHeader => AtspiRole::ColumnHeader,
             Role::ComboBox | Role::EditableComboBox => AtspiRole::ComboBox,
             Role::Complementary => AtspiRole::Landmark,
@@ -259,10 +258,6 @@ impl<'a> NodeWrapper<'a> {
             Role::SvgRoot => AtspiRole::DocumentFrame,
             Role::Tab => AtspiRole::PageTab,
             Role::Table => AtspiRole::Table,
-            // TODO: This mapping is correct, but it doesn't seem to be
-            // used. We don't necessarily want to always expose these containers, but
-            // we must do so if they are focusable.
-            Role::TableHeaderContainer => AtspiRole::Panel,
             Role::TabList => AtspiRole::PageTabList,
             Role::TabPanel => AtspiRole::ScrollPane,
             // TODO: This mapping should also be applied to the dfn

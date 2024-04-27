@@ -81,11 +81,9 @@ pub enum Role {
     Pane,
     RowHeader,
     ColumnHeader,
-    Column,
     RowGroup,
     List,
     Table,
-    TableHeaderContainer,
     LayoutTableCell,
     LayoutTableRow,
     LayoutTable,
@@ -855,9 +853,6 @@ enum PropertyId {
     NextOnLine,
     PreviousOnLine,
     PopupFor,
-    TableHeader,
-    TableRowHeader,
-    TableColumnHeader,
 
     // String
     Name,
@@ -875,6 +870,8 @@ enum PropertyId {
     StateDescription,
     Tooltip,
     Url,
+    RowIndexText,
+    ColumnIndexText,
 
     // f64
     ScrollX,
@@ -892,14 +889,12 @@ enum PropertyId {
     FontWeight,
 
     // usize
-    TableRowCount,
-    TableColumnCount,
-    TableRowIndex,
-    TableColumnIndex,
-    TableCellColumnIndex,
-    TableCellColumnSpan,
-    TableCellRowIndex,
-    TableCellRowSpan,
+    RowCount,
+    ColumnCount,
+    RowIndex,
+    ColumnIndex,
+    RowSpan,
+    ColumnSpan,
     Level,
     SizeOfSet,
     PositionInSet,
@@ -1480,10 +1475,7 @@ node_id_property_methods! {
     (MemberOf, member_of, set_member_of, clear_member_of),
     (NextOnLine, next_on_line, set_next_on_line, clear_next_on_line),
     (PreviousOnLine, previous_on_line, set_previous_on_line, clear_previous_on_line),
-    (PopupFor, popup_for, set_popup_for, clear_popup_for),
-    (TableHeader, table_header, set_table_header, clear_table_header),
-    (TableRowHeader, table_row_header, set_table_row_header, clear_table_row_header),
-    (TableColumnHeader, table_column_header, set_table_column_header, clear_table_column_header)
+    (PopupFor, popup_for, set_popup_for, clear_popup_for)
 }
 
 string_property_methods! {
@@ -1530,7 +1522,9 @@ string_property_methods! {
     ///
     /// [`name`]: Node::name
     (Tooltip, tooltip, set_tooltip, clear_tooltip),
-    (Url, url, set_url, clear_url)
+    (Url, url, set_url, clear_url),
+    (RowIndexText, row_index_text, set_row_index_text, clear_row_index_text),
+    (ColumnIndexText, column_index_text, set_column_index_text, clear_column_index_text)
 }
 
 f64_property_methods! {
@@ -1553,14 +1547,12 @@ f64_property_methods! {
 }
 
 usize_property_methods! {
-    (TableRowCount, table_row_count, set_table_row_count, clear_table_row_count),
-    (TableColumnCount, table_column_count, set_table_column_count, clear_table_column_count),
-    (TableRowIndex, table_row_index, set_table_row_index, clear_table_row_index),
-    (TableColumnIndex, table_column_index, set_table_column_index, clear_table_column_index),
-    (TableCellColumnIndex, table_cell_column_index, set_table_cell_column_index, clear_table_cell_column_index),
-    (TableCellColumnSpan, table_cell_column_span, set_table_cell_column_span, clear_table_cell_column_span),
-    (TableCellRowIndex, table_cell_row_index, set_table_cell_row_index, clear_table_cell_row_index),
-    (TableCellRowSpan, table_cell_row_span, set_table_cell_row_span, clear_table_cell_row_span),
+    (RowCount, row_count, set_row_count, clear_row_count),
+    (ColumnCount, column_count, set_column_count, clear_column_count),
+    (RowIndex, row_index, set_row_index, clear_row_index),
+    (ColumnIndex, column_index, set_column_index, clear_column_index),
+    (RowSpan, row_span, set_row_span, clear_row_span),
+    (ColumnSpan, column_span, set_column_span, clear_column_span),
     (Level, level, set_level, clear_level),
     (SizeOfSet, size_of_set, set_size_of_set, clear_size_of_set),
     (PositionInSet, position_in_set, set_position_in_set, clear_position_in_set)
@@ -1910,10 +1902,7 @@ impl<'de> Visitor<'de> for NodeVisitor {
                             MemberOf,
                             NextOnLine,
                             PreviousOnLine,
-                            PopupFor,
-                            TableHeader,
-                            TableRowHeader,
-                            TableColumnHeader
+                            PopupFor
                         },
                         String {
                             Name,
@@ -1930,7 +1919,9 @@ impl<'de> Visitor<'de> for NodeVisitor {
                             RoleDescription,
                             StateDescription,
                             Tooltip,
-                            Url
+                            Url,
+                            RowIndexText,
+                            ColumnIndexText
                         },
                         F64 {
                             ScrollX,
@@ -1948,14 +1939,12 @@ impl<'de> Visitor<'de> for NodeVisitor {
                             FontWeight
                         },
                         Usize {
-                            TableRowCount,
-                            TableColumnCount,
-                            TableRowIndex,
-                            TableColumnIndex,
-                            TableCellColumnIndex,
-                            TableCellColumnSpan,
-                            TableCellRowIndex,
-                            TableCellRowSpan,
+                            RowCount,
+                            ColumnCount,
+                            RowIndex,
+                            ColumnIndex,
+                            RowSpan,
+                            ColumnSpan,
                             Level,
                             SizeOfSet,
                             PositionInSet
@@ -2096,10 +2085,7 @@ impl JsonSchema for Node {
                 MemberOf,
                 NextOnLine,
                 PreviousOnLine,
-                PopupFor,
-                TableHeader,
-                TableRowHeader,
-                TableColumnHeader
+                PopupFor
             },
             Box<str> {
                 Name,
@@ -2116,7 +2102,9 @@ impl JsonSchema for Node {
                 RoleDescription,
                 StateDescription,
                 Tooltip,
-                Url
+                Url,
+                RowIndexText,
+                ColumnIndexText
             },
             f64 {
                 ScrollX,
@@ -2134,14 +2122,12 @@ impl JsonSchema for Node {
                 FontWeight
             },
             usize {
-                TableRowCount,
-                TableColumnCount,
-                TableRowIndex,
-                TableColumnIndex,
-                TableCellColumnIndex,
-                TableCellColumnSpan,
-                TableCellRowIndex,
-                TableCellRowSpan,
+                RowCount,
+                ColumnCount,
+                RowIndex,
+                ColumnIndex,
+                RowSpan,
+                ColumnSpan,
                 Level,
                 SizeOfSet,
                 PositionInSet
