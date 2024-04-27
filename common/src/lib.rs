@@ -22,7 +22,6 @@ use serde::{
     ser::{SerializeMap, SerializeSeq, Serializer},
     Deserialize, Serialize,
 };
-use std::sync::Arc;
 #[cfg(feature = "serde")]
 use std::{fmt, mem::size_of_val};
 
@@ -980,7 +979,7 @@ struct NodeClass {
 pub struct Node {
     class: NodeClass,
     flags: u32,
-    props: Arc<[PropertyValue]>,
+    props: Box<[PropertyValue]>,
 }
 
 /// Builds a [`Node`].
@@ -1333,7 +1332,7 @@ impl NodeBuilder {
         Node {
             class: self.class,
             flags: self.flags,
-            props: self.props.into(),
+            props: self.props.into_boxed_slice(),
         }
     }
 }
