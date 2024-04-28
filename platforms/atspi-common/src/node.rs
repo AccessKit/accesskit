@@ -946,11 +946,11 @@ impl PlatformNode {
     }
 
     pub fn minimum_value(&self) -> Result<f64> {
-        self.resolve(|node| Ok(node.state().min_numeric_value().unwrap_or(std::f64::MIN)))
+        self.resolve(|node| Ok(node.state().min_numeric_value().unwrap_or(f64::MIN)))
     }
 
     pub fn maximum_value(&self) -> Result<f64> {
-        self.resolve(|node| Ok(node.state().max_numeric_value().unwrap_or(std::f64::MAX)))
+        self.resolve(|node| Ok(node.state().max_numeric_value().unwrap_or(f64::MAX)))
     }
 
     pub fn minimum_increment(&self) -> Result<f64> {
