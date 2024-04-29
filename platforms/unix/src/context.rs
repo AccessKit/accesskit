@@ -10,9 +10,8 @@ use async_channel::{Receiver, Sender};
 use atspi::proxy::bus::StatusProxy;
 #[cfg(not(feature = "tokio"))]
 use futures_util::{pin_mut as pin, select, StreamExt};
-use once_cell::sync::OnceCell;
 use std::{
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, Mutex, OnceLock, RwLock},
     thread,
 };
 #[cfg(feature = "tokio")]
@@ -31,8 +30,8 @@ use crate::{
     util::block_on,
 };
 
-static APP_CONTEXT: OnceCell<Arc<RwLock<AppContext>>> = OnceCell::new();
-static MESSAGES: OnceCell<Sender<Message>> = OnceCell::new();
+static APP_CONTEXT: OnceLock<Arc<RwLock<AppContext>>> = OnceLock::new();
+static MESSAGES: OnceLock<Sender<Message>> = OnceLock::new();
 
 pub(crate) fn get_or_init_app_context<'a>() -> &'a Arc<RwLock<AppContext>> {
     APP_CONTEXT.get_or_init(AppContext::new)

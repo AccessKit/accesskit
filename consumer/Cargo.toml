@@ -13,4 +13,3 @@ rust-version.workspace = true
 
 [dependencies]
 accesskit = { version = "0.13.0", path = "../common" }
-
