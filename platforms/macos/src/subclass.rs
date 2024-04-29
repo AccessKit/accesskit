@@ -115,7 +115,7 @@ unsafe extern "C" fn hit_test(this: &NSView, _cmd: Sel, point: NSPoint) -> *mut 
         .hit_test(point, &mut *state_mut.activation_handler)
 }
 
-/// Uses dynamic Objective-C subclassing to implement the NSView
+/// Uses dynamic Objective-C subclassing to implement the `NSView`
 /// accessibility methods when normal subclassing isn't an option.
 pub struct SubclassingAdapter {
     view: Id<NSView>,
