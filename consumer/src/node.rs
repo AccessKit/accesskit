@@ -628,6 +628,10 @@ impl NodeState {
     pub fn raw_value(&self) -> Option<&str> {
         self.data().value()
     }
+
+    pub fn class_name(&self) -> Option<&str> {
+        self.data().class_name()
+    }
 }
 
 impl<'a> Node<'a> {

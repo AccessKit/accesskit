@@ -318,6 +318,10 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
+    fn class_name(&self) -> Option<&str> {
+        self.node_state().class_name()
+    }
+
     fn is_toggle_pattern_supported(&self) -> bool {
         self.node_state().toggled().is_some() && !self.is_selection_item_pattern_supported()
     }
@@ -859,7 +863,8 @@ properties! {
     (IsEnabled, is_enabled),
     (IsKeyboardFocusable, is_focusable),
     (HasKeyboardFocus, is_focused),
-    (LiveSetting, live_setting)
+    (LiveSetting, live_setting),
+    (ClassName, class_name)
 }
 
 patterns! {
