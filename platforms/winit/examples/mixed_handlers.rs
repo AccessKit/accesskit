@@ -1,9 +1,12 @@
 use accesskit::{
-    Action, ActionRequest, ActivationHandler, DefaultActionVerb, Live, Node, NodeBuilder, NodeId, Rect, Role, Tree,
-    TreeUpdate,
+    Action, ActionRequest, ActivationHandler, DefaultActionVerb, Live, Node, NodeBuilder, NodeId,
+    Rect, Role, Tree, TreeUpdate,
 };
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
-use std::{error::Error, sync::{Arc, Mutex}};
+use std::{
+    error::Error,
+    sync::{Arc, Mutex},
+};
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, KeyEvent, WindowEvent},
@@ -179,7 +182,11 @@ impl Application {
         let activation_handler = TearoffActivationHandler {
             state: Arc::clone(&ui),
         };
-        let adapter = Adapter::with_mixed_handlers(&window, activation_handler, self.event_loop_proxy.clone());
+        let adapter = Adapter::with_mixed_handlers(
+            &window,
+            activation_handler,
+            self.event_loop_proxy.clone(),
+        );
         window.set_visible(true);
 
         self.window = Some(WindowState::new(window, adapter, ui));
@@ -259,7 +266,8 @@ impl ApplicationHandler<AccessKitEvent> for Application {
     }
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        self.create_window(event_loop).expect("failed to create initial window");
+        self.create_window(event_loop)
+            .expect("failed to create initial window");
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {

@@ -244,7 +244,8 @@ impl ApplicationHandler<AccessKitEvent> for Application {
     }
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        self.create_window(event_loop).expect("failed to create initial window");
+        self.create_window(event_loop)
+            .expect("failed to create initial window");
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
