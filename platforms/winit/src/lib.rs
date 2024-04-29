@@ -131,7 +131,7 @@ pub struct Adapter {
 impl Adapter {
     /// Creates a new AccessKit adapter for a winit window. This must be done
     /// before the window is shown for the first time. This means that you must
-    /// use [`winit::window::WindowBuilder::with_visible`] to make the window
+    /// use [`winit::window::WindowAttributes::with_visible`] to make the window
     /// initially invisible, then create the adapter, then show the window.
     ///
     /// This constructor uses a winit event loop proxy to deliver AccessKit
@@ -166,7 +166,7 @@ impl Adapter {
 
     /// Creates a new AccessKit adapter for a winit window. This must be done
     /// before the window is shown for the first time. This means that you must
-    /// use [`winit::window::WindowBuilder::with_visible`] to make the window
+    /// use [`winit::window::WindowAttributes::with_visible`] to make the window
     /// initially invisible, then create the adapter, then show the window.
     ///
     /// Use this if you want to provide your own AccessKit handler callbacks
@@ -194,7 +194,7 @@ impl Adapter {
 
     /// Creates a new AccessKit adapter for a winit window. This must be done
     /// before the window is shown for the first time. This means that you must
-    /// use [`winit::window::WindowBuilder::with_visible`] to make the window
+    /// use [`winit::window::WindowAttributes::with_visible`] to make the window
     /// initially invisible, then create the adapter, then show the window.
     ///
     /// This constructor provides a mix of the approaches used by

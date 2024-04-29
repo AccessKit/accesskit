@@ -9,10 +9,12 @@ use accesskit::{
 };
 use windows::Win32::{Foundation::*, UI::Accessibility::*};
 use winit::{
-    event_loop::EventLoopBuilder,
+    application::ApplicationHandler,
+    event::WindowEvent,
+    event_loop::{ActiveEventLoop, EventLoop},
     platform::windows::EventLoopBuilderExtWindows,
     raw_window_handle::{HasWindowHandle, RawWindowHandle},
-    window::WindowBuilder,
+    window::{Window, WindowId},
 };
 
 use super::MUTEX;
@@ -68,6 +70,31 @@ impl ActivationHandler for SimpleActivationHandler {
 // This module uses winit for the purpose of testing with a real third-party
 // window implementation that we don't control.
 
+struct TestApplication;
+
+impl ApplicationHandler<()> for TestApplication {
+    fn window_event(&mut self, _: &ActiveEventLoop, _: WindowId, _: WindowEvent) {}
+
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        let window_attributes = Window::default_attributes()
+            .with_title(WINDOW_TITLE)
+            .with_visible(false);
+
+        let window = event_loop.create_window(window_attributes).unwrap();
+        let hwnd = match window.window_handle().unwrap().as_raw() {
+            RawWindowHandle::Win32(handle) => HWND(handle.hwnd.get()),
+            RawWindowHandle::WinRt(_) => unimplemented!(),
+            _ => unreachable!(),
+        };
+        let adapter =
+            SubclassingAdapter::new(hwnd, SimpleActivationHandler {}, NullActionHandler {});
+        assert!(unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
+        drop(window);
+        drop(adapter);
+        event_loop.exit();
+    }
+}
+
 #[test]
 fn has_native_uia() {
     // This test is simple enough that we know it's fine to run entirely
@@ -75,22 +102,7 @@ fn has_native_uia() {
     // Still, we must prevent this test from running concurrently with other
     // tests, especially the focus test.
     let _lock_guard = MUTEX.lock().unwrap();
-    let event_loop = EventLoopBuilder::<()>::new()
-        .with_any_thread(true)
-        .build()
-        .unwrap();
-    let window = WindowBuilder::new()
-        .with_title(WINDOW_TITLE)
-        .with_visible(false)
-        .build(&event_loop)
-        .unwrap();
-    let hwnd = match window.window_handle().unwrap().as_raw() {
-        RawWindowHandle::Win32(handle) => HWND(handle.hwnd.get()),
-        RawWindowHandle::WinRt(_) => unimplemented!(),
-        _ => unreachable!(),
-    };
-    let adapter = SubclassingAdapter::new(hwnd, SimpleActivationHandler {}, NullActionHandler {});
-    assert!(unsafe { UiaHasServerSideProvider(hwnd) }.as_bool());
-    drop(window);
-    drop(adapter);
+    let event_loop = EventLoop::builder().with_any_thread(true).build().unwrap();
+    let mut state = TestApplication {};
+    event_loop.run_app(&mut state).unwrap();
 }
