@@ -607,7 +607,7 @@ usize_property_methods! {
     (table_cell_column_span, set_table_cell_column_span, clear_table_cell_column_span),
     (table_cell_row_index, set_table_cell_row_index, clear_table_cell_row_index),
     (table_cell_row_span, set_table_cell_row_span, clear_table_cell_row_span),
-    (hierarchical_level, set_hierarchical_level, clear_hierarchical_level),
+    (level, set_level, clear_level),
     (size_of_set, set_size_of_set, clear_size_of_set),
     (position_in_set, set_position_in_set, clear_position_in_set)
 }
