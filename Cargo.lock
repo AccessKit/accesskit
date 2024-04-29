@@ -93,7 +93,6 @@ dependencies = [
  "atspi",
  "futures-lite",
  "futures-util",
- "once_cell",
  "serde",
  "tokio",
  "tokio-stream",
