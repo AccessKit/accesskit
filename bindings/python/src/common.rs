@@ -6,17 +6,6 @@
 use crate::{Point, Rect};
 use pyo3::{prelude::*, types::PyList};
 
-#[pyclass(module = "accesskit")]
-pub struct NodeClassSet(accesskit::NodeClassSet);
-
-#[pymethods]
-impl NodeClassSet {
-    #[new]
-    pub fn __new__() -> Self {
-        Self(accesskit::NodeClassSet::new())
-    }
-}
-
 #[derive(Clone)]
 #[pyclass(module = "accesskit")]
 pub struct Node(accesskit::Node);
@@ -68,9 +57,9 @@ impl NodeBuilder {
         Self(Some(accesskit::NodeBuilder::new(role)))
     }
 
-    pub fn build(&mut self, classes: &mut NodeClassSet) -> Node {
+    pub fn build(&mut self) -> Node {
         let builder = self.0.take().unwrap();
-        Node(builder.build(&mut classes.0))
+        Node(builder.build())
     }
 
     #[getter]

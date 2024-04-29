@@ -46,8 +46,8 @@ pub use unix::*;
 #[cfg(any(target_os = "windows", feature = "cbindgen"))]
 pub use windows::*;
 
-/// `CastPtr` represents the relationship between a snake case type (like `node_class_set`)
-/// and the corresponding Rust type (like `NodeClassSet`). For each matched pair of types, there
+/// `CastPtr` represents the relationship between a snake case type (like `node_builder`)
+/// and the corresponding Rust type (like `NodeBuilder`). For each matched pair of types, there
 /// should be an `impl CastPtr for foo_bar { RustType = FooBar }`.
 ///
 /// This allows us to avoid using `as` in most places, and ensure that when we cast, we're

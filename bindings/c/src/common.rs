@@ -13,29 +13,6 @@ use std::{
     ptr, slice,
 };
 
-pub struct node_class_set {
-    _private: [u8; 0],
-}
-
-impl CastPtr for node_class_set {
-    type RustType = NodeClassSet;
-}
-
-impl BoxCastPtr for node_class_set {}
-
-impl node_class_set {
-    #[no_mangle]
-    pub extern "C" fn accesskit_node_class_set_new() -> *mut node_class_set {
-        let set = NodeClassSet::new();
-        BoxCastPtr::to_mut_ptr(set)
-    }
-
-    #[no_mangle]
-    pub extern "C" fn accesskit_node_class_set_free(set: *mut node_class_set) {
-        drop(box_from_ptr(set));
-    }
-}
-
 pub struct node {
     _private: [u8; 0],
 }
@@ -832,13 +809,9 @@ impl node_builder {
 
     /// Converts an `accesskit_node_builder` to an `accesskit_node`, freeing the memory in the process.
     #[no_mangle]
-    pub extern "C" fn accesskit_node_builder_build(
-        builder: *mut node_builder,
-        classes: *mut node_class_set,
-    ) -> *mut node {
+    pub extern "C" fn accesskit_node_builder_build(builder: *mut node_builder) -> *mut node {
         let builder = box_from_ptr(builder);
-        let classes = mut_from_ptr(classes);
-        let node = builder.build(classes);
+        let node = builder.build();
         BoxCastPtr::to_mut_ptr(node)
     }
 

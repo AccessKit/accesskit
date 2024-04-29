@@ -1,6 +1,6 @@
 use accesskit::{
-    Action, ActionRequest, DefaultActionVerb, Live, Node, NodeBuilder, NodeClassSet, NodeId, Rect,
-    Role, Tree, TreeUpdate,
+    Action, ActionRequest, DefaultActionVerb, Live, Node, NodeBuilder, NodeId, Rect, Role, Tree,
+    TreeUpdate,
 };
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
 use winit::{
@@ -32,7 +32,7 @@ const BUTTON_2_RECT: Rect = Rect {
     y1: 100.0,
 };
 
-fn build_button(id: NodeId, name: &str, classes: &mut NodeClassSet) -> Node {
+fn build_button(id: NodeId, name: &str) -> Node {
     let rect = match id {
         BUTTON_1_ID => BUTTON_1_RECT,
         BUTTON_2_ID => BUTTON_2_RECT,
@@ -44,20 +44,19 @@ fn build_button(id: NodeId, name: &str, classes: &mut NodeClassSet) -> Node {
     builder.set_name(name);
     builder.add_action(Action::Focus);
     builder.set_default_action_verb(DefaultActionVerb::Click);
-    builder.build(classes)
+    builder.build()
 }
 
-fn build_announcement(text: &str, classes: &mut NodeClassSet) -> Node {
+fn build_announcement(text: &str) -> Node {
     let mut builder = NodeBuilder::new(Role::StaticText);
     builder.set_name(text);
     builder.set_live(Live::Polite);
-    builder.build(classes)
+    builder.build()
 }
 
 struct State {
     focus: NodeId,
     announcement: Option<String>,
-    node_classes: NodeClassSet,
 }
 
 impl State {
@@ -65,7 +64,6 @@ impl State {
         Self {
             focus: INITIAL_FOCUS,
             announcement: None,
-            node_classes: NodeClassSet::new(),
         }
     }
 
@@ -76,13 +74,13 @@ impl State {
             builder.push_child(ANNOUNCEMENT_ID);
         }
         builder.set_name(WINDOW_TITLE);
-        builder.build(&mut self.node_classes)
+        builder.build()
     }
 
     fn build_initial_tree(&mut self) -> TreeUpdate {
         let root = self.build_root();
-        let button_1 = build_button(BUTTON_1_ID, "Button 1", &mut self.node_classes);
-        let button_2 = build_button(BUTTON_2_ID, "Button 2", &mut self.node_classes);
+        let button_1 = build_button(BUTTON_1_ID, "Button 1");
+        let button_2 = build_button(BUTTON_2_ID, "Button 2");
         let mut tree = Tree::new(WINDOW_ID);
         tree.app_name = Some("simple".to_string());
         let mut result = TreeUpdate {
@@ -95,10 +93,9 @@ impl State {
             focus: self.focus,
         };
         if let Some(announcement) = &self.announcement {
-            result.nodes.push((
-                ANNOUNCEMENT_ID,
-                build_announcement(announcement, &mut self.node_classes),
-            ));
+            result
+                .nodes
+                .push((ANNOUNCEMENT_ID, build_announcement(announcement)));
         }
         result
     }
@@ -120,7 +117,7 @@ impl State {
         };
         self.announcement = Some(text.into());
         adapter.update_if_active(|| {
-            let announcement = build_announcement(text, &mut self.node_classes);
+            let announcement = build_announcement(text);
             let root = self.build_root();
             TreeUpdate {
                 nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],

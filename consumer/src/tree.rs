@@ -4,7 +4,10 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{Live, Node as NodeData, NodeId, Tree as TreeData, TreeUpdate};
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use crate::node::{DetachedNode, Node, NodeState, ParentAndIndex};
 
@@ -77,7 +80,7 @@ impl State {
             let state = NodeState {
                 id,
                 parent_and_index,
-                data,
+                data: Arc::new(data),
             };
             nodes.insert(id, state);
             if let Some(changes) = changes {
@@ -120,7 +123,7 @@ impl State {
                         orphans.insert(*child_id);
                     }
                 }
-                node_state.data = node_data;
+                node_state.data = Arc::new(node_data);
             } else if let Some(parent_and_index) = pending_children.remove(&node_id) {
                 add_node(
                     &mut self.nodes,
@@ -216,7 +219,7 @@ impl State {
 
         fn traverse(state: &State, nodes: &mut Vec<(NodeId, NodeData)>, id: NodeId) {
             let node = state.nodes.get(&id).unwrap();
-            nodes.push((id, node.data.clone()));
+            nodes.push((id, (*node.data).clone()));
 
             for child_id in node.data.children().iter() {
                 traverse(state, nodes, *child_id);
@@ -390,16 +393,12 @@ impl Tree {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{NodeBuilder, NodeClassSet, NodeId, Role, Tree, TreeUpdate};
+    use accesskit::{NodeBuilder, NodeId, Role, Tree, TreeUpdate};
 
     #[test]
     fn init_tree_with_root_node() {
-        let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
-            nodes: vec![(
-                NodeId(0),
-                NodeBuilder::new(Role::Window).build(&mut classes),
-            )],
+            nodes: vec![(NodeId(0), NodeBuilder::new(Role::Window).build())],
             tree: Some(Tree::new(NodeId(0))),
             focus: NodeId(0),
         };
@@ -411,22 +410,15 @@ mod tests {
 
     #[test]
     fn root_node_has_children() {
-        let mut classes = NodeClassSet::new();
         let update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
                     let mut builder = NodeBuilder::new(Role::Window);
                     builder.set_children(vec![NodeId(1), NodeId(2)]);
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
-                (
-                    NodeId(1),
-                    NodeBuilder::new(Role::Button).build(&mut classes),
-                ),
-                (
-                    NodeId(2),
-                    NodeBuilder::new(Role::Button).build(&mut classes),
-                ),
+                (NodeId(1), NodeBuilder::new(Role::Button).build()),
+                (NodeId(2), NodeBuilder::new(Role::Button).build()),
             ],
             tree: Some(Tree::new(NodeId(0))),
             focus: NodeId(0),
@@ -446,10 +438,9 @@ mod tests {
 
     #[test]
     fn add_child_to_root_node() {
-        let mut classes = NodeClassSet::new();
         let root_builder = NodeBuilder::new(Role::Window);
         let first_update = TreeUpdate {
-            nodes: vec![(NodeId(0), root_builder.clone().build(&mut classes))],
+            nodes: vec![(NodeId(0), root_builder.clone().build())],
             tree: Some(Tree::new(NodeId(0))),
             focus: NodeId(0),
         };
@@ -460,12 +451,9 @@ mod tests {
                 (NodeId(0), {
                     let mut builder = root_builder;
                     builder.push_child(NodeId(1));
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
-                (
-                    NodeId(1),
-                    NodeBuilder::new(Role::RootWebArea).build(&mut classes),
-                ),
+                (NodeId(1), NodeBuilder::new(Role::RootWebArea).build()),
             ],
             tree: None,
             focus: NodeId(0),
@@ -529,19 +517,15 @@ mod tests {
 
     #[test]
     fn remove_child_from_root_node() {
-        let mut classes = NodeClassSet::new();
         let root_builder = NodeBuilder::new(Role::Window);
         let first_update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
                     let mut builder = root_builder.clone();
                     builder.push_child(NodeId(1));
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
-                (
-                    NodeId(1),
-                    NodeBuilder::new(Role::RootWebArea).build(&mut classes),
-                ),
+                (NodeId(1), NodeBuilder::new(Role::RootWebArea).build()),
             ],
             tree: Some(Tree::new(NodeId(0))),
             focus: NodeId(0),
@@ -549,7 +533,7 @@ mod tests {
         let mut tree = super::Tree::new(first_update, false);
         assert_eq!(1, tree.state().root().children().count());
         let second_update = TreeUpdate {
-            nodes: vec![(NodeId(0), root_builder.build(&mut classes))],
+            nodes: vec![(NodeId(0), root_builder.build())],
             tree: None,
             focus: NodeId(0),
         };
@@ -607,22 +591,15 @@ mod tests {
 
     #[test]
     fn move_focus_between_siblings() {
-        let mut classes = NodeClassSet::new();
         let first_update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
                     let mut builder = NodeBuilder::new(Role::Window);
                     builder.set_children(vec![NodeId(1), NodeId(2)]);
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
-                (
-                    NodeId(1),
-                    NodeBuilder::new(Role::Button).build(&mut classes),
-                ),
-                (
-                    NodeId(2),
-                    NodeBuilder::new(Role::Button).build(&mut classes),
-                ),
+                (NodeId(1), NodeBuilder::new(Role::Button).build()),
+                (NodeId(2), NodeBuilder::new(Role::Button).build()),
             ],
             tree: Some(Tree::new(NodeId(0))),
             focus: NodeId(1),
@@ -702,19 +679,18 @@ mod tests {
 
     #[test]
     fn update_node() {
-        let mut classes = NodeClassSet::new();
         let child_builder = NodeBuilder::new(Role::Button);
         let first_update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
                     let mut builder = NodeBuilder::new(Role::Window);
                     builder.set_children(vec![NodeId(1)]);
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
                 (NodeId(1), {
                     let mut builder = child_builder.clone();
                     builder.set_name("foo");
-                    builder.build(&mut classes)
+                    builder.build()
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
@@ -729,7 +705,7 @@ mod tests {
             nodes: vec![(NodeId(1), {
                 let mut builder = child_builder;
                 builder.set_name("bar");
-                builder.build(&mut classes)
+                builder.build()
             })],
             tree: None,
             focus: NodeId(0),

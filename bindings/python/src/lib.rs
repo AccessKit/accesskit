@@ -41,7 +41,6 @@ fn accesskit(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<::accesskit::TextAlign>()?;
     m.add_class::<::accesskit::VerticalOffset>()?;
     m.add_class::<::accesskit::TextDecoration>()?;
-    m.add_class::<NodeClassSet>()?;
     m.add_class::<Node>()?;
     m.add_class::<NodeBuilder>()?;
     m.add_class::<Tree>()?;

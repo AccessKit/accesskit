@@ -20,8 +20,7 @@ const accesskit_rect BUTTON_2_RECT = {20.0, 60.0, 100.0, 100.0};
 const uint32_t SET_FOCUS_MSG = WM_USER;
 const uint32_t DO_DEFAULT_ACTION_MSG = WM_USER + 1;
 
-accesskit_node *build_button(accesskit_node_id id, const char *name,
-                             accesskit_node_class_set *classes) {
+accesskit_node *build_button(accesskit_node_id id, const char *name) {
   accesskit_rect rect;
   if (id == BUTTON_1_ID) {
     rect = BUTTON_1_RECT;
@@ -36,28 +35,25 @@ accesskit_node *build_button(accesskit_node_id id, const char *name,
   accesskit_node_builder_add_action(builder, ACCESSKIT_ACTION_FOCUS);
   accesskit_node_builder_set_default_action_verb(
       builder, ACCESSKIT_DEFAULT_ACTION_VERB_CLICK);
-  return accesskit_node_builder_build(builder, classes);
+  return accesskit_node_builder_build(builder);
 }
 
-accesskit_node *build_announcement(const char *text,
-                                   accesskit_node_class_set *classes) {
+accesskit_node *build_announcement(const char *text) {
   accesskit_node_builder *builder =
       accesskit_node_builder_new(ACCESSKIT_ROLE_STATIC_TEXT);
   accesskit_node_builder_set_name(builder, text);
   accesskit_node_builder_set_live(builder, ACCESSKIT_LIVE_POLITE);
-  return accesskit_node_builder_build(builder, classes);
+  return accesskit_node_builder_build(builder);
 }
 
 struct window_state {
   accesskit_windows_adapter *adapter;
   accesskit_node_id focus;
   const char *announcement;
-  accesskit_node_class_set *node_classes;
 };
 
 void window_state_free(struct window_state *state) {
   accesskit_windows_adapter_free(state->adapter);
-  accesskit_node_class_set_free(state->node_classes);
   free(state);
 }
 
@@ -69,16 +65,14 @@ accesskit_node *window_state_build_root(struct window_state *state) {
   if (state->announcement != NULL) {
     accesskit_node_builder_push_child(builder, ANNOUNCEMENT_ID);
   }
-  return accesskit_node_builder_build(builder, state->node_classes);
+  return accesskit_node_builder_build(builder);
 }
 
 accesskit_tree_update *build_initial_tree(void *userdata) {
   struct window_state *state = userdata;
   accesskit_node *root = window_state_build_root(state);
-  accesskit_node *button_1 =
-      build_button(BUTTON_1_ID, "Button 1", state->node_classes);
-  accesskit_node *button_2 =
-      build_button(BUTTON_2_ID, "Button 2", state->node_classes);
+  accesskit_node *button_1 = build_button(BUTTON_1_ID, "Button 1");
+  accesskit_node *button_2 = build_button(BUTTON_2_ID, "Button 2");
   accesskit_tree_update *result = accesskit_tree_update_with_capacity_and_focus(
       (state->announcement != NULL) ? 4 : 3, state->focus);
   accesskit_tree *tree = accesskit_tree_new(WINDOW_ID);
@@ -88,8 +82,7 @@ accesskit_tree_update *build_initial_tree(void *userdata) {
   accesskit_tree_update_push_node(result, BUTTON_1_ID, button_1);
   accesskit_tree_update_push_node(result, BUTTON_2_ID, button_2);
   if (state->announcement != NULL) {
-    accesskit_node *announcement =
-        build_announcement(state->announcement, state->node_classes);
+    accesskit_node *announcement = build_announcement(state->announcement);
     accesskit_tree_update_push_node(result, ANNOUNCEMENT_ID, announcement);
   }
   return result;
@@ -126,8 +119,7 @@ void window_state_set_focus(struct window_state *state,
 
 accesskit_tree_update *build_tree_update_for_button_press(void *userdata) {
   struct window_state *state = userdata;
-  accesskit_node *announcement =
-      build_announcement(state->announcement, state->node_classes);
+  accesskit_node *announcement = build_announcement(state->announcement);
   accesskit_node *root = window_state_build_root(state);
   accesskit_tree_update *update =
       accesskit_tree_update_with_capacity_and_focus(2, state->focus);
@@ -181,7 +173,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         accesskit_windows_adapter_new(hwnd, false, do_action, (void *)hwnd);
     state->focus = create_params->initial_focus;
     state->announcement = NULL;
-    state->node_classes = accesskit_node_class_set_new();
     SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)state);
     return DefWindowProc(hwnd, msg, wParam, lParam);
   } else if (msg == WM_PAINT) {
