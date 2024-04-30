@@ -44,7 +44,7 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
-    pub fn name(&self) -> Option<String> {
+    pub(crate) fn name(&self) -> Option<String> {
         match self {
             Self::Node(node) => node.name(),
             Self::DetachedNode(node) => node.name(),
@@ -58,11 +58,11 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
-    pub fn parent_id(&self) -> Option<NodeId> {
+    pub(crate) fn parent_id(&self) -> Option<NodeId> {
         self.node_state().parent_id()
     }
 
-    pub fn id(&self) -> NodeId {
+    pub(crate) fn id(&self) -> NodeId {
         self.node_state().id()
     }
 
@@ -84,7 +84,7 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
-    pub fn role(&self) -> AtspiRole {
+    pub(crate) fn role(&self) -> AtspiRole {
         if self.node_state().has_role_description() {
             return AtspiRole::Extended;
         }
@@ -307,7 +307,7 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
-    pub fn state(&self, is_window_focused: bool) -> StateSet {
+    pub(crate) fn state(&self, is_window_focused: bool) -> StateSet {
         let state = self.node_state();
         let atspi_role = self.role();
         let mut atspi_state = StateSet::empty();
@@ -391,7 +391,7 @@ impl<'a> NodeWrapper<'a> {
         self.current_value().is_some()
     }
 
-    pub fn interfaces(&self) -> InterfaceSet {
+    pub(crate) fn interfaces(&self) -> InterfaceSet {
         let mut interfaces = InterfaceSet::new(Interface::Accessible);
         if self.supports_action() {
             interfaces.insert(Interface::Action);
