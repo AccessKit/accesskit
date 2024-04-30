@@ -551,10 +551,7 @@ node_id_property_methods! {
     (member_of, set_member_of, clear_member_of),
     (next_on_line, set_next_on_line, clear_next_on_line),
     (previous_on_line, set_previous_on_line, clear_previous_on_line),
-    (popup_for, set_popup_for, clear_popup_for),
-    (table_header, set_table_header, clear_table_header),
-    (table_row_header, set_table_row_header, clear_table_row_header),
-    (table_column_header, set_table_column_header, clear_table_column_header)
+    (popup_for, set_popup_for, clear_popup_for)
 }
 
 /// Only call this function with a string that originated from AccessKit.
@@ -579,7 +576,9 @@ string_property_methods! {
     (role_description, set_role_description, clear_role_description),
     (state_description, set_state_description, clear_state_description),
     (tooltip, set_tooltip, clear_tooltip),
-    (url, set_url, clear_url)
+    (url, set_url, clear_url),
+    (row_index_text, set_row_index_text, clear_row_index_text),
+    (column_index_text, set_column_index_text, clear_column_index_text)
 }
 
 f64_property_methods! {
@@ -599,14 +598,12 @@ f64_property_methods! {
 }
 
 usize_property_methods! {
-    (table_row_count, set_table_row_count, clear_table_row_count),
-    (table_column_count, set_table_column_count, clear_table_column_count),
-    (table_row_index, set_table_row_index, clear_table_row_index),
-    (table_column_index, set_table_column_index, clear_table_column_index),
-    (table_cell_column_index, set_table_cell_column_index, clear_table_cell_column_index),
-    (table_cell_column_span, set_table_cell_column_span, clear_table_cell_column_span),
-    (table_cell_row_index, set_table_cell_row_index, clear_table_cell_row_index),
-    (table_cell_row_span, set_table_cell_row_span, clear_table_cell_row_span),
+    (row_count, set_row_count, clear_row_count),
+    (column_count, set_column_count, clear_column_count),
+    (row_index, set_row_index, clear_row_index),
+    (column_index, set_column_index, clear_column_index),
+    (row_span, set_row_span, clear_row_span),
+    (column_span, set_column_span, clear_column_span),
     (level, set_level, clear_level),
     (size_of_set, set_size_of_set, clear_size_of_set),
     (position_in_set, set_position_in_set, clear_position_in_set)
