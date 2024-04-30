@@ -23,6 +23,40 @@
     * accesskit bumped from 0.12.2 to 0.12.3
     * accesskit_consumer bumped from 0.17.0 to 0.17.1
 
+## [0.13.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.12.0...accesskit_macos-v0.13.0) (2024-04-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* Clean up table roles and properties ([#393](https://github.com/AccessKit/accesskit/issues/393))
+* Drop `NodeClassSet` ([#389](https://github.com/AccessKit/accesskit/issues/389))
+* Rename `Checked` to `Toggled`; drop `ToggleButton` role ([#388](https://github.com/AccessKit/accesskit/issues/388))
+
+### Features
+
+* Implement the `description` property ([#382](https://github.com/AccessKit/accesskit/issues/382)) ([d49f406](https://github.com/AccessKit/accesskit/commit/d49f40660b5dc23ed074cd72a91e511b130756ae))
+
+
+### Bug Fixes
+
+* Increase minimum supported Rust version to `1.70` ([#396](https://github.com/AccessKit/accesskit/issues/396)) ([a8398b8](https://github.com/AccessKit/accesskit/commit/a8398b847aa003de91042ac45e33126fc2cae053))
+* Use new objc2 crates ([#384](https://github.com/AccessKit/accesskit/issues/384)) ([b3484c0](https://github.com/AccessKit/accesskit/commit/b3484c0fb1fef3ecd41ff9592978336c20b8b4f8))
+
+
+### Code Refactoring
+
+* Clean up table roles and properties ([#393](https://github.com/AccessKit/accesskit/issues/393)) ([e34dad9](https://github.com/AccessKit/accesskit/commit/e34dad94448a5321ece9def3f2e054aa5f62dd79))
+* Drop `NodeClassSet` ([#389](https://github.com/AccessKit/accesskit/issues/389)) ([1b153ed](https://github.com/AccessKit/accesskit/commit/1b153ed51f8421cdba2dc98beca2e8f5f8c781bc))
+* Rename `Checked` to `Toggled`; drop `ToggleButton` role ([#388](https://github.com/AccessKit/accesskit/issues/388)) ([6bc040b](https://github.com/AccessKit/accesskit/commit/6bc040b7cf75cdbd6a019cc380d8dbce804b3c81))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.13.0 to 0.14.0
+    * accesskit_consumer bumped from 0.18.0 to 0.19.0
+
 ## [0.12.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.11.1...accesskit_macos-v0.12.0) (2024-04-14)
 
 

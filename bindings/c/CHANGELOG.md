@@ -54,6 +54,43 @@
   * dependencies
     * accesskit_windows bumped from 0.16.3 to 0.16.4
 
+## [0.9.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.8.0...accesskit_c-v0.9.0) (2024-04-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* Clean up table roles and properties ([#393](https://github.com/AccessKit/accesskit/issues/393))
+* Rename `hierarchical_level` to `level` ([#390](https://github.com/AccessKit/accesskit/issues/390))
+* Drop `NodeClassSet` ([#389](https://github.com/AccessKit/accesskit/issues/389))
+* Rename `Checked` to `Toggled`; drop `ToggleButton` role ([#388](https://github.com/AccessKit/accesskit/issues/388))
+
+### Features
+
+* Add the `owns` relation ([#392](https://github.com/AccessKit/accesskit/issues/392)) ([fd668dd](https://github.com/AccessKit/accesskit/commit/fd668ddc4b64cb05ab3600972b3d3823a037f2d5))
+
+
+### Bug Fixes
+
+* Increase minimum supported Rust version to `1.70` ([#396](https://github.com/AccessKit/accesskit/issues/396)) ([a8398b8](https://github.com/AccessKit/accesskit/commit/a8398b847aa003de91042ac45e33126fc2cae053))
+
+
+### Code Refactoring
+
+* Clean up table roles and properties ([#393](https://github.com/AccessKit/accesskit/issues/393)) ([e34dad9](https://github.com/AccessKit/accesskit/commit/e34dad94448a5321ece9def3f2e054aa5f62dd79))
+* Drop `NodeClassSet` ([#389](https://github.com/AccessKit/accesskit/issues/389)) ([1b153ed](https://github.com/AccessKit/accesskit/commit/1b153ed51f8421cdba2dc98beca2e8f5f8c781bc))
+* Rename `Checked` to `Toggled`; drop `ToggleButton` role ([#388](https://github.com/AccessKit/accesskit/issues/388)) ([6bc040b](https://github.com/AccessKit/accesskit/commit/6bc040b7cf75cdbd6a019cc380d8dbce804b3c81))
+* Rename `hierarchical_level` to `level` ([#390](https://github.com/AccessKit/accesskit/issues/390)) ([2d61e01](https://github.com/AccessKit/accesskit/commit/2d61e01fffff1265b348c141715f6f9b6fe4081b))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.13.0 to 0.14.0
+    * accesskit_windows bumped from 0.17.0 to 0.18.0
+    * accesskit_macos bumped from 0.12.0 to 0.13.0
+    * accesskit_unix bumped from 0.8.0 to 0.9.0
+
 ## [0.8.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.7.7...accesskit_c-v0.8.0) (2024-04-14)
 
 

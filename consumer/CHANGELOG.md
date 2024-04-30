@@ -20,6 +20,37 @@
   * dependencies
     * accesskit bumped from 0.12.2 to 0.12.3
 
+## [0.19.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.18.0...accesskit_consumer-v0.19.0) (2024-04-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop `NodeClassSet` ([#389](https://github.com/AccessKit/accesskit/issues/389))
+* Rename `Checked` to `Toggled`; drop `ToggleButton` role ([#388](https://github.com/AccessKit/accesskit/issues/388))
+
+### Features
+
+* Expose the class name property ([#385](https://github.com/AccessKit/accesskit/issues/385)) ([53dcf2a](https://github.com/AccessKit/accesskit/commit/53dcf2ae47546273590c46a9b31b708aa1409837))
+* Implement the `description` property ([#382](https://github.com/AccessKit/accesskit/issues/382)) ([d49f406](https://github.com/AccessKit/accesskit/commit/d49f40660b5dc23ed074cd72a91e511b130756ae))
+
+
+### Bug Fixes
+
+* Increase minimum supported Rust version to `1.70` ([#396](https://github.com/AccessKit/accesskit/issues/396)) ([a8398b8](https://github.com/AccessKit/accesskit/commit/a8398b847aa003de91042ac45e33126fc2cae053))
+
+
+### Code Refactoring
+
+* Drop `NodeClassSet` ([#389](https://github.com/AccessKit/accesskit/issues/389)) ([1b153ed](https://github.com/AccessKit/accesskit/commit/1b153ed51f8421cdba2dc98beca2e8f5f8c781bc))
+* Rename `Checked` to `Toggled`; drop `ToggleButton` role ([#388](https://github.com/AccessKit/accesskit/issues/388)) ([6bc040b](https://github.com/AccessKit/accesskit/commit/6bc040b7cf75cdbd6a019cc380d8dbce804b3c81))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.13.0 to 0.14.0
+
 ## [0.18.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.17.1...accesskit_consumer-v0.18.0) (2024-04-14)
 
 

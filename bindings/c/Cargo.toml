@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_c"
-version = "0.8.0"
+version = "0.9.0"
 authors.workspace = true
 license.workspace = true
 publish = false
@@ -15,14 +15,14 @@ doc = false
 cbindgen = []
 
 [dependencies]
-accesskit = { version = "0.13.0", path = "../../common" }
+accesskit = { version = "0.14.0", path = "../../common" }
 paste = "1.0"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-accesskit_windows = { version = "0.17.0", path = "../../platforms/windows" }
+accesskit_windows = { version = "0.18.0", path = "../../platforms/windows" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-accesskit_macos = { version = "0.12.0", path = "../../platforms/macos" }
+accesskit_macos = { version = "0.13.0", path = "../../platforms/macos" }
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
-accesskit_unix = { version = "0.8.0", path = "../../platforms/unix" }
+accesskit_unix = { version = "0.9.0", path = "../../platforms/unix" }

@@ -42,6 +42,26 @@
   * dependencies
     * accesskit_atspi_common bumped from 0.1.2 to 0.2.0
 
+## [0.9.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.8.0...accesskit_unix-v0.9.0) (2024-04-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* Force a semver-breaking release ([#398](https://github.com/AccessKit/accesskit/issues/398))
+
+### Bug Fixes
+
+* Force a semver-breaking release ([#398](https://github.com/AccessKit/accesskit/issues/398)) ([87b8b92](https://github.com/AccessKit/accesskit/commit/87b8b92b74a102c7cae48e013d2c2ae1cc2f9598))
+* Increase minimum supported Rust version to `1.70` ([#396](https://github.com/AccessKit/accesskit/issues/396)) ([a8398b8](https://github.com/AccessKit/accesskit/commit/a8398b847aa003de91042ac45e33126fc2cae053))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.13.0 to 0.14.0
+    * accesskit_atspi_common bumped from 0.3.0 to 0.4.0
+
 ## [0.8.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.7.5...accesskit_unix-v0.8.0) (2024-04-14)
 
 
