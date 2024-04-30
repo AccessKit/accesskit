@@ -101,6 +101,34 @@
   * dependencies
     * accesskit_windows bumped from 0.16.3 to 0.16.4
 
+## [0.20.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.19.0...accesskit_winit-v0.20.0) (2024-04-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* Update winit to 0.30 ([#397](https://github.com/AccessKit/accesskit/issues/397))
+* Drop `NodeClassSet` ([#389](https://github.com/AccessKit/accesskit/issues/389))
+
+### Bug Fixes
+
+* Increase minimum supported Rust version to `1.70` ([#396](https://github.com/AccessKit/accesskit/issues/396)) ([a8398b8](https://github.com/AccessKit/accesskit/commit/a8398b847aa003de91042ac45e33126fc2cae053))
+* Update winit to 0.30 ([#397](https://github.com/AccessKit/accesskit/issues/397)) ([de93be3](https://github.com/AccessKit/accesskit/commit/de93be387c03a438fbf598670207e578686e6bcf))
+
+
+### Code Refactoring
+
+* Drop `NodeClassSet` ([#389](https://github.com/AccessKit/accesskit/issues/389)) ([1b153ed](https://github.com/AccessKit/accesskit/commit/1b153ed51f8421cdba2dc98beca2e8f5f8c781bc))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.13.0 to 0.14.0
+    * accesskit_windows bumped from 0.17.0 to 0.18.0
+    * accesskit_macos bumped from 0.12.0 to 0.13.0
+    * accesskit_unix bumped from 0.8.0 to 0.9.0
+
 ## [0.19.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.18.7...accesskit_winit-v0.19.0) (2024-04-14)
 
 
