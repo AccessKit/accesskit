@@ -843,6 +843,7 @@ enum PropertyId {
     DescribedBy,
     FlowTo,
     LabelledBy,
+    Owns,
     RadioGroup,
 
     // NodeId
@@ -1463,6 +1464,12 @@ node_id_vec_property_methods! {
     (DescribedBy, described_by, set_described_by, push_described_by, clear_described_by),
     (FlowTo, flow_to, set_flow_to, push_flow_to, clear_flow_to),
     (LabelledBy, labelled_by, set_labelled_by, push_labelled_by, clear_labelled_by),
+    /// As with the `aria-owns` property in ARIA, this property should be set
+    /// only if the nodes referenced in the property are not descendants
+    /// of the owning node in the AccessKit tree. In the common case, where the
+    /// owned nodes are direct children or indirect descendants, this property
+    /// is unnecessary.
+    (Owns, owns, set_owns, push_owned, clear_owns),
     /// On radio buttons this should be set to a list of all of the buttons
     /// in the same group as this one, including this radio button itself.
     (RadioGroup, radio_group, set_radio_group, push_to_radio_group, clear_radio_group)
@@ -1893,6 +1900,7 @@ impl<'de> Visitor<'de> for NodeVisitor {
                             DescribedBy,
                             FlowTo,
                             LabelledBy,
+                            Owns,
                             RadioGroup
                         },
                         NodeId {
@@ -2076,6 +2084,7 @@ impl JsonSchema for Node {
                 DescribedBy,
                 FlowTo,
                 LabelledBy,
+                Owns,
                 RadioGroup
             },
             NodeId {

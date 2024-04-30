@@ -541,6 +541,7 @@ node_id_vec_property_methods! {
     (described_by, set_described_by, push_described_by, clear_described_by),
     (flow_to, set_flow_to, push_flow_to, clear_flow_to),
     (labelled_by, set_labelled_by, push_labelled_by, clear_labelled_by),
+    (owns, set_owns, push_owned, clear_owns),
     (radio_group, set_radio_group, push_to_radio_group, clear_radio_group)
 }
 
