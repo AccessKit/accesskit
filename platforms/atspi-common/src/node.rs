@@ -9,8 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionRequest, Affine, DefaultActionVerb, Live, NodeId, Point, Rect, Role,
-    Toggled,
+    Action, ActionData, ActionRequest, Affine, DefaultActionVerb, Live, NodeId, Orientation, Point,
+    Rect, Role, Toggled,
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
 use atspi_common::{
@@ -289,6 +289,13 @@ impl<'a> NodeWrapper<'a> {
         // TODO: Focus and selection.
         if state.is_focusable() {
             atspi_state.insert(State::Focusable);
+        }
+        if let Some(orientation) = state.orientation() {
+            atspi_state.insert(if orientation == Orientation::Horizontal {
+                State::Horizontal
+            } else {
+                State::Vertical
+            });
         }
         let filter_result = filter(self.0);
         if filter_result == FilterResult::Include {

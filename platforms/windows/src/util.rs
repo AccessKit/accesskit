@@ -95,6 +95,12 @@ impl From<UIA_CONTROLTYPE_ID> for Variant {
     }
 }
 
+impl From<OrientationType> for Variant {
+    fn from(value: OrientationType) -> Self {
+        Self(value.0.into())
+    }
+}
+
 impl From<bool> for Variant {
     fn from(value: bool) -> Self {
         Self(value.into())

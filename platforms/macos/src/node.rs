@@ -10,7 +10,9 @@
 
 #![allow(non_upper_case_globals)]
 
-use accesskit::{Action, ActionData, ActionRequest, NodeId, Role, TextSelection, Toggled};
+use accesskit::{
+    Action, ActionData, ActionRequest, NodeId, Orientation, Role, TextSelection, Toggled,
+};
 use accesskit_consumer::{FilterResult, Node};
 use objc2::{
     declare_class, msg_send_id,
@@ -467,6 +469,18 @@ declare_class!(
             .flatten()
         }
 
+        #[method(accessibilityOrientation)]
+        fn orientation(&self) -> NSAccessibilityOrientation {
+            self.resolve(|node| {
+                match node.orientation() {
+                    Some(Orientation::Horizontal) => NSAccessibilityOrientation::Horizontal,
+                    Some(Orientation::Vertical) => NSAccessibilityOrientation::Vertical,
+                    None => NSAccessibilityOrientation::Unknown,
+                }
+            })
+            .unwrap_or(NSAccessibilityOrientation::Unknown)
+        }
+
         #[method(isAccessibilityElement)]
         fn is_accessibility_element(&self) -> bool {
             self.resolve(|node| filter(node) == FilterResult::Include)
@@ -769,6 +783,7 @@ declare_class!(
                     || selector == sel!(accessibilityValue)
                     || selector == sel!(accessibilityMinValue)
                     || selector == sel!(accessibilityMaxValue)
+                    || selector == sel!(accessibilityOrientation)
                     || selector == sel!(isAccessibilityElement)
                     || selector == sel!(isAccessibilityFocused)
                     || selector == sel!(accessibilityNotifiesWhenDestroyed)

@@ -11,7 +11,8 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit::{
-    Action, ActionData, ActionRequest, Live, NodeId, NodeIdContent, Point, Role, Toggled,
+    Action, ActionData, ActionRequest, Live, NodeId, NodeIdContent, Orientation, Point, Role,
+    Toggled,
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
 use paste::paste;
@@ -296,6 +297,14 @@ impl<'a> NodeWrapper<'a> {
 
     fn class_name(&self) -> Option<&str> {
         self.0.class_name()
+    }
+
+    fn orientation(&self) -> OrientationType {
+        match self.0.orientation() {
+            Some(Orientation::Horizontal) => OrientationType_Horizontal,
+            Some(Orientation::Vertical) => OrientationType_Vertical,
+            None => OrientationType_None,
+        }
     }
 
     fn is_toggle_pattern_supported(&self) -> bool {
@@ -863,7 +872,8 @@ properties! {
     (IsKeyboardFocusable, is_focusable),
     (HasKeyboardFocus, is_focused),
     (LiveSetting, live_setting),
-    (ClassName, class_name)
+    (ClassName, class_name),
+    (Orientation, orientation)
 }
 
 patterns! {

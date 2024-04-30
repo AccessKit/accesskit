@@ -11,8 +11,7 @@
 use std::{iter::FusedIterator, sync::Arc};
 
 use accesskit::{
-    Action, Affine, DefaultActionVerb, Live, Node as NodeData, NodeId, Point, Rect, Role,
-    TextSelection, Toggled,
+    Action, Affine, DefaultActionVerb, Live, Node as NodeData, NodeId, Orientation, Point, Rect, Role, TextSelection, Toggled
 };
 
 use crate::filters::FilterResult;
@@ -394,6 +393,10 @@ impl<'a> Node<'a> {
 
     pub fn is_multiline(&self) -> bool {
         self.role() == Role::MultilineTextInput
+    }
+
+    pub fn orientation(&self) -> Option<Orientation> {
+        self.data().orientation()
     }
 
     pub fn default_action_verb(&self) -> Option<DefaultActionVerb> {
