@@ -3,7 +3,7 @@ use accesskit::{
     TreeUpdate,
 };
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
-use std::{error::Error, sync::Arc};
+use std::error::Error;
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, KeyEvent, WindowEvent},
@@ -131,7 +131,7 @@ impl UiState {
 }
 
 struct WindowState {
-    window: Arc<Window>,
+    window: Window,
     adapter: Adapter,
     ui: UiState,
 }
@@ -139,7 +139,7 @@ struct WindowState {
 impl WindowState {
     fn new(window: Window, adapter: Adapter, ui: UiState) -> Self {
         Self {
-            window: Arc::new(window),
+            window,
             adapter,
             ui,
         }
