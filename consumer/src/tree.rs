@@ -34,8 +34,12 @@ struct InternalChanges {
 
 impl State {
     fn validate_global(&self) {
-        assert!(self.nodes.contains_key(&self.data.root));
-        assert!(self.nodes.contains_key(&self.focus));
+        if !self.nodes.contains_key(&self.data.root) {
+            panic!("Root id #{} is not in the node list", self.data.root.0);
+        }
+        if !self.nodes.contains_key(&self.focus) {
+            panic!("Focused id #{} is not in the node list", self.focus.0);
+        }
     }
 
     fn update(
@@ -93,7 +97,12 @@ impl State {
 
             let mut seen_child_ids = HashSet::new();
             for (child_index, child_id) in node_data.children().iter().enumerate() {
-                assert!(!seen_child_ids.contains(child_id));
+                if seen_child_ids.contains(child_id) {
+                    panic!(
+                        "Node #{} of TreeUpdate includes duplicate child #{};",
+                        node_id.0, child_id.0
+                    );
+                }
                 orphans.remove(child_id);
                 let parent_and_index = ParentAndIndex(node_id, child_index);
                 if let Some(child_state) = self.nodes.get_mut(child_id) {
@@ -139,8 +148,12 @@ impl State {
             }
         }
 
-        assert_eq!(pending_nodes.len(), 0);
-        assert_eq!(pending_children.len(), 0);
+        if !pending_nodes.is_empty() {
+            panic!("TreeUpdate includes {} nodes which are neither in the current tree nor a child of another node from the update: {}", pending_nodes.len(), short_node_list(pending_nodes.keys()));
+        }
+        if !pending_children.is_empty() {
+            panic!("TreeUpdate's nodes include {} children ids which are neither in the current tree nor the id of another node from the update: {}", pending_children.len(), short_node_list(pending_children.keys()));
+        }
 
         if update.focus != self.focus || is_host_focused != self.is_host_focused {
             let old_focus = old_focus_id.map(|id| self.node_by_id(id).unwrap().detached());
@@ -305,9 +318,12 @@ pub struct Tree {
 
 impl Tree {
     pub fn new(mut initial_state: TreeUpdate, is_host_focused: bool) -> Self {
+        let Some(tree) = initial_state.tree.take() else {
+            panic!("Tried to initialize the accessibility tree without a root tree. TreeUpdate::tree must be Some.");
+        };
         let mut state = State {
             nodes: HashMap::new(),
-            data: initial_state.tree.take().unwrap(),
+            data: tree,
             focus: initial_state.focus,
             is_host_focused,
         };
@@ -388,6 +404,27 @@ impl Tree {
 
     pub fn state(&self) -> &State {
         &self.state
+    }
+}
+
+fn short_node_list<'a>(nodes: impl ExactSizeIterator<Item = &'a NodeId>) -> String {
+    if nodes.len() > 10 {
+        format!(
+            "[{} ...]",
+            nodes
+                .take(10)
+                .map(|id| format!("#{}", id.0))
+                .collect::<Vec<_>>()
+                .join(", "),
+        )
+    } else {
+        format!(
+            "[{}]",
+            nodes
+                .map(|id| format!("#{}", id.0))
+                .collect::<Vec<_>>()
+                .join(", "),
+        )
     }
 }
 
