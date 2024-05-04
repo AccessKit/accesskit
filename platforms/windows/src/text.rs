@@ -474,7 +474,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
             // Revisit this if we eventually support embedded objects.
             Ok(PlatformNode {
                 context: self.context.clone(),
-                node_id: node.id(),
+                node_id: Some(node.id()),
             }
             .into())
         })
