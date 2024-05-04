@@ -95,6 +95,9 @@ pub(crate) trait BoxCastPtr: CastPtr + Sized {
         Box::into_raw(Box::new(src)) as *mut _
     }
 
+    // The following exception is needed because this function is only
+    // used in the bindings for some platform adapters.
+    #[allow(dead_code)]
     fn to_nullable_mut_ptr(src: Option<Self::RustType>) -> *mut Self {
         src.map_or_else(std::ptr::null_mut, Self::to_mut_ptr)
     }

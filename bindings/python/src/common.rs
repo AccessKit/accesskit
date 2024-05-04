@@ -715,6 +715,9 @@ impl From<accesskit::ActionRequest> for ActionRequest {
     }
 }
 
+// The following exception is needed because this struct is only used
+// in the bindings for some platform adapters.
+#[allow(dead_code)]
 pub(crate) struct LocalPythonActivationHandler<'a> {
     pub(crate) py: Python<'a>,
     pub(crate) handler: Py<PyAny>,
