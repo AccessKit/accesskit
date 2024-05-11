@@ -722,7 +722,7 @@ opt_struct! { opt_text_selection, text_selection }
 property_getters! { text_selection, opt_text_selection }
 impl node_builder {
     #[no_mangle]
-    pub extern "C" fn accesskit_builder_set_text_selection(
+    pub extern "C" fn accesskit_node_builder_set_text_selection(
         builder: *mut node_builder,
         value: text_selection,
     ) {
