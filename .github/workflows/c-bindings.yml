@@ -17,6 +17,7 @@ jobs:
             path: macos/arm64
           - os: macOS-latest
             target: x86_64-apple-darwin
+            cmake-options: -DCMAKE_OSX_ARCHITECTURES=x86_64
             path: macos/x86_64
           - os: windows-2019
             target: aarch64-pc-windows-msvc
