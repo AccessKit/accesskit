@@ -15,7 +15,7 @@ use accesskit::{
 };
 use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState, TreeState};
 use paste::paste;
-use std::sync::{Arc, Weak};
+use std::sync::{atomic::Ordering, Arc, Weak};
 use windows::{
     core::*,
     Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
@@ -492,14 +492,21 @@ impl<'a> NodeWrapper<'a> {
 )]
 pub(crate) struct PlatformNode {
     pub(crate) context: Weak<Context>,
-    pub(crate) node_id: NodeId,
+    pub(crate) node_id: Option<NodeId>,
 }
 
 impl PlatformNode {
     pub(crate) fn new(context: &Arc<Context>, node_id: NodeId) -> Self {
         Self {
             context: Arc::downgrade(context),
-            node_id,
+            node_id: Some(node_id),
+        }
+    }
+
+    pub(crate) fn unspecified_root(context: &Arc<Context>) -> Self {
+        Self {
+            context: Arc::downgrade(context),
+            node_id: None,
         }
     }
 
@@ -523,16 +530,25 @@ impl PlatformNode {
         self.with_tree_state_and_context(|state, _| f(state))
     }
 
+    fn node<'a>(&self, state: &'a TreeState) -> Result<Node<'a>> {
+        if let Some(id) = self.node_id {
+            if let Some(node) = state.node_by_id(id) {
+                Ok(node)
+            } else {
+                Err(element_not_available())
+            }
+        } else {
+            Ok(state.root())
+        }
+    }
+
     fn resolve_with_context<F, T>(&self, f: F) -> Result<T>
     where
         for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
     {
         self.with_tree_state_and_context(|state, context| {
-            if let Some(node) = state.node_by_id(self.node_id) {
-                f(node, context)
-            } else {
-                Err(element_not_available())
-            }
+            let node = self.node(state)?;
+            f(node, context)
         })
     }
 
@@ -541,11 +557,8 @@ impl PlatformNode {
         for<'a> F: FnOnce(Node<'a>, &TreeState, &Context) -> Result<T>,
     {
         self.with_tree_state_and_context(|state, context| {
-            if let Some(node) = state.node_by_id(self.node_id) {
-                f(node, state, context)
-            } else {
-                Err(element_not_available())
-            }
+            let node = self.node(state)?;
+            f(node, state, context)
         })
     }
 
@@ -561,10 +574,8 @@ impl PlatformNode {
         for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
     {
         self.with_tree_state_and_context(|state, context| {
-            if let Some(node) = state
-                .node_by_id(self.node_id)
-                .filter(Node::supports_text_ranges)
-            {
+            let node = self.node(state)?;
+            if node.supports_text_ranges() {
                 f(node, context)
             } else {
                 Err(element_not_available())
@@ -581,33 +592,45 @@ impl PlatformNode {
 
     fn do_action<F>(&self, f: F) -> Result<()>
     where
-        F: FnOnce() -> ActionRequest,
+        F: FnOnce() -> (Action, Option<ActionData>),
     {
         let context = self.upgrade_context()?;
-        let tree = context.read_tree();
-        if tree.state().has_node(self.node_id) {
-            drop(tree);
-            let request = f();
-            context.do_action(request);
-            Ok(())
-        } else {
-            Err(element_not_available())
+        if context.is_placeholder.load(Ordering::SeqCst) {
+            return Ok(());
         }
+        let tree = context.read_tree();
+        let node_id = if let Some(id) = self.node_id {
+            if !tree.state().has_node(id) {
+                return Err(element_not_available());
+            }
+            id
+        } else {
+            tree.state().root_id()
+        };
+        drop(tree);
+        let (action, data) = f();
+        let request = ActionRequest {
+            target: node_id,
+            action,
+            data,
+        };
+        context.do_action(request);
+        Ok(())
     }
 
     fn do_default_action(&self) -> Result<()> {
-        self.do_action(|| ActionRequest {
-            action: Action::Default,
-            target: self.node_id,
-            data: None,
-        })
+        self.do_action(|| (Action::Default, None))
     }
 
     fn relative(&self, node_id: NodeId) -> Self {
         Self {
             context: self.context.clone(),
-            node_id,
+            node_id: Some(node_id),
         }
+    }
+
+    fn is_root(&self, state: &TreeState) -> bool {
+        self.node_id.map_or(false, |id| id == state.root_id())
     }
 }
 
@@ -651,7 +674,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
 
     fn HostRawElementProvider(&self) -> Result<IRawElementProviderSimple> {
         self.with_tree_state_and_context(|state, context| {
-            if self.node_id == state.root_id() {
+            if self.is_root(state) {
                 unsafe { UiaHostProviderFromHwnd(context.hwnd) }
             } else {
                 Err(Error::empty())
@@ -682,7 +705,17 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
     }
 
     fn GetRuntimeId(&self) -> Result<*mut SAFEARRAY> {
-        let runtime_id = runtime_id_from_node_id(self.node_id);
+        let node_id = if let Some(id) = self.node_id {
+            id
+        } else {
+            // Since this `PlatformNode` isn't associated with a specific
+            // node ID, but always uses whatever node is currently the root,
+            // we shouldn't return a UIA runtime ID calculated from an
+            // AccessKit node ID, as we normally do. Fortunately,
+            // UIA doesn't seem to actually call `GetRuntimeId` on the root.
+            return Err(not_implemented());
+        };
+        let runtime_id = runtime_id_from_node_id(node_id);
         Ok(safe_array_from_i32_slice(&runtime_id))
     }
 
@@ -706,20 +739,16 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
     }
 
     fn SetFocus(&self) -> Result<()> {
-        self.do_action(|| ActionRequest {
-            action: Action::Focus,
-            target: self.node_id,
-            data: None,
-        })
+        self.do_action(|| (Action::Focus, None))
     }
 
     fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
         self.with_tree_state(|state| {
-            let root_id = state.root_id();
-            if root_id == self.node_id {
+            if self.is_root(state) {
                 // SAFETY: We know &self is inside a full COM implementation.
                 unsafe { self.cast() }
             } else {
+                let root_id = state.root_id();
                 Ok(self.relative(root_id).into())
             }
         })
@@ -743,7 +772,12 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
     fn GetFocus(&self) -> Result<IRawElementProviderFragment> {
         self.with_tree_state(|state| {
             if let Some(id) = state.focus_id() {
-                if id != self.node_id {
+                let self_id = if let Some(id) = self.node_id {
+                    id
+                } else {
+                    state.root_id()
+                };
+                if id != self_id {
                     return Ok(self.relative(id).into());
                 }
             }
@@ -885,11 +919,7 @@ patterns! {
         fn SetValue(&self, value: &PCWSTR) -> Result<()> {
             self.do_action(|| {
                 let value = unsafe { value.to_string() }.unwrap();
-                ActionRequest {
-                    action: Action::SetValue,
-                    target: self.node_id,
-                    data: Some(ActionData::Value(value.into())),
-                }
+                (Action::SetValue, Some(ActionData::Value(value.into())))
             })
         }
     )),
@@ -903,11 +933,7 @@ patterns! {
     ), (
         fn SetValue(&self, value: f64) -> Result<()> {
             self.do_action(|| {
-                ActionRequest {
-                    action: Action::SetValue,
-                    target: self.node_id,
-                    data: Some(ActionData::NumericValue(value)),
-                }
+                (Action::SetValue, Some(ActionData::NumericValue(value)))
             })
         }
     )),

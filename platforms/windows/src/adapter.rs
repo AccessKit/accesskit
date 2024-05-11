@@ -4,11 +4,13 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    ActionHandler, ActionRequest, ActivationHandler, Live, NodeBuilder, NodeId, Role,
-    Tree as TreeData, TreeUpdate,
+    ActionHandler, ActivationHandler, Live, NodeBuilder, NodeId, Role, Tree as TreeData, TreeUpdate,
 };
 use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::HashSet,
+    sync::{atomic::Ordering, Arc},
+};
 use windows::Win32::{
     Foundation::*,
     UI::{Accessibility::*, WindowsAndMessaging::*},
@@ -162,18 +164,8 @@ enum State {
         is_window_focused: bool,
         action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
     },
-    Placeholder {
-        placeholder_context: Arc<Context>,
-        is_window_focused: bool,
-        action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
-    },
+    Placeholder(Arc<Context>),
     Active(Arc<Context>),
-}
-
-struct PlaceholderActionHandler;
-
-impl ActionHandler for PlaceholderActionHandler {
-    fn do_action(&mut self, _request: ActionRequest) {}
 }
 
 pub struct Adapter {
@@ -239,20 +231,17 @@ impl Adapter {
     ) -> Option<QueuedEvents> {
         match &self.state {
             State::Inactive { .. } => None,
-            State::Placeholder {
-                placeholder_context,
-                is_window_focused,
-                action_handler,
-            } => {
-                let tree = Tree::new(update_factory(), *is_window_focused);
-                let context =
-                    Context::new(placeholder_context.hwnd, tree, Arc::clone(action_handler));
+            State::Placeholder(context) => {
+                let is_window_focused = context.read_tree().state().is_host_focused();
+                let tree = Tree::new(update_factory(), is_window_focused);
+                *context.tree.write().unwrap() = tree;
+                context.is_placeholder.store(false, Ordering::SeqCst);
                 let result = context
                     .read_tree()
                     .state()
                     .focus_id()
-                    .map(|id| QueuedEvents(vec![focus_event(&context, id)]));
-                self.state = State::Active(context);
+                    .map(|id| QueuedEvents(vec![focus_event(context, id)]));
+                self.state = State::Active(Arc::clone(context));
                 result
             }
             State::Active(context) => {
@@ -280,11 +269,11 @@ impl Adapter {
                 *is_window_focused = is_focused;
                 None
             }
-            State::Placeholder {
-                is_window_focused, ..
-            } => {
-                *is_window_focused = is_focused;
-                None
+            State::Placeholder(context) => {
+                let mut handler = AdapterChangeHandler::new(context);
+                let mut tree = context.tree.write().unwrap();
+                tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
+                Some(QueuedEvents(handler.queue))
             }
             State::Active(context) => {
                 let mut handler = AdapterChangeHandler::new(context);
@@ -330,7 +319,7 @@ impl Adapter {
                 Some(initial_state) => {
                     let hwnd = *hwnd;
                     let tree = Tree::new(initial_state, *is_window_focused);
-                    let context = Context::new(hwnd, tree, Arc::clone(action_handler));
+                    let context = Context::new(hwnd, tree, Arc::clone(action_handler), false);
                     let node_id = context.read_tree().state().root_id();
                     let platform_node = PlatformNode::new(&context, node_id);
                     self.state = State::Active(context);
@@ -343,29 +332,15 @@ impl Adapter {
                         tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
                         focus: PLACEHOLDER_ROOT_ID,
                     };
-                    let placeholder_tree = Tree::new(placeholder_update, false);
-                    let placeholder_context = Context::new(
-                        hwnd,
-                        placeholder_tree,
-                        Arc::new(ActionHandlerWrapper::new(PlaceholderActionHandler {})),
-                    );
-                    let platform_node =
-                        PlatformNode::new(&placeholder_context, PLACEHOLDER_ROOT_ID);
-                    self.state = State::Placeholder {
-                        placeholder_context,
-                        is_window_focused: *is_window_focused,
-                        action_handler: Arc::clone(action_handler),
-                    };
+                    let placeholder_tree = Tree::new(placeholder_update, *is_window_focused);
+                    let context =
+                        Context::new(hwnd, placeholder_tree, Arc::clone(action_handler), true);
+                    let platform_node = PlatformNode::unspecified_root(&context);
+                    self.state = State::Placeholder(context);
                     (hwnd, platform_node)
                 }
             },
-            State::Placeholder {
-                placeholder_context,
-                ..
-            } => (
-                placeholder_context.hwnd,
-                PlatformNode::new(placeholder_context, PLACEHOLDER_ROOT_ID),
-            ),
+            State::Placeholder(context) => (context.hwnd, PlatformNode::unspecified_root(context)),
             State::Active(context) => {
                 let node_id = context.read_tree().state().root_id();
                 (context.hwnd, PlatformNode::new(context, node_id))

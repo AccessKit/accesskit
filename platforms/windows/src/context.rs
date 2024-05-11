@@ -5,7 +5,7 @@
 
 use accesskit::{ActionHandler, ActionRequest, Point};
 use accesskit_consumer::Tree;
-use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard};
+use std::sync::{atomic::AtomicBool, Arc, Mutex, RwLock, RwLockReadGuard};
 use windows::Win32::Foundation::*;
 
 use crate::util::*;
@@ -32,6 +32,7 @@ pub(crate) struct Context {
     pub(crate) hwnd: HWND,
     pub(crate) tree: RwLock<Tree>,
     pub(crate) action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
+    pub(crate) is_placeholder: AtomicBool,
 }
 
 impl Context {
@@ -39,11 +40,13 @@ impl Context {
         hwnd: HWND,
         tree: Tree,
         action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
+        is_placeholder: bool,
     ) -> Arc<Self> {
         Arc::new(Self {
             hwnd,
             tree: RwLock::new(tree),
             action_handler,
+            is_placeholder: AtomicBool::new(is_placeholder),
         })
     }
 
