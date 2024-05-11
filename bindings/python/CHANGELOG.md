@@ -32,6 +32,22 @@
   * dependencies
     * accesskit_windows bumped from 0.16.3 to 0.16.4
 
+## [0.3.1](https://github.com/AccessKit/accesskit/compare/accesskit_python-v0.3.0...accesskit_python-v0.3.1) (2024-05-11)
+
+
+### Bug Fixes
+
+* Fix dead code warning on Unix platforms ([#403](https://github.com/AccessKit/accesskit/issues/403)) ([09d9157](https://github.com/AccessKit/accesskit/commit/09d91577dd88743e379a1fdea34b25a94726d0fb))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_windows bumped from 0.18.0 to 0.18.1
+    * accesskit_macos bumped from 0.13.0 to 0.13.1
+    * accesskit_unix bumped from 0.9.0 to 0.9.1
+
 ## [0.3.0](https://github.com/AccessKit/accesskit/compare/accesskit_python-v0.2.0...accesskit_python-v0.3.0) (2024-04-30)
 
 

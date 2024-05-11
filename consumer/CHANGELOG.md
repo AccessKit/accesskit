@@ -20,6 +20,13 @@
   * dependencies
     * accesskit bumped from 0.12.2 to 0.12.3
 
+## [0.19.1](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.19.0...accesskit_consumer-v0.19.1) (2024-05-11)
+
+
+### Bug Fixes
+
+* Improve panic messages ([#401](https://github.com/AccessKit/accesskit/issues/401)) ([e6ce021](https://github.com/AccessKit/accesskit/commit/e6ce021b3b172f5ea7ee31496c9afaf66b1871f2))
+
 ## [0.19.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.18.0...accesskit_consumer-v0.19.0) (2024-04-30)
 
 

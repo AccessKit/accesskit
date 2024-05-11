@@ -54,6 +54,28 @@
   * dependencies
     * accesskit_windows bumped from 0.16.3 to 0.16.4
 
+## [0.10.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.9.0...accesskit_c-v0.10.0) (2024-05-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* Rename `accesskit_builder_set_text_selection` to `accesskit_node_builder_set_text_selection` ([#407](https://github.com/AccessKit/accesskit/issues/407))
+
+### Bug Fixes
+
+* Explicitly set macOS CI build architecture for C bindings ([#406](https://github.com/AccessKit/accesskit/issues/406)) ([64857e8](https://github.com/AccessKit/accesskit/commit/64857e8747a8eb7b51d321b0f1b98ac76292a8b6))
+* Fix dead code warning on Unix platforms ([#403](https://github.com/AccessKit/accesskit/issues/403)) ([09d9157](https://github.com/AccessKit/accesskit/commit/09d91577dd88743e379a1fdea34b25a94726d0fb))
+* Rename `accesskit_builder_set_text_selection` to `accesskit_node_builder_set_text_selection` ([#407](https://github.com/AccessKit/accesskit/issues/407)) ([79eb0a4](https://github.com/AccessKit/accesskit/commit/79eb0a4019c4ef7e4b5b7509be68b960ec17b9e0))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_windows bumped from 0.18.0 to 0.18.1
+    * accesskit_macos bumped from 0.13.0 to 0.13.1
+    * accesskit_unix bumped from 0.9.0 to 0.9.1
+
 ## [0.9.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.8.0...accesskit_c-v0.9.0) (2024-04-30)
 
 
