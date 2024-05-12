@@ -80,15 +80,6 @@ impl AdapterChangeHandler<'_> {
             self.insert_text_change_if_needed_parent(node);
         }
     }
-
-    fn insert_text_change_if_needed_for_removed_node(&mut self, node: &Node) {
-        if node.role() != Role::InlineTextBox {
-            return;
-        }
-        if let Some(parent) = node.parent() {
-            self.insert_text_change_if_needed_parent(parent);
-        }
-    }
 }
 
 impl TreeChangeHandler for AdapterChangeHandler<'_> {
@@ -139,7 +130,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
     }
 
     fn node_removed(&mut self, node: &Node) {
-        self.insert_text_change_if_needed_for_removed_node(node);
+        self.insert_text_change_if_needed(node);
     }
 
     // TODO: handle other events (#20)

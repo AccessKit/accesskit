@@ -180,15 +180,6 @@ impl EventGenerator {
             self.insert_text_change_if_needed_parent(node);
         }
     }
-
-    fn insert_text_change_if_needed_for_removed_node(&mut self, node: &Node) {
-        if node.role() != Role::InlineTextBox {
-            return;
-        }
-        if let Some(parent) = node.parent() {
-            self.insert_text_change_if_needed_parent(parent);
-        }
-    }
 }
 
 impl TreeChangeHandler for EventGenerator {
@@ -255,7 +246,7 @@ impl TreeChangeHandler for EventGenerator {
     }
 
     fn node_removed(&mut self, node: &Node) {
-        self.insert_text_change_if_needed_for_removed_node(node);
+        self.insert_text_change_if_needed(node);
         self.events.push(QueuedEvent::NodeDestroyed(node.id()));
     }
 }
