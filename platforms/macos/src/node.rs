@@ -58,7 +58,7 @@ fn ns_role(node: &Node) -> &'static NSAccessibilityRole {
             | Role::PhoneNumberInput
             | Role::UrlInput => NSAccessibilityTextFieldRole,
             Role::Button => {
-                if node_state.toggled().is_some() {
+                if node.toggled().is_some() {
                     NSAccessibilityCheckBoxRole
                 } else {
                     NSAccessibilityButtonRole
@@ -407,7 +407,7 @@ declare_class!(
         #[method_id(accessibilityHelp)]
         fn description(&self) -> Option<Id<NSString>> {
             self.resolve(|node| {
-                let wrapper = NodeWrapper::Node(node);
+                let wrapper = NodeWrapper(node);
                 wrapper.description().map(|description| NSString::from_str(&description))
             })
             .flatten()
