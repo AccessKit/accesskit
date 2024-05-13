@@ -269,7 +269,7 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> FollowingFilteredSiblings<'a, Filter
     pub(crate) fn new(node: Node<'a>, filter: Filter) -> Self {
         let front = next_filtered_sibling(Some(node), &filter);
         let back = node
-            .parent()
+            .filtered_parent(&filter)
             .and_then(|parent| parent.last_filtered_child(&filter));
         Self {
             filter,
@@ -330,7 +330,7 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> PrecedingFilteredSiblings<'a, Filter
     pub(crate) fn new(node: Node<'a>, filter: Filter) -> Self {
         let front = previous_filtered_sibling(Some(node), &filter);
         let back = node
-            .parent()
+            .filtered_parent(&filter)
             .and_then(|parent| parent.first_filtered_child(&filter));
         Self {
             filter,
@@ -641,6 +641,15 @@ mod tests {
                 .map(|node| node.id())
                 .collect::<Vec<NodeId>>()[..]
         );
+        assert_eq!(
+            [BUTTON_3_2_ID],
+            tree.state()
+                .node_by_id(STATIC_TEXT_3_1_0_ID)
+                .unwrap()
+                .following_filtered_siblings(test_tree_filter)
+                .map(|node| node.id())
+                .collect::<Vec<NodeId>>()[..]
+        );
         assert!(tree
             .state()
             .node_by_id(PARAGRAPH_3_IGNORED_ID)
@@ -674,6 +683,16 @@ mod tests {
                 .map(|node| node.id())
                 .collect::<Vec<NodeId>>()[..]
         );
+        assert_eq!(
+            [BUTTON_3_2_ID,],
+            tree.state()
+                .node_by_id(STATIC_TEXT_3_1_0_ID)
+                .unwrap()
+                .following_filtered_siblings(test_tree_filter)
+                .rev()
+                .map(|node| node.id())
+                .collect::<Vec<NodeId>>()[..]
+        );
         assert!(tree
             .state()
             .node_by_id(PARAGRAPH_3_IGNORED_ID)
@@ -701,6 +720,15 @@ mod tests {
                 .map(|node| node.id())
                 .collect::<Vec<NodeId>>()[..]
         );
+        assert_eq!(
+            [PARAGRAPH_2_ID, STATIC_TEXT_1_0_ID, PARAGRAPH_0_ID],
+            tree.state()
+                .node_by_id(STATIC_TEXT_3_1_0_ID)
+                .unwrap()
+                .preceding_filtered_siblings(test_tree_filter)
+                .map(|node| node.id())
+                .collect::<Vec<NodeId>>()[..]
+        );
         assert!(tree
             .state()
             .node_by_id(PARAGRAPH_0_ID)
@@ -723,6 +751,16 @@ mod tests {
             [PARAGRAPH_0_ID, STATIC_TEXT_1_0_ID, PARAGRAPH_2_ID],
             tree.state()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .unwrap()
+                .preceding_filtered_siblings(test_tree_filter)
+                .rev()
+                .map(|node| node.id())
+                .collect::<Vec<NodeId>>()[..]
+        );
+        assert_eq!(
+            [PARAGRAPH_0_ID, STATIC_TEXT_1_0_ID, PARAGRAPH_2_ID],
+            tree.state()
+                .node_by_id(STATIC_TEXT_3_1_0_ID)
                 .unwrap()
                 .preceding_filtered_siblings(test_tree_filter)
                 .rev()
