@@ -455,6 +455,10 @@ impl<'a> NodeWrapper<'a> {
         let new_state = self.state(true);
         let changed_states = old_state ^ new_state;
         for state in changed_states.iter() {
+            if state == State::Focused {
+                // This is handled specially in `focus_moved`.
+                continue;
+            }
             adapter.emit_object_event(
                 self.id(),
                 ObjectEvent::StateChanged(state, new_state.contains(state)),
