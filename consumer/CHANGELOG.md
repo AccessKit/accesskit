@@ -20,6 +20,22 @@
   * dependencies
     * accesskit bumped from 0.12.2 to 0.12.3
 
+## [0.20.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.19.1...accesskit_consumer-v0.20.0) (2024-05-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* Restore full copy-on-write tree snapshots, now using `immutable-chunkmap` ([#365](https://github.com/AccessKit/accesskit/issues/365))
+
+### Bug Fixes
+
+* Fix the filtered sibling iterators to use the filtered parent to find the back node ([#408](https://github.com/AccessKit/accesskit/issues/408)) ([2f8155c](https://github.com/AccessKit/accesskit/commit/2f8155ca260d7e50de5de502744b420769875e83))
+
+
+### Code Refactoring
+
+* Restore full copy-on-write tree snapshots, now using `immutable-chunkmap` ([#365](https://github.com/AccessKit/accesskit/issues/365)) ([441bf5f](https://github.com/AccessKit/accesskit/commit/441bf5ff77d1785dfea228de9109aceff4773da1))
+
 ## [0.19.1](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.19.0...accesskit_consumer-v0.19.1) (2024-05-11)
 
 

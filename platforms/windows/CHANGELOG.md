@@ -33,6 +33,20 @@
     * accesskit bumped from 0.12.2 to 0.12.3
     * accesskit_consumer bumped from 0.17.0 to 0.17.1
 
+## [0.18.2](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.18.1...accesskit_windows-v0.18.2) (2024-05-13)
+
+
+### Bug Fixes
+
+* Fix platform adapters to support copy-on-write tree snapshots again ([#411](https://github.com/AccessKit/accesskit/issues/411)) ([d3a130a](https://github.com/AccessKit/accesskit/commit/d3a130a5ec8ae1d9edf0bf85a44f35f0e365242c))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.19.1 to 0.20.0
+
 ## [0.18.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.18.0...accesskit_windows-v0.18.1) (2024-05-11)
 
 

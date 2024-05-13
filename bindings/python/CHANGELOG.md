@@ -32,6 +32,12 @@
   * dependencies
     * accesskit_windows bumped from 0.16.3 to 0.16.4
 
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_windows bumped from 0.18.1 to 0.18.2
+    * accesskit_macos bumped from 0.13.1 to 0.13.2
+    * accesskit_unix bumped from 0.9.1 to 0.9.2
+
 ## [0.3.1](https://github.com/AccessKit/accesskit/compare/accesskit_python-v0.3.0...accesskit_python-v0.3.1) (2024-05-11)
 
 

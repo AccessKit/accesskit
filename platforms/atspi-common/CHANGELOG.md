@@ -9,6 +9,21 @@
   * dependencies
     * accesskit_consumer bumped from 0.19.0 to 0.19.1
 
+## [0.4.2](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.4.1...accesskit_atspi_common-v0.4.2) (2024-05-13)
+
+
+### Bug Fixes
+
+* Fix platform adapters to support copy-on-write tree snapshots again ([#411](https://github.com/AccessKit/accesskit/issues/411)) ([d3a130a](https://github.com/AccessKit/accesskit/commit/d3a130a5ec8ae1d9edf0bf85a44f35f0e365242c))
+* Return to handling focus events directly, after generic node changes ([#409](https://github.com/AccessKit/accesskit/issues/409)) ([cd2e35e](https://github.com/AccessKit/accesskit/commit/cd2e35e43817405199ae6acd64ef90aee445be0b))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.19.1 to 0.20.0
+
 ## [0.4.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.3.0...accesskit_atspi_common-v0.4.0) (2024-04-30)
 
 
