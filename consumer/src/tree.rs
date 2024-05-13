@@ -29,10 +29,10 @@ struct InternalChanges {
 
 impl State {
     fn validate_global(&self) {
-        if self.nodes.get(&self.data.root).is_none() {
+        if self.nodes.get_key(&self.data.root).is_none() {
             panic!("Root id #{} is not in the node list", self.data.root.0);
         }
-        if self.nodes.get(&self.focus).is_none() {
+        if self.nodes.get_key(&self.focus).is_none() {
             panic!("Focused id #{} is not in the node list", self.focus.0);
         }
     }
