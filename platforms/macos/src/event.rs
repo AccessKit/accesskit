@@ -4,17 +4,13 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{Live, NodeId, Role};
-use accesskit_consumer::{DetachedNode, FilterResult, Node, TreeChangeHandler, TreeState};
+use accesskit_consumer::{FilterResult, Node, TreeChangeHandler};
 use objc2::runtime::{AnyObject, ProtocolObject};
 use objc2_app_kit::*;
 use objc2_foundation::{NSMutableDictionary, NSNumber, NSString};
 use std::{collections::HashSet, rc::Rc};
 
-use crate::{
-    context::Context,
-    filters::{filter, filter_detached},
-    node::NodeWrapper,
-};
+use crate::{context::Context, filters::filter, node::NodeWrapper};
 
 // This type is designed to be safe to create on a non-main thread
 // and send to the main thread. This ability isn't yet used though.
@@ -184,21 +180,6 @@ impl EventGenerator {
             self.insert_text_change_if_needed_parent(node);
         }
     }
-
-    fn insert_text_change_if_needed_for_removed_node(
-        &mut self,
-        node: &DetachedNode,
-        current_state: &TreeState,
-    ) {
-        if node.role() != Role::InlineTextBox {
-            return;
-        }
-        if let Some(id) = node.parent_id() {
-            if let Some(node) = current_state.node_by_id(id) {
-                self.insert_text_change_if_needed_parent(node);
-            }
-        }
-    }
 }
 
 impl TreeChangeHandler for EventGenerator {
@@ -213,7 +194,7 @@ impl TreeChangeHandler for EventGenerator {
         }
     }
 
-    fn node_updated(&mut self, old_node: &DetachedNode, new_node: &Node) {
+    fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
         if old_node.raw_value() != new_node.raw_value() {
             self.insert_text_change_if_needed(new_node);
         }
@@ -221,8 +202,8 @@ impl TreeChangeHandler for EventGenerator {
             return;
         }
         let node_id = new_node.id();
-        let old_wrapper = NodeWrapper::DetachedNode(old_node);
-        let new_wrapper = NodeWrapper::Node(new_node);
+        let old_wrapper = NodeWrapper(old_node);
+        let new_wrapper = NodeWrapper(new_node);
         if old_wrapper.title() != new_wrapper.title() {
             self.events.push(QueuedEvent::Generic {
                 node_id,
@@ -248,19 +229,14 @@ impl TreeChangeHandler for EventGenerator {
             && new_node.live() != Live::Off
             && (new_node.name() != old_node.name()
                 || new_node.live() != old_node.live()
-                || filter_detached(old_node) != FilterResult::Include)
+                || filter(old_node) != FilterResult::Include)
         {
             self.events
                 .push(QueuedEvent::live_region_announcement(new_node));
         }
     }
 
-    fn focus_moved(
-        &mut self,
-        _old_node: Option<&DetachedNode>,
-        new_node: Option<&Node>,
-        _current_state: &TreeState,
-    ) {
+    fn focus_moved(&mut self, _old_node: Option<&Node>, new_node: Option<&Node>) {
         if let Some(new_node) = new_node {
             if filter(new_node) != FilterResult::Include {
                 return;
@@ -269,8 +245,8 @@ impl TreeChangeHandler for EventGenerator {
         }
     }
 
-    fn node_removed(&mut self, node: &DetachedNode, current_state: &TreeState) {
-        self.insert_text_change_if_needed_for_removed_node(node, current_state);
+    fn node_removed(&mut self, node: &Node) {
+        self.insert_text_change_if_needed(node);
         self.events.push(QueuedEvent::NodeDestroyed(node.id()));
     }
 }
