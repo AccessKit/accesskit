@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit::{Action, ActionData, ActionRequest, NodeId, Role, TextSelection, Toggled};
-use accesskit_consumer::{FilterResult, Node};
+use accesskit_consumer::{DetachedNode, FilterResult, Node, NodeState};
 use objc2::{
     declare_class, msg_send_id,
     mutability::InteriorMutable,
@@ -28,8 +28,8 @@ use std::rc::{Rc, Weak};
 
 use crate::{context::Context, filters::filter, util::*};
 
-fn ns_role(node: &Node) -> &'static NSAccessibilityRole {
-    let role = node.role();
+fn ns_role(node_state: &NodeState) -> &'static NSAccessibilityRole {
+    let role = node_state.role();
     // TODO: Handle special cases.
     unsafe {
         match role {
@@ -58,7 +58,7 @@ fn ns_role(node: &Node) -> &'static NSAccessibilityRole {
             | Role::PhoneNumberInput
             | Role::UrlInput => NSAccessibilityTextFieldRole,
             Role::Button => {
-                if node.toggled().is_some() {
+                if node_state.toggled().is_some() {
                     NSAccessibilityCheckBoxRole
                 } else {
                     NSAccessibilityButtonRole
@@ -241,24 +241,43 @@ pub(crate) enum Value {
     String(String),
 }
 
-pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
+pub(crate) enum NodeWrapper<'a> {
+    Node(&'a Node<'a>),
+    DetachedNode(&'a DetachedNode),
+}
 
 impl<'a> NodeWrapper<'a> {
+    fn node_state(&self) -> &'a NodeState {
+        match self {
+            Self::Node(node) => node.state(),
+            Self::DetachedNode(node) => node.state(),
+        }
+    }
+
     fn is_root(&self) -> bool {
-        self.0.is_root()
+        match self {
+            Self::Node(node) => node.is_root(),
+            Self::DetachedNode(node) => node.is_root(),
+        }
     }
 
     fn name(&self) -> Option<String> {
-        if self.is_root() && self.0.role() == Role::Window {
+        if self.is_root() && self.node_state().role() == Role::Window {
             // If the group element that we expose for the top-level window
             // includes a title, VoiceOver behavior is broken.
             return None;
         }
-        self.0.name()
+        match self {
+            Self::Node(node) => node.name(),
+            Self::DetachedNode(node) => node.name(),
+        }
     }
 
     fn node_value(&self) -> Option<String> {
-        self.0.value()
+        match self {
+            Self::Node(node) => node.value(),
+            Self::DetachedNode(node) => node.value(),
+        }
     }
 
     // TODO: implement proper logic for title and value;
@@ -266,7 +285,7 @@ impl<'a> NodeWrapper<'a> {
     // and figure out how this is different in the macOS 10.10+ protocol
 
     pub(crate) fn title(&self) -> Option<String> {
-        let state = self.0;
+        let state = self.node_state();
         if state.role() == Role::StaticText && state.raw_value().is_none() {
             // In this case, macOS wants the text to be the value, not title.
             return None;
@@ -275,11 +294,14 @@ impl<'a> NodeWrapper<'a> {
     }
 
     pub(crate) fn description(&self) -> Option<String> {
-        self.0.description()
+        match self {
+            Self::Node(node) => node.description(),
+            Self::DetachedNode(node) => node.description(),
+        }
     }
 
     pub(crate) fn value(&self) -> Option<Value> {
-        let state = self.0;
+        let state = self.node_state();
         if let Some(toggled) = state.toggled() {
             return Some(Value::Bool(toggled != Toggled::False));
         }
@@ -298,11 +320,14 @@ impl<'a> NodeWrapper<'a> {
     }
 
     pub(crate) fn supports_text_ranges(&self) -> bool {
-        self.0.supports_text_ranges()
+        match self {
+            Self::Node(node) => node.supports_text_ranges(),
+            Self::DetachedNode(node) => node.supports_text_ranges(),
+        }
     }
 
     pub(crate) fn raw_text_selection(&self) -> Option<&TextSelection> {
-        self.0.raw_text_selection()
+        self.node_state().raw_text_selection()
     }
 }
 
@@ -378,7 +403,7 @@ declare_class!(
 
         #[method_id(accessibilityRole)]
         fn role(&self) -> Id<NSAccessibilityRole> {
-            self.resolve(ns_role)
+            self.resolve(|node| ns_role(node.state()))
                 .unwrap_or(unsafe { NSAccessibilityUnknownRole })
                 .copy()
         }
@@ -398,7 +423,7 @@ declare_class!(
         #[method_id(accessibilityTitle)]
         fn title(&self) -> Option<Id<NSString>> {
             self.resolve(|node| {
-                let wrapper = NodeWrapper(node);
+                let wrapper = NodeWrapper::Node(node);
                 wrapper.title().map(|title| NSString::from_str(&title))
             })
             .flatten()
@@ -407,7 +432,7 @@ declare_class!(
         #[method_id(accessibilityHelp)]
         fn description(&self) -> Option<Id<NSString>> {
             self.resolve(|node| {
-                let wrapper = NodeWrapper(node);
+                let wrapper = NodeWrapper::Node(node);
                 wrapper.description().map(|description| NSString::from_str(&description))
             })
             .flatten()
@@ -416,7 +441,7 @@ declare_class!(
         #[method_id(accessibilityValue)]
         fn value(&self) -> Option<Id<NSObject>> {
             self.resolve(|node| {
-                let wrapper = NodeWrapper(node);
+                let wrapper = NodeWrapper::Node(node);
                 wrapper.value().map(|value| match value {
                     Value::Bool(value) => {
                         Id::into_super(Id::into_super(NSNumber::new_bool(value)))

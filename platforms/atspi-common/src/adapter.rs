@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
-use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler, TreeState};
+use accesskit_consumer::{DetachedNode, FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use atspi_common::{InterfaceSet, Live, State};
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -13,7 +13,7 @@ use std::sync::{
 
 use crate::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper, AppContext, Context},
-    filters::filter,
+    filters::{filter, filter_detached},
     node::{NodeIdOrRoot, NodeWrapper, PlatformNode, PlatformRoot},
     util::WindowBounds,
     AdapterCallback, Event, ObjectEvent, WindowEvent,
@@ -27,7 +27,7 @@ impl AdapterChangeHandler<'_> {
     fn add_node(&mut self, node: &Node) {
         let role = node.role();
         let is_root = node.is_root();
-        let node = NodeWrapper(node);
+        let node = NodeWrapper::Node(node);
         let interfaces = node.interfaces();
         self.adapter.register_interfaces(node.id(), interfaces);
         if is_root && role == Role::Window {
@@ -49,10 +49,10 @@ impl AdapterChangeHandler<'_> {
         }
     }
 
-    fn remove_node(&mut self, node: &Node) {
+    fn remove_node(&mut self, node: &DetachedNode) {
         let role = node.role();
         let is_root = node.is_root();
-        let node = NodeWrapper(node);
+        let node = NodeWrapper::DetachedNode(node);
         if is_root && role == Role::Window {
             self.adapter.window_destroyed(node.id());
         }
@@ -70,8 +70,8 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
     }
 
-    fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
-        let filter_old = filter(old_node);
+    fn node_updated(&mut self, old_node: &DetachedNode, new_node: &Node) {
+        let filter_old = filter_detached(old_node);
         let filter_new = filter(new_node);
         if filter_new != filter_old {
             if filter_new == FilterResult::Include {
@@ -80,8 +80,8 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 self.remove_node(old_node);
             }
         } else if filter_new == FilterResult::Include {
-            let old_wrapper = NodeWrapper(old_node);
-            let new_wrapper = NodeWrapper(new_node);
+            let old_wrapper = NodeWrapper::DetachedNode(old_node);
+            let new_wrapper = NodeWrapper::Node(new_node);
             let old_interfaces = old_wrapper.interfaces();
             let new_interfaces = new_wrapper.interfaces();
             let kept_interfaces = old_interfaces & new_interfaces;
@@ -94,20 +94,25 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
     }
 
-    fn focus_moved(&mut self, old_node: Option<&Node>, new_node: Option<&Node>) {
-        if let (None, Some(new_node)) = (old_node, new_node) {
-            if let Some(root_window) = root_window(new_node.tree_state) {
-                self.adapter.window_activated(&NodeWrapper(&root_window));
-            }
-        } else if let (Some(old_node), None) = (old_node, new_node) {
-            if let Some(root_window) = root_window(old_node.tree_state) {
-                self.adapter.window_deactivated(&NodeWrapper(&root_window));
+    fn focus_moved(
+        &mut self,
+        old_node: Option<&DetachedNode>,
+        new_node: Option<&Node>,
+        current_state: &TreeState,
+    ) {
+        if let Some(root_window) = root_window(current_state) {
+            if old_node.is_none() && new_node.is_some() {
+                self.adapter
+                    .window_activated(&NodeWrapper::Node(&root_window));
+            } else if old_node.is_some() && new_node.is_none() {
+                self.adapter
+                    .window_deactivated(&NodeWrapper::Node(&root_window));
             }
         }
     }
 
-    fn node_removed(&mut self, node: &Node) {
-        if filter(node) == FilterResult::Include {
+    fn node_removed(&mut self, node: &DetachedNode, _: &TreeState) {
+        if filter_detached(node) == FilterResult::Include {
             self.remove_node(node);
         }
     }
@@ -199,7 +204,7 @@ impl Adapter {
         fn add_children(node: Node<'_>, to_add: &mut Vec<(NodeId, InterfaceSet)>) {
             for child in node.filtered_children(&filter) {
                 let child_id = child.id();
-                let wrapper = NodeWrapper(&child);
+                let wrapper = NodeWrapper::Node(&child);
                 let interfaces = wrapper.interfaces();
                 to_add.push((child_id, interfaces));
                 add_children(child, to_add);
@@ -218,7 +223,7 @@ impl Adapter {
             let adapter_index = app_context.adapter_index(self.id).unwrap();
             let root = tree_state.root();
             let root_id = root.id();
-            let wrapper = NodeWrapper(&root);
+            let wrapper = NodeWrapper::Node(&root);
             objects_to_add.push((root_id, wrapper.interfaces()));
             add_children(root, &mut objects_to_add);
             (adapter_index, root_id)
