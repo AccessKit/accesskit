@@ -104,6 +104,14 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 self.adapter.window_deactivated(&NodeWrapper(&root_window));
             }
         }
+        if let Some(node) = new_node {
+            self.adapter
+                .emit_object_event(node.id(), ObjectEvent::StateChanged(State::Focused, true));
+        }
+        if let Some(node) = old_node {
+            self.adapter
+                .emit_object_event(node.id(), ObjectEvent::StateChanged(State::Focused, false));
+        }
     }
 
     fn node_removed(&mut self, node: &Node) {
