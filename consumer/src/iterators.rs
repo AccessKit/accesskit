@@ -684,9 +684,7 @@ mod tests {
                 .collect::<Vec<NodeId>>()[..]
         );
         assert_eq!(
-            [
-                BUTTON_3_2_ID,
-            ],
+            [BUTTON_3_2_ID,],
             tree.state()
                 .node_by_id(STATIC_TEXT_3_1_0_ID)
                 .unwrap()
