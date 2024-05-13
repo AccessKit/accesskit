@@ -3,6 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use std::collections::HashMap;
+
 use accesskit_atspi_common::{NodeIdOrRoot, PlatformNode, PlatformRoot};
 use atspi::{Interface, InterfaceSet, Role, StateSet};
 use zbus::{fdo, names::OwnedUniqueName};
@@ -107,6 +109,10 @@ impl NodeAccessibleInterface {
 
     fn get_state(&self) -> StateSet {
         self.node.state()
+    }
+
+    fn get_attributes(&self) -> fdo::Result<HashMap<&str, String>> {
+        self.node.attributes().map_err(self.map_error())
     }
 
     fn get_application(&self) -> (OwnedObjectAddress,) {

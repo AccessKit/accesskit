@@ -278,6 +278,10 @@ impl<'a> NodeWrapper<'a> {
         self.0.description()
     }
 
+    pub(crate) fn placeholder(&self) -> Option<String> {
+        self.0.placeholder()
+    }
+
     pub(crate) fn value(&self) -> Option<Value> {
         let state = self.0;
         if let Some(toggled) = state.toggled() {
@@ -409,6 +413,15 @@ declare_class!(
             self.resolve(|node| {
                 let wrapper = NodeWrapper(node);
                 wrapper.description().map(|description| NSString::from_str(&description))
+            })
+            .flatten()
+        }
+
+        #[method_id(accessibilityPlaceholderValue)]
+        fn placeholder(&self) -> Option<Id<NSString>> {
+            self.resolve(|node| {
+                let wrapper = NodeWrapper::Node(node);
+                wrapper.placeholder().map(|placeholder| NSString::from_str(&placeholder))
             })
             .flatten()
         }
@@ -752,6 +765,7 @@ declare_class!(
                     || selector == sel!(accessibilityRoleDescription)
                     || selector == sel!(accessibilityTitle)
                     || selector == sel!(accessibilityHelp)
+                    || selector == sel!(accessibilityPlaceholderValue)
                     || selector == sel!(accessibilityValue)
                     || selector == sel!(accessibilityMinValue)
                     || selector == sel!(accessibilityMaxValue)
