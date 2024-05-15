@@ -645,7 +645,7 @@ impl PlatformNode {
         for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
     {
         self.resolve_with_context(|node, context| {
-            let wrapper = NodeWrapper::Node(&node);
+            let wrapper = NodeWrapper(&node);
             if wrapper.supports_text() {
                 f(node, context)
             } else {
