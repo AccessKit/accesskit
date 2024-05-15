@@ -550,7 +550,13 @@ impl<'a> NodeWrapper<'a> {
         }
 
         if let Some(selection) = self.0.text_selection() {
-            if !selection.is_degenerate() {
+            if !selection.is_degenerate()
+                || old
+                    .0
+                    .text_selection()
+                    .map(|selection| !selection.is_degenerate())
+                    .unwrap_or(false)
+            {
                 adapter.emit_object_event(self.id(), ObjectEvent::TextSelectionChanged);
             }
 
@@ -995,11 +1001,12 @@ impl PlatformNode {
                 Granularity::Word => start_offset.backward_to_word_start(),
             };
             let end = match granularity {
-                Granularity::Char => start_offset.forward_to_character_end(),
-                Granularity::Line => start_offset.forward_to_line_end(),
-                Granularity::Paragraph => start_offset.forward_to_paragraph_end(),
+                Granularity::Char if start_offset.is_document_end() => start_offset,
+                Granularity::Char => start.forward_to_character_end(),
+                Granularity::Line => start.forward_to_line_end(),
+                Granularity::Paragraph => start.forward_to_paragraph_end(),
                 Granularity::Sentence => return Err(Error::UnsupportedTextGranularity),
-                Granularity::Word => start_offset.forward_to_word_end(),
+                Granularity::Word => start.forward_to_word_end(),
             };
             let mut range = start.to_degenerate_range();
             range.set_end(end);
