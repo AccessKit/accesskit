@@ -46,7 +46,7 @@ version = "0.11.1"
 dependencies = [
  "accesskit",
  "accesskit_macos",
- "accesskit_unix",
+ "accesskit_newton",
  "accesskit_windows",
  "paste",
 ]
@@ -69,6 +69,19 @@ dependencies = [
  "objc2-app-kit",
  "objc2-foundation",
  "once_cell",
+]
+
+[[package]]
+name = "accesskit_newton"
+version = "0.1.0"
+dependencies = [
+ "accesskit",
+ "libc",
+ "rustix 0.38.21",
+ "serde_json",
+ "smithay-client-toolkit 0.18.0 (git+https://github.com/mwcampbell/sctk?branch=accessibility-protocol)",
+ "wayland-backend 0.3.2 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
+ "wayland-protocols 0.31.0 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
 ]
 
 [[package]]
@@ -120,7 +133,7 @@ version = "0.21.1"
 dependencies = [
  "accesskit",
  "accesskit_macos",
- "accesskit_unix",
+ "accesskit_newton",
  "accesskit_windows",
  "raw-window-handle 0.5.2",
  "raw-window-handle 0.6.0",
@@ -509,8 +522,19 @@ checksum = "0f0ea9b9476c7fad82841a8dbb380e2eae480c21910feba80725b46931ed8f02"
 dependencies = [
  "calloop",
  "rustix 0.38.21",
- "wayland-backend",
- "wayland-client",
+ "wayland-backend 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-client 0.31.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "calloop-wayland-source"
+version = "0.2.0"
+source = "git+https://github.com/mwcampbell/calloop-wayland-source?branch=accessibility-protocol#80760b3a44ac3cfa5c841a507d3228d3275b8b4f"
+dependencies = [
+ "calloop",
+ "rustix 0.38.21",
+ "wayland-backend 0.3.2 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
+ "wayland-client 0.31.1 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
 ]
 
 [[package]]
@@ -1558,6 +1582,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-xml"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1004a344b30a54e2ee58d66a71b32d2db2feb0a31f9a2d302bf0536f15de2a33"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1759,7 +1792,7 @@ dependencies = [
  "ab_glyph",
  "log",
  "memmap2",
- "smithay-client-toolkit",
+ "smithay-client-toolkit 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tiny-skia",
 ]
 
@@ -1869,20 +1902,44 @@ checksum = "60e3d9941fa3bacf7c2bf4b065304faa14164151254cd16ce1b1bc8fc381600f"
 dependencies = [
  "bitflags 2.4.1",
  "calloop",
- "calloop-wayland-source",
+ "calloop-wayland-source 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cursor-icon",
  "libc",
  "log",
  "memmap2",
  "rustix 0.38.21",
  "thiserror",
- "wayland-backend",
- "wayland-client",
- "wayland-csd-frame",
- "wayland-cursor",
- "wayland-protocols",
- "wayland-protocols-wlr",
- "wayland-scanner",
+ "wayland-backend 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-client 0.31.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-csd-frame 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-cursor 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-protocols 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-protocols-wlr 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-scanner 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "xkeysym",
+]
+
+[[package]]
+name = "smithay-client-toolkit"
+version = "0.18.0"
+source = "git+https://github.com/mwcampbell/sctk?branch=accessibility-protocol#bdfc4e21cbc82476fce683ab5c3ebfb5570de36f"
+dependencies = [
+ "bitflags 2.4.1",
+ "calloop",
+ "calloop-wayland-source 0.2.0 (git+https://github.com/mwcampbell/calloop-wayland-source?branch=accessibility-protocol)",
+ "cursor-icon",
+ "libc",
+ "log",
+ "memmap2",
+ "rustix 0.38.21",
+ "thiserror",
+ "wayland-backend 0.3.2 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
+ "wayland-client 0.31.1 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
+ "wayland-csd-frame 0.3.0 (git+https://github.com/mwcampbell/wayland-csd-frame?branch=accessibility-protocol)",
+ "wayland-cursor 0.31.0 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
+ "wayland-protocols 0.31.0 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
+ "wayland-protocols-wlr 0.2.0 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
+ "wayland-scanner 0.31.0 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
  "xkeysym",
 ]
 
@@ -2246,7 +2303,20 @@ dependencies = [
  "nix",
  "scoped-tls",
  "smallvec",
- "wayland-sys",
+ "wayland-sys 0.31.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "wayland-backend"
+version = "0.3.2"
+source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#9842baeeb110bfee7b10fb2af61f0a355a8231fa"
+dependencies = [
+ "cc",
+ "downcast-rs",
+ "rustix 0.38.21",
+ "scoped-tls",
+ "smallvec",
+ "wayland-sys 0.31.1 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
 ]
 
 [[package]]
@@ -2257,8 +2327,19 @@ checksum = "1ca7d52347346f5473bf2f56705f360e8440873052e575e55890c4fa57843ed3"
 dependencies = [
  "bitflags 2.4.1",
  "nix",
- "wayland-backend",
- "wayland-scanner",
+ "wayland-backend 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-scanner 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "wayland-client"
+version = "0.31.1"
+source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#9842baeeb110bfee7b10fb2af61f0a355a8231fa"
+dependencies = [
+ "bitflags 2.4.1",
+ "rustix 0.38.21",
+ "wayland-backend 0.3.2 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
+ "wayland-scanner 0.31.0 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
 ]
 
 [[package]]
@@ -2269,7 +2350,17 @@ checksum = "625c5029dbd43d25e6aa9615e88b829a5cad13b2819c4ae129fdbb7c31ab4c7e"
 dependencies = [
  "bitflags 2.4.1",
  "cursor-icon",
- "wayland-backend",
+ "wayland-backend 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "wayland-csd-frame"
+version = "0.3.0"
+source = "git+https://github.com/mwcampbell/wayland-csd-frame?branch=accessibility-protocol#12171a9121da8cd8a78d3ad0c84d6cc4e6924946"
+dependencies = [
+ "bitflags 2.4.1",
+ "cursor-icon",
+ "wayland-backend 0.3.2 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
 ]
 
 [[package]]
@@ -2279,7 +2370,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a44aa20ae986659d6c77d64d808a046996a932aa763913864dc40c359ef7ad5b"
 dependencies = [
  "nix",
- "wayland-client",
+ "wayland-client 0.31.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "xcursor",
+]
+
+[[package]]
+name = "wayland-cursor"
+version = "0.31.0"
+source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#9842baeeb110bfee7b10fb2af61f0a355a8231fa"
+dependencies = [
+ "rustix 0.38.21",
+ "wayland-client 0.31.1 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
  "xcursor",
 ]
 
@@ -2290,9 +2391,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e253d7107ba913923dc253967f35e8561a3c65f914543e46843c88ddd729e21c"
 dependencies = [
  "bitflags 2.4.1",
- "wayland-backend",
- "wayland-client",
- "wayland-scanner",
+ "wayland-backend 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-client 0.31.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-scanner 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "wayland-protocols"
+version = "0.31.0"
+source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#9842baeeb110bfee7b10fb2af61f0a355a8231fa"
+dependencies = [
+ "bitflags 2.4.1",
+ "wayland-backend 0.3.2 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
+ "wayland-client 0.31.1 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
+ "wayland-scanner 0.31.0 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
 ]
 
 [[package]]
@@ -2302,10 +2414,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23803551115ff9ea9bce586860c5c5a971e360825a0309264102a9495a5ff479"
 dependencies = [
  "bitflags 2.4.1",
- "wayland-backend",
- "wayland-client",
- "wayland-protocols",
- "wayland-scanner",
+ "wayland-backend 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-client 0.31.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-protocols 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-scanner 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2315,10 +2427,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad1f61b76b6c2d8742e10f9ba5c3737f6530b4c243132c2a2ccc8aa96fe25cd6"
 dependencies = [
  "bitflags 2.4.1",
- "wayland-backend",
- "wayland-client",
- "wayland-protocols",
- "wayland-scanner",
+ "wayland-backend 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-client 0.31.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-protocols 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-scanner 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "wayland-protocols-wlr"
+version = "0.2.0"
+source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#9842baeeb110bfee7b10fb2af61f0a355a8231fa"
+dependencies = [
+ "bitflags 2.4.1",
+ "wayland-backend 0.3.2 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
+ "wayland-client 0.31.1 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
+ "wayland-protocols 0.31.0 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
+ "wayland-scanner 0.31.0 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
 ]
 
 [[package]]
@@ -2328,7 +2452,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fb8e28403665c9f9513202b7e1ed71ec56fde5c107816843fb14057910b2c09c"
 dependencies = [
  "proc-macro2",
- "quick-xml",
+ "quick-xml 0.30.0",
+ "quote",
+]
+
+[[package]]
+name = "wayland-scanner"
+version = "0.31.0"
+source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#9842baeeb110bfee7b10fb2af61f0a355a8231fa"
+dependencies = [
+ "proc-macro2",
+ "quick-xml 0.31.0",
  "quote",
 ]
 
@@ -2337,6 +2471,17 @@ name = "wayland-sys"
 version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15a0c8eaff5216d07f226cb7a549159267f3467b289d9a2e52fd3ef5aae2b7af"
+dependencies = [
+ "dlib",
+ "log",
+ "once_cell",
+ "pkg-config",
+]
+
+[[package]]
+name = "wayland-sys"
+version = "0.31.1"
+source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#9842baeeb110bfee7b10fb2af61f0a355a8231fa"
 dependencies = [
  "dlib",
  "log",
@@ -2694,15 +2839,15 @@ dependencies = [
  "redox_syscall 0.4.1",
  "rustix 0.38.21",
  "sctk-adwaita",
- "smithay-client-toolkit",
+ "smithay-client-toolkit 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str",
  "tracing",
  "unicode-segmentation",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wayland-backend",
- "wayland-client",
- "wayland-protocols",
+ "wayland-backend 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-client 0.31.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-protocols 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "wayland-protocols-plasma",
  "web-sys",
  "web-time",

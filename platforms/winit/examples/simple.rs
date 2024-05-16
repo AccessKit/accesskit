@@ -262,7 +262,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     #[cfg(target_os = "windows")]
     println!("Enable Narrator with [Win]+[Ctrl]+[Enter] (or [Win]+[Enter] on older versions of Windows).");
     #[cfg(all(
-        feature = "accesskit_unix",
+        feature = "accesskit_newton",
         any(
             target_os = "linux",
             target_os = "dragonfly",

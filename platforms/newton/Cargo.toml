@@ -1,0 +1,20 @@
+[package]
+name = "accesskit_newton"
+version = "0.1.0"
+authors = ["Matt Campbell <mattcampbell@pobox.com>"]
+license = "MIT OR Apache-2.0"
+description = "AccessKit UI accessibility infrastructure: new Unix adapter"
+categories = ["gui"]
+keywords = ["gui", "ui", "accessibility"]
+repository = "https://github.com/AccessKit/accesskit"
+readme = "README.md"
+edition = "2021"
+
+[dependencies]
+accesskit = { version = "0.15.0", path = "../../common", features = ["serde"] }
+libc = "0.2.149"
+rustix = { version = "0.38.15", features = ["fs", "pipe"] }
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/mwcampbell/sctk", branch = "accessibility-protocol", default-features = false, features = ["calloop"] }
+serde_json = "1"
+wayland-backend = { git = "https://github.com/mwcampbell/wayland-rs.git", branch = "accessibility-protocol", features = ["client_system", "dlopen"] }
+wayland-protocols = { git = "https://github.com/mwcampbell/wayland-rs.git", branch = "accessibility-protocol", features = ["client", "staging"] }
