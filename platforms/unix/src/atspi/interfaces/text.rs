@@ -54,12 +54,6 @@ impl TextInterface {
         self.node.set_caret_offset(offset).map_err(self.map_error())
     }
 
-    fn get_character_at_offset(&self, offset: i32) -> fdo::Result<i32> {
-        self.node
-            .character_at_offset(offset)
-            .map_err(self.map_error())
-    }
-
     fn get_attribute_value(&self, offset: i32, attribute_name: &str) -> fdo::Result<String> {
         self.node
             .text_attribute_value(offset, attribute_name)

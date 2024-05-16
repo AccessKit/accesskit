@@ -261,13 +261,6 @@ impl Accessible {
         }
     }
 
-    pub fn character_at_offset(&self, offset: i32) -> Result<i32> {
-        match self {
-            Self::Node(node) => node.character_at_offset(offset),
-            Self::Root(_) => Err(Error::UnsupportedInterface),
-        }
-    }
-
     pub fn text_attribute_value(&self, offset: i32, attribute_name: &str) -> Result<String> {
         match self {
             Self::Node(node) => node.text_attribute_value(offset, attribute_name),

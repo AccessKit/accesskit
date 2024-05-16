@@ -1046,15 +1046,6 @@ impl PlatformNode {
         })
     }
 
-    pub fn character_at_offset(&self, offset: i32) -> Result<i32> {
-        self.resolve_for_text(|node| {
-            let start = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
-            let mut range = start.to_degenerate_range();
-            range.set_end(start.forward_to_character_end());
-            Ok(range.text().chars().next().unwrap_or('\0') as i32)
-        })
-    }
-
     pub fn text_attribute_value(&self, _offset: i32, _attribute_name: &str) -> Result<String> {
         // TODO: Implement rich text.
         Err(Error::UnsupportedInterface)
