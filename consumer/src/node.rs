@@ -709,7 +709,7 @@ mod tests {
         assert_eq!(
             ROOT_ID,
             tree.state()
-                .node_by_id(STATIC_TEXT_1_0_ID)
+                .node_by_id(STATIC_TEXT_1_1_ID)
                 .unwrap()
                 .filtered_parent(&test_tree_filter)
                 .unwrap()
@@ -871,7 +871,7 @@ mod tests {
                 y1: 70.0,
             }),
             tree.state()
-                .node_by_id(STATIC_TEXT_1_0_ID)
+                .node_by_id(STATIC_TEXT_1_1_ID)
                 .unwrap()
                 .bounding_box()
         );
@@ -886,14 +886,14 @@ mod tests {
             .node_at_point(Point::new(10.0, 40.0), &test_tree_filter)
             .is_none());
         assert_eq!(
-            Some(STATIC_TEXT_1_0_ID),
+            Some(STATIC_TEXT_1_1_ID),
             tree.state()
                 .root()
                 .node_at_point(Point::new(20.0, 50.0), &test_tree_filter)
                 .map(|node| node.id())
         );
         assert_eq!(
-            Some(STATIC_TEXT_1_0_ID),
+            Some(STATIC_TEXT_1_1_ID),
             tree.state()
                 .root()
                 .node_at_point(Point::new(50.0, 60.0), &test_tree_filter)

@@ -191,6 +191,7 @@ fn next_filtered_sibling<'a>(
             if result == FilterResult::Include {
                 return next;
             }
+            consider_children = result == FilterResult::ExcludeNode;
         } else if let Some(sibling) = current.following_siblings().next() {
             let result = filter(&sibling);
             next = Some(sibling);
@@ -229,6 +230,7 @@ fn previous_filtered_sibling<'a>(
             if result == FilterResult::Include {
                 return previous;
             }
+            consider_children = result == FilterResult::ExcludeNode;
         } else if let Some(sibling) = current.preceding_siblings().next() {
             let result = filter(&sibling);
             previous = Some(sibling);
@@ -629,7 +631,7 @@ mod tests {
             .is_none());
         assert_eq!(
             [
-                STATIC_TEXT_1_0_ID,
+                STATIC_TEXT_1_1_ID,
                 PARAGRAPH_2_ID,
                 STATIC_TEXT_3_1_0_ID,
                 BUTTON_3_2_ID
@@ -673,7 +675,7 @@ mod tests {
                 BUTTON_3_2_ID,
                 STATIC_TEXT_3_1_0_ID,
                 PARAGRAPH_2_ID,
-                STATIC_TEXT_1_0_ID
+                STATIC_TEXT_1_1_ID
             ],
             tree.state()
                 .node_by_id(PARAGRAPH_0_ID)
@@ -712,7 +714,7 @@ mod tests {
             .next()
             .is_none());
         assert_eq!(
-            [PARAGRAPH_2_ID, STATIC_TEXT_1_0_ID, PARAGRAPH_0_ID],
+            [PARAGRAPH_2_ID, STATIC_TEXT_1_1_ID, PARAGRAPH_0_ID],
             tree.state()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
@@ -721,7 +723,7 @@ mod tests {
                 .collect::<Vec<NodeId>>()[..]
         );
         assert_eq!(
-            [PARAGRAPH_2_ID, STATIC_TEXT_1_0_ID, PARAGRAPH_0_ID],
+            [PARAGRAPH_2_ID, STATIC_TEXT_1_1_ID, PARAGRAPH_0_ID],
             tree.state()
                 .node_by_id(STATIC_TEXT_3_1_0_ID)
                 .unwrap()
@@ -748,7 +750,7 @@ mod tests {
             .next_back()
             .is_none());
         assert_eq!(
-            [PARAGRAPH_0_ID, STATIC_TEXT_1_0_ID, PARAGRAPH_2_ID],
+            [PARAGRAPH_0_ID, STATIC_TEXT_1_1_ID, PARAGRAPH_2_ID],
             tree.state()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
@@ -758,7 +760,7 @@ mod tests {
                 .collect::<Vec<NodeId>>()[..]
         );
         assert_eq!(
-            [PARAGRAPH_0_ID, STATIC_TEXT_1_0_ID, PARAGRAPH_2_ID],
+            [PARAGRAPH_0_ID, STATIC_TEXT_1_1_ID, PARAGRAPH_2_ID],
             tree.state()
                 .node_by_id(STATIC_TEXT_3_1_0_ID)
                 .unwrap()
@@ -782,7 +784,7 @@ mod tests {
         assert_eq!(
             [
                 PARAGRAPH_0_ID,
-                STATIC_TEXT_1_0_ID,
+                STATIC_TEXT_1_1_ID,
                 PARAGRAPH_2_ID,
                 STATIC_TEXT_3_1_0_ID,
                 BUTTON_3_2_ID
@@ -817,7 +819,7 @@ mod tests {
                 BUTTON_3_2_ID,
                 STATIC_TEXT_3_1_0_ID,
                 PARAGRAPH_2_ID,
-                STATIC_TEXT_1_0_ID,
+                STATIC_TEXT_1_1_ID,
                 PARAGRAPH_0_ID
             ],
             tree.state()

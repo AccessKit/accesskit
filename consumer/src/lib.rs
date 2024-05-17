@@ -30,15 +30,19 @@ mod tests {
     pub const PARAGRAPH_0_ID: NodeId = NodeId(1);
     pub const STATIC_TEXT_0_0_IGNORED_ID: NodeId = NodeId(2);
     pub const PARAGRAPH_1_IGNORED_ID: NodeId = NodeId(3);
-    pub const STATIC_TEXT_1_0_ID: NodeId = NodeId(4);
-    pub const PARAGRAPH_2_ID: NodeId = NodeId(5);
-    pub const STATIC_TEXT_2_0_ID: NodeId = NodeId(6);
-    pub const PARAGRAPH_3_IGNORED_ID: NodeId = NodeId(7);
-    pub const EMPTY_CONTAINER_3_0_IGNORED_ID: NodeId = NodeId(8);
-    pub const LINK_3_1_IGNORED_ID: NodeId = NodeId(9);
-    pub const STATIC_TEXT_3_1_0_ID: NodeId = NodeId(10);
-    pub const BUTTON_3_2_ID: NodeId = NodeId(11);
-    pub const EMPTY_CONTAINER_3_3_IGNORED_ID: NodeId = NodeId(12);
+    pub const BUTTON_1_0_HIDDEN_ID: NodeId = NodeId(4);
+    pub const CONTAINER_1_0_0_HIDDEN_ID: NodeId = NodeId(5);
+    pub const STATIC_TEXT_1_1_ID: NodeId = NodeId(6);
+    pub const BUTTON_1_2_HIDDEN_ID: NodeId = NodeId(7);
+    pub const CONTAINER_1_2_0_HIDDEN_ID: NodeId = NodeId(8);
+    pub const PARAGRAPH_2_ID: NodeId = NodeId(9);
+    pub const STATIC_TEXT_2_0_ID: NodeId = NodeId(10);
+    pub const PARAGRAPH_3_IGNORED_ID: NodeId = NodeId(11);
+    pub const EMPTY_CONTAINER_3_0_IGNORED_ID: NodeId = NodeId(12);
+    pub const LINK_3_1_IGNORED_ID: NodeId = NodeId(13);
+    pub const STATIC_TEXT_3_1_0_ID: NodeId = NodeId(14);
+    pub const BUTTON_3_2_ID: NodeId = NodeId(15);
+    pub const EMPTY_CONTAINER_3_3_IGNORED_ID: NodeId = NodeId(16);
 
     pub fn test_tree() -> crate::tree::Tree {
         let root = {
@@ -70,10 +74,26 @@ mod tests {
                 x1: 800.0,
                 y1: 40.0,
             });
-            builder.set_children(vec![STATIC_TEXT_1_0_ID]);
+            builder.set_children(vec![
+                BUTTON_1_0_HIDDEN_ID,
+                STATIC_TEXT_1_1_ID,
+                BUTTON_1_2_HIDDEN_ID,
+            ]);
             builder.build()
         };
-        let static_text_1_0 = {
+        let button_1_0_hidden = {
+            let mut builder = NodeBuilder::new(Role::Button);
+            builder.set_name("button_1_0_hidden");
+            builder.set_hidden();
+            builder.set_children(vec![CONTAINER_1_0_0_HIDDEN_ID]);
+            builder.build()
+        };
+        let container_1_0_0_hidden = {
+            let mut builder = NodeBuilder::new(Role::GenericContainer);
+            builder.set_hidden();
+            builder.build()
+        };
+        let static_text_1_1 = {
             let mut builder = NodeBuilder::new(Role::StaticText);
             builder.set_bounds(Rect {
                 x0: 10.0,
@@ -81,7 +101,19 @@ mod tests {
                 x1: 90.0,
                 y1: 30.0,
             });
-            builder.set_name("static_text_1_0");
+            builder.set_name("static_text_1_1");
+            builder.build()
+        };
+        let button_1_2_hidden = {
+            let mut builder = NodeBuilder::new(Role::Button);
+            builder.set_name("button_1_2_hidden");
+            builder.set_hidden();
+            builder.set_children(vec![CONTAINER_1_2_0_HIDDEN_ID]);
+            builder.build()
+        };
+        let container_1_2_0_hidden = {
+            let mut builder = NodeBuilder::new(Role::GenericContainer);
+            builder.set_hidden();
             builder.build()
         };
         let paragraph_2 = {
@@ -128,7 +160,11 @@ mod tests {
                 (PARAGRAPH_0_ID, paragraph_0),
                 (STATIC_TEXT_0_0_IGNORED_ID, static_text_0_0_ignored),
                 (PARAGRAPH_1_IGNORED_ID, paragraph_1_ignored),
-                (STATIC_TEXT_1_0_ID, static_text_1_0),
+                (BUTTON_1_0_HIDDEN_ID, button_1_0_hidden),
+                (CONTAINER_1_0_0_HIDDEN_ID, container_1_0_0_hidden),
+                (STATIC_TEXT_1_1_ID, static_text_1_1),
+                (BUTTON_1_2_HIDDEN_ID, button_1_2_hidden),
+                (CONTAINER_1_2_0_HIDDEN_ID, container_1_2_0_hidden),
                 (PARAGRAPH_2_ID, paragraph_2),
                 (STATIC_TEXT_2_0_ID, static_text_2_0),
                 (PARAGRAPH_3_IGNORED_ID, paragraph_3_ignored),
@@ -146,7 +182,9 @@ mod tests {
 
     pub fn test_tree_filter(node: &crate::Node) -> FilterResult {
         let id = node.id();
-        if id == STATIC_TEXT_0_0_IGNORED_ID
+        if node.is_hidden() {
+            FilterResult::ExcludeSubtree
+        } else if id == STATIC_TEXT_0_0_IGNORED_ID
             || id == PARAGRAPH_1_IGNORED_ID
             || id == PARAGRAPH_3_IGNORED_ID
             || id == EMPTY_CONTAINER_3_0_IGNORED_ID
