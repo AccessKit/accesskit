@@ -545,6 +545,28 @@ impl Event {
                         detail2: 0,
                         data: None,
                     },
+                    ObjectEvent::TextInserted {
+                        start_index,
+                        length,
+                        content,
+                    } => Self {
+                        kind: "object:text-changed:insert".into(),
+                        source,
+                        detail1: start_index,
+                        detail2: length,
+                        data: Some(EventData::String(content)),
+                    },
+                    ObjectEvent::TextRemoved {
+                        start_index,
+                        length,
+                        content,
+                    } => Self {
+                        kind: "object:text-changed:delete".into(),
+                        source,
+                        detail1: start_index,
+                        detail2: length,
+                        data: Some(EventData::String(content)),
+                    },
                     ObjectEvent::TextSelectionChanged => Self {
                         kind: "object:text-selection-changed".into(),
                         source,

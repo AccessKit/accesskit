@@ -41,6 +41,16 @@ pub enum ObjectEvent {
     ChildRemoved(NodeId),
     PropertyChanged(Property),
     StateChanged(State, bool),
+    TextInserted {
+        start_index: i32,
+        length: i32,
+        content: String,
+    },
+    TextRemoved {
+        start_index: i32,
+        length: i32,
+        content: String,
+    },
     TextSelectionChanged,
 }
 

@@ -6,9 +6,12 @@
 use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
 use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use atspi_common::{InterfaceSet, Live, State};
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc, RwLock,
+use std::{
+    collections::HashSet,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, RwLock,
+    },
 };
 
 use crate::{
@@ -21,9 +24,17 @@ use crate::{
 
 struct AdapterChangeHandler<'a> {
     adapter: &'a Adapter,
+    text_changed: HashSet<NodeId>,
 }
 
-impl AdapterChangeHandler<'_> {
+impl<'a> AdapterChangeHandler<'a> {
+    fn new(adapter: &'a Adapter) -> Self {
+        Self {
+            adapter,
+            text_changed: HashSet::new(),
+        }
+    }
+
     fn add_node(&mut self, node: &Node) {
         let role = node.role();
         let is_root = node.is_root();
@@ -61,6 +72,86 @@ impl AdapterChangeHandler<'_> {
         self.adapter
             .unregister_interfaces(node.id(), node.interfaces());
     }
+
+    fn emit_text_change_if_needed_parent(&mut self, old_node: &Node, new_node: &Node) {
+        if !new_node.supports_text_ranges()
+            || !old_node.supports_text_ranges()
+            || new_node.is_read_only()
+        {
+            return;
+        }
+        let id = new_node.id();
+        if self.text_changed.contains(&id) {
+            return;
+        }
+        let old_text = old_node.document_range().text();
+        let new_text = new_node.document_range().text();
+        let mut old_chars = old_text.chars();
+        let mut new_chars = new_text.chars();
+        let mut common_prefix = 0;
+        let (total_old_length, total_new_length) = loop {
+            match (old_chars.next(), new_chars.next()) {
+                (Some(a), Some(b)) if a == b => common_prefix += 1,
+                (a, b) => {
+                    let total_old_length = common_prefix + old_chars.count() + a.map_or(0, |_| 1);
+                    let total_new_length = common_prefix + new_chars.count() + b.map_or(0, |_| 1);
+                    break (total_old_length, total_new_length);
+                }
+            }
+        };
+        if common_prefix == total_old_length && common_prefix == total_new_length {
+            return;
+        }
+        let common_suffix = old_text
+            .chars()
+            .rev()
+            .zip(new_text.chars().rev())
+            .enumerate()
+            .position(|(index, (a, b))| {
+                common_prefix + index >= total_old_length
+                    || common_prefix + index >= total_new_length
+                    || a != b
+            })
+            .unwrap_or_else(|| usize::min(total_old_length, total_new_length));
+        let old_length = total_old_length - common_prefix - common_suffix;
+        let new_length = total_new_length - common_prefix - common_suffix;
+        if let Ok(start_index) = common_prefix.try_into() {
+            if let Some(length) = old_length.try_into().ok().filter(|l| *l > 0) {
+                self.adapter.emit_object_event(
+                    id,
+                    ObjectEvent::TextRemoved {
+                        start_index,
+                        length,
+                        content: old_text[common_prefix..common_prefix + old_length].to_string(),
+                    },
+                );
+            }
+            if let Some(length) = new_length.try_into().ok().filter(|l| *l > 0) {
+                self.adapter.emit_object_event(
+                    id,
+                    ObjectEvent::TextInserted {
+                        start_index,
+                        length,
+                        content: new_text[common_prefix..common_prefix + new_length].to_string(),
+                    },
+                );
+            }
+        }
+        self.text_changed.insert(id);
+    }
+
+    fn emit_text_change_if_needed(&mut self, old_node: &Node, new_node: &Node) {
+        if new_node.role() == Role::InlineTextBox {
+            if let (Some(old_parent), Some(new_parent)) = (
+                old_node.filtered_parent(&filter),
+                new_node.filtered_parent(&filter),
+            ) {
+                self.emit_text_change_if_needed_parent(&old_parent, &new_parent);
+            }
+        } else {
+            self.emit_text_change_if_needed_parent(old_node, new_node);
+        }
+    }
 }
 
 impl TreeChangeHandler for AdapterChangeHandler<'_> {
@@ -80,6 +171,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 self.remove_node(old_node);
             }
         } else if filter_new == FilterResult::Include {
+            self.emit_text_change_if_needed(old_node, new_node);
             let old_wrapper = NodeWrapper(old_node);
             let new_wrapper = NodeWrapper(new_node);
             let old_interfaces = old_wrapper.interfaces();
@@ -279,13 +371,13 @@ impl Adapter {
     }
 
     pub fn update(&mut self, update: TreeUpdate) {
-        let mut handler = AdapterChangeHandler { adapter: self };
+        let mut handler = AdapterChangeHandler::new(self);
         let mut tree = self.context.tree.write().unwrap();
         tree.update_and_process_changes(update, &mut handler);
     }
 
     pub fn update_window_focus_state(&mut self, is_focused: bool) {
-        let mut handler = AdapterChangeHandler { adapter: self };
+        let mut handler = AdapterChangeHandler::new(self);
         let mut tree = self.context.tree.write().unwrap();
         tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
     }

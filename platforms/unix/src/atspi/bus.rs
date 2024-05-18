@@ -212,6 +212,7 @@ impl Bus {
             ObjectEvent::ChildAdded(_, _) | ObjectEvent::ChildRemoved(_) => "ChildrenChanged",
             ObjectEvent::PropertyChanged(_) => "PropertyChange",
             ObjectEvent::StateChanged(_, _) => "StateChanged",
+            ObjectEvent::TextInserted { .. } | ObjectEvent::TextRemoved { .. } => "TextChanged",
             ObjectEvent::TextSelectionChanged => "TextSelectionChanged",
         };
         let properties = HashMap::new();
@@ -364,6 +365,44 @@ impl Bus {
                         detail1: value as i32,
                         detail2: 0,
                         any_data: 0i32.into(),
+                        properties,
+                    },
+                )
+                .await
+            }
+            ObjectEvent::TextInserted {
+                start_index,
+                length,
+                content,
+            } => {
+                self.emit_event(
+                    target,
+                    interface,
+                    signal,
+                    EventBody {
+                        kind: "insert",
+                        detail1: start_index,
+                        detail2: length,
+                        any_data: content.into(),
+                        properties,
+                    },
+                )
+                .await
+            }
+            ObjectEvent::TextRemoved {
+                start_index,
+                length,
+                content,
+            } => {
+                self.emit_event(
+                    target,
+                    interface,
+                    signal,
+                    EventBody {
+                        kind: "delete",
+                        detail1: start_index,
+                        detail2: length,
+                        any_data: content.into(),
                         properties,
                     },
                 )
