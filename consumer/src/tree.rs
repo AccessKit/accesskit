@@ -43,16 +43,6 @@ impl State {
         is_host_focused: bool,
         mut changes: Option<&mut InternalChanges>,
     ) {
-        // First, if we're collecting changes, collect the IDS of any nodes
-        // in the update that were in the previous state.
-        if let Some(changes) = &mut changes {
-            for (node_id, _) in &update.nodes {
-                if self.nodes.get(node_id).is_some() {
-                    changes.updated_node_ids.insert(*node_id);
-                }
-            }
-        }
-
         let mut orphans = HashSet::new();
 
         if let Some(tree) = update.tree {
@@ -123,7 +113,12 @@ impl State {
                         orphans.insert(*child_id);
                     }
                 }
-                node_state.data = Arc::new(node_data);
+                if *node_state.data != node_data {
+                    node_state.data = Arc::new(node_data);
+                    if let Some(changes) = &mut changes {
+                        changes.updated_node_ids.insert(node_id);
+                    }
+                }
             } else if let Some(parent_and_index) = pending_children.remove(&node_id) {
                 add_node(
                     &mut self.nodes,
@@ -733,5 +728,54 @@ mod tests {
             Some("bar".into()),
             tree.state().node_by_id(NodeId(1)).unwrap().name()
         );
+    }
+
+    // Verify that if an update consists entirely of node data and tree data
+    // that's the same as before, no changes are reported. This is useful
+    // for a provider that constructs a fresh tree every time, such as
+    // an immediate-mode GUI.
+    #[test]
+    fn no_change_update() {
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut builder = NodeBuilder::new(Role::Window);
+                    builder.set_children(vec![NodeId(1)]);
+                    builder.build()
+                }),
+                (NodeId(1), {
+                    let mut builder = NodeBuilder::new(Role::Button);
+                    builder.set_name("foo");
+                    builder.build()
+                }),
+            ],
+            tree: Some(Tree::new(NodeId(0))),
+            focus: NodeId(0),
+        };
+        let mut tree = super::Tree::new(update.clone(), false);
+        struct Handler;
+        fn unexpected_change() {
+            panic!("expected no changes");
+        }
+        impl super::ChangeHandler for Handler {
+            fn node_added(&mut self, _node: &crate::Node) {
+                unexpected_change();
+            }
+            fn node_updated(&mut self, _old_node: &crate::Node, _new_node: &crate::Node) {
+                unexpected_change();
+            }
+            fn focus_moved(
+                &mut self,
+                _old_node: Option<&crate::Node>,
+                _new_node: Option<&crate::Node>,
+            ) {
+                unexpected_change();
+            }
+            fn node_removed(&mut self, _node: &crate::Node) {
+                unexpected_change();
+            }
+        }
+        let mut handler = Handler {};
+        tree.update_and_process_changes(update, &mut handler);
     }
 }
