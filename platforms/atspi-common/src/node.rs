@@ -50,15 +50,6 @@ impl<'a> NodeWrapper<'a> {
         self.0.id()
     }
 
-    fn child_ids(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = NodeId>
-           + ExactSizeIterator<Item = NodeId>
-           + FusedIterator<Item = NodeId>
-           + '_ {
-        self.0.child_ids()
-    }
-
     fn filtered_child_ids(
         &self,
     ) -> impl DoubleEndedIterator<Item = NodeId> + FusedIterator<Item = NodeId> + '_ {
@@ -532,15 +523,15 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn notify_children_changes(&self, adapter: &Adapter, old: &NodeWrapper<'_>) {
-        let old_children = old.child_ids().collect::<Vec<NodeId>>();
-        let filtered_children = self.filtered_child_ids().collect::<Vec<NodeId>>();
-        for (index, child) in filtered_children.iter().enumerate() {
-            if !old_children.contains(child) {
+        let old_filtered_children = old.filtered_child_ids().collect::<Vec<NodeId>>();
+        let new_filtered_children = self.filtered_child_ids().collect::<Vec<NodeId>>();
+        for (index, child) in new_filtered_children.iter().enumerate() {
+            if !old_filtered_children.contains(child) {
                 adapter.emit_object_event(self.id(), ObjectEvent::ChildAdded(index, *child));
             }
         }
-        for child in old_children.into_iter() {
-            if !filtered_children.contains(&child) {
+        for child in old_filtered_children.into_iter() {
+            if !new_filtered_children.contains(&child) {
                 adapter.emit_object_event(self.id(), ObjectEvent::ChildRemoved(child));
             }
         }
