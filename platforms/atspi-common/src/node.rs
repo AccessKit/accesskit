@@ -10,7 +10,7 @@
 
 use accesskit::{
     Action, ActionData, ActionRequest, Affine, DefaultActionVerb, Live, NodeId, Point, Rect, Role,
-    TextSelection, Toggled,
+    Toggled,
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
 use atspi_common::{
@@ -443,10 +443,6 @@ impl<'a> NodeWrapper<'a> {
             })
     }
 
-    fn raw_text_selection(&self) -> Option<&TextSelection> {
-        self.0.raw_text_selection()
-    }
-
     fn current_value(&self) -> Option<f64> {
         self.0.numeric_value()
     }
@@ -460,7 +456,6 @@ impl<'a> NodeWrapper<'a> {
         self.notify_state_changes(adapter, old);
         self.notify_property_changes(adapter, old);
         self.notify_bounds_changes(window_bounds, adapter, old);
-        self.notify_text_selection_changes(adapter, old);
         self.notify_children_changes(adapter, old);
     }
 
@@ -540,32 +535,6 @@ impl<'a> NodeWrapper<'a> {
         if self.raw_bounds_and_transform() != old.raw_bounds_and_transform() {
             if let Some(extents) = self.extents(window_bounds, CoordType::Window) {
                 adapter.emit_object_event(self.id(), ObjectEvent::BoundsChanged(extents.into()));
-            }
-        }
-    }
-
-    fn notify_text_selection_changes(&self, adapter: &Adapter, old: &NodeWrapper) {
-        if !self.supports_text() || self.raw_text_selection() == old.raw_text_selection() {
-            return;
-        }
-
-        if let Some(selection) = self.0.text_selection() {
-            if !selection.is_degenerate()
-                || old
-                    .0
-                    .text_selection()
-                    .map(|selection| !selection.is_degenerate())
-                    .unwrap_or(false)
-            {
-                adapter.emit_object_event(self.id(), ObjectEvent::TextSelectionChanged);
-            }
-
-            let old_caret_position = old.raw_text_selection().map(|selection| selection.focus);
-            let new_caret_position = self.raw_text_selection().map(|selection| selection.focus);
-            if old_caret_position != new_caret_position {
-                if let Ok(offset) = selection.end().to_global_usv_index().try_into() {
-                    adapter.emit_object_event(self.id(), ObjectEvent::CaretMoved(offset));
-                }
             }
         }
     }

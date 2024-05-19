@@ -152,6 +152,56 @@ impl<'a> AdapterChangeHandler<'a> {
             self.emit_text_change_if_needed_parent(old_node, new_node);
         }
     }
+
+    fn emit_text_selection_change(&self, old_node: Option<&Node>, new_node: &Node) {
+        if !new_node.supports_text_ranges() {
+            return;
+        }
+        if old_node.is_none() {
+            if let Some(selection) = new_node.text_selection() {
+                if !selection.is_degenerate() {
+                    self.adapter
+                        .emit_object_event(new_node.id(), ObjectEvent::TextSelectionChanged);
+                }
+                if let Ok(offset) = selection.end().to_global_usv_index().try_into() {
+                    self.adapter
+                        .emit_object_event(new_node.id(), ObjectEvent::CaretMoved(offset));
+                }
+            }
+            return;
+        }
+
+        let old_node = old_node.unwrap();
+        if !old_node.is_focused() || new_node.raw_text_selection() == old_node.raw_text_selection()
+        {
+            return;
+        }
+
+        if let Some(selection) = new_node.text_selection() {
+            if !selection.is_degenerate()
+                || old_node
+                    .text_selection()
+                    .map(|selection| !selection.is_degenerate())
+                    .unwrap_or(false)
+            {
+                self.adapter
+                    .emit_object_event(new_node.id(), ObjectEvent::TextSelectionChanged);
+            }
+
+            let old_caret_position = old_node
+                .raw_text_selection()
+                .map(|selection| selection.focus);
+            let new_caret_position = new_node
+                .raw_text_selection()
+                .map(|selection| selection.focus);
+            if old_caret_position != new_caret_position {
+                if let Ok(offset) = selection.end().to_global_usv_index().try_into() {
+                    self.adapter
+                        .emit_object_event(new_node.id(), ObjectEvent::CaretMoved(offset));
+                }
+            }
+        }
+    }
 }
 
 impl TreeChangeHandler for AdapterChangeHandler<'_> {
@@ -171,7 +221,6 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 self.remove_node(old_node);
             }
         } else if filter_new == FilterResult::Include {
-            self.emit_text_change_if_needed(old_node, new_node);
             let old_wrapper = NodeWrapper(old_node);
             let new_wrapper = NodeWrapper(new_node);
             let old_interfaces = old_wrapper.interfaces();
@@ -183,6 +232,8 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 .register_interfaces(new_node.id(), new_interfaces ^ kept_interfaces);
             let bounds = *self.adapter.context.read_root_window_bounds();
             new_wrapper.notify_changes(&bounds, self.adapter, &old_wrapper);
+            self.emit_text_change_if_needed(old_node, new_node);
+            self.emit_text_selection_change(Some(old_node), new_node);
         }
     }
 
@@ -199,6 +250,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         if let Some(node) = new_node {
             self.adapter
                 .emit_object_event(node.id(), ObjectEvent::StateChanged(State::Focused, true));
+            self.emit_text_selection_change(None, node);
         }
         if let Some(node) = old_node {
             self.adapter
