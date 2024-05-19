@@ -79,10 +79,7 @@ impl<'a> AdapterChangeHandler<'a> {
     }
 
     fn emit_text_change_if_needed_parent(&mut self, old_node: &Node, new_node: &Node) {
-        if !new_node.supports_text_ranges()
-            || !old_node.supports_text_ranges()
-            || new_node.is_read_only()
-        {
+        if !new_node.supports_text_ranges() || !old_node.supports_text_ranges() {
             return;
         }
         let id = new_node.id();
