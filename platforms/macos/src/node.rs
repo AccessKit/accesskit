@@ -420,7 +420,7 @@ declare_class!(
         #[method_id(accessibilityPlaceholderValue)]
         fn placeholder(&self) -> Option<Id<NSString>> {
             self.resolve(|node| {
-                let wrapper = NodeWrapper::Node(node);
+                let wrapper = NodeWrapper(node);
                 wrapper.placeholder().map(|placeholder| NSString::from_str(&placeholder))
             })
             .flatten()
