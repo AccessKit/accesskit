@@ -32,6 +32,20 @@ impl<'a> InnerPosition<'a> {
         })
     }
 
+    fn clamped_upgrade(tree_state: &'a TreeState, weak: WeakPosition) -> Option<Self> {
+        let node = tree_state.node_by_id(weak.node)?;
+        if node.role() != Role::InlineTextBox {
+            return None;
+        }
+        let character_index = weak
+            .character_index
+            .min(node.data().character_lengths().len());
+        Some(Self {
+            node,
+            character_index,
+        })
+    }
+
     fn is_word_start(&self) -> bool {
         let mut total_length = 0usize;
         for length in self.node.data().word_lengths().iter() {
@@ -872,8 +886,8 @@ impl<'a> Node<'a> {
 
     pub fn text_selection(&self) -> Option<Range> {
         self.data().text_selection().map(|selection| {
-            let anchor = InnerPosition::upgrade(self.tree_state, selection.anchor).unwrap();
-            let focus = InnerPosition::upgrade(self.tree_state, selection.focus).unwrap();
+            let anchor = InnerPosition::clamped_upgrade(self.tree_state, selection.anchor).unwrap();
+            let focus = InnerPosition::clamped_upgrade(self.tree_state, selection.focus).unwrap();
             Range::new(*self, anchor, focus)
         })
     }
@@ -1230,6 +1244,21 @@ mod tests {
             focus: TextPosition {
                 node: NodeId(7),
                 character_index: 0,
+            },
+        }
+    }
+
+    fn multiline_past_end_selection() -> TextSelection {
+        use accesskit::TextPosition;
+
+        TextSelection {
+            anchor: TextPosition {
+                node: NodeId(7),
+                character_index: 3,
+            },
+            focus: TextPosition {
+                node: NodeId(7),
+                character_index: 3,
             },
         }
     }
@@ -1829,5 +1858,13 @@ mod tests {
         }
 
         assert!(node.text_position_from_global_utf16_index(100).is_none());
+    }
+
+    #[test]
+    fn multiline_selection_clamping() {
+        let tree = main_multiline_tree(Some(multiline_past_end_selection()));
+        let state = tree.state();
+        let node = state.node_by_id(NodeId(1)).unwrap();
+        let _ = node.text_selection().unwrap();
     }
 }
