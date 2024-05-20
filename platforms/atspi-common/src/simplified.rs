@@ -7,6 +7,8 @@
 //! intended to be used by bindings to languages with less rich
 //! type systems.
 
+use std::collections::HashMap;
+
 use crate::{
     Adapter, Event as EventEnum, NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot, Property,
     WindowEvent,
@@ -53,6 +55,13 @@ impl Accessible {
         match self {
             Self::Node(node) => node.state(),
             Self::Root(_) => StateSet::empty(),
+        }
+    }
+
+    pub fn attributes(&self) -> Result<HashMap<&'static str, String>> {
+        match self {
+            Self::Node(node) => node.attributes(),
+            Self::Root(_) => Ok(HashMap::new()),
         }
     }
 

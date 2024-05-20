@@ -18,6 +18,7 @@ use atspi_common::{
     StateSet,
 };
 use std::{
+    collections::HashMap,
     hash::{Hash, Hasher},
     iter::FusedIterator,
     sync::{Arc, RwLock, RwLockReadGuard, Weak},
@@ -335,6 +336,14 @@ impl<'a> NodeWrapper<'a> {
         }
 
         atspi_state
+    }
+
+    fn attributes(&self) -> HashMap<&'static str, String> {
+        let mut attributes = HashMap::new();
+        if let Some(placeholder) = self.0.placeholder() {
+            attributes.insert("placeholder-text", placeholder);
+        }
+        attributes
     }
 
     fn is_root(&self) -> bool {
@@ -728,6 +737,13 @@ impl PlatformNode {
             Ok(wrapper.state(context.read_tree().state().focus_id().is_some()))
         })
         .unwrap_or(State::Defunct.into())
+    }
+
+    pub fn attributes(&self) -> Result<HashMap<&'static str, String>> {
+        self.resolve(|node| {
+            let wrapper = NodeWrapper(&node);
+            Ok(wrapper.attributes())
+        })
     }
 
     pub fn supports_action(&self) -> Result<bool> {

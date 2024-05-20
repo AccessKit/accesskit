@@ -265,6 +265,10 @@ impl<'a> NodeWrapper<'a> {
         self.0.description()
     }
 
+    fn placeholder(&self) -> Option<String> {
+        self.0.placeholder()
+    }
+
     fn is_content_element(&self) -> bool {
         filter(self.0) == FilterResult::Include
     }
@@ -852,6 +856,7 @@ properties! {
     (LocalizedControlType, localized_control_type),
     (Name, name),
     (FullDescription, description),
+    (HelpText, placeholder),
     (IsContentElement, is_content_element),
     (IsControlElement, is_content_element),
     (IsEnabled, is_enabled),

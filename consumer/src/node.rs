@@ -511,6 +511,12 @@ impl<'a> Node<'a> {
             .map(|description| description.to_string())
     }
 
+    pub fn placeholder(&self) -> Option<String> {
+        self.data()
+            .placeholder()
+            .map(|placeholder| placeholder.to_string())
+    }
+
     pub fn value(&self) -> Option<String> {
         if let Some(value) = &self.data().value() {
             Some(value.to_string())
