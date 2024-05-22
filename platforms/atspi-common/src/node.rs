@@ -831,8 +831,11 @@ impl PlatformNode {
     ) -> Result<Option<NodeId>> {
         self.resolve_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
-            let point = Point::new(x.into(), y.into());
-            let point = window_bounds.atspi_point_to_accesskit_point(point, Some(node), coord_type);
+            let point = window_bounds.atspi_point_to_accesskit_point(
+                Point::new(x.into(), y.into()),
+                Some(node),
+                coord_type,
+            );
             let point = node.transform().inverse() * point;
             Ok(node.node_at_point(point, &filter).map(|node| node.id()))
         })
@@ -871,9 +874,8 @@ impl PlatformNode {
     pub fn scroll_to_point(&self, coord_type: CoordType, x: i32, y: i32) -> Result<bool> {
         self.resolve_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
-            let point = Point::new(x.into(), y.into());
             let point = window_bounds.atspi_point_to_accesskit_point(
-                point,
+                Point::new(x.into(), y.into()),
                 node.filtered_parent(&filter),
                 coord_type,
             );
