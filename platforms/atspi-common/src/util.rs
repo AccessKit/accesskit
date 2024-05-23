@@ -4,6 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{Point, Rect};
+use accesskit_consumer::Node;
 use atspi_common::CoordType;
 
 #[derive(Clone, Copy, Default)]
@@ -17,20 +18,38 @@ impl WindowBounds {
         Self { outer, inner }
     }
 
-    pub(crate) fn top_left(&self, coord_type: CoordType, is_root: bool) -> Point {
+    pub(crate) fn accesskit_point_to_atspi_point(
+        &self,
+        point: Point,
+        parent: Option<Node>,
+        coord_type: CoordType,
+    ) -> Point {
+        let origin = self.origin(parent, coord_type);
+        Point::new(origin.x + point.x, origin.y + point.y)
+    }
+
+    pub(crate) fn atspi_point_to_accesskit_point(
+        &self,
+        point: Point,
+        parent: Option<Node>,
+        coord_type: CoordType,
+    ) -> Point {
+        let origin = self.origin(parent, coord_type);
+        Point::new(point.x - origin.x, point.y - origin.y)
+    }
+
+    fn origin(&self, parent: Option<Node>, coord_type: CoordType) -> Point {
         match coord_type {
-            CoordType::Screen if is_root => self.outer.origin(),
             CoordType::Screen => self.inner.origin(),
-            CoordType::Window if is_root => Point::ZERO,
-            CoordType::Window => {
-                let outer_position = self.outer.origin();
-                let inner_position = self.inner.origin();
-                Point::new(
-                    inner_position.x - outer_position.x,
-                    inner_position.y - outer_position.y,
-                )
+            CoordType::Window => Point::ZERO,
+            CoordType::Parent => {
+                if let Some(parent) = parent {
+                    let parent_origin = parent.bounding_box().unwrap_or_default().origin();
+                    Point::new(-parent_origin.x, -parent_origin.y)
+                } else {
+                    self.inner.origin()
+                }
             }
-            _ => unimplemented!(),
         }
     }
 }

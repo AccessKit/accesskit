@@ -416,22 +416,18 @@ impl<'a> NodeWrapper<'a> {
         (state.raw_bounds(), state.direct_transform())
     }
 
-    fn extents(&self, window_bounds: &WindowBounds) -> AtspiRect {
-        if self.is_root() {
-            return window_bounds.outer.into();
-        }
-        self.0.bounding_box().map_or_else(
-            || AtspiRect::INVALID,
-            |bounds| {
-                let window_top_left = window_bounds.inner.origin();
-                let node_origin = bounds.origin();
-                let new_origin = Point::new(
-                    window_top_left.x + node_origin.x,
-                    window_top_left.y + node_origin.y,
+    fn extents(&self, window_bounds: &WindowBounds, coord_type: CoordType) -> Option<Rect> {
+        self.is_root()
+            .then(|| window_bounds.inner.with_origin(Point::ZERO))
+            .or_else(|| self.0.bounding_box())
+            .map(|bounds| {
+                let new_origin = window_bounds.accesskit_point_to_atspi_point(
+                    bounds.origin(),
+                    self.0.filtered_parent(&filter),
+                    coord_type,
                 );
-                bounds.with_origin(new_origin).into()
-            },
-        )
+                bounds.with_origin(new_origin)
+            })
     }
 
     fn current_value(&self) -> Option<f64> {
@@ -524,10 +520,9 @@ impl<'a> NodeWrapper<'a> {
         old: &NodeWrapper<'_>,
     ) {
         if self.raw_bounds_and_transform() != old.raw_bounds_and_transform() {
-            adapter.emit_object_event(
-                self.id(),
-                ObjectEvent::BoundsChanged(self.extents(window_bounds)),
-            );
+            if let Some(extents) = self.extents(window_bounds, CoordType::Window) {
+                adapter.emit_object_event(self.id(), ObjectEvent::BoundsChanged(extents.into()));
+            }
         }
     }
 
@@ -819,24 +814,12 @@ impl PlatformNode {
     pub fn contains(&self, x: i32, y: i32, coord_type: CoordType) -> Result<bool> {
         self.resolve_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
-            let bounds = match node.bounding_box() {
-                Some(node_bounds) => {
-                    let top_left = window_bounds.top_left(coord_type, node.is_root());
-                    let new_origin =
-                        Point::new(top_left.x + node_bounds.x0, top_left.y + node_bounds.y0);
-                    node_bounds.with_origin(new_origin)
-                }
-                None if node.is_root() => {
-                    let bounds = window_bounds.outer;
-                    match coord_type {
-                        CoordType::Screen => bounds,
-                        CoordType::Window => bounds.with_origin(Point::ZERO),
-                        _ => unimplemented!(),
-                    }
-                }
-                _ => return Err(Error::UnsupportedInterface),
-            };
-            Ok(bounds.contains(Point::new(x.into(), y.into())))
+            let wrapper = NodeWrapper(&node);
+            if let Some(extents) = wrapper.extents(&window_bounds, coord_type) {
+                Ok(extents.contains(Point::new(x.into(), y.into())))
+            } else {
+                Ok(false)
+            }
         })
     }
 
@@ -848,8 +831,11 @@ impl PlatformNode {
     ) -> Result<Option<NodeId>> {
         self.resolve_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
-            let top_left = window_bounds.top_left(coord_type, node.is_root());
-            let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
+            let point = window_bounds.atspi_point_to_accesskit_point(
+                Point::new(x.into(), y.into()),
+                Some(node),
+                coord_type,
+            );
             let point = node.transform().inverse() * point;
             Ok(node.node_at_point(point, &filter).map(|node| node.id()))
         })
@@ -858,23 +844,10 @@ impl PlatformNode {
     pub fn extents(&self, coord_type: CoordType) -> Result<AtspiRect> {
         self.resolve_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
-            match node.bounding_box() {
-                Some(node_bounds) => {
-                    let top_left = window_bounds.top_left(coord_type, node.is_root());
-                    let new_origin =
-                        Point::new(top_left.x + node_bounds.x0, top_left.y + node_bounds.y0);
-                    Ok(node_bounds.with_origin(new_origin).into())
-                }
-                None if node.is_root() => {
-                    let bounds = window_bounds.outer;
-                    Ok(match coord_type {
-                        CoordType::Screen => bounds.into(),
-                        CoordType::Window => bounds.with_origin(Point::ZERO).into(),
-                        _ => unimplemented!(),
-                    })
-                }
-                _ => Err(Error::UnsupportedInterface),
-            }
+            let wrapper = NodeWrapper(&node);
+            Ok(wrapper
+                .extents(&window_bounds, coord_type)
+                .map_or(AtspiRect::INVALID, AtspiRect::from))
         })
     }
 
@@ -899,16 +872,19 @@ impl PlatformNode {
     }
 
     pub fn scroll_to_point(&self, coord_type: CoordType, x: i32, y: i32) -> Result<bool> {
-        self.do_action_internal(|tree_state, context| {
+        self.resolve_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
-            let is_root = self.id == tree_state.root_id();
-            let top_left = window_bounds.top_left(coord_type, is_root);
-            let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
-            ActionRequest {
+            let point = window_bounds.atspi_point_to_accesskit_point(
+                Point::new(x.into(), y.into()),
+                node.filtered_parent(&filter),
+                coord_type,
+            );
+            context.do_action(ActionRequest {
                 action: Action::ScrollToPoint,
                 target: self.id,
                 data: Some(ActionData::ScrollToPoint(point)),
-            }
+            });
+            Ok(())
         })?;
         Ok(true)
     }
