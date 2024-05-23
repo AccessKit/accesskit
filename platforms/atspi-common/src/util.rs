@@ -43,10 +43,12 @@ impl WindowBounds {
             CoordType::Screen => self.inner.origin(),
             CoordType::Window => Point::ZERO,
             CoordType::Parent => {
-                let parent_origin = parent.map_or(Point::ZERO, |parent| {
-                    parent.bounding_box().unwrap_or_default().origin()
-                });
-                Point::new(-parent_origin.x, -parent_origin.y)
+                if let Some(parent) = parent {
+                    let parent_origin = parent.bounding_box().unwrap_or_default().origin();
+                    Point::new(-parent_origin.x, -parent_origin.y)
+                } else {
+                    self.inner.origin()
+                }
             }
         }
     }
