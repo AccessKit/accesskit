@@ -520,7 +520,7 @@ impl<'a> NodeWrapper<'a> {
         old: &NodeWrapper<'_>,
     ) {
         if self.raw_bounds_and_transform() != old.raw_bounds_and_transform() {
-            if let Some(extents) = self.extents(window_bounds, CoordType::Screen) {
+            if let Some(extents) = self.extents(window_bounds, CoordType::Window) {
                 adapter.emit_object_event(self.id(), ObjectEvent::BoundsChanged(extents.into()));
             }
         }
