@@ -1037,8 +1037,11 @@ impl PlatformNode {
             range.set_end(start.forward_to_character_end());
             if let Some(bounds) = range.bounding_boxes().first() {
                 let window_bounds = context.read_root_window_bounds();
-                let top_left = window_bounds.top_left(coord_type, node.is_root());
-                let new_origin = Point::new(top_left.x + bounds.x0, top_left.y + bounds.y0);
+                let new_origin = window_bounds.accesskit_point_to_atspi_point(
+                    bounds.origin(),
+                    Some(node),
+                    coord_type,
+                );
                 Ok(bounds.with_origin(new_origin).into())
             } else {
                 Ok(AtspiRect::INVALID)
@@ -1049,8 +1052,11 @@ impl PlatformNode {
     pub fn offset_at_point(&self, x: i32, y: i32, coord_type: CoordType) -> Result<i32> {
         self.resolve_for_text_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
-            let top_left = window_bounds.top_left(coord_type, node.is_root());
-            let point = Point::new(f64::from(x) - top_left.x, f64::from(y) - top_left.y);
+            let point = window_bounds.atspi_point_to_accesskit_point(
+                Point::new(x.into(), y.into()),
+                Some(node),
+                coord_type,
+            );
             let point = node.transform().inverse() * point;
             node.text_position_at_point(point)
                 .to_global_usv_index()
@@ -1151,8 +1157,11 @@ impl PlatformNode {
         self.resolve_for_text_with_context(|node, context| {
             if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
                 let window_bounds = context.read_root_window_bounds();
-                let top_left = window_bounds.top_left(coord_type, node.is_root());
-                let new_origin = Point::new(top_left.x + rect.x0, top_left.y + rect.y0);
+                let new_origin = window_bounds.accesskit_point_to_atspi_point(
+                    rect.origin(),
+                    Some(node),
+                    coord_type,
+                );
                 Ok(rect.with_origin(new_origin).into())
             } else {
                 Ok(AtspiRect::INVALID)
@@ -1202,13 +1211,14 @@ impl PlatformNode {
     ) -> Result<bool> {
         self.resolve_for_text_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
-            let top_left = window_bounds.top_left(coord_type, node.is_root());
+            let target_point = window_bounds.atspi_point_to_accesskit_point(
+                Point::new(x.into(), y.into()),
+                Some(node),
+                coord_type,
+            );
 
             if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
-                let point = Point::new(
-                    x as f64 - top_left.x - rect.x0,
-                    y as f64 - top_left.y - rect.y0,
-                );
+                let point = Point::new(target_point.x - rect.x0, target_point.y - rect.y0);
                 context.do_action(ActionRequest {
                     action: Action::ScrollToPoint,
                     target: node.id(),
