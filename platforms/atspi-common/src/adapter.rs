@@ -143,7 +143,7 @@ impl<'a> AdapterChangeHandler<'a> {
     }
 
     fn emit_text_change_if_needed(&mut self, old_node: &Node, new_node: &Node) {
-        if new_node.role() == Role::InlineTextBox {
+        if let Role::InlineTextBox | Role::GenericContainer = new_node.role() {
             if let (Some(old_parent), Some(new_parent)) = (
                 old_node.filtered_parent(&filter),
                 new_node.filtered_parent(&filter),
@@ -212,6 +212,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
     }
 
     fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
+        self.emit_text_change_if_needed(old_node, new_node);
         let filter_old = filter(old_node);
         let filter_new = filter(new_node);
         if filter_new != filter_old {
@@ -232,7 +233,6 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 .register_interfaces(new_node.id(), new_interfaces ^ kept_interfaces);
             let bounds = *self.adapter.context.read_root_window_bounds();
             new_wrapper.notify_changes(&bounds, self.adapter, &old_wrapper);
-            self.emit_text_change_if_needed(old_node, new_node);
             self.emit_text_selection_change(Some(old_node), new_node);
         }
     }
