@@ -159,7 +159,7 @@ impl<'a> AdapterChangeHandler<'a> {
         if !new_node.supports_text_ranges() {
             return;
         }
-        if old_node.is_none() {
+        let Some(old_node) = old_node else {
             if let Some(selection) = new_node.text_selection() {
                 if !selection.is_degenerate() {
                     self.adapter
@@ -171,9 +171,7 @@ impl<'a> AdapterChangeHandler<'a> {
                 }
             }
             return;
-        }
-
-        let old_node = old_node.unwrap();
+        };
         if !old_node.is_focused() || new_node.raw_text_selection() == old_node.raw_text_selection()
         {
             return;
