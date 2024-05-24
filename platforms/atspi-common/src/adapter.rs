@@ -88,57 +88,60 @@ impl<'a> AdapterChangeHandler<'a> {
         }
         let old_text = old_node.document_range().text();
         let new_text = new_node.document_range().text();
+
         let mut old_chars = old_text.chars();
         let mut new_chars = new_text.chars();
-        let mut common_prefix = 0;
-        let (total_old_length, total_new_length) = loop {
+        let mut prefix_usv_index = 0;
+        let mut prefix_byte_count = 0;
+        loop {
             match (old_chars.next(), new_chars.next()) {
-                (Some(a), Some(b)) if a == b => common_prefix += 1,
-                (a, b) => {
-                    let total_old_length = common_prefix + old_chars.count() + a.map_or(0, |_| 1);
-                    let total_new_length = common_prefix + new_chars.count() + b.map_or(0, |_| 1);
-                    break (total_old_length, total_new_length);
+                (Some(old_char), Some(new_char)) if old_char == new_char => {
+                    prefix_usv_index += 1;
+                    prefix_byte_count += new_char.len_utf8();
+                }
+                (None, None) => return,
+                _ => {
+                    prefix_usv_index += 1;
+                    break;
                 }
             }
-        };
-        if common_prefix == total_old_length && common_prefix == total_new_length {
-            return;
         }
-        let common_suffix = old_text
+
+        let suffix_byte_count = old_text
             .chars()
             .rev()
             .zip(new_text.chars().rev())
-            .enumerate()
-            .position(|(index, (a, b))| {
-                common_prefix + index >= total_old_length
-                    || common_prefix + index >= total_new_length
-                    || a != b
-            })
-            .unwrap_or_else(|| usize::min(total_old_length, total_new_length));
-        let old_length = total_old_length - common_prefix - common_suffix;
-        let new_length = total_new_length - common_prefix - common_suffix;
-        if let Ok(start_index) = common_prefix.try_into() {
-            if let Some(length) = old_length.try_into().ok().filter(|l| *l > 0) {
+            .take_while(|(old_char, new_char)| old_char == new_char)
+            .fold(0, |count, (c, _)| count + c.len_utf8());
+
+        let old_content = &old_text[prefix_byte_count..old_text.len() - suffix_byte_count];
+        if let Ok(length) = old_content.chars().count().try_into() {
+            if length > 0 {
                 self.adapter.emit_object_event(
                     id,
                     ObjectEvent::TextRemoved {
-                        start_index,
+                        start_index: prefix_usv_index,
                         length,
-                        content: old_text[common_prefix..common_prefix + old_length].to_string(),
-                    },
-                );
-            }
-            if let Some(length) = new_length.try_into().ok().filter(|l| *l > 0) {
-                self.adapter.emit_object_event(
-                    id,
-                    ObjectEvent::TextInserted {
-                        start_index,
-                        length,
-                        content: new_text[common_prefix..common_prefix + new_length].to_string(),
+                        content: old_content.to_string(),
                     },
                 );
             }
         }
+
+        let new_content = &new_text[prefix_byte_count..new_text.len() - suffix_byte_count];
+        if let Ok(length) = new_content.chars().count().try_into() {
+            if length > 0 {
+                self.adapter.emit_object_event(
+                    id,
+                    ObjectEvent::TextInserted {
+                        start_index: prefix_usv_index,
+                        length,
+                        content: new_content.to_string(),
+                    },
+                );
+            }
+        }
+
         self.text_changed.insert(id);
     }
 
