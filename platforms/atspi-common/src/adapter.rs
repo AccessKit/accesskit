@@ -168,7 +168,9 @@ impl<'a> AdapterChangeHandler<'a> {
                     self.adapter
                         .emit_object_event(new_node.id(), ObjectEvent::TextSelectionChanged);
                 }
-                if let Ok(offset) = selection.end().to_global_usv_index().try_into() {
+            }
+            if let Some(selection_focus) = new_node.text_selection_focus() {
+                if let Ok(offset) = selection_focus.to_global_usv_index().try_into() {
                     self.adapter
                         .emit_object_event(new_node.id(), ObjectEvent::CaretMoved(offset));
                 }
@@ -190,15 +192,17 @@ impl<'a> AdapterChangeHandler<'a> {
                 self.adapter
                     .emit_object_event(new_node.id(), ObjectEvent::TextSelectionChanged);
             }
+        }
 
-            let old_caret_position = old_node
-                .raw_text_selection()
-                .map(|selection| selection.focus);
-            let new_caret_position = new_node
-                .raw_text_selection()
-                .map(|selection| selection.focus);
-            if old_caret_position != new_caret_position {
-                if let Ok(offset) = selection.end().to_global_usv_index().try_into() {
+        let old_caret_position = old_node
+            .raw_text_selection()
+            .map(|selection| selection.focus);
+        let new_caret_position = new_node
+            .raw_text_selection()
+            .map(|selection| selection.focus);
+        if old_caret_position != new_caret_position {
+            if let Some(selection_focus) = new_node.text_selection_focus() {
+                if let Ok(offset) = selection_focus.to_global_usv_index().try_into() {
                     self.adapter
                         .emit_object_event(new_node.id(), ObjectEvent::CaretMoved(offset));
                 }
