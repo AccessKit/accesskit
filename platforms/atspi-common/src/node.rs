@@ -28,10 +28,7 @@ use crate::{
     adapter::Adapter,
     context::{AppContext, Context},
     filters::filter,
-    util::{
-        text_position_from_offset, text_range_bounds_from_offsets, text_range_from_offsets,
-        WindowBounds,
-    },
+    util::*,
     Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
 };
 
@@ -957,34 +954,15 @@ impl PlatformNode {
         granularity: Granularity,
     ) -> Result<(String, i32, i32)> {
         self.resolve_for_text(|node| {
-            let start_offset =
-                text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
-            let start = match granularity {
-                Granularity::Char => start_offset,
-                Granularity::Line if start_offset.is_line_start() => start_offset,
-                Granularity::Line => start_offset.backward_to_line_start(),
-                Granularity::Paragraph if start_offset.is_paragraph_start() => start_offset,
-                Granularity::Paragraph => start_offset.backward_to_paragraph_start(),
-                Granularity::Sentence => return Err(Error::UnsupportedTextGranularity),
-                Granularity::Word if start_offset.is_word_start() => start_offset,
-                Granularity::Word => start_offset.backward_to_word_start(),
-            };
-            let end = match granularity {
-                Granularity::Char if start_offset.is_document_end() => start_offset,
-                Granularity::Char => start.forward_to_character_end(),
-                Granularity::Line => start.forward_to_line_end(),
-                Granularity::Paragraph => start.forward_to_paragraph_end(),
-                Granularity::Sentence => return Err(Error::UnsupportedTextGranularity),
-                Granularity::Word => start.forward_to_word_end(),
-            };
-            let mut range = start.to_degenerate_range();
-            range.set_end(end);
+            let range = text_range_from_offset(&node, offset, granularity)?;
             let text = range.text();
-            let start = start
+            let start = range
+                .start()
                 .to_global_usv_index()
                 .try_into()
                 .map_err(|_| Error::TooManyCharacters)?;
-            let end = end
+            let end = range
+                .end()
                 .to_global_usv_index()
                 .try_into()
                 .map_err(|_| Error::TooManyCharacters)?;
@@ -1032,9 +1010,7 @@ impl PlatformNode {
 
     pub fn character_extents(&self, offset: i32, coord_type: CoordType) -> Result<AtspiRect> {
         self.resolve_for_text_with_context(|node, context| {
-            let start = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
-            let mut range = start.to_degenerate_range();
-            range.set_end(start.forward_to_character_end());
+            let range = text_range_from_offset(&node, offset, Granularity::Char)?;
             if let Some(bounds) = range.bounding_boxes().first() {
                 let window_bounds = context.read_root_window_bounds();
                 let new_origin = window_bounds.accesskit_point_to_atspi_point(
