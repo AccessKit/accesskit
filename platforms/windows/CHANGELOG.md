@@ -33,6 +33,20 @@
     * accesskit bumped from 0.12.2 to 0.12.3
     * accesskit_consumer bumped from 0.17.0 to 0.17.1
 
+## [0.19.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.18.2...accesskit_windows-v0.19.0) (2024-05-26)
+
+
+### Features
+
+* Expose the `placeholder` property ([#417](https://github.com/AccessKit/accesskit/issues/417)) ([8f4a0a1](https://github.com/AccessKit/accesskit/commit/8f4a0a1c10f83fcc8580a37d8013fec2d110865b))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.20.0 to 0.21.0
+
 ## [0.18.2](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.18.1...accesskit_windows-v0.18.2) (2024-05-13)
 
 

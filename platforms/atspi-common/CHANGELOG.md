@@ -9,6 +9,27 @@
   * dependencies
     * accesskit_consumer bumped from 0.19.0 to 0.19.1
 
+## [0.5.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.4.2...accesskit_atspi_common-v0.5.0) (2024-05-26)
+
+
+### Features
+
+* Add basic text support on Unix ([#362](https://github.com/AccessKit/accesskit/issues/362)) ([52540f8](https://github.com/AccessKit/accesskit/commit/52540f82cf9fc148358351ed486bab3e7e91f1d6))
+* Expose the `placeholder` property ([#417](https://github.com/AccessKit/accesskit/issues/417)) ([8f4a0a1](https://github.com/AccessKit/accesskit/commit/8f4a0a1c10f83fcc8580a37d8013fec2d110865b))
+
+
+### Bug Fixes
+
+* Don't fire events for filtered children on Unix ([#414](https://github.com/AccessKit/accesskit/issues/414)) ([2bcb1b6](https://github.com/AccessKit/accesskit/commit/2bcb1b63e88b801b194a4db50059fa063efbee64))
+* Improve how coordinates are computed on Unix ([#420](https://github.com/AccessKit/accesskit/issues/420)) ([fc5125e](https://github.com/AccessKit/accesskit/commit/fc5125e27f8f4f655e1de5049d0d53536284d9a0))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.20.0 to 0.21.0
+
 ## [0.4.2](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.4.1...accesskit_atspi_common-v0.4.2) (2024-05-13)
 
 
