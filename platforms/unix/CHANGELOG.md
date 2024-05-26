@@ -50,6 +50,21 @@
   * dependencies
     * accesskit_atspi_common bumped from 0.4.1 to 0.4.2
 
+## [0.10.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.9.2...accesskit_unix-v0.10.0) (2024-05-26)
+
+
+### Features
+
+* Add basic text support on Unix ([#362](https://github.com/AccessKit/accesskit/issues/362)) ([52540f8](https://github.com/AccessKit/accesskit/commit/52540f82cf9fc148358351ed486bab3e7e91f1d6))
+* Expose the `placeholder` property ([#417](https://github.com/AccessKit/accesskit/issues/417)) ([8f4a0a1](https://github.com/AccessKit/accesskit/commit/8f4a0a1c10f83fcc8580a37d8013fec2d110865b))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_atspi_common bumped from 0.4.2 to 0.5.0
+
 ## [0.9.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.8.0...accesskit_unix-v0.9.0) (2024-04-30)
 
 
