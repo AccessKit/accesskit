@@ -14,8 +14,8 @@ use accesskit::{
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
 use atspi_common::{
-    CoordType, Interface, InterfaceSet, Layer, Live as AtspiLive, Role as AtspiRole, State,
-    StateSet,
+    CoordType, Granularity, Interface, InterfaceSet, Layer, Live as AtspiLive, Role as AtspiRole,
+    ScrollType, State, StateSet,
 };
 use std::{
     collections::HashMap,
@@ -28,7 +28,7 @@ use crate::{
     adapter::Adapter,
     context::{AppContext, Context},
     filters::filter,
-    util::WindowBounds,
+    util::*,
     Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
 };
 
@@ -283,6 +283,9 @@ impl<'a> NodeWrapper<'a> {
         if state.parent_id().is_none() && state.role() == Role::Window && is_window_focused {
             atspi_state.insert(State::Active);
         }
+        if state.is_text_input() && !state.is_read_only() {
+            atspi_state.insert(State::Editable);
+        }
         // TODO: Focus and selection.
         if state.is_focusable() {
             atspi_state.insert(State::Focusable);
@@ -358,6 +361,10 @@ impl<'a> NodeWrapper<'a> {
         self.0.raw_bounds().is_some() || self.is_root()
     }
 
+    fn supports_text(&self) -> bool {
+        self.0.supports_text_ranges()
+    }
+
     fn supports_value(&self) -> bool {
         self.current_value().is_some()
     }
@@ -369,6 +376,9 @@ impl<'a> NodeWrapper<'a> {
         }
         if self.supports_component() {
             interfaces.insert(Interface::Component);
+        }
+        if self.supports_text() {
+            interfaces.insert(Interface::Text);
         }
         if self.supports_value() {
             interfaces.insert(Interface::Value);
@@ -602,11 +612,32 @@ impl PlatformNode {
         })
     }
 
+    fn resolve_for_text_with_context<F, T>(&self, f: F) -> Result<T>
+    where
+        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
+    {
+        self.resolve_with_context(|node, context| {
+            let wrapper = NodeWrapper(&node);
+            if wrapper.supports_text() {
+                f(node, context)
+            } else {
+                Err(Error::UnsupportedInterface)
+            }
+        })
+    }
+
     fn resolve<F, T>(&self, f: F) -> Result<T>
     where
         for<'a> F: FnOnce(Node<'a>) -> Result<T>,
     {
         self.resolve_with_context(|node, _| f(node))
+    }
+
+    fn resolve_for_text<F, T>(&self, f: F) -> Result<T>
+    where
+        for<'a> F: FnOnce(Node<'a>) -> Result<T>,
+    {
+        self.resolve_for_text_with_context(|node, _| f(node))
     }
 
     fn do_action_internal<F>(&self, f: F) -> Result<()>
@@ -755,6 +786,13 @@ impl PlatformNode {
         })
     }
 
+    pub fn supports_text(&self) -> Result<bool> {
+        self.resolve(|node| {
+            let wrapper = NodeWrapper(&node);
+            Ok(wrapper.supports_text())
+        })
+    }
+
     pub fn supports_value(&self) -> Result<bool> {
         self.resolve(|node| {
             let wrapper = NodeWrapper(&node);
@@ -887,6 +925,285 @@ impl PlatformNode {
             Ok(())
         })?;
         Ok(true)
+    }
+
+    pub fn character_count(&self) -> Result<i32> {
+        self.resolve_for_text(|node| {
+            node.document_range()
+                .end()
+                .to_global_usv_index()
+                .try_into()
+                .map_err(|_| Error::TooManyCharacters)
+        })
+    }
+
+    pub fn caret_offset(&self) -> Result<i32> {
+        self.resolve_for_text(|node| {
+            node.text_selection_focus().map_or(Ok(-1), |focus| {
+                focus
+                    .to_global_usv_index()
+                    .try_into()
+                    .map_err(|_| Error::TooManyCharacters)
+            })
+        })
+    }
+
+    pub fn string_at_offset(
+        &self,
+        offset: i32,
+        granularity: Granularity,
+    ) -> Result<(String, i32, i32)> {
+        self.resolve_for_text(|node| {
+            let range = text_range_from_offset(&node, offset, granularity)?;
+            let text = range.text();
+            let start = range
+                .start()
+                .to_global_usv_index()
+                .try_into()
+                .map_err(|_| Error::TooManyCharacters)?;
+            let end = range
+                .end()
+                .to_global_usv_index()
+                .try_into()
+                .map_err(|_| Error::TooManyCharacters)?;
+
+            Ok((text, start, end))
+        })
+    }
+
+    pub fn text(&self, start_offset: i32, end_offset: i32) -> Result<String> {
+        self.resolve_for_text(|node| {
+            let range = text_range_from_offsets(&node, start_offset, end_offset)
+                .ok_or(Error::IndexOutOfRange)?;
+            Ok(range.text())
+        })
+    }
+
+    pub fn set_caret_offset(&self, offset: i32) -> Result<bool> {
+        self.resolve_for_text_with_context(|node, context| {
+            let offset = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
+            context.do_action(ActionRequest {
+                action: Action::SetTextSelection,
+                target: node.id(),
+                data: Some(ActionData::SetTextSelection(
+                    offset.to_degenerate_range().to_text_selection(),
+                )),
+            });
+            Ok(true)
+        })
+    }
+
+    pub fn text_attribute_value(&self, _offset: i32, _attribute_name: &str) -> Result<String> {
+        // TODO: Implement rich text.
+        Err(Error::UnsupportedInterface)
+    }
+
+    pub fn text_attributes(&self, _offset: i32) -> Result<(HashMap<String, String>, i32, i32)> {
+        // TODO: Implement rich text.
+        Err(Error::UnsupportedInterface)
+    }
+
+    pub fn default_text_attributes(&self) -> Result<HashMap<String, String>> {
+        // TODO: Implement rich text.
+        Err(Error::UnsupportedInterface)
+    }
+
+    pub fn character_extents(&self, offset: i32, coord_type: CoordType) -> Result<AtspiRect> {
+        self.resolve_for_text_with_context(|node, context| {
+            let range = text_range_from_offset(&node, offset, Granularity::Char)?;
+            if let Some(bounds) = range.bounding_boxes().first() {
+                let window_bounds = context.read_root_window_bounds();
+                let new_origin = window_bounds.accesskit_point_to_atspi_point(
+                    bounds.origin(),
+                    Some(node),
+                    coord_type,
+                );
+                Ok(bounds.with_origin(new_origin).into())
+            } else {
+                Ok(AtspiRect::INVALID)
+            }
+        })
+    }
+
+    pub fn offset_at_point(&self, x: i32, y: i32, coord_type: CoordType) -> Result<i32> {
+        self.resolve_for_text_with_context(|node, context| {
+            let window_bounds = context.read_root_window_bounds();
+            let point = window_bounds.atspi_point_to_accesskit_point(
+                Point::new(x.into(), y.into()),
+                Some(node),
+                coord_type,
+            );
+            let point = node.transform().inverse() * point;
+            node.text_position_at_point(point)
+                .to_global_usv_index()
+                .try_into()
+                .map_err(|_| Error::TooManyCharacters)
+        })
+    }
+
+    pub fn n_selections(&self) -> Result<i32> {
+        self.resolve_for_text(|node| {
+            match node.text_selection().filter(|range| !range.is_degenerate()) {
+                Some(_) => Ok(1),
+                None => Ok(0),
+            }
+        })
+    }
+
+    pub fn selection(&self, selection_num: i32) -> Result<(i32, i32)> {
+        if selection_num != 0 {
+            return Ok((-1, -1));
+        }
+
+        self.resolve_for_text(|node| {
+            node.text_selection()
+                .filter(|range| !range.is_degenerate())
+                .map_or(Ok((-1, -1)), |range| {
+                    let start = range
+                        .start()
+                        .to_global_usv_index()
+                        .try_into()
+                        .map_err(|_| Error::TooManyCharacters)?;
+                    let end = range
+                        .end()
+                        .to_global_usv_index()
+                        .try_into()
+                        .map_err(|_| Error::TooManyCharacters)?;
+
+                    Ok((start, end))
+                })
+        })
+    }
+
+    pub fn add_selection(&self, start_offset: i32, end_offset: i32) -> Result<bool> {
+        // We only support one selection.
+        self.set_selection(0, start_offset, end_offset)
+    }
+
+    pub fn remove_selection(&self, selection_num: i32) -> Result<bool> {
+        if selection_num != 0 {
+            return Ok(false);
+        }
+
+        self.resolve_for_text_with_context(|node, context| {
+            // Simply collapse the selection to the position of the caret if a caret is
+            // visible, otherwise set the selection to 0.
+            let selection_end = node
+                .text_selection_focus()
+                .unwrap_or_else(|| node.document_range().start());
+            context.do_action(ActionRequest {
+                action: Action::SetTextSelection,
+                target: node.id(),
+                data: Some(ActionData::SetTextSelection(
+                    selection_end.to_degenerate_range().to_text_selection(),
+                )),
+            });
+            Ok(true)
+        })
+    }
+
+    pub fn set_selection(
+        &self,
+        selection_num: i32,
+        start_offset: i32,
+        end_offset: i32,
+    ) -> Result<bool> {
+        if selection_num != 0 {
+            return Ok(false);
+        }
+
+        self.resolve_for_text_with_context(|node, context| {
+            let range = text_range_from_offsets(&node, start_offset, end_offset)
+                .ok_or(Error::IndexOutOfRange)?;
+            context.do_action(ActionRequest {
+                action: Action::SetTextSelection,
+                target: node.id(),
+                data: Some(ActionData::SetTextSelection(range.to_text_selection())),
+            });
+            Ok(true)
+        })
+    }
+
+    pub fn range_extents(
+        &self,
+        start_offset: i32,
+        end_offset: i32,
+        coord_type: CoordType,
+    ) -> Result<AtspiRect> {
+        self.resolve_for_text_with_context(|node, context| {
+            if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
+                let window_bounds = context.read_root_window_bounds();
+                let new_origin = window_bounds.accesskit_point_to_atspi_point(
+                    rect.origin(),
+                    Some(node),
+                    coord_type,
+                );
+                Ok(rect.with_origin(new_origin).into())
+            } else {
+                Ok(AtspiRect::INVALID)
+            }
+        })
+    }
+
+    pub fn text_attribute_run(
+        &self,
+        _offset: i32,
+        _include_defaults: bool,
+    ) -> Result<(HashMap<String, String>, i32, i32)> {
+        // TODO: Implement rich text.
+        // For now, just report a range spanning the entire text with no attributes,
+        // this is required by Orca to announce selection content and caret movements.
+        let character_count = self.character_count()?;
+        Ok((HashMap::new(), 0, character_count))
+    }
+
+    pub fn scroll_substring_to(
+        &self,
+        start_offset: i32,
+        end_offset: i32,
+        _: ScrollType,
+    ) -> Result<bool> {
+        self.resolve_for_text_with_context(|node, context| {
+            if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
+                context.do_action(ActionRequest {
+                    action: Action::ScrollIntoView,
+                    target: node.id(),
+                    data: Some(ActionData::ScrollTargetRect(rect)),
+                });
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        })
+    }
+
+    pub fn scroll_substring_to_point(
+        &self,
+        start_offset: i32,
+        end_offset: i32,
+        coord_type: CoordType,
+        x: i32,
+        y: i32,
+    ) -> Result<bool> {
+        self.resolve_for_text_with_context(|node, context| {
+            let window_bounds = context.read_root_window_bounds();
+            let target_point = window_bounds.atspi_point_to_accesskit_point(
+                Point::new(x.into(), y.into()),
+                Some(node),
+                coord_type,
+            );
+
+            if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
+                let point = Point::new(target_point.x - rect.x0, target_point.y - rect.y0);
+                context.do_action(ActionRequest {
+                    action: Action::ScrollToPoint,
+                    target: node.id(),
+                    data: Some(ActionData::ScrollToPoint(point)),
+                });
+                return Ok(true);
+            }
+            Ok(false)
+        })
     }
 
     pub fn minimum_value(&self) -> Result<f64> {

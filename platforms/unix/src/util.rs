@@ -30,6 +30,10 @@ pub(crate) fn map_error(source: ObjectId, error: InternalError) -> FdoError {
         }
         InternalError::TooManyChildren => FdoError::Failed("Too many children.".into()),
         InternalError::IndexOutOfRange => FdoError::Failed("Index is too big.".into()),
+        InternalError::TooManyCharacters => FdoError::Failed("Too many characters.".into()),
+        InternalError::UnsupportedTextGranularity => {
+            FdoError::Failed("Unsupported text granularity.".into())
+        }
     }
 }
 

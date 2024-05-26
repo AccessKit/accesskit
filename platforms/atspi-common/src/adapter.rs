@@ -3,12 +3,20 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+// Derived from Chromium's accessibility abstraction.
+// Copyright 2017 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE.chromium file.
+
 use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
 use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use atspi_common::{InterfaceSet, Live, State};
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc, RwLock,
+use std::{
+    collections::HashSet,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, RwLock,
+    },
 };
 
 use crate::{
@@ -21,9 +29,17 @@ use crate::{
 
 struct AdapterChangeHandler<'a> {
     adapter: &'a Adapter,
+    text_changed: HashSet<NodeId>,
 }
 
-impl AdapterChangeHandler<'_> {
+impl<'a> AdapterChangeHandler<'a> {
+    fn new(adapter: &'a Adapter) -> Self {
+        Self {
+            adapter,
+            text_changed: HashSet::new(),
+        }
+    }
+
     fn add_node(&mut self, node: &Node) {
         let role = node.role();
         let is_root = node.is_root();
@@ -61,6 +77,135 @@ impl AdapterChangeHandler<'_> {
         self.adapter
             .unregister_interfaces(node.id(), node.interfaces());
     }
+
+    fn emit_text_change_if_needed_parent(&mut self, old_node: &Node, new_node: &Node) {
+        if !new_node.supports_text_ranges() || !old_node.supports_text_ranges() {
+            return;
+        }
+        let id = new_node.id();
+        if self.text_changed.contains(&id) {
+            return;
+        }
+        let old_text = old_node.document_range().text();
+        let new_text = new_node.document_range().text();
+
+        let mut old_chars = old_text.chars();
+        let mut new_chars = new_text.chars();
+        let mut prefix_usv_count = 0;
+        let mut prefix_byte_count = 0;
+        loop {
+            match (old_chars.next(), new_chars.next()) {
+                (Some(old_char), Some(new_char)) if old_char == new_char => {
+                    prefix_usv_count += 1;
+                    prefix_byte_count += new_char.len_utf8();
+                }
+                (None, None) => return,
+                _ => break,
+            }
+        }
+
+        let suffix_byte_count = old_text
+            .chars()
+            .rev()
+            .zip(new_text.chars().rev())
+            .take_while(|(old_char, new_char)| old_char == new_char)
+            .fold(0, |count, (c, _)| count + c.len_utf8());
+
+        let old_content = &old_text[prefix_byte_count..old_text.len() - suffix_byte_count];
+        if let Ok(length) = old_content.chars().count().try_into() {
+            if length > 0 {
+                self.adapter.emit_object_event(
+                    id,
+                    ObjectEvent::TextRemoved {
+                        start_index: prefix_usv_count,
+                        length,
+                        content: old_content.to_string(),
+                    },
+                );
+            }
+        }
+
+        let new_content = &new_text[prefix_byte_count..new_text.len() - suffix_byte_count];
+        if let Ok(length) = new_content.chars().count().try_into() {
+            if length > 0 {
+                self.adapter.emit_object_event(
+                    id,
+                    ObjectEvent::TextInserted {
+                        start_index: prefix_usv_count,
+                        length,
+                        content: new_content.to_string(),
+                    },
+                );
+            }
+        }
+
+        self.text_changed.insert(id);
+    }
+
+    fn emit_text_change_if_needed(&mut self, old_node: &Node, new_node: &Node) {
+        if let Role::InlineTextBox | Role::GenericContainer = new_node.role() {
+            if let (Some(old_parent), Some(new_parent)) = (
+                old_node.filtered_parent(&filter),
+                new_node.filtered_parent(&filter),
+            ) {
+                self.emit_text_change_if_needed_parent(&old_parent, &new_parent);
+            }
+        } else {
+            self.emit_text_change_if_needed_parent(old_node, new_node);
+        }
+    }
+
+    fn emit_text_selection_change(&self, old_node: Option<&Node>, new_node: &Node) {
+        if !new_node.supports_text_ranges() {
+            return;
+        }
+        let Some(old_node) = old_node else {
+            if let Some(selection) = new_node.text_selection() {
+                if !selection.is_degenerate() {
+                    self.adapter
+                        .emit_object_event(new_node.id(), ObjectEvent::TextSelectionChanged);
+                }
+            }
+            if let Some(selection_focus) = new_node.text_selection_focus() {
+                if let Ok(offset) = selection_focus.to_global_usv_index().try_into() {
+                    self.adapter
+                        .emit_object_event(new_node.id(), ObjectEvent::CaretMoved(offset));
+                }
+            }
+            return;
+        };
+        if !old_node.is_focused() || new_node.raw_text_selection() == old_node.raw_text_selection()
+        {
+            return;
+        }
+
+        if let Some(selection) = new_node.text_selection() {
+            if !selection.is_degenerate()
+                || old_node
+                    .text_selection()
+                    .map(|selection| !selection.is_degenerate())
+                    .unwrap_or(false)
+            {
+                self.adapter
+                    .emit_object_event(new_node.id(), ObjectEvent::TextSelectionChanged);
+            }
+        }
+
+        let old_caret_position = old_node
+            .raw_text_selection()
+            .map(|selection| selection.focus);
+        let new_caret_position = new_node
+            .raw_text_selection()
+            .map(|selection| selection.focus);
+        if old_caret_position != new_caret_position {
+            if let Some(selection_focus) = new_node.text_selection_focus() {
+                if let Ok(offset) = selection_focus.to_global_usv_index().try_into() {
+                    self.adapter
+                        .emit_object_event(new_node.id(), ObjectEvent::CaretMoved(offset));
+                }
+            }
+        }
+    }
 }
 
 impl TreeChangeHandler for AdapterChangeHandler<'_> {
@@ -71,6 +216,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
     }
 
     fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
+        self.emit_text_change_if_needed(old_node, new_node);
         let filter_old = filter(old_node);
         let filter_new = filter(new_node);
         if filter_new != filter_old {
@@ -91,6 +237,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 .register_interfaces(new_node.id(), new_interfaces ^ kept_interfaces);
             let bounds = *self.adapter.context.read_root_window_bounds();
             new_wrapper.notify_changes(&bounds, self.adapter, &old_wrapper);
+            self.emit_text_selection_change(Some(old_node), new_node);
         }
     }
 
@@ -107,6 +254,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         if let Some(node) = new_node {
             self.adapter
                 .emit_object_event(node.id(), ObjectEvent::StateChanged(State::Focused, true));
+            self.emit_text_selection_change(None, node);
         }
         if let Some(node) = old_node {
             self.adapter
@@ -279,13 +427,13 @@ impl Adapter {
     }
 
     pub fn update(&mut self, update: TreeUpdate) {
-        let mut handler = AdapterChangeHandler { adapter: self };
+        let mut handler = AdapterChangeHandler::new(self);
         let mut tree = self.context.tree.write().unwrap();
         tree.update_and_process_changes(update, &mut handler);
     }
 
     pub fn update_window_focus_state(&mut self, is_focused: bool) {
-        let mut handler = AdapterChangeHandler { adapter: self };
+        let mut handler = AdapterChangeHandler::new(self);
         let mut tree = self.context.tree.write().unwrap();
         tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
     }
