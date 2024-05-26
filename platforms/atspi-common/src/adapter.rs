@@ -91,19 +91,16 @@ impl<'a> AdapterChangeHandler<'a> {
 
         let mut old_chars = old_text.chars();
         let mut new_chars = new_text.chars();
-        let mut prefix_usv_index = 0;
+        let mut prefix_usv_count = 0;
         let mut prefix_byte_count = 0;
         loop {
             match (old_chars.next(), new_chars.next()) {
                 (Some(old_char), Some(new_char)) if old_char == new_char => {
-                    prefix_usv_index += 1;
+                    prefix_usv_count += 1;
                     prefix_byte_count += new_char.len_utf8();
                 }
                 (None, None) => return,
-                _ => {
-                    prefix_usv_index += 1;
-                    break;
-                }
+                _ => break,
             }
         }
 
@@ -120,7 +117,7 @@ impl<'a> AdapterChangeHandler<'a> {
                 self.adapter.emit_object_event(
                     id,
                     ObjectEvent::TextRemoved {
-                        start_index: prefix_usv_index,
+                        start_index: prefix_usv_count,
                         length,
                         content: old_content.to_string(),
                     },
@@ -134,7 +131,7 @@ impl<'a> AdapterChangeHandler<'a> {
                 self.adapter.emit_object_event(
                     id,
                     ObjectEvent::TextInserted {
-                        start_index: prefix_usv_index,
+                        start_index: prefix_usv_count,
                         length,
                         content: new_content.to_string(),
                     },
