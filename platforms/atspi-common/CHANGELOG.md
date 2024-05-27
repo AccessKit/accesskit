@@ -9,6 +9,25 @@
   * dependencies
     * accesskit_consumer bumped from 0.19.0 to 0.19.1
 
+## [0.6.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.5.0...accesskit_atspi_common-v0.6.0) (2024-05-27)
+
+
+### Features
+
+* Expose the `orientation` property ([#421](https://github.com/AccessKit/accesskit/issues/421)) ([590aada](https://github.com/AccessKit/accesskit/commit/590aada070dc812f9b8f171fb9e43ac984fad2a1))
+
+
+### Bug Fixes
+
+* Fix a logic error in suffix calculation for text changes ([#423](https://github.com/AccessKit/accesskit/issues/423)) ([1121723](https://github.com/AccessKit/accesskit/commit/1121723983cb2fa64b5053626ec64afb851ff6c4))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.21.0 to 0.22.0
+
 ## [0.5.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.4.2...accesskit_atspi_common-v0.5.0) (2024-05-26)
 
 

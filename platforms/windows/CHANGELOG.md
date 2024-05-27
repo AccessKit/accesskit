@@ -33,6 +33,20 @@
     * accesskit bumped from 0.12.2 to 0.12.3
     * accesskit_consumer bumped from 0.17.0 to 0.17.1
 
+## [0.20.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.19.0...accesskit_windows-v0.20.0) (2024-05-27)
+
+
+### Features
+
+* Expose the `orientation` property ([#421](https://github.com/AccessKit/accesskit/issues/421)) ([590aada](https://github.com/AccessKit/accesskit/commit/590aada070dc812f9b8f171fb9e43ac984fad2a1))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.21.0 to 0.22.0
+
 ## [0.19.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.18.2...accesskit_windows-v0.19.0) (2024-05-26)
 
 
