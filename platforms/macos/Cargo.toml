@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_macos"
-version = "0.14.0"
+version = "0.15.0"
 authors.workspace = true
 license.workspace = true
 description = "AccessKit UI accessibility infrastructure: macOS adapter"
@@ -16,7 +16,7 @@ default-target = "x86_64-apple-darwin"
 
 [dependencies]
 accesskit = { version = "0.14.0", path = "../../common" }
-accesskit_consumer = { version = "0.21.0", path = "../../consumer" }
+accesskit_consumer = { version = "0.22.0", path = "../../consumer" }
 once_cell = "1.13.0"
 objc2 = "0.5.1"
 objc2-foundation = { version = "0.2.0", features = [

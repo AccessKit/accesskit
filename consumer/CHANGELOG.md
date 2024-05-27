@@ -20,6 +20,13 @@
   * dependencies
     * accesskit bumped from 0.12.2 to 0.12.3
 
+## [0.22.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.21.0...accesskit_consumer-v0.22.0) (2024-05-27)
+
+
+### Features
+
+* Expose the `orientation` property ([#421](https://github.com/AccessKit/accesskit/issues/421)) ([590aada](https://github.com/AccessKit/accesskit/commit/590aada070dc812f9b8f171fb9e43ac984fad2a1))
+
 ## [0.21.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.20.0...accesskit_consumer-v0.21.0) (2024-05-26)
 
 

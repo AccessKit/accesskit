@@ -30,7 +30,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_atspi_common"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -42,7 +42,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_c"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "accesskit",
  "accesskit_macos",
@@ -53,7 +53,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_consumer"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "accesskit",
  "immutable-chunkmap",
@@ -61,7 +61,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_macos"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -73,7 +73,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_python"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "accesskit",
  "accesskit_macos",
@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_unix"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "accesskit",
  "accesskit_atspi_common",
@@ -102,7 +102,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_windows"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -116,7 +116,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_winit"
-version = "0.20.3"
+version = "0.20.4"
 dependencies = [
  "accesskit",
  "accesskit_macos",
