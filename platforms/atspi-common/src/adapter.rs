@@ -104,10 +104,10 @@ impl<'a> AdapterChangeHandler<'a> {
             }
         }
 
-        let suffix_byte_count = old_text
+        let suffix_byte_count = old_text[prefix_byte_count..]
             .chars()
             .rev()
-            .zip(new_text.chars().rev())
+            .zip(new_text[prefix_byte_count..].chars().rev())
             .take_while(|(old_char, new_char)| old_char == new_char)
             .fold(0, |count, (c, _)| count + c.len_utf8());
 
