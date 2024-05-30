@@ -295,6 +295,10 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
+    fn automation_id(&self) -> Option<&str> {
+        self.0.author_id()
+    }
+
     fn class_name(&self) -> Option<&str> {
         self.0.class_name()
     }
@@ -872,6 +876,7 @@ properties! {
     (IsKeyboardFocusable, is_focusable),
     (HasKeyboardFocus, is_focused),
     (LiveSetting, live_setting),
+    (AutomationId, automation_id),
     (ClassName, class_name),
     (Orientation, orientation)
 }

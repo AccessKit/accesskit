@@ -722,6 +722,16 @@ impl PlatformNode {
         self.id
     }
 
+    pub fn accessible_id(&self) -> Result<String> {
+        self.resolve(|node| {
+            if let Some(author_id) = node.author_id() {
+                Ok(author_id.to_string())
+            } else {
+                Ok(String::new())
+            }
+        })
+    }
+
     pub fn child_at_index(&self, index: usize) -> Result<Option<NodeId>> {
         self.resolve(|node| {
             let child = node

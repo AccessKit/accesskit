@@ -89,6 +89,13 @@ impl Accessible {
         }
     }
 
+    pub fn accessible_id(&self) -> Result<String> {
+        match self {
+            Self::Node(node) => node.accessible_id(),
+            Self::Root(_) => Ok(String::new()),
+        }
+    }
+
     pub fn child_at_index(&self, index: usize) -> Result<Option<Self>> {
         match self {
             Self::Node(node) => node

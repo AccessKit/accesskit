@@ -64,8 +64,8 @@ impl NodeAccessibleInterface {
     }
 
     #[dbus_interface(property)]
-    fn accessible_id(&self) -> ObjectId {
-        ObjectId::from(&self.node)
+    fn accessible_id(&self) -> fdo::Result<String> {
+        self.node.accessible_id().map_err(self.map_error())
     }
 
     fn get_child_at_index(&self, index: i32) -> fdo::Result<(OwnedObjectAddress,)> {
@@ -172,8 +172,8 @@ impl RootAccessibleInterface {
     }
 
     #[dbus_interface(property)]
-    fn accessible_id(&self) -> ObjectId {
-        ObjectId::Root
+    fn accessible_id(&self) -> &str {
+        ""
     }
 
     fn get_child_at_index(&self, index: i32) -> fdo::Result<(OwnedObjectAddress,)> {
