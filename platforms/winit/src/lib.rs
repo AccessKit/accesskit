@@ -12,7 +12,6 @@
 /// - If you use another async runtime or if you don't use one at all, the default feature will suit your needs.
 
 #[cfg(all(
-    feature = "accesskit_unix",
     any(
         target_os = "linux",
         target_os = "dragonfly",
@@ -26,7 +25,6 @@
 compile_error!("Either \"async-io\" (default) or \"tokio\" feature must be enabled.");
 
 #[cfg(all(
-    feature = "accesskit_unix",
     any(
         target_os = "linux",
         target_os = "dragonfly",

@@ -261,15 +261,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("- [Space] 'presses' the button, adding static text in a live region announcing that it was pressed.");
     #[cfg(target_os = "windows")]
     println!("Enable Narrator with [Win]+[Ctrl]+[Enter] (or [Win]+[Enter] on older versions of Windows).");
-    #[cfg(all(
-        feature = "accesskit_unix",
-        any(
-            target_os = "linux",
-            target_os = "dragonfly",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "openbsd"
-        )
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
     ))]
     println!("Enable Orca with [Super]+[Alt]+[S].");
 
