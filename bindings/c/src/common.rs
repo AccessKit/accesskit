@@ -1088,7 +1088,7 @@ type ActionHandlerCallbackUnwrapped =
     extern "C" fn(request: *mut action_request, userdata: *mut c_void);
 
 /// Ownership of `request` is transfered to the callback. `request` must
-/// be freed using [`accesskit_action_request_free`].
+/// be freed using `accesskit_action_request_free`.
 pub type ActionHandlerCallback =
     Option<extern "C" fn(request: *mut action_request, userdata: *mut c_void)>;
 
