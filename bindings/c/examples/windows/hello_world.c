@@ -88,7 +88,7 @@ accesskit_tree_update *build_initial_tree(void *userdata) {
   return result;
 }
 
-void do_action(const accesskit_action_request *request, void *userdata) {
+void do_action(accesskit_action_request *request, void *userdata) {
   HWND window = userdata;
   if (request->action == ACCESSKIT_ACTION_FOCUS) {
     LPARAM lparam = (LPARAM)(request->target);
@@ -97,6 +97,7 @@ void do_action(const accesskit_action_request *request, void *userdata) {
     LPARAM lparam = (LPARAM)(request->target);
     PostMessage((HWND)window, DO_DEFAULT_ACTION_MSG, 0, lparam);
   }
+  accesskit_action_request_free(request);
 }
 
 accesskit_tree_update *build_tree_update_for_focus_update(void *userdata) {
