@@ -20,6 +20,25 @@
   * dependencies
     * accesskit bumped from 0.12.2 to 0.12.3
 
+## [0.23.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.22.0...accesskit_consumer-v0.23.0) (2024-06-09)
+
+
+### Features
+
+* Add `author_id` property ([#424](https://github.com/AccessKit/accesskit/issues/424)) ([0d1c56f](https://github.com/AccessKit/accesskit/commit/0d1c56f0bdde58715e1c69f6015df600cb7cb8c1))
+
+
+### Bug Fixes
+
+* Clamp character index when getting focus from a text selection ([#428](https://github.com/AccessKit/accesskit/issues/428)) ([38e649d](https://github.com/AccessKit/accesskit/commit/38e649de6b72c99d1e438b26b3fc1f647ac39e6c))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.14.0 to 0.15.0
+
 ## [0.22.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.21.0...accesskit_consumer-v0.22.0) (2024-05-27)
 
 

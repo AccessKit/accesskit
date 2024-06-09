@@ -72,6 +72,32 @@
     * accesskit_macos bumped from 0.14.0 to 0.15.0
     * accesskit_unix bumped from 0.10.0 to 0.10.1
 
+## [0.11.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.10.3...accesskit_c-v0.11.0) (2024-06-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* Transfer ownership of action requests in the C API ([#429](https://github.com/AccessKit/accesskit/issues/429))
+
+### Features
+
+* Add `author_id` property ([#424](https://github.com/AccessKit/accesskit/issues/424)) ([0d1c56f](https://github.com/AccessKit/accesskit/commit/0d1c56f0bdde58715e1c69f6015df600cb7cb8c1))
+
+
+### Code Refactoring
+
+* Transfer ownership of action requests in the C API ([#429](https://github.com/AccessKit/accesskit/issues/429)) ([d1daa2a](https://github.com/AccessKit/accesskit/commit/d1daa2a2e9819e1817f6d8e169471a07e1caf98b))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.14.0 to 0.15.0
+    * accesskit_windows bumped from 0.20.0 to 0.21.0
+    * accesskit_macos bumped from 0.15.0 to 0.16.0
+    * accesskit_unix bumped from 0.10.1 to 0.11.0
+
 ## [0.10.0](https://github.com/AccessKit/accesskit/compare/accesskit_c-v0.9.0...accesskit_c-v0.10.0) (2024-05-11)
 
 

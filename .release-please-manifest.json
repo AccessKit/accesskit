@@ -1,1 +1,1 @@
-{"common":"0.14.0","consumer":"0.22.0","platforms/macos":"0.15.0","platforms/windows":"0.20.0","platforms/winit":"0.20.4","platforms/unix":"0.10.1","bindings/c":"0.10.3","bindings/python":"0.3.4","platforms/atspi-common":"0.6.0"}
+{"common":"0.15.0","consumer":"0.23.0","platforms/macos":"0.16.0","platforms/windows":"0.21.0","platforms/winit":"0.21.0","platforms/unix":"0.11.0","bindings/c":"0.11.0","bindings/python":"0.4.0","platforms/atspi-common":"0.7.0"}
