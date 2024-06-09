@@ -860,6 +860,7 @@ enum PropertyId {
     Description,
     Value,
     AccessKey,
+    AuthorId,
     ClassName,
     FontFamily,
     HtmlTag,
@@ -1497,6 +1498,9 @@ string_property_methods! {
     ///
     /// [`keyboard_shortcut`]: Node::keyboard_shortcut
     (AccessKey, access_key, set_access_key, clear_access_key),
+    /// A way for application authors to identify this node for automated
+    /// testing purpose. The value must be unique among this node's siblings.
+    (AuthorId, author_id, set_author_id, clear_author_id),
     (ClassName, class_name, set_class_name, clear_class_name),
     /// Only present when different from parent.
     (FontFamily, font_family, set_font_family, clear_font_family),
@@ -1917,6 +1921,7 @@ impl<'de> Visitor<'de> for NodeVisitor {
                             Description,
                             Value,
                             AccessKey,
+                            AuthorId,
                             ClassName,
                             FontFamily,
                             HtmlTag,
@@ -2101,6 +2106,7 @@ impl JsonSchema for Node {
                 Description,
                 Value,
                 AccessKey,
+                AuthorId,
                 ClassName,
                 FontFamily,
                 HtmlTag,

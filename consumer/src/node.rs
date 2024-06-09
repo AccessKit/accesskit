@@ -596,6 +596,10 @@ impl<'a> Node<'a> {
         self.data().value()
     }
 
+    pub fn author_id(&self) -> Option<&str> {
+        self.data().author_id()
+    }
+
     pub fn class_name(&self) -> Option<&str> {
         self.data().class_name()
     }

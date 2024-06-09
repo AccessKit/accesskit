@@ -567,6 +567,7 @@ string_property_methods! {
     (description, set_description, clear_description),
     (value, set_value, clear_value),
     (access_key, set_access_key, clear_access_key),
+    (author_id, set_author_id, clear_author_id),
     (class_name, set_class_name, clear_class_name),
     (font_family, set_font_family, clear_font_family),
     (html_tag, set_html_tag, clear_html_tag),

@@ -401,6 +401,14 @@ declare_class!(
             .flatten()
         }
 
+        #[method_id(accessibilityIdentifier)]
+        fn identifier(&self) -> Option<Id<NSString>> {
+            self.resolve(|node| {
+                node.author_id().map(NSString::from_str)
+            })
+            .flatten()
+        }
+
         #[method_id(accessibilityTitle)]
         fn title(&self) -> Option<Id<NSString>> {
             self.resolve(|node| {
@@ -777,6 +785,7 @@ declare_class!(
                     || selector == sel!(accessibilityFrame)
                     || selector == sel!(accessibilityRole)
                     || selector == sel!(accessibilityRoleDescription)
+                    || selector == sel!(accessibilityIdentifier)
                     || selector == sel!(accessibilityTitle)
                     || selector == sel!(accessibilityHelp)
                     || selector == sel!(accessibilityPlaceholderValue)
