@@ -1046,6 +1046,11 @@ impl From<ActionRequest> for action_request {
     }
 }
 
+#[no_mangle]
+pub extern "C" fn accesskit_action_request_free(request: *mut action_request) {
+    drop(unsafe { Box::from_raw(request) });
+}
+
 type ActivationHandlerCallbackUnwrapped = extern "C" fn(userdata: *mut c_void) -> *mut tree_update;
 pub type ActivationHandlerCallback =
     Option<extern "C" fn(userdata: *mut c_void) -> *mut tree_update>;
@@ -1080,9 +1085,9 @@ impl ActivationHandler for FfiActivationHandler {
 }
 
 type ActionHandlerCallbackUnwrapped =
-    extern "C" fn(request: *const action_request, userdata: *mut c_void);
+    extern "C" fn(request: *mut action_request, userdata: *mut c_void);
 pub type ActionHandlerCallback =
-    Option<extern "C" fn(request: *const action_request, userdata: *mut c_void)>;
+    Option<extern "C" fn(request: *mut action_request, userdata: *mut c_void)>;
 
 struct FfiActionHandlerUserdata(*mut c_void);
 
@@ -1104,8 +1109,8 @@ impl FfiActionHandler {
 
 impl ActionHandler for FfiActionHandler {
     fn do_action(&mut self, request: ActionRequest) {
-        let request = request.into();
-        (self.callback)(&request, self.userdata.0);
+        let request = Box::new(action_request::from(request));
+        (self.callback)(Box::into_raw(request), self.userdata.0);
     }
 }
 

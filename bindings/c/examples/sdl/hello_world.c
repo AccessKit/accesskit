@@ -261,7 +261,7 @@ struct action_handler_state {
   Uint32 window_id;
 };
 
-void do_action(const accesskit_action_request *request, void *userdata) {
+void do_action(accesskit_action_request *request, void *userdata) {
   struct action_handler_state *state = userdata;
   SDL_Event event;
   SDL_zero(event);
@@ -275,6 +275,7 @@ void do_action(const accesskit_action_request *request, void *userdata) {
     event.user.code = DO_DEFAULT_ACTION_MSG;
     SDL_PushEvent(&event);
   }
+  accesskit_action_request_free(request);
 }
 
 accesskit_tree_update *build_initial_tree(void *userdata) {
