@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.15.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.14.0...accesskit-v0.15.0) (2024-06-09)
+
+
+### Features
+
+* Add `author_id` property ([#424](https://github.com/AccessKit/accesskit/issues/424)) ([0d1c56f](https://github.com/AccessKit/accesskit/commit/0d1c56f0bdde58715e1c69f6015df600cb7cb8c1))
+
+
+### Bug Fixes
+
+* Add explicit cargo features for `enumn` and `pyo3` ([#425](https://github.com/AccessKit/accesskit/issues/425)) ([71ad45b](https://github.com/AccessKit/accesskit/commit/71ad45be1651409ee6918cf835b656e6b5e0fe2d))
+
 ## [0.14.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.13.0...accesskit-v0.14.0) (2024-04-30)
 
 

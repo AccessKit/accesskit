@@ -9,6 +9,21 @@
   * dependencies
     * accesskit_consumer bumped from 0.19.0 to 0.19.1
 
+## [0.7.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.6.0...accesskit_atspi_common-v0.7.0) (2024-06-09)
+
+
+### Features
+
+* Add `author_id` property ([#424](https://github.com/AccessKit/accesskit/issues/424)) ([0d1c56f](https://github.com/AccessKit/accesskit/commit/0d1c56f0bdde58715e1c69f6015df600cb7cb8c1))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.14.0 to 0.15.0
+    * accesskit_consumer bumped from 0.22.0 to 0.23.0
+
 ## [0.6.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.5.0...accesskit_atspi_common-v0.6.0) (2024-05-27)
 
 
