@@ -912,7 +912,7 @@ impl<'a> Node<'a> {
 
     pub fn text_selection_focus(&self) -> Option<Position> {
         self.data().text_selection().map(|selection| {
-            let focus = InnerPosition::upgrade(self.tree_state, selection.focus).unwrap();
+            let focus = InnerPosition::clamped_upgrade(self.tree_state, selection.focus).unwrap();
             Position {
                 root_node: *self,
                 inner: focus,
