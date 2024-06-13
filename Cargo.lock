@@ -2309,7 +2309,7 @@ dependencies = [
 [[package]]
 name = "wayland-backend"
 version = "0.3.2"
-source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#9842baeeb110bfee7b10fb2af61f0a355a8231fa"
+source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#fcb32052ca2a77e9416524cf31e77bf02c20545e"
 dependencies = [
  "cc",
  "downcast-rs",
@@ -2334,7 +2334,7 @@ dependencies = [
 [[package]]
 name = "wayland-client"
 version = "0.31.1"
-source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#9842baeeb110bfee7b10fb2af61f0a355a8231fa"
+source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#fcb32052ca2a77e9416524cf31e77bf02c20545e"
 dependencies = [
  "bitflags 2.4.1",
  "rustix 0.38.21",
@@ -2377,7 +2377,7 @@ dependencies = [
 [[package]]
 name = "wayland-cursor"
 version = "0.31.0"
-source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#9842baeeb110bfee7b10fb2af61f0a355a8231fa"
+source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#fcb32052ca2a77e9416524cf31e77bf02c20545e"
 dependencies = [
  "rustix 0.38.21",
  "wayland-client 0.31.1 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
@@ -2399,7 +2399,7 @@ dependencies = [
 [[package]]
 name = "wayland-protocols"
 version = "0.31.0"
-source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#9842baeeb110bfee7b10fb2af61f0a355a8231fa"
+source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#fcb32052ca2a77e9416524cf31e77bf02c20545e"
 dependencies = [
  "bitflags 2.4.1",
  "wayland-backend 0.3.2 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
@@ -2436,7 +2436,7 @@ dependencies = [
 [[package]]
 name = "wayland-protocols-wlr"
 version = "0.2.0"
-source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#9842baeeb110bfee7b10fb2af61f0a355a8231fa"
+source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#fcb32052ca2a77e9416524cf31e77bf02c20545e"
 dependencies = [
  "bitflags 2.4.1",
  "wayland-backend 0.3.2 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
@@ -2459,7 +2459,7 @@ dependencies = [
 [[package]]
 name = "wayland-scanner"
 version = "0.31.0"
-source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#9842baeeb110bfee7b10fb2af61f0a355a8231fa"
+source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#fcb32052ca2a77e9416524cf31e77bf02c20545e"
 dependencies = [
  "proc-macro2",
  "quick-xml 0.31.0",
@@ -2481,7 +2481,7 @@ dependencies = [
 [[package]]
 name = "wayland-sys"
 version = "0.31.1"
-source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#9842baeeb110bfee7b10fb2af61f0a355a8231fa"
+source = "git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol#fcb32052ca2a77e9416524cf31e77bf02c20545e"
 dependencies = [
  "dlib",
  "log",
