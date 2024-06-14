@@ -29,14 +29,14 @@ use crate::{
 
 struct AdapterChangeHandler<'a> {
     adapter: &'a Adapter,
-    text_changed: HashSet<NodeId>,
+    checked_text_change: HashSet<NodeId>,
 }
 
 impl<'a> AdapterChangeHandler<'a> {
     fn new(adapter: &'a Adapter) -> Self {
         Self {
             adapter,
-            text_changed: HashSet::new(),
+            checked_text_change: HashSet::new(),
         }
     }
 
@@ -83,9 +83,10 @@ impl<'a> AdapterChangeHandler<'a> {
             return;
         }
         let id = new_node.id();
-        if self.text_changed.contains(&id) {
+        if self.checked_text_change.contains(&id) {
             return;
         }
+        self.checked_text_change.insert(id);
         let old_text = old_node.document_range().text();
         let new_text = new_node.document_range().text();
 
@@ -138,8 +139,6 @@ impl<'a> AdapterChangeHandler<'a> {
                 );
             }
         }
-
-        self.text_changed.insert(id);
     }
 
     fn emit_text_change_if_needed(&mut self, old_node: &Node, new_node: &Node) {
