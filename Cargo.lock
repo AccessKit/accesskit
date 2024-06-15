@@ -30,7 +30,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_atspi_common"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -42,7 +42,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_c"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "accesskit",
  "accesskit_macos",
@@ -73,7 +73,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_python"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "accesskit",
  "accesskit_macos",
@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_unix"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "accesskit",
  "accesskit_atspi_common",
@@ -116,7 +116,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_winit"
-version = "0.21.0"
+version = "0.21.1"
 dependencies = [
  "accesskit",
  "accesskit_macos",

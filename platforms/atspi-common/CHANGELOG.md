@@ -9,6 +9,18 @@
   * dependencies
     * accesskit_consumer bumped from 0.19.0 to 0.19.1
 
+## [0.8.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.7.0...accesskit_atspi_common-v0.8.0) (2024-06-15)
+
+
+### Features
+
+* Feature-gate the `accesskit_atspi_common::simplified` module ([#430](https://github.com/AccessKit/accesskit/issues/430)) ([50341f1](https://github.com/AccessKit/accesskit/commit/50341f10cf32ef16c904d54725f717a585d21043))
+
+
+### Bug Fixes
+
+* Avoid unnecessary repeated checks for text changes ([#432](https://github.com/AccessKit/accesskit/issues/432)) ([0e89671](https://github.com/AccessKit/accesskit/commit/0e89671fc0cf831d2c86a2cacf0195e247560753))
+
 ## [0.7.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.6.0...accesskit_atspi_common-v0.7.0) (2024-06-09)
 
 
