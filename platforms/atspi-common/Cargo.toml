@@ -12,7 +12,6 @@ edition.workspace = true
 rust-version.workspace = true
 
 [features]
-default = ["simplified-api"]
 simplified-api = []
 
 [dependencies]
