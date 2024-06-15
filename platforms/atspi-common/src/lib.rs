@@ -12,6 +12,7 @@ mod events;
 mod filters;
 mod node;
 mod rect;
+#[cfg(feature = "simplified-api")]
 pub mod simplified;
 mod util;
 

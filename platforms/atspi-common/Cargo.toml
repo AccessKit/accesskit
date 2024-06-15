@@ -11,6 +11,9 @@ readme = "README.md"
 edition.workspace = true
 rust-version.workspace = true
 
+[features]
+simplified-api = []
+
 [dependencies]
 accesskit = { version = "0.15.0", path = "../../common" }
 accesskit_consumer = { version = "0.23.0", path = "../../consumer" }
