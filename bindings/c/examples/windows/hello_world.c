@@ -40,7 +40,7 @@ accesskit_node *build_button(accesskit_node_id id, const char *name) {
 
 accesskit_node *build_announcement(const char *text) {
   accesskit_node_builder *builder =
-      accesskit_node_builder_new(ACCESSKIT_ROLE_STATIC_TEXT);
+      accesskit_node_builder_new(ACCESSKIT_ROLE_LABEL);
   accesskit_node_builder_set_name(builder, text);
   accesskit_node_builder_set_live(builder, ACCESSKIT_LIVE_POLITE);
   return accesskit_node_builder_build(builder);

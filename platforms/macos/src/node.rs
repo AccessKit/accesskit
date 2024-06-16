@@ -38,7 +38,7 @@ fn ns_role(node: &Node) -> &'static NSAccessibilityRole {
             Role::Unknown => NSAccessibilityUnknownRole,
             Role::InlineTextBox => NSAccessibilityUnknownRole,
             Role::Cell => NSAccessibilityCellRole,
-            Role::StaticText => NSAccessibilityStaticTextRole,
+            Role::Label => NSAccessibilityStaticTextRole,
             Role::Image => NSAccessibilityImageRole,
             Role::Link => NSAccessibilityLinkRole,
             Role::Row => NSAccessibilityRowRole,
@@ -269,7 +269,7 @@ impl<'a> NodeWrapper<'a> {
 
     pub(crate) fn title(&self) -> Option<String> {
         let state = self.0;
-        if state.role() == Role::StaticText && state.raw_value().is_none() {
+        if state.role() == Role::Label && state.raw_value().is_none() {
             // In this case, macOS wants the text to be the value, not title.
             return None;
         }
@@ -295,7 +295,7 @@ impl<'a> NodeWrapper<'a> {
         if let Some(value) = state.numeric_value() {
             return Some(Value::Number(value));
         }
-        if state.role() == Role::StaticText {
+        if state.role() == Role::Label {
             if let Some(name) = self.name() {
                 return Some(Value::String(name));
             }
