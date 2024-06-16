@@ -869,10 +869,7 @@ impl<'a> Node<'a> {
 
     pub fn supports_text_ranges(&self) -> bool {
         (self.is_text_input()
-            || matches!(
-                self.role(),
-                Role::StaticText | Role::Document | Role::Terminal
-            ))
+            || matches!(self.role(), Role::Label | Role::Document | Role::Terminal))
             && self.inline_text_boxes().next().is_some()
     }
 

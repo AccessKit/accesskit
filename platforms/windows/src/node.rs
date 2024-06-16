@@ -51,7 +51,7 @@ impl<'a> NodeWrapper<'a> {
             Role::Unknown => UIA_CustomControlTypeId,
             Role::InlineTextBox => UIA_CustomControlTypeId,
             Role::Cell => UIA_DataItemControlTypeId,
-            Role::StaticText => UIA_TextControlTypeId,
+            Role::Label => UIA_TextControlTypeId,
             Role::Image => UIA_ImageControlTypeId,
             Role::Link => UIA_HyperlinkControlTypeId,
             Role::Row => UIA_DataItemControlTypeId,

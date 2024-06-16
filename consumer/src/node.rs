@@ -474,7 +474,7 @@ impl<'a> Node<'a> {
 
 fn descendant_label_filter(node: &Node) -> FilterResult {
     match node.role() {
-        Role::StaticText | Role::Image => FilterResult::Include,
+        Role::Label | Role::Image => FilterResult::Include,
         Role::GenericContainer => FilterResult::ExcludeNode,
         _ => FilterResult::ExcludeSubtree,
     }
@@ -678,7 +678,7 @@ mod tests {
         assert_eq!(
             Some((PARAGRAPH_0_ID, 0)),
             tree.state()
-                .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
+                .node_by_id(LABEL_0_0_IGNORED_ID)
                 .unwrap()
                 .parent_and_index()
                 .map(|(parent, index)| (parent.id(), index))
@@ -697,11 +697,11 @@ mod tests {
     fn deepest_first_child() {
         let tree = test_tree();
         assert_eq!(
-            STATIC_TEXT_0_0_IGNORED_ID,
+            LABEL_0_0_IGNORED_ID,
             tree.state().root().deepest_first_child().unwrap().id()
         );
         assert_eq!(
-            STATIC_TEXT_0_0_IGNORED_ID,
+            LABEL_0_0_IGNORED_ID,
             tree.state()
                 .node_by_id(PARAGRAPH_0_ID)
                 .unwrap()
@@ -711,7 +711,7 @@ mod tests {
         );
         assert!(tree
             .state()
-            .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
+            .node_by_id(LABEL_0_0_IGNORED_ID)
             .unwrap()
             .deepest_first_child()
             .is_none());
@@ -723,7 +723,7 @@ mod tests {
         assert_eq!(
             ROOT_ID,
             tree.state()
-                .node_by_id(STATIC_TEXT_1_1_ID)
+                .node_by_id(LABEL_1_1_ID)
                 .unwrap()
                 .filtered_parent(&test_tree_filter)
                 .unwrap()
@@ -755,7 +755,7 @@ mod tests {
             .is_none());
         assert!(tree
             .state()
-            .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
+            .node_by_id(LABEL_0_0_IGNORED_ID)
             .unwrap()
             .deepest_first_filtered_child(&test_tree_filter)
             .is_none());
@@ -829,17 +829,17 @@ mod tests {
             .is_descendant_of(&tree.state().root()));
         assert!(tree
             .state()
-            .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
+            .node_by_id(LABEL_0_0_IGNORED_ID)
             .unwrap()
             .is_descendant_of(&tree.state().root()));
         assert!(tree
             .state()
-            .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
+            .node_by_id(LABEL_0_0_IGNORED_ID)
             .unwrap()
             .is_descendant_of(&tree.state().node_by_id(PARAGRAPH_0_ID).unwrap()));
         assert!(!tree
             .state()
-            .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
+            .node_by_id(LABEL_0_0_IGNORED_ID)
             .unwrap()
             .is_descendant_of(&tree.state().node_by_id(PARAGRAPH_2_ID).unwrap()));
         assert!(!tree
@@ -885,7 +885,7 @@ mod tests {
                 y1: 70.0,
             }),
             tree.state()
-                .node_by_id(STATIC_TEXT_1_1_ID)
+                .node_by_id(LABEL_1_1_ID)
                 .unwrap()
                 .bounding_box()
         );
@@ -900,14 +900,14 @@ mod tests {
             .node_at_point(Point::new(10.0, 40.0), &test_tree_filter)
             .is_none());
         assert_eq!(
-            Some(STATIC_TEXT_1_1_ID),
+            Some(LABEL_1_1_ID),
             tree.state()
                 .root()
                 .node_at_point(Point::new(20.0, 50.0), &test_tree_filter)
                 .map(|node| node.id())
         );
         assert_eq!(
-            Some(STATIC_TEXT_1_1_ID),
+            Some(LABEL_1_1_ID),
             tree.state()
                 .root()
                 .node_at_point(Point::new(50.0, 60.0), &test_tree_filter)
@@ -958,7 +958,7 @@ mod tests {
                     builder.build()
                 }),
                 (NodeId(2), {
-                    let mut builder = NodeBuilder::new(Role::StaticText);
+                    let mut builder = NodeBuilder::new(Role::Label);
                     builder.set_name(LABEL_1);
                     builder.build()
                 }),
@@ -968,7 +968,7 @@ mod tests {
                     builder.build()
                 }),
                 (NodeId(4), {
-                    let mut builder = NodeBuilder::new(Role::StaticText);
+                    let mut builder = NodeBuilder::new(Role::Label);
                     builder.set_name(LABEL_2);
                     builder.build()
                 }),
@@ -1020,7 +1020,7 @@ mod tests {
                     builder.build()
                 }),
                 (NodeId(5), {
-                    let mut builder = NodeBuilder::new(Role::StaticText);
+                    let mut builder = NodeBuilder::new(Role::Label);
                     builder.set_name(LINK_LABEL);
                     builder.build()
                 }),

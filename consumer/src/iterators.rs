@@ -630,12 +630,7 @@ mod tests {
             .next()
             .is_none());
         assert_eq!(
-            [
-                STATIC_TEXT_1_1_ID,
-                PARAGRAPH_2_ID,
-                STATIC_TEXT_3_1_0_ID,
-                BUTTON_3_2_ID
-            ],
+            [LABEL_1_1_ID, PARAGRAPH_2_ID, LABEL_3_1_0_ID, BUTTON_3_2_ID],
             tree.state()
                 .node_by_id(PARAGRAPH_0_ID)
                 .unwrap()
@@ -646,7 +641,7 @@ mod tests {
         assert_eq!(
             [BUTTON_3_2_ID],
             tree.state()
-                .node_by_id(STATIC_TEXT_3_1_0_ID)
+                .node_by_id(LABEL_3_1_0_ID)
                 .unwrap()
                 .following_filtered_siblings(test_tree_filter)
                 .map(|node| node.id())
@@ -671,12 +666,7 @@ mod tests {
             .next_back()
             .is_none());
         assert_eq!(
-            [
-                BUTTON_3_2_ID,
-                STATIC_TEXT_3_1_0_ID,
-                PARAGRAPH_2_ID,
-                STATIC_TEXT_1_1_ID
-            ],
+            [BUTTON_3_2_ID, LABEL_3_1_0_ID, PARAGRAPH_2_ID, LABEL_1_1_ID],
             tree.state()
                 .node_by_id(PARAGRAPH_0_ID)
                 .unwrap()
@@ -688,7 +678,7 @@ mod tests {
         assert_eq!(
             [BUTTON_3_2_ID,],
             tree.state()
-                .node_by_id(STATIC_TEXT_3_1_0_ID)
+                .node_by_id(LABEL_3_1_0_ID)
                 .unwrap()
                 .following_filtered_siblings(test_tree_filter)
                 .rev()
@@ -714,7 +704,7 @@ mod tests {
             .next()
             .is_none());
         assert_eq!(
-            [PARAGRAPH_2_ID, STATIC_TEXT_1_1_ID, PARAGRAPH_0_ID],
+            [PARAGRAPH_2_ID, LABEL_1_1_ID, PARAGRAPH_0_ID],
             tree.state()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
@@ -723,9 +713,9 @@ mod tests {
                 .collect::<Vec<NodeId>>()[..]
         );
         assert_eq!(
-            [PARAGRAPH_2_ID, STATIC_TEXT_1_1_ID, PARAGRAPH_0_ID],
+            [PARAGRAPH_2_ID, LABEL_1_1_ID, PARAGRAPH_0_ID],
             tree.state()
-                .node_by_id(STATIC_TEXT_3_1_0_ID)
+                .node_by_id(LABEL_3_1_0_ID)
                 .unwrap()
                 .preceding_filtered_siblings(test_tree_filter)
                 .map(|node| node.id())
@@ -750,7 +740,7 @@ mod tests {
             .next_back()
             .is_none());
         assert_eq!(
-            [PARAGRAPH_0_ID, STATIC_TEXT_1_1_ID, PARAGRAPH_2_ID],
+            [PARAGRAPH_0_ID, LABEL_1_1_ID, PARAGRAPH_2_ID],
             tree.state()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
@@ -760,9 +750,9 @@ mod tests {
                 .collect::<Vec<NodeId>>()[..]
         );
         assert_eq!(
-            [PARAGRAPH_0_ID, STATIC_TEXT_1_1_ID, PARAGRAPH_2_ID],
+            [PARAGRAPH_0_ID, LABEL_1_1_ID, PARAGRAPH_2_ID],
             tree.state()
-                .node_by_id(STATIC_TEXT_3_1_0_ID)
+                .node_by_id(LABEL_3_1_0_ID)
                 .unwrap()
                 .preceding_filtered_siblings(test_tree_filter)
                 .rev()
@@ -784,9 +774,9 @@ mod tests {
         assert_eq!(
             [
                 PARAGRAPH_0_ID,
-                STATIC_TEXT_1_1_ID,
+                LABEL_1_1_ID,
                 PARAGRAPH_2_ID,
-                STATIC_TEXT_3_1_0_ID,
+                LABEL_3_1_0_ID,
                 BUTTON_3_2_ID
             ],
             tree.state()
@@ -804,7 +794,7 @@ mod tests {
             .is_none());
         assert!(tree
             .state()
-            .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
+            .node_by_id(LABEL_0_0_IGNORED_ID)
             .unwrap()
             .filtered_children(test_tree_filter)
             .next()
@@ -817,9 +807,9 @@ mod tests {
         assert_eq!(
             [
                 BUTTON_3_2_ID,
-                STATIC_TEXT_3_1_0_ID,
+                LABEL_3_1_0_ID,
                 PARAGRAPH_2_ID,
-                STATIC_TEXT_1_1_ID,
+                LABEL_1_1_ID,
                 PARAGRAPH_0_ID
             ],
             tree.state()
@@ -838,7 +828,7 @@ mod tests {
             .is_none());
         assert!(tree
             .state()
-            .node_by_id(STATIC_TEXT_0_0_IGNORED_ID)
+            .node_by_id(LABEL_0_0_IGNORED_ID)
             .unwrap()
             .filtered_children(test_tree_filter)
             .next_back()

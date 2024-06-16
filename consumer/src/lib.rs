@@ -28,19 +28,19 @@ mod tests {
 
     pub const ROOT_ID: NodeId = NodeId(0);
     pub const PARAGRAPH_0_ID: NodeId = NodeId(1);
-    pub const STATIC_TEXT_0_0_IGNORED_ID: NodeId = NodeId(2);
+    pub const LABEL_0_0_IGNORED_ID: NodeId = NodeId(2);
     pub const PARAGRAPH_1_IGNORED_ID: NodeId = NodeId(3);
     pub const BUTTON_1_0_HIDDEN_ID: NodeId = NodeId(4);
     pub const CONTAINER_1_0_0_HIDDEN_ID: NodeId = NodeId(5);
-    pub const STATIC_TEXT_1_1_ID: NodeId = NodeId(6);
+    pub const LABEL_1_1_ID: NodeId = NodeId(6);
     pub const BUTTON_1_2_HIDDEN_ID: NodeId = NodeId(7);
     pub const CONTAINER_1_2_0_HIDDEN_ID: NodeId = NodeId(8);
     pub const PARAGRAPH_2_ID: NodeId = NodeId(9);
-    pub const STATIC_TEXT_2_0_ID: NodeId = NodeId(10);
+    pub const LABEL_2_0_ID: NodeId = NodeId(10);
     pub const PARAGRAPH_3_IGNORED_ID: NodeId = NodeId(11);
     pub const EMPTY_CONTAINER_3_0_IGNORED_ID: NodeId = NodeId(12);
     pub const LINK_3_1_IGNORED_ID: NodeId = NodeId(13);
-    pub const STATIC_TEXT_3_1_0_ID: NodeId = NodeId(14);
+    pub const LABEL_3_1_0_ID: NodeId = NodeId(14);
     pub const BUTTON_3_2_ID: NodeId = NodeId(15);
     pub const EMPTY_CONTAINER_3_3_IGNORED_ID: NodeId = NodeId(16);
 
@@ -57,12 +57,12 @@ mod tests {
         };
         let paragraph_0 = {
             let mut builder = NodeBuilder::new(Role::Paragraph);
-            builder.set_children(vec![STATIC_TEXT_0_0_IGNORED_ID]);
+            builder.set_children(vec![LABEL_0_0_IGNORED_ID]);
             builder.build()
         };
-        let static_text_0_0_ignored = {
-            let mut builder = NodeBuilder::new(Role::StaticText);
-            builder.set_name("static_text_0_0_ignored");
+        let label_0_0_ignored = {
+            let mut builder = NodeBuilder::new(Role::Label);
+            builder.set_name("label_0_0_ignored");
             builder.build()
         };
         let paragraph_1_ignored = {
@@ -76,7 +76,7 @@ mod tests {
             });
             builder.set_children(vec![
                 BUTTON_1_0_HIDDEN_ID,
-                STATIC_TEXT_1_1_ID,
+                LABEL_1_1_ID,
                 BUTTON_1_2_HIDDEN_ID,
             ]);
             builder.build()
@@ -93,15 +93,15 @@ mod tests {
             builder.set_hidden();
             builder.build()
         };
-        let static_text_1_1 = {
-            let mut builder = NodeBuilder::new(Role::StaticText);
+        let label_1_1 = {
+            let mut builder = NodeBuilder::new(Role::Label);
             builder.set_bounds(Rect {
                 x0: 10.0,
                 y0: 10.0,
                 x1: 90.0,
                 y1: 30.0,
             });
-            builder.set_name("static_text_1_1");
+            builder.set_name("label_1_1");
             builder.build()
         };
         let button_1_2_hidden = {
@@ -118,12 +118,12 @@ mod tests {
         };
         let paragraph_2 = {
             let mut builder = NodeBuilder::new(Role::Paragraph);
-            builder.set_children(vec![STATIC_TEXT_2_0_ID]);
+            builder.set_children(vec![LABEL_2_0_ID]);
             builder.build()
         };
-        let static_text_2_0 = {
-            let mut builder = NodeBuilder::new(Role::StaticText);
-            builder.set_name("static_text_2_0");
+        let label_2_0 = {
+            let mut builder = NodeBuilder::new(Role::Label);
+            builder.set_name("label_2_0");
             builder.build()
         };
         let paragraph_3_ignored = {
@@ -139,13 +139,13 @@ mod tests {
         let empty_container_3_0_ignored = NodeBuilder::new(Role::GenericContainer).build();
         let link_3_1_ignored = {
             let mut builder = NodeBuilder::new(Role::Link);
-            builder.set_children(vec![STATIC_TEXT_3_1_0_ID]);
+            builder.set_children(vec![LABEL_3_1_0_ID]);
             builder.set_linked();
             builder.build()
         };
-        let static_text_3_1_0 = {
-            let mut builder = NodeBuilder::new(Role::StaticText);
-            builder.set_name("static_text_3_1_0");
+        let label_3_1_0 = {
+            let mut builder = NodeBuilder::new(Role::Label);
+            builder.set_name("label_3_1_0");
             builder.build()
         };
         let button_3_2 = {
@@ -158,19 +158,19 @@ mod tests {
             nodes: vec![
                 (ROOT_ID, root),
                 (PARAGRAPH_0_ID, paragraph_0),
-                (STATIC_TEXT_0_0_IGNORED_ID, static_text_0_0_ignored),
+                (LABEL_0_0_IGNORED_ID, label_0_0_ignored),
                 (PARAGRAPH_1_IGNORED_ID, paragraph_1_ignored),
                 (BUTTON_1_0_HIDDEN_ID, button_1_0_hidden),
                 (CONTAINER_1_0_0_HIDDEN_ID, container_1_0_0_hidden),
-                (STATIC_TEXT_1_1_ID, static_text_1_1),
+                (LABEL_1_1_ID, label_1_1),
                 (BUTTON_1_2_HIDDEN_ID, button_1_2_hidden),
                 (CONTAINER_1_2_0_HIDDEN_ID, container_1_2_0_hidden),
                 (PARAGRAPH_2_ID, paragraph_2),
-                (STATIC_TEXT_2_0_ID, static_text_2_0),
+                (LABEL_2_0_ID, label_2_0),
                 (PARAGRAPH_3_IGNORED_ID, paragraph_3_ignored),
                 (EMPTY_CONTAINER_3_0_IGNORED_ID, empty_container_3_0_ignored),
                 (LINK_3_1_IGNORED_ID, link_3_1_ignored),
-                (STATIC_TEXT_3_1_0_ID, static_text_3_1_0),
+                (LABEL_3_1_0_ID, label_3_1_0),
                 (BUTTON_3_2_ID, button_3_2),
                 (EMPTY_CONTAINER_3_3_IGNORED_ID, empty_container_3_3_ignored),
             ],
@@ -184,7 +184,7 @@ mod tests {
         let id = node.id();
         if node.is_hidden() {
             FilterResult::ExcludeSubtree
-        } else if id == STATIC_TEXT_0_0_IGNORED_ID
+        } else if id == LABEL_0_0_IGNORED_ID
             || id == PARAGRAPH_1_IGNORED_ID
             || id == PARAGRAPH_3_IGNORED_ID
             || id == EMPTY_CONTAINER_3_0_IGNORED_ID

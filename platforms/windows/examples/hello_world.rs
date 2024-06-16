@@ -77,7 +77,7 @@ fn build_button(id: NodeId, name: &str) -> Node {
 }
 
 fn build_announcement(text: &str) -> Node {
-    let mut builder = NodeBuilder::new(Role::StaticText);
+    let mut builder = NodeBuilder::new(Role::Label);
     builder.set_name(text);
     builder.set_live(Live::Polite);
     builder.build()

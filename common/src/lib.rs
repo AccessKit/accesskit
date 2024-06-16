@@ -53,7 +53,7 @@ pub enum Role {
     Unknown,
     InlineTextBox,
     Cell,
-    StaticText,
+    Label,
     Image,
     Link,
     Row,

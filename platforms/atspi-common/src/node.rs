@@ -225,7 +225,7 @@ impl<'a> NodeWrapper<'a> {
             Role::Slider => AtspiRole::Slider,
             Role::SpinButton => AtspiRole::SpinButton,
             Role::Splitter => AtspiRole::Separator,
-            Role::StaticText => AtspiRole::Static,
+            Role::Label => AtspiRole::Label,
             Role::Status => AtspiRole::StatusBar,
             Role::SvgRoot => AtspiRole::DocumentFrame,
             Role::Tab => AtspiRole::PageTab,

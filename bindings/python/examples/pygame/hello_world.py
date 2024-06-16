@@ -34,7 +34,7 @@ def build_button(id, name):
 
 
 def build_announcement(text):
-    builder = accesskit.NodeBuilder(accesskit.Role.STATIC_TEXT)
+    builder = accesskit.NodeBuilder(accesskit.Role.LABEL)
     builder.set_name(text)
     builder.set_live(accesskit.Live.POLITE)
     return builder.build()
