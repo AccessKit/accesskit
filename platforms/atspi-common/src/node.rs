@@ -434,17 +434,28 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn extents(&self, window_bounds: &WindowBounds, coord_type: CoordType) -> Option<Rect> {
-        self.is_root()
-            .then(|| window_bounds.inner.with_origin(Point::ZERO))
-            .or_else(|| self.0.bounding_box())
-            .map(|bounds| {
-                let new_origin = window_bounds.accesskit_point_to_atspi_point(
-                    bounds.origin(),
-                    self.0.filtered_parent(&filter),
-                    coord_type,
-                );
-                bounds.with_origin(new_origin)
-            })
+        let mut bounds = self.0.bounding_box();
+        if self.is_root() {
+            let window_bounds = window_bounds.inner.with_origin(Point::ZERO);
+            if !window_bounds.is_empty() {
+                if let Some(bounds) = &mut bounds {
+                    bounds.x0 = bounds.x0.min(window_bounds.x1);
+                    bounds.y0 = bounds.y0.min(window_bounds.y1);
+                    bounds.x1 = bounds.x1.min(window_bounds.x1);
+                    bounds.y1 = bounds.y1.min(window_bounds.y1);
+                } else {
+                    bounds = Some(window_bounds);
+                }
+            }
+        }
+        bounds.map(|bounds| {
+            let new_origin = window_bounds.accesskit_point_to_atspi_point(
+                bounds.origin(),
+                self.0.filtered_parent(&filter),
+                coord_type,
+            );
+            bounds.with_origin(new_origin)
+        })
     }
 
     fn current_value(&self) -> Option<f64> {
