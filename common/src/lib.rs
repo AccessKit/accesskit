@@ -13,17 +13,17 @@ use pyo3::pyclass;
 #[cfg(feature = "schemars")]
 use schemars::{
     gen::SchemaGenerator,
-    schema::{ArrayValidation, InstanceType, ObjectValidation, Schema, SchemaObject},
+    schema::{InstanceType, ObjectValidation, Schema, SchemaObject},
     JsonSchema, Map as SchemaMap,
 };
 #[cfg(feature = "serde")]
 use serde::{
-    de::{Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor},
-    ser::{SerializeMap, SerializeSeq, Serializer},
+    de::{Deserializer, IgnoredAny, MapAccess, Visitor},
+    ser::{SerializeMap, Serializer},
     Deserialize, Serialize,
 };
 #[cfg(feature = "serde")]
-use std::{fmt, mem::size_of_val};
+use std::fmt;
 
 mod geometry;
 pub use geometry::{Affine, Point, Rect, Size, Vec2};
@@ -345,91 +345,6 @@ pub enum Action {
 impl Action {
     fn mask(self) -> u32 {
         1 << (self as u8)
-    }
-}
-
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-struct Actions(u32);
-
-#[cfg(feature = "serde")]
-impl Serialize for Actions {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut seq = serializer.serialize_seq(None)?;
-        for i in 0..((size_of_val(&self.0) as u8) * 8) {
-            if let Some(action) = Action::n(i) {
-                if (self.0 & action.mask()) != 0 {
-                    seq.serialize_element(&action)?;
-                }
-            }
-        }
-        seq.end()
-    }
-}
-
-#[cfg(feature = "serde")]
-struct ActionsVisitor;
-
-#[cfg(feature = "serde")]
-impl<'de> Visitor<'de> for ActionsVisitor {
-    type Value = Actions;
-
-    #[inline]
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("action set")
-    }
-
-    fn visit_seq<V>(self, mut seq: V) -> Result<Actions, V::Error>
-    where
-        V: SeqAccess<'de>,
-    {
-        let mut actions = Actions::default();
-        while let Some(action) = seq.next_element::<Action>()? {
-            actions.0 |= action.mask();
-        }
-        Ok(actions)
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for Actions {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_seq(ActionsVisitor)
-    }
-}
-
-#[cfg(feature = "schemars")]
-impl JsonSchema for Actions {
-    #[inline]
-    fn schema_name() -> String {
-        "Actions".into()
-    }
-
-    #[inline]
-    fn is_referenceable() -> bool {
-        false
-    }
-
-    fn json_schema(gen: &mut SchemaGenerator) -> Schema {
-        SchemaObject {
-            instance_type: Some(InstanceType::Array.into()),
-            array: Some(
-                ArrayValidation {
-                    unique_items: Some(true),
-                    items: Some(gen.subschema_for::<Action>().into()),
-                    ..Default::default()
-                }
-                .into(),
-            ),
-            ..Default::default()
-        }
-        .into()
     }
 }
 
@@ -958,11 +873,10 @@ impl Default for PropertyIndices {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-struct NodeClass {
-    role: Role,
-    actions: Actions,
+#[derive(Clone, Debug, PartialEq)]
+struct Properties {
     indices: PropertyIndices,
+    values: Box<[PropertyValue]>,
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
@@ -972,27 +886,39 @@ struct NodeClass {
 /// documenting fields in a struct, and such methods are referred to
 /// as properties.
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct Node {
-    class: NodeClass,
+    role: Role,
+    actions: u32,
     flags: u32,
-    props: Box<[PropertyValue]>,
+    properties: Properties,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+struct PropertiesBuilder {
+    indices: PropertyIndices,
+    values: Vec<PropertyValue>,
 }
 
 /// Builds a [`Node`].
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct NodeBuilder {
-    class: NodeClass,
+    role: Role,
+    actions: u32,
     flags: u32,
-    props: Vec<PropertyValue>,
+    properties: PropertiesBuilder,
 }
 
-impl NodeClass {
-    fn get_property<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> &'a PropertyValue {
-        let index = self.indices.0[id as usize];
+impl PropertyIndices {
+    fn get<'a>(&self, values: &'a [PropertyValue], id: PropertyId) -> &'a PropertyValue {
+        let index = self.0[id as usize];
         if index == PropertyId::Unset as u8 {
             &PropertyValue::None
         } else {
-            &props[index as usize]
+            &values[index as usize]
         }
     }
 }
@@ -1001,36 +927,43 @@ fn unexpected_property_type() -> ! {
     panic!();
 }
 
-impl NodeBuilder {
-    fn get_property_mut(&mut self, id: PropertyId, default: PropertyValue) -> &mut PropertyValue {
-        let index = self.class.indices.0[id as usize] as usize;
+impl PropertiesBuilder {
+    fn get_mut(&mut self, id: PropertyId, default: PropertyValue) -> &mut PropertyValue {
+        let index = self.indices.0[id as usize] as usize;
         if index == PropertyId::Unset as usize {
-            self.props.push(default);
-            let index = self.props.len() - 1;
-            self.class.indices.0[id as usize] = index as u8;
-            &mut self.props[index]
+            self.values.push(default);
+            let index = self.values.len() - 1;
+            self.indices.0[id as usize] = index as u8;
+            &mut self.values[index]
         } else {
-            if matches!(self.props[index], PropertyValue::None) {
-                self.props[index] = default;
+            if matches!(self.values[index], PropertyValue::None) {
+                self.values[index] = default;
             }
-            &mut self.props[index]
+            &mut self.values[index]
         }
     }
 
-    fn set_property(&mut self, id: PropertyId, value: PropertyValue) {
-        let index = self.class.indices.0[id as usize];
+    fn set(&mut self, id: PropertyId, value: PropertyValue) {
+        let index = self.indices.0[id as usize];
         if index == PropertyId::Unset as u8 {
-            self.props.push(value);
-            self.class.indices.0[id as usize] = (self.props.len() - 1) as u8;
+            self.values.push(value);
+            self.indices.0[id as usize] = (self.values.len() - 1) as u8;
         } else {
-            self.props[index as usize] = value;
+            self.values[index as usize] = value;
         }
     }
 
-    fn clear_property(&mut self, id: PropertyId) {
-        let index = self.class.indices.0[id as usize];
+    fn clear(&mut self, id: PropertyId) {
+        let index = self.indices.0[id as usize];
         if index != PropertyId::Unset as u8 {
-            self.props[index as usize] = PropertyValue::None;
+            self.values[index as usize] = PropertyValue::None;
+        }
+    }
+
+    fn build(self) -> Properties {
+        Properties {
+            indices: self.indices,
+            values: self.values.into_boxed_slice(),
         }
     }
 }
@@ -1064,9 +997,9 @@ macro_rules! flag_methods {
 
 macro_rules! option_ref_type_getters {
     ($(($method:ident, $type:ty, $variant:ident)),+) => {
-        impl NodeClass {
-            $(fn $method<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> Option<&'a $type> {
-                match self.get_property(props, id) {
+        impl PropertyIndices {
+            $(fn $method<'a>(&self, values: &'a [PropertyValue], id: PropertyId) -> Option<&'a $type> {
+                match self.get(values, id) {
                     PropertyValue::None => None,
                     PropertyValue::$variant(value) => Some(value),
                     _ => unexpected_property_type(),
@@ -1078,9 +1011,9 @@ macro_rules! option_ref_type_getters {
 
 macro_rules! slice_type_getters {
     ($(($method:ident, $type:ty, $variant:ident)),+) => {
-        impl NodeClass {
-            $(fn $method<'a>(&self, props: &'a [PropertyValue], id: PropertyId) -> &'a [$type] {
-                match self.get_property(props, id) {
+        impl PropertyIndices {
+            $(fn $method<'a>(&self, values: &'a [PropertyValue], id: PropertyId) -> &'a [$type] {
+                match self.get(values, id) {
                     PropertyValue::None => &[],
                     PropertyValue::$variant(value) => value,
                     _ => unexpected_property_type(),
@@ -1092,9 +1025,9 @@ macro_rules! slice_type_getters {
 
 macro_rules! copy_type_getters {
     ($(($method:ident, $type:ty, $variant:ident)),+) => {
-        impl NodeClass {
-            $(fn $method(&self, props: &[PropertyValue], id: PropertyId) -> Option<$type> {
-                match self.get_property(props, id) {
+        impl PropertyIndices {
+            $(fn $method(&self, values: &[PropertyValue], id: PropertyId) -> Option<$type> {
+                match self.get(values, id) {
                     PropertyValue::None => None,
                     PropertyValue::$variant(value) => Some(*value),
                     _ => unexpected_property_type(),
@@ -1108,7 +1041,7 @@ macro_rules! box_type_setters {
     ($(($method:ident, $type:ty, $variant:ident)),+) => {
         impl NodeBuilder {
             $(fn $method(&mut self, id: PropertyId, value: impl Into<Box<$type>>) {
-                self.set_property(id, PropertyValue::$variant(value.into()));
+                self.properties.set(id, PropertyValue::$variant(value.into()));
             })*
         }
     }
@@ -1118,7 +1051,7 @@ macro_rules! copy_type_setters {
     ($(($method:ident, $type:ty, $variant:ident)),+) => {
         impl NodeBuilder {
             $(fn $method(&mut self, id: PropertyId, value: $type) {
-                self.set_property(id, PropertyValue::$variant(value));
+                self.properties.set(id, PropertyValue::$variant(value));
             })*
         }
     }
@@ -1131,10 +1064,10 @@ macro_rules! vec_type_methods {
         })*
         impl NodeBuilder {
             $(fn $setter(&mut self, id: PropertyId, value: impl Into<Vec<$type>>) {
-                self.set_property(id, PropertyValue::$variant(value.into()));
+                self.properties.set(id, PropertyValue::$variant(value.into()));
             }
             fn $pusher(&mut self, id: PropertyId, item: $type) {
-                match self.get_property_mut(id, PropertyValue::$variant(Vec::new())) {
+                match self.properties.get_mut(id, PropertyValue::$variant(Vec::new())) {
                     PropertyValue::$variant(v) => {
                         v.push(item);
                     }
@@ -1151,14 +1084,14 @@ macro_rules! property_methods {
             $($(#[$doc])*
             #[inline]
             pub fn $getter(&self) -> $getter_result {
-                self.class.$type_getter(&self.props, PropertyId::$id)
+                self.properties.indices.$type_getter(&self.properties.values, PropertyId::$id)
             })*
         }
         impl NodeBuilder {
             $($(#[$doc])*
             #[inline]
             pub fn $getter(&self) -> $getter_result {
-                self.class.$type_getter(&self.props, PropertyId::$id)
+                self.properties.indices.$type_getter(&self.properties.values, PropertyId::$id)
             }
             #[inline]
             pub fn $setter(&mut self, value: $setter_param) {
@@ -1166,7 +1099,7 @@ macro_rules! property_methods {
             }
             #[inline]
             pub fn $clearer(&mut self) {
-                self.clear_property(PropertyId::$id);
+                self.properties.clear(PropertyId::$id);
             })*
         }
     }
@@ -1283,7 +1216,7 @@ macro_rules! unique_enum_property_methods {
             $($(#[$doc])*
             #[inline]
             pub fn $getter(&self) -> Option<$id> {
-                match self.class.get_property(&self.props, PropertyId::$id) {
+                match self.properties.indices.get(&self.properties.values, PropertyId::$id) {
                     PropertyValue::None => None,
                     PropertyValue::$id(value) => Some(*value),
                     _ => unexpected_property_type(),
@@ -1294,7 +1227,7 @@ macro_rules! unique_enum_property_methods {
             $($(#[$doc])*
             #[inline]
             pub fn $getter(&self) -> Option<$id> {
-                match self.class.get_property(&self.props, PropertyId::$id) {
+                match self.properties.indices.get(&self.properties.values, PropertyId::$id) {
                     PropertyValue::None => None,
                     PropertyValue::$id(value) => Some(*value),
                     _ => unexpected_property_type(),
@@ -1302,11 +1235,11 @@ macro_rules! unique_enum_property_methods {
             }
             #[inline]
             pub fn $setter(&mut self, value: $id) {
-                self.set_property(PropertyId::$id, PropertyValue::$id(value));
+                self.properties.set(PropertyId::$id, PropertyValue::$id(value));
             }
             #[inline]
             pub fn $clearer(&mut self) {
-                self.clear_property(PropertyId::$id);
+                self.properties.clear(PropertyId::$id);
             })*
         }
     }
@@ -1316,19 +1249,17 @@ impl NodeBuilder {
     #[inline]
     pub fn new(role: Role) -> Self {
         Self {
-            class: NodeClass {
-                role,
-                ..Default::default()
-            },
+            role,
             ..Default::default()
         }
     }
 
     pub fn build(self) -> Node {
         Node {
-            class: self.class,
+            role: self.role,
+            actions: self.actions,
             flags: self.flags,
-            props: self.props.into_boxed_slice(),
+            properties: self.properties.build(),
         }
     }
 }
@@ -1336,44 +1267,44 @@ impl NodeBuilder {
 impl Node {
     #[inline]
     pub fn role(&self) -> Role {
-        self.class.role
+        self.role
     }
 }
 
 impl NodeBuilder {
     #[inline]
     pub fn role(&self) -> Role {
-        self.class.role
+        self.role
     }
     #[inline]
     pub fn set_role(&mut self, value: Role) {
-        self.class.role = value;
+        self.role = value;
     }
 }
 
 impl Node {
     #[inline]
     pub fn supports_action(&self, action: Action) -> bool {
-        (self.class.actions.0 & action.mask()) != 0
+        (self.actions & action.mask()) != 0
     }
 }
 
 impl NodeBuilder {
     #[inline]
     pub fn supports_action(&self, action: Action) -> bool {
-        (self.class.actions.0 & action.mask()) != 0
+        (self.actions & action.mask()) != 0
     }
     #[inline]
     pub fn add_action(&mut self, action: Action) {
-        self.class.actions.0 |= action.mask();
+        self.actions |= action.mask();
     }
     #[inline]
     pub fn remove_action(&mut self, action: Action) {
-        self.class.actions.0 &= !(action.mask());
+        self.actions &= !(action.mask());
     }
     #[inline]
     pub fn clear_actions(&mut self) {
-        self.class.actions.0 = 0;
+        self.actions = 0;
     }
 }
 
@@ -1741,48 +1672,12 @@ vec_property_methods! {
 }
 
 #[cfg(feature = "serde")]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-enum ClassFieldId {
-    Role,
-    Actions,
-}
-
-#[cfg(feature = "serde")]
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(untagged)]
-enum DeserializeKey {
-    ClassField(ClassFieldId),
-    Flag(Flag),
-    Property(PropertyId),
-    Unknown(String),
-}
-
-#[cfg(feature = "serde")]
-macro_rules! serialize_class_fields {
-    ($self:ident, $map:ident, { $(($name:ident, $id:ident)),+ }) => {
-        $($map.serialize_entry(&ClassFieldId::$id, &$self.class.$name)?;)*
-    }
-}
-
-#[cfg(feature = "serde")]
 macro_rules! serialize_property {
     ($self:ident, $map:ident, $index:ident, $id:ident, { $($variant:ident),+ }) => {
-        match &$self.props[$index as usize] {
+        match &$self.values[$index as usize] {
             PropertyValue::None => (),
             $(PropertyValue::$variant(value) => {
-                $map.serialize_entry(&$id, &Some(value))?;
-            })*
-        }
-    }
-}
-
-#[cfg(feature = "serde")]
-macro_rules! deserialize_class_field {
-    ($builder:ident, $map:ident, $key:ident, { $(($name:ident, $id:ident)),+ }) => {
-        match $key {
-            $(ClassFieldId::$id => {
-                $builder.class.$name = $map.next_value()?;
+                $map.serialize_entry(&$id, &value)?;
             })*
         }
     }
@@ -1793,11 +1688,8 @@ macro_rules! deserialize_property {
     ($builder:ident, $map:ident, $key:ident, { $($type:ident { $($id:ident),+ }),+ }) => {
         match $key {
             $($(PropertyId::$id => {
-                if let Some(value) = $map.next_value()? {
-                    $builder.set_property(PropertyId::$id, PropertyValue::$type(value));
-                } else {
-                    $builder.clear_property(PropertyId::$id);
-                }
+                let value = $map.next_value()?;
+                $builder.set(PropertyId::$id, PropertyValue::$type(value));
             })*)*
             PropertyId::Unset => {
                 let _ = $map.next_value::<IgnoredAny>()?;
@@ -1807,24 +1699,19 @@ macro_rules! deserialize_property {
 }
 
 #[cfg(feature = "serde")]
-impl Serialize for Node {
+impl Serialize for Properties {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut map = serializer.serialize_map(None)?;
-        serialize_class_fields!(self, map, {
-            (role, Role),
-            (actions, Actions)
-        });
-        for i in 0..((size_of_val(&self.flags) as u8) * 8) {
-            if let Some(flag) = Flag::n(i) {
-                if (self.flags & flag.mask()) != 0 {
-                    map.serialize_entry(&flag, &true)?;
-                }
+        let mut len = 0;
+        for value in &*self.values {
+            if !matches!(*value, PropertyValue::None) {
+                len += 1;
             }
         }
-        for (id, index) in self.class.indices.0.iter().copied().enumerate() {
+        let mut map = serializer.serialize_map(Some(len))?;
+        for (id, index) in self.indices.0.iter().copied().enumerate() {
             if index == PropertyId::Unset as u8 {
                 continue;
             }
@@ -1864,149 +1751,129 @@ impl Serialize for Node {
 }
 
 #[cfg(feature = "serde")]
-struct NodeVisitor;
+struct PropertiesVisitor;
 
 #[cfg(feature = "serde")]
-impl<'de> Visitor<'de> for NodeVisitor {
-    type Value = Node;
+impl<'de> Visitor<'de> for PropertiesVisitor {
+    type Value = Properties;
 
     #[inline]
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("struct Node")
+        formatter.write_str("property map")
     }
 
-    fn visit_map<V>(self, mut map: V) -> Result<Node, V::Error>
+    fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
     where
         V: MapAccess<'de>,
     {
-        let mut builder = NodeBuilder::default();
-        while let Some(key) = map.next_key()? {
-            match key {
-                DeserializeKey::ClassField(id) => {
-                    deserialize_class_field!(builder, map, id, {
-                       (role, Role),
-                       (actions, Actions)
-                    });
-                }
-                DeserializeKey::Flag(flag) => {
-                    if map.next_value()? {
-                        builder.flags |= flag.mask();
-                    } else {
-                        builder.flags &= !(flag.mask());
-                    }
-                }
-                DeserializeKey::Property(id) => {
-                    deserialize_property!(builder, map, id, {
-                        NodeIdVec {
-                            Children,
-                            Controls,
-                            Details,
-                            DescribedBy,
-                            FlowTo,
-                            LabelledBy,
-                            Owns,
-                            RadioGroup
-                        },
-                        NodeId {
-                            ActiveDescendant,
-                            ErrorMessage,
-                            InPageLinkTarget,
-                            MemberOf,
-                            NextOnLine,
-                            PreviousOnLine,
-                            PopupFor
-                        },
-                        String {
-                            Name,
-                            Description,
-                            Value,
-                            AccessKey,
-                            AuthorId,
-                            ClassName,
-                            FontFamily,
-                            HtmlTag,
-                            InnerHtml,
-                            KeyboardShortcut,
-                            Language,
-                            Placeholder,
-                            RoleDescription,
-                            StateDescription,
-                            Tooltip,
-                            Url,
-                            RowIndexText,
-                            ColumnIndexText
-                        },
-                        F64 {
-                            ScrollX,
-                            ScrollXMin,
-                            ScrollXMax,
-                            ScrollY,
-                            ScrollYMin,
-                            ScrollYMax,
-                            NumericValue,
-                            MinNumericValue,
-                            MaxNumericValue,
-                            NumericValueStep,
-                            NumericValueJump,
-                            FontSize,
-                            FontWeight
-                        },
-                        Usize {
-                            RowCount,
-                            ColumnCount,
-                            RowIndex,
-                            ColumnIndex,
-                            RowSpan,
-                            ColumnSpan,
-                            Level,
-                            SizeOfSet,
-                            PositionInSet
-                        },
-                        Color {
-                            ColorValue,
-                            BackgroundColor,
-                            ForegroundColor
-                        },
-                        TextDecoration {
-                            Overline,
-                            Strikethrough,
-                            Underline
-                        },
-                        LengthSlice {
-                            CharacterLengths,
-                            WordLengths
-                        },
-                        CoordSlice {
-                            CharacterPositions,
-                            CharacterWidths
-                        },
-                        Bool {
-                            Expanded,
-                            Selected
-                        },
-                        Invalid { Invalid },
-                        Toggled { Toggled },
-                        Live { Live },
-                        DefaultActionVerb { DefaultActionVerb },
-                        TextDirection { TextDirection },
-                        Orientation { Orientation },
-                        SortDirection { SortDirection },
-                        AriaCurrent { AriaCurrent },
-                        AutoComplete { AutoComplete },
-                        HasPopup { HasPopup },
-                        ListStyle { ListStyle },
-                        TextAlign { TextAlign },
-                        VerticalOffset { VerticalOffset },
-                        Affine { Transform },
-                        Rect { Bounds },
-                        TextSelection { TextSelection },
-                        CustomActionVec { CustomActions }
-                    });
-                }
-                DeserializeKey::Unknown(_) => {
-                    let _ = map.next_value::<IgnoredAny>()?;
-                }
-            }
+        let mut builder = PropertiesBuilder::default();
+        while let Some(id) = map.next_key()? {
+            deserialize_property!(builder, map, id, {
+                NodeIdVec {
+                    Children,
+                    Controls,
+                    Details,
+                    DescribedBy,
+                    FlowTo,
+                    LabelledBy,
+                    Owns,
+                    RadioGroup
+                },
+                NodeId {
+                    ActiveDescendant,
+                    ErrorMessage,
+                    InPageLinkTarget,
+                    MemberOf,
+                    NextOnLine,
+                    PreviousOnLine,
+                    PopupFor
+                },
+                String {
+                    Name,
+                    Description,
+                    Value,
+                    AccessKey,
+                    AuthorId,
+                    ClassName,
+                    FontFamily,
+                    HtmlTag,
+                    InnerHtml,
+                    KeyboardShortcut,
+                    Language,
+                    Placeholder,
+                    RoleDescription,
+                    StateDescription,
+                    Tooltip,
+                    Url,
+                    RowIndexText,
+                    ColumnIndexText
+                },
+                F64 {
+                    ScrollX,
+                    ScrollXMin,
+                    ScrollXMax,
+                    ScrollY,
+                    ScrollYMin,
+                    ScrollYMax,
+                    NumericValue,
+                    MinNumericValue,
+                    MaxNumericValue,
+                    NumericValueStep,
+                    NumericValueJump,
+                    FontSize,
+                    FontWeight
+                },
+                Usize {
+                    RowCount,
+                    ColumnCount,
+                    RowIndex,
+                    ColumnIndex,
+                    RowSpan,
+                    ColumnSpan,
+                    Level,
+                    SizeOfSet,
+                    PositionInSet
+                },
+                Color {
+                    ColorValue,
+                    BackgroundColor,
+                    ForegroundColor
+                },
+                TextDecoration {
+                    Overline,
+                    Strikethrough,
+                    Underline
+                },
+                LengthSlice {
+                    CharacterLengths,
+                    WordLengths
+                },
+                CoordSlice {
+                    CharacterPositions,
+                    CharacterWidths
+                },
+                Bool {
+                    Expanded,
+                    Selected
+                },
+                Invalid { Invalid },
+                Toggled { Toggled },
+                Live { Live },
+                DefaultActionVerb { DefaultActionVerb },
+                TextDirection { TextDirection },
+                Orientation { Orientation },
+                SortDirection { SortDirection },
+                AriaCurrent { AriaCurrent },
+                AutoComplete { AutoComplete },
+                HasPopup { HasPopup },
+                ListStyle { ListStyle },
+                TextAlign { TextAlign },
+                VerticalOffset { VerticalOffset },
+                Affine { Transform },
+                Rect { Bounds },
+                TextSelection { TextSelection },
+                CustomActionVec { CustomActions }
+            });
         }
 
         Ok(builder.build())
@@ -2014,12 +1881,12 @@ impl<'de> Visitor<'de> for NodeVisitor {
 }
 
 #[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for Node {
+impl<'de> Deserialize<'de> for Properties {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_map(NodeVisitor)
+        deserializer.deserialize_map(PropertiesVisitor)
     }
 }
 
@@ -2034,53 +1901,21 @@ macro_rules! add_schema_property {
 }
 
 #[cfg(feature = "schemars")]
-macro_rules! add_flags_to_schema {
-    ($gen:ident, $properties:ident, { $($variant:ident),+ }) => {
-        $(add_schema_property!($gen, $properties, Flag::$variant, bool);)*
-    }
-}
-
-#[cfg(feature = "schemars")]
 macro_rules! add_properties_to_schema {
     ($gen:ident, $properties:ident, { $($type:ty { $($id:ident),+ }),+ }) => {
-        $($(add_schema_property!($gen, $properties, PropertyId::$id, Option<$type>);)*)*
+        $($(add_schema_property!($gen, $properties, PropertyId::$id, $type);)*)*
     }
 }
 
 #[cfg(feature = "schemars")]
-impl JsonSchema for Node {
+impl JsonSchema for Properties {
     #[inline]
     fn schema_name() -> String {
-        "Node".into()
+        "Properties".into()
     }
 
     fn json_schema(gen: &mut SchemaGenerator) -> Schema {
         let mut properties = SchemaMap::<String, Schema>::new();
-        add_schema_property!(gen, properties, ClassFieldId::Role, Role);
-        add_schema_property!(gen, properties, ClassFieldId::Actions, Actions);
-        add_flags_to_schema!(gen, properties, {
-            Hovered,
-            Hidden,
-            Linked,
-            Multiselectable,
-            Required,
-            Visited,
-            Busy,
-            LiveAtomic,
-            Modal,
-            TouchTransparent,
-            ReadOnly,
-            Disabled,
-            Bold,
-            Italic,
-            ClipsChildren,
-            IsLineBreakingObject,
-            IsPageBreakingObject,
-            IsSpellingError,
-            IsGrammarError,
-            IsSearchMatch,
-            IsSuggestion
-        });
         add_properties_to_schema!(gen, properties, {
             Vec<NodeId> {
                 Children,
