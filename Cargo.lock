@@ -77,8 +77,8 @@ version = "0.1.0"
 dependencies = [
  "accesskit",
  "libc",
+ "postcard",
  "rustix 0.38.21",
- "serde_json",
  "smithay-client-toolkit 0.18.0 (git+https://github.com/mwcampbell/sctk?branch=accessibility-protocol)",
  "wayland-backend 0.3.2 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
  "wayland-protocols 0.31.0 (git+https://github.com/mwcampbell/wayland-rs.git?branch=accessibility-protocol)",
@@ -565,6 +565,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77e53693616d3075149f4ead59bdeecd204ac6b8192d8969757601b74bddf00f"
 
 [[package]]
+name = "cobs"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67ba02a97a2bd10f4b59b25c7973101c79642302776489e030cd13cdab09ed15"
+
+[[package]]
 name = "combine"
 version = "4.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -711,6 +717,12 @@ name = "dyn-clone"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
+
+[[package]]
+name = "embedded-io"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef1a6892d9eef45c8fa6b9e0086428a2cca8491aca8f787c534a3d6d0bcb3ced"
 
 [[package]]
 name = "enumflags2"
@@ -1483,6 +1495,17 @@ dependencies = [
  "rustix 0.38.21",
  "tracing",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "postcard"
+version = "1.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a55c51ee6c0db07e68448e336cf8ea4131a620edefebf9893e759b2d793420f8"
+dependencies = [
+ "cobs",
+ "embedded-io",
+ "serde",
 ]
 
 [[package]]

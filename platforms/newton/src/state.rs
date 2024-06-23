@@ -106,7 +106,7 @@ impl State {
 
         let mut receivers = self.update_receivers.lock().unwrap();
         if let Some(update) = self.activation_handler.request_initial_tree() {
-            let serialized = Arc::new(serde_json::to_vec(&update).unwrap());
+            let serialized = crate::serialize_tree_update(&update);
             let (read_fd, write_fd) = pipe_with(PipeFlags::CLOEXEC).unwrap();
             self.write_update(write_fd, serialized);
             receiver.send(read_fd.as_fd());
@@ -131,7 +131,7 @@ impl State {
                 loop {
                     match file.read(&mut reader_buffer) {
                         Ok(0) => {
-                            let request = match serde_json::from_slice(&content) {
+                            let request = match postcard::from_bytes(&content) {
                                 Ok(request) => request,
                                 Err(_) => {
                                     break PostAction::Remove;

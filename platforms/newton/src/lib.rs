@@ -88,7 +88,7 @@ impl Adapter {
             return;
         }
         let update = update_factory();
-        let serialized = Arc::new(serde_json::to_vec(&update).unwrap());
+        let serialized = serialize_tree_update(&update);
         for receiver in receivers.iter() {
             let (read_fd, write_fd) = pipe_with(PipeFlags::CLOEXEC).unwrap();
             self.request_tx
@@ -109,4 +109,8 @@ impl Drop for Adapter {
             let _ = worker_thread.join();
         }
     }
+}
+
+pub(crate) fn serialize_tree_update(update: &TreeUpdate) -> Arc<Vec<u8>> {
+    Arc::new(postcard::to_allocvec(update).unwrap())
 }
