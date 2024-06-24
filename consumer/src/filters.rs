@@ -23,6 +23,12 @@ pub fn common_filter(node: &Node) -> FilterResult {
         return FilterResult::ExcludeSubtree;
     }
 
+    if let Some(parent) = node.parent() {
+        if common_filter(&parent) == FilterResult::ExcludeSubtree {
+            return FilterResult::ExcludeSubtree;
+        }
+    }
+
     let role = node.role();
     if role == Role::GenericContainer || role == Role::InlineTextBox {
         return FilterResult::ExcludeNode;
