@@ -58,7 +58,7 @@ cmake -S . -B build -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=x86 -DRus
 If you modify the C bindings, you need to regenerate the header file and commit it. To do this, in addition to the above requirements, you will need:
 
 - A nightly Rust toolchain: `rustup install nightly`
-- [cbindgen](https://github.com/eqrion/cbindgen): `cargo install cbindgen`
+- [cbindgen](https://github.com/mozilla/cbindgen): `cargo install cbindgen`
 - [clang-format](https://releases.llvm.org/14.0.0/tools/clang/docs/ClangFormat.html), version 14 or higher
 
 Once you have these requirements, the process of regenerating the header file is similar to building and installing from source with CMake, but using different configuration options:
