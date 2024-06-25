@@ -30,9 +30,6 @@ Prerequisites:
 
 - [Rust](https://rustup.rs/)
 - [CMake](https://cmake.org/), version 3.20 or higher
-- A nightly Rust toolchain: `rustup install nightly`
-- [cbindgen](https://github.com/eqrion/cbindgen): `cargo install cbindgen`
-- [clang-format](https://releases.llvm.org/14.0.0/tools/clang/docs/ClangFormat.html), version 14 or higher
 
 Once inside the `bindings/c` directory, CMake can be used like this to build the project:
 
@@ -55,3 +52,23 @@ On other platforms you will have to specify which Rust target to use, as well as
 ```bash
 cmake -S . -B build -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=x86 -DRust_CARGO_TARGET=i686-unknown-linux-gnu
 ```
+
+### Regenerating the header file
+
+If you modify the C bindings, you need to regenerate the header file and commit it. To do this, in addition to the above requirements, you will need:
+
+- A nightly Rust toolchain: `rustup install nightly`
+- [cbindgen](https://github.com/eqrion/cbindgen): `cargo install cbindgen`
+- [clang-format](https://releases.llvm.org/14.0.0/tools/clang/docs/ClangFormat.html), version 14 or higher
+
+Once you have these requirements, the process of regenerating the header file is similar to building and installing from source with CMake, but using different configuration options:
+
+```bash
+cmake -S . -B build -DACCESSKIT_BUILD_HEADERS=ON -DACCESSKIT_BUILD_LIBRARIES=OFF
+cmake --build build
+cmake --install build
+```
+
+## Alternative build system: cargo-c
+
+To meet the requirements of Linux/Unix distributors and downstream projects that use pkg-config to configure their dependencies, we also support the [cargo-c](https://github.com/lu-zero/cargo-c) build and installation tool. After installing cargo-c with `cargo install`, you can build and install the C bindings with the `cargo cbuild` and `cargo cinstall` commands. Refer to the cargo-c documentation for more details. Note that you must run these commands inside the directory for the C bindings, not in the top-level workspace.
