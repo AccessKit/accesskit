@@ -118,6 +118,6 @@ jobs:
     - uses: dtolnay/install@master
       with:
         crate: cbindgen
-    - run: cmake -S bindings/c -B build -DACCESSKIT_BUILD_HEADERS=OFF -DACCESSKIT_BUILD_LIBRARIES=OFF
+    - run: cmake -S bindings/c -B build -DACCESSKIT_BUILD_HEADERS=ON -DACCESSKIT_BUILD_LIBRARIES=OFF
     - run: cmake --build build
     - run: cmp build/accesskit.h bindings/c/include/accesskit.h
