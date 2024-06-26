@@ -571,6 +571,11 @@ typedef struct accesskit_macos_subclassing_adapter
     accesskit_macos_subclassing_adapter;
 #endif
 
+#if (defined(__linux__) || defined(__DragonFly__) || defined(__FreeBSD__) || \
+     defined(__NetBSD__) || defined(__OpenBSD__))
+typedef struct accesskit_newton_adapter accesskit_newton_adapter;
+#endif
+
 typedef struct accesskit_node accesskit_node;
 
 typedef struct accesskit_node_builder accesskit_node_builder;
@@ -578,11 +583,6 @@ typedef struct accesskit_node_builder accesskit_node_builder;
 typedef struct accesskit_tree accesskit_tree;
 
 typedef struct accesskit_tree_update accesskit_tree_update;
-
-#if (defined(__linux__) || defined(__DragonFly__) || defined(__FreeBSD__) || \
-     defined(__NetBSD__) || defined(__OpenBSD__))
-typedef struct accesskit_unix_adapter accesskit_unix_adapter;
-#endif
 
 #if defined(_WIN32)
 typedef struct accesskit_windows_adapter accesskit_windows_adapter;
@@ -2779,8 +2779,15 @@ void accesskit_macos_add_focus_forwarder_to_window_class(
      defined(__NetBSD__) || defined(__OpenBSD__))
 /**
  * All of the handlers will always be called from another thread.
+ *
+ * # Safety
+ *
+ * `display` must be a valid `wl_display *` pointer, and
+ * `surface` must be a valid `wl_surface *` pointer. Both must remain
+ * valid for as long as the adapter is alive.
  */
-struct accesskit_unix_adapter *accesskit_unix_adapter_new(
+struct accesskit_newton_adapter *accesskit_newton_adapter_new(
+    void *display, void *surface,
     accesskit_activation_handler_callback activation_handler,
     void *activation_handler_userdata,
     accesskit_action_handler_callback action_handler,
@@ -2791,31 +2798,15 @@ struct accesskit_unix_adapter *accesskit_unix_adapter_new(
 
 #if (defined(__linux__) || defined(__DragonFly__) || defined(__FreeBSD__) || \
      defined(__NetBSD__) || defined(__OpenBSD__))
-void accesskit_unix_adapter_free(struct accesskit_unix_adapter *adapter);
+void accesskit_newton_adapter_free(struct accesskit_newton_adapter *adapter);
 #endif
 
 #if (defined(__linux__) || defined(__DragonFly__) || defined(__FreeBSD__) || \
      defined(__NetBSD__) || defined(__OpenBSD__))
-void accesskit_unix_adapter_set_root_window_bounds(
-    struct accesskit_unix_adapter *adapter, struct accesskit_rect outer,
-    struct accesskit_rect inner);
-#endif
-
-#if (defined(__linux__) || defined(__DragonFly__) || defined(__FreeBSD__) || \
-     defined(__NetBSD__) || defined(__OpenBSD__))
-void accesskit_unix_adapter_update_if_active(
-    struct accesskit_unix_adapter *adapter,
+void accesskit_newton_adapter_update_if_active(
+    struct accesskit_newton_adapter *adapter,
     accesskit_tree_update_factory update_factory,
     void *update_factory_userdata);
-#endif
-
-#if (defined(__linux__) || defined(__DragonFly__) || defined(__FreeBSD__) || \
-     defined(__NetBSD__) || defined(__OpenBSD__))
-/**
- * Update the tree state based on whether the window is focused.
- */
-void accesskit_unix_adapter_update_window_focus_state(
-    struct accesskit_unix_adapter *adapter, bool is_focused);
 #endif
 
 #if defined(_WIN32)
