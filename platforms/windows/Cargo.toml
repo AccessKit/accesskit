@@ -16,9 +16,13 @@ accesskit = { version = "0.15.0", path = "../../common" }
 accesskit_consumer = { version = "0.23.0", path = "../../consumer" }
 paste = "1.0"
 static_assertions = "1.1.0"
+# Note: this explicit dependency is required because in `windows` 0.56
+# the `implement` macro changed to use the windows_core crate directly.
+# Keep this in sync with `windows` crate version range.
+windows-core = ">=0.54, <=0.57"
 
 [dependencies.windows]
-version = "0.54"
+version = ">=0.54, <=0.57"
 features = [
     "implement",
     "Win32_Foundation",
