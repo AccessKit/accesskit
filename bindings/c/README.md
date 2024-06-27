@@ -68,7 +68,3 @@ cmake -S . -B build -DACCESSKIT_BUILD_HEADERS=ON -DACCESSKIT_BUILD_LIBRARIES=OFF
 cmake --build build
 cmake --install build
 ```
-
-## Alternative build system: cargo-c
-
-To meet the requirements of Linux/Unix distributors and downstream projects that use pkg-config to configure their dependencies, we also support the [cargo-c](https://github.com/lu-zero/cargo-c) build and installation tool. After installing cargo-c with `cargo install`, you can build and install the C bindings with the `cargo cbuild` and `cargo cinstall` commands. Refer to the cargo-c documentation for more details. Note that you must run these commands inside the directory for the C bindings, not in the top-level workspace.

@@ -12,7 +12,6 @@ crate-type = ["cdylib", "staticlib"]
 doc = false
 
 [features]
-capi = []
 cbindgen = []
 
 [dependencies]
@@ -27,9 +26,3 @@ accesskit_macos = { version = "0.16.0", path = "../../platforms/macos" }
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
 accesskit_unix = { version = "0.11.1", path = "../../platforms/unix" }
-
-[package.metadata.capi.header]
-generation = false
-
-[package.metadata.capi.install.include]
-asset = [{from = "include/accesskit.h"}]
