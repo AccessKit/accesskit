@@ -65,7 +65,7 @@ jobs:
       - name: build libraries
         run: |
           ${{ matrix.setup-step || '' }}
-          cmake -S bindings/c -B build -DACCESSKIT_BUILD_HEADERS=OFF -DRust_CARGO_TARGET=${{ matrix.target }} ${{ matrix.cmake-options || '' }} ${{ !contains(matrix.target, 'msvc') && '-DCMAKE_BUILD_TYPE=Release' || '' }}
+          cmake -S bindings/c -B build -DRust_CARGO_TARGET=${{ matrix.target }} ${{ matrix.cmake-options || '' }} ${{ !contains(matrix.target, 'msvc') && '-DCMAKE_BUILD_TYPE=Release' || '' }}
           cmake --build build ${{ contains(matrix.target, 'msvc') && '--config Release' || '' }}
           cmake --install build ${{ contains(matrix.target, 'msvc') && '--config Release' || '' }}
 
@@ -75,11 +75,8 @@ jobs:
           name: ${{ matrix.target }}
           path: bindings/c/lib
 
-  generate-headers:
-    uses: AccessKit/accesskit/.github/workflows/generate-headers.yml@main
-
   publish:
-    needs: [build-binaries, generate-headers]
+    needs: [build-binaries]
     runs-on: ubuntu-latest
     name: Publish
     steps:
@@ -91,9 +88,8 @@ jobs:
 
       - run: |
           mkdir -p accesskit_c/lib
-          mv artifacts/headers accesskit_c/include
           cp -r artifacts/*/* accesskit_c/lib
-          cp -r bindings/c/examples accesskit_c/
+          cp -r bindings/c/examples bindings/c/include accesskit_c/
           cp bindings/c/accesskit*.cmake accesskit_c/
           cp bindings/c/*.md accesskit_c/
           cp LICENSE* accesskit_c/

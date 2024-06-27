@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(accesskit_c)
 
-option(ACCESSKIT_BUILD_HEADERS "Whether to build header files" ON)
+option(ACCESSKIT_BUILD_HEADERS "Whether to build header files" OFF)
 option(ACCESSKIT_BUILD_LIBRARIES "Whether to build libraries" ON)
 
 if (ACCESSKIT_BUILD_LIBRARIES)

@@ -106,5 +106,18 @@ jobs:
         if: matrix.os == 'windows-2019'
         run: cargo test -p accesskit_windows
 
-  generate-headers:
-    uses: AccessKit/accesskit/.github/workflows/generate-headers.yml@main
+  check-c-header:
+    runs-on: ubuntu-latest
+    name: Check committed C header
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: install nightly toolchain
+      uses: dtolnay/rust-toolchain@nightly
+
+    - uses: dtolnay/install@master
+      with:
+        crate: cbindgen
+    - run: cmake -S bindings/c -B build -DACCESSKIT_BUILD_HEADERS=ON -DACCESSKIT_BUILD_LIBRARIES=OFF
+    - run: cmake --build build
+    - run: cmp build/accesskit.h bindings/c/include/accesskit.h
