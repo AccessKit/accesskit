@@ -33,6 +33,25 @@
     * accesskit bumped from 0.12.2 to 0.12.3
     * accesskit_consumer bumped from 0.17.0 to 0.17.1
 
+## [0.22.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.21.0...accesskit_windows-v0.22.0) (2024-06-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* Rename the `StaticText` role to `Label` ([#434](https://github.com/AccessKit/accesskit/issues/434))
+
+### Code Refactoring
+
+* Rename the `StaticText` role to `Label` ([#434](https://github.com/AccessKit/accesskit/issues/434)) ([7086bc0](https://github.com/AccessKit/accesskit/commit/7086bc0fad446d3ed4a0fd5eff641a1e75f6c599))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.15.0 to 0.16.0
+    * accesskit_consumer bumped from 0.23.0 to 0.24.0
+
 ## [0.21.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.20.0...accesskit_windows-v0.21.0) (2024-06-09)
 
 

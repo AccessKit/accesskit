@@ -129,6 +129,27 @@
   * dependencies
     * accesskit_unix bumped from 0.11.0 to 0.11.1
 
+## [0.22.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.21.1...accesskit_winit-v0.22.0) (2024-06-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* Rename the `StaticText` role to `Label` ([#434](https://github.com/AccessKit/accesskit/issues/434))
+
+### Code Refactoring
+
+* Rename the `StaticText` role to `Label` ([#434](https://github.com/AccessKit/accesskit/issues/434)) ([7086bc0](https://github.com/AccessKit/accesskit/commit/7086bc0fad446d3ed4a0fd5eff641a1e75f6c599))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.15.0 to 0.16.0
+    * accesskit_windows bumped from 0.21.0 to 0.22.0
+    * accesskit_macos bumped from 0.16.0 to 0.17.0
+    * accesskit_unix bumped from 0.11.1 to 0.12.0
+
 ## [0.21.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.20.4...accesskit_winit-v0.21.0) (2024-06-09)
 
 

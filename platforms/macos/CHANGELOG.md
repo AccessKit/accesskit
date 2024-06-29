@@ -27,6 +27,25 @@
   * dependencies
     * accesskit_consumer bumped from 0.19.0 to 0.19.1
 
+## [0.17.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.16.0...accesskit_macos-v0.17.0) (2024-06-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* Rename the `StaticText` role to `Label` ([#434](https://github.com/AccessKit/accesskit/issues/434))
+
+### Code Refactoring
+
+* Rename the `StaticText` role to `Label` ([#434](https://github.com/AccessKit/accesskit/issues/434)) ([7086bc0](https://github.com/AccessKit/accesskit/commit/7086bc0fad446d3ed4a0fd5eff641a1e75f6c599))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.15.0 to 0.16.0
+    * accesskit_consumer bumped from 0.23.0 to 0.24.0
+
 ## [0.16.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.15.0...accesskit_macos-v0.16.0) (2024-06-09)
 
 
