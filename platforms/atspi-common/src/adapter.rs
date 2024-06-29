@@ -29,6 +29,8 @@ use crate::{
 
 struct AdapterChangeHandler<'a> {
     adapter: &'a Adapter,
+    added_nodes: HashSet<NodeId>,
+    removed_nodes: HashSet<NodeId>,
     checked_text_change: HashSet<NodeId>,
 }
 
@@ -36,11 +38,19 @@ impl<'a> AdapterChangeHandler<'a> {
     fn new(adapter: &'a Adapter) -> Self {
         Self {
             adapter,
+            added_nodes: HashSet::new(),
+            removed_nodes: HashSet::new(),
             checked_text_change: HashSet::new(),
         }
     }
 
     fn add_node(&mut self, node: &Node) {
+        let id = node.id();
+        if self.added_nodes.contains(&id) {
+            return;
+        }
+        self.added_nodes.insert(id);
+
         let role = node.role();
         let is_root = node.is_root();
         let node = NodeWrapper(node);
@@ -65,7 +75,20 @@ impl<'a> AdapterChangeHandler<'a> {
         }
     }
 
+    fn add_subtree(&mut self, node: &Node) {
+        self.add_node(node);
+        for child in node.filtered_children(&filter) {
+            self.add_subtree(&child);
+        }
+    }
+
     fn remove_node(&mut self, node: &Node) {
+        let id = node.id();
+        if self.removed_nodes.contains(&id) {
+            return;
+        }
+        self.removed_nodes.insert(id);
+
         let role = node.role();
         let is_root = node.is_root();
         let node = NodeWrapper(node);
@@ -76,6 +99,13 @@ impl<'a> AdapterChangeHandler<'a> {
             .emit_object_event(node.id(), ObjectEvent::StateChanged(State::Defunct, true));
         self.adapter
             .unregister_interfaces(node.id(), node.interfaces());
+    }
+
+    fn remove_subtree(&mut self, node: &Node) {
+        for child in node.filtered_children(&filter) {
+            self.remove_subtree(&child);
+        }
+        self.remove_node(node);
     }
 
     fn emit_text_change_if_needed_parent(&mut self, old_node: &Node, new_node: &Node) {
@@ -220,9 +250,17 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         let filter_new = filter(new_node);
         if filter_new != filter_old {
             if filter_new == FilterResult::Include {
-                self.add_node(new_node);
+                if filter_old == FilterResult::ExcludeSubtree {
+                    self.add_subtree(new_node);
+                } else {
+                    self.add_node(new_node);
+                }
             } else if filter_old == FilterResult::Include {
-                self.remove_node(old_node);
+                if filter_new == FilterResult::ExcludeSubtree {
+                    self.remove_subtree(old_node);
+                } else {
+                    self.remove_node(old_node);
+                }
             }
         } else if filter_new == FilterResult::Include {
             let old_wrapper = NodeWrapper(old_node);
