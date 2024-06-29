@@ -11,7 +11,7 @@ readme = "README.md"
 edition = "2021"
 
 [dependencies]
-accesskit = { version = "0.15.0", path = "../../common", features = ["serde"] }
+accesskit = { version = "0.16.0", path = "../../common", features = ["serde"] }
 libc = "0.2.149"
 rustix = { version = "0.38.15", features = ["fs", "pipe"] }
 sctk = { package = "smithay-client-toolkit", git = "https://github.com/mwcampbell/sctk", branch = "accessibility-protocol", default-features = false, features = ["calloop"] }
