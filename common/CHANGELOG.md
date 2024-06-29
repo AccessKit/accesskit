@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.16.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.15.0...accesskit-v0.16.0) (2024-06-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* Optimize serialization and make it compatible with more data formats ([#437](https://github.com/AccessKit/accesskit/issues/437))
+* Rename the `StaticText` role to `Label` ([#434](https://github.com/AccessKit/accesskit/issues/434))
+
+### Code Refactoring
+
+* Optimize serialization and make it compatible with more data formats ([#437](https://github.com/AccessKit/accesskit/issues/437)) ([5a80d3a](https://github.com/AccessKit/accesskit/commit/5a80d3ae46cfe85780d4900f4fa9f4feaba52053))
+* Rename the `StaticText` role to `Label` ([#434](https://github.com/AccessKit/accesskit/issues/434)) ([7086bc0](https://github.com/AccessKit/accesskit/commit/7086bc0fad446d3ed4a0fd5eff641a1e75f6c599))
+
 ## [0.15.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.14.0...accesskit-v0.15.0) (2024-06-09)
 
 

@@ -9,6 +9,31 @@
   * dependencies
     * accesskit_consumer bumped from 0.19.0 to 0.19.1
 
+## [0.9.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.8.0...accesskit_atspi_common-v0.9.0) (2024-06-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* Rename the `StaticText` role to `Label` ([#434](https://github.com/AccessKit/accesskit/issues/434))
+
+### Bug Fixes
+
+* Correctly handle recursive filtering ([#438](https://github.com/AccessKit/accesskit/issues/438)) ([72f9b42](https://github.com/AccessKit/accesskit/commit/72f9b424a5c6e7914df8bf31eeb2fc61be35f47b))
+* Smarter calculation of AT-SPI extents for the window ([#435](https://github.com/AccessKit/accesskit/issues/435)) ([7f40fbc](https://github.com/AccessKit/accesskit/commit/7f40fbc811f863e99088cd7eb725994d0f79263f))
+
+
+### Code Refactoring
+
+* Rename the `StaticText` role to `Label` ([#434](https://github.com/AccessKit/accesskit/issues/434)) ([7086bc0](https://github.com/AccessKit/accesskit/commit/7086bc0fad446d3ed4a0fd5eff641a1e75f6c599))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.15.0 to 0.16.0
+    * accesskit_consumer bumped from 0.23.0 to 0.24.0
+
 ## [0.8.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.7.0...accesskit_atspi_common-v0.8.0) (2024-06-15)
 
 
