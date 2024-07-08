@@ -58,9 +58,9 @@ While we expect GUI toolkit developers to eventually integrate AccessKit into th
 
 UI toolkit developers who merely want to use AccessKit should not be required to use Rust directly.
 
-AccessKit provides a C API covering both the core data structures and all platform adapters. This C API can be used from a variety of languages. The Rust source for the C bindings is in [the `bindings/c directory`](https://github.com/AccessKit/accesskit/tree/main/bindings/c). The AccessKit project also provides a pre-built package, including a header file, both dynamic and static libraries, and sample code, for the C API, so toolkit developers won't need to deal with Rust at all. The latest pre-built package can be found in [AccessKit's GitHub releases](https://github.com/AccessKit/accesskit/releases); search for the name "accesskit_c".
+AccessKit provides a C API covering both the core data structures and all platform adapters. This C API can be used from a variety of languages. The Rust source for the C bindings is in the [accesskit-c](https://github.com/AccessKit/accesskit-c) repository. The AccessKit project also provides a pre-built package, including a header file, both dynamic and static libraries, and sample code, for the C API, so toolkit developers won't need to deal with Rust at all. The latest pre-built package can be found in [accesskit-c GitHub releases](https://github.com/AccessKit/accesskit-c/releases).
 
-Bindings for the Python programming language are also available. Rust source code is in [the `bindings/python directory`](https://github.com/AccessKit/accesskit/tree/main/bindings/python). Releases can be found on [PyPI](https://pypi.org/project/accesskit/) and can be included in your project using `pip`.
+Bindings for the Python programming language are also available. Rust source code is in the [accesskit-python](https://github.com/AccessKit/accesskit-python) repository. Releases can be found on [PyPI](https://pypi.org/project/accesskit/) and can be included in your project using `pip`.
 
 While many languages can use a C API, we also plan to provide libraries that make it easier to safely use AccessKit from languages other than Rust and C. In particular, we're planning to provide such a library for Java and other JVM-based languages.
 

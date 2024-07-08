@@ -22,20 +22,6 @@ jobs:
       - name: cargo fmt
         run: cargo fmt --all -- --check
 
-      - name: clang-format
-        uses: jidicula/clang-format-action@v4.11.0
-        with:
-          clang-format-version: 15
-          check-path: bindings/c
-
-      - name: ruff format
-        uses: chartboost/ruff-action@v1
-        with:
-          args: format --check
-
-      - name: ruff check
-        uses: chartboost/ruff-action@v1
-
   cargo-deny:
     runs-on: ubuntu-22.04
     steps:
@@ -55,11 +41,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.8'
 
       - name: restore cache
         uses: Swatinem/rust-cache@v2
@@ -91,11 +72,6 @@ jobs:
         with:
           toolchain: ${{ needs.find-msrv.outputs.version }}
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.8'
-
       - name: restore cache
         uses: Swatinem/rust-cache@v2
 
@@ -105,19 +81,3 @@ jobs:
       - name: cargo test -p accesskit_windows
         if: matrix.os == 'windows-2019'
         run: cargo test -p accesskit_windows
-
-  check-c-header:
-    runs-on: ubuntu-latest
-    name: Check committed C header
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: install nightly toolchain
-      uses: dtolnay/rust-toolchain@nightly
-
-    - uses: dtolnay/install@master
-      with:
-        crate: cbindgen
-    - run: cmake -S bindings/c -B build -DACCESSKIT_BUILD_HEADERS=ON -DACCESSKIT_BUILD_LIBRARIES=OFF
-    - run: cmake --build build
-    - run: cmp build/accesskit.h bindings/c/include/accesskit.h

@@ -8,16 +8,12 @@ members = [
     "platforms/unix",
     "platforms/windows",
     "platforms/winit",
-    "bindings/c",
-    "bindings/python",
 ]
 default-members = [
     "common",
     "consumer",
     "platforms/atspi-common",
     "platforms/winit",
-    "bindings/c",
-    "bindings/python",
 ]
 
 [workspace.package]
