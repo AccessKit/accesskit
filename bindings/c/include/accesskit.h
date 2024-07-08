@@ -981,7 +981,7 @@ typedef struct accesskit_size {
 } accesskit_size;
 
 /**
- * Ownership of `request` is transfered to the callback. `request` must
+ * Ownership of `request` is transferred to the callback. `request` must
  * be freed using `accesskit_action_request_free`.
  */
 typedef void (*accesskit_action_handler_callback)(
