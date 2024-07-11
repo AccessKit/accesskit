@@ -50,6 +50,7 @@ compile_error!(
 );
 
 use accesskit::{ActionHandler, ActionRequest, ActivationHandler, DeactivationHandler, TreeUpdate};
+use std::sync::{Arc, Mutex};
 use winit::{
     event::WindowEvent as WinitWindowEvent,
     event_loop::EventLoopProxy,
@@ -78,49 +79,55 @@ pub enum WindowEvent {
     AccessibilityDeactivated,
 }
 
-struct WinitActivationHandler<T: From<Event> + Send + 'static> {
+struct WinitActivationHandler {
     window_id: WindowId,
-    proxy: EventLoopProxy<T>,
+    events: Arc<Mutex<Vec<Event>>>,
+    proxy: EventLoopProxy,
 }
 
-impl<T: From<Event> + Send + 'static> ActivationHandler for WinitActivationHandler<T> {
+impl ActivationHandler for WinitActivationHandler {
     fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
         let event = Event {
             window_id: self.window_id,
             window_event: WindowEvent::InitialTreeRequested,
         };
-        self.proxy.send_event(event.into()).ok();
+        self.events.lock().unwrap().push(event);
+        self.proxy.wake_up();
         None
     }
 }
 
-struct WinitActionHandler<T: From<Event> + Send + 'static> {
+struct WinitActionHandler {
     window_id: WindowId,
-    proxy: EventLoopProxy<T>,
+    events: Arc<Mutex<Vec<Event>>>,
+    proxy: EventLoopProxy,
 }
 
-impl<T: From<Event> + Send + 'static> ActionHandler for WinitActionHandler<T> {
+impl ActionHandler for WinitActionHandler {
     fn do_action(&mut self, request: ActionRequest) {
         let event = Event {
             window_id: self.window_id,
             window_event: WindowEvent::ActionRequested(request),
         };
-        self.proxy.send_event(event.into()).ok();
+        self.events.lock().unwrap().push(event);
+        self.proxy.wake_up();
     }
 }
 
-struct WinitDeactivationHandler<T: From<Event> + Send + 'static> {
+struct WinitDeactivationHandler {
     window_id: WindowId,
-    proxy: EventLoopProxy<T>,
+    events: Arc<Mutex<Vec<Event>>>,
+    proxy: EventLoopProxy,
 }
 
-impl<T: From<Event> + Send + 'static> DeactivationHandler for WinitDeactivationHandler<T> {
+impl DeactivationHandler for WinitDeactivationHandler {
     fn deactivate_accessibility(&mut self) {
         let event = Event {
             window_id: self.window_id,
             window_event: WindowEvent::AccessibilityDeactivated,
         };
-        self.proxy.send_event(event.into()).ok();
+        self.events.lock().unwrap().push(event);
+        self.proxy.wake_up();
     }
 }
 
@@ -142,20 +149,27 @@ impl Adapter {
     /// until you send the first update. For an optimal implementation,
     /// consider using [`Adapter::with_direct_handlers`] or
     /// [`Adapter::with_mixed_handlers`] instead.
-    pub fn with_event_loop_proxy<T: From<Event> + Send + 'static>(
+    pub fn with_event_loop_proxy(
         window: &Window,
-        proxy: EventLoopProxy<T>,
+        proxy: EventLoopProxy,
+        events: Arc<Mutex<Vec<Event>>>,
     ) -> Self {
         let window_id = window.id();
         let activation_handler = WinitActivationHandler {
             window_id,
+            events: Arc::clone(&events),
             proxy: proxy.clone(),
         };
         let action_handler = WinitActionHandler {
             window_id,
+            events: Arc::clone(&events),
             proxy: proxy.clone(),
         };
-        let deactivation_handler = WinitDeactivationHandler { window_id, proxy };
+        let deactivation_handler = WinitDeactivationHandler {
+            window_id,
+            events,
+            proxy,
+        };
         Self::with_direct_handlers(
             window,
             activation_handler,
@@ -204,17 +218,23 @@ impl Adapter {
     /// while using a direct, caller-provided activation handler that can
     /// return the initial tree synchronously. Remember that the thread on which
     /// the activation handler is called is platform-dependent.
-    pub fn with_mixed_handlers<T: From<Event> + Send + 'static>(
+    pub fn with_mixed_handlers(
         window: &Window,
         activation_handler: impl 'static + ActivationHandler + Send,
-        proxy: EventLoopProxy<T>,
+        proxy: EventLoopProxy,
+        events: Arc<Mutex<Vec<Event>>>,
     ) -> Self {
         let window_id = window.id();
         let action_handler = WinitActionHandler {
             window_id,
+            events: Arc::clone(&events),
             proxy: proxy.clone(),
         };
-        let deactivation_handler = WinitDeactivationHandler { window_id, proxy };
+        let deactivation_handler = WinitDeactivationHandler {
+            window_id,
+            events,
+            proxy,
+        };
         Self::with_direct_handlers(
             window,
             activation_handler,

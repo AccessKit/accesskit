@@ -23,7 +23,7 @@ tokio = ["accesskit_unix/tokio"]
 
 [dependencies]
 accesskit = { version = "0.16.0", path = "../../common" }
-winit = { version = "0.30", default-features = false }
+winit = { git = "https://github.com/Rust-Windowing/winit", default-features = false }
 rwh_05 = { package = "raw-window-handle", version = "0.5", features = ["std"], optional = true }
 rwh_06 = { package = "raw-window-handle", version = "0.6", features = ["std"], optional = true }
 
@@ -37,6 +37,6 @@ accesskit_macos = { version = "0.17.0", path = "../macos" }
 accesskit_unix = { version = "0.12.0", path = "../unix", optional = true, default-features = false }
 
 [dev-dependencies.winit]
-version = "0.30"
+git = "https://github.com/Rust-Windowing/winit"
 default-features = false
 features = ["x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita"]

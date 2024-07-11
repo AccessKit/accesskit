@@ -160,14 +160,16 @@ impl WindowState {
 }
 
 struct Application {
-    event_loop_proxy: EventLoopProxy<AccessKitEvent>,
+    event_loop_proxy: EventLoopProxy,
+    accesskit_events: Arc<Mutex<Vec<AccessKitEvent>>>,
     window: Option<WindowState>,
 }
 
 impl Application {
-    fn new(event_loop_proxy: EventLoopProxy<AccessKitEvent>) -> Self {
+    fn new(event_loop_proxy: EventLoopProxy) -> Self {
         Self {
             event_loop_proxy,
+            accesskit_events: Arc::new(Mutex::new(Vec::new())),
             window: None,
         }
     }
@@ -186,6 +188,7 @@ impl Application {
             &window,
             activation_handler,
             self.event_loop_proxy.clone(),
+            Arc::clone(&self.accesskit_events),
         );
         window.set_visible(true);
 
@@ -194,7 +197,7 @@ impl Application {
     }
 }
 
-impl ApplicationHandler<AccessKitEvent> for Application {
+impl ApplicationHandler for Application {
     fn window_event(&mut self, _: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
         let window = match &mut self.window {
             Some(window) => window,
@@ -237,7 +240,7 @@ impl ApplicationHandler<AccessKitEvent> for Application {
         }
     }
 
-    fn user_event(&mut self, _: &ActiveEventLoop, user_event: AccessKitEvent) {
+    fn proxy_wake_up(&mut self, _: &ActiveEventLoop) {
         let window = match &mut self.window {
             Some(window) => window,
             None => return,
@@ -245,27 +248,29 @@ impl ApplicationHandler<AccessKitEvent> for Application {
         let adapter = &mut window.adapter;
         let state = &mut window.ui;
 
-        match user_event.window_event {
-            AccessKitWindowEvent::InitialTreeRequested => unreachable!(),
-            AccessKitWindowEvent::ActionRequested(ActionRequest { action, target, .. }) => {
-                if target == BUTTON_1_ID || target == BUTTON_2_ID {
-                    let mut state = state.lock().unwrap();
-                    match action {
-                        Action::Focus => {
-                            state.set_focus(adapter, target);
+        for event in self.accesskit_events.lock().unwrap().drain(..) {
+            match event.window_event {
+                AccessKitWindowEvent::InitialTreeRequested => unreachable!(),
+                AccessKitWindowEvent::ActionRequested(ActionRequest { action, target, .. }) => {
+                    if target == BUTTON_1_ID || target == BUTTON_2_ID {
+                        let mut state = state.lock().unwrap();
+                        match action {
+                            Action::Focus => {
+                                state.set_focus(adapter, target);
+                            }
+                            Action::Default => {
+                                state.press_button(adapter, target);
+                            }
+                            _ => (),
                         }
-                        Action::Default => {
-                            state.press_button(adapter, target);
-                        }
-                        _ => (),
                     }
                 }
+                AccessKitWindowEvent::AccessibilityDeactivated => (),
             }
-            AccessKitWindowEvent::AccessibilityDeactivated => (),
         }
     }
 
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+    fn can_create_surfaces(&mut self, event_loop: &ActiveEventLoop) {
         self.create_window(event_loop)
             .expect("failed to create initial window");
     }
@@ -295,7 +300,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     ))]
     println!("Enable Orca with [Super]+[Alt]+[S].");
 
-    let event_loop = EventLoop::with_user_event().build()?;
+    let event_loop = EventLoop::new()?;
     let mut state = Application::new(event_loop.create_proxy());
     event_loop.run_app(&mut state).map_err(Into::into)
 }
