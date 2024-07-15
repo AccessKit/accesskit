@@ -295,6 +295,7 @@ mod wasm {
         let document = window.document().unwrap();
         let body = document.body().unwrap();
 
+        canvas.set_id("canvas");
         // Set a background color for the canvas to make it easier to tell where the canvas is for debugging purposes.
         canvas.style().set_css_text("background-color: crimson;");
         body.append_child(&canvas).unwrap();
