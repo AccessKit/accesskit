@@ -117,6 +117,7 @@ fn add_initial_tree(
         .create_element("div")
         .unwrap()
         .unchecked_into::<HtmlElement>();
+    root.set_attribute("role", "application").unwrap();
     parent.append_child(&root).unwrap();
     let mut elements = HashMap::new();
     let root_node = tree.state().root();
