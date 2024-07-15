@@ -3,61 +3,130 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, NodeId, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, NodeId, TreeUpdate};
 use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use std::collections::HashMap;
 use wasm_bindgen::JsCast;
-use web_sys::{Document, HtmlElement};
+use web_sys::{Document, Element, HtmlElement};
 
 use crate::{filters::filter, node::NodeWrapper};
 
+enum State {
+    Pending {
+        is_host_focused: bool,
+        document: Document,
+        parent: Element,
+    },
+    Active {
+        tree: Tree,
+        document: Document,
+        root: HtmlElement,
+        elements: HashMap<NodeId, HtmlElement>,
+    },
+}
+
 pub struct Adapter {
-    tree: Tree,
+    state: State,
     action_handler: Box<dyn ActionHandler>,
-    document: Document,
-    root: HtmlElement,
-    elements: HashMap<NodeId, HtmlElement>,
 }
 
 impl Adapter {
     pub fn new(
         parent_id: &str,
-        initial_state: TreeUpdate,
-        action_handler: Box<dyn ActionHandler>,
+        mut activation_handler: impl ActivationHandler,
+        action_handler: impl 'static + ActionHandler + Send,
     ) -> Self {
         let document = web_sys::window().unwrap().document().unwrap();
         let parent = document.get_element_by_id(parent_id).unwrap();
-        let root = document
-            .create_element("div")
-            .unwrap()
-            .unchecked_into::<HtmlElement>();
-        parent.append_child(&root).unwrap();
 
-        let tree = Tree::new(initial_state, true);
-        let mut elements = HashMap::new();
-        let root_node = tree.state().root();
-        add_element_recursive(&document, &root, &root_node, &mut elements);
-        if let Some(focus_id) = tree.state().focus_id() {
-            if let Some(element) = elements.get(&focus_id) {
-                focus(&element);
+        let state = match activation_handler.request_initial_tree() {
+            Some(initial_state) => {
+                let tree = Tree::new(initial_state, true);
+                let (root, elements) = add_initial_tree(&document, &parent, &tree);
+                State::Active {
+                    tree,
+                    document,
+                    root,
+                    elements,
+                }
+            }
+            None => State::Pending {
+                is_host_focused: true,
+                document,
+                parent,
+            },
+        };
+        Self {
+            state,
+            action_handler: Box::new(action_handler),
+        }
+    }
+
+    pub fn update_if_active(&mut self, update_factory: impl FnOnce() -> TreeUpdate) {
+        match &mut self.state {
+            State::Pending {
+                is_host_focused,
+                document,
+                parent,
+            } => {
+                let tree = Tree::new(update_factory(), *is_host_focused);
+                let (root, elements) = add_initial_tree(document, parent, &tree);
+                self.state = State::Active {
+                    tree,
+                    document: document.clone(),
+                    root,
+                    elements,
+                };
+            }
+            State::Active {
+                tree,
+                document,
+                elements,
+                ..
+            } => {
+                let mut handler = AdapterChangeHandler { document, elements };
+                tree.update_and_process_changes(update_factory(), &mut handler);
             }
         }
-        Self {
-            tree,
-            action_handler,
-            document,
-            root,
-            elements,
-        }
     }
 
-    pub fn update(&mut self, update: TreeUpdate) {
-        let mut handler = AdapterChangeHandler {
-            document: &mut self.document,
-            elements: &mut self.elements,
-        };
-        self.tree.update_and_process_changes(update, &mut handler);
+    pub fn update_host_focus_state(&mut self, is_focused: bool) {
+        match &mut self.state {
+            State::Pending {
+                is_host_focused, ..
+            } => *is_host_focused = is_focused,
+            State::Active {
+                tree,
+                document,
+                elements,
+                ..
+            } => {
+                let mut handler = AdapterChangeHandler { document, elements };
+                tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
+            }
+        }
     }
+}
+
+fn add_initial_tree(
+    document: &Document,
+    parent: &Element,
+    tree: &Tree,
+) -> (HtmlElement, HashMap<NodeId, HtmlElement>) {
+    let root = document
+        .create_element("div")
+        .unwrap()
+        .unchecked_into::<HtmlElement>();
+    parent.append_child(&root).unwrap();
+    let mut elements = HashMap::new();
+    let root_node = tree.state().root();
+    add_element_recursive(document, &root, &root_node, &mut elements);
+    if let Some(focus_id) = tree.state().focus_id() {
+        if let Some(element) = elements.get(&focus_id) {
+            focus(element);
+        }
+    }
+    (root, elements)
 }
 
 fn add_element(
