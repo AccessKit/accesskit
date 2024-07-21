@@ -41,17 +41,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "accesskit_c"
-version = "0.12.0"
-dependencies = [
- "accesskit",
- "accesskit_macos",
- "accesskit_unix",
- "accesskit_windows",
- "paste",
-]
-
-[[package]]
 name = "accesskit_consumer"
 version = "0.24.0"
 dependencies = [
@@ -69,17 +58,6 @@ dependencies = [
  "objc2-app-kit",
  "objc2-foundation",
  "once_cell",
-]
-
-[[package]]
-name = "accesskit_python"
-version = "0.5.0"
-dependencies = [
- "accesskit",
- "accesskit_macos",
- "accesskit_unix",
- "accesskit_windows",
- "pyo3",
 ]
 
 [[package]]
@@ -993,12 +971,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "inventory"
-version = "0.3.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1be380c410bf0595e94992a648ea89db4dd3f3354ba54af206fd2a68cf5ac8e"
-
-[[package]]
 name = "io-lifetimes"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1494,7 +1466,6 @@ checksum = "e82ad98ce1991c9c70c3464ba4187337b9c45fcbbb060d46dca15f0c075e14e2"
 dependencies = [
  "cfg-if",
  "indoc",
- "inventory",
  "libc",
  "memoffset 0.9.0",
  "parking_lot",
