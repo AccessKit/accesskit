@@ -6,6 +6,7 @@
   "packages": {
     "common": {},
     "consumer": {},
+    "platforms/android": {},
     "platforms/atspi-common": {},
     "platforms/macos": {},
     "platforms/unix": {},
