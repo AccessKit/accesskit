@@ -29,6 +29,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "accesskit_android"
+version = "0.1.0"
+dependencies = [
+ "accesskit",
+ "accesskit_consumer",
+ "jni",
+ "paste",
+]
+
+[[package]]
 name = "accesskit_atspi_common"
 version = "0.10.1"
 dependencies = [
