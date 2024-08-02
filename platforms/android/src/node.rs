@@ -70,7 +70,7 @@ impl<'a> NodeWrapper<'a> {
                 env,
                 jni_node,
                 object_value(host),
-                id_value(id_map, child.id()),
+                id_value(id_map, &child),
             )?;
         }
         if let Some(parent) = self.0.filtered_parent(&filter) {
@@ -79,7 +79,7 @@ impl<'a> NodeWrapper<'a> {
                     env,
                     jni_node,
                     object_value(host),
-                    id_value(id_map, parent.id()),
+                    id_value(id_map, &parent),
                 )?;
             }
         }
