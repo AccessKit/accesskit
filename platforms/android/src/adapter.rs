@@ -3,13 +3,21 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::TreeUpdate;
+use accesskit::{Point, TreeUpdate};
 use accesskit_consumer::Tree;
-use jni::{errors::Result, objects::JObject, sys::jint, JNIEnv};
+use jni::{
+    errors::Result,
+    objects::JObject,
+    sys::{jfloat, jint},
+    JNIEnv,
+};
 
-use crate::{classes::AccessibilityNodeInfo, node::NodeWrapper, util::NodeIdMap};
-
-const HOST_VIEW_ID: jint = -1;
+use crate::{
+    classes::AccessibilityNodeInfo,
+    filters::filter,
+    node::NodeWrapper,
+    util::{NodeIdMap, HOST_VIEW_ID},
+};
 
 pub struct Adapter {
     node_id_map: NodeIdMap,
@@ -57,5 +65,14 @@ impl Adapter {
             jni_node,
         )?;
         Ok(true)
+    }
+
+    pub fn virtual_view_at_point(&mut self, x: jfloat, y: jfloat) -> jint {
+        let tree_state = self.tree.state();
+        let root = tree_state.root();
+        let point = Point::new(x.into(), y.into());
+        let point = root.transform().inverse() * point;
+        let node = root.node_at_point(point, &filter).unwrap_or(root);
+        self.node_id_map.get_or_create_java_id(&node)
     }
 }
