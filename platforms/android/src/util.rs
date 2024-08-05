@@ -5,10 +5,7 @@
 
 use accesskit::NodeId;
 use accesskit_consumer::Node;
-use jni::{
-    objects::JObject,
-    sys::{jint, jvalue},
-};
+use jni::sys::jint;
 use std::collections::HashMap;
 
 pub(crate) const HOST_VIEW_ID: jint = -1;
@@ -38,24 +35,5 @@ impl NodeIdMap {
         self.accesskit_to_java.insert(accesskit_id, java_id);
         self.java_to_accesskit.insert(java_id, accesskit_id);
         java_id
-    }
-}
-
-pub(crate) fn bool_value(value: bool) -> jvalue {
-    jvalue { z: value as u8 }
-}
-
-pub(crate) fn id_value(id_map: &mut NodeIdMap, node: &Node) -> jvalue {
-    jvalue {
-        i: id_map.get_or_create_java_id(node),
-    }
-}
-
-pub(crate) fn object_value<'local, O>(value: O) -> jvalue
-where
-    O: AsRef<JObject<'local>>,
-{
-    jvalue {
-        l: value.as_ref().as_raw(),
     }
 }
