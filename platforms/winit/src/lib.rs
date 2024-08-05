@@ -52,7 +52,7 @@ compile_error!(
 use accesskit::{ActionHandler, ActionRequest, ActivationHandler, DeactivationHandler, TreeUpdate};
 use winit::{
     event::WindowEvent as WinitWindowEvent,
-    event_loop::EventLoopProxy,
+    event_loop::{ActiveEventLoop, EventLoopProxy},
     window::{Window, WindowId},
 };
 
@@ -143,6 +143,7 @@ impl Adapter {
     /// consider using [`Adapter::with_direct_handlers`] or
     /// [`Adapter::with_mixed_handlers`] instead.
     pub fn with_event_loop_proxy<T: From<Event> + Send + 'static>(
+        event_loop: &ActiveEventLoop,
         window: &Window,
         proxy: EventLoopProxy<T>,
     ) -> Self {
@@ -157,6 +158,7 @@ impl Adapter {
         };
         let deactivation_handler = WinitDeactivationHandler { window_id, proxy };
         Self::with_direct_handlers(
+            event_loop,
             window,
             activation_handler,
             action_handler,
@@ -178,12 +180,14 @@ impl Adapter {
     /// the first update. However, remember that each of these handlers may be
     /// called on any thread, depending on the underlying platform adapter.
     pub fn with_direct_handlers(
+        event_loop: &ActiveEventLoop,
         window: &Window,
         activation_handler: impl 'static + ActivationHandler + Send,
         action_handler: impl 'static + ActionHandler + Send,
         deactivation_handler: impl 'static + DeactivationHandler + Send,
     ) -> Self {
         let inner = platform_impl::Adapter::new(
+            event_loop,
             window,
             activation_handler,
             action_handler,
@@ -205,6 +209,7 @@ impl Adapter {
     /// return the initial tree synchronously. Remember that the thread on which
     /// the activation handler is called is platform-dependent.
     pub fn with_mixed_handlers<T: From<Event> + Send + 'static>(
+        event_loop: &ActiveEventLoop,
         window: &Window,
         activation_handler: impl 'static + ActivationHandler + Send,
         proxy: EventLoopProxy<T>,
@@ -216,6 +221,7 @@ impl Adapter {
         };
         let deactivation_handler = WinitDeactivationHandler { window_id, proxy };
         Self::with_direct_handlers(
+            event_loop,
             window,
             activation_handler,
             action_handler,
