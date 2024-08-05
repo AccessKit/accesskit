@@ -276,7 +276,17 @@ impl ApplicationHandler<AccessKitEvent> for Application {
     }
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn run(event_loop: EventLoop<AccessKitEvent>) {
+    let mut app = Application::new(event_loop.create_proxy());
+    event_loop.run_app(&mut app).unwrap();
+}
+
+#[cfg(not(target_os = "android"))]
+#[allow(dead_code)]
+// This is treated as dead code by the Android version of the example, but is actually live
+// This hackery is required because Cargo doesn't care to support this use case, of one
+// example which works across Android and desktop
+fn main() {
     println!("This example has no visible GUI, and a keyboard interface:");
     println!("- [Tab] switches focus between two logical buttons.");
     println!("- [Space] 'presses' the button, adding static text in a live region announcing that it was pressed.");
@@ -294,7 +304,34 @@ fn main() -> Result<(), Box<dyn Error>> {
     ))]
     println!("Enable Orca with [Super]+[Alt]+[S].");
 
-    let event_loop = EventLoop::with_user_event().build()?;
-    let mut state = Application::new(event_loop.create_proxy());
-    event_loop.run_app(&mut state).map_err(Into::into)
+    let event_loop = EventLoop::with_user_event().build().unwrap();
+    run(event_loop);
+}
+
+// Boilerplate code for android: Identical across all applications
+
+#[cfg(target_os = "android")]
+use winit::platform::android::activity::AndroidApp;
+
+#[cfg(target_os = "android")]
+// Safety: We are following `android_activity`'s docs here
+// We believe that there are no other declarations using this name in the compiled objects here
+#[allow(unsafe_code)]
+#[no_mangle]
+fn android_main(app: AndroidApp) {
+    use winit::platform::android::EventLoopBuilderExtAndroid;
+
+    let event_loop = EventLoop::with_user_event()
+        .with_android_app(app)
+        .build()
+        .unwrap();
+    run(event_loop);
+}
+
+// TODO: This is a hack because of how we handle our examples in Cargo.toml
+// Ideally, we change Cargo to be more sensible here?
+#[cfg(target_os = "android")]
+#[allow(dead_code)]
+fn main() {
+    unreachable!()
 }
