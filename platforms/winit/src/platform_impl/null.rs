@@ -3,12 +3,13 @@
 // the LICENSE-APACHE file).
 
 use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, TreeUpdate};
-use winit::{event::WindowEvent, window::Window};
+use winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::Window};
 
 pub struct Adapter;
 
 impl Adapter {
     pub fn new(
+        _event_loop: &ActiveEventLoop,
         _window: &Window,
         _activation_handler: impl 'static + ActivationHandler,
         _action_handler: impl 'static + ActionHandler,

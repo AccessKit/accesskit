@@ -8,7 +8,7 @@ use crate::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
 use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, TreeUpdate};
 use accesskit_macos::SubclassingAdapter;
-use winit::{event::WindowEvent, window::Window};
+use winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::Window};
 
 pub struct Adapter {
     adapter: SubclassingAdapter,
@@ -16,6 +16,7 @@ pub struct Adapter {
 
 impl Adapter {
     pub fn new(
+        _event_loop: &ActiveEventLoop,
         window: &Window,
         activation_handler: impl 'static + ActivationHandler,
         action_handler: impl 'static + ActionHandler,
