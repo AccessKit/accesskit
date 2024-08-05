@@ -9,7 +9,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
 use jni::{
     errors::Result,
     objects::{GlobalRef, JClass, JObject, WeakRef},
@@ -30,6 +30,7 @@ use crate::adapter::Adapter;
 
 struct InnerInjectingAdapter {
     adapter: Adapter,
+    activation_handler: Box<dyn ActivationHandler + Send>,
     action_handler: Box<dyn ActionHandler + Send>,
 }
 
@@ -82,11 +83,12 @@ impl InjectingAdapter {
     pub fn new(
         env: &mut JNIEnv,
         host_view: &JObject,
-        initial_state: TreeUpdate,
+        activation_handler: impl 'static + ActivationHandler + Send,
         action_handler: impl 'static + ActionHandler + Send,
     ) -> Result<Self> {
         let inner = Arc::new(Mutex::new(InnerInjectingAdapter {
-            adapter: Adapter::new(initial_state),
+            adapter: Adapter::default(),
+            activation_handler: Box::new(activation_handler),
             action_handler: Box::new(action_handler),
         }));
         let handle = NEXT_HANDLE.fetch_add(1, Ordering::Relaxed);
@@ -107,6 +109,21 @@ impl InjectingAdapter {
             handle,
             inner,
         })
+    }
+
+    /// If and only if the tree has been initialized, call the provided function
+    /// and apply the resulting update. Note: If the caller's implementation of
+    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
+    /// the [`TreeUpdate`] returned by the provided function must contain
+    /// a full tree.
+    ///
+    /// TODO: dispatch events
+    pub fn update_if_active(&mut self, update_factory: impl FnOnce() -> TreeUpdate) {
+        self.inner
+            .lock()
+            .unwrap()
+            .adapter
+            .update_if_active(update_factory);
     }
 }
 
