@@ -3,10 +3,12 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-mod classes;
 mod filters;
 mod node;
 mod util;
 
 mod adapter;
 pub use adapter::Adapter;
+
+mod inject;
+pub use inject::InjectingAdapter;

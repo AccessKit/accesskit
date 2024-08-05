@@ -5,13 +5,9 @@
 
 use accesskit::{Role, Toggled};
 use accesskit_consumer::Node;
-use jni::{
-    errors::Result,
-    objects::{JObject, JValue},
-    JNIEnv,
-};
+use jni::{errors::Result, objects::JObject, JNIEnv};
 
-use crate::{classes::AccessibilityNodeInfo, filters::filter, util::*};
+use crate::{filters::filter, util::*};
 
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
 
@@ -30,6 +26,10 @@ impl<'a> NodeWrapper<'a> {
 
     fn is_focused(&self) -> bool {
         self.0.is_focused()
+    }
+
+    fn is_password(&self) -> bool {
+        self.0.role() == Role::PasswordInput
     }
 
     fn is_checkable(&self) -> bool {
@@ -61,45 +61,67 @@ impl<'a> NodeWrapper<'a> {
         &self,
         env: &mut JNIEnv,
         host: &JObject,
-        node_info_class: &AccessibilityNodeInfo,
         id_map: &mut NodeIdMap,
         jni_node: &JObject,
     ) -> Result<()> {
         for child in self.0.filtered_children(&filter) {
-            node_info_class.addChild(
-                env,
+            env.call_method(
                 jni_node,
-                object_value(host),
-                id_value(id_map, &child),
+                "addChild",
+                "(Landroid/view/View;I)V",
+                &[host.into(), id_map.get_or_create_java_id(&child).into()],
             )?;
         }
         if let Some(parent) = self.0.filtered_parent(&filter) {
-            if !parent.is_root() {
-                node_info_class.setParent(
-                    env,
+            if parent.is_root() {
+                env.call_method(
                     jni_node,
-                    object_value(host),
-                    id_value(id_map, &parent),
+                    "setParent",
+                    "(Landroid/view/View;)V",
+                    &[host.into()],
+                )?;
+            } else {
+                env.call_method(
+                    jni_node,
+                    "setParent",
+                    "(Landroid/view/View;I)V",
+                    &[host.into(), id_map.get_or_create_java_id(&parent).into()],
                 )?;
             }
         }
 
         if self.is_checkable() {
-            node_info_class.setCheckable(env, jni_node, bool_value(true))?;
-            node_info_class.setChecked(env, jni_node, bool_value(self.is_checked()))?;
+            env.call_method(jni_node, "setCheckable", "(Z)V", &[true.into()])?;
+            env.call_method(jni_node, "setChecked", "(Z)V", &[self.is_checked().into()])?;
         }
-        node_info_class.setEnabled(env, jni_node, bool_value(self.is_enabled()))?;
-        node_info_class.setFocusable(env, jni_node, bool_value(self.is_focusable()))?;
-        node_info_class.setFocused(env, jni_node, bool_value(self.is_focused()))?;
-        node_info_class.setPassword(
-            env,
+        env.call_method(jni_node, "setEnabled", "(Z)V", &[self.is_enabled().into()])?;
+        env.call_method(
             jni_node,
-            bool_value(self.0.role() == Role::PasswordInput),
+            "setFocusable",
+            "(Z)V",
+            &[self.is_focusable().into()],
         )?;
-        node_info_class.setSelected(env, jni_node, bool_value(self.is_selected()))?;
+        env.call_method(jni_node, "setFocused", "(Z)V", &[self.is_focused().into()])?;
+        env.call_method(
+            jni_node,
+            "setPassword",
+            "(Z)V",
+            &[self.is_password().into()],
+        )?;
+        env.call_method(
+            jni_node,
+            "setSelected",
+            "(Z)V",
+            &[self.is_selected().into()],
+        )?;
         if let Some(name) = self.name() {
             let name = env.new_string(name)?;
-            node_info_class.setText(env, jni_node, JValue::Object(&name).as_jni())?;
+            env.call_method(
+                jni_node,
+                "setText",
+                "(Ljava/lang/String;)V",
+                &[(&name).into()],
+            )?;
         }
 
         Ok(())

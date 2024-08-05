@@ -13,7 +13,6 @@ use jni::{
 };
 
 use crate::{
-    classes::AccessibilityNodeInfo,
     filters::filter,
     node::NodeWrapper,
     util::{NodeIdMap, HOST_VIEW_ID},
@@ -21,19 +20,16 @@ use crate::{
 
 pub struct Adapter {
     node_id_map: NodeIdMap,
-    node_info_class: AccessibilityNodeInfo,
     tree: Tree,
 }
 
 impl Adapter {
-    pub fn new(env: &mut JNIEnv, initial_state: TreeUpdate) -> Result<Self> {
-        let node_info_class = AccessibilityNodeInfo::initialize_class(env)?;
+    pub fn new(initial_state: TreeUpdate) -> Self {
         let tree = Tree::new(initial_state, true);
-        Ok(Self {
+        Self {
             node_id_map: NodeIdMap::default(),
-            node_info_class,
             tree,
-        })
+        }
     }
 
     pub fn populate_node_info(
@@ -57,13 +53,7 @@ impl Adapter {
         };
 
         let wrapper = NodeWrapper(&node);
-        wrapper.populate_node_info(
-            env,
-            host,
-            &self.node_info_class,
-            &mut self.node_id_map,
-            jni_node,
-        )?;
+        wrapper.populate_node_info(env, host, &mut self.node_id_map, jni_node)?;
         Ok(true)
     }
 

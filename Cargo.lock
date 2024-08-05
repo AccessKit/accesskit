@@ -35,6 +35,8 @@ dependencies = [
  "accesskit",
  "accesskit_consumer",
  "jni",
+ "log",
+ "once_cell",
  "paste",
 ]
 
