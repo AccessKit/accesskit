@@ -245,6 +245,7 @@ impl ApplicationHandler<AccessKitEvent> for Application {
             .expect("failed to create initial window");
     }
 
+    #[cfg(not(target_os = "android"))]
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         if self.window.is_none() {
             event_loop.exit();

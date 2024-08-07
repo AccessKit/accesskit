@@ -112,6 +112,7 @@ name = "accesskit_winit"
 version = "0.23.1"
 dependencies = [
  "accesskit",
+ "accesskit_android",
  "accesskit_macos",
  "accesskit_unix",
  "accesskit_windows",
