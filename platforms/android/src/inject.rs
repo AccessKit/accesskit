@@ -50,7 +50,7 @@ fn delegate_class(env: &mut JNIEnv) -> Result<&'static JClass<'static>> {
             }?;
             let dex_class_loader = env.new_object(
                 &dex_class_loader_class,
-                "(Ljava/nio/ByteBUffer;Ljava/lang/ClassLoader;)V",
+                "(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V",
                 &[(&dex_buffer).into(), (&JObject::null()).into()],
             )?;
             let class_name = env.new_string("dev.accesskit.android.Delegate")?;

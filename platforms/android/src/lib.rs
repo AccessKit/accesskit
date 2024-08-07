@@ -12,3 +12,5 @@ pub use adapter::Adapter;
 
 mod inject;
 pub use inject::InjectingAdapter;
+
+pub use jni;
