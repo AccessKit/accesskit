@@ -4,21 +4,18 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    ActivationHandler, NodeBuilder, NodeId, Point, Role, Tree as TreeData, TreeUpdate,
+    Action, ActionHandler, ActionRequest, ActivationHandler, NodeBuilder, NodeId, Point, Role,
+    Tree as TreeData, TreeUpdate,
 };
 use accesskit_consumer::Tree;
 use jni::{
     errors::Result,
-    objects::JObject,
+    objects::{JClass, JObject},
     sys::{jfloat, jint},
     JNIEnv,
 };
 
-use crate::{
-    filters::filter,
-    node::NodeWrapper,
-    util::{NodeIdMap, HOST_VIEW_ID},
-};
+use crate::{filters::filter, node::NodeWrapper, util::*};
 
 const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
 
@@ -57,6 +54,14 @@ impl State {
             Self::Active(tree) => tree,
         }
     }
+
+    fn get_full_tree(&mut self) -> Option<&Tree> {
+        match self {
+            Self::Inactive => None,
+            Self::Placeholder(_) => None,
+            Self::Active(tree) => Some(tree),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -71,11 +76,17 @@ impl Adapter {
     /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
     /// the [`TreeUpdate`] returned by the provided function must contain
     /// a full tree.
-    ///
-    /// TODO: dispatch events
-    pub fn update_if_active(&mut self, update_factory: impl FnOnce() -> TreeUpdate) {
+    pub fn update_if_active(
+        &mut self,
+        update_factory: impl FnOnce() -> TreeUpdate,
+        env: &mut JNIEnv,
+        callback_class: &JClass,
+        host: &JObject,
+    ) {
         match &mut self.state {
-            State::Inactive => (),
+            State::Inactive => {
+                return;
+            }
             State::Placeholder(_) => {
                 self.state = State::Active(Tree::new(update_factory(), true));
             }
@@ -83,6 +94,19 @@ impl Adapter {
                 tree.update(update_factory());
             }
         }
+        // TODO: Send other events; only send a change event if the tree
+        // actually changed.
+        env.call_static_method(
+            callback_class,
+            "sendEvent",
+            "(Landroid/view/View;II)V",
+            &[
+                host.into(),
+                HOST_VIEW_ID.into(),
+                EVENT_WINDOW_CONTENT_CHANGED.into(),
+            ],
+        )
+        .unwrap();
     }
 
     pub fn populate_node_info<H: ActivationHandler + ?Sized>(
@@ -90,6 +114,8 @@ impl Adapter {
         activation_handler: &mut H,
         env: &mut JNIEnv,
         host: &JObject,
+        host_screen_x: jint,
+        host_screen_y: jint,
         virtual_view_id: jint,
         jni_node: &JObject,
     ) -> Result<bool> {
@@ -108,7 +134,14 @@ impl Adapter {
         };
 
         let wrapper = NodeWrapper(&node);
-        wrapper.populate_node_info(env, host, &mut self.node_id_map, jni_node)?;
+        wrapper.populate_node_info(
+            env,
+            host,
+            host_screen_x,
+            host_screen_y,
+            &mut self.node_id_map,
+            jni_node,
+        )?;
         Ok(true)
     }
 
@@ -125,5 +158,40 @@ impl Adapter {
         let point = root.transform().inverse() * point;
         let node = root.node_at_point(point, &filter).unwrap_or(root);
         self.node_id_map.get_or_create_java_id(&node)
+    }
+
+    pub fn perform_action<H: ActionHandler + ?Sized>(
+        &mut self,
+        action_handler: &mut H,
+        _env: &mut JNIEnv,
+        _host: &JObject,
+        virtual_view_id: jint,
+        action: jint,
+        _arguments: &JObject,
+    ) -> Result<bool> {
+        let Some(tree) = self.state.get_full_tree() else {
+            return Ok(false);
+        };
+        let tree_state = tree.state();
+        let target = if virtual_view_id == HOST_VIEW_ID {
+            tree_state.root_id()
+        } else {
+            let Some(accesskit_id) = self.node_id_map.get_accesskit_id(virtual_view_id) else {
+                return Ok(false);
+            };
+            accesskit_id
+        };
+        let request = match action {
+            ACTION_CLICK => ActionRequest {
+                action: Action::Default,
+                target,
+                data: None,
+            },
+            _ => {
+                return Ok(false);
+            }
+        };
+        action_handler.do_action(request);
+        Ok(true)
     }
 }

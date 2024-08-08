@@ -3,9 +3,9 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{Role, Toggled};
+use accesskit::{Live, Role, Toggled};
 use accesskit_consumer::Node;
-use jni::{errors::Result, objects::JObject, JNIEnv};
+use jni::{errors::Result, objects::JObject, sys::jint, JNIEnv};
 
 use crate::{filters::filter, util::*};
 
@@ -57,10 +57,20 @@ impl<'a> NodeWrapper<'a> {
         }
     }
 
+    fn class_name(&self) -> &str {
+        match self.0.role() {
+            Role::Button => "android.widget.Button",
+            Role::Label => "android.widget.TextView",
+            _ => "android.view.View",
+        }
+    }
+
     pub(crate) fn populate_node_info(
         &self,
         env: &mut JNIEnv,
         host: &JObject,
+        host_screen_x: jint,
+        host_screen_y: jint,
         id_map: &mut NodeIdMap,
         jni_node: &JObject,
     ) -> Result<()> {
@@ -88,6 +98,26 @@ impl<'a> NodeWrapper<'a> {
                     &[host.into(), id_map.get_or_create_java_id(&parent).into()],
                 )?;
             }
+        }
+
+        if let Some(rect) = self.0.bounding_box() {
+            let android_rect_class = env.find_class("android/graphics/Rect")?;
+            let android_rect = env.new_object(
+                &android_rect_class,
+                "(IIII)V",
+                &[
+                    ((rect.x0 as jint) + host_screen_x).into(),
+                    ((rect.y0 as jint) + host_screen_y).into(),
+                    ((rect.x1 as jint) + host_screen_x).into(),
+                    ((rect.y1 as jint) + host_screen_y).into(),
+                ],
+            )?;
+            env.call_method(
+                jni_node,
+                "setBoundsInScreen",
+                "(Landroid/graphics/Rect;)V",
+                &[(&android_rect).into()],
+            )?;
         }
 
         if self.is_checkable() {
@@ -119,10 +149,43 @@ impl<'a> NodeWrapper<'a> {
             env.call_method(
                 jni_node,
                 "setText",
-                "(Ljava/lang/String;)V",
+                "(Ljava/lang/CharSequence;)V",
                 &[(&name).into()],
             )?;
         }
+        let class_name = env.new_string(self.class_name())?;
+        env.call_method(
+            jni_node,
+            "setClassName",
+            "(Ljava/lang/CharSequence;)V",
+            &[(&class_name).into()],
+        )?;
+
+        fn add_action(env: &mut JNIEnv, jni_node: &JObject, action: jint) -> Result<()> {
+            // Note: We're using the deprecated addAction signature.
+            // But this one is much easier to call from JNI since it uses
+            // a simple integer constant. Revisit if Android ever gets strict
+            // about prohibiting deprecated methods for applications targeting
+            // newer SDKs.
+            env.call_method(jni_node, "addAction", "(I)V", &[action.into()])?;
+            Ok(())
+        }
+
+        if self.0.default_action_verb().is_some() {
+            add_action(env, jni_node, ACTION_CLICK)?;
+        }
+
+        let live = match self.0.live() {
+            Live::Off => LIVE_REGION_NONE,
+            Live::Polite => LIVE_REGION_POLITE,
+            Live::Assertive => LIVE_REGION_ASSERTIVE,
+        };
+        env.call_method(
+            jni_node,
+            "setLiveRegion",
+            "(I)V",
+            &[live.into()],
+        )?;
 
         Ok(())
     }
