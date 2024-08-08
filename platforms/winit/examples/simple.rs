@@ -31,6 +31,13 @@ const BUTTON_2_RECT: Rect = Rect {
     y1: 100.0,
 };
 
+const ANNOUNCEMENT_RECT: Rect = Rect {
+    x0: 20.0,
+    y0: 100.0,
+    x1: 100.0,
+    y1: 140.0,
+};
+
 fn build_button(id: NodeId, label: &str) -> Node {
     let rect = match id {
         BUTTON_1_ID => BUTTON_1_RECT,
@@ -48,6 +55,7 @@ fn build_button(id: NodeId, label: &str) -> Node {
 
 fn build_announcement(text: &str) -> Node {
     let mut node = Node::new(Role::Label);
+    node.set_bounds(ANNOUNCEMENT_RECT);
     node.set_value(text);
     node.set_live(Live::Polite);
     node
