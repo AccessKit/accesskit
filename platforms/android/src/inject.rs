@@ -13,13 +13,14 @@ use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
 use jni::{
     errors::Result,
     objects::{GlobalRef, JClass, JObject, WeakRef},
-    sys::jlong,
-    JNIEnv, JavaVM,
+    sys::{jboolean, jint, jlong, JNI_FALSE, JNI_TRUE},
+    JNIEnv, JavaVM, NativeMethod,
 };
 use log::debug;
 use once_cell::sync::OnceCell;
 use std::{
     collections::BTreeMap,
+    ffi::c_void,
     sync::{
         atomic::{AtomicI64, Ordering},
         Arc, Mutex, Weak,
@@ -34,9 +35,108 @@ struct InnerInjectingAdapter {
     action_handler: Box<dyn ActionHandler + Send>,
 }
 
+impl InnerInjectingAdapter {
+    fn populate_node_info(
+        &mut self,
+        env: &mut JNIEnv,
+        host: &JObject,
+        host_screen_x: jint,
+        host_screen_y: jint,
+        virtual_view_id: jint,
+        jni_node: &JObject,
+    ) -> Result<bool> {
+        self.adapter.populate_node_info(
+            &mut *self.activation_handler,
+            env,
+            host,
+            host_screen_x,
+            host_screen_y,
+            virtual_view_id,
+            jni_node,
+        )
+    }
+
+    pub fn perform_action(
+        &mut self,
+        env: &mut JNIEnv,
+        host: &JObject,
+        virtual_view_id: jint,
+        action: jint,
+        arguments: &JObject,
+    ) -> Result<bool> {
+        self.adapter.perform_action(
+            &mut *self.action_handler,
+            env,
+            host,
+            virtual_view_id,
+            action,
+            arguments,
+        )
+    }
+}
+
 static NEXT_HANDLE: AtomicI64 = AtomicI64::new(0);
 static HANDLE_MAP: Mutex<BTreeMap<jlong, Weak<Mutex<InnerInjectingAdapter>>>> =
     Mutex::new(BTreeMap::new());
+
+fn inner_adapter_from_handle(handle: jlong) -> Option<Arc<Mutex<InnerInjectingAdapter>>> {
+    let handle_map_guard = HANDLE_MAP.lock().unwrap();
+    handle_map_guard.get(&handle).and_then(Weak::upgrade)
+}
+
+extern "system" fn populate_node_info(
+    mut env: JNIEnv,
+    _class: JClass,
+    adapter_handle: jlong,
+    host: JObject,
+    host_screen_x: jint,
+    host_screen_y: jint,
+    virtual_view_id: jint,
+    node_info: JObject,
+) -> jboolean {
+    let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
+        return JNI_FALSE;
+    };
+    let mut inner_adapter = inner_adapter.lock().unwrap();
+    if inner_adapter
+        .populate_node_info(
+            &mut env,
+            &host,
+            host_screen_x,
+            host_screen_y,
+            virtual_view_id,
+            &node_info,
+        )
+        .unwrap()
+    {
+        JNI_TRUE
+    } else {
+        JNI_FALSE
+    }
+}
+
+extern "system" fn perform_action(
+    mut env: JNIEnv,
+    _class: JClass,
+    adapter_handle: jlong,
+    host: JObject,
+    virtual_view_id: jint,
+    action: jint,
+    arguments: JObject,
+) -> jboolean {
+    let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
+        return JNI_FALSE;
+    };
+    let mut inner_adapter = inner_adapter.lock().unwrap();
+    if inner_adapter
+        .perform_action(&mut env, &host, virtual_view_id, action, &arguments)
+        .unwrap()
+    {
+        JNI_TRUE
+    } else {
+        JNI_FALSE
+    }
+}
 
 fn delegate_class(env: &mut JNIEnv) -> Result<&'static JClass<'static>> {
     static CLASS: OnceCell<GlobalRef> = OnceCell::new();
@@ -66,7 +166,23 @@ fn delegate_class(env: &mut JNIEnv) -> Result<&'static JClass<'static>> {
         };
         #[cfg(not(feature = "embedded-dex"))]
         let class = env.find_class("dev/accesskit/android/Delegate")?;
-        // TODO: register JNI methods
+        env.register_native_methods(
+            &class,
+            &[
+                NativeMethod {
+                    name: "populateNodeInfo".into(),
+                    sig: "(JLandroid/view/View;IIILandroid/view/accessibility/AccessibilityNodeInfo;)Z"
+                        .into(),
+                    fn_ptr: populate_node_info as *mut c_void,
+                },
+                NativeMethod {
+                    name: "performAction".into(),
+                    sig: "(JLandroid/view/View;IILandroid/os/Bundle;)Z"
+                        .into(),
+                    fn_ptr: perform_action as *mut c_void,
+                },
+            ],
+        )?;
         env.new_global_ref(class)
     })?;
     Ok(global.as_obj().into())
@@ -74,6 +190,7 @@ fn delegate_class(env: &mut JNIEnv) -> Result<&'static JClass<'static>> {
 
 pub struct InjectingAdapter {
     vm: JavaVM,
+    delegate_class: &'static JClass<'static>,
     host: WeakRef,
     handle: jlong,
     inner: Arc<Mutex<InnerInjectingAdapter>>,
@@ -105,6 +222,7 @@ impl InjectingAdapter {
         )?;
         Ok(Self {
             vm: env.get_java_vm()?,
+            delegate_class,
             host: env.new_weak_ref(host_view)?.unwrap(),
             handle,
             inner,
@@ -119,11 +237,16 @@ impl InjectingAdapter {
     ///
     /// TODO: dispatch events
     pub fn update_if_active(&mut self, update_factory: impl FnOnce() -> TreeUpdate) {
-        self.inner
-            .lock()
-            .unwrap()
-            .adapter
-            .update_if_active(update_factory);
+        let mut env = self.vm.get_env().unwrap();
+        let Some(host) = self.host.upgrade_local(&env).unwrap() else {
+            return;
+        };
+        self.inner.lock().unwrap().adapter.update_if_active(
+            update_factory,
+            &mut env,
+            &self.delegate_class,
+            &host,
+        );
     }
 }
 

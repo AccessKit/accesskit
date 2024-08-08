@@ -8,7 +8,12 @@ use accesskit_consumer::Node;
 use jni::sys::jint;
 use std::collections::HashMap;
 
+pub(crate) const ACTION_CLICK: jint = 1 << 4;
+pub(crate) const EVENT_WINDOW_CONTENT_CHANGED: jint = 1 << 11;
 pub(crate) const HOST_VIEW_ID: jint = -1;
+pub(crate) const LIVE_REGION_NONE: jint = 0;
+pub(crate) const LIVE_REGION_POLITE: jint = 1;
+pub(crate) const LIVE_REGION_ASSERTIVE: jint = 2;
 
 #[derive(Default)]
 pub(crate) struct NodeIdMap {
