@@ -20,7 +20,7 @@ tokio = ["accesskit_unix/tokio"]
 
 [dependencies]
 accesskit = { version = "0.17.1", path = "../../common" }
-winit = { version = "0.30", default-features = false }
+winit = { version = "0.30.5", default-features = false }
 rwh_05 = { package = "raw-window-handle", version = "0.5", features = ["std"], optional = true }
 rwh_06 = { package = "raw-window-handle", version = "0.6.2", features = ["std"], optional = true }
 
@@ -37,7 +37,7 @@ accesskit_unix = { version = "0.13.1", path = "../unix", optional = true, defaul
 accesskit_android = { version = "0.1.0", path = "../android", features = ["embedded-dex"] }
 
 [dev-dependencies.winit]
-version = "0.30"
+version = "0.30.5"
 default-features = false
 features = ["x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita", "android-native-activity"]
 
