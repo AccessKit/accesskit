@@ -180,12 +180,7 @@ impl<'a> NodeWrapper<'a> {
             Live::Polite => LIVE_REGION_POLITE,
             Live::Assertive => LIVE_REGION_ASSERTIVE,
         };
-        env.call_method(
-            jni_node,
-            "setLiveRegion",
-            "(I)V",
-            &[live.into()],
-        )?;
+        env.call_method(jni_node, "setLiveRegion", "(I)V", &[live.into()])?;
 
         Ok(())
     }

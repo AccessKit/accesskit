@@ -5,7 +5,11 @@
 
 use accesskit::NodeId;
 use accesskit_consumer::Node;
-use jni::sys::jint;
+use jni::{
+    objects::{JClass, JObject},
+    sys::jint,
+    JNIEnv,
+};
 use std::collections::HashMap;
 
 pub(crate) const ACTION_CLICK: jint = 1 << 4;
@@ -41,4 +45,20 @@ impl NodeIdMap {
         self.java_to_accesskit.insert(java_id, accesskit_id);
         java_id
     }
+}
+
+pub(crate) fn send_event(
+    env: &mut JNIEnv,
+    callback_class: &JClass,
+    host: &JObject,
+    virtual_view_id: jint,
+    event_type: jint,
+) {
+    env.call_static_method(
+        callback_class,
+        "sendEvent",
+        "(Landroid/view/View;II)V",
+        &[host.into(), virtual_view_id.into(), event_type.into()],
+    )
+    .unwrap();
 }
