@@ -46,5 +46,15 @@ impl Adapter {
         self.adapter.update_if_active(updater);
     }
 
-    pub fn process_event(&mut self, _window: &Window, _event: &WindowEvent) {}
+    pub fn process_event(&mut self, _window: &Window, event: &WindowEvent) {
+        match event {
+            WindowEvent::CursorMoved { position, .. } => {
+                self.adapter.handle_hover_enter_or_move(position.x as _, position.y as _);
+            }
+            WindowEvent::CursorLeft { .. } => {
+                self.adapter.handle_hover_exit();
+            }
+            _ => (),
+        }
+    }
 }

@@ -13,7 +13,7 @@ use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
 use jni::{
     errors::Result,
     objects::{GlobalRef, JClass, JObject, WeakRef},
-    sys::{jboolean, jint, jlong, JNI_FALSE, JNI_TRUE},
+    sys::{jboolean, jfloat, jint, jlong, JNI_FALSE, JNI_TRUE},
     JNIEnv, JavaVM, NativeMethod,
 };
 use log::debug;
@@ -27,7 +27,7 @@ use std::{
     },
 };
 
-use crate::adapter::Adapter;
+use crate::{adapter::Adapter, util::*};
 
 struct InnerInjectingAdapter {
     adapter: Adapter,
@@ -56,7 +56,12 @@ impl InnerInjectingAdapter {
         )
     }
 
-    pub fn perform_action(
+    fn virtual_view_at_point(&mut self, x: jfloat, y: jfloat) -> jint {
+        self.adapter
+            .virtual_view_at_point(&mut *self.activation_handler, x, y)
+    }
+
+    fn perform_action(
         &mut self,
         env: &mut JNIEnv,
         host: &JObject,
@@ -194,6 +199,7 @@ pub struct InjectingAdapter {
     host: WeakRef,
     handle: jlong,
     inner: Arc<Mutex<InnerInjectingAdapter>>,
+    hover_view_id: jint,
 }
 
 impl InjectingAdapter {
@@ -226,6 +232,7 @@ impl InjectingAdapter {
             host: env.new_weak_ref(host_view)?.unwrap(),
             handle,
             inner,
+            hover_view_id: HOST_VIEW_ID,
         })
     }
 
@@ -246,6 +253,56 @@ impl InjectingAdapter {
             &mut env,
             &self.delegate_class,
             &host,
+        );
+    }
+
+    pub fn handle_hover_enter_or_move(&mut self, x: jfloat, y: jfloat) {
+        let old_id = self.hover_view_id;
+        let new_id = self.inner.lock().unwrap().virtual_view_at_point(x, y);
+        if new_id == old_id {
+            return;
+        }
+        let mut env = self.vm.get_env().unwrap();
+        let Some(host) = self.host.upgrade_local(&env).unwrap() else {
+            return;
+        };
+        self.hover_view_id = new_id;
+        if new_id != HOST_VIEW_ID {
+            send_event(
+                &mut env,
+                &self.delegate_class,
+                &host,
+                new_id,
+                EVENT_VIEW_HOVER_ENTER,
+            );
+        }
+        if old_id != HOST_VIEW_ID {
+            send_event(
+                &mut env,
+                &self.delegate_class,
+                &host,
+                old_id,
+                EVENT_VIEW_HOVER_EXIT,
+            );
+        }
+    }
+
+    pub fn handle_hover_exit(&mut self) {
+        if self.hover_view_id == HOST_VIEW_ID {
+            return;
+        }
+        let old_id = self.hover_view_id;
+        self.hover_view_id = HOST_VIEW_ID;
+        let mut env = self.vm.get_env().unwrap();
+        let Some(host) = self.host.upgrade_local(&env).unwrap() else {
+            return;
+        };
+        send_event(
+            &mut env,
+            &self.delegate_class,
+            &host,
+            old_id,
+            EVENT_VIEW_HOVER_EXIT,
         );
     }
 }

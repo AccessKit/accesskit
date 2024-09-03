@@ -13,6 +13,8 @@ use jni::{
 use std::collections::HashMap;
 
 pub(crate) const ACTION_CLICK: jint = 1 << 4;
+pub(crate) const EVENT_VIEW_HOVER_ENTER: jint = 1 << 7;
+pub(crate) const EVENT_VIEW_HOVER_EXIT: jint = 1 << 8;
 pub(crate) const EVENT_WINDOW_CONTENT_CHANGED: jint = 1 << 11;
 pub(crate) const HOST_VIEW_ID: jint = -1;
 pub(crate) const LIVE_REGION_NONE: jint = 0;
