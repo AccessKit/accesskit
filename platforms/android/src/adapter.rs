@@ -96,17 +96,13 @@ impl Adapter {
         }
         // TODO: Send other events; only send a change event if the tree
         // actually changed.
-        env.call_static_method(
+        send_event(
+            env,
             callback_class,
-            "sendEvent",
-            "(Landroid/view/View;II)V",
-            &[
-                host.into(),
-                HOST_VIEW_ID.into(),
-                EVENT_WINDOW_CONTENT_CHANGED.into(),
-            ],
-        )
-        .unwrap();
+            host,
+            HOST_VIEW_ID,
+            EVENT_WINDOW_CONTENT_CHANGED,
+        );
     }
 
     pub fn populate_node_info<H: ActivationHandler + ?Sized>(
