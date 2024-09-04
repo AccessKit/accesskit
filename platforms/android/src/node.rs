@@ -3,6 +3,11 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+// Derived from Chromium's accessibility abstraction.
+// Copyright 2018 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE.chromium file.
+
 use accesskit::{Live, Role, Toggled};
 use accesskit_consumer::Node;
 use jni::{errors::Result, objects::JObject, sys::jint, JNIEnv};
@@ -59,7 +64,45 @@ impl<'a> NodeWrapper<'a> {
 
     fn class_name(&self) -> &str {
         match self.0.role() {
-            Role::Button => "android.widget.Button",
+            Role::TextInput
+            | Role::MultilineTextInput
+            | Role::SearchInput
+            | Role::EmailInput
+            | Role::NumberInput
+            | Role::PasswordInput
+            | Role::PhoneNumberInput
+            | Role::UrlInput => "android.widget.EditText",
+            Role::Slider => "android.widget.SeekBar",
+            Role::ColorWell
+            | Role::ComboBox
+            | Role::EditableComboBox
+            | Role::DateInput
+            | Role::DateTimeInput
+            | Role::WeekInput
+            | Role::MonthInput
+            | Role::TimeInput => "android.widget.Spinner",
+            Role::Button => {
+                if self.0.supports_toggle() {
+                    "android.widget.ToggleButton"
+                } else {
+                    "android.widget.Button"
+                }
+            }
+            Role::PdfActionableHighlight => "android.widget.Button",
+            Role::CheckBox => "android.widget.CheckBox",
+            Role::RadioButton => "android.widget.RadioButton",
+            Role::RadioGroup => "android.widget.RadioGroup",
+            Role::Switch => "android.widget.ToggleButton",
+            Role::Canvas | Role::Image | Role::SvgRoot => "android.widget.ImageView",
+            Role::Meter | Role::ProgressIndicator => "android.widget.ProgressBar",
+            Role::TabList => "android.widget.TabWidget",
+            Role::Grid | Role::Table | Role::TreeGrid => "android.widget.GridView",
+            Role::DescriptionList | Role::List | Role::ListBox => "android.widget.ListView",
+            Role::Dialog => "android.app.Dialog",
+            Role::RootWebArea => "android.webkit.WebView",
+            Role::MenuItem | Role::MenuItemCheckBox | Role::MenuItemRadio => {
+                "android.view.MenuItem"
+            }
             Role::Label => "android.widget.TextView",
             _ => "android.view.View",
         }
