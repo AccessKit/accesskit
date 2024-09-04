@@ -106,6 +106,7 @@ public final class Delegate extends View.AccessibilityDelegate {
                 switch (action) {
                 case AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS:
                     accessibilityFocus = virtualViewId;
+                    host.invalidate();
                     sendEventInternal(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED);
                     return true;
                 }
@@ -118,6 +119,15 @@ public final class Delegate extends View.AccessibilityDelegate {
                     break;
                 }
                 return true;
+            }
+
+            @Override
+            public AccessibilityNodeInfo findFocus(int focusType) {
+                if (focusType != AccessibilityNodeInfo.FOCUS_ACCESSIBILITY
+                    || accessibilityFocus == HOST_VIEW_ID) {
+                    return null;
+                }
+                return createAccessibilityNodeInfo(accessibilityFocus);
             }
         };
     }
