@@ -251,7 +251,7 @@ impl InjectingAdapter {
         self.inner.lock().unwrap().adapter.update_if_active(
             update_factory,
             &mut env,
-            &self.delegate_class,
+            self.delegate_class,
             &host,
         );
     }
@@ -270,7 +270,7 @@ impl InjectingAdapter {
         if new_id != HOST_VIEW_ID {
             send_event(
                 &mut env,
-                &self.delegate_class,
+                self.delegate_class,
                 &host,
                 new_id,
                 EVENT_VIEW_HOVER_ENTER,
@@ -279,7 +279,7 @@ impl InjectingAdapter {
         if old_id != HOST_VIEW_ID {
             send_event(
                 &mut env,
-                &self.delegate_class,
+                self.delegate_class,
                 &host,
                 old_id,
                 EVENT_VIEW_HOVER_EXIT,
@@ -299,7 +299,7 @@ impl InjectingAdapter {
         };
         send_event(
             &mut env,
-            &self.delegate_class,
+            self.delegate_class,
             &host,
             old_id,
             EVENT_VIEW_HOVER_EXIT,
