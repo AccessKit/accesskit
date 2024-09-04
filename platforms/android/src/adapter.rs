@@ -105,6 +105,7 @@ impl Adapter {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn populate_node_info<H: ActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
