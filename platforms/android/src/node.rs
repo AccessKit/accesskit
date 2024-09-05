@@ -21,6 +21,14 @@ impl<'a> NodeWrapper<'a> {
         self.0.name()
     }
 
+    fn value(&self) -> Option<String> {
+        self.0.value()
+    }
+
+    fn is_editable(&self) -> bool {
+        self.0.is_text_input() && !self.0.is_read_only()
+    }
+
     fn is_enabled(&self) -> bool {
         !self.0.is_disabled()
     }
@@ -170,6 +178,12 @@ impl<'a> NodeWrapper<'a> {
             env.call_method(jni_node, "setCheckable", "(Z)V", &[true.into()])?;
             env.call_method(jni_node, "setChecked", "(Z)V", &[self.is_checked().into()])?;
         }
+        env.call_method(
+            jni_node,
+            "setEditable",
+            "(Z)V",
+            &[self.is_editable().into()],
+        )?;
         env.call_method(jni_node, "setEnabled", "(Z)V", &[self.is_enabled().into()])?;
         env.call_method(
             jni_node,
@@ -201,6 +215,15 @@ impl<'a> NodeWrapper<'a> {
                 },
                 "(Ljava/lang/CharSequence;)V",
                 &[(&name).into()],
+            )?;
+        }
+        if let Some(value) = self.value() {
+            let value = env.new_string(value)?;
+            env.call_method(
+                jni_node,
+                "setText",
+                "(Ljava/lang/CharSequence;)V",
+                &[(&value).into()],
             )?;
         }
         let class_name = env.new_string(self.class_name())?;
