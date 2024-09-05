@@ -486,7 +486,17 @@ impl<'a> Node<'a> {
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
         let explicit = &self.state.data.labelled_by();
         if explicit.is_empty()
-            && matches!(self.role(), Role::Button | Role::DefaultButton | Role::Link)
+            && matches!(
+                self.role(),
+                Role::Button
+                    | Role::CheckBox
+                    | Role::DefaultButton
+                    | Role::Link
+                    | Role::MenuItem
+                    | Role::MenuItemCheckBox
+                    | Role::MenuItemRadio
+                    | Role::RadioButton
+            )
         {
             LabelledBy::FromDescendants(FilteredChildren::new(*self, &descendant_label_filter))
         } else {
