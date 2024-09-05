@@ -144,6 +144,9 @@ impl<'a> NodeWrapper<'a> {
         }
 
         if let Some(rect) = self.0.bounding_box() {
+            if self.0.role() == Role::TextInput {
+                println!("text input rect {rect:?}");
+            }
             let android_rect_class = env.find_class("android/graphics/Rect")?;
             let android_rect = env.new_object(
                 &android_rect_class,
@@ -191,7 +194,11 @@ impl<'a> NodeWrapper<'a> {
             let name = env.new_string(name)?;
             env.call_method(
                 jni_node,
-                "setText",
+                if self.0.role() == Role::Label {
+                    "setText"
+                } else {
+                    "setContentDescription"
+                },
                 "(Ljava/lang/CharSequence;)V",
                 &[(&name).into()],
             )?;
