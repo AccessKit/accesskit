@@ -999,53 +999,178 @@ mod tests {
 
     #[test]
     fn name_from_descendant_label() {
-        const BUTTON_LABEL: &str = "Play";
+        const ROOT_ID: NodeId = NodeId(0);
+        const DEFAULT_BUTTON_ID: NodeId = NodeId(1);
+        const DEFAULT_BUTTON_LABEL_ID: NodeId = NodeId(2);
+        const LINK_ID: NodeId = NodeId(3);
+        const LINK_LABEL_CONTAINER_ID: NodeId = NodeId(4);
+        const LINK_LABEL_ID: NodeId = NodeId(5);
+        const CHECKBOX_ID: NodeId = NodeId(6);
+        const CHECKBOX_LABEL_ID: NodeId = NodeId(7);
+        const RADIO_BUTTON_ID: NodeId = NodeId(8);
+        const RADIO_BUTTON_LABEL_ID: NodeId = NodeId(9);
+        const MENU_BUTTON_ID: NodeId = NodeId(10);
+        const MENU_BUTTON_LABEL_ID: NodeId = NodeId(11);
+        const MENU_ID: NodeId = NodeId(12);
+        const MENU_ITEM_ID: NodeId = NodeId(13);
+        const MENU_ITEM_LABEL_ID: NodeId = NodeId(14);
+        const MENU_ITEM_CHECKBOX_ID: NodeId = NodeId(15);
+        const MENU_ITEM_CHECKBOX_LABEL_ID: NodeId = NodeId(16);
+        const MENU_ITEM_RADIO_ID: NodeId = NodeId(17);
+        const MENU_ITEM_RADIO_LABEL_ID: NodeId = NodeId(18);
+
+        const DEFAULT_BUTTON_LABEL: &str = "Play";
         const LINK_LABEL: &str = "Watch in browser";
+        const CHECKBOX_LABEL: &str = "Resume from previous position";
+        const RADIO_BUTTON_LABEL: &str = "Normal speed";
+        const MENU_BUTTON_LABEL: &str = "More";
+        const MENU_ITEM_LABEL: &str = "Share";
+        const MENU_ITEM_CHECKBOX_LABEL: &str = "Apply volume processing";
+        const MENU_ITEM_RADIO_LABEL: &str = "Maximize loudness for noisy environment";
 
         let update = TreeUpdate {
             nodes: vec![
-                (NodeId(0), {
+                (ROOT_ID, {
                     let mut builder = NodeBuilder::new(Role::Window);
-                    builder.set_children(vec![NodeId(1), NodeId(3)]);
+                    builder.set_children(vec![
+                        DEFAULT_BUTTON_ID,
+                        LINK_ID,
+                        CHECKBOX_ID,
+                        RADIO_BUTTON_ID,
+                        MENU_BUTTON_ID,
+                        MENU_ID,
+                    ]);
                     builder.build()
                 }),
-                (NodeId(1), {
-                    let mut builder = NodeBuilder::new(Role::Button);
-                    builder.push_child(NodeId(2));
+                (DEFAULT_BUTTON_ID, {
+                    let mut builder = NodeBuilder::new(Role::DefaultButton);
+                    builder.push_child(DEFAULT_BUTTON_LABEL_ID);
                     builder.build()
                 }),
-                (NodeId(2), {
+                (DEFAULT_BUTTON_LABEL_ID, {
                     let mut builder = NodeBuilder::new(Role::Image);
-                    builder.set_name(BUTTON_LABEL);
+                    builder.set_name(DEFAULT_BUTTON_LABEL);
                     builder.build()
                 }),
-                (NodeId(3), {
+                (LINK_ID, {
                     let mut builder = NodeBuilder::new(Role::Link);
-                    builder.push_child(NodeId(4));
+                    builder.push_child(LINK_LABEL_CONTAINER_ID);
                     builder.build()
                 }),
-                (NodeId(4), {
+                (LINK_LABEL_CONTAINER_ID, {
                     let mut builder = NodeBuilder::new(Role::GenericContainer);
-                    builder.push_child(NodeId(5));
+                    builder.push_child(LINK_LABEL_ID);
                     builder.build()
                 }),
-                (NodeId(5), {
+                (LINK_LABEL_ID, {
                     let mut builder = NodeBuilder::new(Role::Label);
                     builder.set_name(LINK_LABEL);
                     builder.build()
                 }),
+                (CHECKBOX_ID, {
+                    let mut builder = NodeBuilder::new(Role::CheckBox);
+                    builder.push_child(CHECKBOX_LABEL_ID);
+                    builder.build()
+                }),
+                (CHECKBOX_LABEL_ID, {
+                    let mut builder = NodeBuilder::new(Role::Label);
+                    builder.set_name(CHECKBOX_LABEL);
+                    builder.build()
+                }),
+                (RADIO_BUTTON_ID, {
+                    let mut builder = NodeBuilder::new(Role::RadioButton);
+                    builder.push_child(RADIO_BUTTON_LABEL_ID);
+                    builder.build()
+                }),
+                (RADIO_BUTTON_LABEL_ID, {
+                    let mut builder = NodeBuilder::new(Role::Label);
+                    builder.set_name(RADIO_BUTTON_LABEL);
+                    builder.build()
+                }),
+                (MENU_BUTTON_ID, {
+                    let mut builder = NodeBuilder::new(Role::Button);
+                    builder.push_child(MENU_BUTTON_LABEL_ID);
+                    builder.build()
+                }),
+                (MENU_BUTTON_LABEL_ID, {
+                    let mut builder = NodeBuilder::new(Role::Label);
+                    builder.set_name(MENU_BUTTON_LABEL);
+                    builder.build()
+                }),
+                (MENU_ID, {
+                    let mut builder = NodeBuilder::new(Role::Menu);
+                    builder.set_children([MENU_ITEM_ID, MENU_ITEM_CHECKBOX_ID, MENU_ITEM_RADIO_ID]);
+                    builder.build()
+                }),
+                (MENU_ITEM_ID, {
+                    let mut builder = NodeBuilder::new(Role::MenuItem);
+                    builder.push_child(MENU_ITEM_LABEL_ID);
+                    builder.build()
+                }),
+                (MENU_ITEM_LABEL_ID, {
+                    let mut builder = NodeBuilder::new(Role::Label);
+                    builder.set_name(MENU_ITEM_LABEL);
+                    builder.build()
+                }),
+                (MENU_ITEM_CHECKBOX_ID, {
+                    let mut builder = NodeBuilder::new(Role::MenuItemCheckBox);
+                    builder.push_child(MENU_ITEM_CHECKBOX_LABEL_ID);
+                    builder.build()
+                }),
+                (MENU_ITEM_CHECKBOX_LABEL_ID, {
+                    let mut builder = NodeBuilder::new(Role::Label);
+                    builder.set_name(MENU_ITEM_CHECKBOX_LABEL);
+                    builder.build()
+                }),
+                (MENU_ITEM_RADIO_ID, {
+                    let mut builder = NodeBuilder::new(Role::MenuItemRadio);
+                    builder.push_child(MENU_ITEM_RADIO_LABEL_ID);
+                    builder.build()
+                }),
+                (MENU_ITEM_RADIO_LABEL_ID, {
+                    let mut builder = NodeBuilder::new(Role::Label);
+                    builder.set_name(MENU_ITEM_RADIO_LABEL);
+                    builder.build()
+                }),
             ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
+            tree: Some(Tree::new(ROOT_ID)),
+            focus: ROOT_ID,
         };
         let tree = crate::Tree::new(update, false);
         assert_eq!(
-            Some(BUTTON_LABEL.into()),
-            tree.state().node_by_id(NodeId(1)).unwrap().name()
+            Some(DEFAULT_BUTTON_LABEL.into()),
+            tree.state().node_by_id(DEFAULT_BUTTON_ID).unwrap().name()
         );
         assert_eq!(
             Some(LINK_LABEL.into()),
-            tree.state().node_by_id(NodeId(3)).unwrap().name()
+            tree.state().node_by_id(LINK_ID).unwrap().name()
+        );
+        assert_eq!(
+            Some(CHECKBOX_LABEL.into()),
+            tree.state().node_by_id(CHECKBOX_ID).unwrap().name()
+        );
+        assert_eq!(
+            Some(RADIO_BUTTON_LABEL.into()),
+            tree.state().node_by_id(RADIO_BUTTON_ID).unwrap().name()
+        );
+        assert_eq!(
+            Some(MENU_BUTTON_LABEL.into()),
+            tree.state().node_by_id(MENU_BUTTON_ID).unwrap().name()
+        );
+        assert_eq!(
+            Some(MENU_ITEM_LABEL.into()),
+            tree.state().node_by_id(MENU_ITEM_ID).unwrap().name()
+        );
+        assert_eq!(
+            Some(MENU_ITEM_CHECKBOX_LABEL.into()),
+            tree.state()
+                .node_by_id(MENU_ITEM_CHECKBOX_ID)
+                .unwrap()
+                .name()
+        );
+        assert_eq!(
+            Some(MENU_ITEM_RADIO_LABEL.into()),
+            tree.state().node_by_id(MENU_ITEM_RADIO_ID).unwrap().name()
         );
     }
 }
