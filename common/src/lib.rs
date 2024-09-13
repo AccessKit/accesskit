@@ -44,7 +44,7 @@ pub use geometry::{Affine, Point, Rect, Size, Vec2};
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum Role {
@@ -273,7 +273,7 @@ pub enum Role {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum Action {
@@ -400,7 +400,7 @@ fn action_mask_to_action_vec(mask: u32) -> Vec<Action> {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum Orientation {
@@ -417,7 +417,7 @@ pub enum Orientation {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum TextDirection {
@@ -438,7 +438,7 @@ pub enum TextDirection {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum Invalid {
@@ -454,7 +454,7 @@ pub enum Invalid {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum Toggled {
@@ -476,7 +476,7 @@ pub enum Toggled {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum DefaultActionVerb {
@@ -503,7 +503,7 @@ pub enum DefaultActionVerb {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum SortDirection {
@@ -519,7 +519,7 @@ pub enum SortDirection {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum AriaCurrent {
@@ -539,7 +539,7 @@ pub enum AriaCurrent {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum AutoComplete {
@@ -555,7 +555,7 @@ pub enum AutoComplete {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum Live {
@@ -571,7 +571,7 @@ pub enum Live {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum HasPopup {
@@ -590,7 +590,7 @@ pub enum HasPopup {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum ListStyle {
@@ -610,7 +610,7 @@ pub enum ListStyle {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum TextAlign {
@@ -627,7 +627,7 @@ pub enum TextAlign {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum VerticalOffset {
@@ -642,7 +642,7 @@ pub enum VerticalOffset {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(
     feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
 pub enum TextDecoration {
