@@ -16,7 +16,7 @@ use crate::node::{Node, NodeState, ParentAndIndex};
 pub struct State {
     pub(crate) nodes: ChunkMap<NodeId, NodeState>,
     pub(crate) data: TreeData,
-    focus: NodeId,
+    pub(crate) focus: NodeId,
     is_host_focused: bool,
 }
 
