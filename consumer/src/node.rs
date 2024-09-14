@@ -47,8 +47,12 @@ impl<'a> Node<'a> {
         self.tree_state.focus_id() == Some(self.id())
     }
 
+    pub fn is_focused_in_tree(&self) -> bool {
+        self.tree_state.focus == self.id()
+    }
+
     pub fn is_focusable(&self) -> bool {
-        self.supports_action(Action::Focus)
+        self.supports_action(Action::Focus) || self.is_focused_in_tree()
     }
 
     pub fn is_root(&self) -> bool {
