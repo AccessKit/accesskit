@@ -22,7 +22,6 @@ use serde::{
     ser::{SerializeMap, Serializer},
     Deserialize, Serialize,
 };
-#[cfg(feature = "serde")]
 use std::fmt;
 
 mod geometry;
@@ -345,6 +344,38 @@ pub enum Action {
 impl Action {
     fn mask(self) -> u32 {
         1 << (self as u8)
+    }
+}
+
+impl From<u8> for Action {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => Action::Default,
+            1 => Action::Focus,
+            2 => Action::Blur,
+            3 => Action::Collapse,
+            4 => Action::Expand,
+            5 => Action::CustomAction,
+            6 => Action::Decrement,
+            7 => Action::Increment,
+            8 => Action::HideTooltip,
+            9 => Action::ShowTooltip,
+            10 => Action::ReplaceSelectedText,
+            11 => Action::ScrollBackward,
+            12 => Action::ScrollDown,
+            13 => Action::ScrollForward,
+            14 => Action::ScrollLeft,
+            15 => Action::ScrollRight,
+            16 => Action::ScrollUp,
+            17 => Action::ScrollIntoView,
+            18 => Action::ScrollToPoint,
+            19 => Action::SetScrollOffset,
+            20 => Action::SetTextSelection,
+            21 => Action::SetSequentialFocusNavigationStartingPoint,
+            22 => Action::SetValue,
+            23 => Action::ShowContextMenu,
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -885,7 +916,7 @@ struct Properties {
 /// to other languages, documentation of getter methods is written as if
 /// documenting fields in a struct, and such methods are referred to
 /// as properties.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
@@ -904,7 +935,7 @@ struct PropertiesBuilder {
 }
 
 /// Builds a [`Node`].
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq)]
 pub struct NodeBuilder {
     role: Role,
     actions: u32,
@@ -976,6 +1007,13 @@ macro_rules! flag_methods {
             pub fn $getter(&self) -> bool {
                 (self.flags & (Flag::$id).mask()) != 0
             })*
+            fn debug_flag_properties(&self, fmt: &mut fmt::DebugStruct) {
+                $(
+                    if self.$getter() {
+                        fmt.field(stringify!($getter), &true);
+                    }
+                )*
+            }
         }
         impl NodeBuilder {
             $($(#[$doc])*
@@ -991,6 +1029,13 @@ macro_rules! flag_methods {
             pub fn $clearer(&mut self) {
                 self.flags &= !((Flag::$id).mask());
             })*
+            fn debug_flag_properties(&self, fmt: &mut fmt::DebugStruct) {
+                $(
+                    if self.$getter() {
+                        fmt.field(stringify!($getter), &true);
+                    }
+                )*
+            }
         }
     }
 }
@@ -1120,12 +1165,44 @@ macro_rules! vec_property_methods {
     }
 }
 
+macro_rules! slice_properties_debug_method {
+    ($name:ident, $($getter:ident)*) => {
+        fn $name(&self, fmt: &mut fmt::DebugStruct) {
+            $(
+                let value = self.$getter();
+                if !value.is_empty() {
+                    fmt.field(stringify!($getter), &value);
+                }
+            )*
+        }
+    }
+}
+
 macro_rules! node_id_vec_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $pusher:ident, $clearer:ident)),+) => {
         $(vec_property_methods! {
             $(#[$doc])*
             ($id, NodeId, $getter, get_node_id_vec, $setter, set_node_id_vec, $pusher, push_to_node_id_vec, $clearer)
         })*
+        impl Node {
+            slice_properties_debug_method! { debug_node_id_vec_properties, $($getter)* }
+        }
+        impl NodeBuilder {
+            slice_properties_debug_method! { debug_node_id_vec_properties, $($getter)* }
+        }
+    }
+}
+
+macro_rules! option_properties_debug_method {
+    ($name:ident, $($getter:ident)*) => {
+        fn $name(&self, fmt: &mut fmt::DebugStruct) {
+            $(
+                let value = self.$getter();
+                if value.is_some() {
+                    fmt.field(stringify!($getter), &value);
+                }
+            )*
+        }
     }
 }
 
@@ -1135,6 +1212,12 @@ macro_rules! node_id_property_methods {
             $(#[$doc])*
             ($id, $getter, get_node_id_property, Option<NodeId>, $setter, set_node_id_property, NodeId, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_node_id_properties, $($getter)* }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_node_id_properties, $($getter)* }
+        }
     }
 }
 
@@ -1144,6 +1227,12 @@ macro_rules! string_property_methods {
             $(#[$doc])*
             ($id, $getter, get_string_property, Option<&str>, $setter, set_string_property, impl Into<Box<str>>, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_string_properties, $($getter)* }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_string_properties, $($getter)* }
+        }
     }
 }
 
@@ -1153,6 +1242,12 @@ macro_rules! f64_property_methods {
             $(#[$doc])*
             ($id, $getter, get_f64_property, Option<f64>, $setter, set_f64_property, f64, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_f64_properties, $($getter)* }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_f64_properties, $($getter)* }
+        }
     }
 }
 
@@ -1162,6 +1257,12 @@ macro_rules! usize_property_methods {
             $(#[$doc])*
             ($id, $getter, get_usize_property, Option<usize>, $setter, set_usize_property, usize, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_usize_properties, $($getter)* }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_usize_properties, $($getter)* }
+        }
     }
 }
 
@@ -1171,6 +1272,12 @@ macro_rules! color_property_methods {
             $(#[$doc])*
             ($id, $getter, get_color_property, Option<u32>, $setter, set_color_property, u32, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_color_properties, $($getter)* }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_color_properties, $($getter)* }
+        }
     }
 }
 
@@ -1180,6 +1287,12 @@ macro_rules! text_decoration_property_methods {
             $(#[$doc])*
             ($id, $getter, get_text_decoration_property, Option<TextDecoration>, $setter, set_text_decoration_property, TextDecoration, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_text_decoration_properties, $($getter)* }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_text_decoration_properties, $($getter)* }
+        }
     }
 }
 
@@ -1189,6 +1302,12 @@ macro_rules! length_slice_property_methods {
             $(#[$doc])*
             ($id, $getter, get_length_slice_property, &[u8], $setter, set_length_slice_property, impl Into<Box<[u8]>>, $clearer)
         })*
+        impl Node {
+            slice_properties_debug_method! { debug_length_slice_properties, $($getter)* }
+        }
+        impl NodeBuilder {
+            slice_properties_debug_method! { debug_length_slice_properties, $($getter)* }
+        }
     }
 }
 
@@ -1198,6 +1317,12 @@ macro_rules! coord_slice_property_methods {
             $(#[$doc])*
             ($id, $getter, get_coord_slice_property, Option<&[f32]>, $setter, set_coord_slice_property, impl Into<Box<[f32]>>, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_coord_slice_properties, $($getter)* }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_coord_slice_properties, $($getter)* }
+        }
     }
 }
 
@@ -1207,6 +1332,12 @@ macro_rules! bool_property_methods {
             $(#[$doc])*
             ($id, $getter, get_bool_property, Option<bool>, $setter, set_bool_property, bool, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_bool_properties, $($getter)* }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_bool_properties, $($getter)* }
+        }
     }
 }
 
@@ -1222,6 +1353,7 @@ macro_rules! unique_enum_property_methods {
                     _ => unexpected_property_type(),
                 }
             })*
+            option_properties_debug_method! { debug_unique_enum_properties, $($getter)* }
         }
         impl NodeBuilder {
             $($(#[$doc])*
@@ -1241,6 +1373,7 @@ macro_rules! unique_enum_property_methods {
             pub fn $clearer(&mut self) {
                 self.properties.clear(PropertyId::$id);
             })*
+            option_properties_debug_method! { debug_unique_enum_properties, $($getter)* }
         }
     }
 }
@@ -1669,6 +1802,102 @@ property_methods! {
 
 vec_property_methods! {
     (CustomActions, CustomAction, custom_actions, get_custom_action_vec, set_custom_actions, set_custom_action_vec, push_custom_action, push_to_custom_action_vec, clear_custom_actions)
+}
+
+fn debug_supported_actions(fmt: &mut fmt::DebugStruct, actions_mask: u32) {
+    let mut supported_actions = Vec::new();
+
+    let first_variant = Action::Default as u8;
+    let last_variant = Action::ShowContextMenu as u8;
+    for i in first_variant..=last_variant {
+        let variant = Action::from(i);
+        if actions_mask & variant.mask() != 0 {
+            supported_actions.push(variant);
+        }
+    }
+    if !supported_actions.is_empty() {
+        fmt.field("actions", &supported_actions);
+    }
+}
+
+impl fmt::Debug for Node {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut fmt = f.debug_struct("Node");
+
+        fmt.field("role", &self.role());
+        debug_supported_actions(&mut fmt, self.actions);
+        self.debug_flag_properties(&mut fmt);
+        self.debug_node_id_vec_properties(&mut fmt);
+        self.debug_node_id_properties(&mut fmt);
+        self.debug_string_properties(&mut fmt);
+        self.debug_f64_properties(&mut fmt);
+        self.debug_usize_properties(&mut fmt);
+        self.debug_color_properties(&mut fmt);
+        self.debug_text_decoration_properties(&mut fmt);
+        self.debug_length_slice_properties(&mut fmt);
+        self.debug_coord_slice_properties(&mut fmt);
+        self.debug_bool_properties(&mut fmt);
+        self.debug_unique_enum_properties(&mut fmt);
+
+        let transform = self.transform();
+        if transform.is_some() {
+            fmt.field("transform", &transform);
+        }
+        let bounds = self.bounds();
+        if bounds.is_some() {
+            fmt.field("bounds", &bounds);
+        }
+        let text_selection = self.text_selection();
+        if text_selection.is_some() {
+            fmt.field("text_selection", &text_selection);
+        }
+        let custom_actions = self.custom_actions();
+        if !custom_actions.is_empty() {
+            fmt.field("custom_actions", &custom_actions);
+        }
+
+        fmt.finish()
+    }
+}
+
+impl fmt::Debug for NodeBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut fmt = f.debug_struct("NodeBuilder");
+
+        fmt.field("role", &self.role());
+        debug_supported_actions(&mut fmt, self.actions);
+        self.debug_flag_properties(&mut fmt);
+        self.debug_node_id_vec_properties(&mut fmt);
+        self.debug_node_id_properties(&mut fmt);
+        self.debug_string_properties(&mut fmt);
+        self.debug_f64_properties(&mut fmt);
+        self.debug_usize_properties(&mut fmt);
+        self.debug_color_properties(&mut fmt);
+        self.debug_text_decoration_properties(&mut fmt);
+        self.debug_length_slice_properties(&mut fmt);
+        self.debug_coord_slice_properties(&mut fmt);
+        self.debug_bool_properties(&mut fmt);
+        self.debug_unique_enum_properties(&mut fmt);
+
+        let transform = self.transform();
+        if transform.is_some() {
+            fmt.field("transform", &transform);
+        }
+        let bounds = self.bounds();
+        if bounds.is_some() {
+            fmt.field("bounds", &bounds);
+        }
+        let text_selection = self.text_selection();
+        if text_selection.is_some() {
+            fmt.field("text_selection", &text_selection);
+        }
+        let custom_actions = self.custom_actions();
+        if !custom_actions.is_empty() {
+            fmt.field("custom_actions", &custom_actions);
+        }
+
+        fmt.finish()
+    }
 }
 
 #[cfg(feature = "serde")]
