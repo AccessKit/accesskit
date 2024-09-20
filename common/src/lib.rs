@@ -1190,8 +1190,7 @@ macro_rules! option_properties_debug_method {
     ($name:ident, [$($getter:ident,)*]) => {
         fn $name(&self, fmt: &mut fmt::DebugStruct) {
             $(
-                let value = self.$getter();
-                if value.is_some() {
+                if let Some(value) = self.$getter() {
                     fmt.field(stringify!($getter), &value);
                 }
             )*
