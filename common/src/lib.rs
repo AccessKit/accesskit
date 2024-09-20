@@ -262,120 +262,113 @@ pub enum Role {
     Terminal,
 }
 
-/// An action to be taken on an accessibility node.
-///
-/// In contrast to [`DefaultActionVerb`], these describe what happens to the
-/// object, e.g. "focus".
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "enumn", derive(enumn::N))]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-#[cfg_attr(
-    feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
-)]
-#[repr(u8)]
-pub enum Action {
-    /// Do the default action for an object, typically this means "click".
-    Default,
-
-    Focus,
-    Blur,
-
-    Collapse,
-    Expand,
-
-    /// Requires [`ActionRequest::data`] to be set to [`ActionData::CustomAction`].
-    CustomAction,
-
-    /// Decrement a numeric value by one step.
-    Decrement,
-    /// Increment a numeric value by one step.
-    Increment,
-
-    HideTooltip,
-    ShowTooltip,
-
-    /// Delete any selected text in the control's text value and
-    /// insert the specified value in its place, like when typing or pasting.
-    /// Requires [`ActionRequest::data`] to be set to [`ActionData::Value`].
-    ReplaceSelectedText,
-
-    // Scrolls by approximately one screen in a specific direction.
-    // TBD: Do we need a doc comment on each of the values below?
-    // Or does this awkwardness suggest a refactor?
-    ScrollBackward,
-    ScrollDown,
-    ScrollForward,
-    ScrollLeft,
-    ScrollRight,
-    ScrollUp,
-
-    /// Scroll any scrollable containers to make the target object visible
-    /// on the screen.  Optionally set [`ActionRequest::data`] to
-    /// [`ActionData::ScrollTargetRect`].
-    ScrollIntoView,
-
-    /// Scroll the given object to a specified point in the tree's container
-    /// (e.g. window). Requires [`ActionRequest::data`] to be set to
-    /// [`ActionData::ScrollToPoint`].
-    ScrollToPoint,
-
-    /// Requires [`ActionRequest::data`] to be set to [`ActionData::SetScrollOffset`].
-    SetScrollOffset,
-
-    /// Requires [`ActionRequest::data`] to be set to [`ActionData::SetTextSelection`].
-    SetTextSelection,
-
-    /// Don't focus this node, but set it as the sequential focus navigation
-    /// starting point, so that pressing Tab moves to the next element
-    /// following this one, for example.
-    SetSequentialFocusNavigationStartingPoint,
-
-    /// Replace the value of the control with the specified value and
-    /// reset the selection, if applicable. Requires [`ActionRequest::data`]
-    /// to be set to [`ActionData::Value`] or [`ActionData::NumericValue`].
-    SetValue,
-
-    ShowContextMenu,
-}
-
-impl Action {
-    fn mask(self) -> u32 {
-        1 << (self as u8)
-    }
-}
-
-impl From<u8> for Action {
-    fn from(value: u8) -> Self {
-        match value {
-            0 => Action::Default,
-            1 => Action::Focus,
-            2 => Action::Blur,
-            3 => Action::Collapse,
-            4 => Action::Expand,
-            5 => Action::CustomAction,
-            6 => Action::Decrement,
-            7 => Action::Increment,
-            8 => Action::HideTooltip,
-            9 => Action::ShowTooltip,
-            10 => Action::ReplaceSelectedText,
-            11 => Action::ScrollBackward,
-            12 => Action::ScrollDown,
-            13 => Action::ScrollForward,
-            14 => Action::ScrollLeft,
-            15 => Action::ScrollRight,
-            16 => Action::ScrollUp,
-            17 => Action::ScrollIntoView,
-            18 => Action::ScrollToPoint,
-            19 => Action::SetScrollOffset,
-            20 => Action::SetTextSelection,
-            21 => Action::SetSequentialFocusNavigationStartingPoint,
-            22 => Action::SetValue,
-            23 => Action::ShowContextMenu,
-            _ => unreachable!(),
+macro_rules! bitflag {
+    (
+        $(#[$doc:meta])*
+        pub enum $enum_name:ident {
+            $($(#[$variant_doc:meta])* $variant_name:ident),*
         }
+    ) => {
+        $(#[$doc])*
+        pub enum $enum_name {
+            $($(#[$variant_doc])* $variant_name),*
+        }
+        impl $enum_name {
+            fn mask(self) -> u32 {
+                1 << (self as u8)
+            }
+            fn flags(mask: u32) -> Vec<$enum_name> {
+                let mut variants = Vec::new();
+                $(
+                    let variant = $enum_name::$variant_name;
+                    if (mask & variant.mask()) != 0 {
+                        variants.push(variant);
+                    }
+                )*
+                variants
+            }
+        }
+    };
+}
+
+bitflag! {
+    /// An action to be taken on an accessibility node.
+    ///
+    /// In contrast to [`DefaultActionVerb`], these describe what happens to the
+    /// object, e.g. "focus".
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "enumn", derive(enumn::N))]
+    #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+    #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+    #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+    #[cfg_attr(
+        feature = "pyo3",
+        pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    )]
+    #[repr(u8)]
+    pub enum Action {
+        /// Do the default action for an object, typically this means "click".
+        Default,
+
+        Focus,
+        Blur,
+
+        Collapse,
+        Expand,
+
+        /// Requires [`ActionRequest::data`] to be set to [`ActionData::CustomAction`].
+        CustomAction,
+
+        /// Decrement a numeric value by one step.
+        Decrement,
+        /// Increment a numeric value by one step.
+        Increment,
+
+        HideTooltip,
+        ShowTooltip,
+
+        /// Delete any selected text in the control's text value and
+        /// insert the specified value in its place, like when typing or pasting.
+        /// Requires [`ActionRequest::data`] to be set to [`ActionData::Value`].
+        ReplaceSelectedText,
+
+        // Scrolls by approximately one screen in a specific direction.
+        // TBD: Do we need a doc comment on each of the values below?
+        // Or does this awkwardness suggest a refactor?
+        ScrollBackward,
+        ScrollDown,
+        ScrollForward,
+        ScrollLeft,
+        ScrollRight,
+        ScrollUp,
+
+        /// Scroll any scrollable containers to make the target object visible
+        /// on the screen.  Optionally set [`ActionRequest::data`] to
+        /// [`ActionData::ScrollTargetRect`].
+        ScrollIntoView,
+
+        /// Scroll the given object to a specified point in the tree's container
+        /// (e.g. window). Requires [`ActionRequest::data`] to be set to
+        /// [`ActionData::ScrollToPoint`].
+        ScrollToPoint,
+
+        /// Requires [`ActionRequest::data`] to be set to [`ActionData::SetScrollOffset`].
+        SetScrollOffset,
+
+        /// Requires [`ActionRequest::data`] to be set to [`ActionData::SetTextSelection`].
+        SetTextSelection,
+
+        /// Don't focus this node, but set it as the sequential focus navigation
+        /// starting point, so that pressing Tab moves to the next element
+        /// following this one, for example.
+        SetSequentialFocusNavigationStartingPoint,
+
+        /// Replace the value of the control with the specified value and
+        /// reset the selection, if applicable. Requires [`ActionRequest::data`]
+        /// to be set to [`ActionData::Value`] or [`ActionData::NumericValue`].
+        SetValue,
+
+        ShowContextMenu
     }
 }
 
@@ -1812,28 +1805,17 @@ vec_property_methods! {
     (CustomActions, CustomAction, custom_actions, get_custom_action_vec, set_custom_actions, set_custom_action_vec, push_custom_action, push_to_custom_action_vec, clear_custom_actions)
 }
 
-fn debug_supported_actions(fmt: &mut fmt::DebugStruct, actions_mask: u32) {
-    let mut supported_actions = Vec::new();
-
-    let first_variant = Action::Default as u8;
-    let last_variant = Action::ShowContextMenu as u8;
-    for i in first_variant..=last_variant {
-        let variant = Action::from(i);
-        if actions_mask & variant.mask() != 0 {
-            supported_actions.push(variant);
-        }
-    }
-    if !supported_actions.is_empty() {
-        fmt.field("actions", &supported_actions);
-    }
-}
-
 impl fmt::Debug for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut fmt = f.debug_struct("Node");
 
         fmt.field("role", &self.role());
-        debug_supported_actions(&mut fmt, self.actions);
+
+        let supported_actions = Action::flags(self.actions);
+        if !supported_actions.is_empty() {
+            fmt.field("actions", &supported_actions);
+        }
+
         self.debug_flag_properties(&mut fmt);
         self.debug_node_id_vec_properties(&mut fmt);
         self.debug_node_id_properties(&mut fmt);
@@ -1862,7 +1844,12 @@ impl fmt::Debug for NodeBuilder {
         let mut fmt = f.debug_struct("NodeBuilder");
 
         fmt.field("role", &self.role());
-        debug_supported_actions(&mut fmt, self.actions);
+
+        let supported_actions = Action::flags(self.actions);
+        if !supported_actions.is_empty() {
+            fmt.field("actions", &supported_actions);
+        }
+
         self.debug_flag_properties(&mut fmt);
         self.debug_node_id_vec_properties(&mut fmt);
         self.debug_node_id_properties(&mut fmt);
