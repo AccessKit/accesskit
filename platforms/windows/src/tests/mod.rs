@@ -22,6 +22,8 @@ use windows::{
     },
 };
 
+use crate::window_handle::WindowHandle;
+
 use super::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper},
     Adapter,
@@ -155,9 +157,9 @@ fn create_window(
             None,
             GetModuleHandleW(None).unwrap(),
             Some(Box::into_raw(create_params) as _),
-        )
+        )?
     };
-    if window.0 == 0 {
+    if window.is_invalid() {
         return Err(Error::from_win32());
     }
 
@@ -166,13 +168,13 @@ fn create_window(
 
 pub(crate) struct Scope {
     pub(crate) uia: IUIAutomation,
-    pub(crate) window: HWND,
+    pub(crate) window: WindowHandle,
 }
 
 impl Scope {
     pub(crate) fn show_and_focus_window(&self) {
-        unsafe { ShowWindow(self.window, SW_SHOW) };
-        unsafe { SetForegroundWindow(self.window) };
+        let _ = unsafe { ShowWindow(self.window.0, SW_SHOW) };
+        let _ = unsafe { SetForegroundWindow(self.window.0) };
     }
 }
 
@@ -190,7 +192,7 @@ where
 {
     let _lock_guard = MUTEX.lock().unwrap();
 
-    let window_mutex: Mutex<Option<HWND>> = Mutex::new(None);
+    let window_mutex: Mutex<Option<WindowHandle>> = Mutex::new(None);
     let window_cv = Condvar::new();
 
     thread::scope(|thread_scope| {
@@ -206,13 +208,13 @@ where
 
             {
                 let mut state = window_mutex.lock().unwrap();
-                *state = Some(window);
+                *state = Some(window.into());
                 window_cv.notify_one();
             }
 
             let mut message = MSG::default();
-            while unsafe { GetMessageW(&mut message, HWND(0), 0, 0) }.into() {
-                unsafe { TranslateMessage(&message) };
+            while unsafe { GetMessageW(&mut message, HWND::default(), 0, 0) }.into() {
+                let _ = unsafe { TranslateMessage(&message) };
                 unsafe { DispatchMessageW(&message) };
             }
         });
@@ -228,7 +230,7 @@ where
         };
 
         let _window_guard = scopeguard::guard((), |_| {
-            unsafe { PostMessageW(window, WM_CLOSE, WPARAM(0), LPARAM(0)) }.unwrap()
+            unsafe { PostMessageW(window.0, WM_CLOSE, WPARAM(0), LPARAM(0)) }.unwrap()
         });
 
         // We must initialize COM before creating the UIA client. The MTA option
@@ -323,7 +325,7 @@ impl FocusEventHandler {
 }
 
 #[allow(non_snake_case)]
-impl IUIAutomationFocusChangedEventHandler_Impl for FocusEventHandler {
+impl IUIAutomationFocusChangedEventHandler_Impl for FocusEventHandler_Impl {
     fn HandleFocusChangedEvent(&self, sender: Option<&IUIAutomationElement>) -> Result<()> {
         self.received.put(sender.unwrap().clone());
         Ok(())

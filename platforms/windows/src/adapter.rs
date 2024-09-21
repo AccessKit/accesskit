@@ -21,6 +21,7 @@ use crate::{
     filters::filter,
     node::{NodeWrapper, PlatformNode},
     util::QueuedEvent,
+    window_handle::WindowHandle,
 };
 
 fn focus_event(context: &Arc<Context>, node_id: NodeId) -> QueuedEvent {
@@ -140,7 +141,7 @@ const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
 
 enum State {
     Inactive {
-        hwnd: HWND,
+        hwnd: WindowHandle,
         is_window_focused: bool,
         action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
     },
@@ -186,7 +187,7 @@ impl Adapter {
         init_uia();
 
         let state = State::Inactive {
-            hwnd,
+            hwnd: hwnd.into(),
             is_window_focused,
             action_handler,
         };
@@ -356,7 +357,7 @@ fn normalize_objid(lparam: LPARAM) -> i32 {
 }
 
 struct WmGetObjectResult {
-    hwnd: HWND,
+    hwnd: WindowHandle,
     wparam: WPARAM,
     lparam: LPARAM,
     el: IRawElementProviderSimple,
@@ -364,7 +365,7 @@ struct WmGetObjectResult {
 
 impl From<WmGetObjectResult> for LRESULT {
     fn from(this: WmGetObjectResult) -> Self {
-        unsafe { UiaReturnRawElementProvider(this.hwnd, this.wparam, this.lparam, &this.el) }
+        unsafe { UiaReturnRawElementProvider(this.hwnd.0, this.wparam, this.lparam, &this.el) }
     }
 }
 

@@ -614,7 +614,7 @@ impl PlatformNode {
 }
 
 #[allow(non_snake_case)]
-impl IRawElementProviderSimple_Impl for PlatformNode {
+impl IRawElementProviderSimple_Impl for PlatformNode_Impl {
     fn ProviderOptions(&self) -> Result<ProviderOptions> {
         Ok(ProviderOptions_ServerSideProvider)
     }
@@ -634,7 +634,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
                             result = window_title(context.hwnd).into();
                         }
                         UIA_NativeWindowHandlePropertyId => {
-                            result = (context.hwnd.0 as i32).into();
+                            result = (context.hwnd.0 .0 as i32).into();
                         }
                         _ => (),
                     }
@@ -654,7 +654,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
     fn HostRawElementProvider(&self) -> Result<IRawElementProviderSimple> {
         self.with_tree_state_and_context(|state, context| {
             if self.is_root(state) {
-                unsafe { UiaHostProviderFromHwnd(context.hwnd) }
+                unsafe { UiaHostProviderFromHwnd(context.hwnd.0) }
             } else {
                 Err(Error::empty())
             }
@@ -663,7 +663,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode {
 }
 
 #[allow(non_snake_case)]
-impl IRawElementProviderFragment_Impl for PlatformNode {
+impl IRawElementProviderFragment_Impl for PlatformNode_Impl {
     fn Navigate(&self, direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
         self.resolve(|node| {
             let result = match direction {
@@ -735,7 +735,7 @@ impl IRawElementProviderFragment_Impl for PlatformNode {
 }
 
 #[allow(non_snake_case)]
-impl IRawElementProviderFragmentRoot_Impl for PlatformNode {
+impl IRawElementProviderFragmentRoot_Impl for PlatformNode_Impl {
     fn ElementProviderFromPoint(&self, x: f64, y: f64) -> Result<IRawElementProviderFragment> {
         self.resolve_with_context(|node, context| {
             let client_top_left = context.client_top_left();
@@ -851,7 +851,7 @@ macro_rules! patterns {
         }
         paste! {
             $(#[allow(non_snake_case)]
-            impl [< I $base_pattern_id Provider_Impl>] for PlatformNode {
+            impl [< I $base_pattern_id Provider_Impl>] for PlatformNode_Impl {
                 $(fn $base_property_id(&self) -> Result<$com_type> {
                     self.resolve(|node| {
                         let wrapper = NodeWrapper(&node);

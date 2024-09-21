@@ -16,6 +16,8 @@ use windows::{
     },
 };
 
+use crate::window_handle::WindowHandle;
+
 pub(crate) struct Variant(VARIANT);
 
 impl From<Variant> for VARIANT {
@@ -178,21 +180,21 @@ pub(crate) fn invalid_operation() -> Error {
     HRESULT(UIA_E_INVALIDOPERATION as _).into()
 }
 
-pub(crate) fn client_top_left(hwnd: HWND) -> Point {
+pub(crate) fn client_top_left(hwnd: WindowHandle) -> Point {
     let mut result = POINT::default();
     // If ClientToScreen fails, that means the window is gone.
     // That's an unexpected condition, so we should fail loudly.
-    unsafe { ClientToScreen(hwnd, &mut result) }.unwrap();
+    unsafe { ClientToScreen(hwnd.0, &mut result) }.unwrap();
     Point::new(result.x.into(), result.y.into())
 }
 
-pub(crate) fn window_title(hwnd: HWND) -> Option<BSTR> {
+pub(crate) fn window_title(hwnd: WindowHandle) -> Option<BSTR> {
     // The following is an old hack to get the window caption without ever
     // sending messages to the window itself, even if the window is in
     // the same process but possibly a separate thread. This prevents
     // possible hangs and sluggishness. This hack has been proven to work
     // over nearly 20 years on every version of Windows back to XP.
-    let result = unsafe { DefWindowProcW(hwnd, WM_GETTEXTLENGTH, WPARAM(0), LPARAM(0)) };
+    let result = unsafe { DefWindowProcW(hwnd.0, WM_GETTEXTLENGTH, WPARAM(0), LPARAM(0)) };
     if result.0 <= 0 {
         return None;
     }
@@ -200,7 +202,7 @@ pub(crate) fn window_title(hwnd: HWND) -> Option<BSTR> {
     let mut buffer = Vec::<u16>::with_capacity(capacity);
     let result = unsafe {
         DefWindowProcW(
-            hwnd,
+            hwnd.0,
             WM_GETTEXT,
             WPARAM(capacity),
             LPARAM(buffer.as_mut_ptr() as _),
