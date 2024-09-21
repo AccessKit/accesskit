@@ -22,7 +22,6 @@ use serde::{
     ser::{SerializeMap, Serializer},
     Deserialize, Serialize,
 };
-#[cfg(feature = "serde")]
 use std::fmt;
 
 mod geometry;
@@ -263,88 +262,113 @@ pub enum Role {
     Terminal,
 }
 
-/// An action to be taken on an accessibility node.
-///
-/// In contrast to [`DefaultActionVerb`], these describe what happens to the
-/// object, e.g. "focus".
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "enumn", derive(enumn::N))]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-#[cfg_attr(
-    feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
-)]
-#[repr(u8)]
-pub enum Action {
-    /// Do the default action for an object, typically this means "click".
-    Default,
-
-    Focus,
-    Blur,
-
-    Collapse,
-    Expand,
-
-    /// Requires [`ActionRequest::data`] to be set to [`ActionData::CustomAction`].
-    CustomAction,
-
-    /// Decrement a numeric value by one step.
-    Decrement,
-    /// Increment a numeric value by one step.
-    Increment,
-
-    HideTooltip,
-    ShowTooltip,
-
-    /// Delete any selected text in the control's text value and
-    /// insert the specified value in its place, like when typing or pasting.
-    /// Requires [`ActionRequest::data`] to be set to [`ActionData::Value`].
-    ReplaceSelectedText,
-
-    // Scrolls by approximately one screen in a specific direction.
-    // TBD: Do we need a doc comment on each of the values below?
-    // Or does this awkwardness suggest a refactor?
-    ScrollBackward,
-    ScrollDown,
-    ScrollForward,
-    ScrollLeft,
-    ScrollRight,
-    ScrollUp,
-
-    /// Scroll any scrollable containers to make the target object visible
-    /// on the screen.  Optionally set [`ActionRequest::data`] to
-    /// [`ActionData::ScrollTargetRect`].
-    ScrollIntoView,
-
-    /// Scroll the given object to a specified point in the tree's container
-    /// (e.g. window). Requires [`ActionRequest::data`] to be set to
-    /// [`ActionData::ScrollToPoint`].
-    ScrollToPoint,
-
-    /// Requires [`ActionRequest::data`] to be set to [`ActionData::SetScrollOffset`].
-    SetScrollOffset,
-
-    /// Requires [`ActionRequest::data`] to be set to [`ActionData::SetTextSelection`].
-    SetTextSelection,
-
-    /// Don't focus this node, but set it as the sequential focus navigation
-    /// starting point, so that pressing Tab moves to the next element
-    /// following this one, for example.
-    SetSequentialFocusNavigationStartingPoint,
-
-    /// Replace the value of the control with the specified value and
-    /// reset the selection, if applicable. Requires [`ActionRequest::data`]
-    /// to be set to [`ActionData::Value`] or [`ActionData::NumericValue`].
-    SetValue,
-
-    ShowContextMenu,
+macro_rules! bitflag {
+    (
+        $(#[$doc:meta])*
+        pub enum $enum_name:ident {
+            $($(#[$variant_doc:meta])* $variant_name:ident),*
+        }
+    ) => {
+        $(#[$doc])*
+        pub enum $enum_name {
+            $($(#[$variant_doc])* $variant_name),*
+        }
+        impl $enum_name {
+            fn mask(self) -> u32 {
+                1 << (self as u8)
+            }
+            fn flags(mask: u32) -> Vec<$enum_name> {
+                let mut variants = Vec::new();
+                $(
+                    let variant = $enum_name::$variant_name;
+                    if (mask & variant.mask()) != 0 {
+                        variants.push(variant);
+                    }
+                )*
+                variants
+            }
+        }
+    };
 }
 
-impl Action {
-    fn mask(self) -> u32 {
-        1 << (self as u8)
+bitflag! {
+    /// An action to be taken on an accessibility node.
+    ///
+    /// In contrast to [`DefaultActionVerb`], these describe what happens to the
+    /// object, e.g. "focus".
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "enumn", derive(enumn::N))]
+    #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+    #[cfg_attr(feature = "schemars", derive(JsonSchema))]
+    #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+    #[cfg_attr(
+        feature = "pyo3",
+        pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
+    )]
+    #[repr(u8)]
+    pub enum Action {
+        /// Do the default action for an object, typically this means "click".
+        Default,
+
+        Focus,
+        Blur,
+
+        Collapse,
+        Expand,
+
+        /// Requires [`ActionRequest::data`] to be set to [`ActionData::CustomAction`].
+        CustomAction,
+
+        /// Decrement a numeric value by one step.
+        Decrement,
+        /// Increment a numeric value by one step.
+        Increment,
+
+        HideTooltip,
+        ShowTooltip,
+
+        /// Delete any selected text in the control's text value and
+        /// insert the specified value in its place, like when typing or pasting.
+        /// Requires [`ActionRequest::data`] to be set to [`ActionData::Value`].
+        ReplaceSelectedText,
+
+        // Scrolls by approximately one screen in a specific direction.
+        // TBD: Do we need a doc comment on each of the values below?
+        // Or does this awkwardness suggest a refactor?
+        ScrollBackward,
+        ScrollDown,
+        ScrollForward,
+        ScrollLeft,
+        ScrollRight,
+        ScrollUp,
+
+        /// Scroll any scrollable containers to make the target object visible
+        /// on the screen.  Optionally set [`ActionRequest::data`] to
+        /// [`ActionData::ScrollTargetRect`].
+        ScrollIntoView,
+
+        /// Scroll the given object to a specified point in the tree's container
+        /// (e.g. window). Requires [`ActionRequest::data`] to be set to
+        /// [`ActionData::ScrollToPoint`].
+        ScrollToPoint,
+
+        /// Requires [`ActionRequest::data`] to be set to [`ActionData::SetScrollOffset`].
+        SetScrollOffset,
+
+        /// Requires [`ActionRequest::data`] to be set to [`ActionData::SetTextSelection`].
+        SetTextSelection,
+
+        /// Don't focus this node, but set it as the sequential focus navigation
+        /// starting point, so that pressing Tab moves to the next element
+        /// following this one, for example.
+        SetSequentialFocusNavigationStartingPoint,
+
+        /// Replace the value of the control with the specified value and
+        /// reset the selection, if applicable. Requires [`ActionRequest::data`]
+        /// to be set to [`ActionData::Value`] or [`ActionData::NumericValue`].
+        SetValue,
+
+        ShowContextMenu
     }
 }
 
@@ -885,7 +909,7 @@ struct Properties {
 /// to other languages, documentation of getter methods is written as if
 /// documenting fields in a struct, and such methods are referred to
 /// as properties.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
@@ -904,7 +928,7 @@ struct PropertiesBuilder {
 }
 
 /// Builds a [`Node`].
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq)]
 pub struct NodeBuilder {
     role: Role,
     actions: u32,
@@ -976,6 +1000,13 @@ macro_rules! flag_methods {
             pub fn $getter(&self) -> bool {
                 (self.flags & (Flag::$id).mask()) != 0
             })*
+            fn debug_flag_properties(&self, fmt: &mut fmt::DebugStruct) {
+                $(
+                    if self.$getter() {
+                        fmt.field(stringify!($getter), &true);
+                    }
+                )*
+            }
         }
         impl NodeBuilder {
             $($(#[$doc])*
@@ -991,6 +1022,13 @@ macro_rules! flag_methods {
             pub fn $clearer(&mut self) {
                 self.flags &= !((Flag::$id).mask());
             })*
+            fn debug_flag_properties(&self, fmt: &mut fmt::DebugStruct) {
+                $(
+                    if self.$getter() {
+                        fmt.field(stringify!($getter), &true);
+                    }
+                )*
+            }
         }
     }
 }
@@ -1120,12 +1158,43 @@ macro_rules! vec_property_methods {
     }
 }
 
+macro_rules! slice_properties_debug_method {
+    ($name:ident, [$($getter:ident,)*]) => {
+        fn $name(&self, fmt: &mut fmt::DebugStruct) {
+            $(
+                let value = self.$getter();
+                if !value.is_empty() {
+                    fmt.field(stringify!($getter), &value);
+                }
+            )*
+        }
+    }
+}
+
 macro_rules! node_id_vec_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $pusher:ident, $clearer:ident)),+) => {
         $(vec_property_methods! {
             $(#[$doc])*
             ($id, NodeId, $getter, get_node_id_vec, $setter, set_node_id_vec, $pusher, push_to_node_id_vec, $clearer)
         })*
+        impl Node {
+            slice_properties_debug_method! { debug_node_id_vec_properties, [$($getter,)*] }
+        }
+        impl NodeBuilder {
+            slice_properties_debug_method! { debug_node_id_vec_properties, [$($getter,)*] }
+        }
+    }
+}
+
+macro_rules! option_properties_debug_method {
+    ($name:ident, [$($getter:ident,)*]) => {
+        fn $name(&self, fmt: &mut fmt::DebugStruct) {
+            $(
+                if let Some(value) = self.$getter() {
+                    fmt.field(stringify!($getter), &value);
+                }
+            )*
+        }
     }
 }
 
@@ -1135,6 +1204,12 @@ macro_rules! node_id_property_methods {
             $(#[$doc])*
             ($id, $getter, get_node_id_property, Option<NodeId>, $setter, set_node_id_property, NodeId, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_node_id_properties, [$($getter,)*] }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_node_id_properties, [$($getter,)*] }
+        }
     }
 }
 
@@ -1144,6 +1219,12 @@ macro_rules! string_property_methods {
             $(#[$doc])*
             ($id, $getter, get_string_property, Option<&str>, $setter, set_string_property, impl Into<Box<str>>, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_string_properties, [$($getter,)*] }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_string_properties, [$($getter,)*] }
+        }
     }
 }
 
@@ -1153,6 +1234,12 @@ macro_rules! f64_property_methods {
             $(#[$doc])*
             ($id, $getter, get_f64_property, Option<f64>, $setter, set_f64_property, f64, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_f64_properties, [$($getter,)*] }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_f64_properties, [$($getter,)*] }
+        }
     }
 }
 
@@ -1162,6 +1249,12 @@ macro_rules! usize_property_methods {
             $(#[$doc])*
             ($id, $getter, get_usize_property, Option<usize>, $setter, set_usize_property, usize, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_usize_properties, [$($getter,)*] }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_usize_properties, [$($getter,)*] }
+        }
     }
 }
 
@@ -1171,6 +1264,12 @@ macro_rules! color_property_methods {
             $(#[$doc])*
             ($id, $getter, get_color_property, Option<u32>, $setter, set_color_property, u32, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_color_properties, [$($getter,)*] }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_color_properties, [$($getter,)*] }
+        }
     }
 }
 
@@ -1180,6 +1279,12 @@ macro_rules! text_decoration_property_methods {
             $(#[$doc])*
             ($id, $getter, get_text_decoration_property, Option<TextDecoration>, $setter, set_text_decoration_property, TextDecoration, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_text_decoration_properties, [$($getter,)*] }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_text_decoration_properties, [$($getter,)*] }
+        }
     }
 }
 
@@ -1189,6 +1294,12 @@ macro_rules! length_slice_property_methods {
             $(#[$doc])*
             ($id, $getter, get_length_slice_property, &[u8], $setter, set_length_slice_property, impl Into<Box<[u8]>>, $clearer)
         })*
+        impl Node {
+            slice_properties_debug_method! { debug_length_slice_properties, [$($getter,)*] }
+        }
+        impl NodeBuilder {
+            slice_properties_debug_method! { debug_length_slice_properties, [$($getter,)*] }
+        }
     }
 }
 
@@ -1198,6 +1309,12 @@ macro_rules! coord_slice_property_methods {
             $(#[$doc])*
             ($id, $getter, get_coord_slice_property, Option<&[f32]>, $setter, set_coord_slice_property, impl Into<Box<[f32]>>, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_coord_slice_properties, [$($getter,)*] }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_coord_slice_properties, [$($getter,)*] }
+        }
     }
 }
 
@@ -1207,6 +1324,12 @@ macro_rules! bool_property_methods {
             $(#[$doc])*
             ($id, $getter, get_bool_property, Option<bool>, $setter, set_bool_property, bool, $clearer)
         })*
+        impl Node {
+            option_properties_debug_method! { debug_bool_properties, [$($getter,)*] }
+        }
+        impl NodeBuilder {
+            option_properties_debug_method! { debug_bool_properties, [$($getter,)*] }
+        }
     }
 }
 
@@ -1222,6 +1345,7 @@ macro_rules! unique_enum_property_methods {
                     _ => unexpected_property_type(),
                 }
             })*
+            option_properties_debug_method! { debug_unique_enum_properties, [$($getter,)*] }
         }
         impl NodeBuilder {
             $($(#[$doc])*
@@ -1241,6 +1365,7 @@ macro_rules! unique_enum_property_methods {
             pub fn $clearer(&mut self) {
                 self.properties.clear(PropertyId::$id);
             })*
+            option_properties_debug_method! { debug_unique_enum_properties, [$($getter,)*] }
         }
     }
 }
@@ -1667,8 +1792,84 @@ property_methods! {
     (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, impl Into<Box<TextSelection>>, clear_text_selection)
 }
 
+impl Node {
+    option_properties_debug_method! { debug_option_properties, [transform, bounds, text_selection,] }
+}
+
+impl NodeBuilder {
+    option_properties_debug_method! { debug_option_properties, [transform, bounds, text_selection,] }
+}
+
 vec_property_methods! {
     (CustomActions, CustomAction, custom_actions, get_custom_action_vec, set_custom_actions, set_custom_action_vec, push_custom_action, push_to_custom_action_vec, clear_custom_actions)
+}
+
+impl fmt::Debug for Node {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut fmt = f.debug_struct("Node");
+
+        fmt.field("role", &self.role());
+
+        let supported_actions = Action::flags(self.actions);
+        if !supported_actions.is_empty() {
+            fmt.field("actions", &supported_actions);
+        }
+
+        self.debug_flag_properties(&mut fmt);
+        self.debug_node_id_vec_properties(&mut fmt);
+        self.debug_node_id_properties(&mut fmt);
+        self.debug_string_properties(&mut fmt);
+        self.debug_f64_properties(&mut fmt);
+        self.debug_usize_properties(&mut fmt);
+        self.debug_color_properties(&mut fmt);
+        self.debug_text_decoration_properties(&mut fmt);
+        self.debug_length_slice_properties(&mut fmt);
+        self.debug_coord_slice_properties(&mut fmt);
+        self.debug_bool_properties(&mut fmt);
+        self.debug_unique_enum_properties(&mut fmt);
+        self.debug_option_properties(&mut fmt);
+
+        let custom_actions = self.custom_actions();
+        if !custom_actions.is_empty() {
+            fmt.field("custom_actions", &custom_actions);
+        }
+
+        fmt.finish()
+    }
+}
+
+impl fmt::Debug for NodeBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut fmt = f.debug_struct("NodeBuilder");
+
+        fmt.field("role", &self.role());
+
+        let supported_actions = Action::flags(self.actions);
+        if !supported_actions.is_empty() {
+            fmt.field("actions", &supported_actions);
+        }
+
+        self.debug_flag_properties(&mut fmt);
+        self.debug_node_id_vec_properties(&mut fmt);
+        self.debug_node_id_properties(&mut fmt);
+        self.debug_string_properties(&mut fmt);
+        self.debug_f64_properties(&mut fmt);
+        self.debug_usize_properties(&mut fmt);
+        self.debug_color_properties(&mut fmt);
+        self.debug_text_decoration_properties(&mut fmt);
+        self.debug_length_slice_properties(&mut fmt);
+        self.debug_coord_slice_properties(&mut fmt);
+        self.debug_bool_properties(&mut fmt);
+        self.debug_unique_enum_properties(&mut fmt);
+        self.debug_option_properties(&mut fmt);
+
+        let custom_actions = self.custom_actions();
+        if !custom_actions.is_empty() {
+            fmt.field("custom_actions", &custom_actions);
+        }
+
+        fmt.finish()
+    }
 }
 
 #[cfg(feature = "serde")]
