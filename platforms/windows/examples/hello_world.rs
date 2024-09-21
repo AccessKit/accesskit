@@ -189,6 +189,9 @@ struct SimpleActionHandler {
     window: HWND,
 }
 
+unsafe impl Send for SimpleActionHandler {}
+unsafe impl Sync for SimpleActionHandler {}
+
 impl ActionHandler for SimpleActionHandler {
     fn do_action(&mut self, request: ActionRequest) {
         match request.action {
@@ -334,9 +337,9 @@ fn create_window(title: &str, initial_focus: NodeId) -> Result<HWND> {
             None,
             GetModuleHandleW(None).unwrap(),
             Some(Box::into_raw(create_params) as _),
-        )
+        )?
     };
-    if window.0 == 0 {
+    if window.is_invalid() {
         return Err(Error::from_win32());
     }
 
@@ -350,11 +353,11 @@ fn main() -> Result<()> {
     println!("Enable Narrator with [Win]+[Ctrl]+[Enter] (or [Win]+[Enter] on older versions of Windows).");
 
     let window = create_window(WINDOW_TITLE, INITIAL_FOCUS)?;
-    unsafe { ShowWindow(window, SW_SHOW) };
+    let _ = unsafe { ShowWindow(window, SW_SHOW) };
 
     let mut message = MSG::default();
-    while unsafe { GetMessageW(&mut message, HWND(0), 0, 0) }.into() {
-        unsafe { TranslateMessage(&message) };
+    while unsafe { GetMessageW(&mut message, HWND::default(), 0, 0) }.into() {
+        let _ = unsafe { TranslateMessage(&message) };
         unsafe { DispatchMessageW(&message) };
     }
 

@@ -82,7 +82,7 @@ impl ApplicationHandler<()> for TestApplication {
 
         let window = event_loop.create_window(window_attributes).unwrap();
         let hwnd = match window.window_handle().unwrap().as_raw() {
-            RawWindowHandle::Win32(handle) => HWND(handle.hwnd.get()),
+            RawWindowHandle::Win32(handle) => HWND(handle.hwnd.get() as *mut core::ffi::c_void),
             RawWindowHandle::WinRt(_) => unimplemented!(),
             _ => unreachable!(),
         };

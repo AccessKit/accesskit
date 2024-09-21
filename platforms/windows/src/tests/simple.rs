@@ -72,7 +72,7 @@ where
 #[test]
 fn has_native_uia() -> Result<()> {
     scope(|s| {
-        let has_native_uia: bool = unsafe { UiaHasServerSideProvider(s.window) }.into();
+        let has_native_uia: bool = unsafe { UiaHasServerSideProvider(s.window.0) }.into();
         assert!(has_native_uia);
         Ok(())
     })
@@ -96,7 +96,7 @@ fn is_button_2(element: &IUIAutomationElement) -> bool {
 #[test]
 fn navigation() -> Result<()> {
     scope(|s| {
-        let root = unsafe { s.uia.ElementFromHandle(s.window) }?;
+        let root = unsafe { s.uia.ElementFromHandle(s.window.0) }?;
         let walker = unsafe { s.uia.ControlViewWalker() }?;
 
         // The children of the window include the children that we provide,

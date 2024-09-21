@@ -323,9 +323,9 @@ impl Clone for PlatformRange {
 // within this process. This seems a safe assumption for most AccessKit users.
 
 #[allow(non_snake_case)]
-impl ITextRangeProvider_Impl for PlatformRange {
+impl ITextRangeProvider_Impl for PlatformRange_Impl {
     fn Clone(&self) -> Result<ITextRangeProvider> {
-        Ok(self.clone().into())
+        Ok(self.this.clone().into())
     }
 
     fn Compare(&self, other: Option<&ITextRangeProvider>) -> Result<BOOL> {
@@ -342,7 +342,7 @@ impl ITextRangeProvider_Impl for PlatformRange {
         other_endpoint: TextPatternRangeEndpoint,
     ) -> Result<i32> {
         let other = unsafe { required_param(other)?.as_impl() };
-        if std::ptr::eq(other as *const _, self as *const _) {
+        if std::ptr::eq(other as *const _, &self.this as *const _) {
             // Comparing endpoints within the same range can be done
             // safely without upgrading the range. This allows ATs
             // to determine whether an old range is degenerate even if

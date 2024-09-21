@@ -8,6 +8,7 @@ mod filters;
 mod node;
 mod text;
 mod util;
+mod window_handle;
 
 mod adapter;
 pub use adapter::{Adapter, QueuedEvents};
