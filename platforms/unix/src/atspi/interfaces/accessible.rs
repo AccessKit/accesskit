@@ -49,7 +49,7 @@ impl NodeAccessibleInterface {
                 },
                 NodeIdOrRoot::Root => ObjectId::Root,
             }
-            .to_address(self.bus_name.clone())
+            .to_address(self.bus_name.inner())
         })
     }
 
@@ -90,7 +90,7 @@ impl NodeAccessibleInterface {
                     adapter: self.node.adapter_id(),
                     node: child,
                 }
-                .to_address(self.bus_name.clone())
+                .to_address(self.bus_name.inner())
             })
             .map_err(self.map_error())
     }
@@ -116,7 +116,7 @@ impl NodeAccessibleInterface {
     }
 
     fn get_application(&self) -> (OwnedObjectAddress,) {
-        (ObjectId::Root.to_address(self.bus_name.clone()),)
+        (ObjectId::Root.to_address(self.bus_name.inner()),)
     }
 
     fn get_interfaces(&self) -> fdo::Result<InterfaceSet> {
@@ -126,21 +126,12 @@ impl NodeAccessibleInterface {
 
 pub(crate) struct RootAccessibleInterface {
     bus_name: OwnedUniqueName,
-    desktop_address: OwnedObjectAddress,
     root: PlatformRoot,
 }
 
 impl RootAccessibleInterface {
-    pub fn new(
-        bus_name: OwnedUniqueName,
-        desktop_address: OwnedObjectAddress,
-        root: PlatformRoot,
-    ) -> Self {
-        Self {
-            bus_name,
-            desktop_address,
-            root,
-        }
+    pub fn new(bus_name: OwnedUniqueName, root: PlatformRoot) -> Self {
+        Self { bus_name, root }
     }
 }
 
@@ -158,7 +149,7 @@ impl RootAccessibleInterface {
 
     #[dbus_interface(property)]
     fn parent(&self) -> OwnedObjectAddress {
-        self.desktop_address.clone()
+        OwnedObjectAddress::null()
     }
 
     #[dbus_interface(property)]
@@ -191,7 +182,7 @@ impl RootAccessibleInterface {
     fn get_children(&self) -> fdo::Result<Vec<OwnedObjectAddress>> {
         self.root
             .map_child_ids(|(adapter, node)| {
-                ObjectId::Node { adapter, node }.to_address(self.bus_name.clone())
+                ObjectId::Node { adapter, node }.to_address(self.bus_name.inner())
             })
             .map_err(map_root_error)
     }
@@ -209,7 +200,7 @@ impl RootAccessibleInterface {
     }
 
     fn get_application(&self) -> (OwnedObjectAddress,) {
-        (ObjectId::Root.to_address(self.bus_name.clone()),)
+        (ObjectId::Root.to_address(self.bus_name.inner()),)
     }
 
     fn get_interfaces(&self) -> InterfaceSet {

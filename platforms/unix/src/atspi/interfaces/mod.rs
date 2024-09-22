@@ -11,20 +11,19 @@ mod text;
 mod value;
 
 use crate::atspi::{ObjectId, OwnedObjectAddress};
-use zbus::{fdo, names::OwnedUniqueName};
+use zbus::{fdo, names::UniqueName};
 
 fn map_root_error(error: accesskit_atspi_common::Error) -> fdo::Error {
     crate::util::map_error(ObjectId::Root, error)
 }
 
 fn optional_object_address(
-    bus_name: &OwnedUniqueName,
+    bus_name: &UniqueName,
     object_id: Option<ObjectId>,
 ) -> (OwnedObjectAddress,) {
-    let bus_name = bus_name.clone();
     match object_id {
         Some(id) => (id.to_address(bus_name),),
-        None => (OwnedObjectAddress::null(bus_name),),
+        None => (OwnedObjectAddress::null(),),
     }
 }
 

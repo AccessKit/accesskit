@@ -8,7 +8,7 @@ use accesskit::NodeId;
 use accesskit_atspi_common::PlatformNode;
 use serde::{Serialize, Serializer};
 use zbus::{
-    names::OwnedUniqueName,
+    names::UniqueName,
     zvariant::{ObjectPath, OwnedObjectPath, Signature, Structure, StructureBuilder, Type},
 };
 
@@ -22,7 +22,7 @@ pub(crate) enum ObjectId {
 }
 
 impl ObjectId {
-    pub(crate) fn to_address(&self, bus_name: OwnedUniqueName) -> OwnedObjectAddress {
+    pub(crate) fn to_address(&self, bus_name: &UniqueName) -> OwnedObjectAddress {
         OwnedObjectAddress::new(bus_name, self.path())
     }
 

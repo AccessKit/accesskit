@@ -6,7 +6,7 @@
 use atspi::Accessible;
 use serde::{Deserialize, Serialize};
 use zbus::{
-    names::{OwnedUniqueName, UniqueName},
+    names::UniqueName,
     zvariant::{ObjectPath, OwnedObjectPath, OwnedValue, Type, Value},
 };
 
@@ -14,18 +14,21 @@ const NULL_PATH: &str = "/org/a11y/atspi/null";
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, OwnedValue, Type, Value)]
 pub(crate) struct OwnedObjectAddress {
-    bus_name: OwnedUniqueName,
+    bus_name: String,
     path: OwnedObjectPath,
 }
 
 impl OwnedObjectAddress {
-    pub(crate) fn new(bus_name: OwnedUniqueName, path: OwnedObjectPath) -> Self {
-        Self { bus_name, path }
+    pub(crate) fn new(bus_name: &UniqueName, path: OwnedObjectPath) -> Self {
+        Self {
+            bus_name: bus_name.to_string(),
+            path,
+        }
     }
 
-    pub(crate) fn null(bus_name: OwnedUniqueName) -> Self {
+    pub(crate) fn null() -> Self {
         Self {
-            bus_name,
+            bus_name: String::new(),
             path: ObjectPath::from_str_unchecked(NULL_PATH).into(),
         }
     }
@@ -34,7 +37,7 @@ impl OwnedObjectAddress {
 impl From<Accessible> for OwnedObjectAddress {
     fn from(object: Accessible) -> Self {
         Self {
-            bus_name: OwnedUniqueName::from(UniqueName::from_string_unchecked(object.name)),
+            bus_name: object.name,
             path: object.path,
         }
     }
