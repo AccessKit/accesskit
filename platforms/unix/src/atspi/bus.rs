@@ -78,8 +78,7 @@ impl Bus {
             .at(path.clone(), ApplicationInterface(node.clone()))
             .await?
         {
-            let desktop = self
-                .socket_proxy
+            self.socket_proxy
                 .embed(&(self.unique_name().as_str(), ObjectId::Root.path().into()))
                 .await?;
 
@@ -87,11 +86,7 @@ impl Bus {
                 .object_server()
                 .at(
                     path,
-                    RootAccessibleInterface::new(
-                        self.unique_name().to_owned(),
-                        desktop.into(),
-                        node,
-                    ),
+                    RootAccessibleInterface::new(self.unique_name().to_owned(), node),
                 )
                 .await?;
         }
@@ -230,7 +225,7 @@ impl Bus {
                         kind: "",
                         detail1: 0,
                         detail2: 0,
-                        any_data: child.to_address(self.unique_name().clone()).into(),
+                        any_data: child.to_address(self.unique_name().inner()).into(),
                         properties,
                     },
                 )
@@ -294,7 +289,7 @@ impl Bus {
                         kind: "add",
                         detail1: index as i32,
                         detail2: 0,
-                        any_data: child.to_address(self.unique_name().clone()).into(),
+                        any_data: child.to_address(self.unique_name().inner()).into(),
                         properties,
                     },
                 )
@@ -313,7 +308,7 @@ impl Bus {
                         kind: "remove",
                         detail1: -1,
                         detail2: 0,
-                        any_data: child.to_address(self.unique_name().clone()).into(),
+                        any_data: child.to_address(self.unique_name().inner()).into(),
                         properties,
                     },
                 )
@@ -345,7 +340,7 @@ impl Bus {
                                     },
                                     NodeIdOrRoot::Root => ObjectId::Root,
                                 };
-                                parent.to_address(self.unique_name().clone()).into()
+                                parent.to_address(self.unique_name().inner()).into()
                             }
                             Property::Role(value) => Value::U32(value as u32),
                             Property::Value(value) => Value::F64(value),
