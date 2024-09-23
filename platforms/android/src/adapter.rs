@@ -180,7 +180,19 @@ impl Adapter {
         };
         let request = match action {
             ACTION_CLICK => ActionRequest {
-                action: Action::Default,
+                action: {
+                    let node = tree_state.node_by_id(target).unwrap();
+                    if node.is_focusable() && !node.is_focused() && !node.is_clickable() {
+                        Action::Focus
+                    } else {
+                        Action::Default
+                    }
+                },
+                target,
+                data: None,
+            },
+            ACTION_FOCUS => ActionRequest {
+                action: Action::Focus,
                 target,
                 data: None,
             },
