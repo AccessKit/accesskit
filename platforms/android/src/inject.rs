@@ -241,8 +241,6 @@ impl InjectingAdapter {
     /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
     /// the [`TreeUpdate`] returned by the provided function must contain
     /// a full tree.
-    ///
-    /// TODO: dispatch events
     pub fn update_if_active(&mut self, update_factory: impl FnOnce() -> TreeUpdate) {
         let mut env = self.vm.get_env().unwrap();
         let Some(host) = self.host.upgrade_local(&env).unwrap() else {
