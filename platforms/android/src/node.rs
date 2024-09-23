@@ -152,9 +152,6 @@ impl<'a> NodeWrapper<'a> {
         }
 
         if let Some(rect) = self.0.bounding_box() {
-            if self.0.role() == Role::TextInput {
-                println!("text input rect {rect:?}");
-            }
             let android_rect_class = env.find_class("android/graphics/Rect")?;
             let android_rect = env.new_object(
                 &android_rect_class,
@@ -244,8 +241,12 @@ impl<'a> NodeWrapper<'a> {
             Ok(())
         }
 
-        if self.0.default_action_verb().is_some() {
+        let can_focus = self.0.is_focusable() && !self.0.is_focused();
+        if self.0.is_clickable() || can_focus {
             add_action(env, jni_node, ACTION_CLICK)?;
+        }
+        if can_focus {
+            add_action(env, jni_node, ACTION_FOCUS)?;
         }
 
         let live = match self.0.live() {
