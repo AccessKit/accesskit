@@ -14,6 +14,7 @@ use std::collections::HashMap;
 
 pub(crate) const ACTION_FOCUS: jint = 1 << 0;
 pub(crate) const ACTION_CLICK: jint = 1 << 4;
+pub(crate) const EVENT_VIEW_FOCUSED: jint = 1 << 3;
 pub(crate) const EVENT_VIEW_HOVER_ENTER: jint = 1 << 7;
 pub(crate) const EVENT_VIEW_HOVER_EXIT: jint = 1 << 8;
 pub(crate) const EVENT_WINDOW_CONTENT_CHANGED: jint = 1 << 11;
