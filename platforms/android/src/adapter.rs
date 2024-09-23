@@ -7,7 +7,7 @@ use accesskit::{
     Action, ActionHandler, ActionRequest, ActivationHandler, NodeBuilder, NodeId, Point, Role,
     Tree as TreeData, TreeUpdate,
 };
-use accesskit_consumer::Tree;
+use accesskit_consumer::{Node, Tree, TreeChangeHandler};
 use jni::{
     errors::Result,
     objects::{JClass, JObject},
@@ -16,6 +16,94 @@ use jni::{
 };
 
 use crate::{filters::filter, node::NodeWrapper, util::*};
+
+fn send_window_content_changed(env: &mut JNIEnv, callback_class: &JClass, host: &JObject) {
+    send_event(
+        env,
+        callback_class,
+        host,
+        HOST_VIEW_ID,
+        EVENT_WINDOW_CONTENT_CHANGED,
+    );
+}
+
+fn send_focus_event_if_applicable(
+    env: &mut JNIEnv,
+    callback_class: &JClass,
+    host: &JObject,
+    node_id_map: &mut NodeIdMap,
+    node: &Node,
+) {
+    if node.is_root() && node.role() == Role::Window {
+        return;
+    }
+    let id = node_id_map.get_or_create_java_id(node);
+    send_event(env, callback_class, host, id, EVENT_VIEW_FOCUSED);
+}
+
+struct AdapterChangeHandler<'a> {
+    env: &'a mut JNIEnv<'a>,
+    callback_class: &'a JClass<'a>,
+    host: &'a JObject<'a>,
+    node_id_map: &'a mut NodeIdMap,
+    sent_window_content_changed: bool,
+}
+
+impl<'a> AdapterChangeHandler<'a> {
+    fn new(
+        env: &'a mut JNIEnv<'a>,
+        callback_class: &'a JClass<'a>,
+        host: &'a JObject<'a>,
+        node_id_map: &'a mut NodeIdMap,
+    ) -> Self {
+        Self {
+            env,
+            callback_class,
+            host,
+            node_id_map,
+            sent_window_content_changed: false,
+        }
+    }
+}
+
+impl AdapterChangeHandler<'_> {
+    fn send_window_content_changed_if_needed(&mut self) {
+        if self.sent_window_content_changed {
+            return;
+        }
+        send_window_content_changed(self.env, self.callback_class, self.host);
+        self.sent_window_content_changed = true;
+    }
+}
+
+impl TreeChangeHandler for AdapterChangeHandler<'_> {
+    fn node_added(&mut self, _node: &Node) {
+        self.send_window_content_changed_if_needed();
+        // TODO: live regions?
+    }
+
+    fn node_updated(&mut self, _old_node: &Node, _new_node: &Node) {
+        self.send_window_content_changed_if_needed();
+        // TODO: other events
+    }
+
+    fn focus_moved(&mut self, _old_node: Option<&Node>, new_node: Option<&Node>) {
+        if let Some(new_node) = new_node {
+            send_focus_event_if_applicable(
+                self.env,
+                self.callback_class,
+                self.host,
+                self.node_id_map,
+                new_node,
+            );
+        }
+    }
+
+    fn node_removed(&mut self, _node: &Node) {
+        self.send_window_content_changed_if_needed();
+        // TODO: other events?
+    }
+}
 
 const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
 
@@ -76,33 +164,36 @@ impl Adapter {
     /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
     /// the [`TreeUpdate`] returned by the provided function must contain
     /// a full tree.
-    pub fn update_if_active(
-        &mut self,
+    pub fn update_if_active<'a>(
+        &'a mut self,
         update_factory: impl FnOnce() -> TreeUpdate,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
+        env: &'a mut JNIEnv<'a>,
+        callback_class: &'a JClass<'a>,
+        host: &'a JObject<'a>,
     ) {
         match &mut self.state {
-            State::Inactive => {
-                return;
-            }
+            State::Inactive => (),
             State::Placeholder(_) => {
-                self.state = State::Active(Tree::new(update_factory(), true));
+                let tree = Tree::new(update_factory(), true);
+                send_window_content_changed(env, callback_class, host);
+                let state = tree.state();
+                if let Some(focus) = state.focus() {
+                    send_focus_event_if_applicable(
+                        env,
+                        callback_class,
+                        host,
+                        &mut self.node_id_map,
+                        &focus,
+                    );
+                }
+                self.state = State::Active(tree);
             }
             State::Active(tree) => {
-                tree.update(update_factory());
+                let mut handler =
+                    AdapterChangeHandler::new(env, callback_class, host, &mut self.node_id_map);
+                tree.update_and_process_changes(update_factory(), &mut handler);
             }
         }
-        // TODO: Send other events; only send a change event if the tree
-        // actually changed.
-        send_event(
-            env,
-            callback_class,
-            host,
-            HOST_VIEW_ID,
-            EVENT_WINDOW_CONTENT_CHANGED,
-        );
     }
 
     #[allow(clippy::too_many_arguments)]
