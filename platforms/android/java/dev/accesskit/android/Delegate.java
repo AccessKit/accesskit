@@ -3,6 +3,11 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+// Derived from the Flutter engine.
+// Copyright 2013 The Flutter Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE.chromium file.
+
 package dev.accesskit.android;
 
 import android.os.Bundle;
@@ -46,18 +51,27 @@ public final class Delegate extends View.AccessibilityDelegate {
         });
     }
 
-    private static void sendEventInternal(View host, int virtualViewId, int type) {
-        AccessibilityEvent event = AccessibilityEvent.obtain(type);
-        event.setPackageName(host.getContext().getPackageName());
+    private static AccessibilityEvent newEvent(View host, int virtualViewId, int type) {
+        AccessibilityEvent e = AccessibilityEvent.obtain(type);
+        e.setPackageName(host.getContext().getPackageName());
         if (virtualViewId == AccessibilityNodeProvider.HOST_VIEW_ID) {
-            event.setSource(host);
+            e.setSource(host);
         } else {
-            event.setSource(host, virtualViewId);
+            e.setSource(host, virtualViewId);
         }
+        return e;
+    }
+
+    private static void sendCompletedEvent(View host, AccessibilityEvent e) {
+        host.getParent().requestSendAccessibilityEvent(host, e);
+    }
+
+    private static void sendEventInternal(View host, int virtualViewId, int type) {
+        AccessibilityEvent e = newEvent(host, virtualViewId, type);
         if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
-            event.setContentChangeTypes(AccessibilityEvent.CONTENT_CHANGE_TYPE_SUBTREE);
+            e.setContentChangeTypes(AccessibilityEvent.CONTENT_CHANGE_TYPE_SUBTREE);
         }
-        host.getParent().requestSendAccessibilityEvent(host, event);
+        sendCompletedEvent(host, e);
     }
 
     public static void sendEvent(final View host, final int virtualViewId, final int type) {
@@ -65,6 +79,44 @@ public final class Delegate extends View.AccessibilityDelegate {
             @Override
             public void run() {
                 sendEventInternal(host, virtualViewId, type);
+            }
+        });
+    }
+
+    private static void sendTextChangedInternal(View host, int virtualViewId, String oldValue, String newValue) {
+        int i;
+        for (i = 0; i < oldValue.length() && i < newValue.length(); ++i) {
+            if (oldValue.charAt(i) != newValue.charAt(i)) {
+                break;
+            }
+        }
+        if (i >= oldValue.length() && i >= newValue.length()) {
+            return; // Text did not change
+        }
+        AccessibilityEvent e = newEvent(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED);
+        e.setBeforeText(oldValue);
+        e.getText().add(newValue);
+        int firstDifference = i;
+        e.setFromIndex(firstDifference);
+        int oldIndex = oldValue.length() - 1;
+        int newIndex = newValue.length() - 1;
+        while (oldIndex >= firstDifference && newIndex >= firstDifference) {
+            if (oldValue.charAt(oldIndex) != newValue.charAt(newIndex)) {
+                break;
+            }
+            --oldIndex;
+            --newIndex;
+        }
+        e.setRemovedCount(oldIndex - firstDifference + 1);
+        e.setAddedCount(newIndex - firstDifference + 1);
+        sendCompletedEvent(host, e);
+    }
+
+    public static void sendTextChanged(final View host, final int virtualViewId, final String oldValue, final String newValue) {
+        host.post(new Runnable() {
+            @Override
+            public void run() {
+                sendTextChangedInternal(host, virtualViewId, oldValue, newValue);
             }
         });
     }
