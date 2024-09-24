@@ -20,6 +20,21 @@
   * dependencies
     * accesskit bumped from 0.12.2 to 0.12.3
 
+## [0.24.1](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.24.0...accesskit_consumer-v0.24.1) (2024-09-24)
+
+
+### Bug Fixes
+
+* `Node::is_focusable` always returns true if the node is focused ([#451](https://github.com/AccessKit/accesskit/issues/451)) ([d286883](https://github.com/AccessKit/accesskit/commit/d286883d88b5c1e51f6e8bbfbc2e0e5b1986d9b5))
+* Extend the implicit labelled-by relation to more parent roles ([#448](https://github.com/AccessKit/accesskit/issues/448)) ([df518c7](https://github.com/AccessKit/accesskit/commit/df518c71934cb4e0071764643968e67f9908a8dd))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.16.0 to 0.16.1
+
 ## [0.24.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.23.0...accesskit_consumer-v0.24.0) (2024-06-29)
 
 

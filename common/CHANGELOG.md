@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.16.0...accesskit-v0.16.1) (2024-09-24)
+
+
+### Bug Fixes
+
+* Improve debug representation of `Node` and `NodeBuilder` ([#452](https://github.com/AccessKit/accesskit/issues/452)) ([119aa1d](https://github.com/AccessKit/accesskit/commit/119aa1dca8fe734112ecbd59568c876b336ccb6c))
+
 ## [0.16.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.15.0...accesskit-v0.16.0) (2024-06-29)
 
 

@@ -33,6 +33,26 @@
     * accesskit bumped from 0.12.2 to 0.12.3
     * accesskit_consumer bumped from 0.17.0 to 0.17.1
 
+## [0.23.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.22.0...accesskit_windows-v0.23.0) (2024-09-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* Update windows to 0.58 on accesskit_windows ([#453](https://github.com/AccessKit/accesskit/issues/453))
+
+### Bug Fixes
+
+* Update windows to 0.58 on accesskit_windows ([#453](https://github.com/AccessKit/accesskit/issues/453)) ([cda35e7](https://github.com/AccessKit/accesskit/commit/cda35e77a78f72386c2bfd88e9fd29000106f7e6))
+* Use the new HWND type on accesskit_winit ([#453](https://github.com/AccessKit/accesskit/issues/453)) ([68a2462](https://github.com/AccessKit/accesskit/commit/68a24629381f0b18f6ed1ee008fe72ce9330092e))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.16.0 to 0.16.1
+    * accesskit_consumer bumped from 0.24.0 to 0.24.1
+
 ## [0.22.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.21.0...accesskit_windows-v0.22.0) (2024-06-29)
 
 

@@ -9,6 +9,11 @@
   * dependencies
     * accesskit_consumer bumped from 0.19.0 to 0.19.1
 
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.16.0 to 0.16.1
+    * accesskit_consumer bumped from 0.24.0 to 0.24.1
+
 ## [0.9.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.8.0...accesskit_atspi_common-v0.9.0) (2024-06-29)
 
 
