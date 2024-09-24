@@ -23,13 +23,13 @@ impl Adapter {
     ) -> Self {
         #[cfg(feature = "rwh_05")]
         let hwnd = match window.raw_window_handle() {
-            RawWindowHandle::Win32(handle) => handle.hwnd as isize,
+            RawWindowHandle::Win32(handle) => handle.hwnd,
             RawWindowHandle::WinRt(_) => unimplemented!(),
             _ => unreachable!(),
         };
         #[cfg(feature = "rwh_06")]
         let hwnd = match window.window_handle().unwrap().as_raw() {
-            RawWindowHandle::Win32(handle) => handle.hwnd.get(),
+            RawWindowHandle::Win32(handle) => handle.hwnd.get() as *mut _,
             RawWindowHandle::WinRt(_) => unimplemented!(),
             _ => unreachable!(),
         };
