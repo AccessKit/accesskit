@@ -58,6 +58,21 @@
   * dependencies
     * accesskit_atspi_common bumped from 0.7.0 to 0.8.0
 
+## [0.12.1](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.12.0...accesskit_unix-v0.12.1) (2024-09-24)
+
+
+### Bug Fixes
+
+* Return a null object for AT-SPI application's parent ([#454](https://github.com/AccessKit/accesskit/issues/454)) ([8a84abf](https://github.com/AccessKit/accesskit/commit/8a84abf81eaf22dd3672813ca36f1a422b5c0f1e))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.16.0 to 0.16.1
+    * accesskit_atspi_common bumped from 0.9.0 to 0.9.1
+
 ## [0.12.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.11.1...accesskit_unix-v0.12.0) (2024-06-29)
 
 
