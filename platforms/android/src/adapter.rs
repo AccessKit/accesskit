@@ -7,7 +7,7 @@ use accesskit::{
     Action, ActionHandler, ActionRequest, ActivationHandler, NodeBuilder, NodeId, Point, Role,
     Tree as TreeData, TreeUpdate,
 };
-use accesskit_consumer::{Node, Tree, TreeChangeHandler};
+use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler};
 use jni::{
     errors::Result,
     objects::{JClass, JObject},
@@ -82,8 +82,39 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         // TODO: live regions?
     }
 
-    fn node_updated(&mut self, _old_node: &Node, _new_node: &Node) {
+    fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
         self.send_window_content_changed_if_needed();
+        if filter(new_node) != FilterResult::Include {
+            return;
+        }
+        let old_wrapper = NodeWrapper(old_node);
+        let new_wrapper = NodeWrapper(new_node);
+        let old_text = old_wrapper.text();
+        let new_text = new_wrapper.text();
+        if old_text != new_text {
+            let id = self.node_id_map.get_or_create_java_id(new_node);
+            let old_text = self
+                .env
+                .new_string(old_text.unwrap_or_else(String::new))
+                .unwrap();
+            let new_text = self
+                .env
+                .new_string(new_text.unwrap_or_else(String::new))
+                .unwrap();
+            self.env
+                .call_static_method(
+                    self.callback_class,
+                    "sendTextChanged",
+                    "(Landroid/view/View;ILjava/lang/String;Ljava/lang/String;)V",
+                    &[
+                        self.host.into(),
+                        id.into(),
+                        (&old_text).into(),
+                        (&new_text).into(),
+                    ],
+                )
+                .unwrap();
+        }
         // TODO: other events
     }
 

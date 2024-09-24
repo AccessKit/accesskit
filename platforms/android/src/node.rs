@@ -17,14 +17,6 @@ use crate::{filters::filter, util::*};
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
 
 impl<'a> NodeWrapper<'a> {
-    fn name(&self) -> Option<String> {
-        self.0.name()
-    }
-
-    fn value(&self) -> Option<String> {
-        self.0.value()
-    }
-
     fn is_editable(&self) -> bool {
         self.0.is_text_input() && !self.0.is_read_only()
     }
@@ -68,6 +60,22 @@ impl<'a> NodeWrapper<'a> {
             // value of aria-selected.
             _ => self.0.is_selected().unwrap_or(false),
         }
+    }
+
+    fn content_description(&self) -> Option<String> {
+        if self.0.role() == Role::Label {
+            return None;
+        }
+        self.0.name()
+    }
+
+    pub(crate) fn text(&self) -> Option<String> {
+        self.0.value().or_else(|| {
+            if self.0.role() != Role::Label {
+                return None;
+            }
+            self.0.name()
+        })
     }
 
     fn class_name(&self) -> &str {
@@ -201,26 +209,22 @@ impl<'a> NodeWrapper<'a> {
             "(Z)V",
             &[self.is_selected().into()],
         )?;
-        if let Some(name) = self.name() {
-            let name = env.new_string(name)?;
+        if let Some(desc) = self.content_description() {
+            let desc = env.new_string(desc)?;
             env.call_method(
                 jni_node,
-                if self.0.role() == Role::Label {
-                    "setText"
-                } else {
-                    "setContentDescription"
-                },
+                "setContentDescription",
                 "(Ljava/lang/CharSequence;)V",
-                &[(&name).into()],
+                &[(&desc).into()],
             )?;
         }
-        if let Some(value) = self.value() {
-            let value = env.new_string(value)?;
+        if let Some(text) = self.text() {
+            let text = env.new_string(text)?;
             env.call_method(
                 jni_node,
                 "setText",
                 "(Ljava/lang/CharSequence;)V",
-                &[(&value).into()],
+                &[(&text).into()],
             )?;
         }
         let class_name = env.new_string(self.class_name())?;
