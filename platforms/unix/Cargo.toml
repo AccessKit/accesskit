@@ -19,10 +19,10 @@ tokio = ["dep:tokio", "dep:tokio-stream", "atspi/tokio", "zbus/tokio"]
 [dependencies]
 accesskit = { version = "0.16.1", path = "../../common" }
 accesskit_atspi_common = { version = "0.9.1", path = "../atspi-common" }
-atspi = { version = "0.19", default-features = false }
+atspi = { version = "0.22", default-features = false }
 futures-lite = "1.13"
 serde = "1.0"
-zbus = { version = "3.14", default-features = false }
+zbus = { version = "4.4", default-features = false }
 
 # async-io support
 async-channel = { version = "2.1.1", optional = true }

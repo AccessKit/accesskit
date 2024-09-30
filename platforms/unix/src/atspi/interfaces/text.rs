@@ -6,7 +6,7 @@
 use accesskit_atspi_common::{PlatformNode, Rect};
 use atspi::{CoordType, Granularity, ScrollType};
 use std::collections::HashMap;
-use zbus::fdo;
+use zbus::{fdo, interface};
 
 pub(crate) struct TextInterface {
     node: PlatformNode,
@@ -22,14 +22,14 @@ impl TextInterface {
     }
 }
 
-#[dbus_interface(name = "org.a11y.atspi.Text")]
+#[interface(name = "org.a11y.atspi.Text")]
 impl TextInterface {
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn character_count(&self) -> fdo::Result<i32> {
         self.node.character_count().map_err(self.map_error())
     }
 
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn caret_offset(&self) -> fdo::Result<i32> {
         self.node.caret_offset().map_err(self.map_error())
     }

@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit_atspi_common::PlatformNode;
-use zbus::fdo;
+use zbus::{fdo, interface};
 
 pub(crate) struct ValueInterface {
     node: PlatformNode,
@@ -20,29 +20,29 @@ impl ValueInterface {
     }
 }
 
-#[dbus_interface(name = "org.a11y.atspi.Value")]
+#[interface(name = "org.a11y.atspi.Value")]
 impl ValueInterface {
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn minimum_value(&self) -> fdo::Result<f64> {
         self.node.minimum_value().map_err(self.map_error())
     }
 
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn maximum_value(&self) -> fdo::Result<f64> {
         self.node.maximum_value().map_err(self.map_error())
     }
 
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn minimum_increment(&self) -> fdo::Result<f64> {
         self.node.minimum_increment().map_err(self.map_error())
     }
 
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn current_value(&self) -> fdo::Result<f64> {
         self.node.current_value().map_err(self.map_error())
     }
 
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn set_current_value(&mut self, value: f64) -> fdo::Result<()> {
         self.node.set_current_value(value).map_err(self.map_error())
     }

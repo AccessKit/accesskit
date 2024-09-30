@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit_atspi_common::{Action, PlatformNode};
-use zbus::{dbus_interface, fdo};
+use zbus::{interface, fdo};
 
 pub(crate) struct ActionInterface(PlatformNode);
 
@@ -18,9 +18,9 @@ impl ActionInterface {
     }
 }
 
-#[dbus_interface(name = "org.a11y.atspi.Action")]
+#[interface(name = "org.a11y.atspi.Action")]
 impl ActionInterface {
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn n_actions(&self) -> fdo::Result<i32> {
         self.0.n_actions().map_err(self.map_error())
     }
