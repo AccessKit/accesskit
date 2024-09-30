@@ -20,7 +20,7 @@ tokio = ["dep:tokio", "dep:tokio-stream", "atspi/tokio", "zbus/tokio"]
 accesskit = { version = "0.16.1", path = "../../common" }
 accesskit_atspi_common = { version = "0.9.1", path = "../atspi-common" }
 atspi = { version = "0.22", default-features = false }
-futures-lite = "1.13"
+futures-lite = "2.3"
 serde = "1.0"
 zbus = { version = "4.4", default-features = false }
 
