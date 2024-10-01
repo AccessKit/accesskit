@@ -99,7 +99,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 .unwrap();
             let new_text = self
                 .env
-                .new_string(new_text.unwrap_or_else(String::new))
+                .new_string(new_text.clone().unwrap_or_else(String::new))
                 .unwrap();
             self.env
                 .call_static_method(
@@ -114,6 +114,28 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                     ],
                 )
                 .unwrap();
+        }
+        if old_node.raw_text_selection() != new_node.raw_text_selection() {
+            if let Some((start, end)) = new_wrapper.text_selection() {
+                if let Some(text) = new_text {
+                    let id = self.node_id_map.get_or_create_java_id(new_node);
+                    let text = self.env.new_string(text).unwrap();
+                    self.env
+                        .call_static_method(
+                            self.callback_class,
+                            "sendTextSelectionChanged",
+                            "(Landroid/view/View;ILjava/lang/String;II)V",
+                            &[
+                                self.host.into(),
+                                id.into(),
+                                (&text).into(),
+                                (start as jint).into(),
+                                (end as jint).into(),
+                            ],
+                        )
+                        .unwrap();
+                }
+            }
         }
         // TODO: other events
     }
