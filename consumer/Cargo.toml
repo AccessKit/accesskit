@@ -14,3 +14,4 @@ rust-version.workspace = true
 [dependencies]
 accesskit = { version = "0.16.1", path = "../common" }
 immutable-chunkmap = "2.0.5"
+

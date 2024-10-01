@@ -25,4 +25,3 @@ enumn = ["dep:enumn"]
 pyo3 = ["dep:pyo3"]
 serde = ["dep:serde", "enumn"]
 schemars = ["dep:schemars", "serde"]
-
