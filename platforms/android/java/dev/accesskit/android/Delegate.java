@@ -121,6 +121,24 @@ public final class Delegate extends View.AccessibilityDelegate {
         });
     }
 
+    private static void sendTextSelectionChangedInternal(View host, int virtualViewId, String text, int start, int end) {
+        AccessibilityEvent e = newEvent(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED);
+        e.getText().add(text);
+        e.setFromIndex(start);
+        e.setToIndex(end);
+        e.setItemCount(text.length());
+        sendCompletedEvent(host, e);
+    }
+
+    public static void sendTextSelectionChanged(final View host, final int virtualViewId, final String text, final int start, final int end) {
+        host.post(new Runnable() {
+            @Override
+            public void run() {
+                sendTextSelectionChangedInternal(host, virtualViewId, text, start, end);
+            }
+        });
+    }
+
     private static native boolean populateNodeInfo(long adapterHandle, View host, int screenX, int screenY, int virtualViewId, AccessibilityNodeInfo nodeInfo);
     private static native boolean performAction(long adapterHandle, View host, int virtualViewId, int action, Bundle arguments);
 
