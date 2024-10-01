@@ -78,6 +78,15 @@ impl<'a> NodeWrapper<'a> {
         })
     }
 
+    pub(crate) fn text_selection(&self) -> Option<(usize, usize)> {
+        self.0.text_selection().map(|range| {
+            (
+                range.start().to_global_utf16_index(),
+                range.end().to_global_utf16_index(),
+            )
+        })
+    }
+
     fn class_name(&self) -> &str {
         match self.0.role() {
             Role::TextInput
@@ -218,6 +227,7 @@ impl<'a> NodeWrapper<'a> {
                 &[(&desc).into()],
             )?;
         }
+
         if let Some(text) = self.text() {
             let text = env.new_string(text)?;
             env.call_method(
@@ -227,6 +237,15 @@ impl<'a> NodeWrapper<'a> {
                 &[(&text).into()],
             )?;
         }
+        if let Some((start, end)) = self.text_selection() {
+            env.call_method(
+                jni_node,
+                "setTextSelection",
+                "(II)V",
+                &[(start as jint).into(), (end as jint).into()],
+            )?;
+        }
+
         let class_name = env.new_string(self.class_name())?;
         env.call_method(
             jni_node,
