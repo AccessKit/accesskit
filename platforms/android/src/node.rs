@@ -8,7 +8,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use accesskit::{Live, Role, Toggled};
+use accesskit::{Action, Live, Role, Toggled};
 use accesskit_consumer::Node;
 use jni::{errors::Result, objects::JObject, sys::jint, JNIEnv};
 
@@ -270,6 +270,9 @@ impl<'a> NodeWrapper<'a> {
         }
         if can_focus {
             add_action(env, jni_node, ACTION_FOCUS)?;
+        }
+        if self.0.supports_action(Action::SetTextSelection) {
+            add_action(env, jni_node, ACTION_SET_SELECTION)?;
         }
 
         let live = match self.0.live() {

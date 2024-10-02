@@ -3,11 +3,16 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+// Derived from the Flutter engine.
+// Copyright 2013 The Flutter Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE.chromium file.
+
 use accesskit::{
-    Action, ActionHandler, ActionRequest, ActivationHandler, NodeBuilder, NodeId, Point, Role,
-    Tree as TreeData, TreeUpdate,
+    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, NodeBuilder, NodeId,
+    Point, Role, Tree as TreeData, TreeUpdate,
 };
-use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler};
+use accesskit_consumer::{FilterResult, Node, TextRange, Tree, TreeChangeHandler};
 use jni::{
     errors::Result,
     objects::{JClass, JObject},
@@ -41,19 +46,19 @@ fn send_focus_event_if_applicable(
     send_event(env, callback_class, host, id, EVENT_VIEW_FOCUSED);
 }
 
-struct AdapterChangeHandler<'a> {
-    env: &'a mut JNIEnv<'a>,
-    callback_class: &'a JClass<'a>,
-    host: &'a JObject<'a>,
+struct AdapterChangeHandler<'a, 'b, 'c, 'd> {
+    env: &'a mut JNIEnv<'b>,
+    callback_class: &'a JClass<'c>,
+    host: &'a JObject<'d>,
     node_id_map: &'a mut NodeIdMap,
     sent_window_content_changed: bool,
 }
 
-impl<'a> AdapterChangeHandler<'a> {
+impl<'a, 'b, 'c, 'd> AdapterChangeHandler<'a, 'b, 'c, 'd> {
     fn new(
-        env: &'a mut JNIEnv<'a>,
-        callback_class: &'a JClass<'a>,
-        host: &'a JObject<'a>,
+        env: &'a mut JNIEnv<'b>,
+        callback_class: &'a JClass<'c>,
+        host: &'a JObject<'d>,
         node_id_map: &'a mut NodeIdMap,
     ) -> Self {
         Self {
@@ -66,7 +71,7 @@ impl<'a> AdapterChangeHandler<'a> {
     }
 }
 
-impl AdapterChangeHandler<'_> {
+impl AdapterChangeHandler<'_, '_, '_, '_> {
     fn send_window_content_changed_if_needed(&mut self) {
         if self.sent_window_content_changed {
             return;
@@ -76,7 +81,7 @@ impl AdapterChangeHandler<'_> {
     }
 }
 
-impl TreeChangeHandler for AdapterChangeHandler<'_> {
+impl TreeChangeHandler for AdapterChangeHandler<'_, '_, '_, '_> {
     fn node_added(&mut self, _node: &Node) {
         self.send_window_content_changed_if_needed();
         // TODO: live regions?
@@ -196,13 +201,25 @@ impl State {
         }
     }
 
-    fn get_full_tree(&mut self) -> Option<&Tree> {
+    fn get_full_tree(&mut self) -> Option<&mut Tree> {
         match self {
             Self::Inactive => None,
             Self::Placeholder(_) => None,
             Self::Active(tree) => Some(tree),
         }
     }
+}
+
+fn update_tree(
+    env: &mut JNIEnv,
+    callback_class: &JClass,
+    host: &JObject,
+    node_id_map: &mut NodeIdMap,
+    tree: &mut Tree,
+    update: TreeUpdate,
+) {
+    let mut handler = AdapterChangeHandler::new(env, callback_class, host, node_id_map);
+    tree.update_and_process_changes(update, &mut handler);
 }
 
 #[derive(Default)]
@@ -217,12 +234,12 @@ impl Adapter {
     /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
     /// the [`TreeUpdate`] returned by the provided function must contain
     /// a full tree.
-    pub fn update_if_active<'a>(
-        &'a mut self,
+    pub fn update_if_active(
+        &mut self,
         update_factory: impl FnOnce() -> TreeUpdate,
-        env: &'a mut JNIEnv<'a>,
-        callback_class: &'a JClass<'a>,
-        host: &'a JObject<'a>,
+        env: &mut JNIEnv,
+        callback_class: &JClass,
+        host: &JObject,
     ) {
         match &mut self.state {
             State::Inactive => (),
@@ -242,9 +259,14 @@ impl Adapter {
                 self.state = State::Active(tree);
             }
             State::Active(tree) => {
-                let mut handler =
-                    AdapterChangeHandler::new(env, callback_class, host, &mut self.node_id_map);
-                tree.update_and_process_changes(update_factory(), &mut handler);
+                update_tree(
+                    env,
+                    callback_class,
+                    host,
+                    &mut self.node_id_map,
+                    tree,
+                    update_factory(),
+                );
             }
         }
     }
@@ -304,21 +326,18 @@ impl Adapter {
     pub fn perform_action<H: ActionHandler + ?Sized>(
         &mut self,
         action_handler: &mut H,
-        _env: &mut JNIEnv,
-        _host: &JObject,
         virtual_view_id: jint,
         action: jint,
-        _arguments: &JObject,
-    ) -> Result<bool> {
+    ) -> bool {
         let Some(tree) = self.state.get_full_tree() else {
-            return Ok(false);
+            return false;
         };
         let tree_state = tree.state();
         let target = if virtual_view_id == HOST_VIEW_ID {
             tree_state.root_id()
         } else {
             let Some(accesskit_id) = self.node_id_map.get_accesskit_id(virtual_view_id) else {
-                return Ok(false);
+                return false;
             };
             accesskit_id
         };
@@ -341,10 +360,120 @@ impl Adapter {
                 data: None,
             },
             _ => {
-                return Ok(false);
+                return false;
             }
         };
         action_handler.do_action(request);
-        Ok(true)
+        true
+    }
+
+    fn set_text_selection_common<H: ActionHandler + ?Sized, F>(
+        &mut self,
+        action_handler: &mut H,
+        env: &mut JNIEnv,
+        callback_class: &JClass,
+        host: &JObject,
+        virtual_view_id: jint,
+        selection_factory: F,
+    ) -> bool
+    where
+        for<'a> F: FnOnce(&'a Node<'a>) -> Option<TextRange<'a>>,
+    {
+        let Some(tree) = self.state.get_full_tree() else {
+            return false;
+        };
+        let tree_state = tree.state();
+        let node = if virtual_view_id == HOST_VIEW_ID {
+            tree_state.root()
+        } else {
+            let Some(id) = self.node_id_map.get_accesskit_id(virtual_view_id) else {
+                return false;
+            };
+            tree_state.node_by_id(id).unwrap()
+        };
+        let target = node.id();
+        // TalkBack expects the text selection change to take effect
+        // immediately, so we optimistically update the node.
+        // But don't be *too* optimistic.
+        if !node.supports_action(Action::SetTextSelection) {
+            return false;
+        }
+        let Some(range) = selection_factory(&node) else {
+            return false;
+        };
+        let selection = range.to_text_selection();
+        let mut builder = NodeBuilder::from(node.data());
+        builder.set_text_selection(selection);
+        let new_node = builder.build();
+        let update = TreeUpdate {
+            nodes: vec![(node.id(), new_node)],
+            tree: None,
+            focus: tree_state.focus_id_in_tree(),
+        };
+        update_tree(
+            env,
+            callback_class,
+            host,
+            &mut self.node_id_map,
+            tree,
+            update,
+        );
+        let request = ActionRequest {
+            target,
+            action: Action::SetTextSelection,
+            data: Some(ActionData::SetTextSelection(selection)),
+        };
+        action_handler.do_action(request);
+        true
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn set_text_selection<H: ActionHandler + ?Sized>(
+        &mut self,
+        action_handler: &mut H,
+        env: &mut JNIEnv,
+        callback_class: &JClass,
+        host: &JObject,
+        virtual_view_id: jint,
+        start: jint,
+        end: jint,
+    ) -> bool {
+        self.set_text_selection_common(
+            action_handler,
+            env,
+            callback_class,
+            host,
+            virtual_view_id,
+            |node| {
+                let start = usize::try_from(start).ok()?;
+                let start = node.text_position_from_global_utf16_index(start)?;
+                let mut range = start.to_degenerate_range();
+                let end = usize::try_from(end).ok()?;
+                let end = node.text_position_from_global_utf16_index(end)?;
+                range.set_end(end);
+                Some(range)
+            },
+        )
+    }
+
+    pub fn collapse_text_selection<H: ActionHandler + ?Sized>(
+        &mut self,
+        action_handler: &mut H,
+        env: &mut JNIEnv,
+        callback_class: &JClass,
+        host: &JObject,
+        virtual_view_id: jint,
+    ) -> bool {
+        self.set_text_selection_common(
+            action_handler,
+            env,
+            callback_class,
+            host,
+            virtual_view_id,
+            |node| {
+                node.text_selection_focus()
+                    .map(|pos| pos.to_degenerate_range())
+            },
+        )
     }
 }

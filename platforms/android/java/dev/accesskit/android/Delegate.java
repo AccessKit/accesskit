@@ -140,7 +140,9 @@ public final class Delegate extends View.AccessibilityDelegate {
     }
 
     private static native boolean populateNodeInfo(long adapterHandle, View host, int screenX, int screenY, int virtualViewId, AccessibilityNodeInfo nodeInfo);
-    private static native boolean performAction(long adapterHandle, View host, int virtualViewId, int action, Bundle arguments);
+    private static native boolean performAction(long adapterHandle, int virtualViewId, int action);
+    private static native boolean setTextSelection(long adapterHandle, View host, int virtualViewId, int start, int end);
+    private static native boolean collapseTextSelection(long adapterHandle, View host, int virtualViewId);
 
     @Override
     public AccessibilityNodeProvider getAccessibilityNodeProvider(final View host) {
@@ -179,8 +181,16 @@ public final class Delegate extends View.AccessibilityDelegate {
                     host.invalidate();
                     sendEventInternal(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED);
                     return true;
+                case AccessibilityNodeInfo.ACTION_SET_SELECTION:
+                    if (arguments != null && arguments.containsKey(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT) && arguments.containsKey(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT)) {
+                        int start = arguments.getInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT);
+                        int end = arguments.getInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT);
+                        return Delegate.setTextSelection(adapterHandle, host, virtualViewId, start, end);
+                    } else {
+                        return Delegate.collapseTextSelection(adapterHandle, host, virtualViewId);
+                    }
                 }
-                if (!Delegate.performAction(adapterHandle, host, virtualViewId, action, arguments)) {
+                if (!Delegate.performAction(adapterHandle, virtualViewId, action)) {
                     return false;
                 }
                 switch (action) {
