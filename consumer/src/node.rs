@@ -39,7 +39,7 @@ pub struct Node<'a> {
 }
 
 impl<'a> Node<'a> {
-    pub(crate) fn data(&self) -> &NodeData {
+    pub fn data(&self) -> &NodeData {
         &self.state.data
     }
 
@@ -461,9 +461,7 @@ impl<'a> Node<'a> {
             && !self.supports_expand_collapse()
     }
 
-    // The future of the `Action` enum is undecided, so keep the following
-    // function private for now.
-    fn supports_action(&self, action: Action) -> bool {
+    pub fn supports_action(&self, action: Action) -> bool {
         self.data().supports_action(action)
     }
 

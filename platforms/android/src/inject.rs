@@ -61,21 +61,44 @@ impl InnerInjectingAdapter {
             .virtual_view_at_point(&mut *self.activation_handler, x, y)
     }
 
-    fn perform_action(
+    fn perform_action(&mut self, virtual_view_id: jint, action: jint) -> bool {
+        self.adapter
+            .perform_action(&mut *self.action_handler, virtual_view_id, action)
+    }
+
+    fn set_text_selection(
         &mut self,
         env: &mut JNIEnv,
+        callback_class: &JClass,
         host: &JObject,
         virtual_view_id: jint,
-        action: jint,
-        arguments: &JObject,
-    ) -> Result<bool> {
-        self.adapter.perform_action(
+        start: jint,
+        end: jint,
+    ) -> bool {
+        self.adapter.set_text_selection(
             &mut *self.action_handler,
             env,
+            callback_class,
             host,
             virtual_view_id,
-            action,
-            arguments,
+            start,
+            end,
+        )
+    }
+
+    fn collapse_text_selection(
+        &mut self,
+        env: &mut JNIEnv,
+        callback_class: &JClass,
+        host: &JObject,
+        virtual_view_id: jint,
+    ) -> bool {
+        self.adapter.collapse_text_selection(
+            &mut *self.action_handler,
+            env,
+            callback_class,
+            host,
+            virtual_view_id,
         )
     }
 }
@@ -121,22 +144,55 @@ extern "system" fn populate_node_info(
 }
 
 extern "system" fn perform_action(
-    mut env: JNIEnv,
+    _env: JNIEnv,
     _class: JClass,
     adapter_handle: jlong,
-    host: JObject,
     virtual_view_id: jint,
     action: jint,
-    arguments: JObject,
 ) -> jboolean {
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
         return JNI_FALSE;
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    if inner_adapter
-        .perform_action(&mut env, &host, virtual_view_id, action, &arguments)
-        .unwrap()
-    {
+    if inner_adapter.perform_action(virtual_view_id, action) {
+        JNI_TRUE
+    } else {
+        JNI_FALSE
+    }
+}
+
+extern "system" fn set_text_selection(
+    mut env: JNIEnv,
+    class: JClass,
+    adapter_handle: jlong,
+    host: JObject,
+    virtual_view_id: jint,
+    start: jint,
+    end: jint,
+) -> jboolean {
+    let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
+        return JNI_FALSE;
+    };
+    let mut inner_adapter = inner_adapter.lock().unwrap();
+    if inner_adapter.set_text_selection(&mut env, &class, &host, virtual_view_id, start, end) {
+        JNI_TRUE
+    } else {
+        JNI_FALSE
+    }
+}
+
+extern "system" fn collapse_text_selection(
+    mut env: JNIEnv,
+    class: JClass,
+    adapter_handle: jlong,
+    host: JObject,
+    virtual_view_id: jint,
+) -> jboolean {
+    let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
+        return JNI_FALSE;
+    };
+    let mut inner_adapter = inner_adapter.lock().unwrap();
+    if inner_adapter.collapse_text_selection(&mut env, &class, &host, virtual_view_id) {
         JNI_TRUE
     } else {
         JNI_FALSE
@@ -182,9 +238,18 @@ fn delegate_class(env: &mut JNIEnv) -> Result<&'static JClass<'static>> {
                 },
                 NativeMethod {
                     name: "performAction".into(),
-                    sig: "(JLandroid/view/View;IILandroid/os/Bundle;)Z"
-                        .into(),
+                    sig: "(JII)Z".into(),
                     fn_ptr: perform_action as *mut c_void,
+                },
+                NativeMethod {
+                    name: "setTextSelection".into(),
+                    sig: "(JLandroid/view/View;III)Z".into(),
+                    fn_ptr: set_text_selection as *mut c_void,
+                },
+                NativeMethod {
+                    name: "collapseTextSelection".into(),
+                    sig: "(JLandroid/view/View;I)Z".into(),
+                    fn_ptr: collapse_text_selection as *mut c_void,
                 },
             ],
         )?;

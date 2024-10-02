@@ -1389,6 +1389,20 @@ impl NodeBuilder {
     }
 }
 
+impl From<&Node> for NodeBuilder {
+    fn from(node: &Node) -> Self {
+        Self {
+            role: node.role,
+            actions: node.actions,
+            flags: node.flags,
+            properties: PropertiesBuilder {
+                indices: node.properties.indices,
+                values: node.properties.values.to_vec(),
+            },
+        }
+    }
+}
+
 impl Node {
     #[inline]
     pub fn role(&self) -> Role {
