@@ -205,6 +205,10 @@ impl State {
         self.is_host_focused
     }
 
+    pub fn focus_id_in_tree(&self) -> NodeId {
+        self.focus
+    }
+
     pub fn focus_id(&self) -> Option<NodeId> {
         self.is_host_focused.then_some(self.focus)
     }
