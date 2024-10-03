@@ -139,10 +139,29 @@ public final class Delegate extends View.AccessibilityDelegate {
         });
     }
 
+    private static void sendTextTraversedInternal(View host, int virtualViewId, int granularity, boolean forward, int segmentStart, int segmentEnd) {
+        AccessibilityEvent e = newEvent(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_TEXT_TRAVERSED_AT_MOVEMENT_GRANULARITY);
+        e.setMovementGranularity(granularity);
+        e.setAction(forward ? AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY : AccessibilityNodeInfo.ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY);
+        e.setFromIndex(segmentStart);
+        e.setToIndex(segmentEnd);
+        sendCompletedEvent(host, e);
+    }
+
+    public static void sendTextTraversed(final View host, final int virtualViewId, final int granularity, final boolean forward, final int segmentStart, final int segmentEnd) {
+        host.post(new Runnable() {
+            @Override
+            public void run() {
+                sendTextTraversedInternal(host, virtualViewId, granularity, forward, segmentStart, segmentEnd);
+            }
+        });
+    }
+
     private static native boolean populateNodeInfo(long adapterHandle, View host, int screenX, int screenY, int virtualViewId, AccessibilityNodeInfo nodeInfo);
     private static native boolean performAction(long adapterHandle, int virtualViewId, int action);
-    private static native boolean setTextSelection(long adapterHandle, View host, int virtualViewId, int start, int end);
+    private static native boolean setTextSelection(long adapterHandle, View host, int virtualViewId, int anchor, int focus);
     private static native boolean collapseTextSelection(long adapterHandle, View host, int virtualViewId);
+    private static native boolean traverseText(long adapterHandle, View host, int virtualViewId, int granularity, boolean forward, boolean extendSelection);
 
     @Override
     public AccessibilityNodeProvider getAccessibilityNodeProvider(final View host) {
@@ -182,13 +201,18 @@ public final class Delegate extends View.AccessibilityDelegate {
                     sendEventInternal(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED);
                     return true;
                 case AccessibilityNodeInfo.ACTION_SET_SELECTION:
-                    if (arguments != null && arguments.containsKey(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT) && arguments.containsKey(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT)) {
-                        int start = arguments.getInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT);
-                        int end = arguments.getInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT);
-                        return Delegate.setTextSelection(adapterHandle, host, virtualViewId, start, end);
-                    } else {
+                    if (!(arguments != null && arguments.containsKey(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT) && arguments.containsKey(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT))) {
                         return Delegate.collapseTextSelection(adapterHandle, host, virtualViewId);
                     }
+                    int anchor = arguments.getInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT);
+                    int focus = arguments.getInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT);
+                    return Delegate.setTextSelection(adapterHandle, host, virtualViewId, anchor, focus);
+                case AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY:
+                case AccessibilityNodeInfo.ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY:
+                    int granularity = arguments.getInt(AccessibilityNodeInfo.ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT);
+                    boolean forward = (action == AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY);
+                    boolean extendSelection = arguments.getBoolean(AccessibilityNodeInfo.ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN);
+                    return Delegate.traverseText(adapterHandle, host, virtualViewId, granularity, forward, extendSelection);
                 }
                 if (!Delegate.performAction(adapterHandle, virtualViewId, action)) {
                     return false;
