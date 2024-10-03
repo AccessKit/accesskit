@@ -10,6 +10,7 @@ use zbus::{
     zvariant::{ObjectPath, OwnedObjectPath, OwnedValue, Type, Value},
 };
 
+// https://gnome.pages.gitlab.gnome.org/at-spi2-core/libatspi/const.DBUS_PATH_NULL.html
 const NULL_PATH: &str = "/org/a11y/atspi/null";
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, OwnedValue, Type, Value)]
@@ -28,7 +29,7 @@ impl OwnedObjectAddress {
 
     pub(crate) fn null() -> Self {
         Self {
-            bus_name: UniqueName::from_static_str("").unwrap().into(),
+            bus_name: UniqueName::from_static_str(":0.0").unwrap().into(),
             path: ObjectPath::from_str_unchecked(NULL_PATH).into(),
         }
     }
