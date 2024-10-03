@@ -8,7 +8,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use accesskit::{Action, Live, Role, Toggled};
+use accesskit::{Live, Role, Toggled};
 use accesskit_consumer::Node;
 use jni::{errors::Result, objects::JObject, sys::jint, JNIEnv};
 
@@ -271,8 +271,20 @@ impl<'a> NodeWrapper<'a> {
         if can_focus {
             add_action(env, jni_node, ACTION_FOCUS)?;
         }
-        if self.0.supports_action(Action::SetTextSelection) {
+        if self.0.supports_text_ranges() {
             add_action(env, jni_node, ACTION_SET_SELECTION)?;
+            add_action(env, jni_node, ACTION_NEXT_AT_MOVEMENT_GRANULARITY)?;
+            add_action(env, jni_node, ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY)?;
+            env.call_method(
+                jni_node,
+                "setMovementGranularities",
+                "(I)V",
+                &[(MOVEMENT_GRANULARITY_CHARACTER
+                    | MOVEMENT_GRANULARITY_WORD
+                    | MOVEMENT_GRANULARITY_LINE
+                    | MOVEMENT_GRANULARITY_PARAGRAPH)
+                    .into()],
+            )?;
         }
 
         let live = match self.0.live() {

@@ -10,9 +10,9 @@
 
 use accesskit::{
     Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, NodeBuilder, NodeId,
-    Point, Role, Tree as TreeData, TreeUpdate,
+    Point, Role, TextSelection, Tree as TreeData, TreeUpdate,
 };
-use accesskit_consumer::{FilterResult, Node, TextRange, Tree, TreeChangeHandler};
+use accesskit_consumer::{FilterResult, Node, TextPosition, Tree, TreeChangeHandler};
 use jni::{
     errors::Result,
     objects::{JClass, JObject},
@@ -367,7 +367,7 @@ impl Adapter {
         true
     }
 
-    fn set_text_selection_common<H: ActionHandler + ?Sized, F>(
+    fn set_text_selection_common<H: ActionHandler + ?Sized, F, Extra>(
         &mut self,
         action_handler: &mut H,
         env: &mut JNIEnv,
@@ -375,20 +375,16 @@ impl Adapter {
         host: &JObject,
         virtual_view_id: jint,
         selection_factory: F,
-    ) -> bool
+    ) -> Option<Extra>
     where
-        for<'a> F: FnOnce(&'a Node<'a>) -> Option<TextRange<'a>>,
+        for<'a> F: FnOnce(&'a Node<'a>) -> Option<(TextPosition<'a>, TextPosition<'a>, Extra)>,
     {
-        let Some(tree) = self.state.get_full_tree() else {
-            return false;
-        };
+        let tree = self.state.get_full_tree()?;
         let tree_state = tree.state();
         let node = if virtual_view_id == HOST_VIEW_ID {
             tree_state.root()
         } else {
-            let Some(id) = self.node_id_map.get_accesskit_id(virtual_view_id) else {
-                return false;
-            };
+            let id = self.node_id_map.get_accesskit_id(virtual_view_id)?;
             tree_state.node_by_id(id).unwrap()
         };
         let target = node.id();
@@ -396,12 +392,13 @@ impl Adapter {
         // immediately, so we optimistically update the node.
         // But don't be *too* optimistic.
         if !node.supports_action(Action::SetTextSelection) {
-            return false;
+            return None;
         }
-        let Some(range) = selection_factory(&node) else {
-            return false;
+        let (anchor, focus, extra) = selection_factory(&node)?;
+        let selection = TextSelection {
+            anchor: anchor.to_raw(),
+            focus: focus.to_raw(),
         };
-        let selection = range.to_text_selection();
         let mut builder = NodeBuilder::from(node.data());
         builder.set_text_selection(selection);
         let new_node = builder.build();
@@ -424,7 +421,7 @@ impl Adapter {
             data: Some(ActionData::SetTextSelection(selection)),
         };
         action_handler.do_action(request);
-        true
+        Some(extra)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -435,8 +432,8 @@ impl Adapter {
         callback_class: &JClass,
         host: &JObject,
         virtual_view_id: jint,
-        start: jint,
-        end: jint,
+        anchor: jint,
+        focus: jint,
     ) -> bool {
         self.set_text_selection_common(
             action_handler,
@@ -445,15 +442,14 @@ impl Adapter {
             host,
             virtual_view_id,
             |node| {
-                let start = usize::try_from(start).ok()?;
-                let start = node.text_position_from_global_utf16_index(start)?;
-                let mut range = start.to_degenerate_range();
-                let end = usize::try_from(end).ok()?;
-                let end = node.text_position_from_global_utf16_index(end)?;
-                range.set_end(end);
-                Some(range)
+                let anchor = usize::try_from(anchor).ok()?;
+                let anchor = node.text_position_from_global_utf16_index(anchor)?;
+                let focus = usize::try_from(focus).ok()?;
+                let focus = node.text_position_from_global_utf16_index(focus)?;
+                Some((anchor, focus, ()))
             },
         )
+        .is_some()
     }
 
     pub fn collapse_text_selection<H: ActionHandler + ?Sized>(
@@ -470,10 +466,179 @@ impl Adapter {
             callback_class,
             host,
             virtual_view_id,
-            |node| {
-                node.text_selection_focus()
-                    .map(|pos| pos.to_degenerate_range())
-            },
+            |node| node.text_selection_focus().map(|pos| (pos, pos, ())),
         )
+        .is_some()
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn traverse_text<H: ActionHandler + ?Sized>(
+        &mut self,
+        action_handler: &mut H,
+        env: &mut JNIEnv,
+        callback_class: &JClass,
+        host: &JObject,
+        virtual_view_id: jint,
+        granularity: jint,
+        forward: bool,
+        extend_selection: bool,
+    ) -> bool {
+        let Some((segment_start, segment_end)) = self.set_text_selection_common(
+            action_handler,
+            env,
+            callback_class,
+            host,
+            virtual_view_id,
+            |node| {
+                let current = node.text_selection_focus().unwrap_or_else(|| {
+                    let range = node.document_range();
+                    if forward {
+                        range.start()
+                    } else {
+                        range.end()
+                    }
+                });
+                if (forward && current.is_document_end())
+                    || (!forward && current.is_document_start())
+                {
+                    return None;
+                }
+                let current = if forward {
+                    current.biased_to_start()
+                } else {
+                    current.biased_to_end()
+                };
+                let (segment_start, segment_end) = match granularity {
+                    MOVEMENT_GRANULARITY_CHARACTER => {
+                        if forward {
+                            (current, current.forward_to_character_end())
+                        } else {
+                            (current.backward_to_character_start(), current)
+                        }
+                    }
+                    MOVEMENT_GRANULARITY_WORD => {
+                        if forward {
+                            let start = if current.is_word_start() {
+                                current
+                            } else {
+                                let start = current.forward_to_word_start();
+                                if start.is_document_end() {
+                                    return None;
+                                }
+                                start
+                            };
+                            (start, start.forward_to_word_end())
+                        } else {
+                            let end = if current.is_line_end() || current.is_word_start() {
+                                current
+                            } else {
+                                let end = current.backward_to_word_start().biased_to_end();
+                                if end.is_document_start() {
+                                    return None;
+                                }
+                                end
+                            };
+                            (end.backward_to_word_start(), end)
+                        }
+                    }
+                    MOVEMENT_GRANULARITY_LINE => {
+                        if forward {
+                            let start = if current.is_line_start() {
+                                current
+                            } else {
+                                let start = current.forward_to_line_start();
+                                if start.is_document_end() {
+                                    return None;
+                                }
+                                start
+                            };
+                            (start, start.forward_to_line_end())
+                        } else {
+                            let end = if current.is_line_end() {
+                                current
+                            } else {
+                                let end = current.backward_to_line_start().biased_to_end();
+                                if end.is_document_start() {
+                                    return None;
+                                }
+                                end
+                            };
+                            (end.backward_to_line_start(), end)
+                        }
+                    }
+                    MOVEMENT_GRANULARITY_PARAGRAPH => {
+                        if forward {
+                            let mut start = current;
+                            while start.is_paragraph_separator() {
+                                start = start.forward_to_paragraph_start();
+                            }
+                            if start.is_document_end() {
+                                return None;
+                            }
+                            let mut end = start.forward_to_paragraph_end();
+                            let prev = end.backward_to_character_start();
+                            if prev.is_paragraph_separator() {
+                                end = prev;
+                            }
+                            (start, end)
+                        } else {
+                            let mut end = current;
+                            while !end.is_document_start()
+                                && end.backward_to_character_start().is_paragraph_separator()
+                            {
+                                end = end.backward_to_character_start();
+                            }
+                            if end.is_document_start() {
+                                return None;
+                            }
+                            (end.backward_to_paragraph_start(), end)
+                        }
+                    }
+                    _ => {
+                        return None;
+                    }
+                };
+                if segment_start == segment_end {
+                    return None;
+                }
+                let focus = if forward { segment_end } else { segment_start };
+                let anchor = if extend_selection {
+                    node.text_selection_anchor().unwrap_or({
+                        if forward {
+                            segment_start
+                        } else {
+                            segment_end
+                        }
+                    })
+                } else {
+                    focus
+                };
+                Some((
+                    anchor,
+                    focus,
+                    (
+                        segment_start.to_global_utf16_index(),
+                        segment_end.to_global_utf16_index(),
+                    ),
+                ))
+            },
+        ) else {
+            return false;
+        };
+        env.call_static_method(
+            callback_class,
+            "sendTextTraversed",
+            "(Landroid/view/View;IIZII)V",
+            &[
+                host.into(),
+                virtual_view_id.into(),
+                granularity.into(),
+                forward.into(),
+                (segment_start as jint).into(),
+                (segment_end as jint).into(),
+            ],
+        )
+        .unwrap();
+        true
     }
 }
