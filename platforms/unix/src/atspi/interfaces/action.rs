@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit_atspi_common::{Action, PlatformNode};
-use zbus::{interface, fdo};
+use zbus::{fdo, interface};
 
 pub(crate) struct ActionInterface(PlatformNode);
 

@@ -5,7 +5,7 @@
 
 use accesskit_atspi_common::{PlatformNode, Rect};
 use atspi::{CoordType, Layer};
-use zbus::{fdo, names::OwnedUniqueName, interface};
+use zbus::{fdo, interface, names::OwnedUniqueName};
 
 use crate::atspi::{ObjectId, OwnedObjectAddress};
 
