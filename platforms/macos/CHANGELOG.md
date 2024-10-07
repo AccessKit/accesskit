@@ -32,6 +32,21 @@
     * accesskit bumped from 0.16.0 to 0.16.1
     * accesskit_consumer bumped from 0.24.0 to 0.24.1
 
+## [0.17.2](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.17.1...accesskit_macos-v0.17.2) (2024-10-07)
+
+
+### Bug Fixes
+
+* Update minimum supported Rust version to 1.75 ([#457](https://github.com/AccessKit/accesskit/issues/457)) ([fc622fe](https://github.com/AccessKit/accesskit/commit/fc622fe7657c80a4eedad6f6cded11d2538b54d5))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.16.1 to 0.16.2
+    * accesskit_consumer bumped from 0.24.1 to 0.24.2
+
 ## [0.17.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.16.0...accesskit_macos-v0.17.0) (2024-06-29)
 
 

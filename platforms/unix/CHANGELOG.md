@@ -58,6 +58,22 @@
   * dependencies
     * accesskit_atspi_common bumped from 0.7.0 to 0.8.0
 
+## [0.12.2](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.12.1...accesskit_unix-v0.12.2) (2024-10-07)
+
+
+### Bug Fixes
+
+* Update minimum supported Rust version to 1.75 ([#457](https://github.com/AccessKit/accesskit/issues/457)) ([fc622fe](https://github.com/AccessKit/accesskit/commit/fc622fe7657c80a4eedad6f6cded11d2538b54d5))
+* Update to zbus v4 ([#456](https://github.com/AccessKit/accesskit/issues/456)) ([95db8f1](https://github.com/AccessKit/accesskit/commit/95db8f1c5f7f56598eab6910a990ccbf9d864dda))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.16.1 to 0.16.2
+    * accesskit_atspi_common bumped from 0.9.1 to 0.9.2
+
 ## [0.12.1](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.12.0...accesskit_unix-v0.12.1) (2024-09-24)
 
 

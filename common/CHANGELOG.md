@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.2](https://github.com/AccessKit/accesskit/compare/accesskit-v0.16.1...accesskit-v0.16.2) (2024-10-07)
+
+
+### Bug Fixes
+
+* Don't use a macro to generate Action debug helper function ([#459](https://github.com/AccessKit/accesskit/issues/459)) ([ed1fb73](https://github.com/AccessKit/accesskit/commit/ed1fb7370780c9dd15028cdfd13e2065642bf490))
+* Update minimum supported Rust version to 1.75 ([#457](https://github.com/AccessKit/accesskit/issues/457)) ([fc622fe](https://github.com/AccessKit/accesskit/commit/fc622fe7657c80a4eedad6f6cded11d2538b54d5))
+
 ## [0.16.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.16.0...accesskit-v0.16.1) (2024-09-24)
 
 
