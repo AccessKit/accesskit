@@ -129,6 +129,23 @@
   * dependencies
     * accesskit_unix bumped from 0.11.0 to 0.11.1
 
+## [0.22.2](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.22.1...accesskit_winit-v0.22.2) (2024-10-07)
+
+
+### Bug Fixes
+
+* Update minimum supported Rust version to 1.75 ([#457](https://github.com/AccessKit/accesskit/issues/457)) ([fc622fe](https://github.com/AccessKit/accesskit/commit/fc622fe7657c80a4eedad6f6cded11d2538b54d5))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.16.1 to 0.16.2
+    * accesskit_windows bumped from 0.23.0 to 0.23.1
+    * accesskit_macos bumped from 0.17.1 to 0.17.2
+    * accesskit_unix bumped from 0.12.1 to 0.12.2
+
 ## [0.22.1](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.22.0...accesskit_winit-v0.22.1) (2024-09-24)
 
 
