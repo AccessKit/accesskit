@@ -10,9 +10,6 @@
 /// - If you use tokio, make sure to enable the `tokio` feature of this crate.
 /// - If you use another async runtime or if you don't use one at all, the default feature will suit your needs.
 
-#[macro_use]
-extern crate zbus;
-
 #[cfg(all(not(feature = "async-io"), not(feature = "tokio")))]
 compile_error!("Either \"async-io\" (default) or \"tokio\" feature must be enabled.");
 

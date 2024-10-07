@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use accesskit_atspi_common::{NodeIdOrRoot, PlatformNode, PlatformRoot};
 use atspi::{Interface, InterfaceSet, Role, StateSet};
-use zbus::{fdo, names::OwnedUniqueName};
+use zbus::{fdo, interface, names::OwnedUniqueName};
 
 use super::map_root_error;
 use crate::atspi::{ObjectId, OwnedObjectAddress};
@@ -27,19 +27,19 @@ impl NodeAccessibleInterface {
     }
 }
 
-#[dbus_interface(name = "org.a11y.atspi.Accessible")]
+#[interface(name = "org.a11y.atspi.Accessible")]
 impl NodeAccessibleInterface {
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn name(&self) -> fdo::Result<String> {
         self.node.name().map_err(self.map_error())
     }
 
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn description(&self) -> fdo::Result<String> {
         self.node.description().map_err(self.map_error())
     }
 
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn parent(&self) -> fdo::Result<OwnedObjectAddress> {
         self.node.parent().map_err(self.map_error()).map(|parent| {
             match parent {
@@ -53,17 +53,17 @@ impl NodeAccessibleInterface {
         })
     }
 
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn child_count(&self) -> fdo::Result<i32> {
         self.node.child_count().map_err(self.map_error())
     }
 
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn locale(&self) -> &str {
         ""
     }
 
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn accessible_id(&self) -> fdo::Result<String> {
         self.node.accessible_id().map_err(self.map_error())
     }
@@ -135,34 +135,34 @@ impl RootAccessibleInterface {
     }
 }
 
-#[dbus_interface(name = "org.a11y.atspi.Accessible")]
+#[interface(name = "org.a11y.atspi.Accessible")]
 impl RootAccessibleInterface {
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn name(&self) -> fdo::Result<String> {
         self.root.name().map_err(map_root_error)
     }
 
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn description(&self) -> &str {
         ""
     }
 
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn parent(&self) -> OwnedObjectAddress {
         OwnedObjectAddress::null()
     }
 
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn child_count(&self) -> fdo::Result<i32> {
         self.root.child_count().map_err(map_root_error)
     }
 
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn locale(&self) -> &str {
         ""
     }
 
-    #[dbus_interface(property)]
+    #[zbus(property)]
     fn accessible_id(&self) -> &str {
         ""
     }

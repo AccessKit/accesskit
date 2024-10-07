@@ -5,7 +5,7 @@
 
 use accesskit_atspi_common::{PlatformNode, Rect};
 use atspi::{CoordType, Layer};
-use zbus::{fdo, names::OwnedUniqueName};
+use zbus::{fdo, interface, names::OwnedUniqueName};
 
 use crate::atspi::{ObjectId, OwnedObjectAddress};
 
@@ -24,7 +24,7 @@ impl ComponentInterface {
     }
 }
 
-#[dbus_interface(name = "org.a11y.atspi.Component")]
+#[interface(name = "org.a11y.atspi.Component")]
 impl ComponentInterface {
     fn contains(&self, x: i32, y: i32, coord_type: CoordType) -> fdo::Result<bool> {
         self.node

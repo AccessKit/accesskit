@@ -3,13 +3,14 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use atspi::Accessible;
+use atspi::ObjectRef;
 use serde::{Deserialize, Serialize};
 use zbus::{
     names::UniqueName,
-    zvariant::{ObjectPath, OwnedObjectPath, OwnedValue, Type, Value},
+    zvariant::{ObjectPath, OwnedObjectPath, OwnedValue, Str, Type, Value},
 };
 
+// https://gnome.pages.gitlab.gnome.org/at-spi2-core/libatspi/const.DBUS_PATH_NULL.html
 const NULL_PATH: &str = "/org/a11y/atspi/null";
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, OwnedValue, Type, Value)]
@@ -34,10 +35,10 @@ impl OwnedObjectAddress {
     }
 }
 
-impl From<Accessible> for OwnedObjectAddress {
-    fn from(object: Accessible) -> Self {
+impl From<ObjectRef> for OwnedObjectAddress {
+    fn from(object: ObjectRef) -> Self {
         Self {
-            bus_name: object.name,
+            bus_name: Str::from(object.name).into(),
             path: object.path,
         }
     }
