@@ -346,6 +346,7 @@ impl Action {
         1 << (self as u8)
     }
 
+    #[cfg(not(feature = "enumn"))]
     fn n(value: u8) -> Option<Self> {
         // Manually implement something similar to the enumn crate. We don't
         // want to bring this crate by default though and we can't use a
