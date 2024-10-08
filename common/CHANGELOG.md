@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.3](https://github.com/AccessKit/accesskit/compare/accesskit-v0.16.2...accesskit-v0.16.3) (2024-10-08)
+
+
+### Bug Fixes
+
+* Eliminate duplicate definitions ([#461](https://github.com/AccessKit/accesskit/issues/461)) ([59826d4](https://github.com/AccessKit/accesskit/commit/59826d4500ddfe880181f7087f9fe83ff2209fc4))
+
 ## [0.16.2](https://github.com/AccessKit/accesskit/compare/accesskit-v0.16.1...accesskit-v0.16.2) (2024-10-07)
 
 
