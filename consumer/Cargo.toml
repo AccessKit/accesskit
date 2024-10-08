@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_consumer"
-version = "0.24.2"
+version = "0.24.3"
 authors.workspace = true
 license.workspace = true
 description = "AccessKit consumer library (internal)"
@@ -12,6 +12,6 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-accesskit = { version = "0.16.2", path = "../common" }
+accesskit = { version = "0.16.3", path = "../common" }
 immutable-chunkmap = "2.0.5"
 
