@@ -3,6 +3,8 @@ on:
     branches:
       - main
   pull_request:
+    branches:
+      - main
 
 name: CI
 
@@ -28,6 +30,27 @@ jobs:
       - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v1
 
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macOS-latest, windows-2019, ubuntu-latest]
+    name: cargo build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: restore cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: cargo build with default features
+        run: cargo build --all-targets
+
+      - name: cargo build with rwh05
+        run: cargo build --all-targets --features async-io,tokio,rwh_05 --no-default-features
+
   clippy:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -45,8 +68,11 @@ jobs:
       - name: restore cache
         uses: Swatinem/rust-cache@v2
 
-      - name: cargo clippy
+      - name: cargo clippy with default features
         run: cargo clippy --all-targets -- -D warnings
+
+      - name: cargo clippy with rwh05
+        run: cargo clippy --all-targets --features async-io,tokio,rwh_05 --no-default-features -- -D warnings
 
   find-msrv:
     runs-on: ubuntu-latest
