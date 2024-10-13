@@ -272,6 +272,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         )
     ))]
     println!("Enable Orca with [Super]+[Alt]+[S].");
+    #[cfg(target_os = "macos")]
+    println!("Enable VoiceOver with [Cmd]+[F5].");
 
     let event_loop = EventLoop::with_user_event().build()?;
     let mut state = Application::new(event_loop.create_proxy());
