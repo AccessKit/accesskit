@@ -349,7 +349,7 @@ declare_class!(
 
         #[method_id(accessibilityWindow)]
         fn window(&self) -> Option<Id<AnyObject>> {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|_, context| {
                 context
                     .view
                     .load()
@@ -360,7 +360,7 @@ declare_class!(
 
         #[method_id(accessibilityTopLevelUIElement)]
         fn top_level(&self) -> Option<Id<AnyObject>> {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|_, context| {
                 context
                     .view
                     .load()
