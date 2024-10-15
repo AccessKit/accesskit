@@ -271,7 +271,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             target_os = "openbsd"
         )
     ))]
-    println!("Enable Orca with [Super]+[Alt]+[[cfg(target_os = "macos")]
+    println!("Enable Orca with [Super]+[Alt]+[S].");
 
     let event_loop = EventLoop::with_user_event().build()?;
     let mut state = Application::new(event_loop.create_proxy());
