@@ -347,6 +347,28 @@ declare_class!(
             .flatten()
         }
 
+        #[method_id(accessibilityWindow)]
+        fn window(&self) -> Option<Id<AnyObject>> {
+            self.resolve_with_context(|_, context| {
+                context
+                    .view
+                    .load()
+                    .and_then(|view| unsafe { NSAccessibility::accessibilityParent(&*view) })
+            })
+            .flatten()
+        }
+
+        #[method_id(accessibilityTopLevelUIElement)]
+        fn top_level(&self) -> Option<Id<AnyObject>> {
+            self.resolve_with_context(|_, context| {
+                context
+                    .view
+                    .load()
+                    .and_then(|view| unsafe { NSAccessibility::accessibilityParent(&*view) })
+            })
+            .flatten()
+        }
+
         #[method_id(accessibilityChildren)]
         fn children(&self) -> Option<Id<NSArray<PlatformNode>>> {
             self.children_internal()
@@ -784,6 +806,8 @@ declare_class!(
                     || selector == sel!(accessibilityChildrenInNavigationOrder)
                     || selector == sel!(accessibilityFrame)
                     || selector == sel!(accessibilityRole)
+                    || selector == sel!(accessibilityWindow)
+                    || selector == sel!(accessibilityTopLevelUIElement)
                     || selector == sel!(accessibilityRoleDescription)
                     || selector == sel!(accessibilityIdentifier)
                     || selector == sel!(accessibilityTitle)
