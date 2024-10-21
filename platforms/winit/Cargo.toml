@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_winit"
-version = "0.22.3"
+version = "0.22.4"
 authors.workspace = true
 license = "Apache-2.0"
 description = "AccessKit UI accessibility infrastructure: winit adapter"
@@ -31,7 +31,7 @@ rwh_06 = { package = "raw-window-handle", version = "0.6.2", features = ["std"],
 accesskit_windows = { version = "0.23.2", path = "../windows" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-accesskit_macos = { version = "0.17.3", path = "../macos" }
+accesskit_macos = { version = "0.17.4", path = "../macos" }
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
 accesskit_unix = { version = "0.12.3", path = "../unix", optional = true, default-features = false }

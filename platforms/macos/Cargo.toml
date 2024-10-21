@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_macos"
-version = "0.17.3"
+version = "0.17.4"
 authors.workspace = true
 license.workspace = true
 description = "AccessKit UI accessibility infrastructure: macOS adapter"
