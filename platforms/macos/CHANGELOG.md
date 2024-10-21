@@ -37,6 +37,13 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.17.4](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.17.3...accesskit_macos-v0.17.4) (2024-10-21)
+
+
+### Bug Fixes
+
+* Add properties needed by the Xcode Accessibility Inspector ([#466](https://github.com/AccessKit/accesskit/issues/466)) ([295b188](https://github.com/AccessKit/accesskit/commit/295b1881936dd097d82a10317ff14d1369f7e4bd))
+
 ## [0.17.2](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.17.1...accesskit_macos-v0.17.2) (2024-10-07)
 
 
