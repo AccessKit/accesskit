@@ -9,7 +9,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::{
+use core::{
     fmt,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
@@ -65,20 +65,6 @@ impl Affine {
     #[inline]
     pub const fn scale_non_uniform(s_x: f64, s_y: f64) -> Affine {
         Affine([s_x, 0.0, 0.0, s_y, 0.0, 0.0])
-    }
-
-    /// An affine transform representing rotation.
-    ///
-    /// The convention for rotation is that a positive angle rotates a
-    /// positive X direction into positive Y. Thus, in a Y-down coordinate
-    /// system (as is common for graphics), it is a clockwise rotation, and
-    /// in Y-up (traditional for math), it is anti-clockwise.
-    ///
-    /// The angle, `th`, is expressed in radians.
-    #[inline]
-    pub fn rotate(th: f64) -> Affine {
-        let (s, c) = th.sin_cos();
-        Affine([c, s, -s, c, 0.0, 0.0])
     }
 
     /// An affine transform representing translation.
