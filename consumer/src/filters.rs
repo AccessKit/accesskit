@@ -30,7 +30,7 @@ pub fn common_filter(node: &Node) -> FilterResult {
     }
 
     let role = node.role();
-    if role == Role::GenericContainer || role == Role::InlineTextBox {
+    if role == Role::GenericContainer || role == Role::TextRun {
         return FilterResult::ExcludeNode;
     }
 

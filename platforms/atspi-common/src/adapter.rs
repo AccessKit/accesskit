@@ -172,7 +172,7 @@ impl<'a> AdapterChangeHandler<'a> {
     }
 
     fn emit_text_change_if_needed(&mut self, old_node: &Node, new_node: &Node) {
-        if let Role::InlineTextBox | Role::GenericContainer = new_node.role() {
+        if let Role::TextRun | Role::GenericContainer = new_node.role() {
             if let (Some(old_parent), Some(new_parent)) = (
                 old_node.filtered_parent(&filter),
                 new_node.filtered_parent(&filter),

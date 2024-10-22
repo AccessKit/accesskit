@@ -55,7 +55,7 @@ pub use geometry::{Affine, Point, Rect, Size, Vec2};
 pub enum Role {
     #[default]
     Unknown,
-    InlineTextBox,
+    TextRun,
     Cell,
     Label,
     Image,
@@ -701,7 +701,7 @@ pub struct CustomAction {
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TextPosition {
-    /// The node's role must be [`Role::InlineTextBox`].
+    /// The node's role must be [`Role::TextRun`].
     pub node: NodeId,
     /// The index of an item in [`Node::character_lengths`], or the length
     /// of that slice if the position is at the end of the line.
@@ -1476,7 +1476,7 @@ flag_methods! {
     /// is in touch exploration mode, e.g. a virtual keyboard normally
     /// behaves this way.
     (TouchTransparent, is_touch_transparent, set_touch_transparent, clear_touch_transparent),
-    /// Use for a textbox that allows focus/selection but not input.
+    /// Use for a text widget that allows focus/selection but not input.
     (ReadOnly, is_read_only, set_read_only, clear_read_only),
     /// Use for a control or group of controls that disallows input.
     (Disabled, is_disabled, set_disabled, clear_disabled),
@@ -1667,7 +1667,7 @@ text_decoration_property_methods! {
 }
 
 length_slice_property_methods! {
-    /// For inline text. The length (non-inclusive) of each character
+    /// For text runs, the length (non-inclusive) of each character
     /// in UTF-8 code units (bytes). The sum of these lengths must equal
     /// the length of [`value`], also in bytes.
     ///
@@ -1677,7 +1677,7 @@ length_slice_property_methods! {
     /// the lengths of the characters from the text itself; this information
     /// must be provided by the text editing implementation.
     ///
-    /// If this node is the last text box in a line that ends with a hard
+    /// If this node is the last text run in a line that ends with a hard
     /// line break, that line break should be included at the end of this
     /// node's value as either a CRLF or LF; in both cases, the line break
     /// should be counted as a single character for the sake of this slice.
@@ -1687,7 +1687,7 @@ length_slice_property_methods! {
     /// [`value`]: Node::value
     (CharacterLengths, character_lengths, set_character_lengths, clear_character_lengths),
 
-    /// For inline text. The length of each word in characters, as defined
+    /// For text runs, the length of each word in characters, as defined
     /// in [`character_lengths`]. The sum of these lengths must equal
     /// the length of [`character_lengths`].
     ///
@@ -1713,7 +1713,7 @@ length_slice_property_methods! {
 }
 
 coord_slice_property_methods! {
-    /// For inline text. This is the position of each character within
+    /// For text runs, this is the position of each character within
     /// the node's bounding box, in the direction given by
     /// [`text_direction`], in the coordinate space of this node.
     ///
@@ -1731,7 +1731,7 @@ coord_slice_property_methods! {
     /// [`character_lengths`]: Node::character_lengths
     (CharacterPositions, character_positions, set_character_positions, clear_character_positions),
 
-    /// For inline text. This is the advance width of each character,
+    /// For text runs, this is the advance width of each character,
     /// in the direction given by [`text_direction`], in the coordinate
     /// space of this node.
     ///

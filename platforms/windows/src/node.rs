@@ -49,7 +49,7 @@ impl<'a> NodeWrapper<'a> {
         // TODO: Handle special cases. (#14)
         match role {
             Role::Unknown => UIA_CustomControlTypeId,
-            Role::InlineTextBox => UIA_CustomControlTypeId,
+            Role::TextRun => UIA_CustomControlTypeId,
             Role::Cell => UIA_DataItemControlTypeId,
             Role::Label => UIA_TextControlTypeId,
             Role::Image => UIA_ImageControlTypeId,
