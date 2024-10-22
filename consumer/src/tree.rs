@@ -4,11 +4,15 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{Node as NodeData, NodeId, Tree as TreeData, TreeUpdate};
-use immutable_chunkmap::map::MapM as ChunkMap;
-use std::{
-    collections::{HashMap, HashSet},
+use alloc::{
+    collections::{BTreeMap, BTreeSet},
+    format,
+    string::String,
     sync::Arc,
+    vec,
+    vec::Vec,
 };
+use immutable_chunkmap::map::MapM as ChunkMap;
 
 use crate::node::{Node, NodeState, ParentAndIndex};
 
@@ -22,9 +26,9 @@ pub struct State {
 
 #[derive(Default)]
 struct InternalChanges {
-    added_node_ids: HashSet<NodeId>,
-    updated_node_ids: HashSet<NodeId>,
-    removed_node_ids: HashSet<NodeId>,
+    added_node_ids: BTreeSet<NodeId>,
+    updated_node_ids: BTreeSet<NodeId>,
+    removed_node_ids: BTreeSet<NodeId>,
 }
 
 impl State {
@@ -43,7 +47,7 @@ impl State {
         is_host_focused: bool,
         mut changes: Option<&mut InternalChanges>,
     ) {
-        let mut orphans = HashSet::new();
+        let mut orphans = BTreeSet::new();
 
         if let Some(tree) = update.tree {
             if tree.root != self.data.root {
@@ -53,8 +57,10 @@ impl State {
         }
 
         let root = self.data.root;
-        let mut pending_nodes: HashMap<NodeId, _> = HashMap::new();
-        let mut pending_children = HashMap::new();
+        let mut pending_nodes = BTreeMap::new();
+        let mut pending_node_count = 0usize;
+        let mut pending_children = BTreeMap::new();
+        let mut pending_child_count = 0usize;
 
         fn add_node(
             nodes: &mut ChunkMap<NodeId, NodeState>,
@@ -76,7 +82,7 @@ impl State {
         for (node_id, node_data) in update.nodes {
             orphans.remove(&node_id);
 
-            let mut seen_child_ids = HashSet::new();
+            let mut seen_child_ids = BTreeSet::new();
             for (child_index, child_id) in node_data.children().iter().enumerate() {
                 if seen_child_ids.contains(child_id) {
                     panic!(
@@ -90,7 +96,10 @@ impl State {
                     if child_state.parent_and_index != Some(parent_and_index) {
                         child_state.parent_and_index = Some(parent_and_index);
                     }
-                } else if let Some(child_data) = pending_nodes.remove(child_id) {
+                } else if let Some(child_data) =
+                    pending_nodes.get_mut(child_id).and_then(Option::take)
+                {
+                    pending_node_count -= 1;
                     add_node(
                         &mut self.nodes,
                         &mut changes,
@@ -99,9 +108,10 @@ impl State {
                         child_data,
                     );
                 } else {
-                    pending_children.insert(*child_id, parent_and_index);
+                    pending_children.insert(*child_id, Some(parent_and_index));
+                    pending_child_count += 1;
                 }
-                seen_child_ids.insert(child_id);
+                seen_child_ids.insert(*child_id);
             }
 
             if let Some(node_state) = self.nodes.get_mut_cow(&node_id) {
@@ -119,7 +129,10 @@ impl State {
                         changes.updated_node_ids.insert(node_id);
                     }
                 }
-            } else if let Some(parent_and_index) = pending_children.remove(&node_id) {
+            } else if let Some(parent_and_index) =
+                pending_children.get_mut(&node_id).and_then(Option::take)
+            {
+                pending_child_count -= 1;
                 add_node(
                     &mut self.nodes,
                     &mut changes,
@@ -130,29 +143,30 @@ impl State {
             } else if node_id == root {
                 add_node(&mut self.nodes, &mut changes, None, node_id, node_data);
             } else {
-                pending_nodes.insert(node_id, node_data);
+                pending_nodes.insert(node_id, Some(node_data));
+                pending_node_count += 1;
             }
         }
 
-        if !pending_nodes.is_empty() {
-            panic!("TreeUpdate includes {} nodes which are neither in the current tree nor a child of another node from the update: {}", pending_nodes.len(), short_node_list(pending_nodes.keys()));
+        if pending_node_count > 0 {
+            panic!("TreeUpdate includes {} nodes which are neither in the current tree nor a child of another node from the update: {}", pending_node_count, short_node_list(pending_nodes.into_iter().filter_map(|(key, value)| value.is_some().then_some(key))));
         }
-        if !pending_children.is_empty() {
-            panic!("TreeUpdate's nodes include {} children ids which are neither in the current tree nor the id of another node from the update: {}", pending_children.len(), short_node_list(pending_children.keys()));
+        if pending_child_count > 0 {
+            panic!("TreeUpdate's nodes include {} children ids which are neither in the current tree nor the id of another node from the update: {}", pending_child_count, short_node_list(pending_children.into_iter().filter_map(|(key, value)| value.is_some().then_some(key))));
         }
 
         self.focus = update.focus;
         self.is_host_focused = is_host_focused;
 
         if !orphans.is_empty() {
-            let mut to_remove = HashSet::new();
+            let mut to_remove = Vec::new();
 
             fn traverse_orphan(
                 nodes: &ChunkMap<NodeId, NodeState>,
-                to_remove: &mut HashSet<NodeId>,
+                to_remove: &mut Vec<NodeId>,
                 id: NodeId,
             ) {
-                to_remove.insert(id);
+                to_remove.push(id);
                 let node = nodes.get(&id).unwrap();
                 for child_id in node.data.children().iter() {
                     traverse_orphan(nodes, to_remove, *child_id);
@@ -363,11 +377,13 @@ impl Tree {
     }
 }
 
-fn short_node_list<'a>(nodes: impl ExactSizeIterator<Item = &'a NodeId>) -> String {
+fn short_node_list(nodes: impl Iterator<Item = NodeId>) -> String {
+    let nodes = nodes.collect::<Vec<_>>();
     if nodes.len() > 10 {
         format!(
             "[{} ...]",
             nodes
+                .into_iter()
                 .take(10)
                 .map(|id| format!("#{}", id.0))
                 .collect::<Vec<_>>()
@@ -377,6 +393,7 @@ fn short_node_list<'a>(nodes: impl ExactSizeIterator<Item = &'a NodeId>) -> Stri
         format!(
             "[{}]",
             nodes
+                .into_iter()
                 .map(|id| format!("#{}", id.0))
                 .collect::<Vec<_>>()
                 .join(", "),
@@ -387,6 +404,7 @@ fn short_node_list<'a>(nodes: impl ExactSizeIterator<Item = &'a NodeId>) -> Stri
 #[cfg(test)]
 mod tests {
     use accesskit::{NodeBuilder, NodeId, Role, Tree, TreeUpdate};
+    use alloc::vec;
 
     #[test]
     fn init_tree_with_root_node() {
