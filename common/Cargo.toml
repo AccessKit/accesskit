@@ -18,7 +18,7 @@ features = ["schemars", "serde"]
 enumn = { version = "0.1.6", optional = true }
 pyo3 = { version = "0.20", optional = true }
 schemars = { version = "0.8.7", optional = true }
-serde = { version = "1.0", features = ["derive"], optional = true }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"], optional = true }
 
 [features]
 enumn = ["dep:enumn"]

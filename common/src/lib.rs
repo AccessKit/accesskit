@@ -8,6 +8,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
+#![cfg_attr(not(any(feature = "pyo3", feature = "schemars")), no_std)]
+
+extern crate alloc;
+
+use alloc::{boxed::Box, string::String, vec::Vec};
+use core::fmt;
 #[cfg(feature = "pyo3")]
 use pyo3::pyclass;
 #[cfg(feature = "schemars")]
@@ -22,7 +28,6 @@ use serde::{
     ser::{SerializeMap, Serializer},
     Deserialize, Serialize,
 };
-use std::fmt;
 
 mod geometry;
 pub use geometry::{Affine, Point, Rect, Size, Vec2};

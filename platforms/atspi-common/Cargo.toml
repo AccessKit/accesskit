@@ -21,3 +21,4 @@ atspi-common = { version = "0.6", default-features = false }
 serde = "1.0"
 thiserror = "1.0"
 zvariant = { version = "4.2", default-features = false }
+
