@@ -53,8 +53,10 @@ impl State {
         }
 
         let root = self.data.root;
-        let mut pending_nodes: BTreeMap<NodeId, _> = BTreeMap::new();
+        let mut pending_nodes = BTreeMap::new();
+        let mut pending_node_count = 0usize;
         let mut pending_children = BTreeMap::new();
+        let mut pending_child_count = 0usize;
 
         fn add_node(
             nodes: &mut ChunkMap<NodeId, NodeState>,
@@ -90,7 +92,10 @@ impl State {
                     if child_state.parent_and_index != Some(parent_and_index) {
                         child_state.parent_and_index = Some(parent_and_index);
                     }
-                } else if let Some(child_data) = pending_nodes.remove(child_id) {
+                } else if let Some(child_data) =
+                    pending_nodes.get_mut(child_id).and_then(Option::take)
+                {
+                    pending_node_count -= 1;
                     add_node(
                         &mut self.nodes,
                         &mut changes,
@@ -99,7 +104,8 @@ impl State {
                         child_data,
                     );
                 } else {
-                    pending_children.insert(*child_id, parent_and_index);
+                    pending_children.insert(*child_id, Some(parent_and_index));
+                    pending_child_count += 1;
                 }
                 seen_child_ids.insert(*child_id);
             }
@@ -119,7 +125,10 @@ impl State {
                         changes.updated_node_ids.insert(node_id);
                     }
                 }
-            } else if let Some(parent_and_index) = pending_children.remove(&node_id) {
+            } else if let Some(parent_and_index) =
+                pending_children.get_mut(&node_id).and_then(Option::take)
+            {
+                pending_child_count -= 1;
                 add_node(
                     &mut self.nodes,
                     &mut changes,
@@ -130,15 +139,16 @@ impl State {
             } else if node_id == root {
                 add_node(&mut self.nodes, &mut changes, None, node_id, node_data);
             } else {
-                pending_nodes.insert(node_id, node_data);
+                pending_nodes.insert(node_id, Some(node_data));
+                pending_node_count += 1;
             }
         }
 
-        if !pending_nodes.is_empty() {
-            panic!("TreeUpdate includes {} nodes which are neither in the current tree nor a child of another node from the update: {}", pending_nodes.len(), short_node_list(pending_nodes.keys()));
+        if pending_node_count > 0 {
+            panic!("TreeUpdate includes {} nodes which are neither in the current tree nor a child of another node from the update: {}", pending_node_count, short_node_list(pending_nodes.into_iter().filter_map(|(key, value)| value.is_some().then_some(key))));
         }
-        if !pending_children.is_empty() {
-            panic!("TreeUpdate's nodes include {} children ids which are neither in the current tree nor the id of another node from the update: {}", pending_children.len(), short_node_list(pending_children.keys()));
+        if pending_child_count > 0 {
+            panic!("TreeUpdate's nodes include {} children ids which are neither in the current tree nor the id of another node from the update: {}", pending_child_count, short_node_list(pending_children.into_iter().filter_map(|(key, value)| value.is_some().then_some(key))));
         }
 
         self.focus = update.focus;
@@ -363,11 +373,13 @@ impl Tree {
     }
 }
 
-fn short_node_list<'a>(nodes: impl ExactSizeIterator<Item = &'a NodeId>) -> String {
+fn short_node_list(nodes: impl Iterator<Item = NodeId>) -> String {
+    let nodes = nodes.collect::<Vec<_>>();
     if nodes.len() > 10 {
         format!(
             "[{} ...]",
             nodes
+                .into_iter()
                 .take(10)
                 .map(|id| format!("#{}", id.0))
                 .collect::<Vec<_>>()
@@ -377,6 +389,7 @@ fn short_node_list<'a>(nodes: impl ExactSizeIterator<Item = &'a NodeId>) -> Stri
         format!(
             "[{}]",
             nodes
+                .into_iter()
                 .map(|id| format!("#{}", id.0))
                 .collect::<Vec<_>>()
                 .join(", "),
