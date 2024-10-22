@@ -8,7 +8,7 @@ use accesskit::{
 };
 use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler};
 use std::{
-    collections::HashSet,
+    collections::BTreeSet,
     sync::{atomic::Ordering, Arc},
 };
 use windows::Win32::{
@@ -36,7 +36,7 @@ fn focus_event(context: &Arc<Context>, node_id: NodeId) -> QueuedEvent {
 struct AdapterChangeHandler<'a> {
     context: &'a Arc<Context>,
     queue: Vec<QueuedEvent>,
-    text_changed: HashSet<NodeId>,
+    text_changed: BTreeSet<NodeId>,
 }
 
 impl<'a> AdapterChangeHandler<'a> {
@@ -44,7 +44,7 @@ impl<'a> AdapterChangeHandler<'a> {
         Self {
             context,
             queue: Vec::new(),
-            text_changed: HashSet::new(),
+            text_changed: BTreeSet::new(),
         }
     }
 }

@@ -6,7 +6,7 @@
 use accesskit::{Node as NodeData, NodeId, Tree as TreeData, TreeUpdate};
 use immutable_chunkmap::map::MapM as ChunkMap;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet},
     sync::Arc,
 };
 
@@ -22,9 +22,9 @@ pub struct State {
 
 #[derive(Default)]
 struct InternalChanges {
-    added_node_ids: HashSet<NodeId>,
-    updated_node_ids: HashSet<NodeId>,
-    removed_node_ids: HashSet<NodeId>,
+    added_node_ids: BTreeSet<NodeId>,
+    updated_node_ids: BTreeSet<NodeId>,
+    removed_node_ids: BTreeSet<NodeId>,
 }
 
 impl State {
@@ -43,7 +43,7 @@ impl State {
         is_host_focused: bool,
         mut changes: Option<&mut InternalChanges>,
     ) {
-        let mut orphans = HashSet::new();
+        let mut orphans = BTreeSet::new();
 
         if let Some(tree) = update.tree {
             if tree.root != self.data.root {
@@ -53,8 +53,8 @@ impl State {
         }
 
         let root = self.data.root;
-        let mut pending_nodes: HashMap<NodeId, _> = HashMap::new();
-        let mut pending_children = HashMap::new();
+        let mut pending_nodes: BTreeMap<NodeId, _> = BTreeMap::new();
+        let mut pending_children = BTreeMap::new();
 
         fn add_node(
             nodes: &mut ChunkMap<NodeId, NodeState>,
@@ -76,7 +76,7 @@ impl State {
         for (node_id, node_data) in update.nodes {
             orphans.remove(&node_id);
 
-            let mut seen_child_ids = HashSet::new();
+            let mut seen_child_ids = BTreeSet::new();
             for (child_index, child_id) in node_data.children().iter().enumerate() {
                 if seen_child_ids.contains(child_id) {
                     panic!(
@@ -145,11 +145,11 @@ impl State {
         self.is_host_focused = is_host_focused;
 
         if !orphans.is_empty() {
-            let mut to_remove = HashSet::new();
+            let mut to_remove = BTreeSet::new();
 
             fn traverse_orphan(
                 nodes: &ChunkMap<NodeId, NodeState>,
-                to_remove: &mut HashSet<NodeId>,
+                to_remove: &mut BTreeSet<NodeId>,
                 id: NodeId,
             ) {
                 to_remove.insert(id);
