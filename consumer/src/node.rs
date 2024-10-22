@@ -11,8 +11,8 @@
 use std::{iter::FusedIterator, sync::Arc};
 
 use accesskit::{
-    Action, Affine, DefaultActionVerb, Live, Node as NodeData, NodeId, Orientation, Point, Rect,
-    Role, TextSelection, Toggled,
+    Action, Affine, Live, Node as NodeData, NodeId, Orientation, Point, Rect, Role, TextSelection,
+    Toggled,
 };
 
 use crate::filters::FilterResult;
@@ -404,31 +404,17 @@ impl<'a> Node<'a> {
         self.data().orientation()
     }
 
-    pub fn default_action_verb(&self) -> Option<DefaultActionVerb> {
-        self.data().default_action_verb()
-    }
-
     // When probing for supported actions as the next several functions do,
     // it's tempting to check the role. But it's better to not assume anything
     // beyond what the provider has explicitly told us. Rationale:
-    // if the provider developer forgot to correctly set `default_action_verb`,
+    // if the provider developer forgot to call `add_action` for an action,
     // an AT (or even AccessKit itself) can fall back to simulating
     // a mouse click. But if the provider doesn't handle an action request
     // and we assume that it will based on the role, the attempted action
     // does nothing. This stance is a departure from Chromium.
 
     pub fn is_clickable(&self) -> bool {
-        // If it has a custom default action verb except for
-        // `DefaultActionVerb::ClickAncestor`, it's definitely clickable.
-        // `DefaultActionVerb::ClickAncestor` is used when a node with a
-        // click listener is present in its ancestry chain.
-        if let Some(verb) = self.default_action_verb() {
-            if verb != DefaultActionVerb::ClickAncestor {
-                return true;
-            }
-        }
-
-        false
+        self.supports_action(Action::Click)
     }
 
     pub fn supports_toggle(&self) -> bool {
@@ -449,16 +435,11 @@ impl<'a> Node<'a> {
         // "invocable", as the "invoke" action would be a redundant synonym
         // for the "set focus" action. The same logic applies to selection.
         self.is_clickable()
-            && !matches!(
-                self.default_action_verb(),
-                Some(
-                    DefaultActionVerb::Focus
-                        | DefaultActionVerb::Select
-                        | DefaultActionVerb::Unselect
-                )
-            )
+            && !self.is_text_input()
+            && !matches!(self.role(), Role::Document | Role::Terminal)
             && !self.supports_toggle()
             && !self.supports_expand_collapse()
+            && self.is_selected().is_none()
     }
 
     // The future of the `Action` enum is undecided, so keep the following

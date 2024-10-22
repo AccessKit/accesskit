@@ -553,7 +553,7 @@ declare_class!(
                 let clickable = node.is_clickable();
                 if clickable {
                     context.do_action(ActionRequest {
-                        action: Action::Default,
+                        action: Action::Click,
                         target: node.id(),
                         data: None,
                     });

@@ -597,8 +597,8 @@ impl PlatformNode {
         Ok(())
     }
 
-    fn do_default_action(&self) -> Result<()> {
-        self.do_action(|| (Action::Default, None))
+    fn click(&self) -> Result<()> {
+        self.do_action(|| (Action::Click, None))
     }
 
     fn relative(&self, node_id: NodeId) -> Self {
@@ -886,12 +886,12 @@ patterns! {
         (ToggleState, toggle_state, ToggleState)
     ), (
         fn Toggle(&self) -> Result<()> {
-            self.do_default_action()
+            self.click()
         }
     )),
     (Invoke, is_invoke_pattern_supported, (), (
         fn Invoke(&self) -> Result<()> {
-            self.do_default_action()
+            self.click()
         }
     )),
     (Value, is_value_pattern_supported, (
@@ -923,7 +923,7 @@ patterns! {
         (IsSelected, is_selected, BOOL)
     ), (
         fn Select(&self) -> Result<()> {
-            self.do_default_action()
+            self.click()
         },
 
         fn AddToSelection(&self) -> Result<()> {
