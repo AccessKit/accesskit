@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use accesskit_atspi_common::{NodeIdOrRoot, PlatformNode, PlatformRoot};
 use atspi::{Interface, InterfaceSet, Role, StateSet};
@@ -111,7 +111,7 @@ impl NodeAccessibleInterface {
         self.node.state()
     }
 
-    fn get_attributes(&self) -> fdo::Result<HashMap<&str, String>> {
+    fn get_attributes(&self) -> fdo::Result<BTreeMap<&str, String>> {
         self.node.attributes().map_err(self.map_error())
     }
 

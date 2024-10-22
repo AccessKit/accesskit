@@ -8,7 +8,7 @@ use accesskit_consumer::Tree;
 use objc2::rc::{Id, WeakId};
 use objc2_app_kit::*;
 use objc2_foundation::MainThreadMarker;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use crate::node::PlatformNode;
 
@@ -34,7 +34,7 @@ pub(crate) struct Context {
     pub(crate) view: WeakId<NSView>,
     pub(crate) tree: RefCell<Tree>,
     pub(crate) action_handler: Rc<dyn ActionHandlerNoMut>,
-    platform_nodes: RefCell<HashMap<NodeId, Id<PlatformNode>>>,
+    platform_nodes: RefCell<BTreeMap<NodeId, Id<PlatformNode>>>,
     pub(crate) mtm: MainThreadMarker,
 }
 
@@ -49,7 +49,7 @@ impl Context {
             view,
             tree: RefCell::new(tree),
             action_handler,
-            platform_nodes: RefCell::new(HashMap::new()),
+            platform_nodes: RefCell::new(BTreeMap::new()),
             mtm,
         })
     }

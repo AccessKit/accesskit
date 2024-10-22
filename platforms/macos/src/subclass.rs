@@ -19,13 +19,11 @@ use objc2::{
 };
 use objc2_app_kit::{NSView, NSWindow};
 use objc2_foundation::{NSArray, NSObject, NSPoint};
-use once_cell::sync::Lazy;
-use std::{cell::RefCell, collections::HashMap, ffi::c_void, sync::Mutex};
+use std::{cell::RefCell, collections::BTreeMap, ffi::c_void, sync::Mutex};
 
 use crate::{event::QueuedEvents, Adapter};
 
-static SUBCLASSES: Lazy<Mutex<HashMap<&'static AnyClass, &'static AnyClass>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
+static SUBCLASSES: Mutex<BTreeMap<String, &'static AnyClass>> = Mutex::new(BTreeMap::new());
 
 static ASSOCIATED_OBJECT_KEY: u8 = 0;
 
@@ -163,7 +161,7 @@ impl SubclassingAdapter {
             )
         };
         let mut subclasses = SUBCLASSES.lock().unwrap();
-        let entry = subclasses.entry(prev_class);
+        let entry = subclasses.entry(prev_class.name().to_string());
         let subclass = entry.or_insert_with(|| {
             let name = format!("AccessKitSubclassOf{}", prev_class.name());
             let mut builder = ClassBuilder::new(&name, prev_class).unwrap();

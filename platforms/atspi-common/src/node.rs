@@ -18,7 +18,7 @@ use atspi_common::{
     ScrollType, State, StateSet,
 };
 use std::{
-    collections::HashMap,
+    collections::BTreeMap,
     hash::{Hash, Hasher},
     iter::FusedIterator,
     sync::{Arc, RwLock, RwLockReadGuard, Weak},
@@ -348,8 +348,8 @@ impl<'a> NodeWrapper<'a> {
         atspi_state
     }
 
-    fn attributes(&self) -> HashMap<&'static str, String> {
-        let mut attributes = HashMap::new();
+    fn attributes(&self) -> BTreeMap<&'static str, String> {
+        let mut attributes = BTreeMap::new();
         if let Some(placeholder) = self.0.placeholder() {
             attributes.insert("placeholder-text", placeholder);
         }
@@ -793,7 +793,7 @@ impl PlatformNode {
         .unwrap_or(State::Defunct.into())
     }
 
-    pub fn attributes(&self) -> Result<HashMap<&'static str, String>> {
+    pub fn attributes(&self) -> Result<BTreeMap<&'static str, String>> {
         self.resolve(|node| {
             let wrapper = NodeWrapper(&node);
             Ok(wrapper.attributes())
@@ -1026,12 +1026,12 @@ impl PlatformNode {
         Err(Error::UnsupportedInterface)
     }
 
-    pub fn text_attributes(&self, _offset: i32) -> Result<(HashMap<String, String>, i32, i32)> {
+    pub fn text_attributes(&self, _offset: i32) -> Result<(BTreeMap<String, String>, i32, i32)> {
         // TODO: Implement rich text.
         Err(Error::UnsupportedInterface)
     }
 
-    pub fn default_text_attributes(&self) -> Result<HashMap<String, String>> {
+    pub fn default_text_attributes(&self) -> Result<BTreeMap<String, String>> {
         // TODO: Implement rich text.
         Err(Error::UnsupportedInterface)
     }
@@ -1177,12 +1177,12 @@ impl PlatformNode {
         &self,
         _offset: i32,
         _include_defaults: bool,
-    ) -> Result<(HashMap<String, String>, i32, i32)> {
+    ) -> Result<(BTreeMap<String, String>, i32, i32)> {
         // TODO: Implement rich text.
         // For now, just report a range spanning the entire text with no attributes,
         // this is required by Orca to announce selection content and caret movements.
         let character_count = self.character_count()?;
-        Ok((HashMap::new(), 0, character_count))
+        Ok((BTreeMap::new(), 0, character_count))
     }
 
     pub fn scroll_substring_to(

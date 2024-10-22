@@ -12,7 +12,7 @@ use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
 use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler, TreeState};
 use atspi_common::{InterfaceSet, Live, State};
 use std::{
-    collections::HashSet,
+    collections::BTreeSet,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc, RwLock,
@@ -29,18 +29,18 @@ use crate::{
 
 struct AdapterChangeHandler<'a> {
     adapter: &'a Adapter,
-    added_nodes: HashSet<NodeId>,
-    removed_nodes: HashSet<NodeId>,
-    checked_text_change: HashSet<NodeId>,
+    added_nodes: BTreeSet<NodeId>,
+    removed_nodes: BTreeSet<NodeId>,
+    checked_text_change: BTreeSet<NodeId>,
 }
 
 impl<'a> AdapterChangeHandler<'a> {
     fn new(adapter: &'a Adapter) -> Self {
         Self {
             adapter,
-            added_nodes: HashSet::new(),
-            removed_nodes: HashSet::new(),
-            checked_text_change: HashSet::new(),
+            added_nodes: BTreeSet::new(),
+            removed_nodes: BTreeSet::new(),
+            checked_text_change: BTreeSet::new(),
         }
     }
 

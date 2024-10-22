@@ -8,7 +8,7 @@ use accesskit_consumer::{FilterResult, Node, TreeChangeHandler};
 use objc2::runtime::{AnyObject, ProtocolObject};
 use objc2_app_kit::*;
 use objc2_foundation::{NSMutableDictionary, NSNumber, NSString};
-use std::{collections::HashSet, rc::Rc};
+use std::{collections::BTreeSet, rc::Rc};
 
 use crate::{context::Context, filters::filter, node::NodeWrapper};
 
@@ -135,7 +135,7 @@ pub(crate) fn focus_event(node_id: NodeId) -> QueuedEvent {
 pub(crate) struct EventGenerator {
     context: Rc<Context>,
     events: Vec<QueuedEvent>,
-    text_changed: HashSet<NodeId>,
+    text_changed: BTreeSet<NodeId>,
 }
 
 impl EventGenerator {
@@ -143,7 +143,7 @@ impl EventGenerator {
         Self {
             context,
             events: Vec::new(),
-            text_changed: HashSet::new(),
+            text_changed: BTreeSet::new(),
         }
     }
 
