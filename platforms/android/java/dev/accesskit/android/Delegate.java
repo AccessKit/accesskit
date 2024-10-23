@@ -200,6 +200,13 @@ public final class Delegate extends View.AccessibilityDelegate {
                     host.invalidate();
                     sendEventInternal(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED);
                     return true;
+                case AccessibilityNodeInfo.ACTION_CLEAR_ACCESSIBILITY_FOCUS:
+                    if (accessibilityFocus == virtualViewId) {
+                        accessibilityFocus = AccessibilityNodeProvider.HOST_VIEW_ID;
+                    }
+                    host.invalidate();
+                    sendEventInternal(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED);
+                    return true;
                 case AccessibilityNodeInfo.ACTION_SET_SELECTION:
                     if (!(arguments != null && arguments.containsKey(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT) && arguments.containsKey(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT))) {
                         return Delegate.collapseTextSelection(adapterHandle, host, virtualViewId);
