@@ -158,6 +158,7 @@ public final class Delegate extends View.AccessibilityDelegate {
     }
 
     private static native boolean populateNodeInfo(long adapterHandle, View host, int screenX, int screenY, int virtualViewId, AccessibilityNodeInfo nodeInfo);
+    private static native int getInputFocus(long adapterHandle);
     private static native boolean performAction(long adapterHandle, int virtualViewId, int action);
     private static native boolean setTextSelection(long adapterHandle, View host, int virtualViewId, int anchor, int focus);
     private static native boolean collapseTextSelection(long adapterHandle, View host, int virtualViewId);
@@ -182,6 +183,7 @@ public final class Delegate extends View.AccessibilityDelegate {
                     nodeInfo.recycle();
                     return null;
                 }
+                nodeInfo.setVisibleToUser(true);
                 if (virtualViewId == accessibilityFocus) {
                     nodeInfo.setAccessibilityFocused(true);
                     nodeInfo.addAction(AccessibilityAction.ACTION_CLEAR_ACCESSIBILITY_FOCUS);
@@ -234,11 +236,23 @@ public final class Delegate extends View.AccessibilityDelegate {
 
             @Override
             public AccessibilityNodeInfo findFocus(int focusType) {
-                if (focusType != AccessibilityNodeInfo.FOCUS_ACCESSIBILITY
-                    || accessibilityFocus == HOST_VIEW_ID) {
-                    return null;
+                switch (focusType) {
+                    case AccessibilityNodeInfo.FOCUS_ACCESSIBILITY: {
+                        AccessibilityNodeInfo result = createAccessibilityNodeInfo(accessibilityFocus);
+                        if (result != null && result.isAccessibilityFocused()) {
+                            return result;
+                        }
+                        break;
+                    }
+                    case AccessibilityNodeInfo.FOCUS_INPUT: {
+                        AccessibilityNodeInfo result = createAccessibilityNodeInfo(getInputFocus(adapterHandle));
+                        if (result != null && result.isFocused()) {
+                            return result;
+                        }
+                        break;
+                    }
                 }
-                return createAccessibilityNodeInfo(accessibilityFocus);
+                return null;
             }
         };
     }

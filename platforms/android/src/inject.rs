@@ -61,6 +61,10 @@ impl InnerInjectingAdapter {
             .virtual_view_at_point(&mut *self.activation_handler, x, y)
     }
 
+    fn input_focus(&mut self) -> jint {
+        self.adapter.input_focus(&mut *self.activation_handler)
+    }
+
     fn perform_action(&mut self, virtual_view_id: jint, action: jint) -> bool {
         self.adapter
             .perform_action(&mut *self.action_handler, virtual_view_id, action)
@@ -164,6 +168,14 @@ extern "system" fn populate_node_info(
     } else {
         JNI_FALSE
     }
+}
+
+extern "system" fn get_input_focus(_env: JNIEnv, _class: JClass, adapter_handle: jlong) -> jint {
+    let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
+        return HOST_VIEW_ID;
+    };
+    let mut inner_adapter = inner_adapter.lock().unwrap();
+    inner_adapter.input_focus()
 }
 
 extern "system" fn perform_action(
@@ -287,6 +299,11 @@ fn delegate_class(env: &mut JNIEnv) -> Result<&'static JClass<'static>> {
                     sig: "(JLandroid/view/View;IIILandroid/view/accessibility/AccessibilityNodeInfo;)Z"
                         .into(),
                     fn_ptr: populate_node_info as *mut c_void,
+                },
+                NativeMethod {
+                    name: "getInputFocus".into(),
+                    sig: "(J)I".into(),
+                    fn_ptr: get_input_focus as *mut c_void,
                 },
                 NativeMethod {
                     name: "performAction".into(),
