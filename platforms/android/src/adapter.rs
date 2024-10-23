@@ -120,7 +120,10 @@ impl TreeChangeHandler for AdapterChangeHandler<'_, '_, '_, '_> {
                 )
                 .unwrap();
         }
-        if old_node.raw_text_selection() != new_node.raw_text_selection() {
+        if old_node.raw_text_selection() != new_node.raw_text_selection()
+            || (new_node.raw_text_selection().is_some()
+                && old_node.is_focused() != new_node.is_focused())
+        {
             if let Some((start, end)) = new_wrapper.text_selection() {
                 if let Some(text) = new_text {
                     let id = self.node_id_map.get_or_create_java_id(new_node);
@@ -306,6 +309,16 @@ impl Adapter {
             jni_node,
         )?;
         Ok(true)
+    }
+
+    pub fn input_focus<H: ActivationHandler + ?Sized>(
+        &mut self,
+        activation_handler: &mut H,
+    ) -> jint {
+        let tree = self.state.get_or_init_tree(activation_handler);
+        let tree_state = tree.state();
+        let node = tree_state.focus_in_tree();
+        self.node_id_map.get_or_create_java_id(&node)
     }
 
     pub fn virtual_view_at_point<H: ActivationHandler + ?Sized>(
