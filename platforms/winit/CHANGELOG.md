@@ -140,6 +140,33 @@
   * dependencies
     * accesskit_macos bumped from 0.17.3 to 0.17.4
 
+## [0.23.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.22.4...accesskit_winit-v0.23.0) (2024-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop `DefaultActionVerb` ([#472](https://github.com/AccessKit/accesskit/issues/472))
+* Make the core crate no-std ([#468](https://github.com/AccessKit/accesskit/issues/468))
+
+### Features
+
+* Make the core crate no-std ([#468](https://github.com/AccessKit/accesskit/issues/468)) ([2fa0d3f](https://github.com/AccessKit/accesskit/commit/2fa0d3f5b2b7ac11ef1751c133706f29e548bd6d))
+
+
+### Code Refactoring
+
+* Drop `DefaultActionVerb` ([#472](https://github.com/AccessKit/accesskit/issues/472)) ([ef3b003](https://github.com/AccessKit/accesskit/commit/ef3b0038224459094f650368412650bc3b69526b))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.16.3 to 0.17.0
+    * accesskit_windows bumped from 0.23.2 to 0.24.0
+    * accesskit_macos bumped from 0.17.4 to 0.18.0
+    * accesskit_unix bumped from 0.12.3 to 0.13.0
+
 ## [0.22.2](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.22.1...accesskit_winit-v0.22.2) (2024-10-07)
 
 

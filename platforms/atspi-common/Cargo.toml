@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_atspi_common"
-version = "0.9.3"
+version = "0.10.0"
 authors.workspace = true
 license.workspace = true
 description = "AccessKit UI accessibility infrastructure: core AT-SPI translation layer"
@@ -15,8 +15,8 @@ rust-version.workspace = true
 simplified-api = []
 
 [dependencies]
-accesskit = { version = "0.16.3", path = "../../common" }
-accesskit_consumer = { version = "0.24.3", path = "../../consumer" }
+accesskit = { version = "0.17.0", path = "../../common" }
+accesskit_consumer = { version = "0.25.0", path = "../../consumer" }
 atspi-common = { version = "0.6", default-features = false }
 serde = "1.0"
 thiserror = "1.0"
