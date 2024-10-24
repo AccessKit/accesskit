@@ -24,6 +24,30 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.25.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.24.3...accesskit_consumer-v0.25.0) (2024-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop `DefaultActionVerb` ([#472](https://github.com/AccessKit/accesskit/issues/472))
+* Make the core crate no-std ([#468](https://github.com/AccessKit/accesskit/issues/468))
+
+### Features
+
+* Make the core crate no-std ([#468](https://github.com/AccessKit/accesskit/issues/468)) ([2fa0d3f](https://github.com/AccessKit/accesskit/commit/2fa0d3f5b2b7ac11ef1751c133706f29e548bd6d))
+
+
+### Code Refactoring
+
+* Drop `DefaultActionVerb` ([#472](https://github.com/AccessKit/accesskit/issues/472)) ([ef3b003](https://github.com/AccessKit/accesskit/commit/ef3b0038224459094f650368412650bc3b69526b))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.16.3 to 0.17.0
+
 ## [0.24.2](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.24.1...accesskit_consumer-v0.24.2) (2024-10-07)
 
 
