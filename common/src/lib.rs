@@ -268,9 +268,6 @@ pub enum Role {
 }
 
 /// An action to be taken on an accessibility node.
-///
-/// In contrast to [`DefaultActionVerb`], these describe what happens to the
-/// object, e.g. "focus".
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -282,8 +279,8 @@ pub enum Role {
 )]
 #[repr(u8)]
 pub enum Action {
-    /// Do the default action for an object, typically this means "click".
-    Default,
+    /// Do the equivalent of a single click or tap.
+    Click,
 
     Focus,
     Blur,
@@ -357,7 +354,7 @@ impl Action {
         // want to bring this crate by default though and we can't use a
         // macro as it would break C bindings header file generation.
         match value {
-            0 => Some(Action::Default),
+            0 => Some(Action::Click),
             1 => Some(Action::Focus),
             2 => Some(Action::Blur),
             3 => Some(Action::Collapse),
@@ -466,39 +463,6 @@ pub enum Toggled {
     False,
     True,
     Mixed,
-}
-
-/// Describes the action that will be performed on a given node when
-/// executing the default action, which is a click.
-///
-/// In contrast to [`Action`], these describe what the user can do on the
-/// object, e.g. "press", not what happens to the object as a result.
-/// Only one verb can be used at a time to describe the default action.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "enumn", derive(enumn::N))]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "schemars", derive(JsonSchema))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-#[cfg_attr(
-    feature = "pyo3",
-    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE")
-)]
-#[repr(u8)]
-pub enum DefaultActionVerb {
-    Click,
-    Focus,
-    Check,
-    Uncheck,
-    /// A click will be performed on one of the node's ancestors.
-    /// This happens when the node itself is not clickable, but one of its
-    /// ancestors has click handlers attached which are able to capture the click
-    /// as it bubbles up.
-    ClickAncestor,
-    Jump,
-    Open,
-    Press,
-    Select,
-    Unselect,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -779,7 +743,6 @@ enum PropertyValue {
     Invalid(Invalid),
     Toggled(Toggled),
     Live(Live),
-    DefaultActionVerb(DefaultActionVerb),
     TextDirection(TextDirection),
     Orientation(Orientation),
     SortDirection(SortDirection),
@@ -892,7 +855,6 @@ enum PropertyId {
     Invalid,
     Toggled,
     Live,
-    DefaultActionVerb,
     TextDirection,
     Orientation,
     SortDirection,
@@ -1775,7 +1737,6 @@ unique_enum_property_methods! {
     (Invalid, invalid, set_invalid, clear_invalid),
     (Toggled, toggled, set_toggled, clear_toggled),
     (Live, live, set_live, clear_live),
-    (DefaultActionVerb, default_action_verb, set_default_action_verb, clear_default_action_verb),
     (TextDirection, text_direction, set_text_direction, clear_text_direction),
     (Orientation, orientation, set_orientation, clear_orientation),
     (SortDirection, sort_direction, set_sort_direction, clear_sort_direction),
@@ -1957,7 +1918,6 @@ impl Serialize for Properties {
                 Invalid,
                 Toggled,
                 Live,
-                DefaultActionVerb,
                 TextDirection,
                 Orientation,
                 SortDirection,
@@ -2086,7 +2046,6 @@ impl<'de> Visitor<'de> for PropertiesVisitor {
                 Invalid { Invalid },
                 Toggled { Toggled },
                 Live { Live },
-                DefaultActionVerb { DefaultActionVerb },
                 TextDirection { TextDirection },
                 Orientation { Orientation },
                 SortDirection { SortDirection },
@@ -2234,7 +2193,6 @@ impl JsonSchema for Properties {
             Invalid { Invalid },
             Toggled { Toggled },
             Live { Live },
-            DefaultActionVerb { DefaultActionVerb },
             TextDirection { TextDirection },
             Orientation { Orientation },
             SortDirection { SortDirection },
@@ -2437,7 +2395,7 @@ mod tests {
 
     #[test]
     fn action_n() {
-        assert_eq!(Action::n(0), Some(Action::Default));
+        assert_eq!(Action::n(0), Some(Action::Click));
         assert_eq!(Action::n(1), Some(Action::Focus));
         assert_eq!(Action::n(2), Some(Action::Blur));
         assert_eq!(Action::n(3), Some(Action::Collapse));
@@ -2475,9 +2433,9 @@ mod tests {
         );
 
         let mut builder = NodeBuilder::new(Role::Unknown);
-        builder.add_action(Action::Default);
+        builder.add_action(Action::Click);
         assert_eq!(
-            &[Action::Default],
+            &[Action::Click],
             action_mask_to_action_vec(builder.actions).as_slice()
         );
 
@@ -2489,10 +2447,10 @@ mod tests {
         );
 
         let mut builder = NodeBuilder::new(Role::Unknown);
-        builder.add_action(Action::Default);
+        builder.add_action(Action::Click);
         builder.add_action(Action::ShowContextMenu);
         assert_eq!(
-            &[Action::Default, Action::ShowContextMenu],
+            &[Action::Click, Action::ShowContextMenu],
             action_mask_to_action_vec(builder.actions).as_slice()
         );
 

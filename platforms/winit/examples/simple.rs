@@ -1,6 +1,5 @@
 use accesskit::{
-    Action, ActionRequest, DefaultActionVerb, Live, Node, NodeBuilder, NodeId, Rect, Role, Tree,
-    TreeUpdate,
+    Action, ActionRequest, Live, Node, NodeBuilder, NodeId, Rect, Role, Tree, TreeUpdate,
 };
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
 use std::error::Error;
@@ -45,7 +44,7 @@ fn build_button(id: NodeId, name: &str) -> Node {
     builder.set_bounds(rect);
     builder.set_name(name);
     builder.add_action(Action::Focus);
-    builder.set_default_action_verb(DefaultActionVerb::Click);
+    builder.add_action(Action::Click);
     builder.build()
 }
 
@@ -232,7 +231,7 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                         Action::Focus => {
                             state.set_focus(adapter, target);
                         }
-                        Action::Default => {
+                        Action::Click => {
                             state.press_button(adapter, target);
                         }
                         _ => (),

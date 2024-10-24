@@ -9,8 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionRequest, Affine, DefaultActionVerb, Live, NodeId, Orientation, Point,
-    Rect, Role, Toggled,
+    Action, ActionData, ActionRequest, Affine, Live, NodeId, Orientation, Point, Rect, Role,
+    Toggled,
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
 use atspi_common::{
@@ -361,7 +361,7 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn supports_action(&self) -> bool {
-        self.0.default_action_verb().is_some()
+        self.0.is_clickable()
     }
 
     fn supports_component(&self) -> bool {
@@ -403,9 +403,10 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn n_actions(&self) -> i32 {
-        match self.0.default_action_verb() {
-            Some(_) => 1,
-            None => 0,
+        if self.0.is_clickable() {
+            1
+        } else {
+            0
         }
     }
 
@@ -413,19 +414,7 @@ impl<'a> NodeWrapper<'a> {
         if index != 0 {
             return String::new();
         }
-        String::from(match self.0.default_action_verb() {
-            Some(DefaultActionVerb::Click) => "click",
-            Some(DefaultActionVerb::Focus) => "focus",
-            Some(DefaultActionVerb::Check) => "check",
-            Some(DefaultActionVerb::Uncheck) => "uncheck",
-            Some(DefaultActionVerb::ClickAncestor) => "clickAncestor",
-            Some(DefaultActionVerb::Jump) => "jump",
-            Some(DefaultActionVerb::Open) => "open",
-            Some(DefaultActionVerb::Press) => "press",
-            Some(DefaultActionVerb::Select) => "select",
-            Some(DefaultActionVerb::Unselect) => "unselect",
-            None => "",
-        })
+        String::from(if self.0.is_clickable() { "click" } else { "" })
     }
 
     fn raw_bounds_and_transform(&self) -> (Option<Rect>, Affine) {
@@ -870,7 +859,7 @@ impl PlatformNode {
             return Ok(false);
         }
         self.do_action_internal(|_, _| ActionRequest {
-            action: Action::Default,
+            action: Action::Click,
             target: self.id,
             data: None,
         })?;

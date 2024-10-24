@@ -1,8 +1,8 @@
 // Based on the create_window sample in windows-samples-rs.
 
 use accesskit::{
-    Action, ActionHandler, ActionRequest, ActivationHandler, DefaultActionVerb, Live, Node,
-    NodeBuilder, NodeId, Rect, Role, Tree, TreeUpdate,
+    Action, ActionHandler, ActionRequest, ActivationHandler, Live, Node, NodeBuilder, NodeId, Rect,
+    Role, Tree, TreeUpdate,
 };
 use accesskit_windows::Adapter;
 use once_cell::sync::Lazy;
@@ -59,7 +59,7 @@ const BUTTON_2_RECT: Rect = Rect {
 };
 
 const SET_FOCUS_MSG: u32 = WM_USER;
-const DO_DEFAULT_ACTION_MSG: u32 = WM_USER + 1;
+const CLICK_MSG: u32 = WM_USER + 1;
 
 fn build_button(id: NodeId, name: &str) -> Node {
     let rect = match id {
@@ -72,7 +72,7 @@ fn build_button(id: NodeId, name: &str) -> Node {
     builder.set_bounds(rect);
     builder.set_name(name);
     builder.add_action(Action::Focus);
-    builder.set_default_action_verb(DefaultActionVerb::Click);
+    builder.add_action(Action::Click);
     builder.build()
 }
 
@@ -206,11 +206,11 @@ impl ActionHandler for SimpleActionHandler {
                 }
                 .unwrap();
             }
-            Action::Default => {
+            Action::Click => {
                 unsafe {
                     PostMessageW(
                         self.window,
-                        DO_DEFAULT_ACTION_MSG,
+                        CLICK_MSG,
                         WPARAM(0),
                         LPARAM(request.target.0 as _),
                     )
@@ -308,7 +308,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             }
             LRESULT(0)
         }
-        DO_DEFAULT_ACTION_MSG => {
+        CLICK_MSG => {
             let id = NodeId(lparam.0 as _);
             if id == BUTTON_1_ID || id == BUTTON_2_ID {
                 let state = unsafe { &*get_window_state(window) };
