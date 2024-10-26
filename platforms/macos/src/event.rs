@@ -173,7 +173,7 @@ impl EventGenerator {
     }
 
     fn insert_text_change_if_needed(&mut self, node: &Node) {
-        if node.role() != Role::InlineTextBox {
+        if node.role() != Role::TextRun {
             return;
         }
         if let Some(node) = node.filtered_parent(&filter) {

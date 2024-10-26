@@ -36,7 +36,7 @@ fn ns_role(node: &Node) -> &'static NSAccessibilityRole {
     unsafe {
         match role {
             Role::Unknown => NSAccessibilityUnknownRole,
-            Role::InlineTextBox => NSAccessibilityUnknownRole,
+            Role::TextRun => NSAccessibilityUnknownRole,
             Role::Cell => NSAccessibilityCellRole,
             Role::Label => NSAccessibilityStaticTextRole,
             Role::Image => NSAccessibilityImageRole,

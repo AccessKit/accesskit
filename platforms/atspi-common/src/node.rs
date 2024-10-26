@@ -158,7 +158,7 @@ impl<'a> NodeWrapper<'a> {
             Role::Iframe | Role::IframePresentational => AtspiRole::InternalFrame,
             // TODO: If there are unignored children, then it should be AtspiRole::ImageMap.
             Role::Image => AtspiRole::Image,
-            Role::InlineTextBox => AtspiRole::Static,
+            Role::TextRun => AtspiRole::Static,
             Role::Legend => AtspiRole::Label,
             // Layout table objects are treated the same as `Role::GenericContainer`.
             Role::LayoutTable => AtspiRole::Section,

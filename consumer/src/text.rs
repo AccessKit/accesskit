@@ -19,7 +19,7 @@ pub(crate) struct InnerPosition<'a> {
 impl<'a> InnerPosition<'a> {
     fn upgrade(tree_state: &'a TreeState, weak: WeakPosition) -> Option<Self> {
         let node = tree_state.node_by_id(weak.node)?;
-        if node.role() != Role::InlineTextBox {
+        if node.role() != Role::TextRun {
             return None;
         }
         let character_index = weak.character_index;
@@ -34,7 +34,7 @@ impl<'a> InnerPosition<'a> {
 
     fn clamped_upgrade(tree_state: &'a TreeState, weak: WeakPosition) -> Option<Self> {
         let node = tree_state.node_by_id(weak.node)?;
-        if node.role() != Role::InlineTextBox {
+        if node.role() != Role::TextRun {
             return None;
         }
         let character_index = weak
@@ -57,20 +57,20 @@ impl<'a> InnerPosition<'a> {
         false
     }
 
-    fn is_box_start(&self) -> bool {
+    fn is_run_start(&self) -> bool {
         self.character_index == 0
     }
 
     fn is_line_start(&self) -> bool {
-        self.is_box_start() && self.node.data().previous_on_line().is_none()
+        self.is_run_start() && self.node.data().previous_on_line().is_none()
     }
 
-    fn is_box_end(&self) -> bool {
+    fn is_run_end(&self) -> bool {
         self.character_index == self.node.data().character_lengths().len()
     }
 
     fn is_line_end(&self) -> bool {
-        self.is_box_end() && self.node.data().next_on_line().is_none()
+        self.is_run_end() && self.node.data().next_on_line().is_none()
     }
 
     fn is_paragraph_end(&self) -> bool {
@@ -78,26 +78,16 @@ impl<'a> InnerPosition<'a> {
     }
 
     fn is_document_start(&self, root_node: &Node) -> bool {
-        self.is_box_start()
-            && self
-                .node
-                .preceding_inline_text_boxes(root_node)
-                .next()
-                .is_none()
+        self.is_run_start() && self.node.preceding_text_runs(root_node).next().is_none()
     }
 
     fn is_document_end(&self, root_node: &Node) -> bool {
-        self.is_box_end()
-            && self
-                .node
-                .following_inline_text_boxes(root_node)
-                .next()
-                .is_none()
+        self.is_run_end() && self.node.following_text_runs(root_node).next().is_none()
     }
 
     fn biased_to_start(&self, root_node: &Node) -> Self {
-        if self.is_box_end() {
-            if let Some(node) = self.node.following_inline_text_boxes(root_node).next() {
+        if self.is_run_end() {
+            if let Some(node) = self.node.following_text_runs(root_node).next() {
                 return Self {
                     node,
                     character_index: 0,
@@ -108,8 +98,8 @@ impl<'a> InnerPosition<'a> {
     }
 
     fn biased_to_end(&self, root_node: &Node) -> Self {
-        if self.is_box_start() {
-            if let Some(node) = self.node.preceding_inline_text_boxes(root_node).next() {
+        if self.is_run_start() {
+            if let Some(node) = self.node.preceding_text_runs(root_node).next() {
                 return Self {
                     node,
                     character_index: node.data().character_lengths().len(),
@@ -250,7 +240,7 @@ impl<'a> Position<'a> {
 
     pub fn to_global_usv_index(&self) -> usize {
         let mut total_length = 0usize;
-        for node in self.root_node.inline_text_boxes() {
+        for node in self.root_node.text_runs() {
             let node_text = node.data().value().unwrap();
             if node.id() == self.inner.node.id() {
                 let character_lengths = node.data().character_lengths();
@@ -268,7 +258,7 @@ impl<'a> Position<'a> {
 
     pub fn to_global_utf16_index(&self) -> usize {
         let mut total_length = 0usize;
-        for node in self.root_node.inline_text_boxes() {
+        for node in self.root_node.text_runs() {
             let node_text = node.data().value().unwrap();
             if node.id() == self.inner.node.id() {
                 let character_lengths = node.data().character_lengths();
@@ -545,7 +535,7 @@ impl<'a> Range<'a> {
         if start.node.id() == end.node.id() {
             return None;
         }
-        for node in start.node.following_inline_text_boxes(&self.node) {
+        for node in start.node.following_text_runs(&self.node) {
             if let Some(result) = f(&node) {
                 return Some(result);
             }
@@ -796,7 +786,7 @@ impl WeakRange {
 }
 
 fn text_node_filter(root_id: NodeId, node: &Node) -> FilterResult {
-    if node.id() == root_id || node.role() == Role::InlineTextBox {
+    if node.id() == root_id || node.role() == Role::TextRun {
         FilterResult::Include
     } else {
         FilterResult::ExcludeNode
@@ -844,14 +834,14 @@ fn character_index_at_point(node: &Node, point: Point) -> usize {
 }
 
 impl<'a> Node<'a> {
-    fn inline_text_boxes(
+    fn text_runs(
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
         let id = self.id();
         self.filtered_children(move |node| text_node_filter(id, node))
     }
 
-    fn following_inline_text_boxes(
+    fn following_text_runs(
         &self,
         root_node: &Node,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
@@ -859,7 +849,7 @@ impl<'a> Node<'a> {
         self.following_filtered_siblings(move |node| text_node_filter(id, node))
     }
 
-    fn preceding_inline_text_boxes(
+    fn preceding_text_runs(
         &self,
         root_node: &Node,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
@@ -870,11 +860,11 @@ impl<'a> Node<'a> {
     pub fn supports_text_ranges(&self) -> bool {
         (self.is_text_input()
             || matches!(self.role(), Role::Label | Role::Document | Role::Terminal))
-            && self.inline_text_boxes().next().is_some()
+            && self.text_runs().next().is_some()
     }
 
     fn document_start(&self) -> InnerPosition<'a> {
-        let node = self.inline_text_boxes().next().unwrap();
+        let node = self.text_runs().next().unwrap();
         InnerPosition {
             node,
             character_index: 0,
@@ -882,7 +872,7 @@ impl<'a> Node<'a> {
     }
 
     fn document_end(&self) -> InnerPosition<'a> {
-        let node = self.inline_text_boxes().next_back().unwrap();
+        let node = self.text_runs().next_back().unwrap();
         InnerPosition {
             node,
             character_index: node.data().character_lengths().len(),
@@ -922,7 +912,7 @@ impl<'a> Node<'a> {
     pub fn text_position_at_point(&self, point: Point) -> Position {
         let id = self.id();
         if let Some((node, point)) = self.hit_test(point, &move |node| text_node_filter(id, node)) {
-            if node.role() == Role::InlineTextBox {
+            if node.role() == Role::TextRun {
                 let pos = InnerPosition {
                     node,
                     character_index: character_index_at_point(&node, point),
@@ -935,9 +925,9 @@ impl<'a> Node<'a> {
         }
 
         // The following tests can assume that the point is not within
-        // any inline text box.
+        // any text run.
 
-        if let Some(node) = self.inline_text_boxes().next() {
+        if let Some(node) = self.text_runs().next() {
             if let Some(rect) = node.bounding_box_in_coordinate_space(self) {
                 let origin = rect.origin();
                 if point.x < origin.x || point.y < origin.y {
@@ -949,7 +939,7 @@ impl<'a> Node<'a> {
             }
         }
 
-        for node in self.inline_text_boxes().rev() {
+        for node in self.text_runs().rev() {
             if let Some(rect) = node.bounding_box_in_coordinate_space(self) {
                 if let Some(direction) = node.data().text_direction() {
                     let is_past_end = match direction {
@@ -1013,7 +1003,7 @@ impl<'a> Node<'a> {
 
     pub fn text_position_from_global_usv_index(&self, index: usize) -> Option<Position> {
         let mut total_length = 0usize;
-        for node in self.inline_text_boxes() {
+        for node in self.text_runs() {
             let node_text = node.data().value().unwrap();
             let node_text_length = node_text.chars().count();
             let new_total_length = total_length + node_text_length;
@@ -1055,7 +1045,7 @@ impl<'a> Node<'a> {
 
     pub fn text_position_from_global_utf16_index(&self, index: usize) -> Option<Position> {
         let mut total_length = 0usize;
-        for node in self.inline_text_boxes() {
+        for node in self.text_runs() {
             let node_text = node.data().value().unwrap();
             let node_text_length = node_text.chars().map(char::len_utf16).sum::<usize>();
             let new_total_length = total_length + node_text_length;
@@ -1135,7 +1125,7 @@ mod tests {
                     builder.build()
                 }),
                 (NodeId(2), {
-                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    let mut builder = NodeBuilder::new(Role::TextRun);
                     builder.set_bounds(Rect {
                         x0: 12.0,
                         y0: 33.666664123535156,
@@ -1170,7 +1160,7 @@ mod tests {
                     builder.build()
                 }),
                 (NodeId(3), {
-                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    let mut builder = NodeBuilder::new(Role::TextRun);
                     builder.set_bounds(Rect {
                         x0: 12.0,
                         y0: 48.33333206176758,
@@ -1195,7 +1185,7 @@ mod tests {
                     builder.build()
                 }),
                 (NodeId(4), {
-                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    let mut builder = NodeBuilder::new(Role::TextRun);
                     builder.set_bounds(Rect {
                         x0: 12.0,
                         y0: 63.0,
@@ -1221,7 +1211,7 @@ mod tests {
                     builder.build()
                 }),
                 (NodeId(5), {
-                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    let mut builder = NodeBuilder::new(Role::TextRun);
                     builder.set_bounds(Rect {
                         x0: 12.0,
                         y0: 77.66666412353516,
@@ -1237,7 +1227,7 @@ mod tests {
                     builder.build()
                 }),
                 (NodeId(6), {
-                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    let mut builder = NodeBuilder::new(Role::TextRun);
                     builder.set_bounds(Rect {
                         x0: 12.0,
                         y0: 92.33332824707031,
@@ -1267,7 +1257,7 @@ mod tests {
                     builder.build()
                 }),
                 (NodeId(7), {
-                    let mut builder = NodeBuilder::new(Role::InlineTextBox);
+                    let mut builder = NodeBuilder::new(Role::TextRun);
                     builder.set_bounds(Rect {
                         x0: 12.0,
                         y0: 107.0,
