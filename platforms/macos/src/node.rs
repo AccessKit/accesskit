@@ -523,6 +523,11 @@ declare_class!(
                 .unwrap_or(false)
         }
 
+        #[method(isAccessibilityEnabled)]
+        fn is_enabled(&self) -> bool {
+            self.resolve(|node| !node.is_disabled()).unwrap_or(false)
+        }
+
         #[method(setAccessibilityFocused:)]
         fn set_focused(&self, focused: bool) {
             self.resolve_with_context(|node, context| {
@@ -806,6 +811,7 @@ declare_class!(
                     || selector == sel!(accessibilityChildrenInNavigationOrder)
                     || selector == sel!(accessibilityFrame)
                     || selector == sel!(accessibilityRole)
+                    || selector == sel!(isAccessibilityEnabled)
                     || selector == sel!(accessibilityWindow)
                     || selector == sel!(accessibilityTopLevelUIElement)
                     || selector == sel!(accessibilityRoleDescription)
