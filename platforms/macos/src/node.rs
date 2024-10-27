@@ -524,7 +524,7 @@ declare_class!(
         }
 
         #[method(isAccessibilityEnabled)]
-        fn enabled(&self) -> bool {
+        fn is_enabled(&self) -> bool {
             self.resolve(|node| !node.is_disabled()).unwrap_or(false)
         }
 
