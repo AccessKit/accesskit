@@ -525,7 +525,7 @@ declare_class!(
 
         #[method(isAccessibilityEnabled)]
         fn enabled(&self) -> bool {
-            self.resolve(|node| !node.is_disabled()).unwrap_or(true)
+            self.resolve(|node| !node.is_disabled()).unwrap_or(false)
         }
 
         #[method(setAccessibilityFocused:)]
