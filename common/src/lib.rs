@@ -1799,7 +1799,7 @@ vec_property_methods! {
 
 impl fmt::Debug for FrozenNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut fmt = f.debug_struct("Node");
+        let mut fmt = f.debug_struct("FrozenNode");
 
         fmt.field("role", &self.role());
 
