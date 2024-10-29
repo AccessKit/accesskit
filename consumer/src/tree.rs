@@ -647,7 +647,7 @@ mod tests {
                 }),
                 (NodeId(1), {
                     let mut node = child_node.clone();
-                    node.set_name("foo");
+                    node.set_label("foo");
                     node
                 }),
             ],
@@ -657,12 +657,12 @@ mod tests {
         let mut tree = super::Tree::new(first_update, false);
         assert_eq!(
             Some("foo".into()),
-            tree.state().node_by_id(NodeId(1)).unwrap().name()
+            tree.state().node_by_id(NodeId(1)).unwrap().label()
         );
         let second_update = TreeUpdate {
             nodes: vec![(NodeId(1), {
                 let mut node = child_node;
-                node.set_name("bar");
+                node.set_label("bar");
                 node
             })],
             tree: None,
@@ -680,8 +680,8 @@ mod tests {
             }
             fn node_updated(&mut self, old_node: &crate::Node, new_node: &crate::Node) {
                 if new_node.id() == NodeId(1)
-                    && old_node.name() == Some("foo".into())
-                    && new_node.name() == Some("bar".into())
+                    && old_node.label() == Some("foo".into())
+                    && new_node.label() == Some("bar".into())
                 {
                     self.got_updated_child_node = true;
                     return;
@@ -706,7 +706,7 @@ mod tests {
         assert!(handler.got_updated_child_node);
         assert_eq!(
             Some("bar".into()),
-            tree.state().node_by_id(NodeId(1)).unwrap().name()
+            tree.state().node_by_id(NodeId(1)).unwrap().label()
         );
     }
 
@@ -725,7 +725,7 @@ mod tests {
                 }),
                 (NodeId(1), {
                     let mut node = Node::new(Role::Button);
-                    node.set_name("foo");
+                    node.set_label("foo");
                     node
                 }),
             ],

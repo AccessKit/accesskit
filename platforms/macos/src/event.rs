@@ -29,7 +29,7 @@ pub(crate) enum QueuedEvent {
 impl QueuedEvent {
     fn live_region_announcement(node: &Node) -> Self {
         Self::Announcement {
-            text: node.name().unwrap(),
+            text: node.value().unwrap(),
             priority: if node.live() == Live::Assertive {
                 NSAccessibilityPriorityLevel::NSAccessibilityPriorityHigh
             } else {
@@ -188,7 +188,7 @@ impl TreeChangeHandler for EventGenerator {
         if filter(node) != FilterResult::Include {
             return;
         }
-        if node.name().is_some() && node.live() != Live::Off {
+        if node.value().is_some() && node.live() != Live::Off {
             self.events
                 .push(QueuedEvent::live_region_announcement(node));
         }
@@ -225,9 +225,9 @@ impl TreeChangeHandler for EventGenerator {
                 notification: unsafe { NSAccessibilitySelectedTextChangedNotification },
             });
         }
-        if new_node.name().is_some()
+        if new_node.value().is_some()
             && new_node.live() != Live::Off
-            && (new_node.name() != old_node.name()
+            && (new_node.value() != old_node.value()
                 || new_node.live() != old_node.live()
                 || filter(old_node) != FilterResult::Include)
         {

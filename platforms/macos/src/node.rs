@@ -250,30 +250,13 @@ impl<'a> NodeWrapper<'a> {
         self.0.is_root()
     }
 
-    fn name(&self) -> Option<String> {
+    pub(crate) fn title(&self) -> Option<String> {
         if self.is_root() && self.0.role() == Role::Window {
             // If the group element that we expose for the top-level window
             // includes a title, VoiceOver behavior is broken.
             return None;
         }
-        self.0.name()
-    }
-
-    fn node_value(&self) -> Option<String> {
-        self.0.value()
-    }
-
-    // TODO: implement proper logic for title and value;
-    // see Chromium's content/browser/accessibility/browser_accessibility_cocoa.mm
-    // and figure out how this is different in the macOS 10.10+ protocol
-
-    pub(crate) fn title(&self) -> Option<String> {
-        let state = self.0;
-        if state.role() == Role::Label && state.raw_value().is_none() {
-            // In this case, macOS wants the text to be the value, not title.
-            return None;
-        }
-        self.name()
+        self.0.label()
     }
 
     pub(crate) fn description(&self) -> Option<String> {
@@ -285,20 +268,14 @@ impl<'a> NodeWrapper<'a> {
     }
 
     pub(crate) fn value(&self) -> Option<Value> {
-        let state = self.0;
-        if let Some(toggled) = state.toggled() {
+        if let Some(toggled) = self.0.toggled() {
             return Some(Value::Bool(toggled != Toggled::False));
         }
-        if let Some(value) = self.node_value() {
+        if let Some(value) = self.0.value() {
             return Some(Value::String(value));
         }
-        if let Some(value) = state.numeric_value() {
+        if let Some(value) = self.0.numeric_value() {
             return Some(Value::Number(value));
-        }
-        if state.role() == Role::Label {
-            if let Some(name) = self.name() {
-                return Some(Value::String(name));
-            }
         }
         None
     }
