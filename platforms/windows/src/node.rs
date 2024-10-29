@@ -259,7 +259,7 @@ impl<'a> NodeWrapper<'a> {
     }
 
     pub(crate) fn name(&self) -> Option<String> {
-        if matches!(self.0.role(), Role::Label | Role::Image) {
+        if self.0.label_comes_from_value() {
             self.0.value()
         } else {
             self.0.label()
@@ -332,7 +332,7 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn is_value_pattern_supported(&self) -> bool {
-        self.0.has_value() && !matches!(self.0.role(), Role::Label | Role::Image)
+        self.0.has_value() && !self.0.label_comes_from_value()
     }
 
     fn is_range_value_pattern_supported(&self) -> bool {

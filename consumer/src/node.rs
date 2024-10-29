@@ -492,13 +492,23 @@ impl<'a> Node<'a> {
         }
     }
 
+    pub fn label_comes_from_value(&self) -> bool {
+        self.role() == Role::Label
+    }
+
     pub fn label(&self) -> Option<String> {
         if let Some(label) = &self.data().label() {
             Some(label.to_string())
         } else {
             let labels = self
                 .labelled_by()
-                .filter_map(|node| node.value())
+                .filter_map(|node| {
+                    if node.label_comes_from_value() {
+                        node.value()
+                    } else {
+                        node.label()
+                    }
+                })
                 .collect::<Vec<String>>();
             (!labels.is_empty()).then(move || labels.join(" "))
         }
@@ -1034,7 +1044,7 @@ mod tests {
                 }),
                 (DEFAULT_BUTTON_LABEL_ID, {
                     let mut node = Node::new(Role::Image);
-                    node.set_value(DEFAULT_BUTTON_LABEL);
+                    node.set_label(DEFAULT_BUTTON_LABEL);
                     node
                 }),
                 (LINK_ID, {
