@@ -11,8 +11,8 @@
 use std::{iter::FusedIterator, sync::Arc};
 
 use accesskit::{
-    Action, Affine, Live, Node as NodeData, NodeId, Orientation, Point, Rect, Role, TextSelection,
-    Toggled,
+    Action, Affine, FrozenNode as NodeData, Live, NodeId, Orientation, Point, Rect, Role,
+    TextSelection, Toggled,
 };
 
 use crate::filters::FilterResult;
@@ -654,7 +654,7 @@ impl<'a> Node<'a> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{NodeBuilder, NodeId, Point, Rect, Role, Tree, TreeUpdate};
+    use accesskit::{Node, NodeId, Point, Rect, Role, Tree, TreeUpdate};
 
     use crate::tests::*;
 
@@ -920,11 +920,11 @@ mod tests {
         let update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
-                    let mut builder = NodeBuilder::new(Role::Window);
-                    builder.set_children(vec![NodeId(1)]);
-                    builder.build()
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![NodeId(1)]);
+                    node
                 }),
-                (NodeId(1), NodeBuilder::new(Role::Button).build()),
+                (NodeId(1), Node::new(Role::Button)),
             ],
             tree: Some(Tree::new(NodeId(0))),
             focus: NodeId(0),
@@ -943,29 +943,29 @@ mod tests {
         let update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
-                    let mut builder = NodeBuilder::new(Role::Window);
-                    builder.set_children(vec![NodeId(1), NodeId(2), NodeId(3), NodeId(4)]);
-                    builder.build()
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![NodeId(1), NodeId(2), NodeId(3), NodeId(4)]);
+                    node
                 }),
                 (NodeId(1), {
-                    let mut builder = NodeBuilder::new(Role::CheckBox);
-                    builder.set_labelled_by(vec![NodeId(2), NodeId(4)]);
-                    builder.build()
+                    let mut node = Node::new(Role::CheckBox);
+                    node.set_labelled_by(vec![NodeId(2), NodeId(4)]);
+                    node
                 }),
                 (NodeId(2), {
-                    let mut builder = NodeBuilder::new(Role::Label);
-                    builder.set_name(LABEL_1);
-                    builder.build()
+                    let mut node = Node::new(Role::Label);
+                    node.set_name(LABEL_1);
+                    node
                 }),
                 (NodeId(3), {
-                    let mut builder = NodeBuilder::new(Role::TextInput);
-                    builder.push_labelled_by(NodeId(4));
-                    builder.build()
+                    let mut node = Node::new(Role::TextInput);
+                    node.push_labelled_by(NodeId(4));
+                    node
                 }),
                 (NodeId(4), {
-                    let mut builder = NodeBuilder::new(Role::Label);
-                    builder.set_name(LABEL_2);
-                    builder.build()
+                    let mut node = Node::new(Role::Label);
+                    node.set_name(LABEL_2);
+                    node
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
@@ -1016,8 +1016,8 @@ mod tests {
         let update = TreeUpdate {
             nodes: vec![
                 (ROOT_ID, {
-                    let mut builder = NodeBuilder::new(Role::Window);
-                    builder.set_children(vec![
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![
                         DEFAULT_BUTTON_ID,
                         LINK_ID,
                         CHECKBOX_ID,
@@ -1025,97 +1025,97 @@ mod tests {
                         MENU_BUTTON_ID,
                         MENU_ID,
                     ]);
-                    builder.build()
+                    node
                 }),
                 (DEFAULT_BUTTON_ID, {
-                    let mut builder = NodeBuilder::new(Role::DefaultButton);
-                    builder.push_child(DEFAULT_BUTTON_LABEL_ID);
-                    builder.build()
+                    let mut node = Node::new(Role::DefaultButton);
+                    node.push_child(DEFAULT_BUTTON_LABEL_ID);
+                    node
                 }),
                 (DEFAULT_BUTTON_LABEL_ID, {
-                    let mut builder = NodeBuilder::new(Role::Image);
-                    builder.set_name(DEFAULT_BUTTON_LABEL);
-                    builder.build()
+                    let mut node = Node::new(Role::Image);
+                    node.set_name(DEFAULT_BUTTON_LABEL);
+                    node
                 }),
                 (LINK_ID, {
-                    let mut builder = NodeBuilder::new(Role::Link);
-                    builder.push_child(LINK_LABEL_CONTAINER_ID);
-                    builder.build()
+                    let mut node = Node::new(Role::Link);
+                    node.push_child(LINK_LABEL_CONTAINER_ID);
+                    node
                 }),
                 (LINK_LABEL_CONTAINER_ID, {
-                    let mut builder = NodeBuilder::new(Role::GenericContainer);
-                    builder.push_child(LINK_LABEL_ID);
-                    builder.build()
+                    let mut node = Node::new(Role::GenericContainer);
+                    node.push_child(LINK_LABEL_ID);
+                    node
                 }),
                 (LINK_LABEL_ID, {
-                    let mut builder = NodeBuilder::new(Role::Label);
-                    builder.set_name(LINK_LABEL);
-                    builder.build()
+                    let mut node = Node::new(Role::Label);
+                    node.set_name(LINK_LABEL);
+                    node
                 }),
                 (CHECKBOX_ID, {
-                    let mut builder = NodeBuilder::new(Role::CheckBox);
-                    builder.push_child(CHECKBOX_LABEL_ID);
-                    builder.build()
+                    let mut node = Node::new(Role::CheckBox);
+                    node.push_child(CHECKBOX_LABEL_ID);
+                    node
                 }),
                 (CHECKBOX_LABEL_ID, {
-                    let mut builder = NodeBuilder::new(Role::Label);
-                    builder.set_name(CHECKBOX_LABEL);
-                    builder.build()
+                    let mut node = Node::new(Role::Label);
+                    node.set_name(CHECKBOX_LABEL);
+                    node
                 }),
                 (RADIO_BUTTON_ID, {
-                    let mut builder = NodeBuilder::new(Role::RadioButton);
-                    builder.push_child(RADIO_BUTTON_LABEL_ID);
-                    builder.build()
+                    let mut node = Node::new(Role::RadioButton);
+                    node.push_child(RADIO_BUTTON_LABEL_ID);
+                    node
                 }),
                 (RADIO_BUTTON_LABEL_ID, {
-                    let mut builder = NodeBuilder::new(Role::Label);
-                    builder.set_name(RADIO_BUTTON_LABEL);
-                    builder.build()
+                    let mut node = Node::new(Role::Label);
+                    node.set_name(RADIO_BUTTON_LABEL);
+                    node
                 }),
                 (MENU_BUTTON_ID, {
-                    let mut builder = NodeBuilder::new(Role::Button);
-                    builder.push_child(MENU_BUTTON_LABEL_ID);
-                    builder.build()
+                    let mut node = Node::new(Role::Button);
+                    node.push_child(MENU_BUTTON_LABEL_ID);
+                    node
                 }),
                 (MENU_BUTTON_LABEL_ID, {
-                    let mut builder = NodeBuilder::new(Role::Label);
-                    builder.set_name(MENU_BUTTON_LABEL);
-                    builder.build()
+                    let mut node = Node::new(Role::Label);
+                    node.set_name(MENU_BUTTON_LABEL);
+                    node
                 }),
                 (MENU_ID, {
-                    let mut builder = NodeBuilder::new(Role::Menu);
-                    builder.set_children([MENU_ITEM_ID, MENU_ITEM_CHECKBOX_ID, MENU_ITEM_RADIO_ID]);
-                    builder.build()
+                    let mut node = Node::new(Role::Menu);
+                    node.set_children([MENU_ITEM_ID, MENU_ITEM_CHECKBOX_ID, MENU_ITEM_RADIO_ID]);
+                    node
                 }),
                 (MENU_ITEM_ID, {
-                    let mut builder = NodeBuilder::new(Role::MenuItem);
-                    builder.push_child(MENU_ITEM_LABEL_ID);
-                    builder.build()
+                    let mut node = Node::new(Role::MenuItem);
+                    node.push_child(MENU_ITEM_LABEL_ID);
+                    node
                 }),
                 (MENU_ITEM_LABEL_ID, {
-                    let mut builder = NodeBuilder::new(Role::Label);
-                    builder.set_name(MENU_ITEM_LABEL);
-                    builder.build()
+                    let mut node = Node::new(Role::Label);
+                    node.set_name(MENU_ITEM_LABEL);
+                    node
                 }),
                 (MENU_ITEM_CHECKBOX_ID, {
-                    let mut builder = NodeBuilder::new(Role::MenuItemCheckBox);
-                    builder.push_child(MENU_ITEM_CHECKBOX_LABEL_ID);
-                    builder.build()
+                    let mut node = Node::new(Role::MenuItemCheckBox);
+                    node.push_child(MENU_ITEM_CHECKBOX_LABEL_ID);
+                    node
                 }),
                 (MENU_ITEM_CHECKBOX_LABEL_ID, {
-                    let mut builder = NodeBuilder::new(Role::Label);
-                    builder.set_name(MENU_ITEM_CHECKBOX_LABEL);
-                    builder.build()
+                    let mut node = Node::new(Role::Label);
+                    node.set_name(MENU_ITEM_CHECKBOX_LABEL);
+                    node
                 }),
                 (MENU_ITEM_RADIO_ID, {
-                    let mut builder = NodeBuilder::new(Role::MenuItemRadio);
-                    builder.push_child(MENU_ITEM_RADIO_LABEL_ID);
-                    builder.build()
+                    let mut node = Node::new(Role::MenuItemRadio);
+                    node.push_child(MENU_ITEM_RADIO_LABEL_ID);
+                    node
                 }),
                 (MENU_ITEM_RADIO_LABEL_ID, {
-                    let mut builder = NodeBuilder::new(Role::Label);
-                    builder.set_name(MENU_ITEM_RADIO_LABEL);
-                    builder.build()
+                    let mut node = Node::new(Role::Label);
+                    node.set_name(MENU_ITEM_RADIO_LABEL);
+                    node
                 }),
             ],
             tree: Some(Tree::new(ROOT_ID)),

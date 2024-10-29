@@ -1,8 +1,8 @@
 // Based on the create_window sample in windows-samples-rs.
 
 use accesskit::{
-    Action, ActionHandler, ActionRequest, ActivationHandler, Live, Node, NodeBuilder, NodeId, Rect,
-    Role, Tree, TreeUpdate,
+    Action, ActionHandler, ActionRequest, ActivationHandler, Live, Node, NodeId, Rect, Role, Tree,
+    TreeUpdate,
 };
 use accesskit_windows::Adapter;
 use once_cell::sync::Lazy;
@@ -68,19 +68,19 @@ fn build_button(id: NodeId, name: &str) -> Node {
         _ => unreachable!(),
     };
 
-    let mut builder = NodeBuilder::new(Role::Button);
-    builder.set_bounds(rect);
-    builder.set_name(name);
-    builder.add_action(Action::Focus);
-    builder.add_action(Action::Click);
-    builder.build()
+    let mut node = Node::new(Role::Button);
+    node.set_bounds(rect);
+    node.set_name(name);
+    node.add_action(Action::Focus);
+    node.add_action(Action::Click);
+    node
 }
 
 fn build_announcement(text: &str) -> Node {
-    let mut builder = NodeBuilder::new(Role::Label);
-    builder.set_name(text);
-    builder.set_live(Live::Polite);
-    builder.build()
+    let mut node = Node::new(Role::Label);
+    node.set_name(text);
+    node.set_live(Live::Polite);
+    node
 }
 
 struct InnerWindowState {
@@ -90,12 +90,12 @@ struct InnerWindowState {
 
 impl InnerWindowState {
     fn build_root(&mut self) -> Node {
-        let mut builder = NodeBuilder::new(Role::Window);
-        builder.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
+        let mut node = Node::new(Role::Window);
+        node.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
         if self.announcement.is_some() {
-            builder.push_child(ANNOUNCEMENT_ID);
+            node.push_child(ANNOUNCEMENT_ID);
         }
-        builder.build()
+        node
     }
 }
 
