@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{Node as NodeData, NodeId, Tree as TreeData, TreeUpdate};
+use accesskit::{FrozenNode as NodeData, NodeId, Tree as TreeData, TreeUpdate};
 use immutable_chunkmap::map::MapM as ChunkMap;
 use std::{
     collections::{HashMap, HashSet},
@@ -74,6 +74,8 @@ impl State {
         }
 
         for (node_id, node_data) in update.nodes {
+            let node_data = NodeData::from(node_data);
+
             orphans.remove(&node_id);
 
             let mut seen_child_ids = HashSet::new();
@@ -186,28 +188,6 @@ impl State {
             focus: self.focus,
         };
         self.update(update, is_host_focused, changes);
-    }
-
-    pub fn serialize(&self) -> TreeUpdate {
-        let mut nodes = Vec::new();
-
-        fn traverse(state: &State, nodes: &mut Vec<(NodeId, NodeData)>, id: NodeId) {
-            let node = state.nodes.get(&id).unwrap();
-            nodes.push((id, (*node.data).clone()));
-
-            for child_id in node.data.children().iter() {
-                traverse(state, nodes, *child_id);
-            }
-        }
-
-        traverse(self, &mut nodes, self.data.root);
-        assert_eq!(nodes.len(), self.nodes.len());
-
-        TreeUpdate {
-            nodes,
-            tree: Some(self.data.clone()),
-            focus: self.focus,
-        }
     }
 
     pub fn has_node(&self, id: NodeId) -> bool {
@@ -386,12 +366,12 @@ fn short_node_list<'a>(nodes: impl ExactSizeIterator<Item = &'a NodeId>) -> Stri
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{NodeBuilder, NodeId, Role, Tree, TreeUpdate};
+    use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
 
     #[test]
     fn init_tree_with_root_node() {
         let update = TreeUpdate {
-            nodes: vec![(NodeId(0), NodeBuilder::new(Role::Window).build())],
+            nodes: vec![(NodeId(0), Node::new(Role::Window))],
             tree: Some(Tree::new(NodeId(0))),
             focus: NodeId(0),
         };
@@ -406,12 +386,12 @@ mod tests {
         let update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
-                    let mut builder = NodeBuilder::new(Role::Window);
-                    builder.set_children(vec![NodeId(1), NodeId(2)]);
-                    builder.build()
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![NodeId(1), NodeId(2)]);
+                    node
                 }),
-                (NodeId(1), NodeBuilder::new(Role::Button).build()),
-                (NodeId(2), NodeBuilder::new(Role::Button).build()),
+                (NodeId(1), Node::new(Role::Button)),
+                (NodeId(2), Node::new(Role::Button)),
             ],
             tree: Some(Tree::new(NodeId(0))),
             focus: NodeId(0),
@@ -431,9 +411,9 @@ mod tests {
 
     #[test]
     fn add_child_to_root_node() {
-        let root_builder = NodeBuilder::new(Role::Window);
+        let root_node = Node::new(Role::Window);
         let first_update = TreeUpdate {
-            nodes: vec![(NodeId(0), root_builder.clone().build())],
+            nodes: vec![(NodeId(0), root_node.clone())],
             tree: Some(Tree::new(NodeId(0))),
             focus: NodeId(0),
         };
@@ -442,11 +422,11 @@ mod tests {
         let second_update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
-                    let mut builder = root_builder;
-                    builder.push_child(NodeId(1));
-                    builder.build()
+                    let mut node = root_node;
+                    node.push_child(NodeId(1));
+                    node
                 }),
-                (NodeId(1), NodeBuilder::new(Role::RootWebArea).build()),
+                (NodeId(1), Node::new(Role::RootWebArea)),
             ],
             tree: None,
             focus: NodeId(0),
@@ -505,15 +485,15 @@ mod tests {
 
     #[test]
     fn remove_child_from_root_node() {
-        let root_builder = NodeBuilder::new(Role::Window);
+        let root_node = Node::new(Role::Window);
         let first_update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
-                    let mut builder = root_builder.clone();
-                    builder.push_child(NodeId(1));
-                    builder.build()
+                    let mut node = root_node.clone();
+                    node.push_child(NodeId(1));
+                    node
                 }),
-                (NodeId(1), NodeBuilder::new(Role::RootWebArea).build()),
+                (NodeId(1), Node::new(Role::RootWebArea)),
             ],
             tree: Some(Tree::new(NodeId(0))),
             focus: NodeId(0),
@@ -521,7 +501,7 @@ mod tests {
         let mut tree = super::Tree::new(first_update, false);
         assert_eq!(1, tree.state().root().children().count());
         let second_update = TreeUpdate {
-            nodes: vec![(NodeId(0), root_builder.build())],
+            nodes: vec![(NodeId(0), root_node)],
             tree: None,
             focus: NodeId(0),
         };
@@ -577,12 +557,12 @@ mod tests {
         let first_update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
-                    let mut builder = NodeBuilder::new(Role::Window);
-                    builder.set_children(vec![NodeId(1), NodeId(2)]);
-                    builder.build()
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![NodeId(1), NodeId(2)]);
+                    node
                 }),
-                (NodeId(1), NodeBuilder::new(Role::Button).build()),
-                (NodeId(2), NodeBuilder::new(Role::Button).build()),
+                (NodeId(1), Node::new(Role::Button)),
+                (NodeId(2), Node::new(Role::Button)),
             ],
             tree: Some(Tree::new(NodeId(0))),
             focus: NodeId(1),
@@ -657,18 +637,18 @@ mod tests {
 
     #[test]
     fn update_node() {
-        let child_builder = NodeBuilder::new(Role::Button);
+        let child_node = Node::new(Role::Button);
         let first_update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
-                    let mut builder = NodeBuilder::new(Role::Window);
-                    builder.set_children(vec![NodeId(1)]);
-                    builder.build()
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![NodeId(1)]);
+                    node
                 }),
                 (NodeId(1), {
-                    let mut builder = child_builder.clone();
-                    builder.set_name("foo");
-                    builder.build()
+                    let mut node = child_node.clone();
+                    node.set_name("foo");
+                    node
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
@@ -681,9 +661,9 @@ mod tests {
         );
         let second_update = TreeUpdate {
             nodes: vec![(NodeId(1), {
-                let mut builder = child_builder;
-                builder.set_name("bar");
-                builder.build()
+                let mut node = child_node;
+                node.set_name("bar");
+                node
             })],
             tree: None,
             focus: NodeId(0),
@@ -739,14 +719,14 @@ mod tests {
         let update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
-                    let mut builder = NodeBuilder::new(Role::Window);
-                    builder.set_children(vec![NodeId(1)]);
-                    builder.build()
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![NodeId(1)]);
+                    node
                 }),
                 (NodeId(1), {
-                    let mut builder = NodeBuilder::new(Role::Button);
-                    builder.set_name("foo");
-                    builder.build()
+                    let mut node = Node::new(Role::Button);
+                    node.set_name("foo");
+                    node
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),

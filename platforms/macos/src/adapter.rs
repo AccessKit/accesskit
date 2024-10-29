@@ -4,8 +4,8 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    ActionHandler, ActionRequest, ActivationHandler, NodeBuilder, NodeId, Role, Tree as TreeData,
-    TreeUpdate,
+    ActionHandler, ActionRequest, ActivationHandler, Node as NodeProvider, NodeId, Role,
+    Tree as TreeData, TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Tree};
 use objc2::rc::{Id, WeakId};
@@ -165,7 +165,7 @@ impl Adapter {
                 }
                 None => {
                     let placeholder_update = TreeUpdate {
-                        nodes: vec![(PLACEHOLDER_ROOT_ID, NodeBuilder::new(Role::Window).build())],
+                        nodes: vec![(PLACEHOLDER_ROOT_ID, NodeProvider::new(Role::Window))],
                         tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
                         focus: PLACEHOLDER_ROOT_ID,
                     };

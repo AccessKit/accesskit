@@ -4,7 +4,8 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    ActionHandler, ActivationHandler, Live, NodeBuilder, NodeId, Role, Tree as TreeData, TreeUpdate,
+    ActionHandler, ActivationHandler, Live, Node as NodeProvider, NodeId, Role, Tree as TreeData,
+    TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler};
 use std::{
@@ -309,7 +310,7 @@ impl Adapter {
                 None => {
                     let hwnd = *hwnd;
                     let placeholder_update = TreeUpdate {
-                        nodes: vec![(PLACEHOLDER_ROOT_ID, NodeBuilder::new(Role::Window).build())],
+                        nodes: vec![(PLACEHOLDER_ROOT_ID, NodeProvider::new(Role::Window))],
                         tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
                         focus: PLACEHOLDER_ROOT_ID,
                     };
