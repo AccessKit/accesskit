@@ -1537,6 +1537,10 @@ node_id_property_methods! {
 }
 
 string_property_methods! {
+    /// The label of a control that can have a label. If the label is specified
+    /// via the [`Node::labelled_by`] relation, this doesn't need to be set.
+    /// Note that the text content of a node with the [`Role::Label`] role
+    /// should be provided via [`Node::value`], not this property.
     (Label, label, set_label, clear_label),
     (Description, description, set_description, clear_description),
     (Value, value, set_value, clear_value),
