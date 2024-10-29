@@ -90,7 +90,8 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         if filter(node) != FilterResult::Include {
             return;
         }
-        if node.name().is_some() && node.live() != Live::Off {
+        let wrapper = NodeWrapper(node);
+        if wrapper.name().is_some() && node.live() != Live::Off {
             let platform_node = PlatformNode::new(self.context, node.id());
             let element: IRawElementProviderSimple = platform_node.into();
             self.queue.push(QueuedEvent::Simple {
@@ -112,9 +113,9 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         let old_wrapper = NodeWrapper(old_node);
         let new_wrapper = NodeWrapper(new_node);
         new_wrapper.enqueue_property_changes(&mut self.queue, &element, &old_wrapper);
-        if new_node.name().is_some()
+        if new_wrapper.name().is_some()
             && new_node.live() != Live::Off
-            && (new_node.name() != old_node.name()
+            && (new_wrapper.name() != old_wrapper.name()
                 || new_node.live() != old_node.live()
                 || filter(old_node) != FilterResult::Include)
         {

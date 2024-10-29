@@ -25,9 +25,9 @@ const WINDOW_ID: NodeId = NodeId(0);
 const BUTTON_1_ID: NodeId = NodeId(1);
 const BUTTON_2_ID: NodeId = NodeId(2);
 
-fn make_button(name: &str) -> Node {
+fn make_button(label: &str) -> Node {
     let mut node = Node::new(Role::Button);
-    node.set_name(name);
+    node.set_label(label);
     node.add_action(Action::Focus);
     node
 }

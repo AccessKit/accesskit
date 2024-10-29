@@ -31,7 +31,7 @@ const BUTTON_2_RECT: Rect = Rect {
     y1: 100.0,
 };
 
-fn build_button(id: NodeId, name: &str) -> Node {
+fn build_button(id: NodeId, label: &str) -> Node {
     let rect = match id {
         BUTTON_1_ID => BUTTON_1_RECT,
         BUTTON_2_ID => BUTTON_2_RECT,
@@ -40,7 +40,7 @@ fn build_button(id: NodeId, name: &str) -> Node {
 
     let mut node = Node::new(Role::Button);
     node.set_bounds(rect);
-    node.set_name(name);
+    node.set_label(label);
     node.add_action(Action::Focus);
     node.add_action(Action::Click);
     node
@@ -48,7 +48,7 @@ fn build_button(id: NodeId, name: &str) -> Node {
 
 fn build_announcement(text: &str) -> Node {
     let mut node = Node::new(Role::Label);
-    node.set_name(text);
+    node.set_value(text);
     node.set_live(Live::Polite);
     node
 }
@@ -72,7 +72,7 @@ impl UiState {
         if self.announcement.is_some() {
             node.push_child(ANNOUNCEMENT_ID);
         }
-        node.set_name(WINDOW_TITLE);
+        node.set_label(WINDOW_TITLE);
         node
     }
 

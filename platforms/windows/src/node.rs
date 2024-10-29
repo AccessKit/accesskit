@@ -258,8 +258,12 @@ impl<'a> NodeWrapper<'a> {
         self.0.role_description()
     }
 
-    fn name(&self) -> Option<String> {
-        self.0.name()
+    pub(crate) fn name(&self) -> Option<String> {
+        if matches!(self.0.role(), Role::Label | Role::Image) {
+            self.0.value()
+        } else {
+            self.0.label()
+        }
     }
 
     fn description(&self) -> Option<String> {
@@ -328,7 +332,7 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn is_value_pattern_supported(&self) -> bool {
-        self.0.has_value()
+        self.0.has_value() && !matches!(self.0.role(), Role::Label | Role::Image)
     }
 
     fn is_range_value_pattern_supported(&self) -> bool {

@@ -784,7 +784,7 @@ enum PropertyId {
     PopupFor,
 
     // String
-    Name,
+    Label,
     Description,
     Value,
     AccessKey,
@@ -1537,7 +1537,7 @@ node_id_property_methods! {
 }
 
 string_property_methods! {
-    (Name, name, set_name, clear_name),
+    (Label, label, set_label, clear_label),
     (Description, description, set_description, clear_description),
     (Value, value, set_value, clear_value),
     /// A single character, usually part of this node's name, that can be pressed,
@@ -1982,7 +1982,7 @@ impl<'de> Visitor<'de> for PropertiesVisitor {
                     PopupFor
                 },
                 String {
-                    Name,
+                    Label,
                     Description,
                     Value,
                     AccessKey,
@@ -2129,7 +2129,7 @@ impl JsonSchema for Properties {
                 PopupFor
             },
             Box<str> {
-                Name,
+                Label,
                 Description,
                 Value,
                 AccessKey,

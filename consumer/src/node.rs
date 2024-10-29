@@ -492,15 +492,15 @@ impl<'a> Node<'a> {
         }
     }
 
-    pub fn name(&self) -> Option<String> {
-        if let Some(name) = &self.data().name() {
-            Some(name.to_string())
+    pub fn label(&self) -> Option<String> {
+        if let Some(label) = &self.data().label() {
+            Some(label.to_string())
         } else {
-            let names = self
+            let labels = self
                 .labelled_by()
-                .filter_map(|node| node.name())
+                .filter_map(|node| node.value())
                 .collect::<Vec<String>>();
-            (!names.is_empty()).then(move || names.join(" "))
+            (!labels.is_empty()).then(move || labels.join(" "))
         }
     }
 
@@ -916,7 +916,7 @@ mod tests {
     }
 
     #[test]
-    fn no_name_or_labelled_by() {
+    fn no_label_or_labelled_by() {
         let update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
@@ -930,11 +930,11 @@ mod tests {
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
-        assert_eq!(None, tree.state().node_by_id(NodeId(1)).unwrap().name());
+        assert_eq!(None, tree.state().node_by_id(NodeId(1)).unwrap().label());
     }
 
     #[test]
-    fn name_from_labelled_by() {
+    fn label_from_labelled_by() {
         // The following mock UI probably isn't very localization-friendly,
         // but it's good for this test.
         const LABEL_1: &str = "Check email every";
@@ -954,7 +954,7 @@ mod tests {
                 }),
                 (NodeId(2), {
                     let mut node = Node::new(Role::Label);
-                    node.set_name(LABEL_1);
+                    node.set_value(LABEL_1);
                     node
                 }),
                 (NodeId(3), {
@@ -964,7 +964,7 @@ mod tests {
                 }),
                 (NodeId(4), {
                     let mut node = Node::new(Role::Label);
-                    node.set_name(LABEL_2);
+                    node.set_value(LABEL_2);
                     node
                 }),
             ],
@@ -974,16 +974,16 @@ mod tests {
         let tree = crate::Tree::new(update, false);
         assert_eq!(
             Some([LABEL_1, LABEL_2].join(" ")),
-            tree.state().node_by_id(NodeId(1)).unwrap().name()
+            tree.state().node_by_id(NodeId(1)).unwrap().label()
         );
         assert_eq!(
             Some(LABEL_2.into()),
-            tree.state().node_by_id(NodeId(3)).unwrap().name()
+            tree.state().node_by_id(NodeId(3)).unwrap().label()
         );
     }
 
     #[test]
-    fn name_from_descendant_label() {
+    fn label_from_descendant_label() {
         const ROOT_ID: NodeId = NodeId(0);
         const DEFAULT_BUTTON_ID: NodeId = NodeId(1);
         const DEFAULT_BUTTON_LABEL_ID: NodeId = NodeId(2);
@@ -1034,7 +1034,7 @@ mod tests {
                 }),
                 (DEFAULT_BUTTON_LABEL_ID, {
                     let mut node = Node::new(Role::Image);
-                    node.set_name(DEFAULT_BUTTON_LABEL);
+                    node.set_value(DEFAULT_BUTTON_LABEL);
                     node
                 }),
                 (LINK_ID, {
@@ -1049,7 +1049,7 @@ mod tests {
                 }),
                 (LINK_LABEL_ID, {
                     let mut node = Node::new(Role::Label);
-                    node.set_name(LINK_LABEL);
+                    node.set_value(LINK_LABEL);
                     node
                 }),
                 (CHECKBOX_ID, {
@@ -1059,7 +1059,7 @@ mod tests {
                 }),
                 (CHECKBOX_LABEL_ID, {
                     let mut node = Node::new(Role::Label);
-                    node.set_name(CHECKBOX_LABEL);
+                    node.set_value(CHECKBOX_LABEL);
                     node
                 }),
                 (RADIO_BUTTON_ID, {
@@ -1069,7 +1069,7 @@ mod tests {
                 }),
                 (RADIO_BUTTON_LABEL_ID, {
                     let mut node = Node::new(Role::Label);
-                    node.set_name(RADIO_BUTTON_LABEL);
+                    node.set_value(RADIO_BUTTON_LABEL);
                     node
                 }),
                 (MENU_BUTTON_ID, {
@@ -1079,7 +1079,7 @@ mod tests {
                 }),
                 (MENU_BUTTON_LABEL_ID, {
                     let mut node = Node::new(Role::Label);
-                    node.set_name(MENU_BUTTON_LABEL);
+                    node.set_value(MENU_BUTTON_LABEL);
                     node
                 }),
                 (MENU_ID, {
@@ -1094,7 +1094,7 @@ mod tests {
                 }),
                 (MENU_ITEM_LABEL_ID, {
                     let mut node = Node::new(Role::Label);
-                    node.set_name(MENU_ITEM_LABEL);
+                    node.set_value(MENU_ITEM_LABEL);
                     node
                 }),
                 (MENU_ITEM_CHECKBOX_ID, {
@@ -1104,7 +1104,7 @@ mod tests {
                 }),
                 (MENU_ITEM_CHECKBOX_LABEL_ID, {
                     let mut node = Node::new(Role::Label);
-                    node.set_name(MENU_ITEM_CHECKBOX_LABEL);
+                    node.set_value(MENU_ITEM_CHECKBOX_LABEL);
                     node
                 }),
                 (MENU_ITEM_RADIO_ID, {
@@ -1114,7 +1114,7 @@ mod tests {
                 }),
                 (MENU_ITEM_RADIO_LABEL_ID, {
                     let mut node = Node::new(Role::Label);
-                    node.set_name(MENU_ITEM_RADIO_LABEL);
+                    node.set_value(MENU_ITEM_RADIO_LABEL);
                     node
                 }),
             ],
@@ -1124,38 +1124,38 @@ mod tests {
         let tree = crate::Tree::new(update, false);
         assert_eq!(
             Some(DEFAULT_BUTTON_LABEL.into()),
-            tree.state().node_by_id(DEFAULT_BUTTON_ID).unwrap().name()
+            tree.state().node_by_id(DEFAULT_BUTTON_ID).unwrap().label()
         );
         assert_eq!(
             Some(LINK_LABEL.into()),
-            tree.state().node_by_id(LINK_ID).unwrap().name()
+            tree.state().node_by_id(LINK_ID).unwrap().label()
         );
         assert_eq!(
             Some(CHECKBOX_LABEL.into()),
-            tree.state().node_by_id(CHECKBOX_ID).unwrap().name()
+            tree.state().node_by_id(CHECKBOX_ID).unwrap().label()
         );
         assert_eq!(
             Some(RADIO_BUTTON_LABEL.into()),
-            tree.state().node_by_id(RADIO_BUTTON_ID).unwrap().name()
+            tree.state().node_by_id(RADIO_BUTTON_ID).unwrap().label()
         );
         assert_eq!(
             Some(MENU_BUTTON_LABEL.into()),
-            tree.state().node_by_id(MENU_BUTTON_ID).unwrap().name()
+            tree.state().node_by_id(MENU_BUTTON_ID).unwrap().label()
         );
         assert_eq!(
             Some(MENU_ITEM_LABEL.into()),
-            tree.state().node_by_id(MENU_ITEM_ID).unwrap().name()
+            tree.state().node_by_id(MENU_ITEM_ID).unwrap().label()
         );
         assert_eq!(
             Some(MENU_ITEM_CHECKBOX_LABEL.into()),
             tree.state()
                 .node_by_id(MENU_ITEM_CHECKBOX_ID)
                 .unwrap()
-                .name()
+                .label()
         );
         assert_eq!(
             Some(MENU_ITEM_RADIO_LABEL.into()),
-            tree.state().node_by_id(MENU_ITEM_RADIO_ID).unwrap().name()
+            tree.state().node_by_id(MENU_ITEM_RADIO_ID).unwrap().label()
         );
     }
 }

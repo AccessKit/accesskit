@@ -62,7 +62,7 @@ mod tests {
         };
         let label_0_0_ignored = {
             let mut node = Node::new(Role::Label);
-            node.set_name("label_0_0_ignored");
+            node.set_value("label_0_0_ignored");
             node
         };
         let paragraph_1_ignored = {
@@ -83,7 +83,7 @@ mod tests {
         };
         let button_1_0_hidden = {
             let mut node = Node::new(Role::Button);
-            node.set_name("button_1_0_hidden");
+            node.set_label("button_1_0_hidden");
             node.set_hidden();
             node.set_children(vec![CONTAINER_1_0_0_HIDDEN_ID]);
             node
@@ -101,12 +101,12 @@ mod tests {
                 x1: 90.0,
                 y1: 30.0,
             });
-            node.set_name("label_1_1");
+            node.set_value("label_1_1");
             node
         };
         let button_1_2_hidden = {
             let mut node = Node::new(Role::Button);
-            node.set_name("button_1_2_hidden");
+            node.set_label("button_1_2_hidden");
             node.set_hidden();
             node.set_children(vec![CONTAINER_1_2_0_HIDDEN_ID]);
             node
@@ -123,7 +123,7 @@ mod tests {
         };
         let label_2_0 = {
             let mut node = Node::new(Role::Label);
-            node.set_name("label_2_0");
+            node.set_label("label_2_0");
             node
         };
         let paragraph_3_ignored = {
@@ -145,12 +145,12 @@ mod tests {
         };
         let label_3_1_0 = {
             let mut node = Node::new(Role::Label);
-            node.set_name("label_3_1_0");
+            node.set_value("label_3_1_0");
             node
         };
         let button_3_2 = {
             let mut node = Node::new(Role::Button);
-            node.set_name("button_3_2");
+            node.set_label("button_3_2");
             node
         };
         let empty_container_3_3_ignored = Node::new(Role::GenericContainer);
