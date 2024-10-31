@@ -27,6 +27,7 @@ use objc2_foundation::{
     NSString,
 };
 use std::rc::{Rc, Weak};
+
 use crate::{context::Context, filters::filter, util::*};
 
 fn ns_role(node: &Node) -> &'static NSAccessibilityRole {
