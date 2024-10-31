@@ -316,7 +316,6 @@ fn ns_sub_role(node: &Node) -> &'static NSAccessibilitySubrole {
     }
 }
 
-
 pub(crate) fn can_be_focused(node: &Node) -> bool {
     filter(node) == FilterResult::Include && node.role() != Role::Window
 }
