@@ -27,7 +27,6 @@ use objc2_foundation::{
     NSString,
 };
 use std::rc::{Rc, Weak};
-
 use crate::{context::Context, filters::filter, util::*};
 
 fn ns_role(node: &Node) -> &'static NSAccessibilityRole {
@@ -232,6 +231,91 @@ fn ns_role(node: &Node) -> &'static NSAccessibilityRole {
     }
 }
 
+fn ns_sub_role(node: &Node) -> &'static NSAccessibilitySubrole {
+    let role = node.role();
+
+    unsafe {
+        match role {
+            Role::Alert => ns_string!("AXApplicationAlert"),
+            Role::AlertDialog => ns_string!("AXApplicationAlertDialog"),
+            Role::Article => ns_string!("AXDocumentArticle"),
+            Role::Banner => ns_string!("AXLandmarkBanner"),
+            Role::Button => {
+                if node.toggled().is_some() {
+                    NSAccessibilityToggleSubrole
+                } else {
+                    NSAccessibilityUnknownSubrole
+                }
+            }
+            Role::Code => ns_string!("AXCodeStyleGroup"),
+            Role::Complementary => ns_string!("AXLandmarkComplementary"),
+            Role::ContentDeletion => ns_string!("AXDeleteStyleGroup"),
+            Role::ContentInsertion => ns_string!("AXInsertStyleGroup"),
+            Role::ContentInfo => ns_string!("AXLandmarkContentInfo"),
+            Role::Definition => ns_string!("AXDefinition"),
+            Role::Dialog => NSAccessibilityDialogSubrole,
+            Role::Document => ns_string!("AXDocument"),
+            Role::Emphasis => ns_string!("AXEmphasisStyleGroup"),
+            Role::Feed => ns_string!("AXApplicationGroup"),
+            Role::Footer => ns_string!("AXLandmarkContentInfo"),
+            Role::Form => ns_string!("AXLandmarkForm"),
+            Role::GraphicsDocument => ns_string!("AXDocument"),
+            Role::Group => ns_string!("AXApplicationGroup"),
+            Role::Header => ns_string!("AXLandmarkBanner"),
+            Role::LayoutTableCell => NSAccessibilityGroupRole,
+            Role::LayoutTableRow => NSAccessibilityTableRowSubrole,
+            Role::Log => ns_string!("AXApplicationLog"),
+            Role::Main => ns_string!("AXLandmarkMain"),
+            Role::Marquee => ns_string!("AXApplicationMarquee"),
+            Role::Math => ns_string!("AXDocumentMath"),
+            //Role::MathMLFraction => ns_string!("AXMathFraction"),
+            //Role::MathMLIdentifier => ns_string!("AXMathIdentifier"),
+            //Role::MathMLMath => ns_string!("AXDocumentMath"),
+            //Role::MathMLMultiscripts => ns_string!("AXMathMultiscript"),
+            //Role::MathMLNoneScript => ns_string!("AXMathRow"),
+            //Role::MathMLNumber => ns_string!("AXMathNumber"),
+            //Role::MathMLOperator => ns_string!("AXMathOperator"),
+            //Role::MathMLOver => ns_string!("AXMathUnderOver"),
+            //Role::MathMLPrescriptDelimiter => ns_string!("AXMathRow"),
+            //Role::MathMLRoot => ns_string!("AXMathRoot"),
+            //Role::MathMLRow => ns_string!("AXMathRow"),
+            //Role::MathMLSquareRoot => ns_string!("AXMathSquareRoot"),
+            //Role::MathMLSub => ns_string!("AXMathSubscriptSuperscript"),
+            //Role::MathMLSubSup => ns_string!("AXMathSubscriptSuperscript"),
+            //Role::MathMLSup => ns_string!("AXMathSubscriptSuperscript"),
+            //Role::MathMLTable => ns_string!("AXMathTable"),
+            //Role::MathMLTableCell => ns_string!("AXMathTableCell"),
+            //Role::MathMLTableRow => ns_string!("AXMathTableRow"),
+            //Role::MathMLText => ns_string!("AXMathText"),
+            //Role::MathMLUnder => ns_string!("AXMathUnderOver"),
+            //Role::MathMLUnderOver => ns_string!("AXMathUnderOver"),
+            Role::Meter => ns_string!("AXMeter"),
+            Role::Navigation => ns_string!("AXLandmarkNavigation"),
+            Role::Note => ns_string!("AXDocumentNote"),
+            Role::Region => ns_string!("AXLandmarkRegion"),
+            Role::Search => ns_string!("AXLandmarkSearch"),
+            //Role::SearchBox => NSAccessibilitySearchFieldSubrole,
+            //Role::SectionFooter => ns_string!("AXSectionFooter"),
+            //Role::SectionHeader => ns_string!("AXSectionHeader"),
+            Role::Status => ns_string!("AXApplicationStatus"),
+            Role::Strong => ns_string!("AXStrongStyleGroup"),
+            //Role::Subscript => ns_string!("AXSubscriptStyleGroup"),
+            //Role::Superscript => ns_string!("AXSuperscriptStyleGroup"),
+            Role::Switch => NSAccessibilitySwitchSubrole,
+            Role::Tab => NSAccessibilityTabButtonSubrole,
+            Role::TabPanel => ns_string!("AXTabPanel"),
+
+            Role::Term => ns_string!("AXTerm"),
+            Role::Time => ns_string!("AXTimeGroup"),
+            Role::Timer => ns_string!("AXApplicationTimer"),
+            Role::TreeItem => NSAccessibilityOutlineRowSubrole,
+            Role::Tooltip => ns_string!("AXUserInterfaceTooltip"),
+            _ => NSAccessibilityUnknownSubrole,
+        }
+    }
+}
+
+
 pub(crate) fn can_be_focused(node: &Node) -> bool {
     filter(node) == FilterResult::Include && node.role() != Role::Window
 }
@@ -408,6 +492,13 @@ declare_class!(
         fn role(&self) -> Id<NSAccessibilityRole> {
             self.resolve(ns_role)
                 .unwrap_or(unsafe { NSAccessibilityUnknownRole })
+                .copy()
+        }
+
+        #[method_id(accessibilitySubrole)]
+        fn sub_role(&self) -> Id<NSAccessibilitySubrole> {
+            self.resolve(ns_sub_role)
+                .unwrap_or(unsafe { NSAccessibilityUnknownSubrole })
                 .copy()
         }
 
@@ -811,6 +902,7 @@ declare_class!(
                     || selector == sel!(accessibilityChildrenInNavigationOrder)
                     || selector == sel!(accessibilityFrame)
                     || selector == sel!(accessibilityRole)
+                    || selector == sel!(accessibilitySubrole)
                     || selector == sel!(isAccessibilityEnabled)
                     || selector == sel!(accessibilityWindow)
                     || selector == sel!(accessibilityTopLevelUIElement)
