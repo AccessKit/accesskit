@@ -695,7 +695,6 @@ pub struct TextSelection {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[repr(u8)]
 enum Flag {
-    Hovered,
     Hidden,
     Linked,
     Multiselectable,
@@ -1428,7 +1427,6 @@ impl Node {
 }
 
 flag_methods! {
-    (Hovered, is_hovered, set_hovered, clear_hovered),
     /// Exclude this node and its descendants from the tree presented to
     /// assistive technologies, and from hit testing.
     (Hidden, is_hidden, set_hidden, clear_hidden),
