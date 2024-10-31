@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.17.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.16.3...accesskit-v0.17.0) (2024-10-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop the `is_hovered` property ([#479](https://github.com/AccessKit/accesskit/issues/479))
+* Rename `name` to `label` and use `value` for label content ([#475](https://github.com/AccessKit/accesskit/issues/475))
+* Rename `NodeBuilder` to `Node` and the old `Node` to `FrozenNode` ([#476](https://github.com/AccessKit/accesskit/issues/476))
+* Rename `Role::InlineTextBox` to `TextRun` ([#473](https://github.com/AccessKit/accesskit/issues/473))
+* Drop `DefaultActionVerb` ([#472](https://github.com/AccessKit/accesskit/issues/472))
+* Make the core crate no-std ([#468](https://github.com/AccessKit/accesskit/issues/468))
+
+### Features
+
+* Make the core crate no-std ([#468](https://github.com/AccessKit/accesskit/issues/468)) ([2fa0d3f](https://github.com/AccessKit/accesskit/commit/2fa0d3f5b2b7ac11ef1751c133706f29e548bd6d))
+
+
+### Bug Fixes
+
+* Drop the `is_hovered` property ([#479](https://github.com/AccessKit/accesskit/issues/479)) ([95dfdb6](https://github.com/AccessKit/accesskit/commit/95dfdb6c88f7d705f6a7283cb8524168a9f542b2))
+
+
+### Code Refactoring
+
+* Drop `DefaultActionVerb` ([#472](https://github.com/AccessKit/accesskit/issues/472)) ([ef3b003](https://github.com/AccessKit/accesskit/commit/ef3b0038224459094f650368412650bc3b69526b))
+* Rename `name` to `label` and use `value` for label content ([#475](https://github.com/AccessKit/accesskit/issues/475)) ([e0053a5](https://github.com/AccessKit/accesskit/commit/e0053a5399929e8e0d4f07aa18de604ed8766ace))
+* Rename `NodeBuilder` to `Node` and the old `Node` to `FrozenNode` ([#476](https://github.com/AccessKit/accesskit/issues/476)) ([7d8910e](https://github.com/AccessKit/accesskit/commit/7d8910e35f7bc0543724cc124941a3bd0304bcc0))
+* Rename `Role::InlineTextBox` to `TextRun` ([#473](https://github.com/AccessKit/accesskit/issues/473)) ([29fa341](https://github.com/AccessKit/accesskit/commit/29fa34125a811bd3a0f9da579a9f35c9da90bf29))
+
 ## [0.16.3](https://github.com/AccessKit/accesskit/compare/accesskit-v0.16.2...accesskit-v0.16.3) (2024-10-08)
 
 
