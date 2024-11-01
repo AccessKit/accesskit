@@ -241,13 +241,7 @@ fn ns_sub_role(node: &Node) -> &'static NSAccessibilitySubrole {
             Role::AlertDialog => ns_string!("AXApplicationAlertDialog"),
             Role::Article => ns_string!("AXDocumentArticle"),
             Role::Banner => ns_string!("AXLandmarkBanner"),
-            Role::Button => {
-                if node.toggled().is_some() {
-                    NSAccessibilityToggleSubrole
-                } else {
-                    NSAccessibilityUnknownSubrole
-                }
-            }
+            Role::Button if node.toggled().is_some() => NSAccessibilityToggleSubrole,
             Role::Code => ns_string!("AXCodeStyleGroup"),
             Role::Complementary => ns_string!("AXLandmarkComplementary"),
             Role::ContentDeletion => ns_string!("AXDeleteStyleGroup"),
