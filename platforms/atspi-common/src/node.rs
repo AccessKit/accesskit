@@ -36,7 +36,11 @@ pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
 
 impl<'a> NodeWrapper<'a> {
     pub(crate) fn name(&self) -> Option<String> {
-        self.0.name()
+        if self.0.label_comes_from_value() {
+            self.0.value()
+        } else {
+            self.0.label()
+        }
     }
 
     pub(crate) fn description(&self) -> Option<String> {

@@ -22,7 +22,7 @@ pub use text::{
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Affine, NodeBuilder, NodeId, Rect, Role, Tree, TreeUpdate, Vec2};
+    use accesskit::{Affine, Node, NodeId, Rect, Role, Tree, TreeUpdate, Vec2};
 
     use crate::FilterResult;
 
@@ -46,114 +46,114 @@ mod tests {
 
     pub fn test_tree() -> crate::tree::Tree {
         let root = {
-            let mut builder = NodeBuilder::new(Role::RootWebArea);
-            builder.set_children(vec![
+            let mut node = Node::new(Role::RootWebArea);
+            node.set_children(vec![
                 PARAGRAPH_0_ID,
                 PARAGRAPH_1_IGNORED_ID,
                 PARAGRAPH_2_ID,
                 PARAGRAPH_3_IGNORED_ID,
             ]);
-            builder.build()
+            node
         };
         let paragraph_0 = {
-            let mut builder = NodeBuilder::new(Role::Paragraph);
-            builder.set_children(vec![LABEL_0_0_IGNORED_ID]);
-            builder.build()
+            let mut node = Node::new(Role::Paragraph);
+            node.set_children(vec![LABEL_0_0_IGNORED_ID]);
+            node
         };
         let label_0_0_ignored = {
-            let mut builder = NodeBuilder::new(Role::Label);
-            builder.set_name("label_0_0_ignored");
-            builder.build()
+            let mut node = Node::new(Role::Label);
+            node.set_value("label_0_0_ignored");
+            node
         };
         let paragraph_1_ignored = {
-            let mut builder = NodeBuilder::new(Role::Paragraph);
-            builder.set_transform(Affine::translate(Vec2::new(10.0, 40.0)));
-            builder.set_bounds(Rect {
+            let mut node = Node::new(Role::Paragraph);
+            node.set_transform(Affine::translate(Vec2::new(10.0, 40.0)));
+            node.set_bounds(Rect {
                 x0: 0.0,
                 y0: 0.0,
                 x1: 800.0,
                 y1: 40.0,
             });
-            builder.set_children(vec![
+            node.set_children(vec![
                 BUTTON_1_0_HIDDEN_ID,
                 LABEL_1_1_ID,
                 BUTTON_1_2_HIDDEN_ID,
             ]);
-            builder.build()
+            node
         };
         let button_1_0_hidden = {
-            let mut builder = NodeBuilder::new(Role::Button);
-            builder.set_name("button_1_0_hidden");
-            builder.set_hidden();
-            builder.set_children(vec![CONTAINER_1_0_0_HIDDEN_ID]);
-            builder.build()
+            let mut node = Node::new(Role::Button);
+            node.set_label("button_1_0_hidden");
+            node.set_hidden();
+            node.set_children(vec![CONTAINER_1_0_0_HIDDEN_ID]);
+            node
         };
         let container_1_0_0_hidden = {
-            let mut builder = NodeBuilder::new(Role::GenericContainer);
-            builder.set_hidden();
-            builder.build()
+            let mut node = Node::new(Role::GenericContainer);
+            node.set_hidden();
+            node
         };
         let label_1_1 = {
-            let mut builder = NodeBuilder::new(Role::Label);
-            builder.set_bounds(Rect {
+            let mut node = Node::new(Role::Label);
+            node.set_bounds(Rect {
                 x0: 10.0,
                 y0: 10.0,
                 x1: 90.0,
                 y1: 30.0,
             });
-            builder.set_name("label_1_1");
-            builder.build()
+            node.set_value("label_1_1");
+            node
         };
         let button_1_2_hidden = {
-            let mut builder = NodeBuilder::new(Role::Button);
-            builder.set_name("button_1_2_hidden");
-            builder.set_hidden();
-            builder.set_children(vec![CONTAINER_1_2_0_HIDDEN_ID]);
-            builder.build()
+            let mut node = Node::new(Role::Button);
+            node.set_label("button_1_2_hidden");
+            node.set_hidden();
+            node.set_children(vec![CONTAINER_1_2_0_HIDDEN_ID]);
+            node
         };
         let container_1_2_0_hidden = {
-            let mut builder = NodeBuilder::new(Role::GenericContainer);
-            builder.set_hidden();
-            builder.build()
+            let mut node = Node::new(Role::GenericContainer);
+            node.set_hidden();
+            node
         };
         let paragraph_2 = {
-            let mut builder = NodeBuilder::new(Role::Paragraph);
-            builder.set_children(vec![LABEL_2_0_ID]);
-            builder.build()
+            let mut node = Node::new(Role::Paragraph);
+            node.set_children(vec![LABEL_2_0_ID]);
+            node
         };
         let label_2_0 = {
-            let mut builder = NodeBuilder::new(Role::Label);
-            builder.set_name("label_2_0");
-            builder.build()
+            let mut node = Node::new(Role::Label);
+            node.set_label("label_2_0");
+            node
         };
         let paragraph_3_ignored = {
-            let mut builder = NodeBuilder::new(Role::Paragraph);
-            builder.set_children(vec![
+            let mut node = Node::new(Role::Paragraph);
+            node.set_children(vec![
                 EMPTY_CONTAINER_3_0_IGNORED_ID,
                 LINK_3_1_IGNORED_ID,
                 BUTTON_3_2_ID,
                 EMPTY_CONTAINER_3_3_IGNORED_ID,
             ]);
-            builder.build()
+            node
         };
-        let empty_container_3_0_ignored = NodeBuilder::new(Role::GenericContainer).build();
+        let empty_container_3_0_ignored = Node::new(Role::GenericContainer);
         let link_3_1_ignored = {
-            let mut builder = NodeBuilder::new(Role::Link);
-            builder.set_children(vec![LABEL_3_1_0_ID]);
-            builder.set_linked();
-            builder.build()
+            let mut node = Node::new(Role::Link);
+            node.set_children(vec![LABEL_3_1_0_ID]);
+            node.set_linked();
+            node
         };
         let label_3_1_0 = {
-            let mut builder = NodeBuilder::new(Role::Label);
-            builder.set_name("label_3_1_0");
-            builder.build()
+            let mut node = Node::new(Role::Label);
+            node.set_value("label_3_1_0");
+            node
         };
         let button_3_2 = {
-            let mut builder = NodeBuilder::new(Role::Button);
-            builder.set_name("button_3_2");
-            builder.build()
+            let mut node = Node::new(Role::Button);
+            node.set_label("button_3_2");
+            node
         };
-        let empty_container_3_3_ignored = NodeBuilder::new(Role::GenericContainer).build();
+        let empty_container_3_3_ignored = Node::new(Role::GenericContainer);
         let initial_update = TreeUpdate {
             nodes: vec![
                 (ROOT_ID, root),

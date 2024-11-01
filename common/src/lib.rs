@@ -695,7 +695,6 @@ pub struct TextSelection {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[repr(u8)]
 enum Flag {
-    Hovered,
     Hidden,
     Linked,
     Multiselectable,
@@ -784,7 +783,7 @@ enum PropertyId {
     PopupFor,
 
     // String
-    Name,
+    Label,
     Description,
     Value,
     AccessKey,
@@ -886,9 +885,26 @@ impl Default for PropertyIndices {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-struct Properties {
+struct FrozenProperties {
     indices: PropertyIndices,
     values: Box<[PropertyValue]>,
+}
+
+/// An accessibility node snapshot that can't be modified. This is not used by
+/// toolkits or applications, but only by code that retains an AccessKit tree
+/// in memory, such as the `accesskit_consumer` crate.
+#[derive(Clone, PartialEq)]
+pub struct FrozenNode {
+    role: Role,
+    actions: u32,
+    flags: u32,
+    properties: FrozenProperties,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+struct Properties {
+    indices: PropertyIndices,
+    values: Vec<PropertyValue>,
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
@@ -897,7 +913,7 @@ struct Properties {
 /// to other languages, documentation of getter methods is written as if
 /// documenting fields in a struct, and such methods are referred to
 /// as properties.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
@@ -907,21 +923,6 @@ pub struct Node {
     actions: u32,
     flags: u32,
     properties: Properties,
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-struct PropertiesBuilder {
-    indices: PropertyIndices,
-    values: Vec<PropertyValue>,
-}
-
-/// Builds a [`Node`].
-#[derive(Clone, Default, PartialEq)]
-pub struct NodeBuilder {
-    role: Role,
-    actions: u32,
-    flags: u32,
-    properties: PropertiesBuilder,
 }
 
 impl PropertyIndices {
@@ -939,7 +940,7 @@ fn unexpected_property_type() -> ! {
     panic!();
 }
 
-impl PropertiesBuilder {
+impl Properties {
     fn get_mut(&mut self, id: PropertyId, default: PropertyValue) -> &mut PropertyValue {
         let index = self.indices.0[id as usize] as usize;
         if index == PropertyId::Unset as usize {
@@ -971,18 +972,20 @@ impl PropertiesBuilder {
             self.values[index as usize] = PropertyValue::None;
         }
     }
+}
 
-    fn build(self) -> Properties {
-        Properties {
-            indices: self.indices,
-            values: self.values.into_boxed_slice(),
+impl From<Properties> for FrozenProperties {
+    fn from(props: Properties) -> Self {
+        Self {
+            indices: props.indices,
+            values: props.values.into_boxed_slice(),
         }
     }
 }
 
 macro_rules! flag_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        impl Node {
+        impl FrozenNode {
             $($(#[$doc])*
             #[inline]
             pub fn $getter(&self) -> bool {
@@ -996,7 +999,7 @@ macro_rules! flag_methods {
                 )*
             }
         }
-        impl NodeBuilder {
+        impl Node {
             $($(#[$doc])*
             #[inline]
             pub fn $getter(&self) -> bool {
@@ -1065,7 +1068,7 @@ macro_rules! copy_type_getters {
 
 macro_rules! box_type_setters {
     ($(($method:ident, $type:ty, $variant:ident)),+) => {
-        impl NodeBuilder {
+        impl Node {
             $(fn $method(&mut self, id: PropertyId, value: impl Into<Box<$type>>) {
                 self.properties.set(id, PropertyValue::$variant(value.into()));
             })*
@@ -1075,7 +1078,7 @@ macro_rules! box_type_setters {
 
 macro_rules! copy_type_setters {
     ($(($method:ident, $type:ty, $variant:ident)),+) => {
-        impl NodeBuilder {
+        impl Node {
             $(fn $method(&mut self, id: PropertyId, value: $type) {
                 self.properties.set(id, PropertyValue::$variant(value));
             })*
@@ -1088,7 +1091,7 @@ macro_rules! vec_type_methods {
         $(slice_type_getters! {
             ($getter, $type, $variant)
         })*
-        impl NodeBuilder {
+        impl Node {
             $(fn $setter(&mut self, id: PropertyId, value: impl Into<Vec<$type>>) {
                 self.properties.set(id, PropertyValue::$variant(value.into()));
             }
@@ -1106,14 +1109,14 @@ macro_rules! vec_type_methods {
 
 macro_rules! property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $type_getter:ident, $getter_result:ty, $setter:ident, $type_setter:ident, $setter_param:ty, $clearer:ident)),+) => {
-        impl Node {
+        impl FrozenNode {
             $($(#[$doc])*
             #[inline]
             pub fn $getter(&self) -> $getter_result {
                 self.properties.indices.$type_getter(&self.properties.values, PropertyId::$id)
             })*
         }
-        impl NodeBuilder {
+        impl Node {
             $($(#[$doc])*
             #[inline]
             pub fn $getter(&self) -> $getter_result {
@@ -1137,7 +1140,7 @@ macro_rules! vec_property_methods {
             $(#[$doc])*
             ($id, $getter, $type_getter, &[$item_type], $setter, $type_setter, impl Into<Vec<$item_type>>, $clearer)
         }
-        impl NodeBuilder {
+        impl Node {
             #[inline]
             pub fn $pusher(&mut self, item: $item_type) {
                 self.$type_pusher(PropertyId::$id, item);
@@ -1165,10 +1168,10 @@ macro_rules! node_id_vec_property_methods {
             $(#[$doc])*
             ($id, NodeId, $getter, get_node_id_vec, $setter, set_node_id_vec, $pusher, push_to_node_id_vec, $clearer)
         })*
-        impl Node {
+        impl FrozenNode {
             slice_properties_debug_method! { debug_node_id_vec_properties, [$($getter,)*] }
         }
-        impl NodeBuilder {
+        impl Node {
             slice_properties_debug_method! { debug_node_id_vec_properties, [$($getter,)*] }
         }
     }
@@ -1192,10 +1195,10 @@ macro_rules! node_id_property_methods {
             $(#[$doc])*
             ($id, $getter, get_node_id_property, Option<NodeId>, $setter, set_node_id_property, NodeId, $clearer)
         })*
-        impl Node {
+        impl FrozenNode {
             option_properties_debug_method! { debug_node_id_properties, [$($getter,)*] }
         }
-        impl NodeBuilder {
+        impl Node {
             option_properties_debug_method! { debug_node_id_properties, [$($getter,)*] }
         }
     }
@@ -1207,10 +1210,10 @@ macro_rules! string_property_methods {
             $(#[$doc])*
             ($id, $getter, get_string_property, Option<&str>, $setter, set_string_property, impl Into<Box<str>>, $clearer)
         })*
-        impl Node {
+        impl FrozenNode {
             option_properties_debug_method! { debug_string_properties, [$($getter,)*] }
         }
-        impl NodeBuilder {
+        impl Node {
             option_properties_debug_method! { debug_string_properties, [$($getter,)*] }
         }
     }
@@ -1222,10 +1225,10 @@ macro_rules! f64_property_methods {
             $(#[$doc])*
             ($id, $getter, get_f64_property, Option<f64>, $setter, set_f64_property, f64, $clearer)
         })*
-        impl Node {
+        impl FrozenNode {
             option_properties_debug_method! { debug_f64_properties, [$($getter,)*] }
         }
-        impl NodeBuilder {
+        impl Node {
             option_properties_debug_method! { debug_f64_properties, [$($getter,)*] }
         }
     }
@@ -1237,10 +1240,10 @@ macro_rules! usize_property_methods {
             $(#[$doc])*
             ($id, $getter, get_usize_property, Option<usize>, $setter, set_usize_property, usize, $clearer)
         })*
-        impl Node {
+        impl FrozenNode {
             option_properties_debug_method! { debug_usize_properties, [$($getter,)*] }
         }
-        impl NodeBuilder {
+        impl Node {
             option_properties_debug_method! { debug_usize_properties, [$($getter,)*] }
         }
     }
@@ -1252,10 +1255,10 @@ macro_rules! color_property_methods {
             $(#[$doc])*
             ($id, $getter, get_color_property, Option<u32>, $setter, set_color_property, u32, $clearer)
         })*
-        impl Node {
+        impl FrozenNode {
             option_properties_debug_method! { debug_color_properties, [$($getter,)*] }
         }
-        impl NodeBuilder {
+        impl Node {
             option_properties_debug_method! { debug_color_properties, [$($getter,)*] }
         }
     }
@@ -1267,10 +1270,10 @@ macro_rules! text_decoration_property_methods {
             $(#[$doc])*
             ($id, $getter, get_text_decoration_property, Option<TextDecoration>, $setter, set_text_decoration_property, TextDecoration, $clearer)
         })*
-        impl Node {
+        impl FrozenNode {
             option_properties_debug_method! { debug_text_decoration_properties, [$($getter,)*] }
         }
-        impl NodeBuilder {
+        impl Node {
             option_properties_debug_method! { debug_text_decoration_properties, [$($getter,)*] }
         }
     }
@@ -1282,10 +1285,10 @@ macro_rules! length_slice_property_methods {
             $(#[$doc])*
             ($id, $getter, get_length_slice_property, &[u8], $setter, set_length_slice_property, impl Into<Box<[u8]>>, $clearer)
         })*
-        impl Node {
+        impl FrozenNode {
             slice_properties_debug_method! { debug_length_slice_properties, [$($getter,)*] }
         }
-        impl NodeBuilder {
+        impl Node {
             slice_properties_debug_method! { debug_length_slice_properties, [$($getter,)*] }
         }
     }
@@ -1297,10 +1300,10 @@ macro_rules! coord_slice_property_methods {
             $(#[$doc])*
             ($id, $getter, get_coord_slice_property, Option<&[f32]>, $setter, set_coord_slice_property, impl Into<Box<[f32]>>, $clearer)
         })*
-        impl Node {
+        impl FrozenNode {
             option_properties_debug_method! { debug_coord_slice_properties, [$($getter,)*] }
         }
-        impl NodeBuilder {
+        impl Node {
             option_properties_debug_method! { debug_coord_slice_properties, [$($getter,)*] }
         }
     }
@@ -1312,10 +1315,10 @@ macro_rules! bool_property_methods {
             $(#[$doc])*
             ($id, $getter, get_bool_property, Option<bool>, $setter, set_bool_property, bool, $clearer)
         })*
-        impl Node {
+        impl FrozenNode {
             option_properties_debug_method! { debug_bool_properties, [$($getter,)*] }
         }
-        impl NodeBuilder {
+        impl Node {
             option_properties_debug_method! { debug_bool_properties, [$($getter,)*] }
         }
     }
@@ -1323,7 +1326,7 @@ macro_rules! bool_property_methods {
 
 macro_rules! unique_enum_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        impl Node {
+        impl FrozenNode {
             $($(#[$doc])*
             #[inline]
             pub fn $getter(&self) -> Option<$id> {
@@ -1335,7 +1338,7 @@ macro_rules! unique_enum_property_methods {
             })*
             option_properties_debug_method! { debug_unique_enum_properties, [$($getter,)*] }
         }
-        impl NodeBuilder {
+        impl Node {
             $($(#[$doc])*
             #[inline]
             pub fn $getter(&self) -> Option<$id> {
@@ -1358,7 +1361,7 @@ macro_rules! unique_enum_property_methods {
     }
 }
 
-impl NodeBuilder {
+impl Node {
     #[inline]
     pub fn new(role: Role) -> Self {
         Self {
@@ -1366,25 +1369,27 @@ impl NodeBuilder {
             ..Default::default()
         }
     }
+}
 
-    pub fn build(self) -> Node {
-        Node {
-            role: self.role,
-            actions: self.actions,
-            flags: self.flags,
-            properties: self.properties.build(),
+impl From<Node> for FrozenNode {
+    fn from(node: Node) -> Self {
+        Self {
+            role: node.role,
+            actions: node.actions,
+            flags: node.flags,
+            properties: node.properties.into(),
         }
     }
 }
 
-impl Node {
+impl FrozenNode {
     #[inline]
     pub fn role(&self) -> Role {
         self.role
     }
 }
 
-impl NodeBuilder {
+impl Node {
     #[inline]
     pub fn role(&self) -> Role {
         self.role
@@ -1395,14 +1400,14 @@ impl NodeBuilder {
     }
 }
 
-impl Node {
+impl FrozenNode {
     #[inline]
     pub fn supports_action(&self, action: Action) -> bool {
         (self.actions & action.mask()) != 0
     }
 }
 
-impl NodeBuilder {
+impl Node {
     #[inline]
     pub fn supports_action(&self, action: Action) -> bool {
         (self.actions & action.mask()) != 0
@@ -1422,7 +1427,6 @@ impl NodeBuilder {
 }
 
 flag_methods! {
-    (Hovered, is_hovered, set_hovered, clear_hovered),
     /// Exclude this node and its descendants from the tree presented to
     /// assistive technologies, and from hit testing.
     (Hidden, is_hidden, set_hidden, clear_hidden),
@@ -1531,7 +1535,11 @@ node_id_property_methods! {
 }
 
 string_property_methods! {
-    (Name, name, set_name, clear_name),
+    /// The label of a control that can have a label. If the label is specified
+    /// via the [`Node::labelled_by`] relation, this doesn't need to be set.
+    /// Note that the text content of a node with the [`Role::Label`] role
+    /// should be provided via [`Node::value`], not this property.
+    (Label, label, set_label, clear_label),
     (Description, description, set_description, clear_description),
     (Value, value, set_value, clear_value),
     /// A single character, usually part of this node's name, that can be pressed,
@@ -1779,11 +1787,11 @@ property_methods! {
     (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, impl Into<Box<TextSelection>>, clear_text_selection)
 }
 
-impl Node {
+impl FrozenNode {
     option_properties_debug_method! { debug_option_properties, [transform, bounds, text_selection,] }
 }
 
-impl NodeBuilder {
+impl Node {
     option_properties_debug_method! { debug_option_properties, [transform, bounds, text_selection,] }
 }
 
@@ -1791,9 +1799,9 @@ vec_property_methods! {
     (CustomActions, CustomAction, custom_actions, get_custom_action_vec, set_custom_actions, set_custom_action_vec, push_custom_action, push_to_custom_action_vec, clear_custom_actions)
 }
 
-impl fmt::Debug for Node {
+impl fmt::Debug for FrozenNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut fmt = f.debug_struct("Node");
+        let mut fmt = f.debug_struct("FrozenNode");
 
         fmt.field("role", &self.role());
 
@@ -1825,9 +1833,9 @@ impl fmt::Debug for Node {
     }
 }
 
-impl fmt::Debug for NodeBuilder {
+impl fmt::Debug for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut fmt = f.debug_struct("NodeBuilder");
+        let mut fmt = f.debug_struct("Node");
 
         fmt.field("role", &self.role());
 
@@ -1873,11 +1881,11 @@ macro_rules! serialize_property {
 
 #[cfg(feature = "serde")]
 macro_rules! deserialize_property {
-    ($builder:ident, $map:ident, $key:ident, { $($type:ident { $($id:ident),+ }),+ }) => {
+    ($props:ident, $map:ident, $key:ident, { $($type:ident { $($id:ident),+ }),+ }) => {
         match $key {
             $($(PropertyId::$id => {
                 let value = $map.next_value()?;
-                $builder.set(PropertyId::$id, PropertyValue::$type(value));
+                $props.set(PropertyId::$id, PropertyValue::$type(value));
             })*)*
             PropertyId::Unset => {
                 let _ = $map.next_value::<IgnoredAny>()?;
@@ -1953,9 +1961,9 @@ impl<'de> Visitor<'de> for PropertiesVisitor {
     where
         V: MapAccess<'de>,
     {
-        let mut builder = PropertiesBuilder::default();
+        let mut props = Properties::default();
         while let Some(id) = map.next_key()? {
-            deserialize_property!(builder, map, id, {
+            deserialize_property!(props, map, id, {
                 NodeIdVec {
                     Children,
                     Controls,
@@ -1976,7 +1984,7 @@ impl<'de> Visitor<'de> for PropertiesVisitor {
                     PopupFor
                 },
                 String {
-                    Name,
+                    Label,
                     Description,
                     Value,
                     AccessKey,
@@ -2062,7 +2070,7 @@ impl<'de> Visitor<'de> for PropertiesVisitor {
             });
         }
 
-        Ok(builder.build())
+        Ok(props)
     }
 }
 
@@ -2123,7 +2131,7 @@ impl JsonSchema for Properties {
                 PopupFor
             },
             Box<str> {
-                Name,
+                Label,
                 Description,
                 Value,
                 AccessKey,
@@ -2429,38 +2437,38 @@ mod tests {
     fn test_action_mask_to_action_vec() {
         assert_eq!(
             Vec::<Action>::new(),
-            action_mask_to_action_vec(NodeBuilder::new(Role::Unknown).actions)
+            action_mask_to_action_vec(Node::new(Role::Unknown).actions)
         );
 
-        let mut builder = NodeBuilder::new(Role::Unknown);
-        builder.add_action(Action::Click);
+        let mut node = Node::new(Role::Unknown);
+        node.add_action(Action::Click);
         assert_eq!(
             &[Action::Click],
-            action_mask_to_action_vec(builder.actions).as_slice()
+            action_mask_to_action_vec(node.actions).as_slice()
         );
 
-        let mut builder = NodeBuilder::new(Role::Unknown);
-        builder.add_action(Action::ShowContextMenu);
+        let mut node = Node::new(Role::Unknown);
+        node.add_action(Action::ShowContextMenu);
         assert_eq!(
             &[Action::ShowContextMenu],
-            action_mask_to_action_vec(builder.actions).as_slice()
+            action_mask_to_action_vec(node.actions).as_slice()
         );
 
-        let mut builder = NodeBuilder::new(Role::Unknown);
-        builder.add_action(Action::Click);
-        builder.add_action(Action::ShowContextMenu);
+        let mut node = Node::new(Role::Unknown);
+        node.add_action(Action::Click);
+        node.add_action(Action::ShowContextMenu);
         assert_eq!(
             &[Action::Click, Action::ShowContextMenu],
-            action_mask_to_action_vec(builder.actions).as_slice()
+            action_mask_to_action_vec(node.actions).as_slice()
         );
 
-        let mut builder = NodeBuilder::new(Role::Unknown);
-        builder.add_action(Action::Focus);
-        builder.add_action(Action::Blur);
-        builder.add_action(Action::Collapse);
+        let mut node = Node::new(Role::Unknown);
+        node.add_action(Action::Focus);
+        node.add_action(Action::Blur);
+        node.add_action(Action::Collapse);
         assert_eq!(
             &[Action::Focus, Action::Blur, Action::Collapse],
-            action_mask_to_action_vec(builder.actions).as_slice()
+            action_mask_to_action_vec(node.actions).as_slice()
         );
     }
 }
