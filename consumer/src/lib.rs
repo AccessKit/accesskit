@@ -3,6 +3,10 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+#![no_std]
+
+extern crate alloc;
+
 pub(crate) mod tree;
 pub use tree::{ChangeHandler as TreeChangeHandler, State as TreeState, Tree};
 
@@ -23,6 +27,7 @@ pub use text::{
 #[cfg(test)]
 mod tests {
     use accesskit::{Affine, Node, NodeId, Rect, Role, Tree, TreeUpdate, Vec2};
+    use alloc::vec;
 
     use crate::FilterResult;
 

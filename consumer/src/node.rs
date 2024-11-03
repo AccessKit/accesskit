@@ -8,12 +8,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use std::{iter::FusedIterator, sync::Arc};
-
 use accesskit::{
     Action, Affine, FrozenNode as NodeData, Live, NodeId, Orientation, Point, Rect, Role,
     TextSelection, Toggled,
 };
+use alloc::{
+    string::{String, ToString},
+    sync::Arc,
+    vec::Vec,
+};
+use core::iter::FusedIterator;
 
 use crate::filters::FilterResult;
 use crate::iterators::{
@@ -665,6 +669,7 @@ impl<'a> Node<'a> {
 #[cfg(test)]
 mod tests {
     use accesskit::{Node, NodeId, Point, Rect, Role, Tree, TreeUpdate};
+    use alloc::vec;
 
     use crate::tests::*;
 

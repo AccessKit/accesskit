@@ -6,7 +6,8 @@
 use accesskit::{
     NodeId, Point, Rect, Role, TextDirection, TextPosition as WeakPosition, TextSelection,
 };
-use std::{cmp::Ordering, iter::FusedIterator};
+use alloc::{string::String, vec::Vec};
+use core::{cmp::Ordering, iter::FusedIterator};
 
 use crate::{FilterResult, Node, TreeState};
 
@@ -488,7 +489,7 @@ pub struct Range<'a> {
 impl<'a> Range<'a> {
     fn new(node: Node<'a>, mut start: InnerPosition<'a>, mut end: InnerPosition<'a>) -> Self {
         if start.comparable(&node) > end.comparable(&node) {
-            std::mem::swap(&mut start, &mut end);
+            core::mem::swap(&mut start, &mut end);
         }
         Self { node, start, end }
     }
@@ -1089,6 +1090,7 @@ impl<'a> Node<'a> {
 #[cfg(test)]
 mod tests {
     use accesskit::{NodeId, Point, Rect, TextSelection};
+    use alloc::vec;
 
     // This is based on an actual tree produced by egui.
     fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {

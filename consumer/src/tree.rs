@@ -4,11 +4,9 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{FrozenNode as NodeData, NodeId, Tree as TreeData, TreeUpdate};
+use alloc::{format, string::String, sync::Arc, vec, vec::Vec};
+use hashbrown::{HashMap, HashSet};
 use immutable_chunkmap::map::MapM as ChunkMap;
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
 
 use crate::node::{Node, NodeState, ParentAndIndex};
 
@@ -103,7 +101,7 @@ impl State {
                 } else {
                     pending_children.insert(*child_id, parent_and_index);
                 }
-                seen_child_ids.insert(child_id);
+                seen_child_ids.insert(*child_id);
             }
 
             if let Some(node_state) = self.nodes.get_mut_cow(&node_id) {
@@ -147,14 +145,14 @@ impl State {
         self.is_host_focused = is_host_focused;
 
         if !orphans.is_empty() {
-            let mut to_remove = HashSet::new();
+            let mut to_remove = Vec::new();
 
             fn traverse_orphan(
                 nodes: &ChunkMap<NodeId, NodeState>,
-                to_remove: &mut HashSet<NodeId>,
+                to_remove: &mut Vec<NodeId>,
                 id: NodeId,
             ) {
-                to_remove.insert(id);
+                to_remove.push(id);
                 let node = nodes.get(&id).unwrap();
                 for child_id in node.data.children().iter() {
                     traverse_orphan(nodes, to_remove, *child_id);
@@ -367,6 +365,7 @@ fn short_node_list<'a>(nodes: impl ExactSizeIterator<Item = &'a NodeId>) -> Stri
 #[cfg(test)]
 mod tests {
     use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
+    use alloc::vec;
 
     #[test]
     fn init_tree_with_root_node() {
