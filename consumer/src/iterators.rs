@@ -8,7 +8,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use std::iter::FusedIterator;
+use core::iter::FusedIterator;
 
 use accesskit::NodeId;
 
@@ -435,7 +435,7 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> FusedIterator for FilteredChildren<'
 pub(crate) enum LabelledBy<'a, Filter: Fn(&Node) -> FilterResult> {
     FromDescendants(FilteredChildren<'a, Filter>),
     Explicit {
-        ids: std::slice::Iter<'a, NodeId>,
+        ids: core::slice::Iter<'a, NodeId>,
         tree_state: &'a TreeState,
     },
 }
@@ -477,6 +477,7 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> FusedIterator for LabelledBy<'a, Fil
 mod tests {
     use crate::tests::*;
     use accesskit::NodeId;
+    use alloc::vec::Vec;
 
     #[test]
     fn following_siblings() {
