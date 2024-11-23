@@ -1567,9 +1567,9 @@ string_property_methods! {
     /// Only present when different from parent.
     (Language, language, set_language, clear_language),
     /// If a text input has placeholder text, it should be exposed
-    /// through this property rather than [`name`].
+    /// through this property rather than [`label`].
     ///
-    /// [`name`]: Node::name
+    /// [`label`]: Node::label
     (Placeholder, placeholder, set_placeholder, clear_placeholder),
     /// An optional string that may override an assistive technology's
     /// description of the node's role. Only provide this for custom control types.
@@ -1581,9 +1581,9 @@ string_property_methods! {
     /// and assistive technologies do not support this feature.
     (StateDescription, state_description, set_state_description, clear_state_description),
     /// If a node's only accessible name comes from a tooltip, it should be
-    /// exposed through this property rather than [`name`].
+    /// exposed through this property rather than [`label`].
     ///
-    /// [`name`]: Node::name
+    /// [`label`]: Node::label
     (Tooltip, tooltip, set_tooltip, clear_tooltip),
     (Url, url, set_url, clear_url),
     (RowIndexText, row_index_text, set_row_index_text, clear_row_index_text),
