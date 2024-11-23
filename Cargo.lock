@@ -85,6 +85,7 @@ version = "0.24.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
+ "hashbrown 0.15.0",
  "once_cell",
  "paste",
  "scopeguard",

@@ -8,10 +8,8 @@ use accesskit::{
     TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler};
-use std::{
-    collections::HashSet,
-    sync::{atomic::Ordering, Arc},
-};
+use hashbrown::HashSet;
+use std::sync::{atomic::Ordering, Arc};
 use windows::Win32::{
     Foundation::*,
     UI::{Accessibility::*, WindowsAndMessaging::*},
