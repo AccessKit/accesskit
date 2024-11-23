@@ -1,6 +1,6 @@
 [package]
 name = "accesskit"
-version = "0.17.0"
+version = "0.17.1"
 authors.workspace = true
 license.workspace = true
 description = "UI accessibility infrastructure across platforms"

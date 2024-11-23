@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.17.0...accesskit-v0.17.1) (2024-11-23)
+
+
+### Bug Fixes
+
+* Fix some broken links in the documentation ([#484](https://github.com/AccessKit/accesskit/issues/484)) ([0a51225](https://github.com/AccessKit/accesskit/commit/0a5122561c6f6aca5cf802464220056d763040f8))
+
 ## [0.17.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.16.3...accesskit-v0.17.0) (2024-10-31)
 
 

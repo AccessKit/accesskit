@@ -24,6 +24,25 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.26.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.25.0...accesskit_consumer-v0.26.0) (2024-11-23)
+
+
+### Features
+
+* Make the consumer crate no-std ([#471](https://github.com/AccessKit/accesskit/issues/471)) ([f25d03a](https://github.com/AccessKit/accesskit/commit/f25d03ad81736017a29ce0f5ed1b387047534d2d))
+
+
+### Bug Fixes
+
+* Avoid reallocations when processing tree updates ([#482](https://github.com/AccessKit/accesskit/issues/482)) ([dcb17bc](https://github.com/AccessKit/accesskit/commit/dcb17bc1e69eccc2fea6af6a6b61f71c9e73a0b9))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.17.0 to 0.17.1
+
 ## [0.25.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.24.3...accesskit_consumer-v0.25.0) (2024-10-31)
 
 
