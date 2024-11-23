@@ -5,10 +5,11 @@
 
 use accesskit::{Live, NodeId, Role};
 use accesskit_consumer::{FilterResult, Node, TreeChangeHandler};
+use hashbrown::HashSet;
 use objc2::runtime::{AnyObject, ProtocolObject};
 use objc2_app_kit::*;
 use objc2_foundation::{NSMutableDictionary, NSNumber, NSString};
-use std::{collections::HashSet, rc::Rc};
+use std::rc::Rc;
 
 use crate::{context::Context, filters::filter, node::NodeWrapper};
 
