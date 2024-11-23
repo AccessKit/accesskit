@@ -11,6 +11,10 @@ readme = "README.md"
 edition.workspace = true
 rust-version.workspace = true
 
+[package.metadata.docs.rs]
+default-target = "x86_64-pc-windows-msvc"
+targets = []
+
 [dependencies]
 accesskit = { version = "0.17.0", path = "../../common" }
 accesskit_consumer = { version = "0.25.0", path = "../../consumer" }
