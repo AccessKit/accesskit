@@ -76,7 +76,7 @@ impl State {
 
             orphans.remove(&node_id);
 
-            let mut seen_child_ids = HashSet::new();
+            let mut seen_child_ids = HashSet::with_capacity(node_data.children().len());
             for (child_index, child_id) in node_data.children().iter().enumerate() {
                 if seen_child_ids.contains(child_id) {
                     panic!(
