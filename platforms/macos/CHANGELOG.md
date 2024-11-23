@@ -37,6 +37,22 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.18.1](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.18.0...accesskit_macos-v0.18.1) (2024-11-23)
+
+
+### Bug Fixes
+
+* Add sub roles to MacOS adapter ([#480](https://github.com/AccessKit/accesskit/issues/480)) ([40ad828](https://github.com/AccessKit/accesskit/commit/40ad828a8f95c94f3079310d95c94ab7b16e0887))
+* Optimize use of hash tables in platform adapters ([#485](https://github.com/AccessKit/accesskit/issues/485)) ([f4f0bfb](https://github.com/AccessKit/accesskit/commit/f4f0bfbf21b8e22e80ab07deb432f9e7e16469ab))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.17.0 to 0.17.1
+    * accesskit_consumer bumped from 0.25.0 to 0.26.0
+
 ## [0.18.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.17.4...accesskit_macos-v0.18.0) (2024-10-31)
 
 
