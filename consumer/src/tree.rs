@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{FrozenNode as NodeData, NodeId, Tree as TreeData, TreeUpdate};
-use alloc::{string::String, sync::Arc, vec, vec::Vec};
+use alloc::{string::String, sync::Arc, vec};
 use core::fmt;
 use hashbrown::{HashMap, HashSet};
 use immutable_chunkmap::map::MapM as ChunkMap;
