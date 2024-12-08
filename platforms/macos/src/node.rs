@@ -490,7 +490,7 @@ declare_class!(
         fn placeholder(&self) -> Option<Id<NSString>> {
             self.resolve(|node| {
                 let wrapper = NodeWrapper(node);
-                wrapper.placeholder().map(|placeholder| NSString::from_str(placeholder))
+                wrapper.placeholder().map(NSString::from_str)
             })
             .flatten()
         }
