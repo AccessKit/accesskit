@@ -6,7 +6,7 @@
 use accesskit::Point;
 use accesskit_consumer::TreeState;
 use std::{
-    fmt,
+    fmt::{self, Write},
     sync::{Arc, Weak},
 };
 use windows::{
@@ -24,7 +24,7 @@ use crate::window_handle::WindowHandle;
 #[derive(Clone, Default, PartialEq, Eq)]
 pub(crate) struct WideString(Vec<u16>);
 
-impl fmt::Write for WideString {
+impl Write for WideString {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.0.extend(s.encode_utf16());
         Ok(())
@@ -75,7 +75,7 @@ impl From<WideString> for Variant {
 impl From<&str> for Variant {
     fn from(value: &str) -> Self {
         let mut result = WideString::default();
-        fmt::Write::write_str(&mut result, value).unwrap();
+        result.write_str(value).unwrap();
         result.into()
     }
 }
@@ -247,13 +247,15 @@ pub(crate) fn window_title(hwnd: WindowHandle) -> Option<BSTR> {
     Some(BSTR::from_wide(&buffer).unwrap())
 }
 
-pub(crate) fn toolkit_description(state: &TreeState) -> Option<String> {
+pub(crate) fn toolkit_description(state: &TreeState) -> Option<WideString> {
     state.toolkit_name().map(|name| {
+        let mut result = WideString::default();
+        result.write_str(name).unwrap();
         if let Some(version) = state.toolkit_version() {
-            format!("{} {}", name, version)
-        } else {
-            name.to_string()
+            result.write_char(' ').unwrap();
+            result.write_str(version).unwrap();
         }
+        result
     })
 }
 
