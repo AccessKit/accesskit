@@ -24,6 +24,33 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.27.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.26.0...accesskit_consumer-v0.27.0) (2024-12-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* Optimize simple string getters ([#493](https://github.com/AccessKit/accesskit/issues/493))
+* Drop `Tree::app_name` ([#492](https://github.com/AccessKit/accesskit/issues/492))
+
+### Bug Fixes
+
+* Optimize removal of unreachable nodes ([#486](https://github.com/AccessKit/accesskit/issues/486)) ([93d0a72](https://github.com/AccessKit/accesskit/commit/93d0a72880901479fe44ed92ef24fa71b7bb4803))
+* Optimize the "short node list" helper used in panic messages ([#490](https://github.com/AccessKit/accesskit/issues/490)) ([b4a89a3](https://github.com/AccessKit/accesskit/commit/b4a89a386474b9a71f22aa36d09c2d07bca084cd))
+* Remove unnecessary explicit lifetimes ([#488](https://github.com/AccessKit/accesskit/issues/488)) ([d2bcd6d](https://github.com/AccessKit/accesskit/commit/d2bcd6d3048d23df4e132bee6171eb247b2dc2c8))
+
+
+### Code Refactoring
+
+* Drop `Tree::app_name` ([#492](https://github.com/AccessKit/accesskit/issues/492)) ([089794c](https://github.com/AccessKit/accesskit/commit/089794c8f74957e91a19ae3df508e2a892f39ebc))
+* Optimize simple string getters ([#493](https://github.com/AccessKit/accesskit/issues/493)) ([484fd7c](https://github.com/AccessKit/accesskit/commit/484fd7cbfb778222369d3f57d31dd998f6fa80d8))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.17.1 to 0.18.0
+
 ## [0.26.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.25.0...accesskit_consumer-v0.26.0) (2024-11-23)
 
 
