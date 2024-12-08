@@ -298,7 +298,7 @@ pub(crate) enum Value {
 
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
 
-impl<'a> NodeWrapper<'a> {
+impl NodeWrapper<'_> {
     fn is_root(&self) -> bool {
         self.0.is_root()
     }

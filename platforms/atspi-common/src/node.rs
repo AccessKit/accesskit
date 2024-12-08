@@ -34,7 +34,7 @@ use crate::{
 
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
 
-impl<'a> NodeWrapper<'a> {
+impl NodeWrapper<'_> {
     pub(crate) fn name(&self) -> Option<String> {
         if self.0.label_comes_from_value() {
             self.0.value()

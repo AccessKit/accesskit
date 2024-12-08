@@ -48,7 +48,7 @@ impl<'a> FollowingSiblings<'a> {
     }
 }
 
-impl<'a> Iterator for FollowingSiblings<'a> {
+impl Iterator for FollowingSiblings<'_> {
     type Item = NodeId;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -76,7 +76,7 @@ impl<'a> Iterator for FollowingSiblings<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator for FollowingSiblings<'a> {
+impl DoubleEndedIterator for FollowingSiblings<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.done {
             None
@@ -94,9 +94,9 @@ impl<'a> DoubleEndedIterator for FollowingSiblings<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for FollowingSiblings<'a> {}
+impl ExactSizeIterator for FollowingSiblings<'_> {}
 
-impl<'a> FusedIterator for FollowingSiblings<'a> {}
+impl FusedIterator for FollowingSiblings<'_> {}
 
 /// An iterator that yields preceding siblings of a node.
 ///
@@ -126,7 +126,7 @@ impl<'a> PrecedingSiblings<'a> {
     }
 }
 
-impl<'a> Iterator for PrecedingSiblings<'a> {
+impl Iterator for PrecedingSiblings<'_> {
     type Item = NodeId;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -156,7 +156,7 @@ impl<'a> Iterator for PrecedingSiblings<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator for PrecedingSiblings<'a> {
+impl DoubleEndedIterator for PrecedingSiblings<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.done {
             None
@@ -174,9 +174,9 @@ impl<'a> DoubleEndedIterator for PrecedingSiblings<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for PrecedingSiblings<'a> {}
+impl ExactSizeIterator for PrecedingSiblings<'_> {}
 
-impl<'a> FusedIterator for PrecedingSiblings<'a> {}
+impl FusedIterator for PrecedingSiblings<'_> {}
 
 fn next_filtered_sibling<'a>(
     node: Option<Node<'a>>,
@@ -297,8 +297,8 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> Iterator for FollowingFilteredSiblin
     }
 }
 
-impl<'a, Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator
-    for FollowingFilteredSiblings<'a, Filter>
+impl<Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator
+    for FollowingFilteredSiblings<'_, Filter>
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.done {
@@ -312,10 +312,7 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator
     }
 }
 
-impl<'a, Filter: Fn(&Node) -> FilterResult> FusedIterator
-    for FollowingFilteredSiblings<'a, Filter>
-{
-}
+impl<Filter: Fn(&Node) -> FilterResult> FusedIterator for FollowingFilteredSiblings<'_, Filter> {}
 
 /// An iterator that yields preceding siblings of a node according to the
 /// specified filter.
@@ -358,8 +355,8 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> Iterator for PrecedingFilteredSiblin
     }
 }
 
-impl<'a, Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator
-    for PrecedingFilteredSiblings<'a, Filter>
+impl<Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator
+    for PrecedingFilteredSiblings<'_, Filter>
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.done {
@@ -373,10 +370,7 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator
     }
 }
 
-impl<'a, Filter: Fn(&Node) -> FilterResult> FusedIterator
-    for PrecedingFilteredSiblings<'a, Filter>
-{
-}
+impl<Filter: Fn(&Node) -> FilterResult> FusedIterator for PrecedingFilteredSiblings<'_, Filter> {}
 
 /// An iterator that yields children of a node according to the specified
 /// filter.
@@ -417,7 +411,7 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> Iterator for FilteredChildren<'a, Fi
     }
 }
 
-impl<'a, Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator for FilteredChildren<'a, Filter> {
+impl<Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator for FilteredChildren<'_, Filter> {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.done {
             None
@@ -430,7 +424,7 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator for FilteredChil
     }
 }
 
-impl<'a, Filter: Fn(&Node) -> FilterResult> FusedIterator for FilteredChildren<'a, Filter> {}
+impl<Filter: Fn(&Node) -> FilterResult> FusedIterator for FilteredChildren<'_, Filter> {}
 
 pub(crate) enum LabelledBy<'a, Filter: Fn(&Node) -> FilterResult> {
     FromDescendants(FilteredChildren<'a, Filter>),
@@ -460,7 +454,7 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> Iterator for LabelledBy<'a, Filter> 
     }
 }
 
-impl<'a, Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator for LabelledBy<'a, Filter> {
+impl<Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator for LabelledBy<'_, Filter> {
     fn next_back(&mut self) -> Option<Self::Item> {
         match self {
             Self::FromDescendants(iter) => iter.next_back(),
@@ -471,7 +465,7 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator for LabelledBy<'
     }
 }
 
-impl<'a, Filter: Fn(&Node) -> FilterResult> FusedIterator for LabelledBy<'a, Filter> {}
+impl<Filter: Fn(&Node) -> FilterResult> FusedIterator for LabelledBy<'_, Filter> {}
 
 #[cfg(test)]
 mod tests {
