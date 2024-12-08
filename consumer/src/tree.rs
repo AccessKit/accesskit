@@ -341,12 +341,12 @@ impl<T> fmt::Display for ShortNodeList<'_, T> {
         write!(f, "[")?;
         let mut iter = self.0.iter();
         for i in 0..10 {
-            if i != 0 {
-                write!(f, ", ")?;
-            }
             let Some((id, _)) = iter.next() else {
                 break;
             };
+            if i != 0 {
+                write!(f, ", ")?;
+            }
             write!(f, "#{}", id.0)?;
         }
         if iter.next().is_some() {
