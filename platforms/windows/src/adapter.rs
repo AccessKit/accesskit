@@ -111,11 +111,12 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         let old_wrapper = NodeWrapper(old_node);
         let new_wrapper = NodeWrapper(new_node);
         new_wrapper.enqueue_property_changes(&mut self.queue, &element, &old_wrapper);
-        if new_wrapper.name().is_some()
+        let new_name = new_wrapper.name();
+        if new_name.is_some()
             && new_node.live() != Live::Off
-            && (new_wrapper.name() != old_wrapper.name()
-                || new_node.live() != old_node.live()
-                || filter(old_node) != FilterResult::Include)
+            && (new_node.live() != old_node.live()
+                || filter(old_node) != FilterResult::Include
+                || new_name != old_wrapper.name())
         {
             self.queue.push(QueuedEvent::Simple {
                 element,

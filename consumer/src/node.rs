@@ -17,7 +17,7 @@ use alloc::{
     sync::Arc,
     vec::Vec,
 };
-use core::iter::FusedIterator;
+use core::{fmt, iter::FusedIterator};
 
 use crate::filters::FilterResult;
 use crate::iterators::{
@@ -501,20 +501,37 @@ impl<'a> Node<'a> {
     }
 
     pub fn label(&self) -> Option<String> {
+        let mut result = String::new();
+        self.write_label(&mut result).unwrap().then_some(result)
+    }
+
+    fn write_label_direct<W: fmt::Write>(&self, mut writer: W) -> Result<bool, fmt::Error> {
         if let Some(label) = &self.data().label() {
-            Some(label.to_string())
+            writer.write_str(label)?;
+            Ok(true)
         } else {
-            let labels = self
-                .labelled_by()
-                .filter_map(|node| {
-                    if node.label_comes_from_value() {
-                        node.value()
-                    } else {
-                        node.label()
-                    }
-                })
-                .collect::<Vec<String>>();
-            (!labels.is_empty()).then(move || labels.join(" "))
+            Ok(false)
+        }
+    }
+
+    pub fn write_label<W: fmt::Write>(&self, mut writer: W) -> Result<bool, fmt::Error> {
+        if self.write_label_direct(&mut writer)? {
+            Ok(true)
+        } else {
+            let mut wrote_one = false;
+            for node in self.labelled_by() {
+                let writer = SpacePrefixingWriter {
+                    inner: &mut writer,
+                    need_prefix: wrote_one,
+                };
+                let wrote_this_time = if node.label_comes_from_value() {
+                    node.write_value(writer)
+                } else {
+                    node.write_label_direct(writer)
+                }?;
+                wrote_one = wrote_one || wrote_this_time;
+            }
+            Ok(wrote_one)
         }
     }
 
@@ -529,12 +546,19 @@ impl<'a> Node<'a> {
     }
 
     pub fn value(&self) -> Option<String> {
+        let mut result = String::new();
+        self.write_value(&mut result).unwrap().then_some(result)
+    }
+
+    pub fn write_value<W: fmt::Write>(&self, mut writer: W) -> Result<bool, fmt::Error> {
         if let Some(value) = &self.data().value() {
-            Some(value.to_string())
+            writer.write_str(value)?;
+            Ok(true)
         } else if self.supports_text_ranges() && !self.is_multiline() {
-            Some(self.document_range().text())
+            self.document_range().write_text(writer)?;
+            Ok(true)
         } else {
-            None
+            Ok(false)
         }
     }
 
@@ -661,6 +685,33 @@ impl<'a> Node<'a> {
             }
         }
         None
+    }
+}
+
+struct SpacePrefixingWriter<W: fmt::Write> {
+    inner: W,
+    need_prefix: bool,
+}
+
+impl<W: fmt::Write> SpacePrefixingWriter<W> {
+    fn write_prefix_if_needed(&mut self) -> fmt::Result {
+        if self.need_prefix {
+            self.inner.write_char(' ')?;
+            self.need_prefix = false;
+        }
+        Ok(())
+    }
+}
+
+impl<W: fmt::Write> fmt::Write for SpacePrefixingWriter<W> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_prefix_if_needed()?;
+        self.inner.write_str(s)
+    }
+
+    fn write_char(&mut self, c: char) -> fmt::Result {
+        self.write_prefix_if_needed()?;
+        self.inner.write_char(c)
     }
 }
 
