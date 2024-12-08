@@ -2240,8 +2240,6 @@ impl JsonSchema for Properties {
 pub struct Tree {
     /// The identifier of the tree's root node.
     pub root: NodeId,
-    /// The name of the application this tree belongs to.
-    pub app_name: Option<String>,
     /// The name of the UI toolkit in use.
     pub toolkit_name: Option<String>,
     /// The version of the UI toolkit.
@@ -2253,7 +2251,6 @@ impl Tree {
     pub fn new(root: NodeId) -> Tree {
         Tree {
             root,
-            app_name: None,
             toolkit_name: None,
             toolkit_version: None,
         }

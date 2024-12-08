@@ -695,11 +695,11 @@ impl PlatformNode {
     }
 
     pub fn toolkit_name(&self) -> Result<String> {
-        self.with_tree_state(|state| Ok(state.toolkit_name().unwrap_or_default()))
+        self.with_tree_state(|state| Ok(state.toolkit_name().unwrap_or_default().to_string()))
     }
 
     pub fn toolkit_version(&self) -> Result<String> {
-        self.with_tree_state(|state| Ok(state.toolkit_version().unwrap_or_default()))
+        self.with_tree_state(|state| Ok(state.toolkit_version().unwrap_or_default().to_string()))
     }
 
     pub fn parent(&self) -> Result<NodeIdOrRoot> {

@@ -33,8 +33,15 @@ use crate::{
 static APP_CONTEXT: OnceLock<Arc<RwLock<AppContext>>> = OnceLock::new();
 static MESSAGES: OnceLock<Sender<Message>> = OnceLock::new();
 
+fn app_name() -> Option<String> {
+    std::env::current_exe().ok().and_then(|path| {
+        path.file_name()
+            .map(|name| name.to_string_lossy().to_string())
+    })
+}
+
 pub(crate) fn get_or_init_app_context<'a>() -> &'a Arc<RwLock<AppContext>> {
-    APP_CONTEXT.get_or_init(AppContext::new)
+    APP_CONTEXT.get_or_init(|| AppContext::new(app_name()))
 }
 
 pub(crate) fn get_or_init_messages() -> Sender<Message> {
