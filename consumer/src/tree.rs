@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{FrozenNode as NodeData, NodeId, Tree as TreeData, TreeUpdate};
-use alloc::{string::String, sync::Arc, vec};
+use alloc::{sync::Arc, vec};
 use core::fmt;
 use hashbrown::{HashMap, HashSet};
 use immutable_chunkmap::map::MapM as ChunkMap;
@@ -213,12 +213,12 @@ impl State {
         self.focus_id().map(|id| self.node_by_id(id).unwrap())
     }
 
-    pub fn toolkit_name(&self) -> Option<String> {
-        self.data.toolkit_name.clone()
+    pub fn toolkit_name(&self) -> Option<&str> {
+        self.data.toolkit_name.as_deref()
     }
 
-    pub fn toolkit_version(&self) -> Option<String> {
-        self.data.toolkit_version.clone()
+    pub fn toolkit_version(&self) -> Option<&str> {
+        self.data.toolkit_version.as_deref()
     }
 }
 

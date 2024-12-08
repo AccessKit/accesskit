@@ -221,7 +221,7 @@ pub(crate) fn toolkit_description(state: &TreeState) -> Option<String> {
         if let Some(version) = state.toolkit_version() {
             format!("{} {}", name, version)
         } else {
-            name
+            name.to_string()
         }
     })
 }
