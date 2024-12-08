@@ -355,7 +355,7 @@ impl NodeWrapper<'_> {
     fn attributes(&self) -> HashMap<&'static str, String> {
         let mut attributes = HashMap::new();
         if let Some(placeholder) = self.0.placeholder() {
-            attributes.insert("placeholder-text", placeholder);
+            attributes.insert("placeholder-text", placeholder.to_string());
         }
         attributes
     }
@@ -775,7 +775,7 @@ impl PlatformNode {
     }
 
     pub fn localized_role_name(&self) -> Result<String> {
-        self.resolve(|node| Ok(node.role_description().unwrap_or_default()))
+        self.resolve(|node| Ok(node.role_description().unwrap_or_default().to_string()))
     }
 
     pub fn state(&self) -> StateSet {

@@ -316,7 +316,7 @@ impl NodeWrapper<'_> {
         self.0.description()
     }
 
-    pub(crate) fn placeholder(&self) -> Option<String> {
+    pub(crate) fn placeholder(&self) -> Option<&str> {
         self.0.placeholder()
     }
 
@@ -452,7 +452,7 @@ declare_class!(
         fn role_description(&self) -> Option<Id<NSString>> {
             self.resolve(|node| {
                 if let Some(role_description) = node.role_description() {
-                    Some(NSString::from_str(&role_description))
+                    Some(NSString::from_str(role_description))
                 } else {
                     unsafe { msg_send_id![super(self), accessibilityRoleDescription] }
                 }
@@ -490,7 +490,7 @@ declare_class!(
         fn placeholder(&self) -> Option<Id<NSString>> {
             self.resolve(|node| {
                 let wrapper = NodeWrapper(node);
-                wrapper.placeholder().map(|placeholder| NSString::from_str(&placeholder))
+                wrapper.placeholder().map(|placeholder| NSString::from_str(placeholder))
             })
             .flatten()
         }
