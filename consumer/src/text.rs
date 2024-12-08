@@ -177,13 +177,13 @@ impl<'a> InnerPosition<'a> {
     }
 }
 
-impl<'a> PartialEq for InnerPosition<'a> {
+impl PartialEq for InnerPosition<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.node.id() == other.node.id() && self.character_index == other.character_index
     }
 }
 
-impl<'a> Eq for InnerPosition<'a> {}
+impl Eq for InnerPosition<'_> {}
 
 #[derive(Clone, Copy)]
 pub struct Position<'a> {
@@ -455,15 +455,15 @@ impl<'a> Position<'a> {
     }
 }
 
-impl<'a> PartialEq for Position<'a> {
+impl PartialEq for Position<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.root_node.id() == other.root_node.id() && self.inner == other.inner
     }
 }
 
-impl<'a> Eq for Position<'a> {}
+impl Eq for Position<'_> {}
 
-impl<'a> PartialOrd for Position<'a> {
+impl PartialOrd for Position<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         if self.root_node.id() != other.root_node.id() {
             return None;
@@ -742,13 +742,13 @@ impl<'a> Range<'a> {
     }
 }
 
-impl<'a> PartialEq for Range<'a> {
+impl PartialEq for Range<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.node.id() == other.node.id() && self.start == other.start && self.end == other.end
     }
 }
 
-impl<'a> Eq for Range<'a> {}
+impl Eq for Range<'_> {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WeakRange {

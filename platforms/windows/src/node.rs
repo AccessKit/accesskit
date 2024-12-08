@@ -43,7 +43,7 @@ fn runtime_id_from_node_id(id: NodeId) -> [i32; RUNTIME_ID_SIZE] {
 
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
 
-impl<'a> NodeWrapper<'a> {
+impl NodeWrapper<'_> {
     fn control_type(&self) -> UIA_CONTROLTYPE_ID {
         let role = self.0.role();
         // TODO: Handle special cases. (#14)
