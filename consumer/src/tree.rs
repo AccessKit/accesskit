@@ -41,11 +41,11 @@ impl State {
         is_host_focused: bool,
         mut changes: Option<&mut InternalChanges>,
     ) {
-        let mut orphans = HashSet::new();
+        let mut unreachable = HashSet::new();
 
         if let Some(tree) = update.tree {
             if tree.root != self.data.root {
-                orphans.insert(self.data.root);
+                unreachable.insert(self.data.root);
             }
             self.data = tree;
         }
@@ -74,7 +74,7 @@ impl State {
         for (node_id, node_data) in update.nodes {
             let node_data = NodeData::from(node_data);
 
-            orphans.remove(&node_id);
+            unreachable.remove(&node_id);
 
             let mut seen_child_ids = HashSet::with_capacity(node_data.children().len());
             for (child_index, child_id) in node_data.children().iter().enumerate() {
@@ -84,7 +84,7 @@ impl State {
                         node_id.0, child_id.0
                     );
                 }
-                orphans.remove(child_id);
+                unreachable.remove(child_id);
                 let parent_and_index = ParentAndIndex(node_id, child_index);
                 if let Some(child_state) = self.nodes.get_mut_cow(child_id) {
                     if child_state.parent_and_index != Some(parent_and_index) {
@@ -110,7 +110,7 @@ impl State {
                 }
                 for child_id in node_state.data.children().iter() {
                     if !seen_child_ids.contains(child_id) {
-                        orphans.insert(*child_id);
+                        unreachable.insert(*child_id);
                     }
                 }
                 if *node_state.data != node_data {
@@ -144,31 +144,23 @@ impl State {
         self.focus = update.focus;
         self.is_host_focused = is_host_focused;
 
-        if !orphans.is_empty() {
-            let mut to_remove = Vec::new();
-
-            fn traverse_orphan(
-                nodes: &ChunkMap<NodeId, NodeState>,
-                to_remove: &mut Vec<NodeId>,
+        if !unreachable.is_empty() {
+            fn traverse_unreachable(
+                nodes: &mut ChunkMap<NodeId, NodeState>,
+                changes: &mut Option<&mut InternalChanges>,
                 id: NodeId,
             ) {
-                to_remove.push(id);
-                let node = nodes.get(&id).unwrap();
+                if let Some(changes) = changes {
+                    changes.removed_node_ids.insert(id);
+                }
+                let node = nodes.remove_cow(&id).unwrap();
                 for child_id in node.data.children().iter() {
-                    traverse_orphan(nodes, to_remove, *child_id);
+                    traverse_unreachable(nodes, changes, *child_id);
                 }
             }
 
-            for id in orphans {
-                traverse_orphan(&self.nodes, &mut to_remove, id);
-            }
-
-            for id in to_remove {
-                if self.nodes.remove_cow(&id).is_some() {
-                    if let Some(changes) = &mut changes {
-                        changes.removed_node_ids.insert(id);
-                    }
-                }
+            for id in unreachable {
+                traverse_unreachable(&mut self.nodes, &mut changes, id);
             }
         }
 
