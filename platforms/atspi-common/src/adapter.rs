@@ -405,8 +405,8 @@ impl Adapter {
             let tree = self.context.read_tree();
             let tree_state = tree.state();
             let mut app_context = self.context.write_app_context();
-            app_context.toolkit_name = tree_state.toolkit_name();
-            app_context.toolkit_version = tree_state.toolkit_version();
+            app_context.toolkit_name = tree_state.toolkit_name().map(|s| s.to_string());
+            app_context.toolkit_version = tree_state.toolkit_version().map(|s| s.to_string());
             let adapter_index = app_context.adapter_index(self.id).unwrap();
             let root = tree_state.root();
             let root_id = root.id();
