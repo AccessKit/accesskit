@@ -4,7 +4,8 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{FrozenNode as NodeData, NodeId, Tree as TreeData, TreeUpdate};
-use alloc::{format, string::String, sync::Arc, vec, vec::Vec};
+use alloc::{string::String, sync::Arc, vec};
+use core::fmt;
 use hashbrown::{HashMap, HashSet};
 use immutable_chunkmap::map::MapM as ChunkMap;
 
@@ -135,10 +136,10 @@ impl State {
         }
 
         if !pending_nodes.is_empty() {
-            panic!("TreeUpdate includes {} nodes which are neither in the current tree nor a child of another node from the update: {}", pending_nodes.len(), short_node_list(pending_nodes.keys()));
+            panic!("TreeUpdate includes {} nodes which are neither in the current tree nor a child of another node from the update: {}", pending_nodes.len(), ShortNodeList(&pending_nodes));
         }
         if !pending_children.is_empty() {
-            panic!("TreeUpdate's nodes include {} children ids which are neither in the current tree nor the id of another node from the update: {}", pending_children.len(), short_node_list(pending_children.keys()));
+            panic!("TreeUpdate's nodes include {} children ids which are neither in the current tree nor the id of another node from the update: {}", pending_children.len(), ShortNodeList(&pending_children));
         }
 
         self.focus = update.focus;
@@ -333,24 +334,25 @@ impl Tree {
     }
 }
 
-fn short_node_list<'a>(nodes: impl ExactSizeIterator<Item = &'a NodeId>) -> String {
-    if nodes.len() > 10 {
-        format!(
-            "[{} ...]",
-            nodes
-                .take(10)
-                .map(|id| format!("#{}", id.0))
-                .collect::<Vec<_>>()
-                .join(", "),
-        )
-    } else {
-        format!(
-            "[{}]",
-            nodes
-                .map(|id| format!("#{}", id.0))
-                .collect::<Vec<_>>()
-                .join(", "),
-        )
+struct ShortNodeList<'a, T>(&'a HashMap<NodeId, T>);
+
+impl<T> fmt::Display for ShortNodeList<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[")?;
+        let mut iter = self.0.iter();
+        for i in 0..10 {
+            let Some((id, _)) = iter.next() else {
+                break;
+            };
+            if i != 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "#{}", id.0)?;
+        }
+        if iter.next().is_some() {
+            write!(f, " ...")?;
+        }
+        write!(f, "]")
     }
 }
 
