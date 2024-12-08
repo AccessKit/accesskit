@@ -217,15 +217,13 @@ pub(crate) fn window_title(hwnd: WindowHandle) -> Option<BSTR> {
 }
 
 pub(crate) fn toolkit_description(state: &TreeState) -> Option<String> {
-    let toolkit_name = state.toolkit_name();
-    let toolkit_version = state.toolkit_version();
-    match (&toolkit_name, &toolkit_version) {
-        (Some(toolkit_name), Some(toolkit_version)) => {
-            Some(format!("{} {}", toolkit_name, toolkit_version))
+    state.toolkit_name().map(|name| {
+        if let Some(version) = state.toolkit_version() {
+            format!("{} {}", name, version)
+        } else {
+            name
         }
-        _ if toolkit_name.is_some() => toolkit_name,
-        _ => None,
-    }
+    })
 }
 
 pub(crate) fn upgrade<T>(weak: &Weak<T>) -> Result<Arc<T>> {
