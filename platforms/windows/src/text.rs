@@ -483,7 +483,11 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
     fn GetText(&self, _max_length: i32) -> Result<BSTR> {
         // The Microsoft docs imply that the provider isn't _required_
         // to truncate text at the max length, so we just ignore it.
-        self.read(|range| Ok(range.text().into()))
+        self.read(|range| {
+            let mut result = WideString::default();
+            range.write_text(&mut result).unwrap();
+            Ok(result.into())
+        })
     }
 
     fn Move(&self, unit: TextUnit, count: i32) -> Result<i32> {

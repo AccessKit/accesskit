@@ -258,12 +258,15 @@ impl NodeWrapper<'_> {
         self.0.role_description()
     }
 
-    pub(crate) fn name(&self) -> Option<String> {
+    pub(crate) fn name(&self) -> Option<WideString> {
+        let mut result = WideString::default();
         if self.0.label_comes_from_value() {
-            self.0.value()
+            self.0.write_value(&mut result)
         } else {
-            self.0.label()
+            self.0.write_label(&mut result)
         }
+        .unwrap()
+        .then_some(result)
     }
 
     fn description(&self) -> Option<String> {
@@ -339,8 +342,10 @@ impl NodeWrapper<'_> {
         self.0.numeric_value().is_some()
     }
 
-    fn value(&self) -> String {
-        self.0.value().unwrap()
+    fn value(&self) -> WideString {
+        let mut result = WideString::default();
+        self.0.write_value(&mut result).unwrap();
+        result
     }
 
     fn is_read_only(&self) -> bool {

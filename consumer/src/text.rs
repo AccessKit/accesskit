@@ -7,7 +7,7 @@ use accesskit::{
     NodeId, Point, Rect, Role, TextDirection, TextPosition as WeakPosition, TextSelection,
 };
 use alloc::{string::String, vec::Vec};
-use core::{cmp::Ordering, iter::FusedIterator};
+use core::{cmp::Ordering, fmt, iter::FusedIterator};
 
 use crate::{FilterResult, Node, TreeState};
 
@@ -549,7 +549,12 @@ impl<'a> Range<'a> {
 
     pub fn text(&self) -> String {
         let mut result = String::new();
-        self.walk::<_, ()>(|node| {
+        self.write_text(&mut result).unwrap();
+        result
+    }
+
+    pub fn write_text<W: fmt::Write>(&self, mut writer: W) -> fmt::Result {
+        if let Some(err) = self.walk(|node| {
             let character_lengths = node.data().character_lengths();
             let start_index = if node.id() == self.start.node.id() {
                 self.start.character_index
@@ -580,10 +585,12 @@ impl<'a> Range<'a> {
                         .sum::<usize>();
                 &value[slice_start..slice_end]
             };
-            result.push_str(s);
-            None
-        });
-        result
+            writer.write_str(s).err()
+        }) {
+            Err(err)
+        } else {
+            Ok(())
+        }
     }
 
     /// Returns the range's transformed bounding boxes relative to the tree's
