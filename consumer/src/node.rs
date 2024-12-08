@@ -326,8 +326,8 @@ impl<'a> Node<'a> {
         self.data().role()
     }
 
-    pub fn role_description(&self) -> Option<String> {
-        self.data().role_description().map(String::from)
+    pub fn role_description(&self) -> Option<&str> {
+        self.data().role_description()
     }
 
     pub fn has_role_description(&self) -> bool {
@@ -524,10 +524,8 @@ impl<'a> Node<'a> {
             .map(|description| description.to_string())
     }
 
-    pub fn placeholder(&self) -> Option<String> {
-        self.data()
-            .placeholder()
-            .map(|placeholder| placeholder.to_string())
+    pub fn placeholder(&self) -> Option<&str> {
+        self.data().placeholder()
     }
 
     pub fn value(&self) -> Option<String> {

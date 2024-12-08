@@ -254,7 +254,7 @@ impl NodeWrapper<'_> {
         }
     }
 
-    fn localized_control_type(&self) -> Option<String> {
+    fn localized_control_type(&self) -> Option<&str> {
         self.0.role_description()
     }
 
@@ -270,7 +270,7 @@ impl NodeWrapper<'_> {
         self.0.description()
     }
 
-    fn placeholder(&self) -> Option<String> {
+    fn placeholder(&self) -> Option<&str> {
         self.0.placeholder()
     }
 
