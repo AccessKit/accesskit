@@ -83,9 +83,9 @@ pub struct AppContext {
 }
 
 impl AppContext {
-    pub fn new() -> Arc<RwLock<Self>> {
+    pub fn new(name: Option<String>) -> Arc<RwLock<Self>> {
         Arc::new(RwLock::new(Self {
-            name: None,
+            name,
             toolkit_name: None,
             toolkit_version: None,
             id: None,

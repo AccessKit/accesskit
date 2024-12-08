@@ -216,23 +216,14 @@ pub(crate) fn window_title(hwnd: WindowHandle) -> Option<BSTR> {
     Some(BSTR::from_wide(&buffer).unwrap())
 }
 
-pub(crate) fn app_and_toolkit_description(state: &TreeState) -> Option<String> {
-    let app_name = state.app_name();
+pub(crate) fn toolkit_description(state: &TreeState) -> Option<String> {
     let toolkit_name = state.toolkit_name();
     let toolkit_version = state.toolkit_version();
-    match (&app_name, &toolkit_name, &toolkit_version) {
-        (Some(app_name), Some(toolkit_name), Some(toolkit_version)) => Some(format!(
-            "{} <{} {}>",
-            app_name, toolkit_name, toolkit_version
-        )),
-        (Some(app_name), Some(toolkit_name), None) => {
-            Some(format!("{} <{}>", app_name, toolkit_name))
-        }
-        (None, Some(toolkit_name), Some(toolkit_version)) => {
+    match (&toolkit_name, &toolkit_version) {
+        (Some(toolkit_name), Some(toolkit_version)) => {
             Some(format!("{} {}", toolkit_name, toolkit_version))
         }
         _ if toolkit_name.is_some() => toolkit_name,
-        _ if app_name.is_some() => app_name,
         _ => None,
     }
 }
