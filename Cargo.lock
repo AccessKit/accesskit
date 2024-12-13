@@ -46,7 +46,6 @@ version = "0.26.0"
 dependencies = [
  "accesskit",
  "hashbrown",
- "immutable-chunkmap",
 ]
 
 [[package]]
@@ -921,15 +920,6 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
-
-[[package]]
-name = "immutable-chunkmap"
-version = "2.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12f97096f508d54f8f8ab8957862eee2ccd628847b6217af1a335e1c44dee578"
-dependencies = [
- "arrayvec",
-]
 
 [[package]]
 name = "indexmap"
