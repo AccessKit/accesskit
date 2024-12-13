@@ -597,7 +597,7 @@ impl<'a> Range<'a> {
         let mut result = Vec::new();
         self.walk(|node| {
             let mut rect = match node.data().bounds() {
-                Some(rect) => rect,
+                Some(rect) => *rect,
                 None => {
                     return Some(Vec::new());
                 }

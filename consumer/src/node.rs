@@ -257,7 +257,7 @@ impl<'a> Node<'a> {
         parent_transform * self.direct_transform()
     }
 
-    pub fn raw_bounds(&self) -> Option<Rect> {
+    pub fn raw_bounds(&self) -> Option<&Rect> {
         self.data().bounds()
     }
 
@@ -269,13 +269,11 @@ impl<'a> Node<'a> {
     /// container (e.g. window).
     pub fn bounding_box(&self) -> Option<Rect> {
         self.raw_bounds()
-            .as_ref()
             .map(|rect| self.transform().transform_rect_bbox(*rect))
     }
 
     pub(crate) fn bounding_box_in_coordinate_space(&self, other: &Node) -> Option<Rect> {
         self.raw_bounds()
-            .as_ref()
             .map(|rect| self.relative_transform(other).transform_rect_bbox(*rect))
     }
 

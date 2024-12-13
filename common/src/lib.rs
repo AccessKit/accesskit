@@ -753,7 +753,7 @@ enum PropertyValue {
     VerticalOffset(VerticalOffset),
     Affine(Box<Affine>),
     Rect(Rect),
-    TextSelection(Box<TextSelection>),
+    TextSelection(TextSelection),
     CustomActionVec(Vec<CustomAction>),
 }
 
@@ -1466,6 +1466,7 @@ option_ref_type_getters! {
     (get_affine_property, Affine, Affine),
     (get_string_property, str, String),
     (get_coord_slice_property, [f32], CoordSlice),
+    (get_rect_property, Rect, Rect),
     (get_text_selection_property, TextSelection, TextSelection)
 }
 
@@ -1474,7 +1475,6 @@ slice_type_getters! {
 }
 
 copy_type_getters! {
-    (get_rect_property, Rect, Rect),
     (get_node_id_property, NodeId, NodeId),
     (get_f64_property, f64, F64),
     (get_usize_property, usize, Usize),
@@ -1487,12 +1487,12 @@ box_type_setters! {
     (set_affine_property, Affine, Affine),
     (set_string_property, str, String),
     (set_length_slice_property, [u8], LengthSlice),
-    (set_coord_slice_property, [f32], CoordSlice),
-    (set_text_selection_property, TextSelection, TextSelection)
+    (set_coord_slice_property, [f32], CoordSlice)
 }
 
 copy_type_setters! {
     (set_rect_property, Rect, Rect),
+    (set_text_selection_property, TextSelection, TextSelection),
     (set_node_id_property, NodeId, NodeId),
     (set_f64_property, f64, F64),
     (set_usize_property, usize, Usize),
@@ -1782,9 +1782,9 @@ property_methods! {
     /// the tree's container (e.g. window).
     ///
     /// [`transform`]: Node::transform
-    (Bounds, bounds, get_rect_property, Option<Rect>, set_bounds, set_rect_property, Rect, clear_bounds),
+    (Bounds, bounds, get_rect_property, Option<&Rect>, set_bounds, set_rect_property, Rect, clear_bounds),
 
-    (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, impl Into<Box<TextSelection>>, clear_text_selection)
+    (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, TextSelection, clear_text_selection)
 }
 
 impl FrozenNode {
