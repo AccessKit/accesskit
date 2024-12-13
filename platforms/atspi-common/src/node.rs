@@ -421,7 +421,7 @@ impl NodeWrapper<'_> {
         String::from(if self.0.is_clickable() { "click" } else { "" })
     }
 
-    fn raw_bounds_and_transform(&self) -> (Option<Rect>, Affine) {
+    fn raw_bounds_and_transform(&self) -> (Option<&Rect>, Affine) {
         let state = self.0;
         (state.raw_bounds(), state.direct_transform())
     }
