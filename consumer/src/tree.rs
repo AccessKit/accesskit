@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{FrozenNode as NodeData, NodeId, Tree as TreeData, TreeUpdate};
+use accesskit::{Node as NodeData, NodeId, Tree as TreeData, TreeUpdate};
 use alloc::{sync::Arc, vec};
 use core::fmt;
 use hashbrown::{HashMap, HashSet};
@@ -73,8 +73,6 @@ impl State {
         }
 
         for (node_id, node_data) in update.nodes {
-            let node_data = NodeData::from(node_data);
-
             unreachable.remove(&node_id);
 
             let mut seen_child_ids = HashSet::with_capacity(node_data.children().len());
