@@ -374,6 +374,10 @@ impl NodeWrapper<'_> {
             .unwrap_or_else(|| self.numeric_value_step())
     }
 
+    fn is_required(&self) -> bool {
+        self.0.is_required()
+    }
+
     fn is_selection_item_pattern_supported(&self) -> bool {
         match self.0.role() {
             // TODO: tables (#29)
@@ -885,7 +889,8 @@ properties! {
     (LiveSetting, live_setting),
     (AutomationId, automation_id),
     (ClassName, class_name),
-    (Orientation, orientation)
+    (Orientation, orientation),
+    (IsRequiredForForm, is_required)
 }
 
 patterns! {

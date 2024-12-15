@@ -609,6 +609,10 @@ impl<'a> Node<'a> {
         )
     }
 
+    pub fn is_required(&self) -> bool {
+        self.data().is_required()
+    }
+
     pub fn live(&self) -> Live {
         self.data()
             .live()

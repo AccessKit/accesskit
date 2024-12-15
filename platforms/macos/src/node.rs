@@ -807,6 +807,12 @@ declare_class!(
             });
         }
 
+        #[method(isAccessibilityRequired)]
+        fn is_required(&self) -> bool {
+            self.resolve(|node| node.is_required())
+                .unwrap_or(false)
+        }
+
         #[method(isAccessibilitySelectorAllowed:)]
         fn is_selector_allowed(&self, selector: Sel) -> bool {
             self.resolve(|node| {
@@ -860,6 +866,7 @@ declare_class!(
                     || selector == sel!(accessibilityValue)
                     || selector == sel!(accessibilityMinValue)
                     || selector == sel!(accessibilityMaxValue)
+                    || selector == sel!(isAccessibilityRequired)
                     || selector == sel!(accessibilityOrientation)
                     || selector == sel!(isAccessibilityElement)
                     || selector == sel!(isAccessibilityFocused)
