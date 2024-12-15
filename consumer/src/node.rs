@@ -1128,7 +1128,7 @@ mod tests {
             nodes: vec![
                 (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(&[NodeId(1)]);
                     node
                 }),
                 (NodeId(1), Node::new(Role::Button)),
@@ -1151,12 +1151,12 @@ mod tests {
             nodes: vec![
                 (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NodeId(1), NodeId(2), NodeId(3), NodeId(4)]);
+                    node.set_children(&[NodeId(1), NodeId(2), NodeId(3), NodeId(4)]);
                     node
                 }),
                 (NodeId(1), {
                     let mut node = Node::new(Role::CheckBox);
-                    node.set_labelled_by(vec![NodeId(2), NodeId(4)]);
+                    node.set_labelled_by(&[NodeId(2), NodeId(4)]);
                     node
                 }),
                 (NodeId(2), {
@@ -1224,7 +1224,7 @@ mod tests {
             nodes: vec![
                 (ROOT_ID, {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![
+                    node.set_children(&[
                         DEFAULT_BUTTON_ID,
                         LINK_ID,
                         CHECKBOX_ID,
@@ -1291,7 +1291,7 @@ mod tests {
                 }),
                 (MENU_ID, {
                     let mut node = Node::new(Role::Menu);
-                    node.set_children([MENU_ITEM_ID, MENU_ITEM_CHECKBOX_ID, MENU_ITEM_RADIO_ID]);
+                    node.set_children(&[MENU_ITEM_ID, MENU_ITEM_CHECKBOX_ID, MENU_ITEM_RADIO_ID]);
                     node
                 }),
                 (MENU_ITEM_ID, {

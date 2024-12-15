@@ -25,7 +25,7 @@ fn make_button(label: &str) -> Node {
 
 fn get_initial_state() -> TreeUpdate {
     let mut root = Node::new(Role::Window);
-    root.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
+    root.set_children(&[BUTTON_1_ID, BUTTON_2_ID]);
     let button_1 = make_button("Button 1");
     let button_2 = make_button("Button 2");
     TreeUpdate {

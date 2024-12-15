@@ -91,7 +91,7 @@ struct InnerWindowState {
 impl InnerWindowState {
     fn build_root(&mut self) -> Node {
         let mut node = Node::new(Role::Window);
-        node.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
+        node.set_children(&[BUTTON_1_ID, BUTTON_2_ID]);
         if self.announcement.is_some() {
             node.push_child(ANNOUNCEMENT_ID);
         }

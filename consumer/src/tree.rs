@@ -394,7 +394,7 @@ mod tests {
             nodes: vec![
                 (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NodeId(1), NodeId(2)]);
+                    node.set_children(&[NodeId(1), NodeId(2)]);
                     node
                 }),
                 (NodeId(1), Node::new(Role::Button)),
@@ -565,7 +565,7 @@ mod tests {
             nodes: vec![
                 (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NodeId(1), NodeId(2)]);
+                    node.set_children(&[NodeId(1), NodeId(2)]);
                     node
                 }),
                 (NodeId(1), Node::new(Role::Button)),
@@ -649,7 +649,7 @@ mod tests {
             nodes: vec![
                 (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(&[NodeId(1)]);
                     node
                 }),
                 (NodeId(1), {
@@ -727,7 +727,7 @@ mod tests {
             nodes: vec![
                 (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(&[NodeId(1)]);
                     node
                 }),
                 (NodeId(1), {
@@ -816,9 +816,9 @@ mod tests {
         }
 
         let mut root = Node::new(Role::Window);
-        root.set_children([NodeId(1)]);
+        root.set_children(&[NodeId(1)]);
         let mut container = Node::new(Role::GenericContainer);
-        container.set_children([NodeId(2)]);
+        container.set_children(&[NodeId(2)]);
         let update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), root.clone()),
@@ -829,7 +829,7 @@ mod tests {
             focus: NodeId(0),
         };
         let mut tree = crate::Tree::new(update, false);
-        root.set_children([NodeId(2)]);
+        root.set_children(&[NodeId(2)]);
         let mut handler = Handler {
             got_updated_root: false,
             got_updated_child: false,
