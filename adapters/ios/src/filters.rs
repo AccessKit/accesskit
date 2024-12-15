@@ -59,14 +59,14 @@ mod tests {
     const ROOT_ID: NodeId = NodeId(0);
     const CHILD_1_ID: NodeId = NodeId(1);
 
-    fn build_tree(nodes: Vec<(NodeId, Node)>) -> accesskit_consumer::Tree {
+    fn build_tree(nodes: Vec<(NodeId, Node)>) -> accesskit_consumer::TreeInfo {
         let update = TreeUpdate {
             nodes,
             tree: Some(TreeInfo::new(ROOT_ID)),
             tree_id: TreeId::ROOT,
             focus: ROOT_ID,
         };
-        accesskit_consumer::Tree::new(update, false)
+        accesskit_consumer::TreeInfo::new(update, false)
     }
 
     fn filter_node(nodes: Vec<(NodeId, Node)>, target: NodeId) -> FilterResult {
@@ -88,7 +88,7 @@ mod tests {
     #[test]
     fn leaf_button_is_element() {
         let mut root = Node::new(Role::Window);
-        root.set_children(vec![CHILD_1_ID]);
+        root.set_children(&[CHILD_1_ID]);
         let child = make_button("OK");
         assert_eq!(
             filter_node(vec![(ROOT_ID, root), (CHILD_1_ID, child)], CHILD_1_ID),
@@ -99,7 +99,7 @@ mod tests {
     #[test]
     fn hidden_node_excluded() {
         let mut root = Node::new(Role::Window);
-        root.set_children(vec![CHILD_1_ID]);
+        root.set_children(&[CHILD_1_ID]);
         let mut hidden = make_button("Hidden");
         hidden.set_hidden();
         assert_ne!(
@@ -113,10 +113,10 @@ mod tests {
         const CHECKBOX_ID: NodeId = NodeId(1);
         const LABEL_ID: NodeId = NodeId(2);
         let mut root = Node::new(Role::Window);
-        root.set_children(vec![CHECKBOX_ID]);
+        root.set_children(&[CHECKBOX_ID]);
         let mut checkbox = Node::new(Role::CheckBox);
         checkbox.add_action(Action::Click);
-        checkbox.set_children(vec![LABEL_ID]);
+        checkbox.set_children(&[LABEL_ID]);
         let mut label = Node::new(Role::Label);
         label.set_value("Accept terms");
         assert_eq!(

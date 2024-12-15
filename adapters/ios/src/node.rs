@@ -990,7 +990,7 @@ mod tests {
     fn frame_source_non_root_without_bounds_is_zero() {
         const CHILD_ID: NodeId = NodeId(1);
         let mut root = Node::new(Role::Window);
-        root.set_children(vec![CHILD_ID]);
+        root.set_children(&[CHILD_ID]);
         let child = Node::new(Role::Button);
         assert_eq!(
             node_frame_source(vec![(ROOT_ID, root), (CHILD_ID, child)], CHILD_ID),

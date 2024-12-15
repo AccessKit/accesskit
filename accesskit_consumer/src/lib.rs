@@ -58,7 +58,7 @@ mod tests {
     pub fn test_tree() -> crate::tree::Tree {
         let root = {
             let mut node = Node::new(Role::RootWebArea);
-            node.set_children(vec![
+            node.set_children(&[
                 PARAGRAPH_0_ID,
                 PARAGRAPH_1_IGNORED_ID,
                 PARAGRAPH_2_ID,
@@ -68,7 +68,7 @@ mod tests {
         };
         let paragraph_0 = {
             let mut node = Node::new(Role::Paragraph);
-            node.set_children(vec![LABEL_0_0_IGNORED_ID]);
+            node.set_children(&[LABEL_0_0_IGNORED_ID]);
             node
         };
         let label_0_0_ignored = {
@@ -85,18 +85,14 @@ mod tests {
                 x1: 800.0,
                 y1: 40.0,
             });
-            node.set_children(vec![
-                BUTTON_1_0_HIDDEN_ID,
-                LABEL_1_1_ID,
-                BUTTON_1_2_HIDDEN_ID,
-            ]);
+            node.set_children(&[BUTTON_1_0_HIDDEN_ID, LABEL_1_1_ID, BUTTON_1_2_HIDDEN_ID]);
             node
         };
         let button_1_0_hidden = {
             let mut node = Node::new(Role::Button);
             node.set_label("button_1_0_hidden");
             node.set_hidden();
-            node.set_children(vec![CONTAINER_1_0_0_HIDDEN_ID]);
+            node.set_children(&[CONTAINER_1_0_0_HIDDEN_ID]);
             node
         };
         let container_1_0_0_hidden = {
@@ -119,7 +115,7 @@ mod tests {
             let mut node = Node::new(Role::Button);
             node.set_label("button_1_2_hidden");
             node.set_hidden();
-            node.set_children(vec![CONTAINER_1_2_0_HIDDEN_ID]);
+            node.set_children(&[CONTAINER_1_2_0_HIDDEN_ID]);
             node
         };
         let container_1_2_0_hidden = {
@@ -129,7 +125,7 @@ mod tests {
         };
         let paragraph_2 = {
             let mut node = Node::new(Role::Paragraph);
-            node.set_children(vec![LABEL_2_0_ID]);
+            node.set_children(&[LABEL_2_0_ID]);
             node
         };
         let label_2_0 = {
@@ -139,7 +135,7 @@ mod tests {
         };
         let paragraph_3_ignored = {
             let mut node = Node::new(Role::Paragraph);
-            node.set_children(vec![
+            node.set_children(&[
                 EMPTY_CONTAINER_3_0_IGNORED_ID,
                 LINK_3_1_IGNORED_ID,
                 BUTTON_3_2_ID,
@@ -150,7 +146,7 @@ mod tests {
         let empty_container_3_0_ignored = Node::new(Role::GenericContainer);
         let link_3_1_ignored = {
             let mut node = Node::new(Role::Link);
-            node.set_children(vec![LABEL_3_1_0_ID]);
+            node.set_children(&[LABEL_3_1_0_ID]);
             node
         };
         let label_3_1_0 = {

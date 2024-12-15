@@ -978,7 +978,7 @@ mod tests {
             nodes: vec![
                 (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(&[NodeId(1)]);
                     node
                 }),
                 (NodeId(1), {
@@ -1014,7 +1014,7 @@ mod tests {
             nodes: vec![
                 (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(&[NodeId(1)]);
                     node
                 }),
                 (NodeId(1), {
@@ -1033,7 +1033,7 @@ mod tests {
             nodes: vec![
                 (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(&[NodeId(1)]);
                     node
                 }),
                 (NodeId(1), Node::new(Role::Button)),

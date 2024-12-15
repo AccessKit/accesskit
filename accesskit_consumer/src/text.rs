@@ -1006,13 +1006,13 @@ macro_rules! inherited_properties {
                     nodes: vec![
                         (NodeId(0), {
                             let mut node = Node::new(Role::TextInput);
-                            node.set_children(vec![NodeId(1)]);
+                            node.set_children(&[NodeId(1)]);
                             node
                         }),
                         (NodeId(1), {
                             let mut node = Node::new(Role::TextRun);
                             node.set_value("text");
-                            node.set_character_lengths([1, 1, 1, 1]);
+                            node.set_character_lengths(&[1, 1, 1, 1]);
                             node.$setter($test_value_1);
                             node
                         }),
@@ -1035,14 +1035,14 @@ macro_rules! inherited_properties {
                     nodes: vec![
                         (NodeId(0), {
                             let mut node = Node::new(Role::TextInput);
-                            node.set_children(vec![NodeId(1)]);
+                            node.set_children(&[NodeId(1)]);
                             node.$setter($test_value_1);
                             node
                         }),
                         (NodeId(1), {
                             let mut node = Node::new(Role::TextRun);
                             node.set_value("text");
-                            node.set_character_lengths([1, 1, 1, 1]);
+                            node.set_character_lengths(&[1, 1, 1, 1]);
                             node
                         }),
                     ],
@@ -1064,14 +1064,14 @@ macro_rules! inherited_properties {
                     nodes: vec![
                         (NodeId(0), {
                             let mut node = Node::new(Role::TextInput);
-                            node.set_children(vec![NodeId(1)]);
+                            node.set_children(&[NodeId(1)]);
                             node.$setter($test_value_1);
                             node
                         }),
                         (NodeId(1), {
                             let mut node = Node::new(Role::TextRun);
                             node.set_value("text");
-                            node.set_character_lengths([1, 1, 1, 1]);
+                            node.set_character_lengths(&[1, 1, 1, 1]);
                             node.$setter($test_value_2);
                             node
                         }),
@@ -1095,13 +1095,13 @@ macro_rules! inherited_properties {
                     nodes: vec![
                         (NodeId(0), {
                             let mut node = Node::new(Role::TextInput);
-                            node.set_children(vec![NodeId(1)]);
+                            node.set_children(&[NodeId(1)]);
                             node
                         }),
                         (NodeId(1), {
                             let mut node = Node::new(Role::TextRun);
                             node.set_value("text");
-                            node.set_character_lengths([1, 1, 1, 1]);
+                            node.set_character_lengths(&[1, 1, 1, 1]);
                             node
                         }),
                     ],
@@ -1123,20 +1123,20 @@ macro_rules! inherited_properties {
                     nodes: vec![
                         (NodeId(0), {
                             let mut node = Node::new(Role::TextInput);
-                            node.set_children(vec![NodeId(1), NodeId(2)]);
+                            node.set_children(&[NodeId(1), NodeId(2)]);
                             node
                         }),
                         (NodeId(1), {
                             let mut node = Node::new(Role::TextRun);
                             node.set_value("text 1\n");
-                            node.set_character_lengths([1, 1, 1, 1, 1, 1, 1]);
+                            node.set_character_lengths(&[1, 1, 1, 1, 1, 1, 1]);
                             node.$setter($test_value_1);
                             node
                         }),
                         (NodeId(2), {
                             let mut node = Node::new(Role::TextRun);
                             node.set_value("text 2");
-                            node.set_character_lengths([1, 1, 1, 1, 1, 1]);
+                            node.set_character_lengths(&[1, 1, 1, 1, 1, 1]);
                             node
                         }),
                     ],
@@ -1156,21 +1156,21 @@ macro_rules! inherited_properties {
                     nodes: vec![
                         (NodeId(0), {
                             let mut node = Node::new(Role::TextInput);
-                            node.set_children(vec![NodeId(1), NodeId(2)]);
+                            node.set_children(&[NodeId(1), NodeId(2)]);
                             node.$setter($test_value_1);
                             node
                         }),
                         (NodeId(1), {
                             let mut node = Node::new(Role::TextRun);
                             node.set_value("text 1\n");
-                            node.set_character_lengths([1, 1, 1, 1, 1, 1, 1]);
+                            node.set_character_lengths(&[1, 1, 1, 1, 1, 1, 1]);
                             node.$setter($test_value_2);
                             node
                         }),
                         (NodeId(2), {
                             let mut node = Node::new(Role::TextRun);
                             node.set_value("text 2");
-                            node.set_character_lengths([1, 1, 1, 1, 1, 1]);
+                            node.set_character_lengths(&[1, 1, 1, 1, 1, 1]);
                             node
                         }),
                     ],
@@ -1241,13 +1241,13 @@ macro_rules! inherited_flags {
                     nodes: vec![
                         (NodeId(0), {
                             let mut node = Node::new(Role::TextInput);
-                            node.set_children(vec![NodeId(1)]);
+                            node.set_children(&[NodeId(1)]);
                             node
                         }),
                         (NodeId(1), {
                             let mut node = Node::new(Role::TextRun);
                             node.set_value("text");
-                            node.set_character_lengths([1, 1, 1, 1]);
+                            node.set_character_lengths(&[1, 1, 1, 1]);
                             node.$setter();
                             node
                         }),
@@ -1270,14 +1270,14 @@ macro_rules! inherited_flags {
                     nodes: vec![
                         (NodeId(0), {
                             let mut node = Node::new(Role::TextInput);
-                            node.set_children(vec![NodeId(1)]);
+                            node.set_children(&[NodeId(1)]);
                             node.$setter();
                             node
                         }),
                         (NodeId(1), {
                             let mut node = Node::new(Role::TextRun);
                             node.set_value("text");
-                            node.set_character_lengths([1, 1, 1, 1]);
+                            node.set_character_lengths(&[1, 1, 1, 1]);
                             node
                         }),
                     ],
@@ -1299,13 +1299,13 @@ macro_rules! inherited_flags {
                     nodes: vec![
                         (NodeId(0), {
                             let mut node = Node::new(Role::TextInput);
-                            node.set_children(vec![NodeId(1)]);
+                            node.set_children(&[NodeId(1)]);
                             node
                         }),
                         (NodeId(1), {
                             let mut node = Node::new(Role::TextRun);
                             node.set_value("text");
-                            node.set_character_lengths([1, 1, 1, 1]);
+                            node.set_character_lengths(&[1, 1, 1, 1]);
                             node
                         }),
                     ],
@@ -1327,20 +1327,20 @@ macro_rules! inherited_flags {
                     nodes: vec![
                         (NodeId(0), {
                             let mut node = Node::new(Role::TextInput);
-                            node.set_children(vec![NodeId(1), NodeId(2)]);
+                            node.set_children(&[NodeId(1), NodeId(2)]);
                             node
                         }),
                         (NodeId(1), {
                             let mut node = Node::new(Role::TextRun);
                             node.set_value("text 1\n");
-                            node.set_character_lengths([1, 1, 1, 1, 1, 1, 1]);
+                            node.set_character_lengths(&[1, 1, 1, 1, 1, 1, 1]);
                             node.$setter();
                             node
                         }),
                         (NodeId(2), {
                             let mut node = Node::new(Role::TextRun);
                             node.set_value("text 2");
-                            node.set_character_lengths([1, 1, 1, 1, 1, 1]);
+                            node.set_character_lengths(&[1, 1, 1, 1, 1, 1]);
                             node
                         }),
                     ],
@@ -1702,7 +1702,7 @@ mod tests {
                 (NodeId(0), {
                     let mut node = Node::new(Role::Window);
                     node.set_transform(Affine::scale(1.5));
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(&[NodeId(1)]);
                     node
                 }),
                 (NodeId(1), {
@@ -1713,7 +1713,7 @@ mod tests {
                         x1: 296.0,
                         y1: 123.66666412353516,
                     });
-                    node.set_children(vec![
+                    node.set_children(&[
                         NodeId(2),
                         NodeId(3),
                         NodeId(4),
@@ -1743,25 +1743,25 @@ mod tests {
                     // is to test conversion between UTF-8 and UTF-16
                     // indices.
                     node.set_value("This paragraph is\u{a0}long enough to wrap ");
-                    node.set_character_lengths([
+                    node.set_character_lengths(&[
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1,
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                     ]);
-                    node.set_character_positions([
+                    node.set_character_positions(&[
                         0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
                         58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
                         117.333336, 124.666664, 132.0, 139.33333, 146.66667, 154.0, 161.33333,
                         168.66667, 176.0, 183.33333, 190.66667, 198.0, 205.33333, 212.66667, 220.0,
                         227.33333, 234.66667, 242.0, 249.33333, 256.66666, 264.0, 271.33334,
                     ]);
-                    node.set_character_widths([
+                    node.set_character_widths(&[
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                     ]);
-                    node.set_word_starts([5, 15, 18, 23, 30, 33]);
+                    node.set_word_starts(&[5, 15, 18, 23, 30, 33]);
                     node
                 }),
                 (NodeId(3), {
@@ -1773,10 +1773,10 @@ mod tests {
                         y1: 63.0,
                     });
                     node.set_value("to ");
-                    node.set_character_lengths([1, 1, 1]);
-                    node.set_character_positions([0.0, 7.3333435, 14.666687]);
-                    node.set_character_widths([7.58557, 7.58557, 7.58557]);
-                    node.set_word_starts([0]);
+                    node.set_character_lengths(&[1, 1, 1]);
+                    node.set_character_positions(&[0.0, 7.3333435, 14.666687]);
+                    node.set_character_widths(&[7.58557, 7.58557, 7.58557]);
+                    node.set_word_starts(&[0]);
                     node.set_next_on_line(NodeId(4));
                     node
                 }),
@@ -1789,14 +1789,14 @@ mod tests {
                         y1: 63.0,
                     });
                     node.set_value("another");
-                    node.set_character_lengths([1, 1, 1, 1, 1, 1, 1]);
-                    node.set_character_positions([
+                    node.set_character_lengths(&[1, 1, 1, 1, 1, 1, 1]);
+                    node.set_character_positions(&[
                         0.0, 7.333344, 14.666687, 22.0, 29.333344, 36.666687, 44.0,
                     ]);
-                    node.set_character_widths([
+                    node.set_character_widths(&[
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                     ]);
-                    node.set_word_starts([0]);
+                    node.set_word_starts(&[0]);
                     node.set_underline(TEST_TEXT_DECORATION_1);
                     node.set_previous_on_line(NodeId(3));
                     node.set_next_on_line(NodeId(5));
@@ -1811,14 +1811,14 @@ mod tests {
                         y1: 63.0,
                     });
                     node.set_value(" line.\n");
-                    node.set_character_lengths([1, 1, 1, 1, 1, 1, 1]);
-                    node.set_character_positions([
+                    node.set_character_lengths(&[1, 1, 1, 1, 1, 1, 1]);
+                    node.set_character_positions(&[
                         0.0, 7.333344, 14.666687, 22.0, 29.333344, 36.666687, 44.25226,
                     ]);
-                    node.set_character_widths([
+                    node.set_character_widths(&[
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 0.0,
                     ]);
-                    node.set_word_starts([1]);
+                    node.set_word_starts(&[1]);
                     node.set_previous_on_line(NodeId(4));
                     node
                 }),
@@ -1831,20 +1831,20 @@ mod tests {
                         y1: 77.66666412353516,
                     });
                     node.set_value("Another paragraph.\n");
-                    node.set_character_lengths([
+                    node.set_character_lengths(&[
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                     ]);
-                    node.set_character_positions([
+                    node.set_character_positions(&[
                         0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
                         58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
                         117.333336, 124.666664, 132.25223,
                     ]);
-                    node.set_character_widths([
+                    node.set_character_widths(&[
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 0.0,
                     ]);
-                    node.set_word_starts([8]);
+                    node.set_word_starts(&[8]);
                     node
                 }),
                 (NodeId(7), {
@@ -1856,9 +1856,9 @@ mod tests {
                         y1: 92.33332824707031,
                     });
                     node.set_value("\n");
-                    node.set_character_lengths([1]);
-                    node.set_character_positions([0.0]);
-                    node.set_character_widths([0.0]);
+                    node.set_character_lengths(&[1]);
+                    node.set_character_positions(&[0.0]);
+                    node.set_character_widths(&[0.0]);
                     node
                 }),
                 (NodeId(8), {
@@ -1874,20 +1874,20 @@ mod tests {
                     // UTF-16 code units, to fully test conversion between
                     // UTF-8, UTF-16, and AccessKit character indices.
                     node.set_value("Last non-blank line\u{1f44d}\u{1f3fb}\n");
-                    node.set_character_lengths([
+                    node.set_character_lengths(&[
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 8, 1,
                     ]);
-                    node.set_character_positions([
+                    node.set_character_positions(&[
                         0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
                         58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
                         117.333336, 124.666664, 132.0, 139.33333, 146.9189,
                     ]);
-                    node.set_character_widths([
+                    node.set_character_widths(&[
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 0.0,
                     ]);
-                    node.set_word_starts([5, 9, 15]);
+                    node.set_word_starts(&[5, 9, 15]);
                     node
                 }),
                 (NodeId(9), {
@@ -1899,9 +1899,9 @@ mod tests {
                         y1: 121.66666412353516,
                     });
                     node.set_value("");
-                    node.set_character_lengths([]);
-                    node.set_character_positions([]);
-                    node.set_character_widths([]);
+                    node.set_character_lengths(&[]);
+                    node.set_character_positions(&[]);
+                    node.set_character_widths(&[]);
                     node
                 }),
             ],
