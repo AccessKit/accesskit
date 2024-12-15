@@ -294,6 +294,9 @@ impl NodeWrapper<'_> {
         if state.is_focusable() {
             atspi_state.insert(State::Focusable);
         }
+        if state.is_required() {
+            atspi_state.insert(State::Required);
+        }
         if let Some(orientation) = state.orientation() {
             atspi_state.insert(if orientation == Orientation::Horizontal {
                 State::Horizontal
