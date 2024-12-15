@@ -5,7 +5,10 @@
 
 use accesskit::Point;
 use accesskit_consumer::TreeState;
-use std::sync::{Arc, Weak};
+use std::{
+    fmt::{self, Write},
+    sync::{Arc, Weak},
+};
 use windows::{
     core::*,
     Win32::{
@@ -17,6 +20,27 @@ use windows::{
 };
 
 use crate::window_handle::WindowHandle;
+
+#[derive(Clone, Default, PartialEq, Eq)]
+pub(crate) struct WideString(Vec<u16>);
+
+impl Write for WideString {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.0.extend(s.encode_utf16());
+        Ok(())
+    }
+
+    fn write_char(&mut self, c: char) -> fmt::Result {
+        self.0.extend_from_slice(c.encode_utf16(&mut [0; 2]));
+        Ok(())
+    }
+}
+
+impl From<WideString> for BSTR {
+    fn from(value: WideString) -> Self {
+        Self::from_wide(&value.0).unwrap()
+    }
+}
 
 pub(crate) struct Variant(VARIANT);
 
@@ -36,22 +60,29 @@ impl Variant {
     }
 }
 
+impl From<BSTR> for Variant {
+    fn from(value: BSTR) -> Self {
+        Self(value.into())
+    }
+}
+
+impl From<WideString> for Variant {
+    fn from(value: WideString) -> Self {
+        BSTR::from(value).into()
+    }
+}
+
 impl From<&str> for Variant {
     fn from(value: &str) -> Self {
-        Self(value.into())
+        let mut result = WideString::default();
+        result.write_str(value).unwrap();
+        result.into()
     }
 }
 
 impl From<String> for Variant {
     fn from(value: String) -> Self {
-        let value: BSTR = value.into();
-        Self(value.into())
-    }
-}
-
-impl From<BSTR> for Variant {
-    fn from(value: BSTR) -> Self {
-        Self(value.into())
+        value.as_str().into()
     }
 }
 
@@ -216,13 +247,15 @@ pub(crate) fn window_title(hwnd: WindowHandle) -> Option<BSTR> {
     Some(BSTR::from_wide(&buffer).unwrap())
 }
 
-pub(crate) fn toolkit_description(state: &TreeState) -> Option<String> {
+pub(crate) fn toolkit_description(state: &TreeState) -> Option<WideString> {
     state.toolkit_name().map(|name| {
+        let mut result = WideString::default();
+        result.write_str(name).unwrap();
         if let Some(version) = state.toolkit_version() {
-            format!("{} {}", name, version)
-        } else {
-            name.to_string()
+            result.write_char(' ').unwrap();
+            result.write_str(version).unwrap();
         }
+        result
     })
 }
 
