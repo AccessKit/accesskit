@@ -12,8 +12,8 @@
 
 extern crate alloc;
 
-use alloc::{boxed::Box, string::String, vec::Vec};
-use core::fmt;
+use alloc::{borrow::ToOwned, boxed::Box, string::String, vec::Vec};
+use core::{fmt, mem::take};
 #[cfg(feature = "pyo3")]
 use pyo3::pyclass;
 #[cfg(feature = "schemars")]
@@ -656,7 +656,7 @@ impl From<NodeId> for NodeIdContent {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct CustomAction {
     pub id: i32,
-    pub description: Box<str>,
+    pub description: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -726,18 +726,23 @@ impl Flag {
 // The following is based on the technique described here:
 // https://viruta.org/reducing-memory-consumption-in-librsvg-2.html
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, Default, PartialEq)]
 enum PropertyValue {
+    #[default]
     None,
     NodeIdVec(Vec<NodeId>),
+    InactiveNodeIdVec(Vec<NodeId>),
     NodeId(NodeId),
-    String(Box<str>),
+    String(String),
+    InactiveString(String),
     F64(f64),
     Usize(usize),
     Color(u32),
     TextDecoration(TextDecoration),
-    LengthSlice(Box<[u8]>),
-    CoordSlice(Box<[f32]>),
+    LengthVec(Vec<u8>),
+    InactiveLengthVec(Vec<u8>),
+    CoordVec(Vec<f32>),
+    InactiveCoordVec(Vec<f32>),
     Bool(bool),
     Invalid(Invalid),
     Toggled(Toggled),
@@ -752,9 +757,214 @@ enum PropertyValue {
     TextAlign(TextAlign),
     VerticalOffset(VerticalOffset),
     Affine(Box<Affine>),
+    InactiveAffine(Box<Affine>),
     Rect(Rect),
     TextSelection(Box<TextSelection>),
+    InactiveTextSelection(Box<TextSelection>),
     CustomActionVec(Vec<CustomAction>),
+    InactiveCustomActionVec(Vec<CustomAction>),
+}
+
+impl PropertyValue {
+    fn set_string(&mut self, src: &str) {
+        match self {
+            PropertyValue::String(dest) => {
+                src.clone_into(dest);
+            }
+            PropertyValue::InactiveString(dest) => {
+                src.clone_into(dest);
+                *self = PropertyValue::String(take(dest));
+            }
+            _ => unexpected_property_type(),
+        }
+    }
+
+    fn clear(&mut self) {
+        *self = match take(self) {
+            Self::NodeIdVec(v) | Self::InactiveNodeIdVec(v) => Self::InactiveNodeIdVec(v),
+            Self::String(v) | Self::InactiveString(v) => Self::InactiveString(v),
+            Self::LengthVec(v) | Self::InactiveLengthVec(v) => Self::InactiveLengthVec(v),
+            Self::CoordVec(v) | Self::InactiveCoordVec(v) => Self::InactiveCoordVec(v),
+            Self::Affine(v) | Self::InactiveAffine(v) => Self::InactiveAffine(v),
+            Self::TextSelection(v) | Self::InactiveTextSelection(v) => {
+                Self::InactiveTextSelection(v)
+            }
+            Self::CustomActionVec(v) | Self::InactiveCustomActionVec(v) => {
+                Self::InactiveCustomActionVec(v)
+            }
+            _ => Self::None,
+        };
+    }
+}
+
+impl Clone for PropertyValue {
+    fn clone(&self) -> Self {
+        match self {
+            Self::None
+            | Self::InactiveNodeIdVec(_)
+            | Self::InactiveString(_)
+            | Self::InactiveLengthVec(_)
+            | Self::InactiveCoordVec(_)
+            | Self::InactiveAffine(_)
+            | Self::InactiveTextSelection(_)
+            | Self::InactiveCustomActionVec(_) => Self::None,
+            Self::NodeIdVec(v) => Self::NodeIdVec(v.clone()),
+            Self::NodeId(v) => Self::NodeId(*v),
+            Self::String(v) => Self::String(v.clone()),
+            Self::F64(v) => Self::F64(*v),
+            Self::Usize(v) => Self::Usize(*v),
+            Self::Color(v) => Self::Color(*v),
+            Self::TextDecoration(v) => Self::TextDecoration(*v),
+            Self::LengthVec(v) => Self::LengthVec(v.clone()),
+            Self::CoordVec(v) => Self::CoordVec(v.clone()),
+            Self::Bool(v) => Self::Bool(*v),
+            Self::Invalid(v) => Self::Invalid(*v),
+            Self::Toggled(v) => Self::Toggled(*v),
+            Self::Live(v) => Self::Live(*v),
+            Self::TextDirection(v) => Self::TextDirection(*v),
+            Self::Orientation(v) => Self::Orientation(*v),
+            Self::SortDirection(v) => Self::SortDirection(*v),
+            Self::AriaCurrent(v) => Self::AriaCurrent(*v),
+            Self::AutoComplete(v) => Self::AutoComplete(*v),
+            Self::HasPopup(v) => Self::HasPopup(*v),
+            Self::ListStyle(v) => Self::ListStyle(*v),
+            Self::TextAlign(v) => Self::TextAlign(*v),
+            Self::VerticalOffset(v) => Self::VerticalOffset(*v),
+            Self::Affine(v) => Self::Affine(v.clone()),
+            Self::Rect(v) => Self::Rect(*v),
+            Self::TextSelection(v) => Self::TextSelection(v.clone()),
+            Self::CustomActionVec(v) => Self::CustomActionVec(v.clone()),
+        }
+    }
+
+    fn clone_from(&mut self, src: &Self) {
+        match src {
+            Self::None => *self = Self::None,
+            Self::InactiveNodeIdVec(_) => {
+                if let Self::NodeIdVec(v) = self {
+                    *self = Self::InactiveNodeIdVec(take(v));
+                } else if !matches!(self, Self::InactiveNodeIdVec(_)) {
+                    *self = Self::None;
+                }
+            }
+            Self::InactiveString(_) => {
+                if let Self::String(v) = self {
+                    *self = Self::InactiveString(take(v));
+                } else if !matches!(self, Self::InactiveString(_)) {
+                    *self = Self::None;
+                }
+            }
+            Self::InactiveLengthVec(_) => {
+                if let Self::LengthVec(v) = self {
+                    *self = Self::InactiveLengthVec(take(v));
+                } else if !matches!(self, Self::InactiveLengthVec(_)) {
+                    *self = Self::None;
+                }
+            }
+            Self::InactiveCoordVec(_) => {
+                if let Self::CoordVec(v) = self {
+                    *self = Self::InactiveCoordVec(take(v));
+                } else if !matches!(self, Self::InactiveCoordVec(_)) {
+                    *self = Self::None;
+                }
+            }
+            Self::InactiveAffine(_) => {
+                *self = match take(self) {
+                    Self::Affine(v) | Self::InactiveAffine(v) => Self::InactiveAffine(v),
+                    _ => Self::None,
+                };
+            }
+            Self::InactiveTextSelection(_) => {
+                *self = match take(self) {
+                    Self::TextSelection(v) | Self::InactiveTextSelection(v) => {
+                        Self::InactiveTextSelection(v)
+                    }
+                    _ => Self::None,
+                };
+            }
+            Self::InactiveCustomActionVec(_) => {
+                if let Self::CustomActionVec(v) = self {
+                    *self = Self::InactiveCustomActionVec(take(v));
+                } else if !matches!(self, Self::InactiveCustomActionVec(_)) {
+                    *self = Self::None;
+                }
+            }
+            Self::NodeIdVec(v) => {
+                if matches!(self, Self::NodeIdVec(_) | Self::InactiveNodeIdVec(_)) {
+                    self.set_node_id_vec(v);
+                } else {
+                    *self = Self::NodeIdVec(v.clone());
+                }
+            }
+            Self::NodeId(v) => *self = Self::NodeId(*v),
+            Self::String(v) => {
+                if matches!(self, Self::String(_) | Self::InactiveString(_)) {
+                    self.set_string(v);
+                } else {
+                    *self = Self::String(v.clone());
+                }
+            }
+            Self::F64(v) => *self = Self::F64(*v),
+            Self::Usize(v) => *self = Self::Usize(*v),
+            Self::Color(v) => *self = Self::Color(*v),
+            Self::TextDecoration(v) => *self = Self::TextDecoration(*v),
+            Self::LengthVec(v) => {
+                if matches!(self, Self::LengthVec(_) | Self::InactiveLengthVec(_)) {
+                    self.set_length_vec(v);
+                } else {
+                    *self = Self::LengthVec(v.clone());
+                }
+            }
+            Self::CoordVec(v) => {
+                if matches!(self, Self::CoordVec(_) | Self::InactiveCoordVec(_)) {
+                    self.set_coord_vec(v);
+                } else {
+                    *self = Self::CoordVec(v.clone());
+                }
+            }
+            Self::Bool(v) => *self = Self::Bool(*v),
+            Self::Invalid(v) => *self = Self::Invalid(*v),
+            Self::Toggled(v) => *self = Self::Toggled(*v),
+            Self::Live(v) => *self = Self::Live(*v),
+            Self::TextDirection(v) => *self = Self::TextDirection(*v),
+            Self::Orientation(v) => *self = Self::Orientation(*v),
+            Self::SortDirection(v) => *self = Self::SortDirection(*v),
+            Self::AriaCurrent(v) => *self = Self::AriaCurrent(*v),
+            Self::AutoComplete(v) => *self = Self::AutoComplete(*v),
+            Self::HasPopup(v) => *self = Self::HasPopup(*v),
+            Self::ListStyle(v) => *self = Self::ListStyle(*v),
+            Self::TextAlign(v) => *self = Self::TextAlign(*v),
+            Self::VerticalOffset(v) => *self = Self::VerticalOffset(*v),
+            Self::Affine(v) => {
+                if matches!(self, Self::Affine(_) | Self::InactiveAffine(_)) {
+                    self.set_affine(**v);
+                } else {
+                    *self = Self::Affine(v.clone());
+                }
+            }
+            Self::Rect(v) => *self = Self::Rect(*v),
+            Self::TextSelection(v) => {
+                if matches!(
+                    self,
+                    Self::TextSelection(_) | Self::InactiveTextSelection(_)
+                ) {
+                    self.set_text_selection_property(**v);
+                } else {
+                    *self = Self::TextSelection(v.clone());
+                }
+            }
+            Self::CustomActionVec(v) => {
+                if matches!(
+                    self,
+                    Self::CustomActionVec(_) | Self::InactiveCustomActionVec(_)
+                ) {
+                    self.set_custom_action_vec(v);
+                } else {
+                    *self = Self::CustomActionVec(v.clone());
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -838,11 +1048,11 @@ enum PropertyId {
     Strikethrough,
     Underline,
 
-    // LengthSlice
+    // LengthVec
     CharacterLengths,
     WordLengths,
 
-    // CoordSlice
+    // CoordVec
     CharacterPositions,
     CharacterWidths,
 
@@ -884,7 +1094,7 @@ impl Default for PropertyIndices {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq)]
 struct Properties {
     indices: PropertyIndices,
     values: Vec<PropertyValue>,
@@ -896,7 +1106,7 @@ struct Properties {
 /// to other languages, documentation of getter methods is written as if
 /// documenting fields in a struct, and such methods are referred to
 /// as properties.
-#[derive(Clone, Default, PartialEq)]
+#[derive(Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
@@ -939,6 +1149,24 @@ impl Properties {
         }
     }
 
+    fn set_or_update(
+        &mut self,
+        id: PropertyId,
+        make_new: impl FnOnce() -> PropertyValue,
+        update: impl FnOnce(&mut PropertyValue),
+    ) {
+        let index = self.indices.0[id as usize] as usize;
+        if index == PropertyId::Unset as usize {
+            self.values.push(make_new());
+            let index = self.values.len() - 1;
+            self.indices.0[id as usize] = index as u8;
+        } else if matches!(self.values[index], PropertyValue::None) {
+            self.values[index] = make_new();
+        } else {
+            update(&mut self.values[index]);
+        }
+    }
+
     fn set(&mut self, id: PropertyId, value: PropertyValue) {
         let index = self.indices.0[id as usize];
         if index == PropertyId::Unset as u8 {
@@ -952,8 +1180,28 @@ impl Properties {
     fn clear(&mut self, id: PropertyId) {
         let index = self.indices.0[id as usize];
         if index != PropertyId::Unset as u8 {
-            self.values[index as usize] = PropertyValue::None;
+            self.values[index as usize].clear();
         }
+    }
+
+    fn clear_all(&mut self) {
+        for value in &mut self.values {
+            value.clear();
+        }
+    }
+}
+
+impl Clone for Properties {
+    fn clone(&self) -> Self {
+        Self {
+            indices: self.indices,
+            values: self.values.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, src: &Self) {
+        self.indices = src.indices;
+        src.values.clone_into(&mut self.values);
     }
 }
 
@@ -985,11 +1233,11 @@ macro_rules! flag_methods {
 }
 
 macro_rules! option_ref_type_getters {
-    ($(($method:ident, $type:ty, $variant:ident)),+) => {
+    ($(($method:ident, $type:ty, $variant:ident, $inactive_variant:ident)),+) => {
         impl PropertyIndices {
             $(fn $method<'a>(&self, values: &'a [PropertyValue], id: PropertyId) -> Option<&'a $type> {
                 match self.get(values, id) {
-                    PropertyValue::None => None,
+                    PropertyValue::None | PropertyValue::$inactive_variant(_) => None,
                     PropertyValue::$variant(value) => Some(value),
                     _ => unexpected_property_type(),
                 }
@@ -999,11 +1247,11 @@ macro_rules! option_ref_type_getters {
 }
 
 macro_rules! slice_type_getters {
-    ($(($method:ident, $type:ty, $variant:ident)),+) => {
+    ($(($method:ident, $type:ty, $variant:ident, $inactive_variant:ident)),+) => {
         impl PropertyIndices {
             $(fn $method<'a>(&self, values: &'a [PropertyValue], id: PropertyId) -> &'a [$type] {
                 match self.get(values, id) {
-                    PropertyValue::None => &[],
+                    PropertyValue::None | PropertyValue::$inactive_variant(_) => &[],
                     PropertyValue::$variant(value) => value,
                     _ => unexpected_property_type(),
                 }
@@ -1027,10 +1275,24 @@ macro_rules! copy_type_getters {
 }
 
 macro_rules! box_type_setters {
-    ($(($method:ident, $type:ty, $variant:ident)),+) => {
+    ($(($method:ident, $type:ty, $variant:ident, $inactive_variant:ident)),+) => {
+        impl PropertyValue {
+            $(fn $method(&mut self, value: $type) {
+                *self = match take(self) {
+                    PropertyValue::$variant(mut dest)
+                    | PropertyValue::$inactive_variant(mut dest) => {
+                        *dest = value;
+                        PropertyValue::$variant(dest)
+                    }
+                    _ => unexpected_property_type(),
+                };
+            })*
+        }
         impl Node {
-            $(fn $method(&mut self, id: PropertyId, value: impl Into<Box<$type>>) {
-                self.properties.set(id, PropertyValue::$variant(value.into()));
+            $(fn $method(&mut self, id: PropertyId, value: $type) {
+                self.properties.set_or_update(id, || PropertyValue::$variant(value.into()), |dest| {
+                    dest.$method(value);
+                });
             })*
         }
     }
@@ -1047,18 +1309,36 @@ macro_rules! copy_type_setters {
 }
 
 macro_rules! vec_type_methods {
-    ($(($type:ty, $variant:ident, $getter:ident, $setter:ident, $pusher:ident)),+) => {
-        $(slice_type_getters! {
-            ($getter, $type, $variant)
-        })*
+    ($(($type:ty, $variant:ident, $inactive_variant:ident, $setter:ident, $pusher:ident)),+) => {
+        impl PropertyValue {
+            $(fn $setter(&mut self, src: &[$type]) {
+                match self {
+                    PropertyValue::$variant(dest) => {
+                        src.clone_into(dest);
+                    }
+                    PropertyValue::$inactive_variant(dest) => {
+                        src.clone_into(dest);
+                        *self = PropertyValue::$variant(take(dest));
+                    }
+                    _ => unexpected_property_type(),
+                }
+            })*
+        }
         impl Node {
-            $(fn $setter(&mut self, id: PropertyId, value: impl Into<Vec<$type>>) {
-                self.properties.set(id, PropertyValue::$variant(value.into()));
+            $(fn $setter(&mut self, id: PropertyId, src: &[$type]) {
+                let dest = self.properties.get_mut(id, PropertyValue::$variant(Vec::new()));
+                dest.$setter(src);
             }
             fn $pusher(&mut self, id: PropertyId, item: $type) {
-                match self.properties.get_mut(id, PropertyValue::$variant(Vec::new())) {
+                let dest = self.properties.get_mut(id, PropertyValue::$variant(Vec::new()));
+                match dest {
                     PropertyValue::$variant(v) => {
                         v.push(item);
+                    }
+                    PropertyValue::$inactive_variant(v) => {
+                        v.clear();
+                        v.push(item);
+                        *dest = PropertyValue::$variant(take(v));
                     }
                     _ => unexpected_property_type(),
                 }
@@ -1091,7 +1371,7 @@ macro_rules! vec_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $item_type:ty, $getter:ident, $type_getter:ident, $setter:ident, $type_setter:ident, $pusher:ident, $type_pusher:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, $type_getter, &[$item_type], $setter, $type_setter, impl Into<Vec<$item_type>>, $clearer)
+            ($id, $getter, $type_getter, &[$item_type], $setter, $type_setter, &[$item_type], $clearer)
         }
         impl Node {
             #[inline]
@@ -1143,7 +1423,7 @@ macro_rules! node_id_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_node_id_property, Option<NodeId>, $setter, set_node_id_property, NodeId, $clearer)
+            ($id, $getter, get_node_id, Option<NodeId>, $setter, set_node_id, NodeId, $clearer)
         })*
         impl Node {
             option_properties_debug_method! { debug_node_id_properties, [$($getter,)*] }
@@ -1155,7 +1435,7 @@ macro_rules! string_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_string_property, Option<&str>, $setter, set_string_property, impl Into<Box<str>>, $clearer)
+            ($id, $getter, get_string, Option<&str>, $setter, set_string, &str, $clearer)
         })*
         impl Node {
             option_properties_debug_method! { debug_string_properties, [$($getter,)*] }
@@ -1167,7 +1447,7 @@ macro_rules! f64_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_f64_property, Option<f64>, $setter, set_f64_property, f64, $clearer)
+            ($id, $getter, get_f64, Option<f64>, $setter, set_f64, f64, $clearer)
         })*
         impl Node {
             option_properties_debug_method! { debug_f64_properties, [$($getter,)*] }
@@ -1179,7 +1459,7 @@ macro_rules! usize_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_usize_property, Option<usize>, $setter, set_usize_property, usize, $clearer)
+            ($id, $getter, get_usize, Option<usize>, $setter, set_usize, usize, $clearer)
         })*
         impl Node {
             option_properties_debug_method! { debug_usize_properties, [$($getter,)*] }
@@ -1191,7 +1471,7 @@ macro_rules! color_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_color_property, Option<u32>, $setter, set_color_property, u32, $clearer)
+            ($id, $getter, get_color, Option<u32>, $setter, set_color, u32, $clearer)
         })*
         impl Node {
             option_properties_debug_method! { debug_color_properties, [$($getter,)*] }
@@ -1203,7 +1483,7 @@ macro_rules! text_decoration_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_text_decoration_property, Option<TextDecoration>, $setter, set_text_decoration_property, TextDecoration, $clearer)
+            ($id, $getter, get_text_decoration, Option<TextDecoration>, $setter, set_text_decoration, TextDecoration, $clearer)
         })*
         impl Node {
             option_properties_debug_method! { debug_text_decoration_properties, [$($getter,)*] }
@@ -1211,26 +1491,30 @@ macro_rules! text_decoration_property_methods {
     }
 }
 
-macro_rules! length_slice_property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        $(property_methods! {
+macro_rules! length_vec_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $pusher:ident, $clearer:ident)),+) => {
+        $(vec_property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_length_slice_property, &[u8], $setter, set_length_slice_property, impl Into<Box<[u8]>>, $clearer)
+            ($id, u8, $getter, get_length_vec, $setter, set_length_vec, $pusher, push_to_length_vec, $clearer)
         })*
         impl Node {
-            slice_properties_debug_method! { debug_length_slice_properties, [$($getter,)*] }
+            slice_properties_debug_method! { debug_length_vec_properties, [$($getter,)*] }
         }
     }
 }
 
-macro_rules! coord_slice_property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+macro_rules! coord_vec_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $pusher:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_coord_slice_property, Option<&[f32]>, $setter, set_coord_slice_property, impl Into<Box<[f32]>>, $clearer)
+            ($id, $getter, get_coord_vec, Option<&[f32]>, $setter, set_coord_vec, &[f32], $clearer)
         })*
         impl Node {
-            option_properties_debug_method! { debug_coord_slice_properties, [$($getter,)*] }
+            $(#[inline]
+            pub fn $pusher(&mut self, item: f32) {
+                self.push_to_coord_vec(PropertyId::$id, item);
+            })*
+            option_properties_debug_method! { debug_coord_vec_properties, [$($getter,)*] }
         }
     }
 }
@@ -1239,7 +1523,7 @@ macro_rules! bool_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_bool_property, Option<bool>, $setter, set_bool_property, bool, $clearer)
+            ($id, $getter, get_bool, Option<bool>, $setter, set_bool, bool, $clearer)
         })*
         impl Node {
             option_properties_debug_method! { debug_bool_properties, [$($getter,)*] }
@@ -1279,6 +1563,31 @@ impl Node {
             role,
             ..Default::default()
         }
+    }
+
+    pub fn reset(&mut self, role: Role) {
+        self.role = role;
+        self.actions = 0;
+        self.flags = 0;
+        self.properties.clear_all();
+    }
+}
+
+impl Clone for Node {
+    fn clone(&self) -> Self {
+        Self {
+            role: self.role,
+            actions: self.actions,
+            flags: self.flags,
+            properties: self.properties.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, src: &Self) {
+        self.role = src.role;
+        self.actions = src.actions;
+        self.flags = src.flags;
+        self.properties.clone_from(&src.properties);
     }
 }
 
@@ -1347,47 +1656,48 @@ flag_methods! {
 }
 
 option_ref_type_getters! {
-    (get_affine_property, Affine, Affine),
-    (get_string_property, str, String),
-    (get_coord_slice_property, [f32], CoordSlice),
-    (get_text_selection_property, TextSelection, TextSelection)
+    (get_affine, Affine, Affine, InactiveAffine),
+    (get_string, str, String, InactiveString),
+    (get_coord_vec, [f32], CoordVec, InactiveCoordVec),
+    (get_text_selection_property, TextSelection, TextSelection, InactiveTextSelection)
 }
 
 slice_type_getters! {
-    (get_length_slice_property, u8, LengthSlice)
+    (get_node_id_vec, NodeId, NodeIdVec, InactiveNodeIdVec),
+    (get_length_vec, u8, LengthVec, InactiveLengthVec),
+    (get_custom_action_vec, CustomAction, CustomActionVec, InactiveCustomActionVec)
 }
 
 copy_type_getters! {
-    (get_rect_property, Rect, Rect),
-    (get_node_id_property, NodeId, NodeId),
-    (get_f64_property, f64, F64),
-    (get_usize_property, usize, Usize),
-    (get_color_property, u32, Color),
-    (get_text_decoration_property, TextDecoration, TextDecoration),
-    (get_bool_property, bool, Bool)
+    (get_rect, Rect, Rect),
+    (get_node_id, NodeId, NodeId),
+    (get_f64, f64, F64),
+    (get_usize, usize, Usize),
+    (get_color, u32, Color),
+    (get_text_decoration, TextDecoration, TextDecoration),
+    (get_bool, bool, Bool)
 }
 
 box_type_setters! {
-    (set_affine_property, Affine, Affine),
-    (set_string_property, str, String),
-    (set_length_slice_property, [u8], LengthSlice),
-    (set_coord_slice_property, [f32], CoordSlice),
-    (set_text_selection_property, TextSelection, TextSelection)
+    (set_affine, Affine, Affine, InactiveAffine),
+    (set_text_selection_property, TextSelection, TextSelection, InactiveTextSelection)
 }
 
 copy_type_setters! {
-    (set_rect_property, Rect, Rect),
-    (set_node_id_property, NodeId, NodeId),
-    (set_f64_property, f64, F64),
-    (set_usize_property, usize, Usize),
-    (set_color_property, u32, Color),
-    (set_text_decoration_property, TextDecoration, TextDecoration),
-    (set_bool_property, bool, Bool)
+    (set_rect, Rect, Rect),
+    (set_node_id, NodeId, NodeId),
+    (set_f64, f64, F64),
+    (set_usize, usize, Usize),
+    (set_color, u32, Color),
+    (set_text_decoration, TextDecoration, TextDecoration),
+    (set_bool, bool, Bool)
 }
 
 vec_type_methods! {
-    (NodeId, NodeIdVec, get_node_id_vec, set_node_id_vec, push_to_node_id_vec),
-    (CustomAction, CustomActionVec, get_custom_action_vec, set_custom_action_vec, push_to_custom_action_vec)
+    (NodeId, NodeIdVec, InactiveNodeIdVec, set_node_id_vec, push_to_node_id_vec),
+    (u8, LengthVec, InactiveLengthVec, set_length_vec, push_to_length_vec),
+    (f32, CoordVec, InactiveCoordVec, set_coord_vec, push_to_coord_vec),
+    (CustomAction, CustomActionVec, InactiveCustomActionVec, set_custom_action_vec, push_to_custom_action_vec)
 }
 
 node_id_vec_property_methods! {
@@ -1520,7 +1830,7 @@ text_decoration_property_methods! {
     (Underline, underline, set_underline, clear_underline)
 }
 
-length_slice_property_methods! {
+length_vec_property_methods! {
     /// For text runs, the length (non-inclusive) of each character
     /// in UTF-8 code units (bytes). The sum of these lengths must equal
     /// the length of [`value`], also in bytes.
@@ -1539,7 +1849,7 @@ length_slice_property_methods! {
     /// selection should be on the line break, not after it.
     ///
     /// [`value`]: Node::value
-    (CharacterLengths, character_lengths, set_character_lengths, clear_character_lengths),
+    (CharacterLengths, character_lengths, set_character_lengths, push_character_length, clear_character_lengths),
 
     /// For text runs, the length of each word in characters, as defined
     /// in [`character_lengths`]. The sum of these lengths must equal
@@ -1563,10 +1873,10 @@ length_slice_property_methods! {
     /// word boundaries itself.
     ///
     /// [`character_lengths`]: Node::character_lengths
-    (WordLengths, word_lengths, set_word_lengths, clear_word_lengths)
+    (WordLengths, word_lengths, set_word_lengths, push_word_length, clear_word_lengths)
 }
 
-coord_slice_property_methods! {
+coord_vec_property_methods! {
     /// For text runs, this is the position of each character within
     /// the node's bounding box, in the direction given by
     /// [`text_direction`], in the coordinate space of this node.
@@ -1583,7 +1893,7 @@ coord_slice_property_methods! {
     ///
     /// [`text_direction`]: Node::text_direction
     /// [`character_lengths`]: Node::character_lengths
-    (CharacterPositions, character_positions, set_character_positions, clear_character_positions),
+    (CharacterPositions, character_positions, set_character_positions, push_character_position, clear_character_positions),
 
     /// For text runs, this is the advance width of each character,
     /// in the direction given by [`text_direction`], in the coordinate
@@ -1603,7 +1913,7 @@ coord_slice_property_methods! {
     ///
     /// [`text_direction`]: Node::text_direction
     /// [`character_lengths`]: Node::character_lengths
-    (CharacterWidths, character_widths, set_character_widths, clear_character_widths)
+    (CharacterWidths, character_widths, set_character_widths, push_character_width, clear_character_widths)
 }
 
 bool_property_methods! {
@@ -1654,7 +1964,7 @@ property_methods! {
     /// pixels, with the y coordinate being top-down.
     ///
     /// [`bounds`]: Node::bounds
-    (Transform, transform, get_affine_property, Option<&Affine>, set_transform, set_affine_property, impl Into<Box<Affine>>, clear_transform),
+    (Transform, transform, get_affine, Option<&Affine>, set_transform, set_affine, Affine, clear_transform),
 
     /// The bounding box of this node, in the node's coordinate space.
     /// This property does not affect the coordinate space of either this node
@@ -1666,12 +1976,19 @@ property_methods! {
     /// the tree's container (e.g. window).
     ///
     /// [`transform`]: Node::transform
-    (Bounds, bounds, get_rect_property, Option<Rect>, set_bounds, set_rect_property, Rect, clear_bounds),
+    (Bounds, bounds, get_rect, Option<Rect>, set_bounds, set_rect, Rect, clear_bounds),
 
-    (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, impl Into<Box<TextSelection>>, clear_text_selection)
+    (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, TextSelection, clear_text_selection)
 }
 
 impl Node {
+    fn set_string(&mut self, id: PropertyId, src: &str) {
+        let dest = self
+            .properties
+            .get_mut(id, PropertyValue::String(String::new()));
+        dest.set_string(src);
+    }
+
     option_properties_debug_method! { debug_option_properties, [transform, bounds, text_selection,] }
 }
 
@@ -1698,8 +2015,8 @@ impl fmt::Debug for Node {
         self.debug_usize_properties(&mut fmt);
         self.debug_color_properties(&mut fmt);
         self.debug_text_decoration_properties(&mut fmt);
-        self.debug_length_slice_properties(&mut fmt);
-        self.debug_coord_slice_properties(&mut fmt);
+        self.debug_length_vec_properties(&mut fmt);
+        self.debug_coord_vec_properties(&mut fmt);
         self.debug_bool_properties(&mut fmt);
         self.debug_unique_enum_properties(&mut fmt);
         self.debug_option_properties(&mut fmt);
@@ -1717,7 +2034,14 @@ impl fmt::Debug for Node {
 macro_rules! serialize_property {
     ($self:ident, $map:ident, $index:ident, $id:ident, { $($variant:ident),+ }) => {
         match &$self.values[$index as usize] {
-            PropertyValue::None => (),
+            PropertyValue::None
+            | PropertyValue::InactiveNodeIdVec(_)
+            | PropertyValue::InactiveString(_)
+            | PropertyValue::InactiveLengthVec(_)
+            | PropertyValue::InactiveCoordVec(_)
+            | PropertyValue::InactiveAffine(_)
+            | PropertyValue::InactiveTextSelection(_)
+            | PropertyValue::InactiveCustomActionVec(_) => (),
             $(PropertyValue::$variant(value) => {
                 $map.serialize_entry(&$id, &value)?;
             })*
@@ -1748,7 +2072,17 @@ impl Serialize for Properties {
     {
         let mut len = 0;
         for value in &*self.values {
-            if !matches!(*value, PropertyValue::None) {
+            if !matches!(
+                *value,
+                PropertyValue::None
+                    | PropertyValue::InactiveNodeIdVec(_)
+                    | PropertyValue::InactiveString(_)
+                    | PropertyValue::InactiveLengthVec(_)
+                    | PropertyValue::InactiveCoordVec(_)
+                    | PropertyValue::InactiveAffine(_)
+                    | PropertyValue::InactiveTextSelection(_)
+                    | PropertyValue::InactiveCustomActionVec(_)
+            ) {
                 len += 1;
             }
         }
@@ -1766,8 +2100,8 @@ impl Serialize for Properties {
                 Usize,
                 Color,
                 TextDecoration,
-                LengthSlice,
-                CoordSlice,
+                LengthVec,
+                CoordVec,
                 Bool,
                 Invalid,
                 Toggled,
@@ -1885,11 +2219,11 @@ impl<'de> Visitor<'de> for PropertiesVisitor {
                     Strikethrough,
                     Underline
                 },
-                LengthSlice {
+                LengthVec {
                     CharacterLengths,
                     WordLengths
                 },
-                CoordSlice {
+                CoordVec {
                     CharacterPositions,
                     CharacterWidths
                 },
@@ -1976,7 +2310,7 @@ impl JsonSchema for Properties {
                 PreviousOnLine,
                 PopupFor
             },
-            Box<str> {
+            String {
                 Label,
                 Description,
                 Value,
@@ -2032,11 +2366,11 @@ impl JsonSchema for Properties {
                 Strikethrough,
                 Underline
             },
-            Box<[u8]> {
+            Vec<u8> {
                 CharacterLengths,
                 WordLengths
             },
-            Box<[f32]> {
+            Vec<f32> {
                 CharacterPositions,
                 CharacterWidths
             },
