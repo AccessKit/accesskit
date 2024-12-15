@@ -105,12 +105,7 @@ impl TreeState {
         current_focus
     }
 
-    fn update(
-        &mut self,
-        update: TreeUpdate,
-        is_host_focused: bool,
-        mut changes: Option<&mut InternalChanges>,
-    ) {
+    fn update(&mut self, update: TreeUpdate, mut changes: Option<&mut InternalChanges>) {
         let tree_index = self.tree_index_map.get_or_create_index(update.tree_id);
         let map_id = |id: NodeId| FullNodeId::new(id, tree_index);
 
@@ -339,8 +334,6 @@ impl TreeState {
             );
         }
 
-        self.is_host_focused = is_host_focused;
-
         if !unreachable.is_empty() {
             fn traverse_unreachable(
                 nodes: &mut HashMap<FullNodeId, NodeState>,
@@ -476,21 +469,6 @@ impl TreeState {
         self.validate_global();
     }
 
-    fn update_host_focus_state(
-        &mut self,
-        is_host_focused: bool,
-        changes: Option<&mut InternalChanges>,
-    ) {
-        let (focus, _) = self.focus.to_components();
-        let update = TreeUpdate {
-            nodes: vec![],
-            tree: None,
-            tree_id: TreeId::ROOT,
-            focus,
-        };
-        self.update(update, is_host_focused, changes);
-    }
-
     pub fn has_node(&self, id: FullNodeId) -> bool {
         self.nodes.contains_key(&id)
     }
@@ -616,7 +594,7 @@ impl Tree {
             graft_parents: HashMap::new(),
             tree_index_map,
         };
-        state.update(initial_state, is_host_focused, None);
+        state.update(initial_state, None);
         Self {
             next_state: state.clone(),
             state,
@@ -629,8 +607,7 @@ impl Tree {
         handler: &mut impl ChangeHandler,
     ) {
         let mut changes = InternalChanges::default();
-        self.next_state
-            .update(update, self.state.is_host_focused, Some(&mut changes));
+        self.next_state.update(update, Some(&mut changes));
         self.process_changes(changes, handler);
     }
 
@@ -639,9 +616,8 @@ impl Tree {
         is_host_focused: bool,
         handler: &mut impl ChangeHandler,
     ) {
-        let mut changes = InternalChanges::default();
-        self.next_state
-            .update_host_focus_state(is_host_focused, Some(&mut changes));
+        self.next_state.is_host_focused = is_host_focused;
+        let changes = InternalChanges::default();
         self.process_changes(changes, handler);
     }
 
