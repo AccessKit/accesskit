@@ -123,7 +123,7 @@ mod tests {
             nodes: vec![
                 (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(&[NodeId(1)]);
                     node
                 }),
                 (NodeId(1), Node::new(Role::Button)),
@@ -142,7 +142,7 @@ mod tests {
             nodes: vec![
                 (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(&[NodeId(1)]);
                     node
                 }),
                 (NodeId(1), {
@@ -165,7 +165,7 @@ mod tests {
             nodes: vec![
                 (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(&[NodeId(1)]);
                     node
                 }),
                 (NodeId(1), {
@@ -188,7 +188,7 @@ mod tests {
             nodes: vec![
                 (NodeId(0), {
                     let mut node = Node::new(Role::GenericContainer);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(&[NodeId(1)]);
                     node
                 }),
                 (NodeId(1), Node::new(Role::Button)),
@@ -213,7 +213,7 @@ mod tests {
                 (NodeId(0), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_hidden();
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(&[NodeId(1)]);
                     node
                 }),
                 (NodeId(1), Node::new(Role::Button)),
@@ -234,7 +234,7 @@ mod tests {
                 (NodeId(0), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_hidden();
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(&[NodeId(1)]);
                     node
                 }),
                 (NodeId(1), Node::new(Role::Button)),
@@ -254,7 +254,7 @@ mod tests {
             nodes: vec![
                 (NodeId(0), {
                     let mut node = Node::new(Role::TextInput);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(&[NodeId(1)]);
                     node
                 }),
                 (NodeId(1), Node::new(Role::TextRun)),
@@ -274,7 +274,7 @@ mod tests {
                     let mut node = Node::new(Role::ScrollView);
                     node.set_clips_children();
                     node.set_bounds(Rect::new(0.0, 0.0, 30.0, 30.0));
-                    node.set_children(vec![
+                    node.set_children(&[
                         NodeId(1),
                         NodeId(2),
                         NodeId(3),
@@ -402,7 +402,7 @@ mod tests {
             nodes: vec![
                 (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(&[NodeId(1)]);
                     node
                 }),
                 (NodeId(1), {

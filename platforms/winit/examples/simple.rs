@@ -107,7 +107,7 @@ impl UiState {
         let mut node = Node::new(Role::Window);
         node.set_bounds(WINDOW_RECT);
         node.set_transform(Affine::translate(self.inset) * Affine::scale(self.scale_factor));
-        node.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
+        node.set_children(&[BUTTON_1_ID, BUTTON_2_ID]);
         if self.announcement.is_some() {
             node.push_child(ANNOUNCEMENT_ID);
         }
