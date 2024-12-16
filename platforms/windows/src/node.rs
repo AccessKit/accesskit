@@ -378,7 +378,7 @@ impl NodeWrapper<'_> {
         self.0.is_required()
     }
 
-    fn is_selection_item_pattern_supported(&self) -> bool {
+    pub(crate) fn is_selection_item_pattern_supported(&self) -> bool {
         match self.0.role() {
             // TODO: tables (#29)
             // https://www.w3.org/TR/core-aam-1.1/#mapping_state-property_table
@@ -398,7 +398,7 @@ impl NodeWrapper<'_> {
         }
     }
 
-    fn is_selected(&self) -> bool {
+    pub(crate) fn is_selected(&self) -> bool {
         match self.0.role() {
             // https://www.w3.org/TR/core-aam-1.1/#mapping_state-property_table
             // SelectionItem.IsSelected is set according to the True or False
@@ -409,6 +409,27 @@ impl NodeWrapper<'_> {
             // value of aria-selected.
             _ => self.0.is_selected().unwrap_or(false),
         }
+    }
+
+    fn position_in_set(&self) -> Option<i32> {
+        self.0
+            .position_in_set()
+            .and_then(|p| p.try_into().ok())
+            .map(|p: i32| p + 1)
+    }
+
+    fn size_of_set(&self) -> Option<i32> {
+        self.0
+            .size_of_set_from_container(&filter)
+            .and_then(|s| s.try_into().ok())
+    }
+
+    fn is_selection_pattern_supported(&self) -> bool {
+        self.0.is_container_with_selectable_children()
+    }
+
+    fn is_multiselectable(&self) -> bool {
+        self.0.is_multiselectable()
     }
 
     fn is_text_pattern_supported(&self) -> bool {
@@ -432,15 +453,6 @@ impl NodeWrapper<'_> {
         element: &IRawElementProviderSimple,
         old: &NodeWrapper,
     ) {
-        if self.is_selection_item_pattern_supported()
-            && self.is_selected()
-            && !(old.is_selection_item_pattern_supported() && old.is_selected())
-        {
-            queue.push(QueuedEvent::Simple {
-                element: element.clone(),
-                event_id: UIA_SelectionItem_ElementSelectedEventId,
-            });
-        }
         if self.is_text_pattern_supported()
             && old.is_text_pattern_supported()
             && self.0.raw_text_selection() != old.0.raw_text_selection()
@@ -480,6 +492,7 @@ impl NodeWrapper<'_> {
     IValueProvider,
     IRangeValueProvider,
     ISelectionItemProvider,
+    ISelectionProvider,
     ITextProvider
 )]
 pub(crate) struct PlatformNode {
@@ -890,7 +903,9 @@ properties! {
     (AutomationId, automation_id),
     (ClassName, class_name),
     (Orientation, orientation),
-    (IsRequiredForForm, is_required)
+    (IsRequiredForForm, is_required),
+    (PositionInSet, position_in_set),
+    (SizeOfSet, size_of_set)
 }
 
 patterns! {
@@ -931,28 +946,51 @@ patterns! {
             })
         }
     )),
-    (SelectionItem, is_selection_item_pattern_supported, (
-        (IsSelected, is_selected, BOOL)
-    ), (
+    (SelectionItem, is_selection_item_pattern_supported, (), (
+        fn IsSelected(&self) -> Result<BOOL> {
+            self.resolve(|node| {
+                let wrapper = NodeWrapper(&node);
+                Ok(wrapper.is_selected().into())
+            })
+        },
+
         fn Select(&self) -> Result<()> {
             self.click()
         },
 
         fn AddToSelection(&self) -> Result<()> {
-            // TODO: implement when we work on list boxes (#23)
-            Err(not_implemented())
+            self.click()
         },
 
         fn RemoveFromSelection(&self) -> Result<()> {
-            // TODO: implement when we work on list boxes (#23)
-            Err(not_implemented())
+            self.click()
         },
 
         fn SelectionContainer(&self) -> Result<IRawElementProviderSimple> {
-            // TODO: implement when we work on list boxes (#23)
-            // We return E_FAIL here because that's what Chromium does
-            // if it can't find a container.
-            Err(E_FAIL.into())
+            self.resolve(|node| {
+                if let Some(container) = node.selection_container(&filter) {
+                    Ok(self.relative(container.id()).into())
+                } else {
+                    Err(E_FAIL.into())
+                }
+            })
+        }
+    )),
+    (Selection, is_selection_pattern_supported, (
+        (CanSelectMultiple, is_multiselectable, BOOL),
+        (IsSelectionRequired, is_required, BOOL)
+    ), (
+        fn GetSelection(&self) -> Result<*mut SAFEARRAY> {
+            self.resolve(|node| {
+                let selection: Vec<_> = node
+                    .items(&filter)
+                    .filter(|item| item.is_selected() == Some(true))
+                    .map(|item| self.relative(item.id()))
+                    .map(IRawElementProviderSimple::from)
+                    .filter_map(|item| item.cast::<IUnknown>().ok())
+                    .collect();
+                Ok(safe_array_from_com_slice(&selection))
+            })
         }
     )),
     (Text, is_text_pattern_supported, (), (

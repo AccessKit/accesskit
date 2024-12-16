@@ -813,6 +813,92 @@ declare_class!(
                 .unwrap_or(false)
         }
 
+        #[method(isAccessibilitySelected)]
+        fn is_selected(&self) -> bool {
+            self.resolve(|node| node.is_selected()).flatten().unwrap_or(false)
+        }
+
+        #[method(setAccessibilitySelected:)]
+        fn set_selected(&self, _: bool) {
+            self.resolve_with_context(|node, context| {
+                if node.is_selectable() {
+                    context.do_action(ActionRequest {
+                        action: Action::Click,
+                        target: node.id(),
+                        data: None,
+                    });
+                }
+            });
+        }
+
+        #[method_id(accessibilityRows)]
+        fn rows(&self) -> Option<Id<NSArray<PlatformNode>>> {
+            self.resolve_with_context(|node, context| {
+                if !node.is_container_with_selectable_children() {
+                    return None;
+                }
+                let platform_nodes = node
+                    .items(filter)
+                    .map(|child| context.get_or_create_platform_node(child.id()))
+                    .collect::<Vec<Id<PlatformNode>>>();
+                Some(NSArray::from_vec(platform_nodes))
+            })
+            .flatten()
+        }
+
+        #[method_id(accessibilitySelectedRows)]
+        fn selected_rows(&self) -> Option<Id<NSArray<PlatformNode>>> {
+            self.resolve_with_context(|node, context| {
+                if !node.is_container_with_selectable_children() {
+                    return None;
+                }
+                let platform_nodes = node
+                    .items(filter)
+                    .filter(|item| item.is_selected() == Some(true))
+                    .map(|child| context.get_or_create_platform_node(child.id()))
+                    .collect::<Vec<Id<PlatformNode>>>();
+                Some(NSArray::from_vec(platform_nodes))
+            })
+            .flatten()
+        }
+
+        #[method(setAccessibilitySelectedRows:)]
+        fn set_selected_rows(&self, _: Option<&NSArray<PlatformNode>>) {
+
+        }
+
+        #[method(accessibilityPerformPick)]
+        fn pick(&self) -> bool {
+            self.resolve_with_context(|node, context| {
+                let selectable = node.is_selectable();
+                if selectable {
+                    context.do_action(ActionRequest {
+                        action: Action::Click,
+                        target: node.id(),
+                        data: None,
+                    });
+                }
+                selectable
+            })
+            .unwrap_or(false)
+        }
+
+        #[method_id(accessibilitySelectedChildren)]
+        fn selected_children(&self) -> Option<Id<NSArray<PlatformNode>>> {
+            self.resolve_with_context(|node, context| {
+                if !node.is_container_with_selectable_children() {
+                    return None;
+                }
+                let platform_nodes = node
+                    .items(filter)
+                    .filter(|item| item.is_selected() == Some(true))
+                    .map(|child| context.get_or_create_platform_node(child.id()))
+                    .collect::<Vec<Id<PlatformNode>>>();
+                Some(NSArray::from_vec(platform_nodes))
+            })
+            .flatten()
+        }
+
         #[method(isAccessibilitySelectorAllowed:)]
         fn is_selector_allowed(&self, selector: Sel) -> bool {
             self.resolve(|node| {
@@ -849,9 +935,24 @@ declare_class!(
                     // the expected VoiceOver behavior.
                     return node.supports_text_ranges() && !node.is_read_only();
                 }
+                if selector == sel!(isAccessibilitySelected) {
+                    return node.is_selectable();
+                }
+                if selector == sel!(setAccessibilitySelected:)
+                    || selector == sel!(accessibilityPerformPick)
+                {
+                    return node.is_clickable() && node.is_selectable();
+                }
+                if selector == sel!(accessibilityRows)
+                    || selector == sel!(accessibilitySelectedRows)
+                    || selector == sel!(setAccessibilitySelectedRows:)
+                {
+                    return node.is_container_with_selectable_children()
+                }
                 selector == sel!(accessibilityParent)
                     || selector == sel!(accessibilityChildren)
                     || selector == sel!(accessibilityChildrenInNavigationOrder)
+                    || selector == sel!(accessibilitySelectedChildren)
                     || selector == sel!(accessibilityFrame)
                     || selector == sel!(accessibilityRole)
                     || selector == sel!(accessibilitySubrole)
