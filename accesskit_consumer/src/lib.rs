@@ -7,6 +7,8 @@
 
 extern crate alloc;
 
+use accesskit::ActivationHandler;
+
 pub(crate) mod tree;
 pub use tree::{ChangeHandler as TreeChangeHandler, Tree, TreeState, Update as TreeUpdate};
 
@@ -23,6 +25,26 @@ pub use text::{
     Position as TextPosition, Range as TextRange, RangePropertyValue as TextRangePropertyValue,
     WeakRange as WeakTextRange,
 };
+
+pub trait BoxableActivationHandler {
+    fn request_initial_tree(&mut self, is_host_focused: bool) -> Option<Tree>;
+}
+
+impl<H: ActivationHandler + ?Sized> BoxableActivationHandler for H {
+    fn request_initial_tree(&mut self, is_host_focused: bool) -> Option<Tree> {
+        Tree::new_optional(is_host_focused, |update| {
+            self.request_initial_tree(update);
+        })
+    }
+}
+
+pub struct BoxedActivationHandler<H: ActivationHandler>(pub H);
+
+impl<H: ActivationHandler> BoxableActivationHandler for BoxedActivationHandler<H> {
+    fn request_initial_tree(&mut self, is_host_focused: bool) -> Option<Tree> {
+        BoxableActivationHandler::request_initial_tree(&mut self.0, is_host_focused)
+    }
+}
 
 #[cfg(test)]
 mod tests {
