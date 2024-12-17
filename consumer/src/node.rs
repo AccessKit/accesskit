@@ -54,7 +54,7 @@ impl From<NodeId> for u128 {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct NodeState {
     pub(crate) parent_and_index: Option<ParentAndIndex>,
     pub(crate) data: NodeData,
@@ -1075,10 +1075,9 @@ impl<W: fmt::Write> fmt::Write for SpacePrefixingWriter<W> {
 #[cfg(test)]
 mod tests {
     use accesskit::{
-        Action, Affine, Node, NodeId, Point, Rect, Role, TextDirection, TextPosition,
-        TextSelection, Tree, TreeId, TreeUpdate, Vec2,
+        Action, Affine, NodeId, Point, Rect, Role, TextDirection, TextPosition, TextSelection,
+        Tree, TreeId, TreeUpdate, Vec2,
     };
-    use alloc::vec;
 
     use crate::tests::*;
 
@@ -1489,20 +1488,14 @@ mod tests {
 
     #[test]
     fn no_label_or_labelled_by() {
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), Node::new(Role::Button)),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            tree_id: TreeId::ROOT,
-            focus: NodeId(0),
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(1), Role::Button, |_| ());
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
         assert_eq!(
             None,
             tree.state().node_by_id(nid(NodeId(1))).unwrap().label()
@@ -1516,39 +1509,25 @@ mod tests {
         const LABEL_1: &str = "Check email every";
         const LABEL_2: &str = "minutes";
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[NodeId(1), NodeId(2), NodeId(3), NodeId(4)]);
-                    node
-                }),
-                (NodeId(1), {
-                    let mut node = Node::new(Role::CheckBox);
-                    node.set_labelled_by(&[NodeId(2), NodeId(4)]);
-                    node
-                }),
-                (NodeId(2), {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(LABEL_1);
-                    node
-                }),
-                (NodeId(3), {
-                    let mut node = Node::new(Role::TextInput);
-                    node.push_labelled_by(NodeId(4));
-                    node
-                }),
-                (NodeId(4), {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(LABEL_2);
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            tree_id: TreeId::ROOT,
-            focus: NodeId(0),
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_children(&[NodeId(1), NodeId(2), NodeId(3), NodeId(4)]);
+            });
+            update.set_node(NodeId(1), Role::CheckBox, |node| {
+                node.set_labelled_by(&[NodeId(2), NodeId(4)]);
+            });
+            update.set_node(NodeId(2), Role::Label, |node| {
+                node.set_value(LABEL_1);
+            });
+            update.set_node(NodeId(3), Role::TextInput, |node| {
+                node.push_labelled_by(NodeId(4));
+            });
+            update.set_node(NodeId(4), Role::Label, |node| {
+                node.set_value(LABEL_2);
+            });
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
         assert_eq!(
             Some([LABEL_1, LABEL_2].join(" ")),
             tree.state().node_by_id(nid(NodeId(1))).unwrap().label()
@@ -1590,116 +1569,74 @@ mod tests {
         const MENU_ITEM_CHECKBOX_LABEL: &str = "Apply volume processing";
         const MENU_ITEM_RADIO_LABEL: &str = "Maximize loudness for noisy environment";
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (ROOT_ID, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[
-                        DEFAULT_BUTTON_ID,
-                        LINK_ID,
-                        CHECKBOX_ID,
-                        RADIO_BUTTON_ID,
-                        MENU_BUTTON_ID,
-                        MENU_ID,
-                    ]);
-                    node
-                }),
-                (DEFAULT_BUTTON_ID, {
-                    let mut node = Node::new(Role::DefaultButton);
-                    node.push_child(DEFAULT_BUTTON_LABEL_ID);
-                    node
-                }),
-                (DEFAULT_BUTTON_LABEL_ID, {
-                    let mut node = Node::new(Role::Image);
-                    node.set_label(DEFAULT_BUTTON_LABEL);
-                    node
-                }),
-                (LINK_ID, {
-                    let mut node = Node::new(Role::Link);
-                    node.push_child(LINK_LABEL_CONTAINER_ID);
-                    node
-                }),
-                (LINK_LABEL_CONTAINER_ID, {
-                    let mut node = Node::new(Role::GenericContainer);
-                    node.push_child(LINK_LABEL_ID);
-                    node
-                }),
-                (LINK_LABEL_ID, {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(LINK_LABEL);
-                    node
-                }),
-                (CHECKBOX_ID, {
-                    let mut node = Node::new(Role::CheckBox);
-                    node.push_child(CHECKBOX_LABEL_ID);
-                    node
-                }),
-                (CHECKBOX_LABEL_ID, {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(CHECKBOX_LABEL);
-                    node
-                }),
-                (RADIO_BUTTON_ID, {
-                    let mut node = Node::new(Role::RadioButton);
-                    node.push_child(RADIO_BUTTON_LABEL_ID);
-                    node
-                }),
-                (RADIO_BUTTON_LABEL_ID, {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(RADIO_BUTTON_LABEL);
-                    node
-                }),
-                (MENU_BUTTON_ID, {
-                    let mut node = Node::new(Role::Button);
-                    node.push_child(MENU_BUTTON_LABEL_ID);
-                    node
-                }),
-                (MENU_BUTTON_LABEL_ID, {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(MENU_BUTTON_LABEL);
-                    node
-                }),
-                (MENU_ID, {
-                    let mut node = Node::new(Role::Menu);
-                    node.set_children(&[MENU_ITEM_ID, MENU_ITEM_CHECKBOX_ID, MENU_ITEM_RADIO_ID]);
-                    node
-                }),
-                (MENU_ITEM_ID, {
-                    let mut node = Node::new(Role::MenuItem);
-                    node.push_child(MENU_ITEM_LABEL_ID);
-                    node
-                }),
-                (MENU_ITEM_LABEL_ID, {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(MENU_ITEM_LABEL);
-                    node
-                }),
-                (MENU_ITEM_CHECKBOX_ID, {
-                    let mut node = Node::new(Role::MenuItemCheckBox);
-                    node.push_child(MENU_ITEM_CHECKBOX_LABEL_ID);
-                    node
-                }),
-                (MENU_ITEM_CHECKBOX_LABEL_ID, {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(MENU_ITEM_CHECKBOX_LABEL);
-                    node
-                }),
-                (MENU_ITEM_RADIO_ID, {
-                    let mut node = Node::new(Role::MenuItemRadio);
-                    node.push_child(MENU_ITEM_RADIO_LABEL_ID);
-                    node
-                }),
-                (MENU_ITEM_RADIO_LABEL_ID, {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(MENU_ITEM_RADIO_LABEL);
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(ROOT_ID)),
-            tree_id: TreeId::ROOT,
-            focus: ROOT_ID,
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(ROOT_ID, Role::Window, |node| {
+                node.set_children(&[
+                    DEFAULT_BUTTON_ID,
+                    LINK_ID,
+                    CHECKBOX_ID,
+                    RADIO_BUTTON_ID,
+                    MENU_BUTTON_ID,
+                    MENU_ID,
+                ]);
+            });
+            update.set_node(DEFAULT_BUTTON_ID, Role::DefaultButton, |node| {
+                node.push_child(DEFAULT_BUTTON_LABEL_ID);
+            });
+            update.set_node(DEFAULT_BUTTON_LABEL_ID, Role::Image, |node| {
+                node.set_label(DEFAULT_BUTTON_LABEL);
+            });
+            update.set_node(LINK_ID, Role::Link, |node| {
+                node.push_child(LINK_LABEL_CONTAINER_ID);
+            });
+            update.set_node(LINK_LABEL_CONTAINER_ID, Role::GenericContainer, |node| {
+                node.push_child(LINK_LABEL_ID);
+            });
+            update.set_node(LINK_LABEL_ID, Role::Label, |node| {
+                node.set_value(LINK_LABEL);
+            });
+            update.set_node(CHECKBOX_ID, Role::CheckBox, |node| {
+                node.push_child(CHECKBOX_LABEL_ID);
+            });
+            update.set_node(CHECKBOX_LABEL_ID, Role::Label, |node| {
+                node.set_value(CHECKBOX_LABEL);
+            });
+            update.set_node(RADIO_BUTTON_ID, Role::RadioButton, |node| {
+                node.push_child(RADIO_BUTTON_LABEL_ID);
+            });
+            update.set_node(RADIO_BUTTON_LABEL_ID, Role::Label, |node| {
+                node.set_value(RADIO_BUTTON_LABEL);
+            });
+            update.set_node(MENU_BUTTON_ID, Role::Button, |node| {
+                node.push_child(MENU_BUTTON_LABEL_ID);
+            });
+            update.set_node(MENU_BUTTON_LABEL_ID, Role::Label, |node| {
+                node.set_value(MENU_BUTTON_LABEL);
+            });
+            update.set_node(MENU_ID, Role::Menu, |node| {
+                node.set_children(&[MENU_ITEM_ID, MENU_ITEM_CHECKBOX_ID, MENU_ITEM_RADIO_ID]);
+            });
+            update.set_node(MENU_ITEM_ID, Role::MenuItem, |node| {
+                node.push_child(MENU_ITEM_LABEL_ID);
+            });
+            update.set_node(MENU_ITEM_LABEL_ID, Role::Label, |node| {
+                node.set_value(MENU_ITEM_LABEL);
+            });
+            update.set_node(MENU_ITEM_CHECKBOX_ID, Role::MenuItemCheckBox, |node| {
+                node.push_child(MENU_ITEM_CHECKBOX_LABEL_ID);
+            });
+            update.set_node(MENU_ITEM_CHECKBOX_LABEL_ID, Role::Label, |node| {
+                node.set_value(MENU_ITEM_CHECKBOX_LABEL);
+            });
+            update.set_node(MENU_ITEM_RADIO_ID, Role::MenuItemRadio, |node| {
+                node.push_child(MENU_ITEM_RADIO_LABEL_ID);
+            });
+            update.set_node(MENU_ITEM_RADIO_LABEL_ID, Role::Label, |node| {
+                node.set_value(MENU_ITEM_RADIO_LABEL);
+            });
+            update.set_tree(Tree::new(ROOT_ID));
+            update.set_focus(ROOT_ID);
+        });
         assert_eq!(
             Some(DEFAULT_BUTTON_LABEL.into()),
             tree.state()
@@ -1757,57 +1694,47 @@ mod tests {
 
         const PLACEHOLDER: &str = "John Doe";
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (ROOT_ID, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[TEXT_INPUT_ID]);
-                    node
-                }),
-                (TEXT_INPUT_ID, {
-                    let mut node = Node::new(Role::MultilineTextInput);
-                    node.set_bounds(Rect {
-                        x0: 8.0,
-                        y0: 8.0,
-                        x1: 296.0,
-                        y1: 69.5,
-                    });
-                    node.push_child(TEXT_RUN_ID);
-                    node.set_placeholder(PLACEHOLDER);
-                    node.set_text_selection(TextSelection {
-                        anchor: TextPosition {
-                            node: TEXT_RUN_ID,
-                            character_index: 0,
-                        },
-                        focus: TextPosition {
-                            node: TEXT_RUN_ID,
-                            character_index: 0,
-                        },
-                    });
-                    node.add_action(Action::Focus);
-                    node
-                }),
-                (TEXT_RUN_ID, {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 12.0,
-                        y0: 10.0,
-                        x1: 12.0,
-                        y1: 24.0,
-                    });
-                    node.set_value("");
-                    node.set_character_lengths(&[]);
-                    node.set_character_positions(&[]);
-                    node.set_character_widths(&[]);
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(ROOT_ID)),
-            tree_id: TreeId::ROOT,
-            focus: TEXT_INPUT_ID,
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(ROOT_ID, Role::Window, |node| {
+                node.set_children(&[TEXT_INPUT_ID]);
+            });
+            update.set_node(TEXT_INPUT_ID, Role::MultilineTextInput, |node| {
+                node.set_bounds(Rect {
+                    x0: 8.0,
+                    y0: 8.0,
+                    x1: 296.0,
+                    y1: 69.5,
+                });
+                node.push_child(TEXT_RUN_ID);
+                node.set_placeholder(PLACEHOLDER);
+                node.set_text_selection(TextSelection {
+                    anchor: TextPosition {
+                        node: TEXT_RUN_ID,
+                        character_index: 0,
+                    },
+                    focus: TextPosition {
+                        node: TEXT_RUN_ID,
+                        character_index: 0,
+                    },
+                });
+                node.add_action(Action::Focus);
+            });
+            update.set_node(TEXT_RUN_ID, Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 12.0,
+                    y0: 10.0,
+                    x1: 12.0,
+                    y1: 24.0,
+                });
+                node.set_value("");
+                node.set_character_lengths(&[]);
+                node.set_character_positions(&[]);
+                node.set_character_widths(&[]);
+                node.set_text_direction(TextDirection::LeftToRight);
+            });
+            update.set_tree(Tree::new(ROOT_ID));
+            update.set_focus(TEXT_INPUT_ID);
+        });
         assert_eq!(
             Some(PLACEHOLDER),
             tree.state()
@@ -1825,58 +1752,48 @@ mod tests {
 
         const PLACEHOLDER: &str = "John Doe";
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (ROOT_ID, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[TEXT_INPUT_ID]);
-                    node
-                }),
-                (TEXT_INPUT_ID, {
-                    let mut node = Node::new(Role::MultilineTextInput);
-                    node.set_bounds(Rect {
-                        x0: 8.0,
-                        y0: 8.0,
-                        x1: 296.0,
-                        y1: 69.5,
-                    });
-                    node.push_child(TEXT_RUN_ID);
-                    node.set_placeholder(PLACEHOLDER);
-                    node.set_text_selection(TextSelection {
-                        anchor: TextPosition {
-                            node: TEXT_RUN_ID,
-                            character_index: 1,
-                        },
-                        focus: TextPosition {
-                            node: TEXT_RUN_ID,
-                            character_index: 1,
-                        },
-                    });
-                    node.add_action(Action::Focus);
-                    node
-                }),
-                (TEXT_RUN_ID, {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 12.0,
-                        y0: 10.0,
-                        x1: 20.0,
-                        y1: 24.0,
-                    });
-                    node.set_value("A");
-                    node.set_character_lengths(&[1]);
-                    node.set_character_positions(&[0.0]);
-                    node.set_character_widths(&[8.0]);
-                    node.set_word_starts(&[0]);
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(ROOT_ID)),
-            tree_id: TreeId::ROOT,
-            focus: TEXT_INPUT_ID,
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(ROOT_ID, Role::Window, |node| {
+                node.set_children(&[TEXT_INPUT_ID]);
+            });
+            update.set_node(TEXT_INPUT_ID, Role::MultilineTextInput, |node| {
+                node.set_bounds(Rect {
+                    x0: 8.0,
+                    y0: 8.0,
+                    x1: 296.0,
+                    y1: 69.5,
+                });
+                node.push_child(TEXT_RUN_ID);
+                node.set_placeholder(PLACEHOLDER);
+                node.set_text_selection(TextSelection {
+                    anchor: TextPosition {
+                        node: TEXT_RUN_ID,
+                        character_index: 1,
+                    },
+                    focus: TextPosition {
+                        node: TEXT_RUN_ID,
+                        character_index: 1,
+                    },
+                });
+                node.add_action(Action::Focus);
+            });
+            update.set_node(TEXT_RUN_ID, Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 12.0,
+                    y0: 10.0,
+                    x1: 20.0,
+                    y1: 24.0,
+                });
+                node.set_value("A");
+                node.set_character_lengths(&[1]);
+                node.set_character_positions(&[0.0]);
+                node.set_character_widths(&[8.0]);
+                node.set_word_starts(&[0]);
+                node.set_text_direction(TextDirection::LeftToRight);
+            });
+            update.set_tree(Tree::new(ROOT_ID));
+            update.set_focus(TEXT_INPUT_ID);
+        });
         assert_eq!(
             None,
             tree.state()
@@ -1892,30 +1809,20 @@ mod tests {
         const CONTAINER_ID: NodeId = NodeId(1);
         const LEAF_ID: NodeId = NodeId(2);
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (ROOT_ID, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[CONTAINER_ID]);
-                    node
-                }),
-                (CONTAINER_ID, {
-                    let mut node = Node::new(Role::GenericContainer);
-                    node.set_hidden();
-                    node.push_child(LEAF_ID);
-                    node
-                }),
-                (LEAF_ID, {
-                    let mut node = Node::new(Role::Button);
-                    node.set_label("OK");
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(ROOT_ID)),
-            tree_id: TreeId::ROOT,
-            focus: ROOT_ID,
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(ROOT_ID, Role::Window, |node| {
+                node.set_children(&[CONTAINER_ID]);
+            });
+            update.set_node(CONTAINER_ID, Role::GenericContainer, |node| {
+                node.set_hidden();
+                node.push_child(LEAF_ID);
+            });
+            update.set_node(LEAF_ID, Role::Button, |node| {
+                node.set_label("OK");
+            });
+            update.set_tree(Tree::new(ROOT_ID));
+            update.set_focus(ROOT_ID);
+        });
         assert!(tree.state().node_by_id(nid(LEAF_ID)).unwrap().is_hidden());
     }
 
@@ -1976,20 +1883,14 @@ mod tests {
         const ROOT_ID: NodeId = NodeId(0);
         const BUTTON_ID: NodeId = NodeId(1);
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (ROOT_ID, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[BUTTON_ID]);
-                    node
-                }),
-                (BUTTON_ID, Node::new(Role::Button)),
-            ],
-            tree: Some(Tree::new(ROOT_ID)),
-            tree_id: TreeId::ROOT,
-            focus: BUTTON_ID,
-        };
-        let tree = crate::Tree::new(update, true);
+        let tree = crate::Tree::new(true, |update| {
+            update.set_node(ROOT_ID, Role::Window, |node| {
+                node.set_children(&[BUTTON_ID]);
+            });
+            update.set_node(BUTTON_ID, Role::Button, |_| ());
+            update.set_tree(Tree::new(ROOT_ID));
+            update.set_focus(BUTTON_ID);
+        });
         assert!(
             tree.state()
                 .node_by_id(nid(BUTTON_ID))
@@ -2003,20 +1904,14 @@ mod tests {
         const ROOT_ID: NodeId = NodeId(0);
         const BUTTON_ID: NodeId = NodeId(1);
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (ROOT_ID, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[BUTTON_ID]);
-                    node
-                }),
-                (BUTTON_ID, Node::new(Role::Button)),
-            ],
-            tree: Some(Tree::new(ROOT_ID)),
-            tree_id: TreeId::ROOT,
-            focus: ROOT_ID,
-        };
-        let tree = crate::Tree::new(update, true);
+        let tree = crate::Tree::new(true, |update| {
+            update.set_node(ROOT_ID, Role::Window, |node| {
+                node.set_children(&[BUTTON_ID]);
+            });
+            update.set_node(BUTTON_ID, Role::Button, |_| ());
+            update.set_tree(Tree::new(ROOT_ID));
+            update.set_focus(ROOT_ID);
+        });
         assert!(
             !tree
                 .state()
@@ -2032,26 +1927,18 @@ mod tests {
         const LISTBOX_ID: NodeId = NodeId(1);
         const ITEM_ID: NodeId = NodeId(2);
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (ROOT_ID, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[LISTBOX_ID]);
-                    node
-                }),
-                (LISTBOX_ID, {
-                    let mut node = Node::new(Role::ListBox);
-                    node.set_children(&[ITEM_ID]);
-                    node.set_active_descendant(ITEM_ID);
-                    node
-                }),
-                (ITEM_ID, Node::new(Role::ListBoxOption)),
-            ],
-            tree: Some(Tree::new(ROOT_ID)),
-            tree_id: TreeId::ROOT,
-            focus: LISTBOX_ID,
-        };
-        let tree = crate::Tree::new(update, true);
+        let tree = crate::Tree::new(true, |update| {
+            update.set_node(ROOT_ID, Role::Window, |node| {
+                node.set_children(&[LISTBOX_ID]);
+            });
+            update.set_node(LISTBOX_ID, Role::ListBox, |node| {
+                node.set_children(&[ITEM_ID]);
+                node.set_active_descendant(ITEM_ID);
+            });
+            update.set_node(ITEM_ID, Role::ListBoxOption, |_| ());
+            update.set_tree(Tree::new(ROOT_ID));
+            update.set_focus(LISTBOX_ID);
+        });
         assert!(tree.state().node_by_id(nid(ITEM_ID)).unwrap().is_focused());
     }
 
@@ -2061,26 +1948,18 @@ mod tests {
         const LISTBOX_ID: NodeId = NodeId(1);
         const ITEM_ID: NodeId = NodeId(2);
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (ROOT_ID, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[LISTBOX_ID]);
-                    node
-                }),
-                (LISTBOX_ID, {
-                    let mut node = Node::new(Role::ListBox);
-                    node.set_children(&[ITEM_ID]);
-                    node.set_active_descendant(ITEM_ID);
-                    node
-                }),
-                (ITEM_ID, Node::new(Role::ListBoxOption)),
-            ],
-            tree: Some(Tree::new(ROOT_ID)),
-            tree_id: TreeId::ROOT,
-            focus: LISTBOX_ID,
-        };
-        let tree = crate::Tree::new(update, true);
+        let tree = crate::Tree::new(true, |update| {
+            update.set_node(ROOT_ID, Role::Window, |node| {
+                node.set_children(&[LISTBOX_ID]);
+            });
+            update.set_node(LISTBOX_ID, Role::ListBox, |node| {
+                node.set_children(&[ITEM_ID]);
+                node.set_active_descendant(ITEM_ID);
+            });
+            update.set_node(ITEM_ID, Role::ListBoxOption, |_| ());
+            update.set_tree(Tree::new(ROOT_ID));
+            update.set_focus(LISTBOX_ID);
+        });
         assert!(
             !tree
                 .state()

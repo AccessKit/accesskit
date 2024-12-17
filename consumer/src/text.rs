@@ -996,32 +996,26 @@ macro_rules! inherited_properties {
         }
         $(#[cfg(test)]
         mod $getter {
-            use accesskit::{Node, NodeId, Role, Tree, TreeId, TreeUpdate};
-            use alloc::vec;
+            use accesskit::{NodeId, Role, Tree, TreeUpdate};
+
             use super::RangePropertyValue;
             use crate::tests::nid;
             #[test]
             fn directly_set() {
-                let update = TreeUpdate {
-                    nodes: vec![
-                        (NodeId(0), {
-                            let mut node = Node::new(Role::TextInput);
+                let tree = crate::Tree::new(false, |update| {
+update.set_node(NodeId(0), Role::TextInput, |node| {
+
                             node.set_children(&[NodeId(1)]);
-                            node
-                        }),
-                        (NodeId(1), {
-                            let mut node = Node::new(Role::TextRun);
+});
+update.set_node(NodeId(1), Role::TextRun, |node| {
+
                             node.set_value("text");
                             node.set_character_lengths(&[1, 1, 1, 1]);
                             node.$setter($test_value_1);
-                            node
-                        }),
-                    ],
-                    tree: Some(Tree::new(NodeId(0))),
-                    tree_id: TreeId::ROOT,
-                    focus: NodeId(0),
-                };
-                let tree = crate::Tree::new(update, false);
+});
+update.set_tree(Tree::new(NodeId(0)));
+update.set_focus(NodeId(0));
+});
                 let state = tree.state();
                 let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let pos = node.document_start();
@@ -1031,26 +1025,20 @@ macro_rules! inherited_properties {
             }
             #[test]
             fn set_on_parent() {
-                let update = TreeUpdate {
-                    nodes: vec![
-                        (NodeId(0), {
-                            let mut node = Node::new(Role::TextInput);
+                let tree = crate::Tree::new(false, |update| {
+update.set_node(NodeId(0), Role::TextInput, |node| {
+
                             node.set_children(&[NodeId(1)]);
                             node.$setter($test_value_1);
-                            node
-                        }),
-                        (NodeId(1), {
-                            let mut node = Node::new(Role::TextRun);
+});
+update.set_node(NodeId(1), Role::TextRun, |node| {
+
                             node.set_value("text");
                             node.set_character_lengths(&[1, 1, 1, 1]);
-                            node
-                        }),
-                    ],
-                    tree: Some(Tree::new(NodeId(0))),
-                    tree_id: TreeId::ROOT,
-                    focus: NodeId(0),
-                };
-                let tree = crate::Tree::new(update, false);
+});
+update.set_tree(Tree::new(NodeId(0)));
+update.set_focus(NodeId(0));
+});
                 let state = tree.state();
                 let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let pos = node.document_start();
@@ -1060,27 +1048,21 @@ macro_rules! inherited_properties {
             }
             #[test]
             fn only_child_overrides_parent() {
-                let update = TreeUpdate {
-                    nodes: vec![
-                        (NodeId(0), {
-                            let mut node = Node::new(Role::TextInput);
+                let tree = crate::Tree::new(false, |update| {
+update.set_node(NodeId(0), Role::TextInput, |node| {
+
                             node.set_children(&[NodeId(1)]);
                             node.$setter($test_value_1);
-                            node
-                        }),
-                        (NodeId(1), {
-                            let mut node = Node::new(Role::TextRun);
+});
+update.set_node(NodeId(1), Role::TextRun, |node| {
+
                             node.set_value("text");
                             node.set_character_lengths(&[1, 1, 1, 1]);
                             node.$setter($test_value_2);
-                            node
-                        }),
-                    ],
-                    tree: Some(Tree::new(NodeId(0))),
-                    tree_id: TreeId::ROOT,
-                    focus: NodeId(0),
-                };
-                let tree = crate::Tree::new(update, false);
+});
+update.set_tree(Tree::new(NodeId(0)));
+update.set_focus(NodeId(0));
+});
                 let state = tree.state();
                 let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 assert_eq!(node.$getter(), Some($test_value_1));
@@ -1091,25 +1073,19 @@ macro_rules! inherited_properties {
             }
             #[test]
             fn unset() {
-                let update = TreeUpdate {
-                    nodes: vec![
-                        (NodeId(0), {
-                            let mut node = Node::new(Role::TextInput);
+                let tree = crate::Tree::new(false, |update| {
+update.set_node(NodeId(0), Role::TextInput, |node| {
+
                             node.set_children(&[NodeId(1)]);
-                            node
-                        }),
-                        (NodeId(1), {
-                            let mut node = Node::new(Role::TextRun);
+});
+update.set_node(NodeId(1), Role::TextRun, |node| {
+
                             node.set_value("text");
                             node.set_character_lengths(&[1, 1, 1, 1]);
-                            node
-                        }),
-                    ],
-                    tree: Some(Tree::new(NodeId(0))),
-                    tree_id: TreeId::ROOT,
-                    focus: NodeId(0),
-                };
-                let tree = crate::Tree::new(update, false);
+});
+update.set_tree(Tree::new(NodeId(0)));
+update.set_focus(NodeId(0));
+});
                 let state = tree.state();
                 let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let pos = node.document_start();
@@ -1119,32 +1095,25 @@ macro_rules! inherited_properties {
             }
             #[test]
             fn mixed_some_and_none() {
-                let update = TreeUpdate {
-                    nodes: vec![
-                        (NodeId(0), {
-                            let mut node = Node::new(Role::TextInput);
+                let tree = crate::Tree::new(false, |update| {
+update.set_node(NodeId(0), Role::TextInput, |node| {
+
                             node.set_children(&[NodeId(1), NodeId(2)]);
-                            node
-                        }),
-                        (NodeId(1), {
-                            let mut node = Node::new(Role::TextRun);
+});
+update.set_node(NodeId(1), Role::TextRun, |node| {
+
                             node.set_value("text 1\n");
                             node.set_character_lengths(&[1, 1, 1, 1, 1, 1, 1]);
                             node.$setter($test_value_1);
-                            node
-                        }),
-                        (NodeId(2), {
-                            let mut node = Node::new(Role::TextRun);
+});
+update.set_node(NodeId(2), Role::TextRun, |node| {
+
                             node.set_value("text 2");
                             node.set_character_lengths(&[1, 1, 1, 1, 1, 1]);
-                            node
-                        }),
-                    ],
-                    tree: Some(Tree::new(NodeId(0))),
-                    tree_id: TreeId::ROOT,
-                    focus: NodeId(0),
-                };
-                let tree = crate::Tree::new(update, false);
+});
+update.set_tree(Tree::new(NodeId(0)));
+update.set_focus(NodeId(0));
+});
                 let state = tree.state();
                 let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let range = node.document_range();
@@ -1152,33 +1121,26 @@ macro_rules! inherited_properties {
             }
             #[test]
             fn mixed_one_child_overrides_parent() {
-                let update = TreeUpdate {
-                    nodes: vec![
-                        (NodeId(0), {
-                            let mut node = Node::new(Role::TextInput);
+                let tree = crate::Tree::new(false, |update| {
+update.set_node(NodeId(0), Role::TextInput, |node| {
+
                             node.set_children(&[NodeId(1), NodeId(2)]);
                             node.$setter($test_value_1);
-                            node
-                        }),
-                        (NodeId(1), {
-                            let mut node = Node::new(Role::TextRun);
+});
+update.set_node(NodeId(1), Role::TextRun, |node| {
+
                             node.set_value("text 1\n");
                             node.set_character_lengths(&[1, 1, 1, 1, 1, 1, 1]);
                             node.$setter($test_value_2);
-                            node
-                        }),
-                        (NodeId(2), {
-                            let mut node = Node::new(Role::TextRun);
+});
+update.set_node(NodeId(2), Role::TextRun, |node| {
+
                             node.set_value("text 2");
                             node.set_character_lengths(&[1, 1, 1, 1, 1, 1]);
-                            node
-                        }),
-                    ],
-                    tree: Some(Tree::new(NodeId(0))),
-                    tree_id: TreeId::ROOT,
-                    focus: NodeId(0),
-                };
-                let tree = crate::Tree::new(update, false);
+});
+update.set_tree(Tree::new(NodeId(0)));
+update.set_focus(NodeId(0));
+});
                 let state = tree.state();
                 let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 assert_eq!(node.$getter(), Some($test_value_1));
@@ -1231,32 +1193,26 @@ macro_rules! inherited_flags {
         }
         $(#[cfg(test)]
         mod $getter {
-            use accesskit::{Node, NodeId, Role, Tree, TreeId, TreeUpdate};
-            use alloc::vec;
+            use accesskit::{NodeId, Role, Tree, TreeUpdate};
+
             use super::RangePropertyValue;
             use crate::tests::nid;
             #[test]
             fn directly_set() {
-                let update = TreeUpdate {
-                    nodes: vec![
-                        (NodeId(0), {
-                            let mut node = Node::new(Role::TextInput);
+                let tree = crate::Tree::new(false, |update| {
+update.set_node(NodeId(0), Role::TextInput, |node| {
+
                             node.set_children(&[NodeId(1)]);
-                            node
-                        }),
-                        (NodeId(1), {
-                            let mut node = Node::new(Role::TextRun);
+});
+update.set_node(NodeId(1), Role::TextRun, |node| {
+
                             node.set_value("text");
                             node.set_character_lengths(&[1, 1, 1, 1]);
                             node.$setter();
-                            node
-                        }),
-                    ],
-                    tree: Some(Tree::new(NodeId(0))),
-                    tree_id: TreeId::ROOT,
-                    focus: NodeId(0),
-                };
-                let tree = crate::Tree::new(update, false);
+});
+update.set_tree(Tree::new(NodeId(0)));
+update.set_focus(NodeId(0));
+});
                 let state = tree.state();
                 let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let pos = node.document_start();
@@ -1266,26 +1222,20 @@ macro_rules! inherited_flags {
             }
             #[test]
             fn set_on_parent() {
-                let update = TreeUpdate {
-                    nodes: vec![
-                        (NodeId(0), {
-                            let mut node = Node::new(Role::TextInput);
+                let tree = crate::Tree::new(false, |update| {
+update.set_node(NodeId(0), Role::TextInput, |node| {
+
                             node.set_children(&[NodeId(1)]);
                             node.$setter();
-                            node
-                        }),
-                        (NodeId(1), {
-                            let mut node = Node::new(Role::TextRun);
+});
+update.set_node(NodeId(1), Role::TextRun, |node| {
+
                             node.set_value("text");
                             node.set_character_lengths(&[1, 1, 1, 1]);
-                            node
-                        }),
-                    ],
-                    tree: Some(Tree::new(NodeId(0))),
-                    tree_id: TreeId::ROOT,
-                    focus: NodeId(0),
-                };
-                let tree = crate::Tree::new(update, false);
+});
+update.set_tree(Tree::new(NodeId(0)));
+update.set_focus(NodeId(0));
+});
                 let state = tree.state();
                 let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let pos = node.document_start();
@@ -1295,25 +1245,19 @@ macro_rules! inherited_flags {
             }
             #[test]
             fn unset() {
-                let update = TreeUpdate {
-                    nodes: vec![
-                        (NodeId(0), {
-                            let mut node = Node::new(Role::TextInput);
+                let tree = crate::Tree::new(false, |update| {
+update.set_node(NodeId(0), Role::TextInput, |node| {
+
                             node.set_children(&[NodeId(1)]);
-                            node
-                        }),
-                        (NodeId(1), {
-                            let mut node = Node::new(Role::TextRun);
+});
+update.set_node(NodeId(1), Role::TextRun, |node| {
+
                             node.set_value("text");
                             node.set_character_lengths(&[1, 1, 1, 1]);
-                            node
-                        }),
-                    ],
-                    tree: Some(Tree::new(NodeId(0))),
-                    tree_id: TreeId::ROOT,
-                    focus: NodeId(0),
-                };
-                let tree = crate::Tree::new(update, false);
+});
+update.set_tree(Tree::new(NodeId(0)));
+update.set_focus(NodeId(0));
+});
                 let state = tree.state();
                 let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let pos = node.document_start();
@@ -1323,32 +1267,25 @@ macro_rules! inherited_flags {
             }
             #[test]
             fn mixed() {
-                let update = TreeUpdate {
-                    nodes: vec![
-                        (NodeId(0), {
-                            let mut node = Node::new(Role::TextInput);
+                let tree = crate::Tree::new(false, |update| {
+update.set_node(NodeId(0), Role::TextInput, |node| {
+
                             node.set_children(&[NodeId(1), NodeId(2)]);
-                            node
-                        }),
-                        (NodeId(1), {
-                            let mut node = Node::new(Role::TextRun);
+});
+update.set_node(NodeId(1), Role::TextRun, |node| {
+
                             node.set_value("text 1\n");
                             node.set_character_lengths(&[1, 1, 1, 1, 1, 1, 1]);
                             node.$setter();
-                            node
-                        }),
-                        (NodeId(2), {
-                            let mut node = Node::new(Role::TextRun);
+});
+update.set_node(NodeId(2), Role::TextRun, |node| {
+
                             node.set_value("text 2");
                             node.set_character_lengths(&[1, 1, 1, 1, 1, 1]);
-                            node
-                        }),
-                    ],
-                    tree: Some(Tree::new(NodeId(0))),
-                    tree_id: TreeId::ROOT,
-                    focus: NodeId(0),
-                };
-                let tree = crate::Tree::new(update, false);
+});
+update.set_tree(Tree::new(NodeId(0)));
+update.set_focus(NodeId(0));
+});
                 let state = tree.state();
                 let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let range = node.document_range();
@@ -1695,222 +1632,197 @@ mod tests {
     // This was originally based on an actual tree produced by egui but
     // has since been heavily modified by hand to cover various test cases.
     fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {
-        use accesskit::{Action, Affine, Node, Role, TextDirection, Tree, TreeId, TreeUpdate};
+        use accesskit::{Action, Affine, Role, TextDirection, Tree, TreeUpdate};
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_transform(Affine::scale(1.5));
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), {
-                    let mut node = Node::new(Role::MultilineTextInput);
-                    node.set_bounds(Rect {
-                        x0: 8.0,
-                        y0: 31.666664123535156,
-                        x1: 296.0,
-                        y1: 123.66666412353516,
-                    });
-                    node.set_children(&[
-                        NodeId(2),
-                        NodeId(3),
-                        NodeId(4),
-                        NodeId(5),
-                        NodeId(6),
-                        NodeId(7),
-                        NodeId(8),
-                        NodeId(9),
-                    ]);
-                    node.add_action(Action::Focus);
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    if let Some(selection) = selection {
-                        node.set_text_selection(selection);
-                    }
-                    node
-                }),
-                (NodeId(2), {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 12.0,
-                        y0: 33.666664123535156,
-                        x1: 290.9189147949219,
-                        y1: 48.33333206176758,
-                    });
-                    // The non-breaking space in the following text
-                    // is in an arbitrary spot; its only purpose
-                    // is to test conversion between UTF-8 and UTF-16
-                    // indices.
-                    node.set_value("This paragraph is\u{a0}long enough to wrap ");
-                    node.set_character_lengths(&[
-                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1,
-                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                    ]);
-                    node.set_character_positions(&[
-                        0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
-                        58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
-                        117.333336, 124.666664, 132.0, 139.33333, 146.66667, 154.0, 161.33333,
-                        168.66667, 176.0, 183.33333, 190.66667, 198.0, 205.33333, 212.66667, 220.0,
-                        227.33333, 234.66667, 242.0, 249.33333, 256.66666, 264.0, 271.33334,
-                    ]);
-                    node.set_character_widths(&[
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                    ]);
-                    node.set_word_starts(&[5, 15, 18, 23, 30, 33]);
-                    node
-                }),
-                (NodeId(3), {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 12.0,
-                        y0: 48.33333206176758,
-                        x1: 34.252257,
-                        y1: 63.0,
-                    });
-                    node.set_value("to ");
-                    node.set_character_lengths(&[1, 1, 1]);
-                    node.set_character_positions(&[0.0, 7.3333435, 14.666687]);
-                    node.set_character_widths(&[7.58557, 7.58557, 7.58557]);
-                    node.set_word_starts(&[0]);
-                    node.set_next_on_line(NodeId(4));
-                    node
-                }),
-                (NodeId(4), {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 34.0,
-                        y0: 48.33333206176758,
-                        x1: 85.58557,
-                        y1: 63.0,
-                    });
-                    node.set_value("another");
-                    node.set_character_lengths(&[1, 1, 1, 1, 1, 1, 1]);
-                    node.set_character_positions(&[
-                        0.0, 7.333344, 14.666687, 22.0, 29.333344, 36.666687, 44.0,
-                    ]);
-                    node.set_character_widths(&[
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                    ]);
-                    node.set_word_starts(&[0]);
-                    node.set_underline(TEST_TEXT_DECORATION_1);
-                    node.set_previous_on_line(NodeId(3));
-                    node.set_next_on_line(NodeId(5));
-                    node
-                }),
-                (NodeId(5), {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 85.33334,
-                        y0: 48.33333206176758,
-                        x1: 129.5855712890625,
-                        y1: 63.0,
-                    });
-                    node.set_value(" line.\n");
-                    node.set_character_lengths(&[1, 1, 1, 1, 1, 1, 1]);
-                    node.set_character_positions(&[
-                        0.0, 7.333344, 14.666687, 22.0, 29.333344, 36.666687, 44.25226,
-                    ]);
-                    node.set_character_widths(&[
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 0.0,
-                    ]);
-                    node.set_word_starts(&[1]);
-                    node.set_previous_on_line(NodeId(4));
-                    node
-                }),
-                (NodeId(6), {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 12.0,
-                        y0: 63.0,
-                        x1: 144.25222778320313,
-                        y1: 77.66666412353516,
-                    });
-                    node.set_value("Another paragraph.\n");
-                    node.set_character_lengths(&[
-                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                    ]);
-                    node.set_character_positions(&[
-                        0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
-                        58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
-                        117.333336, 124.666664, 132.25223,
-                    ]);
-                    node.set_character_widths(&[
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 0.0,
-                    ]);
-                    node.set_word_starts(&[8]);
-                    node
-                }),
-                (NodeId(7), {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 12.0,
-                        y0: 77.66666412353516,
-                        x1: 12.0,
-                        y1: 92.33332824707031,
-                    });
-                    node.set_value("\n");
-                    node.set_character_lengths(&[1]);
-                    node.set_character_positions(&[0.0]);
-                    node.set_character_widths(&[0.0]);
-                    node
-                }),
-                (NodeId(8), {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 12.0,
-                        y0: 92.33332824707031,
-                        x1: 158.9188995361328,
-                        y1: 107.0,
-                    });
-                    // Use an arbitrary emoji consisting of two code points
-                    // (combining characters), each of which encodes to two
-                    // UTF-16 code units, to fully test conversion between
-                    // UTF-8, UTF-16, and AccessKit character indices.
-                    node.set_value("Last non-blank line\u{1f44d}\u{1f3fb}\n");
-                    node.set_character_lengths(&[
-                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 8, 1,
-                    ]);
-                    node.set_character_positions(&[
-                        0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
-                        58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
-                        117.333336, 124.666664, 132.0, 139.33333, 146.9189,
-                    ]);
-                    node.set_character_widths(&[
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 0.0,
-                    ]);
-                    node.set_word_starts(&[5, 9, 15]);
-                    node
-                }),
-                (NodeId(9), {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 12.0,
-                        y0: 107.0,
-                        x1: 12.0,
-                        y1: 121.66666412353516,
-                    });
-                    node.set_value("");
-                    node.set_character_lengths(&[]);
-                    node.set_character_positions(&[]);
-                    node.set_character_widths(&[]);
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            tree_id: TreeId::ROOT,
-            focus: NodeId(1),
-        };
-
-        crate::Tree::new(update, true)
+        crate::Tree::new(true, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_transform(Affine::scale(1.5));
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(1), Role::MultilineTextInput, |node| {
+                node.set_bounds(Rect {
+                    x0: 8.0,
+                    y0: 31.666664123535156,
+                    x1: 296.0,
+                    y1: 123.66666412353516,
+                });
+                node.set_children(&[
+                    NodeId(2),
+                    NodeId(3),
+                    NodeId(4),
+                    NodeId(5),
+                    NodeId(6),
+                    NodeId(7),
+                    NodeId(8),
+                    NodeId(9),
+                ]);
+                node.add_action(Action::Focus);
+                node.set_text_direction(TextDirection::LeftToRight);
+                if let Some(selection) = selection {
+                    node.set_text_selection(selection);
+                }
+            });
+            update.set_node(NodeId(2), Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 12.0,
+                    y0: 33.666664123535156,
+                    x1: 290.9189147949219,
+                    y1: 48.33333206176758,
+                });
+                // The non-breaking space in the following text
+                // is in an arbitrary spot; its only purpose
+                // is to test conversion between UTF-8 and UTF-16
+                // indices.
+                node.set_value("This paragraph is\u{a0}long enough to wrap ");
+                node.set_character_lengths(&[
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                ]);
+                node.set_character_positions(&[
+                    0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
+                    58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
+                    117.333336, 124.666664, 132.0, 139.33333, 146.66667, 154.0, 161.33333,
+                    168.66667, 176.0, 183.33333, 190.66667, 198.0, 205.33333, 212.66667, 220.0,
+                    227.33333, 234.66667, 242.0, 249.33333, 256.66666, 264.0, 271.33334,
+                ]);
+                node.set_character_widths(&[
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                ]);
+                node.set_word_starts(&[5, 15, 18, 23, 30, 33]);
+            });
+            update.set_node(NodeId(3), Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 12.0,
+                    y0: 48.33333206176758,
+                    x1: 34.252257,
+                    y1: 63.0,
+                });
+                node.set_value("to ");
+                node.set_character_lengths(&[1, 1, 1]);
+                node.set_character_positions(&[0.0, 7.3333435, 14.666687]);
+                node.set_character_widths(&[7.58557, 7.58557, 7.58557]);
+                node.set_word_starts(&[0]);
+                node.set_next_on_line(NodeId(4));
+            });
+            update.set_node(NodeId(4), Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 34.0,
+                    y0: 48.33333206176758,
+                    x1: 85.58557,
+                    y1: 63.0,
+                });
+                node.set_value("another");
+                node.set_character_lengths(&[1, 1, 1, 1, 1, 1, 1]);
+                node.set_character_positions(&[
+                    0.0, 7.333344, 14.666687, 22.0, 29.333344, 36.666687, 44.0,
+                ]);
+                node.set_character_widths(&[
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                ]);
+                node.set_word_starts(&[0]);
+                node.set_underline(TEST_TEXT_DECORATION_1);
+                node.set_previous_on_line(NodeId(3));
+                node.set_next_on_line(NodeId(5));
+            });
+            update.set_node(NodeId(5), Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 85.33334,
+                    y0: 48.33333206176758,
+                    x1: 129.5855712890625,
+                    y1: 63.0,
+                });
+                node.set_value(" line.\n");
+                node.set_character_lengths(&[1, 1, 1, 1, 1, 1, 1]);
+                node.set_character_positions(&[
+                    0.0, 7.333344, 14.666687, 22.0, 29.333344, 36.666687, 44.25226,
+                ]);
+                node.set_character_widths(&[
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 0.0,
+                ]);
+                node.set_word_starts(&[1]);
+                node.set_previous_on_line(NodeId(4));
+            });
+            update.set_node(NodeId(6), Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 12.0,
+                    y0: 63.0,
+                    x1: 144.25222778320313,
+                    y1: 77.66666412353516,
+                });
+                node.set_value("Another paragraph.\n");
+                node.set_character_lengths(&[
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                ]);
+                node.set_character_positions(&[
+                    0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
+                    58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
+                    117.333336, 124.666664, 132.25223,
+                ]);
+                node.set_character_widths(&[
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 0.0,
+                ]);
+                node.set_word_starts(&[8]);
+            });
+            update.set_node(NodeId(7), Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 12.0,
+                    y0: 77.66666412353516,
+                    x1: 12.0,
+                    y1: 92.33332824707031,
+                });
+                node.set_value("\n");
+                node.set_character_lengths(&[1]);
+                node.set_character_positions(&[0.0]);
+                node.set_character_widths(&[0.0]);
+            });
+            update.set_node(NodeId(8), Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 12.0,
+                    y0: 92.33332824707031,
+                    x1: 158.9188995361328,
+                    y1: 107.0,
+                });
+                // Use an arbitrary emoji consisting of two code points
+                // (combining characters), each of which encodes to two
+                // UTF-16 code units, to fully test conversion between
+                // UTF-8, UTF-16, and AccessKit character indices.
+                node.set_value("Last non-blank line\u{1f44d}\u{1f3fb}\n");
+                node.set_character_lengths(&[
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 8, 1,
+                ]);
+                node.set_character_positions(&[
+                    0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
+                    58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
+                    117.333336, 124.666664, 132.0, 139.33333, 146.9189,
+                ]);
+                node.set_character_widths(&[
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 7.58557, 7.58557, 0.0,
+                ]);
+                node.set_word_starts(&[5, 9, 15]);
+            });
+            update.set_node(NodeId(9), Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 12.0,
+                    y0: 107.0,
+                    x1: 12.0,
+                    y1: 121.66666412353516,
+                });
+                node.set_value("");
+                node.set_character_lengths(&[]);
+                node.set_character_positions(&[]);
+                node.set_character_widths(&[]);
+            });
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(1));
+        })
     }
 
     fn multiline_end_selection() -> TextSelection {

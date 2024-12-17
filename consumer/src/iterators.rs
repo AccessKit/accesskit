@@ -598,8 +598,8 @@ mod tests {
         tests::*,
         tree::{ChangeHandler, TreeIndex},
     };
-    use accesskit::{Node, NodeId as LocalNodeId, Role, Tree, TreeId, TreeUpdate, Uuid};
-    use alloc::{vec, vec::Vec};
+    use accesskit::{NodeId as LocalNodeId, Role, Tree, TreeId, TreeUpdate, Uuid};
+    use alloc::vec::Vec;
 
     #[test]
     fn following_siblings() {
@@ -980,24 +980,16 @@ mod tests {
     fn graft_node_without_subtree_has_no_filtered_children() {
         let subtree_id = TreeId(Uuid::from_u128(1));
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (LocalNodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[LocalNodeId(1)]);
-                    node
-                }),
-                (LocalNodeId(1), {
-                    let mut node = Node::new(Role::GenericContainer);
-                    node.set_tree_id(subtree_id);
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(LocalNodeId(0))),
-            tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(LocalNodeId(0), Role::Window, |node| {
+                node.set_children(&[LocalNodeId(1)]);
+            });
+            update.set_node(LocalNodeId(1), Role::GenericContainer, |node| {
+                node.set_tree_id(subtree_id);
+            });
+            update.set_tree(Tree::new(LocalNodeId(0)));
+            update.set_focus(LocalNodeId(0));
+        });
 
         let graft_node_id = NodeId::new(LocalNodeId(1), TreeIndex(0));
         let graft_node = tree.state().node_by_id(graft_node_id).unwrap();
@@ -1016,39 +1008,25 @@ mod tests {
 
         let subtree_id = TreeId(Uuid::from_u128(1));
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (LocalNodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[LocalNodeId(1)]);
-                    node
-                }),
-                (LocalNodeId(1), {
-                    let mut node = Node::new(Role::GenericContainer);
-                    node.set_tree_id(subtree_id);
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(LocalNodeId(0))),
-            tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
-        };
-        let mut tree = crate::Tree::new(update, false);
+        let mut tree = crate::Tree::new(false, |update| {
+            update.set_node(LocalNodeId(0), Role::Window, |node| {
+                node.set_children(&[LocalNodeId(1)]);
+            });
+            update.set_node(LocalNodeId(1), Role::GenericContainer, |node| {
+                node.set_tree_id(subtree_id);
+            });
+            update.set_tree(Tree::new(LocalNodeId(0)));
+            update.set_focus(LocalNodeId(0));
+        });
 
-        let subtree_update = TreeUpdate {
-            nodes: vec![
-                (LocalNodeId(0), {
-                    let mut node = Node::new(Role::Document);
-                    node.set_children(&[LocalNodeId(1)]);
-                    node
-                }),
-                (LocalNodeId(1), Node::new(Role::Button)),
-            ],
-            tree: Some(Tree::new(LocalNodeId(0))),
-            tree_id: subtree_id,
-            focus: LocalNodeId(0),
-        };
-        tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
+        tree.update(subtree_id, &mut NoOpHandler, |update| {
+            update.set_node(LocalNodeId(0), Role::Document, |node| {
+                node.set_children(&[LocalNodeId(1)]);
+            });
+            update.set_node(LocalNodeId(1), Role::Button, |_| ());
+            update.set_tree(Tree::new(LocalNodeId(0)));
+            update.set_focus(LocalNodeId(0));
+        });
 
         let root = tree.state().root();
         let filtered_children: Vec<_> = root.filtered_children(common_filter).collect();
