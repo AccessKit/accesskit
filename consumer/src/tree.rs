@@ -3,7 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{Node as NodeData, NodeId, Tree as TreeData, TreeUpdate};
+use accesskit::{Node as NodeData, NodeId, Role, Tree as TreeData, TreeUpdate};
+use alloc::{borrow::ToOwned, vec::Vec};
 use core::fmt;
 use hashbrown::{HashMap, HashSet};
 
@@ -17,13 +18,6 @@ pub struct State {
     is_host_focused: bool,
 }
 
-#[derive(Default)]
-struct InternalChanges {
-    added_node_ids: HashSet<NodeId>,
-    updated_node_ids: HashSet<NodeId>,
-    removed_node_ids: HashSet<NodeId>,
-}
-
 impl State {
     fn validate_global(&self) {
         if !self.nodes.contains_key(&self.data.root) {
@@ -32,133 +26,6 @@ impl State {
         if !self.nodes.contains_key(&self.focus) {
             panic!("Focused ID {:?} is not in the node list", self.focus);
         }
-    }
-
-    fn update(&mut self, update: TreeUpdate, mut changes: Option<&mut InternalChanges>) {
-        let mut unreachable = HashSet::new();
-        let mut seen_child_ids = HashSet::new();
-
-        if let Some(tree) = update.tree {
-            if tree.root != self.data.root {
-                unreachable.insert(self.data.root);
-            }
-            self.data = tree;
-        }
-
-        let root = self.data.root;
-        let mut pending_nodes: HashMap<NodeId, _> = HashMap::new();
-        let mut pending_children = HashMap::new();
-
-        fn add_node(
-            nodes: &mut HashMap<NodeId, NodeState>,
-            changes: &mut Option<&mut InternalChanges>,
-            parent_and_index: Option<ParentAndIndex>,
-            id: NodeId,
-            data: NodeData,
-        ) {
-            let state = NodeState {
-                parent_and_index,
-                data,
-            };
-            nodes.insert(id, state);
-            if let Some(changes) = changes {
-                changes.added_node_ids.insert(id);
-            }
-        }
-
-        for (node_id, node_data) in update.nodes {
-            unreachable.remove(&node_id);
-
-            for (child_index, child_id) in node_data.children().iter().enumerate() {
-                if seen_child_ids.contains(child_id) {
-                    panic!("TreeUpdate includes duplicate child {:?}", child_id);
-                }
-                seen_child_ids.insert(*child_id);
-                unreachable.remove(child_id);
-                let parent_and_index = ParentAndIndex(node_id, child_index);
-                if let Some(child_state) = self.nodes.get_mut(child_id) {
-                    if child_state.parent_and_index != Some(parent_and_index) {
-                        child_state.parent_and_index = Some(parent_and_index);
-                        if let Some(changes) = &mut changes {
-                            changes.updated_node_ids.insert(*child_id);
-                        }
-                    }
-                } else if let Some(child_data) = pending_nodes.remove(child_id) {
-                    add_node(
-                        &mut self.nodes,
-                        &mut changes,
-                        Some(parent_and_index),
-                        *child_id,
-                        child_data,
-                    );
-                } else {
-                    pending_children.insert(*child_id, parent_and_index);
-                }
-            }
-
-            if let Some(node_state) = self.nodes.get_mut(&node_id) {
-                if node_id == root {
-                    node_state.parent_and_index = None;
-                }
-                for child_id in node_state.data.children().iter() {
-                    if !seen_child_ids.contains(child_id) {
-                        unreachable.insert(*child_id);
-                    }
-                }
-                if node_state.data != node_data {
-                    node_state.data.clone_from(&node_data);
-                    if let Some(changes) = &mut changes {
-                        changes.updated_node_ids.insert(node_id);
-                    }
-                }
-            } else if let Some(parent_and_index) = pending_children.remove(&node_id) {
-                add_node(
-                    &mut self.nodes,
-                    &mut changes,
-                    Some(parent_and_index),
-                    node_id,
-                    node_data,
-                );
-            } else if node_id == root {
-                add_node(&mut self.nodes, &mut changes, None, node_id, node_data);
-            } else {
-                pending_nodes.insert(node_id, node_data);
-            }
-        }
-
-        if !pending_nodes.is_empty() {
-            panic!("TreeUpdate includes {} nodes which are neither in the current tree nor a child of another node from the update: {}", pending_nodes.len(), ShortNodeList(&pending_nodes));
-        }
-        if !pending_children.is_empty() {
-            panic!("TreeUpdate's nodes include {} children ids which are neither in the current tree nor the ID of another node from the update: {}", pending_children.len(), ShortNodeList(&pending_children));
-        }
-
-        self.focus = update.focus;
-
-        if !unreachable.is_empty() {
-            fn traverse_unreachable(
-                nodes: &mut HashMap<NodeId, NodeState>,
-                changes: &mut Option<&mut InternalChanges>,
-                seen_child_ids: &HashSet<NodeId>,
-                id: NodeId,
-            ) {
-                if let Some(changes) = changes {
-                    changes.removed_node_ids.insert(id);
-                }
-                let node = nodes.remove(&id).unwrap();
-                for child_id in node.data.children().iter() {
-                    if !seen_child_ids.contains(child_id) {
-                        traverse_unreachable(nodes, changes, seen_child_ids, *child_id);
-                    }
-                }
-            }
-
-            for id in unreachable {
-                traverse_unreachable(&mut self.nodes, &mut changes, &seen_child_ids, id);
-            }
-        }
-
-        self.validate_global();
     }
 
     pub fn has_node(&self, id: NodeId) -> bool {
@@ -210,6 +77,235 @@ impl State {
     }
 }
 
+#[derive(Debug, Default)]
+struct InternalChanges {
+    added_node_ids: HashSet<NodeId>,
+    updated_node_ids: HashSet<NodeId>,
+    removed_node_ids: HashSet<NodeId>,
+}
+
+fn add_node(
+    nodes: &mut HashMap<NodeId, NodeState>,
+    changes: &mut InternalChanges,
+    id: NodeId,
+    parent_and_index: Option<ParentAndIndex>,
+    data: NodeData,
+) {
+    let state = NodeState {
+        parent_and_index,
+        data,
+    };
+    nodes.insert(id, state);
+    changes.added_node_ids.insert(id);
+}
+
+#[derive(Debug, Default)]
+struct UpdateState {
+    changes: InternalChanges,
+    unreachable: HashSet<NodeId>,
+    pending_nodes: HashMap<NodeId, NodeData>,
+    pending_children: HashMap<NodeId, ParentAndIndex>,
+    processing_children: Vec<NodeId>,
+}
+
+impl UpdateState {
+    fn debug_assert_empty(&self) {
+        debug_assert!(self.changes.added_node_ids.is_empty());
+        debug_assert!(self.changes.updated_node_ids.is_empty());
+        debug_assert!(self.changes.removed_node_ids.is_empty());
+        debug_assert!(self.unreachable.is_empty());
+        debug_assert!(self.pending_nodes.is_empty());
+        debug_assert!(self.pending_children.is_empty());
+        debug_assert!(self.processing_children.is_empty());
+    }
+}
+
+pub struct Update<'a> {
+    nodes: &'a mut HashMap<NodeId, NodeState>,
+    prev_state: Option<&'a State>,
+    state: &'a mut UpdateState,
+    new_tree: Option<TreeData>,
+    new_focus: Option<NodeId>,
+}
+
+impl<'a> Update<'a> {
+    fn new(
+        nodes: &'a mut HashMap<NodeId, NodeState>,
+        prev_state: Option<&'a State>,
+        state: &'a mut UpdateState,
+    ) -> Self {
+        state.debug_assert_empty();
+        Self {
+            nodes,
+            prev_state,
+            state,
+            new_tree: None,
+            new_focus: None,
+        }
+    }
+}
+
+impl Update<'_> {
+    fn add_node(&mut self, id: NodeId, parent_and_index: Option<ParentAndIndex>, data: NodeData) {
+        add_node(
+            self.nodes,
+            &mut self.state.changes,
+            id,
+            parent_and_index,
+            data,
+        );
+    }
+
+    fn process_children(&mut self, parent_id: NodeId) {
+        for (child_index, child_id) in self.state.processing_children.drain(..).enumerate() {
+            self.state.unreachable.remove(&child_id);
+            let parent_and_index = ParentAndIndex(parent_id, child_index);
+            if let Some(child_state) = self.nodes.get_mut(&child_id) {
+                if child_state.parent_and_index != Some(parent_and_index) {
+                    child_state.parent_and_index = Some(parent_and_index);
+                    if !self.state.changes.added_node_ids.contains(&child_id) {
+                        self.state.changes.updated_node_ids.insert(child_id);
+                    }
+                }
+            } else if let Some(child_data) = self.state.pending_nodes.remove(&child_id) {
+                add_node(
+                    self.nodes,
+                    &mut self.state.changes,
+                    child_id,
+                    Some(parent_and_index),
+                    child_data,
+                );
+            } else {
+                self.state
+                    .pending_children
+                    .insert(child_id, parent_and_index);
+            }
+        }
+    }
+
+    fn root(&self) -> Option<NodeId> {
+        if let Some(tree) = &self.new_tree {
+            return Some(tree.root);
+        }
+        if let Some(state) = self.prev_state {
+            return Some(state.data.root);
+        }
+        None
+    }
+
+    fn finish(self) -> (Option<TreeData>, Option<NodeId>) {
+        if !self.state.pending_nodes.is_empty() {
+            panic!("TreeUpdate includes {} nodes which are neither in the current tree nor a child of another node from the update: {}", self.state.pending_nodes.len(), ShortNodeList(&self.state.pending_nodes));
+        }
+        if !self.state.pending_children.is_empty() {
+            panic!("TreeUpdate's nodes include {} children ids which are neither in the current tree nor the id of another node from the update: {}", self.state.pending_children.len(), ShortNodeList(&self.state.pending_children));
+        }
+
+        fn traverse_unreachable(
+            nodes: &mut HashMap<NodeId, NodeState>,
+            changes: &mut InternalChanges,
+            id: NodeId,
+        ) {
+            changes.removed_node_ids.insert(id);
+            let node = nodes.remove(&id).unwrap();
+            for child_id in node.data.children().iter() {
+                traverse_unreachable(nodes, changes, *child_id);
+            }
+        }
+
+        for id in self.state.unreachable.drain() {
+            traverse_unreachable(self.nodes, &mut self.state.changes, id);
+        }
+
+        (self.new_tree, self.new_focus)
+    }
+}
+
+impl TreeUpdate for Update<'_> {
+    fn set_node(&mut self, id: NodeId, role: Role, fill: impl FnOnce(&mut NodeData)) {
+        let root = self.root();
+        self.state.unreachable.remove(&id);
+
+        if let Some(node_state) = self.nodes.get_mut(&id) {
+            if root == Some(id) {
+                node_state.parent_and_index = None;
+            }
+            node_state.data.reset(role);
+            fill(&mut node_state.data);
+            if let Some(prev_state) = self.prev_state {
+                if let Some(prev_node_state) = prev_state.nodes.get(&id) {
+                    if *prev_node_state != *node_state {
+                        self.state.changes.updated_node_ids.insert(id);
+                    }
+                    if prev_node_state.data.children() != node_state.data.children() {
+                        for child_id in prev_node_state.data.children() {
+                            if root != Some(*child_id) {
+                                self.state.unreachable.insert(*child_id);
+                            }
+                        }
+                        node_state
+                            .data
+                            .children()
+                            .clone_into(&mut self.state.processing_children);
+                        self.process_children(id);
+                    }
+                    return;
+                }
+            }
+            node_state
+                .data
+                .children()
+                .clone_into(&mut self.state.processing_children);
+            self.process_children(id);
+            return;
+        }
+
+        let mut data = NodeData::new(role);
+        fill(&mut data);
+        data.children()
+            .clone_into(&mut self.state.processing_children);
+        self.process_children(id);
+        if let Some(parent_and_index) = self.state.pending_children.remove(&id) {
+            self.add_node(id, Some(parent_and_index), data);
+            return;
+        }
+        if root == Some(id) {
+            self.add_node(id, None, data);
+            return;
+        }
+        self.state.pending_nodes.insert(id, data);
+    }
+
+    fn set_tree(&mut self, tree: TreeData) {
+        if let Some(prev_state) = self.prev_state {
+            if prev_state.data.root != tree.root {
+                let new_node_state = self.nodes.get(&prev_state.data.root).unwrap();
+                if new_node_state.parent_and_index.is_none() {
+                    self.state.unreachable.insert(prev_state.data.root);
+                }
+            }
+        }
+        if let Some(node_state) = self.nodes.get_mut(&tree.root) {
+            node_state.parent_and_index = None;
+            if let Some(prev_state) = self.prev_state {
+                if let Some(prev_node_state) = prev_state.nodes.get(&tree.root) {
+                    if prev_node_state.parent_and_index.is_some() {
+                        self.state.changes.updated_node_ids.insert(tree.root);
+                    }
+                }
+            }
+        } else if let Some(data) = self.state.pending_nodes.remove(&tree.root) {
+            self.add_node(tree.root, None, data);
+        }
+        self.state.unreachable.remove(&tree.root);
+        self.new_tree = Some(tree);
+    }
+
+    fn set_focus(&mut self, focus: NodeId) {
+        self.new_focus = Some(focus);
+    }
+}
+
 pub trait ChangeHandler {
     fn node_added(&mut self, node: &Node);
     fn node_updated(&mut self, old_node: &Node, new_node: &Node);
@@ -221,47 +317,74 @@ pub trait ChangeHandler {
 pub struct Tree {
     state: State,
     next_state: State,
+    update_state: UpdateState,
 }
 
 impl Tree {
-    pub fn new(mut initial_state: TreeUpdate, is_host_focused: bool) -> Self {
-        let Some(tree) = initial_state.tree.take() else {
-            panic!("Tried to initialize the accessibility tree without a root tree. TreeUpdate::tree must be Some.");
+    pub fn new_optional(is_host_focused: bool, fill: impl FnOnce(&mut Update)) -> Option<Self> {
+        let mut nodes = HashMap::new();
+        let mut update_state = UpdateState::default();
+        let mut update = Update::new(&mut nodes, None, &mut update_state);
+        fill(&mut update);
+        let (tree, focus) = update.finish();
+        update_state.changes.added_node_ids.clear();
+        debug_assert!(update_state.changes.updated_node_ids.is_empty());
+        debug_assert!(update_state.changes.removed_node_ids.is_empty());
+        let tree = tree?;
+        let Some(focus) = focus else {
+            panic!("Tried to initialize the accessibility tree without initial focus.");
         };
-        let mut state = State {
-            nodes: HashMap::new(),
+        let state = State {
+            nodes,
             data: tree,
-            focus: initial_state.focus,
+            focus,
             is_host_focused,
         };
-        state.update(initial_state, None);
-        Self {
+        state.validate_global();
+        Some(Self {
             next_state: state.clone(),
             state,
+            update_state,
+        })
+    }
+
+    pub fn new(is_host_focused: bool, fill: impl FnOnce(&mut Update)) -> Self {
+        let Some(tree) = Self::new_optional(is_host_focused, fill) else {
+            panic!("Tried to initialize the accessibility tree without global tree info.");
+        };
+        tree
+    }
+
+    pub fn update(&mut self, handler: &mut impl ChangeHandler, fill: impl FnOnce(&mut Update)) {
+        let mut update = Update::new(
+            &mut self.next_state.nodes,
+            Some(&self.state),
+            &mut self.update_state,
+        );
+        fill(&mut update);
+        let (tree, focus) = update.finish();
+        if let Some(tree) = tree {
+            self.next_state.data = tree;
         }
+        if let Some(focus) = focus {
+            self.next_state.focus = focus;
+        }
+        self.next_state.validate_global();
+        self.process_changes(handler);
     }
 
-    pub fn update_and_process_changes(
-        &mut self,
-        update: TreeUpdate,
-        handler: &mut impl ChangeHandler,
-    ) {
-        let mut changes = InternalChanges::default();
-        self.next_state.update(update, Some(&mut changes));
-        self.process_changes(changes, handler);
-    }
-
-    pub fn update_host_focus_state_and_process_changes(
+    pub fn update_host_focus_state(
         &mut self,
         is_host_focused: bool,
         handler: &mut impl ChangeHandler,
     ) {
+        self.update_state.debug_assert_empty();
         self.next_state.is_host_focused = is_host_focused;
-        let changes = InternalChanges::default();
-        self.process_changes(changes, handler);
+        self.process_changes(handler);
     }
 
-    fn process_changes(&mut self, changes: InternalChanges, handler: &mut impl ChangeHandler) {
+    fn process_changes(&mut self, handler: &mut impl ChangeHandler) {
+        let changes = &mut self.update_state.changes;
         for id in &changes.added_node_ids {
             let node = self.next_state.node_by_id(*id).unwrap();
             handler.node_added(&node);
@@ -299,19 +422,19 @@ impl Tree {
             let node = self.state.node_by_id(*id).unwrap();
             handler.node_removed(&node);
         }
-        for id in changes.added_node_ids {
+        for id in changes.added_node_ids.drain() {
             self.state
                 .nodes
                 .insert(id, self.next_state.nodes.get(&id).unwrap().clone());
         }
-        for id in changes.updated_node_ids {
+        for id in changes.updated_node_ids.drain() {
             self.state
                 .nodes
                 .get_mut(&id)
                 .unwrap()
                 .clone_from(self.next_state.nodes.get(&id).unwrap());
         }
-        for id in changes.removed_node_ids {
+        for id in changes.removed_node_ids.drain() {
             self.state.nodes.remove(&id);
         }
         if self.state.data != self.next_state.data {
@@ -350,17 +473,16 @@ impl<T> fmt::Display for ShortNodeList<'_, T> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
+    use accesskit::{NodeId, Role, Tree, TreeUpdate};
     use alloc::{vec, vec::Vec};
 
     #[test]
     fn init_tree_with_root_node() {
-        let update = TreeUpdate {
-            nodes: vec![(NodeId(0), Node::new(Role::Window))],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
-        };
-        let tree = super::Tree::new(update, false);
+        let tree = super::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::Window, |_| ());
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
         assert_eq!(NodeId(0), tree.state().root().id());
         assert_eq!(Role::Window, tree.state().root().role());
         assert!(tree.state().root().parent().is_none());
@@ -368,20 +490,15 @@ mod tests {
 
     #[test]
     fn root_node_has_children() {
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[NodeId(1), NodeId(2)]);
-                    node
-                }),
-                (NodeId(1), Node::new(Role::Button)),
-                (NodeId(2), Node::new(Role::Button)),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
-        };
-        let tree = super::Tree::new(update, false);
+        let tree = super::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_children(&[NodeId(1), NodeId(2)]);
+            });
+            update.set_node(NodeId(1), Role::Button, |_| ());
+            update.set_node(NodeId(2), Role::Button, |_| ());
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
         let state = tree.state();
         assert_eq!(
             NodeId(0),
@@ -396,26 +513,12 @@ mod tests {
 
     #[test]
     fn add_child_to_root_node() {
-        let root_node = Node::new(Role::Window);
-        let first_update = TreeUpdate {
-            nodes: vec![(NodeId(0), root_node.clone())],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
-        };
-        let mut tree = super::Tree::new(first_update, false);
+        let mut tree = super::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::Window, |_| ());
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
         assert_eq!(0, tree.state().root().children().count());
-        let second_update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = root_node;
-                    node.push_child(NodeId(1));
-                    node
-                }),
-                (NodeId(1), Node::new(Role::RootWebArea)),
-            ],
-            tree: None,
-            focus: NodeId(0),
-        };
         struct Handler {
             got_new_child_node: bool,
             got_updated_root_node: bool,
@@ -456,7 +559,12 @@ mod tests {
             got_new_child_node: false,
             got_updated_root_node: false,
         };
-        tree.update_and_process_changes(second_update, &mut handler);
+        tree.update(&mut handler, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.push_child(NodeId(1));
+            });
+            update.set_node(NodeId(1), Role::RootWebArea, |_| ());
+        });
         assert!(handler.got_new_child_node);
         assert!(handler.got_updated_root_node);
         let state = tree.state();
@@ -470,26 +578,15 @@ mod tests {
 
     #[test]
     fn remove_child_from_root_node() {
-        let root_node = Node::new(Role::Window);
-        let first_update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = root_node.clone();
-                    node.push_child(NodeId(1));
-                    node
-                }),
-                (NodeId(1), Node::new(Role::RootWebArea)),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
-        };
-        let mut tree = super::Tree::new(first_update, false);
+        let mut tree = super::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.push_child(NodeId(1));
+            });
+            update.set_node(NodeId(1), Role::RootWebArea, |_| ());
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
         assert_eq!(1, tree.state().root().children().count());
-        let second_update = TreeUpdate {
-            nodes: vec![(NodeId(0), root_node)],
-            tree: None,
-            focus: NodeId(0),
-        };
         struct Handler {
             got_updated_root_node: bool,
             got_removed_child_node: bool,
@@ -530,7 +627,9 @@ mod tests {
             got_updated_root_node: false,
             got_removed_child_node: false,
         };
-        tree.update_and_process_changes(second_update, &mut handler);
+        tree.update(&mut handler, |update| {
+            update.set_node(NodeId(0), Role::Window, |_| ());
+        });
         assert!(handler.got_updated_root_node);
         assert!(handler.got_removed_child_node);
         assert_eq!(0, tree.state().root().children().count());
@@ -539,26 +638,16 @@ mod tests {
 
     #[test]
     fn move_focus_between_siblings() {
-        let first_update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[NodeId(1), NodeId(2)]);
-                    node
-                }),
-                (NodeId(1), Node::new(Role::Button)),
-                (NodeId(2), Node::new(Role::Button)),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(1),
-        };
-        let mut tree = super::Tree::new(first_update, true);
+        let mut tree = super::Tree::new(true, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_children(&[NodeId(1), NodeId(2)]);
+            });
+            update.set_node(NodeId(1), Role::Button, |_| ());
+            update.set_node(NodeId(2), Role::Button, |_| ());
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(1));
+        });
         assert!(tree.state().node_by_id(NodeId(1)).unwrap().is_focused());
-        let second_update = TreeUpdate {
-            nodes: vec![],
-            tree: None,
-            focus: NodeId(2),
-        };
         struct Handler {
             got_old_focus_node_update: bool,
             got_new_focus_node_update: bool,
@@ -612,7 +701,9 @@ mod tests {
             got_new_focus_node_update: false,
             got_focus_change: false,
         };
-        tree.update_and_process_changes(second_update, &mut handler);
+        tree.update(&mut handler, |update| {
+            update.set_focus(NodeId(2));
+        });
         assert!(handler.got_old_focus_node_update);
         assert!(handler.got_new_focus_node_update);
         assert!(handler.got_focus_change);
@@ -622,37 +713,20 @@ mod tests {
 
     #[test]
     fn update_node() {
-        let child_node = Node::new(Role::Button);
-        let first_update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), {
-                    let mut node = child_node.clone();
-                    node.set_label("foo");
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
-        };
-        let mut tree = super::Tree::new(first_update, false);
+        let mut tree = super::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(1), Role::Button, |node| {
+                node.set_label("foo");
+            });
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
         assert_eq!(
             Some("foo".into()),
             tree.state().node_by_id(NodeId(1)).unwrap().label()
         );
-        let second_update = TreeUpdate {
-            nodes: vec![(NodeId(1), {
-                let mut node = child_node;
-                node.set_label("bar");
-                node
-            })],
-            tree: None,
-            focus: NodeId(0),
-        };
         struct Handler {
             got_updated_child_node: bool,
         }
@@ -687,7 +761,11 @@ mod tests {
         let mut handler = Handler {
             got_updated_child_node: false,
         };
-        tree.update_and_process_changes(second_update, &mut handler);
+        tree.update(&mut handler, |update| {
+            update.set_node(NodeId(1), Role::Button, |node| {
+                node.set_label("bar");
+            });
+        });
         assert!(handler.got_updated_child_node);
         assert_eq!(
             Some("bar".into()),
@@ -701,23 +779,7 @@ mod tests {
     // an immediate-mode GUI.
     #[test]
     fn no_change_update() {
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), {
-                    let mut node = Node::new(Role::Button);
-                    node.set_label("foo");
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
-        };
-        let mut tree = super::Tree::new(update.clone(), false);
+        let mut tree = super::Tree::new(true, crate::tests::build_test_tree);
         struct Handler;
         fn unexpected_change() {
             panic!("expected no changes");
@@ -741,7 +803,7 @@ mod tests {
             }
         }
         let mut handler = Handler {};
-        tree.update_and_process_changes(update, &mut handler);
+        tree.update(&mut handler, crate::tests::build_test_tree);
     }
 
     #[test]
@@ -793,34 +855,27 @@ mod tests {
             }
         }
 
-        let mut root = Node::new(Role::Window);
-        root.set_children(&[NodeId(1)]);
-        let mut container = Node::new(Role::GenericContainer);
-        container.set_children(&[NodeId(2)]);
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), root.clone()),
-                (NodeId(1), container),
-                (NodeId(2), Node::new(Role::Button)),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
-        };
-        let mut tree = crate::Tree::new(update, false);
-        root.set_children(&[NodeId(2)]);
+        let mut tree = crate::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(0), Role::GenericContainer, |node| {
+                node.set_children(&[NodeId(2)]);
+            });
+            update.set_node(NodeId(2), Role::Button, |_| ());
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
         let mut handler = Handler {
             got_updated_root: false,
             got_updated_child: false,
             got_removed_container: false,
         };
-        tree.update_and_process_changes(
-            TreeUpdate {
-                nodes: vec![(NodeId(0), root)],
-                tree: None,
-                focus: NodeId(0),
-            },
-            &mut handler,
-        );
+        tree.update(&mut handler, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_children(&[NodeId(2)]);
+            });
+        });
         assert!(handler.got_updated_root);
         assert!(handler.got_updated_child);
         assert!(handler.got_removed_container);

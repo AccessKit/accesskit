@@ -1137,193 +1137,170 @@ mod tests {
 
     // This is based on an actual tree produced by egui.
     fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {
-        use accesskit::{Action, Affine, Node, Role, TextDirection, Tree, TreeUpdate};
+        use accesskit::{Action, Affine, Role, TextDirection, Tree, TreeUpdate};
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_transform(Affine::scale(1.5));
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), {
-                    let mut node = Node::new(Role::MultilineTextInput);
-                    node.set_bounds(Rect {
-                        x0: 8.0,
-                        y0: 31.666664123535156,
-                        x1: 296.0,
-                        y1: 123.66666412353516,
-                    });
-                    node.set_children(&[
-                        NodeId(2),
-                        NodeId(3),
-                        NodeId(4),
-                        NodeId(5),
-                        NodeId(6),
-                        NodeId(7),
-                    ]);
-                    node.add_action(Action::Focus);
-                    if let Some(selection) = selection {
-                        node.set_text_selection(selection);
-                    }
-                    node
-                }),
-                (NodeId(2), {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 12.0,
-                        y0: 33.666664123535156,
-                        x1: 290.9189147949219,
-                        y1: 48.33333206176758,
-                    });
-                    // The non-breaking space in the following text
-                    // is in an arbitrary spot; its only purpose
-                    // is to test conversion between UTF-8 and UTF-16
-                    // indices.
-                    node.set_value("This paragraph is\u{a0}long enough to wrap ");
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node.set_character_lengths(&[
-                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1,
-                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                    ]);
-                    node.set_character_positions(&[
-                        0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
-                        58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
-                        117.333336, 124.666664, 132.0, 139.33333, 146.66667, 154.0, 161.33333,
-                        168.66667, 176.0, 183.33333, 190.66667, 198.0, 205.33333, 212.66667, 220.0,
-                        227.33333, 234.66667, 242.0, 249.33333, 256.66666, 264.0, 271.33334,
-                    ]);
-                    node.set_character_widths(&[
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                    ]);
-                    node.set_word_lengths(&[5, 10, 3, 5, 7, 3, 5]);
-                    node
-                }),
-                (NodeId(3), {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 12.0,
-                        y0: 48.33333206176758,
-                        x1: 129.5855712890625,
-                        y1: 63.0,
-                    });
-                    node.set_value("to another line.\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node.set_character_lengths(&[
-                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                    ]);
-                    node.set_character_positions(&[
-                        0.0, 7.3333435, 14.666687, 22.0, 29.333344, 36.666687, 44.0, 51.333344,
-                        58.666687, 66.0, 73.33334, 80.66669, 88.0, 95.33334, 102.66669, 110.0,
-                        117.58557,
-                    ]);
-                    node.set_character_widths(&[
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        0.0,
-                    ]);
-                    node.set_word_lengths(&[3, 8, 6]);
-                    node
-                }),
-                (NodeId(4), {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 12.0,
-                        y0: 63.0,
-                        x1: 144.25222778320313,
-                        y1: 77.66666412353516,
-                    });
-                    node.set_value("Another paragraph.\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node.set_character_lengths(&[
-                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                    ]);
-                    node.set_character_positions(&[
-                        0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
-                        58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
-                        117.333336, 124.666664, 132.25223,
-                    ]);
-                    node.set_character_widths(&[
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 0.0,
-                    ]);
-                    node.set_word_lengths(&[8, 11]);
-                    node
-                }),
-                (NodeId(5), {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 12.0,
-                        y0: 77.66666412353516,
-                        x1: 12.0,
-                        y1: 92.33332824707031,
-                    });
-                    node.set_value("\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node.set_character_lengths(&[1]);
-                    node.set_character_positions(&[0.0]);
-                    node.set_character_widths(&[0.0]);
-                    node.set_word_lengths(&[1]);
-                    node
-                }),
-                (NodeId(6), {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 12.0,
-                        y0: 92.33332824707031,
-                        x1: 158.9188995361328,
-                        y1: 107.0,
-                    });
-                    // Use an arbitrary emoji consisting of two code points
-                    // (combining characters), each of which encodes to two
-                    // UTF-16 code units, to fully test conversion between
-                    // UTF-8, UTF-16, and AccessKit character indices.
-                    node.set_value("Last non-blank line\u{1f44d}\u{1f3fb}\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node.set_character_lengths(&[
-                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 8, 1,
-                    ]);
-                    node.set_character_positions(&[
-                        0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
-                        58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
-                        117.333336, 124.666664, 132.0, 139.33333, 146.9189,
-                    ]);
-                    node.set_character_widths(&[
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 0.0,
-                    ]);
-                    node.set_word_lengths(&[5, 4, 6, 6]);
-                    node
-                }),
-                (NodeId(7), {
-                    let mut node = Node::new(Role::TextRun);
-                    node.set_bounds(Rect {
-                        x0: 12.0,
-                        y0: 107.0,
-                        x1: 12.0,
-                        y1: 121.66666412353516,
-                    });
-                    node.set_value("");
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node.set_character_lengths(&[]);
-                    node.set_character_positions(&[]);
-                    node.set_character_widths(&[]);
-                    node.set_word_lengths(&[0]);
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(1),
-        };
-
-        crate::Tree::new(update, true)
+        crate::Tree::new(true, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_transform(Affine::scale(1.5));
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(1), Role::MultilineTextInput, |node| {
+                node.set_bounds(Rect {
+                    x0: 8.0,
+                    y0: 31.666664123535156,
+                    x1: 296.0,
+                    y1: 123.66666412353516,
+                });
+                node.set_children(&[
+                    NodeId(2),
+                    NodeId(3),
+                    NodeId(4),
+                    NodeId(5),
+                    NodeId(6),
+                    NodeId(7),
+                ]);
+                node.add_action(Action::Focus);
+                if let Some(selection) = selection {
+                    node.set_text_selection(selection);
+                }
+            });
+            update.set_node(NodeId(2), Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 12.0,
+                    y0: 33.666664123535156,
+                    x1: 290.9189147949219,
+                    y1: 48.33333206176758,
+                });
+                // The non-breaking space in the following text
+                // is in an arbitrary spot; its only purpose
+                // is to test conversion between UTF-8 and UTF-16
+                // indices.
+                node.set_value("This paragraph is\u{a0}long enough to wrap ");
+                node.set_text_direction(TextDirection::LeftToRight);
+                node.set_character_lengths(&[
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                ]);
+                node.set_character_positions(&[
+                    0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
+                    58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
+                    117.333336, 124.666664, 132.0, 139.33333, 146.66667, 154.0, 161.33333,
+                    168.66667, 176.0, 183.33333, 190.66667, 198.0, 205.33333, 212.66667, 220.0,
+                    227.33333, 234.66667, 242.0, 249.33333, 256.66666, 264.0, 271.33334,
+                ]);
+                node.set_character_widths(&[
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                ]);
+                node.set_word_lengths(&[5, 10, 3, 5, 7, 3, 5]);
+            });
+            update.set_node(NodeId(3), Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 12.0,
+                    y0: 48.33333206176758,
+                    x1: 129.5855712890625,
+                    y1: 63.0,
+                });
+                node.set_value("to another line.\n");
+                node.set_text_direction(TextDirection::LeftToRight);
+                node.set_character_lengths(&[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+                node.set_character_positions(&[
+                    0.0, 7.3333435, 14.666687, 22.0, 29.333344, 36.666687, 44.0, 51.333344,
+                    58.666687, 66.0, 73.33334, 80.66669, 88.0, 95.33334, 102.66669, 110.0,
+                    117.58557,
+                ]);
+                node.set_character_widths(&[
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 0.0,
+                ]);
+                node.set_word_lengths(&[3, 8, 6]);
+            });
+            update.set_node(NodeId(4), Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 12.0,
+                    y0: 63.0,
+                    x1: 144.25222778320313,
+                    y1: 77.66666412353516,
+                });
+                node.set_value("Another paragraph.\n");
+                node.set_text_direction(TextDirection::LeftToRight);
+                node.set_character_lengths(&[
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                ]);
+                node.set_character_positions(&[
+                    0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
+                    58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
+                    117.333336, 124.666664, 132.25223,
+                ]);
+                node.set_character_widths(&[
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 0.0,
+                ]);
+                node.set_word_lengths(&[8, 11]);
+            });
+            update.set_node(NodeId(5), Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 12.0,
+                    y0: 77.66666412353516,
+                    x1: 12.0,
+                    y1: 92.33332824707031,
+                });
+                node.set_value("\n");
+                node.set_text_direction(TextDirection::LeftToRight);
+                node.set_character_lengths(&[1]);
+                node.set_character_positions(&[0.0]);
+                node.set_character_widths(&[0.0]);
+                node.set_word_lengths(&[1]);
+            });
+            update.set_node(NodeId(6), Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 12.0,
+                    y0: 92.33332824707031,
+                    x1: 158.9188995361328,
+                    y1: 107.0,
+                });
+                // Use an arbitrary emoji consisting of two code points
+                // (combining characters), each of which encodes to two
+                // UTF-16 code units, to fully test conversion between
+                // UTF-8, UTF-16, and AccessKit character indices.
+                node.set_value("Last non-blank line\u{1f44d}\u{1f3fb}\n");
+                node.set_text_direction(TextDirection::LeftToRight);
+                node.set_character_lengths(&[
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 8, 1,
+                ]);
+                node.set_character_positions(&[
+                    0.0, 7.3333335, 14.666667, 22.0, 29.333334, 36.666668, 44.0, 51.333332,
+                    58.666668, 66.0, 73.333336, 80.666664, 88.0, 95.333336, 102.666664, 110.0,
+                    117.333336, 124.666664, 132.0, 139.33333, 146.9189,
+                ]);
+                node.set_character_widths(&[
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    7.58557, 7.58557, 7.58557, 7.58557, 0.0,
+                ]);
+                node.set_word_lengths(&[5, 4, 6, 6]);
+            });
+            update.set_node(NodeId(7), Role::TextRun, |node| {
+                node.set_bounds(Rect {
+                    x0: 12.0,
+                    y0: 107.0,
+                    x1: 12.0,
+                    y1: 121.66666412353516,
+                });
+                node.set_value("");
+                node.set_text_direction(TextDirection::LeftToRight);
+                node.set_character_lengths(&[]);
+                node.set_character_positions(&[]);
+                node.set_character_widths(&[]);
+                node.set_word_lengths(&[0]);
+            });
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(1));
+        })
     }
 
     fn multiline_end_selection() -> TextSelection {

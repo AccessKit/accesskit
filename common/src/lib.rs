@@ -2929,7 +2929,8 @@ impl Tree {
     }
 }
 
-/// A serializable representation of an atomic change to a [`Tree`].
+/// The platform adapter provides an implementation of this trait to receive
+/// an atomic change to a tree.
 ///
 /// The sender and receiver must be in sync; the update is only meant
 /// to bring the tree from a specific previous state into its next state.
@@ -2938,18 +2939,71 @@ impl Tree {
 /// Note that for performance, an update should only include nodes that are
 /// new or changed. AccessKit platform adapters will avoid raising extraneous
 /// events for nodes that have not changed since the previous update,
-/// but there is still a cost in processing these nodes and replacing
-/// the previous instances.
+/// but there is still a cost in processing these nodes.
+pub trait TreeUpdate {
+    /// Create or update a node with the specified ID and role. The application
+    /// provides a callback which receives a mutable reference to the new node,
+    /// on which it should set all appropriate properties.
+    ///
+    /// The new node will overwrite any existing node with the same ID.
+    /// This means that when updating a node, properties that are unchanged
+    /// from the previous version must still be set to the same values
+    /// as before.
+    ///
+    /// It is an error for any node in the update to not be either the root
+    /// or a child of another node. For nodes other than the root, the parent
+    /// must be either an unchanged node already in the tree, or another node
+    /// in this update.
+    ///
+    /// To add a child to the tree, the update must include both the child
+    /// and an updated version of the parent with the child's ID added to
+    /// [`Node::children`].
+    ///
+    /// To remove a child and all of its descendants, the update must include
+    /// an updated version of the parent node with the child's ID removed
+    /// from [`Node::children`]. Neither the child nor any of its descendants
+    /// may be included in this update.
+    fn set_node(&mut self, id: NodeId, role: Role, fill: impl FnOnce(&mut Node));
+
+    /// Set rarely updated information about the tree as a whole. This must
+    /// be called when building the initial tree; otherwise, it only needs to be
+    /// called if the information has changed.
+    ///
+    /// If this is called more than once, only the value provided in the last
+    /// call is kept.
+    fn set_tree(&mut self, tree: Tree);
+
+    /// Set the node within this tree that has keyboard focus when the native
+    /// host (e.g. window) has focus. If no specific node within the tree
+    /// has keyboard focus, this must be set to the root. This must be called
+    /// when building the initial tree. For future updates, if this isn't called,
+    /// then the focus state is unchanged.
+    ///
+    /// If this is called more than once, only the value provided in the last
+    /// call is kept.
+    fn set_focus(&mut self, focus: NodeId);
+}
+
+/// A serializable representation of an atomic change to a tree.
+///
+/// The sender and receiver must be in sync; the update is only meant
+/// to bring the tree from a specific previous state into its next state.
+/// Trying to apply it to the wrong tree should immediately panic.
+///
+/// Note that for performance, an update should only include nodes that are
+/// new or changed. AccessKit platform adapters will avoid raising extraneous
+/// events for nodes that have not changed since the previous update,
+/// but there is still a cost in processing these nodes.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-pub struct TreeUpdate {
+pub struct SerializedTreeUpdate {
     /// Zero or more new or updated nodes. Order doesn't matter.
     ///
     /// Each node in this list will overwrite any existing node with the same ID.
-    /// This means that when updating a node, fields that are unchanged
+    /// This means that when updating a node, properties that are unchanged
     /// from the previous version must still be set to the same values
     /// as before.
     ///
@@ -2976,10 +3030,10 @@ pub struct TreeUpdate {
 
     /// The node within this tree that has keyboard focus when the native
     /// host (e.g. window) has focus. If no specific node within the tree
-    /// has keyboard focus, this must be set to the root. The latest focus state
-    /// must be provided with every tree update, even if the focus state
-    /// didn't change in a given update.
-    pub focus: NodeId,
+    /// has keyboard focus, this must be set to the root. This must be set
+    /// when building the initial tree. For future updates, if this isn't set,
+    /// then the focus state is unchanged.
+    pub focus: Option<NodeId>,
 }
 
 /// The amount by which to scroll in the direction specified by one of the
@@ -3058,15 +3112,15 @@ pub struct ActionRequest {
 
 /// Handles activation of the application's accessibility implementation.
 pub trait ActivationHandler {
-    /// Requests a [`TreeUpdate`] with a full tree. If the application
-    /// can generate the tree synchronously within this method call,
-    /// it should do so and return the [`TreeUpdate`]. Otherwise,
-    /// it must send the update to the platform adapter asynchronously,
+    /// Requests a tree update with a full tree. If the application
+    /// can generate the tree synchronously during this method call,
+    /// it should do so by calling the methods on the provided [`TreeUpdate`]
+    /// implementation. Otherwise, it must send the update asynchronously,
     /// no later than the next display refresh, even if a frame would not
-    /// normally be rendered due to user input or other activity.
-    /// The application should not return or send a placeholder [`TreeUpdate`];
-    /// the platform adapter will provide one if necessary until the real
-    /// tree is sent.
+    /// normally be rendered due to user input or other activity. The application
+    /// should not synchronously build or asynchronously send a placeholder
+    /// tree; the platform adapter will provide one if necessary until the real
+    /// initial tree is sent.
     ///
     /// The primary purpose of this method is to allow the application
     /// to lazily initialize its accessibility implementation. However,
@@ -3074,12 +3128,16 @@ pub trait ActivationHandler {
     /// [`DeactivationHandler::deactivate_accessibility`]; this typically happens
     /// if the platform adapter merely forwards tree updates to assistive
     /// technologies without maintaining any state. A call to this method
-    /// must always generate a [`TreeUpdate`] with a full tree, even if
+    /// must always generate a tree update with a full tree, even if
     /// the application normally sends incremental updates.
     ///
     /// The thread on which this method is called is platform-dependent.
     /// Refer to the platform adapter documentation for more details.
-    fn request_initial_tree(&mut self) -> Option<TreeUpdate>;
+    ///
+    /// The platform adapter determines whether the application provided
+    /// a tree synchronously based solely on whether the application called
+    /// [`TreeUpdate::set_tree`].
+    fn request_initial_tree(&mut self, update: &mut impl TreeUpdate);
 }
 
 /// Handles requests from assistive technologies or other clients.

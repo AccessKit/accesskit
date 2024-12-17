@@ -95,8 +95,7 @@ pub fn common_filter_with_root_exception(node: &Node) -> FilterResult {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Rect, Role, Tree, TreeUpdate};
-    use alloc::vec;
+    use accesskit::{NodeId, Rect, Role, Tree, TreeUpdate};
 
     use super::{
         common_filter, common_filter_with_root_exception,
@@ -113,81 +112,57 @@ mod tests {
 
     #[test]
     fn normal() {
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), Node::new(Role::Button)),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(1), Role::Button, |_| ());
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
         assert_filter_result(Include, &tree, NodeId(1));
     }
 
     #[test]
     fn hidden() {
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), {
-                    let mut node = Node::new(Role::Button);
-                    node.set_hidden();
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(1), Role::Button, |node| {
+                node.set_hidden();
+            });
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
         assert_filter_result(ExcludeSubtree, &tree, NodeId(1));
     }
 
     #[test]
     fn hidden_but_focused() {
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), {
-                    let mut node = Node::new(Role::Button);
-                    node.set_hidden();
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(1),
-        };
-        let tree = crate::Tree::new(update, true);
+        let tree = crate::Tree::new(true, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(1), Role::Button, |node| {
+                node.set_hidden();
+            });
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(1));
+        });
         assert_filter_result(Include, &tree, NodeId(1));
     }
 
     #[test]
     fn generic_container() {
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::GenericContainer);
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), Node::new(Role::Button)),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::GenericContainer, |node| {
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(1), Role::Button, |_| ());
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
         assert_filter_result(ExcludeNode, &tree, NodeId(0));
         assert_eq!(
             Include,
@@ -198,144 +173,102 @@ mod tests {
 
     #[test]
     fn hidden_parent() {
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::GenericContainer);
-                    node.set_hidden();
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), Node::new(Role::Button)),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::GenericContainer, |node| {
+                node.set_hidden();
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(1), Role::Button, |_| ());
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
         assert_filter_result(ExcludeSubtree, &tree, NodeId(0));
         assert_filter_result(ExcludeSubtree, &tree, NodeId(1));
     }
 
     #[test]
     fn hidden_parent_but_focused() {
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::GenericContainer);
-                    node.set_hidden();
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), Node::new(Role::Button)),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(1),
-        };
-        let tree = crate::Tree::new(update, true);
+        let tree = crate::Tree::new(true, |update| {
+            update.set_node(NodeId(0), Role::GenericContainer, |node| {
+                node.set_hidden();
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(1), Role::Button, |_| ());
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(1));
+        });
         assert_filter_result(ExcludeSubtree, &tree, NodeId(0));
         assert_filter_result(Include, &tree, NodeId(1));
     }
 
     #[test]
     fn text_run() {
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::TextInput);
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), Node::new(Role::TextRun)),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::TextInput, |node| {
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(1), Role::TextRun, |_| ());
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
         assert_filter_result(ExcludeNode, &tree, NodeId(1));
     }
 
     fn clipped_children_test_tree() -> crate::Tree {
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::ScrollView);
-                    node.set_clips_children();
-                    node.set_bounds(Rect::new(0.0, 0.0, 30.0, 30.0));
-                    node.set_children(&[
-                        NodeId(1),
-                        NodeId(2),
-                        NodeId(3),
-                        NodeId(4),
-                        NodeId(5),
-                        NodeId(6),
-                        NodeId(7),
-                        NodeId(8),
-                        NodeId(9),
-                        NodeId(10),
-                        NodeId(11),
-                    ]);
-                    node
-                }),
-                (NodeId(1), {
-                    let mut node = Node::new(Role::Unknown);
-                    node.set_bounds(Rect::new(0.0, -30.0, 30.0, -20.0));
-                    node
-                }),
-                (NodeId(2), {
-                    let mut node = Node::new(Role::Unknown);
-                    node.set_bounds(Rect::new(0.0, -20.0, 30.0, -10.0));
-                    node
-                }),
-                (NodeId(3), {
-                    let mut node = Node::new(Role::Unknown);
-                    node.set_bounds(Rect::new(0.0, -10.0, 30.0, 0.0));
-                    node
-                }),
-                (NodeId(4), {
-                    let mut node = Node::new(Role::Unknown);
-                    node.set_hidden();
-                    node
-                }),
-                (NodeId(5), {
-                    let mut node = Node::new(Role::Unknown);
-                    node.set_bounds(Rect::new(0.0, 0.0, 30.0, 10.0));
-                    node
-                }),
-                (NodeId(6), {
-                    let mut node = Node::new(Role::Unknown);
-                    node.set_bounds(Rect::new(0.0, 10.0, 30.0, 20.0));
-                    node
-                }),
-                (NodeId(7), {
-                    let mut node = Node::new(Role::Unknown);
-                    node.set_bounds(Rect::new(0.0, 20.0, 30.0, 30.0));
-                    node
-                }),
-                (NodeId(8), {
-                    let mut node = Node::new(Role::Unknown);
-                    node.set_hidden();
-                    node
-                }),
-                (NodeId(9), {
-                    let mut node = Node::new(Role::Unknown);
-                    node.set_bounds(Rect::new(0.0, 30.0, 30.0, 40.0));
-                    node
-                }),
-                (NodeId(10), {
-                    let mut node = Node::new(Role::Unknown);
-                    node.set_bounds(Rect::new(0.0, 40.0, 30.0, 50.0));
-                    node
-                }),
-                (NodeId(11), {
-                    let mut node = Node::new(Role::Unknown);
-                    node.set_bounds(Rect::new(0.0, 50.0, 30.0, 60.0));
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
-        };
-        crate::Tree::new(update, false)
+        crate::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::ScrollView, |node| {
+                node.set_clips_children();
+                node.set_bounds(Rect::new(0.0, 0.0, 30.0, 30.0));
+                node.set_children(&[
+                    NodeId(1),
+                    NodeId(2),
+                    NodeId(3),
+                    NodeId(4),
+                    NodeId(5),
+                    NodeId(6),
+                    NodeId(7),
+                    NodeId(8),
+                    NodeId(9),
+                    NodeId(10),
+                    NodeId(11),
+                ]);
+            });
+            update.set_node(NodeId(1), Role::Unknown, |node| {
+                node.set_bounds(Rect::new(0.0, -30.0, 30.0, -20.0));
+            });
+            update.set_node(NodeId(2), Role::Unknown, |node| {
+                node.set_bounds(Rect::new(0.0, -20.0, 30.0, -10.0));
+            });
+            update.set_node(NodeId(3), Role::Unknown, |node| {
+                node.set_bounds(Rect::new(0.0, -10.0, 30.0, 0.0));
+            });
+            update.set_node(NodeId(4), Role::Unknown, |node| {
+                node.set_hidden();
+            });
+            update.set_node(NodeId(5), Role::Unknown, |node| {
+                node.set_bounds(Rect::new(0.0, 0.0, 30.0, 10.0));
+            });
+            update.set_node(NodeId(6), Role::Unknown, |node| {
+                node.set_bounds(Rect::new(0.0, 10.0, 30.0, 20.0));
+            });
+            update.set_node(NodeId(7), Role::Unknown, |node| {
+                node.set_bounds(Rect::new(0.0, 20.0, 30.0, 30.0));
+            });
+            update.set_node(NodeId(8), Role::Unknown, |node| {
+                node.set_hidden();
+            });
+            update.set_node(NodeId(9), Role::Unknown, |node| {
+                node.set_bounds(Rect::new(0.0, 30.0, 30.0, 40.0));
+            });
+            update.set_node(NodeId(10), Role::Unknown, |node| {
+                node.set_bounds(Rect::new(0.0, 40.0, 30.0, 50.0));
+            });
+            update.set_node(NodeId(11), Role::Unknown, |node| {
+                node.set_bounds(Rect::new(0.0, 50.0, 30.0, 60.0));
+            });
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        })
     }
 
     #[test]

@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    Action, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Role, Tree, TreeUpdate,
+    Action, ActionHandler, ActionRequest, ActivationHandler, NodeId, Role, Tree, TreeUpdate,
 };
 use windows::{core::*, Win32::UI::Accessibility::*};
 
@@ -16,27 +16,21 @@ const WINDOW_ID: NodeId = NodeId(0);
 const BUTTON_1_ID: NodeId = NodeId(1);
 const BUTTON_2_ID: NodeId = NodeId(2);
 
-fn make_button(label: &str) -> Node {
-    let mut node = Node::new(Role::Button);
-    node.set_label(label);
-    node.add_action(Action::Focus);
-    node
+fn build_button(id: NodeId, label: &str, update: &mut impl TreeUpdate) {
+    update.set_node(id, Role::Button, |node| {
+        node.set_label(label);
+        node.add_action(Action::Focus);
+    });
 }
 
-fn get_initial_state() -> TreeUpdate {
-    let mut root = Node::new(Role::Window);
-    root.set_children(&[BUTTON_1_ID, BUTTON_2_ID]);
-    let button_1 = make_button("Button 1");
-    let button_2 = make_button("Button 2");
-    TreeUpdate {
-        nodes: vec![
-            (WINDOW_ID, root),
-            (BUTTON_1_ID, button_1),
-            (BUTTON_2_ID, button_2),
-        ],
-        tree: Some(Tree::new(WINDOW_ID)),
-        focus: BUTTON_1_ID,
-    }
+fn build_initial_state(update: &mut impl TreeUpdate) {
+    update.set_node(WINDOW_ID, Role::Window, |node| {
+        node.set_children(&[BUTTON_1_ID, BUTTON_2_ID]);
+    });
+    build_button(BUTTON_1_ID, "Button 1", update);
+    build_button(BUTTON_2_ID, "Button 2", update);
+    update.set_tree(Tree::new(WINDOW_ID));
+    update.set_focus(BUTTON_1_ID);
 }
 
 pub struct NullActionHandler;
@@ -48,8 +42,8 @@ impl ActionHandler for NullActionHandler {
 struct SimpleActivationHandler;
 
 impl ActivationHandler for SimpleActivationHandler {
-    fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
-        Some(get_initial_state())
+    fn request_initial_tree(&mut self, update: &mut impl TreeUpdate) {
+        build_initial_state(update);
     }
 }
 

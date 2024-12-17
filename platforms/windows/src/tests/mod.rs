@@ -22,7 +22,10 @@ use windows::{
     },
 };
 
-use crate::window_handle::WindowHandle;
+use crate::{
+    adapter::{ActivationHandlerWrapper, InternalActivationHandler},
+    window_handle::WindowHandle,
+};
 
 use super::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper},
@@ -51,7 +54,7 @@ static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
 });
 
 struct WindowState {
-    activation_handler: RefCell<Box<dyn ActivationHandler>>,
+    activation_handler: RefCell<Box<dyn InternalActivationHandler>>,
     adapter: RefCell<Adapter>,
 }
 
@@ -68,7 +71,7 @@ fn update_window_focus_state(window: HWND, is_focused: bool) {
 }
 
 struct WindowCreateParams {
-    activation_handler: Box<dyn ActivationHandler>,
+    activation_handler: Box<dyn InternalActivationHandler>,
     action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
 }
 
@@ -113,7 +116,8 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             let state = unsafe { &*state_ptr };
             let mut adapter = state.adapter.borrow_mut();
             let mut activation_handler = state.activation_handler.borrow_mut();
-            let result = adapter.handle_wm_getobject(wparam, lparam, &mut **activation_handler);
+            let result =
+                adapter.handle_wm_getobject_internal(wparam, lparam, &mut **activation_handler);
             drop(activation_handler);
             drop(adapter);
             result.map_or_else(
@@ -139,7 +143,7 @@ fn create_window(
     action_handler: impl 'static + ActionHandler + Send,
 ) -> Result<HWND> {
     let create_params = Box::new(WindowCreateParams {
-        activation_handler: Box::new(activation_handler),
+        activation_handler: Box::new(ActivationHandlerWrapper(activation_handler)),
         action_handler: Arc::new(ActionHandlerWrapper::new(action_handler)),
     });
     let module = HINSTANCE::from(unsafe { GetModuleHandleW(None)? });

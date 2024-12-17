@@ -3,7 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler};
+use accesskit_consumer::TreeUpdate;
 use std::{
     cell::{Cell, RefCell},
     ffi::c_void,
@@ -14,7 +15,10 @@ use windows::{
     Win32::{Foundation::*, UI::WindowsAndMessaging::*},
 };
 
-use crate::{Adapter, QueuedEvents};
+use crate::{
+    adapter::{ActivationHandlerWrapper, InternalActivationHandler},
+    Adapter, QueuedEvents,
+};
 
 fn win32_error() -> ! {
     panic!("{}", Error::from_win32())
@@ -31,7 +35,7 @@ const PROP_NAME: PCWSTR = w!("AccessKitAdapter");
 
 struct SubclassState {
     adapter: Adapter,
-    activation_handler: Box<dyn ActivationHandler>,
+    activation_handler: Box<dyn InternalActivationHandler>,
 }
 
 struct SubclassImpl {
@@ -50,7 +54,7 @@ extern "system" fn wnd_proc(window: HWND, message: u32, wparam: WPARAM, lparam: 
         WM_GETOBJECT => {
             let mut state = r#impl.state.borrow_mut();
             let state_mut = &mut *state;
-            if let Some(result) = state_mut.adapter.handle_wm_getobject(
+            if let Some(result) = state_mut.adapter.handle_wm_getobject_internal(
                 wparam,
                 lparam,
                 &mut *state_mut.activation_handler,
@@ -82,7 +86,7 @@ impl SubclassImpl {
         let adapter = Adapter::new(hwnd, false, action_handler);
         let state = RefCell::new(SubclassState {
             adapter,
-            activation_handler: Box::new(activation_handler),
+            activation_handler: Box::new(ActivationHandlerWrapper(activation_handler)),
         });
         Box::new(Self {
             hwnd,
@@ -175,23 +179,19 @@ impl SubclassingAdapter {
 
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update. Note: If the caller's implementation of
-    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
-    /// the [`TreeUpdate`] returned by the provided function must contain
-    /// a full tree.
+    /// [`ActivationHandler::request_initial_tree`] doesn't build a tree,
+    /// the provided function must build a full tree.
     ///
     /// If a [`QueuedEvents`] instance is returned, the caller must call
     /// [`QueuedEvents::raise`] on it.
-    pub fn update_if_active(
-        &mut self,
-        update_factory: impl FnOnce() -> TreeUpdate,
-    ) -> Option<QueuedEvents> {
+    pub fn update_if_active(&mut self, fill: impl FnOnce(&mut TreeUpdate)) -> Option<QueuedEvents> {
         // SAFETY: We use `RefCell::borrow_mut` here, even though
         // `RefCell::get_mut` is allowed (because this method takes
         // a mutable self reference), just in case there's some way
         // this method can be called from within the subclassed window
         // procedure, e.g. via `ActivationHandler`.
         let mut state = self.0.state.borrow_mut();
-        state.adapter.update_if_active(update_factory)
+        state.adapter.update_if_active(fill)
     }
 }
 

@@ -28,7 +28,7 @@ use crate::tree::State as TreeState;
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct NodeState {
     pub(crate) parent_and_index: Option<ParentAndIndex>,
     pub(crate) data: NodeData,
@@ -860,8 +860,7 @@ impl<W: fmt::Write> fmt::Write for SpacePrefixingWriter<W> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Point, Rect, Role, Tree, TreeUpdate};
-    use alloc::vec;
+    use accesskit::{NodeId, Point, Rect, Role, Tree, TreeUpdate};
 
     use crate::tests::*;
 
@@ -1124,19 +1123,14 @@ mod tests {
 
     #[test]
     fn no_label_or_labelled_by() {
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), Node::new(Role::Button)),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(1), Role::Button, |_| ());
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
         assert_eq!(None, tree.state().node_by_id(NodeId(1)).unwrap().label());
     }
 
@@ -1147,38 +1141,25 @@ mod tests {
         const LABEL_1: &str = "Check email every";
         const LABEL_2: &str = "minutes";
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[NodeId(1), NodeId(2), NodeId(3), NodeId(4)]);
-                    node
-                }),
-                (NodeId(1), {
-                    let mut node = Node::new(Role::CheckBox);
-                    node.set_labelled_by(&[NodeId(2), NodeId(4)]);
-                    node
-                }),
-                (NodeId(2), {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(LABEL_1);
-                    node
-                }),
-                (NodeId(3), {
-                    let mut node = Node::new(Role::TextInput);
-                    node.push_labelled_by(NodeId(4));
-                    node
-                }),
-                (NodeId(4), {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(LABEL_2);
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_children(&[NodeId(1), NodeId(2), NodeId(3), NodeId(4)]);
+            });
+            update.set_node(NodeId(1), Role::CheckBox, |node| {
+                node.set_labelled_by(&[NodeId(2), NodeId(4)]);
+            });
+            update.set_node(NodeId(2), Role::Label, |node| {
+                node.set_value(LABEL_1);
+            });
+            update.set_node(NodeId(3), Role::TextInput, |node| {
+                node.push_labelled_by(NodeId(4));
+            });
+            update.set_node(NodeId(4), Role::Label, |node| {
+                node.set_value(LABEL_2);
+            });
+            update.set_tree(Tree::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
         assert_eq!(
             Some([LABEL_1, LABEL_2].join(" ")),
             tree.state().node_by_id(NodeId(1)).unwrap().label()
@@ -1220,115 +1201,74 @@ mod tests {
         const MENU_ITEM_CHECKBOX_LABEL: &str = "Apply volume processing";
         const MENU_ITEM_RADIO_LABEL: &str = "Maximize loudness for noisy environment";
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (ROOT_ID, {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[
-                        DEFAULT_BUTTON_ID,
-                        LINK_ID,
-                        CHECKBOX_ID,
-                        RADIO_BUTTON_ID,
-                        MENU_BUTTON_ID,
-                        MENU_ID,
-                    ]);
-                    node
-                }),
-                (DEFAULT_BUTTON_ID, {
-                    let mut node = Node::new(Role::DefaultButton);
-                    node.push_child(DEFAULT_BUTTON_LABEL_ID);
-                    node
-                }),
-                (DEFAULT_BUTTON_LABEL_ID, {
-                    let mut node = Node::new(Role::Image);
-                    node.set_label(DEFAULT_BUTTON_LABEL);
-                    node
-                }),
-                (LINK_ID, {
-                    let mut node = Node::new(Role::Link);
-                    node.push_child(LINK_LABEL_CONTAINER_ID);
-                    node
-                }),
-                (LINK_LABEL_CONTAINER_ID, {
-                    let mut node = Node::new(Role::GenericContainer);
-                    node.push_child(LINK_LABEL_ID);
-                    node
-                }),
-                (LINK_LABEL_ID, {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(LINK_LABEL);
-                    node
-                }),
-                (CHECKBOX_ID, {
-                    let mut node = Node::new(Role::CheckBox);
-                    node.push_child(CHECKBOX_LABEL_ID);
-                    node
-                }),
-                (CHECKBOX_LABEL_ID, {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(CHECKBOX_LABEL);
-                    node
-                }),
-                (RADIO_BUTTON_ID, {
-                    let mut node = Node::new(Role::RadioButton);
-                    node.push_child(RADIO_BUTTON_LABEL_ID);
-                    node
-                }),
-                (RADIO_BUTTON_LABEL_ID, {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(RADIO_BUTTON_LABEL);
-                    node
-                }),
-                (MENU_BUTTON_ID, {
-                    let mut node = Node::new(Role::Button);
-                    node.push_child(MENU_BUTTON_LABEL_ID);
-                    node
-                }),
-                (MENU_BUTTON_LABEL_ID, {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(MENU_BUTTON_LABEL);
-                    node
-                }),
-                (MENU_ID, {
-                    let mut node = Node::new(Role::Menu);
-                    node.set_children(&[MENU_ITEM_ID, MENU_ITEM_CHECKBOX_ID, MENU_ITEM_RADIO_ID]);
-                    node
-                }),
-                (MENU_ITEM_ID, {
-                    let mut node = Node::new(Role::MenuItem);
-                    node.push_child(MENU_ITEM_LABEL_ID);
-                    node
-                }),
-                (MENU_ITEM_LABEL_ID, {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(MENU_ITEM_LABEL);
-                    node
-                }),
-                (MENU_ITEM_CHECKBOX_ID, {
-                    let mut node = Node::new(Role::MenuItemCheckBox);
-                    node.push_child(MENU_ITEM_CHECKBOX_LABEL_ID);
-                    node
-                }),
-                (MENU_ITEM_CHECKBOX_LABEL_ID, {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(MENU_ITEM_CHECKBOX_LABEL);
-                    node
-                }),
-                (MENU_ITEM_RADIO_ID, {
-                    let mut node = Node::new(Role::MenuItemRadio);
-                    node.push_child(MENU_ITEM_RADIO_LABEL_ID);
-                    node
-                }),
-                (MENU_ITEM_RADIO_LABEL_ID, {
-                    let mut node = Node::new(Role::Label);
-                    node.set_value(MENU_ITEM_RADIO_LABEL);
-                    node
-                }),
-            ],
-            tree: Some(Tree::new(ROOT_ID)),
-            focus: ROOT_ID,
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(ROOT_ID, Role::Window, |node| {
+                node.set_children(&[
+                    DEFAULT_BUTTON_ID,
+                    LINK_ID,
+                    CHECKBOX_ID,
+                    RADIO_BUTTON_ID,
+                    MENU_BUTTON_ID,
+                    MENU_ID,
+                ]);
+            });
+            update.set_node(DEFAULT_BUTTON_ID, Role::DefaultButton, |node| {
+                node.push_child(DEFAULT_BUTTON_LABEL_ID);
+            });
+            update.set_node(DEFAULT_BUTTON_LABEL_ID, Role::Image, |node| {
+                node.set_label(DEFAULT_BUTTON_LABEL);
+            });
+            update.set_node(LINK_ID, Role::Link, |node| {
+                node.push_child(LINK_LABEL_CONTAINER_ID);
+            });
+            update.set_node(LINK_LABEL_CONTAINER_ID, Role::GenericContainer, |node| {
+                node.push_child(LINK_LABEL_ID);
+            });
+            update.set_node(LINK_LABEL_ID, Role::Label, |node| {
+                node.set_value(LINK_LABEL);
+            });
+            update.set_node(CHECKBOX_ID, Role::CheckBox, |node| {
+                node.push_child(CHECKBOX_LABEL_ID);
+            });
+            update.set_node(CHECKBOX_LABEL_ID, Role::Label, |node| {
+                node.set_value(CHECKBOX_LABEL);
+            });
+            update.set_node(RADIO_BUTTON_ID, Role::RadioButton, |node| {
+                node.push_child(RADIO_BUTTON_LABEL_ID);
+            });
+            update.set_node(RADIO_BUTTON_LABEL_ID, Role::Label, |node| {
+                node.set_value(RADIO_BUTTON_LABEL);
+            });
+            update.set_node(MENU_BUTTON_ID, Role::Button, |node| {
+                node.push_child(MENU_BUTTON_LABEL_ID);
+            });
+            update.set_node(MENU_BUTTON_LABEL_ID, Role::Label, |node| {
+                node.set_value(MENU_BUTTON_LABEL);
+            });
+            update.set_node(MENU_ID, Role::Menu, |node| {
+                node.set_children(&[MENU_ITEM_ID, MENU_ITEM_CHECKBOX_ID, MENU_ITEM_RADIO_ID]);
+            });
+            update.set_node(MENU_ITEM_ID, Role::MenuItem, |node| {
+                node.push_child(MENU_ITEM_LABEL_ID);
+            });
+            update.set_node(MENU_ITEM_LABEL_ID, Role::Label, |node| {
+                node.set_value(MENU_ITEM_LABEL);
+            });
+            update.set_node(MENU_ITEM_CHECKBOX_ID, Role::MenuItemCheckBox, |node| {
+                node.push_child(MENU_ITEM_CHECKBOX_LABEL_ID);
+            });
+            update.set_node(MENU_ITEM_CHECKBOX_LABEL_ID, Role::Label, |node| {
+                node.set_value(MENU_ITEM_CHECKBOX_LABEL);
+            });
+            update.set_node(MENU_ITEM_RADIO_ID, Role::MenuItemRadio, |node| {
+                node.push_child(MENU_ITEM_RADIO_LABEL_ID);
+            });
+            update.set_node(MENU_ITEM_RADIO_LABEL_ID, Role::Label, |node| {
+                node.set_value(MENU_ITEM_RADIO_LABEL);
+            });
+            update.set_tree(Tree::new(ROOT_ID));
+            update.set_focus(ROOT_ID);
+        });
         assert_eq!(
             Some(DEFAULT_BUTTON_LABEL.into()),
             tree.state().node_by_id(DEFAULT_BUTTON_ID).unwrap().label()
