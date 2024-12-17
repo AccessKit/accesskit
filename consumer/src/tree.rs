@@ -120,6 +120,9 @@ impl UpdateState {
     }
 }
 
+/// This is the concrete [`accesskit::TreeUpdate`] implementation that most
+/// platform adapters pass to application-provided callbacks. Applications do not
+/// create this directly.
 pub struct Update<'a> {
     nodes: &'a mut HashMap<NodeId, NodeState>,
     prev_state: Option<&'a State>,

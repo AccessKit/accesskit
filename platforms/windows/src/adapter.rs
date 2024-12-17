@@ -7,7 +7,9 @@ use accesskit::{
     ActionHandler, ActivationHandler, Live, NodeId, Role, Tree as TreeData,
     TreeUpdate as TreeUpdateTrait,
 };
-use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler, TreeUpdate};
+use accesskit_consumer::{
+    BoxableActivationHandler, FilterResult, Node, Tree, TreeChangeHandler, TreeUpdate,
+};
 use hashbrown::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::sync::{atomic::Ordering, Arc};
@@ -291,28 +293,6 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
     // TODO: handle other events (#20)
 }
 
-pub(crate) trait InternalActivationHandler {
-    fn request_initial_tree(&mut self, is_window_focused: bool) -> Option<Tree>;
-}
-
-impl<H: ActivationHandler + ?Sized> InternalActivationHandler for H {
-    fn request_initial_tree(&mut self, is_window_focused: bool) -> Option<Tree> {
-        Tree::new_optional(is_window_focused, |update| {
-            ActivationHandler::request_initial_tree(self, update)
-        })
-    }
-}
-
-pub(crate) struct ActivationHandlerWrapper<H: ActivationHandler>(pub(crate) H);
-
-impl<H: ActivationHandler> InternalActivationHandler for ActivationHandlerWrapper<H> {
-    fn request_initial_tree(&mut self, is_window_focused: bool) -> Option<Tree> {
-        Tree::new_optional(is_window_focused, |update| {
-            self.0.request_initial_tree(update)
-        })
-    }
-}
-
 const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
 
 enum State {
@@ -478,7 +458,7 @@ impl Adapter {
         self.handle_wm_getobject_internal(wparam, lparam, activation_handler)
     }
 
-    pub(crate) fn handle_wm_getobject_internal<H: InternalActivationHandler + ?Sized>(
+    pub(crate) fn handle_wm_getobject_internal<H: BoxableActivationHandler + ?Sized>(
         &mut self,
         wparam: WPARAM,
         lparam: LPARAM,

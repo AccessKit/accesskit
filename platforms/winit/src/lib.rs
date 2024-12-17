@@ -49,7 +49,10 @@ compile_error!(
     "Both \"rwh_06\" (default) and \"rwh_05\" features cannot be enabled at the same time."
 );
 
-use accesskit::{ActionHandler, ActionRequest, ActivationHandler, DeactivationHandler, TreeUpdate};
+use accesskit::{
+    ActionHandler, ActionRequest, ActivationHandler, DeactivationHandler,
+    TreeUpdate as TreeUpdateTrait,
+};
 use winit::{
     event::WindowEvent as WinitWindowEvent,
     event_loop::{ActiveEventLoop, EventLoopProxy},
@@ -64,6 +67,7 @@ use rwh_05 as raw_window_handle;
 use rwh_06 as raw_window_handle;
 
 mod platform_impl;
+pub use platform_impl::TreeUpdate;
 
 #[derive(Debug)]
 pub struct Event {
@@ -84,13 +88,12 @@ struct WinitActivationHandler<T: From<Event> + Send + 'static> {
 }
 
 impl<T: From<Event> + Send + 'static> ActivationHandler for WinitActivationHandler<T> {
-    fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
+    fn request_initial_tree(&mut self, _: &mut impl TreeUpdateTrait) {
         let event = Event {
             window_id: self.window_id,
             window_event: WindowEvent::InitialTreeRequested,
         };
         self.proxy.send_event(event.into()).ok();
-        None
     }
 }
 
@@ -255,11 +258,10 @@ impl Adapter {
 
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update. Note: If the caller's implementation of
-    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
+    /// [`ActivationHandler::request_initial_tree`] doesn't build a tree,
     /// or if the caller created the adapter using [`EventLoopProxy`], then
-    /// the [`TreeUpdate`] returned by the provided function must contain
-    /// a full tree.
-    pub fn update_if_active(&mut self, updater: impl FnOnce() -> TreeUpdate) {
-        self.inner.update_if_active(updater);
+    /// the provided function must build a full tree.
+    pub fn update_if_active(&mut self, fill: impl FnOnce(&mut TreeUpdate)) {
+        self.inner.update_if_active(fill);
     }
 }

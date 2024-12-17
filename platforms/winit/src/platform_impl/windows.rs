@@ -6,9 +6,11 @@ use crate::raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 #[cfg(feature = "rwh_06")]
 use crate::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
-use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler};
 use accesskit_windows::{SubclassingAdapter, HWND};
 use winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::Window};
+
+pub use accesskit_windows::TreeUpdate;
 
 pub struct Adapter {
     adapter: SubclassingAdapter,
@@ -39,8 +41,8 @@ impl Adapter {
         Self { adapter }
     }
 
-    pub fn update_if_active(&mut self, updater: impl FnOnce() -> TreeUpdate) {
-        if let Some(events) = self.adapter.update_if_active(updater) {
+    pub fn update_if_active(&mut self, fill: impl FnOnce(&mut TreeUpdate)) {
+        if let Some(events) = self.adapter.update_if_active(fill) {
             events.raise();
         }
     }

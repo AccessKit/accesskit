@@ -1,4 +1,4 @@
-use accesskit::{Action, ActionRequest, Live, Node, NodeId, Rect, Role, Tree, TreeUpdate};
+use accesskit::{Action, ActionRequest, Live, NodeId, Rect, Role, Tree, TreeUpdate};
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
 use std::error::Error;
 use winit::{
@@ -31,26 +31,26 @@ const BUTTON_2_RECT: Rect = Rect {
     y1: 100.0,
 };
 
-fn build_button(id: NodeId, label: &str) -> Node {
+fn build_button(id: NodeId, label: &str, update: &mut impl TreeUpdate) {
     let rect = match id {
         BUTTON_1_ID => BUTTON_1_RECT,
         BUTTON_2_ID => BUTTON_2_RECT,
         _ => unreachable!(),
     };
 
-    let mut node = Node::new(Role::Button);
-    node.set_bounds(rect);
-    node.set_label(label);
-    node.add_action(Action::Focus);
-    node.add_action(Action::Click);
-    node
+    update.set_node(id, Role::Button, |node| {
+        node.set_bounds(rect);
+        node.set_label(label);
+        node.add_action(Action::Focus);
+        node.add_action(Action::Click);
+    });
 }
 
-fn build_announcement(text: &str) -> Node {
-    let mut node = Node::new(Role::Label);
-    node.set_value(text);
-    node.set_live(Live::Polite);
-    node
+fn build_announcement(text: &str, update: &mut impl TreeUpdate) {
+    update.set_node(ANNOUNCEMENT_ID, Role::Label, |node| {
+        node.set_value(text);
+        node.set_live(Live::Polite);
+    });
 }
 
 struct UiState {
@@ -66,44 +66,31 @@ impl UiState {
         }
     }
 
-    fn build_root(&mut self) -> Node {
-        let mut node = Node::new(Role::Window);
-        node.set_children(&[BUTTON_1_ID, BUTTON_2_ID]);
-        if self.announcement.is_some() {
-            node.push_child(ANNOUNCEMENT_ID);
-        }
-        node.set_label(WINDOW_TITLE);
-        node
+    fn build_root(&mut self, update: &mut impl TreeUpdate) {
+        update.set_node(WINDOW_ID, Role::Window, |node| {
+            node.set_children(&[BUTTON_1_ID, BUTTON_2_ID]);
+            if self.announcement.is_some() {
+                node.push_child(ANNOUNCEMENT_ID);
+            }
+            node.set_label(WINDOW_TITLE);
+        });
     }
 
-    fn build_initial_tree(&mut self) -> TreeUpdate {
-        let root = self.build_root();
-        let button_1 = build_button(BUTTON_1_ID, "Button 1");
-        let button_2 = build_button(BUTTON_2_ID, "Button 2");
-        let tree = Tree::new(WINDOW_ID);
-        let mut result = TreeUpdate {
-            nodes: vec![
-                (WINDOW_ID, root),
-                (BUTTON_1_ID, button_1),
-                (BUTTON_2_ID, button_2),
-            ],
-            tree: Some(tree),
-            focus: self.focus,
-        };
+    fn build_initial_tree(&mut self, update: &mut impl TreeUpdate) {
+        self.build_root(update);
+        build_button(BUTTON_1_ID, "Button 1", update);
+        build_button(BUTTON_2_ID, "Button 2", update);
         if let Some(announcement) = &self.announcement {
-            result
-                .nodes
-                .push((ANNOUNCEMENT_ID, build_announcement(announcement)));
+            build_announcement(announcement, update);
         }
-        result
+        update.set_tree(Tree::new(WINDOW_ID));
+        update.set_focus(self.focus);
     }
 
     fn set_focus(&mut self, adapter: &mut Adapter, focus: NodeId) {
         self.focus = focus;
-        adapter.update_if_active(|| TreeUpdate {
-            nodes: vec![],
-            tree: None,
-            focus,
+        adapter.update_if_active(|update| {
+            update.set_focus(focus);
         });
     }
 
@@ -114,14 +101,9 @@ impl UiState {
             "You pressed button 2"
         };
         self.announcement = Some(text.into());
-        adapter.update_if_active(|| {
-            let announcement = build_announcement(text);
-            let root = self.build_root();
-            TreeUpdate {
-                nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],
-                tree: None,
-                focus: self.focus,
-            }
+        adapter.update_if_active(|update| {
+            build_announcement(text, update);
+            self.build_root(update);
         });
     }
 }
@@ -221,7 +203,7 @@ impl ApplicationHandler<AccessKitEvent> for Application {
 
         match user_event.window_event {
             AccessKitWindowEvent::InitialTreeRequested => {
-                adapter.update_if_active(|| state.build_initial_tree());
+                adapter.update_if_active(|update| state.build_initial_tree(update));
             }
             AccessKitWindowEvent::ActionRequested(ActionRequest { action, target, .. }) => {
                 if target == BUTTON_1_ID || target == BUTTON_2_ID {

@@ -4,6 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{ActionHandler, ActivationHandler};
+use accesskit_consumer::{BoxableActivationHandler, BoxedActivationHandler};
 use once_cell::sync::Lazy;
 use std::{
     cell::RefCell,
@@ -22,10 +23,7 @@ use windows::{
     },
 };
 
-use crate::{
-    adapter::{ActivationHandlerWrapper, InternalActivationHandler},
-    window_handle::WindowHandle,
-};
+use crate::window_handle::WindowHandle;
 
 use super::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper},
@@ -54,7 +52,7 @@ static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
 });
 
 struct WindowState {
-    activation_handler: RefCell<Box<dyn InternalActivationHandler>>,
+    activation_handler: RefCell<Box<dyn BoxableActivationHandler>>,
     adapter: RefCell<Adapter>,
 }
 
@@ -71,7 +69,7 @@ fn update_window_focus_state(window: HWND, is_focused: bool) {
 }
 
 struct WindowCreateParams {
-    activation_handler: Box<dyn InternalActivationHandler>,
+    activation_handler: Box<dyn BoxableActivationHandler>,
     action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
 }
 
@@ -143,7 +141,7 @@ fn create_window(
     action_handler: impl 'static + ActionHandler + Send,
 ) -> Result<HWND> {
     let create_params = Box::new(WindowCreateParams {
-        activation_handler: Box::new(ActivationHandlerWrapper(activation_handler)),
+        activation_handler: Box::new(BoxedActivationHandler(activation_handler)),
         action_handler: Arc::new(ActionHandlerWrapper::new(action_handler)),
     });
     let module = HINSTANCE::from(unsafe { GetModuleHandleW(None)? });
