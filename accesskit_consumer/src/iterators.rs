@@ -75,7 +75,7 @@ impl FusedIterator for ChildIds<'_> {}
 
 /// An iterator that yields following siblings of a node.
 ///
-/// This struct is created by the [`following_siblings`](Node::following_siblings) method on [`Node`].
+/// This struct is created by the [`following_siblings`](NodeRef::following_siblings) method on [`NodeRef`].
 pub struct FollowingSiblings<'a> {
     back_position: usize,
     done: bool,
@@ -166,7 +166,7 @@ impl FusedIterator for FollowingSiblings<'_> {}
 
 /// An iterator that yields preceding siblings of a node.
 ///
-/// This struct is created by the [`preceding_siblings`](Node::preceding_siblings) method on [`Node`].
+/// This struct is created by the [`preceding_siblings`](NodeRef::preceding_siblings) method on [`NodeRef`].
 pub struct PrecedingSiblings<'a> {
     back_position: usize,
     done: bool,
@@ -337,7 +337,7 @@ fn previous_filtered_sibling<'a>(
 /// An iterator that yields following siblings of a node according to the
 /// specified filter.
 ///
-/// This struct is created by the [`following_filtered_siblings`](Node::following_filtered_siblings) method on [`Node`].
+/// This struct is created by the [`following_filtered_siblings`](NodeRef::following_filtered_siblings) method on [`NodeRef`].
 pub struct FollowingFilteredSiblings<'a, Filter: Fn(&NodeRef) -> FilterResult> {
     filter: Filter,
     back: Option<NodeRef<'a>>,
@@ -405,7 +405,7 @@ impl<Filter: Fn(&NodeRef) -> FilterResult> FusedIterator for FollowingFilteredSi
 /// An iterator that yields preceding siblings of a node according to the
 /// specified filter.
 ///
-/// This struct is created by the [`preceding_filtered_siblings`](Node::preceding_filtered_siblings) method on [`Node`].
+/// This struct is created by the [`preceding_filtered_siblings`](NodeRef::preceding_filtered_siblings) method on [`NodeRef`].
 pub struct PrecedingFilteredSiblings<'a, Filter: Fn(&NodeRef) -> FilterResult> {
     filter: Filter,
     back: Option<NodeRef<'a>>,
@@ -473,7 +473,7 @@ impl<Filter: Fn(&NodeRef) -> FilterResult> FusedIterator for PrecedingFilteredSi
 /// An iterator that yields children of a node according to the specified
 /// filter.
 ///
-/// This struct is created by the [`filtered_children`](Node::filtered_children) method on [`Node`].
+/// This struct is created by the [`filtered_children`](NodeRef::filtered_children) method on [`NodeRef`].
 pub struct FilteredChildren<'a, Filter: Fn(&NodeRef) -> FilterResult> {
     filter: Filter,
     back: Option<NodeRef<'a>>,
@@ -592,8 +592,8 @@ mod tests {
         tests::*,
         tree::{ChangeHandler, TreeIndex},
     };
-    use accesskit::{Node, NodeId, Role, TreeId, TreeInfo, TreeUpdate, Uuid};
-    use alloc::{vec, vec::Vec};
+    use accesskit::{NodeId, Role, TreeId, TreeInfo, TreeUpdate, Uuid};
+    use alloc::vec::Vec;
 
     #[test]
     fn following_siblings() {
@@ -974,24 +974,16 @@ mod tests {
     fn graft_node_without_subtree_has_no_filtered_children() {
         let subtree_id = TreeId(Uuid::from_u128(1));
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), {
-                    let mut node = Node::new(Role::GenericContainer);
-                    node.set_tree_id(subtree_id);
-                    node
-                }),
-            ],
-            tree: Some(TreeInfo::new(NodeId(0))),
-            tree_id: TreeId::ROOT,
-            focus: NodeId(0),
-        };
-        let tree = crate::Tree::new(update, false);
+        let tree = crate::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(1), Role::GenericContainer, |node| {
+                node.set_tree_id(subtree_id);
+            });
+            update.set_tree(TreeInfo::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
 
         let graft_node_id = FullNodeId::new(NodeId(1), TreeIndex(0));
         let graft_node = tree.state().node_by_id(graft_node_id).unwrap();
@@ -1010,39 +1002,25 @@ mod tests {
 
         let subtree_id = TreeId(Uuid::from_u128(1));
 
-        let update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Window);
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), {
-                    let mut node = Node::new(Role::GenericContainer);
-                    node.set_tree_id(subtree_id);
-                    node
-                }),
-            ],
-            tree: Some(TreeInfo::new(NodeId(0))),
-            tree_id: TreeId::ROOT,
-            focus: NodeId(0),
-        };
-        let mut tree = crate::Tree::new(update, false);
+        let mut tree = crate::Tree::new(false, |update| {
+            update.set_node(NodeId(0), Role::Window, |node| {
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(1), Role::GenericContainer, |node| {
+                node.set_tree_id(subtree_id);
+            });
+            update.set_tree(TreeInfo::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
 
-        let subtree_update = TreeUpdate {
-            nodes: vec![
-                (NodeId(0), {
-                    let mut node = Node::new(Role::Document);
-                    node.set_children(&[NodeId(1)]);
-                    node
-                }),
-                (NodeId(1), Node::new(Role::Button)),
-            ],
-            tree: Some(TreeInfo::new(NodeId(0))),
-            tree_id: subtree_id,
-            focus: NodeId(0),
-        };
-        tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
+        tree.update(subtree_id, &mut NoOpHandler, |update| {
+            update.set_node(NodeId(0), Role::Document, |node| {
+                node.set_children(&[NodeId(1)]);
+            });
+            update.set_node(NodeId(1), Role::Button, |_| ());
+            update.set_tree(TreeInfo::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
 
         let root = tree.state().root();
         let filtered_children: Vec<_> = root.filtered_children(common_filter).collect();

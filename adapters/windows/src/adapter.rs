@@ -4,9 +4,12 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    ActionHandler, ActivationHandler, Live, Node, NodeId, Role, TreeId, TreeInfo, TreeUpdate,
+    ActionHandler, ActivationHandler, Live, NodeId, Role, TreeId, TreeInfo,
+    TreeUpdate as TreeUpdateTrait,
 };
-use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, Tree, TreeChangeHandler, TreeState};
+use accesskit_consumer::{
+    FilterResult, FullNodeId, NodeRef, Tree, TreeChangeHandler, TreeState, TreeUpdate,
+};
 use hashbrown::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, atomic::Ordering};
@@ -371,6 +374,28 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
     // TODO: handle other events (#20)
 }
 
+pub(crate) trait InternalActivationHandler {
+    fn request_initial_tree(&mut self, is_window_focused: bool) -> Option<Tree>;
+}
+
+impl<H: ActivationHandler + ?Sized> InternalActivationHandler for H {
+    fn request_initial_tree(&mut self, is_window_focused: bool) -> Option<Tree> {
+        Tree::new_optional(is_window_focused, |update| {
+            ActivationHandler::request_initial_tree(self, update)
+        })
+    }
+}
+
+pub(crate) struct ActivationHandlerWrapper<H: ActivationHandler>(pub(crate) H);
+
+impl<H: ActivationHandler> InternalActivationHandler for ActivationHandlerWrapper<H> {
+    fn request_initial_tree(&mut self, is_window_focused: bool) -> Option<Tree> {
+        Tree::new_optional(is_window_focused, |update| {
+            self.0.request_initial_tree(update)
+        })
+    }
+}
+
 const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
 
 enum State {
@@ -450,9 +475,8 @@ impl Adapter {
 
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update. Note: If the caller's implementation of
-    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
-    /// the [`TreeUpdate`] returned by the provided function must contain
-    /// a full tree.
+    /// [`ActivationHandler::request_initial_tree`] doesn't build a tree,
+    /// the provided function must build a full tree.
     ///
     /// If a [`QueuedEvents`] instance is returned, the caller must call
     /// [`QueuedEvents::raise`] on it.
@@ -462,13 +486,14 @@ impl Adapter {
     /// it should be called.
     pub fn update_if_active(
         &mut self,
-        update_factory: impl FnOnce() -> TreeUpdate,
+        tree_id: TreeId,
+        fill: impl FnOnce(&mut TreeUpdate),
     ) -> Option<QueuedEvents> {
         match &self.state {
             State::Inactive { .. } => None,
             State::Placeholder(context) => {
                 let is_window_focused = context.read_tree().state().is_host_focused();
-                let tree = Tree::new(update_factory(), is_window_focused);
+                let tree = Tree::new(is_window_focused, fill);
                 *context.tree.write().unwrap() = tree;
                 context.is_placeholder.store(false, Ordering::SeqCst);
                 let result = context
@@ -482,7 +507,7 @@ impl Adapter {
             State::Active(context) => {
                 let mut handler = AdapterChangeHandler::new(context);
                 let mut tree = context.tree.write().unwrap();
-                tree.update_and_process_changes(update_factory(), &mut handler);
+                tree.update(tree_id, &mut handler, fill);
                 handler.enqueue_selection_changes(&tree);
                 Some(QueuedEvents(handler.queue))
             }
@@ -508,13 +533,13 @@ impl Adapter {
             State::Placeholder(context) => {
                 let mut handler = AdapterChangeHandler::new(context);
                 let mut tree = context.tree.write().unwrap();
-                tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
+                tree.update_host_focus_state(is_focused, &mut handler);
                 Some(QueuedEvents(handler.queue))
             }
             State::Active(context) => {
                 let mut handler = AdapterChangeHandler::new(context);
                 let mut tree = context.tree.write().unwrap();
-                tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
+                tree.update_host_focus_state(is_focused, &mut handler);
                 Some(QueuedEvents(handler.queue))
             }
         }
@@ -537,6 +562,15 @@ impl Adapter {
         lparam: LPARAM,
         activation_handler: &mut H,
     ) -> Option<impl Into<LRESULT> + use<H>> {
+        self.handle_wm_getobject_internal(wparam, lparam, activation_handler)
+    }
+
+    pub(crate) fn handle_wm_getobject_internal<H: InternalActivationHandler + ?Sized>(
+        &mut self,
+        wparam: WPARAM,
+        lparam: LPARAM,
+        activation_handler: &mut H,
+    ) -> Option<impl Into<LRESULT> + use<H>> {
         // Don't bother with MSAA object IDs that are asking for something other
         // than the client area of the window. DefWindowProc can handle those.
         // First, cast the lparam to i32, to handle inconsistent conversion
@@ -551,10 +585,9 @@ impl Adapter {
                 hwnd,
                 is_window_focused,
                 action_handler,
-            } => match activation_handler.request_initial_tree() {
-                Some(initial_state) => {
+            } => match activation_handler.request_initial_tree(*is_window_focused) {
+                Some(tree) => {
                     let hwnd = *hwnd;
-                    let tree = Tree::new(initial_state, *is_window_focused);
                     let context = Context::new(hwnd, tree, Arc::clone(action_handler), false);
                     let node_id = context.read_tree().state().root_id();
                     let platform_node = context.get_or_create_platform_node(node_id);
@@ -563,13 +596,11 @@ impl Adapter {
                 }
                 None => {
                     let hwnd = *hwnd;
-                    let placeholder_update = TreeUpdate {
-                        nodes: vec![(PLACEHOLDER_ROOT_ID, Node::new(Role::Window))],
-                        tree: Some(TreeInfo::new(PLACEHOLDER_ROOT_ID)),
-                        tree_id: TreeId::ROOT,
-                        focus: PLACEHOLDER_ROOT_ID,
-                    };
-                    let placeholder_tree = Tree::new(placeholder_update, *is_window_focused);
+                    let placeholder_tree = Tree::new(*is_window_focused, |update| {
+                        update.set_node(PLACEHOLDER_ROOT_ID, Role::Window, |_| ());
+                        update.set_tree(TreeInfo::new(PLACEHOLDER_ROOT_ID));
+                        update.set_focus(PLACEHOLDER_ROOT_ID);
+                    });
                     let context =
                         Context::new(hwnd, placeholder_tree, Arc::clone(action_handler), true);
                     let platform_node = PlatformNode::unspecified_root(&context);
