@@ -233,6 +233,10 @@ impl TreeUpdate for Update<'_> {
             if root == Some(id) {
                 node_state.parent_and_index = None;
             }
+            node_state
+                .data
+                .children()
+                .clone_into(&mut self.state.processing_children);
             node_state.data.reset(role);
             fill(&mut node_state.data);
             if let Some(prev_state) = self.prev_state {
@@ -240,26 +244,20 @@ impl TreeUpdate for Update<'_> {
                     if *prev_node_state != *node_state {
                         self.state.changes.updated_node_ids.insert(id);
                     }
-                    if prev_node_state.data.children() != node_state.data.children() {
-                        for child_id in prev_node_state.data.children() {
-                            if root != Some(*child_id) {
-                                self.state.unreachable.insert(*child_id);
-                            }
-                        }
-                        node_state
-                            .data
-                            .children()
-                            .clone_into(&mut self.state.processing_children);
-                        self.process_children(id);
-                    }
-                    return;
                 }
             }
-            node_state
-                .data
-                .children()
-                .clone_into(&mut self.state.processing_children);
-            self.process_children(id);
+            if self.state.processing_children != node_state.data.children() {
+                for child_id in self.state.processing_children.drain(..) {
+                    if root != Some(child_id) {
+                        self.state.unreachable.insert(child_id);
+                    }
+                }
+                node_state
+                    .data
+                    .children()
+                    .clone_into(&mut self.state.processing_children);
+                self.process_children(id);
+            }
             return;
         }
 
