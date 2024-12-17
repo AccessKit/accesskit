@@ -412,6 +412,14 @@ impl TreeUpdate for Update<'_> {
 
         if let Some(node_state) = self.nodes.get_mut(&id) {
             let old_tree_id = node_state.data.tree_id();
+            self.state.processing_children.clear();
+            self.state.processing_children.extend(
+                node_state
+                    .data
+                    .children()
+                    .iter()
+                    .map(|child_id| NodeId::new(*child_id, tree_index)),
+            );
             node_state.data.reset(role);
             fill(&mut node_state.data);
             let new_tree_id = node_state.data.tree_id();
@@ -423,24 +431,11 @@ impl TreeUpdate for Update<'_> {
                 );
             }
 
-            let children_differ = match self.prev_state.and_then(|p| p.nodes.get(&id)) {
-                Some(prev_node_state) => {
-                    if *prev_node_state != *node_state {
-                        self.state.changes.updated_node_ids.insert(id);
-                    }
-                    let differ = prev_node_state.data.children() != node_state.data.children();
-                    if differ {
-                        for child_id in prev_node_state.data.children() {
-                            let mapped = NodeId::new(*child_id, tree_index);
-                            if root != Some(mapped) {
-                                self.state.unreachable.insert(mapped);
-                            }
-                        }
-                    }
-                    differ
+            if let Some(prev_node_state) = self.prev_state.and_then(|p| p.nodes.get(&id)) {
+                if *prev_node_state != *node_state {
+                    self.state.changes.updated_node_ids.insert(id);
                 }
-                None => true,
-            };
+            }
 
             if old_tree_id != new_tree_id {
                 if let Some(old_subtree_id) = old_tree_id {
@@ -451,14 +446,30 @@ impl TreeUpdate for Update<'_> {
                 }
             }
 
+            let children_differ = self.state.processing_children.len()
+                != node_state.data.children().len()
+                || self
+                    .state
+                    .processing_children
+                    .iter()
+                    .zip(node_state.data.children())
+                    .any(|(old, new)| *old != NodeId::new(*new, tree_index));
             if children_differ {
-                self.state.processing_children.clear();
-                for child_id in node_state.data.children() {
-                    self.state
-                        .processing_children
-                        .push(NodeId::new(*child_id, tree_index));
+                for child_id in self.state.processing_children.drain(..) {
+                    if root != Some(child_id) {
+                        self.state.unreachable.insert(child_id);
+                    }
                 }
+                self.state.processing_children.extend(
+                    node_state
+                        .data
+                        .children()
+                        .iter()
+                        .map(|child_id| NodeId::new(*child_id, tree_index)),
+                );
                 self.process_children(id);
+            } else {
+                self.state.processing_children.clear();
             }
             return;
         }
