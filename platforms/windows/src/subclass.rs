@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{ActionHandler, ActivationHandler};
-use accesskit_consumer::TreeUpdate;
+use accesskit_consumer::{BoxableActivationHandler, BoxedActivationHandler, TreeUpdate};
 use std::{
     cell::{Cell, RefCell},
     ffi::c_void,
@@ -15,10 +15,7 @@ use windows::{
     Win32::{Foundation::*, UI::WindowsAndMessaging::*},
 };
 
-use crate::{
-    adapter::{ActivationHandlerWrapper, InternalActivationHandler},
-    Adapter, QueuedEvents,
-};
+use crate::{Adapter, QueuedEvents};
 
 fn win32_error() -> ! {
     panic!("{}", Error::from_win32())
@@ -35,7 +32,7 @@ const PROP_NAME: PCWSTR = w!("AccessKitAdapter");
 
 struct SubclassState {
     adapter: Adapter,
-    activation_handler: Box<dyn InternalActivationHandler>,
+    activation_handler: Box<dyn BoxableActivationHandler>,
 }
 
 struct SubclassImpl {
@@ -86,7 +83,7 @@ impl SubclassImpl {
         let adapter = Adapter::new(hwnd, false, action_handler);
         let state = RefCell::new(SubclassState {
             adapter,
-            activation_handler: Box::new(ActivationHandlerWrapper(activation_handler)),
+            activation_handler: Box::new(BoxedActivationHandler(activation_handler)),
         });
         Box::new(Self {
             hwnd,
