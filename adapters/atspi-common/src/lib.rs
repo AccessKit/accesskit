@@ -31,3 +31,5 @@ pub use events::*;
 pub use node::{CacheNode, NodeIdOrRoot, PlatformNode, PlatformRoot};
 pub use rect::*;
 pub use util::WindowBounds;
+
+pub use accesskit_consumer::{BoxedActivationHandler, NonGenericActivationHandler, TreeUpdate};
