@@ -28,23 +28,21 @@ pub use text::{
     WeakRange as WeakTextRange,
 };
 
-pub trait BoxableActivationHandler {
-    fn request_initial_tree(&mut self, is_host_focused: bool) -> Option<Tree>;
+pub trait NonGenericActivationHandler {
+    fn request_initial_tree(&mut self, update: &mut TreeUpdate);
 }
 
-impl<H: ActivationHandler + ?Sized> BoxableActivationHandler for H {
-    fn request_initial_tree(&mut self, is_host_focused: bool) -> Option<Tree> {
-        Tree::new_optional(is_host_focused, |update| {
-            self.request_initial_tree(update);
-        })
+impl<H: ActivationHandler + ?Sized> NonGenericActivationHandler for H {
+    fn request_initial_tree(&mut self, update: &mut TreeUpdate) {
+        ActivationHandler::request_initial_tree(self, update);
     }
 }
 
 pub struct BoxedActivationHandler<H: ActivationHandler>(pub H);
 
-impl<H: ActivationHandler> BoxableActivationHandler for BoxedActivationHandler<H> {
-    fn request_initial_tree(&mut self, is_host_focused: bool) -> Option<Tree> {
-        BoxableActivationHandler::request_initial_tree(&mut self.0, is_host_focused)
+impl<H: ActivationHandler> NonGenericActivationHandler for BoxedActivationHandler<H> {
+    fn request_initial_tree(&mut self, update: &mut TreeUpdate) {
+        self.0.request_initial_tree(update);
     }
 }
 
