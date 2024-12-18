@@ -8,23 +8,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
+use accesskit::{ActionHandler, NodeId, Role};
+use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler, TreeState, TreeUpdate};
+use atspi_common::{InterfaceSet, Politeness, State};
+use std::{
+    collections::HashSet,
+    fmt::{Debug, Formatter},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, RwLock,
+    },
+};
+
 use crate::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper, AppContext, Context},
     filters::filter,
     node::{NodeIdOrRoot, NodeWrapper, PlatformNode, PlatformRoot},
     util::WindowBounds,
     AdapterCallback, Event, ObjectEvent, WindowEvent,
-};
-use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
-use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler, TreeState};
-use atspi_common::{InterfaceSet, Politeness, State};
-use std::fmt::{Debug, Formatter};
-use std::{
-    collections::HashSet,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc, RwLock,
-    },
 };
 
 struct AdapterChangeHandler<'a> {
@@ -375,7 +376,7 @@ impl Adapter {
     pub fn new(
         app_context: &Arc<RwLock<AppContext>>,
         callback: impl 'static + AdapterCallback + Send + Sync,
-        initial_state: TreeUpdate,
+        fill: impl FnOnce(&mut TreeUpdate),
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
         action_handler: impl 'static + ActionHandler + Send,
@@ -385,7 +386,7 @@ impl Adapter {
             id,
             app_context,
             callback,
-            initial_state,
+            fill,
             is_window_focused,
             root_window_bounds,
             action_handler,
@@ -396,7 +397,7 @@ impl Adapter {
         id: usize,
         app_context: &Arc<RwLock<AppContext>>,
         callback: impl 'static + AdapterCallback + Send + Sync,
-        initial_state: TreeUpdate,
+        fill: impl FnOnce(&mut TreeUpdate),
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
         action_handler: impl 'static + ActionHandler + Send,
@@ -405,7 +406,7 @@ impl Adapter {
             id,
             app_context,
             callback,
-            initial_state,
+            fill,
             is_window_focused,
             root_window_bounds,
             Arc::new(ActionHandlerWrapper::new(action_handler)),
@@ -418,12 +419,12 @@ impl Adapter {
         id: usize,
         app_context: &Arc<RwLock<AppContext>>,
         callback: impl 'static + AdapterCallback + Send + Sync,
-        initial_state: TreeUpdate,
+        fill: impl FnOnce(&mut TreeUpdate),
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
         action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
     ) -> Self {
-        let tree = Tree::new(initial_state, is_window_focused);
+        let tree = Tree::new(is_window_focused, fill);
         let focus_id = tree.state().focus_id();
         let context = Context::new(app_context, tree, action_handler, root_window_bounds);
         context.write_app_context().push_adapter(id, &context);
@@ -513,10 +514,10 @@ impl Adapter {
         *bounds = new_bounds;
     }
 
-    pub fn update(&mut self, update: TreeUpdate) {
+    pub fn update(&mut self, fill: impl FnOnce(&mut TreeUpdate)) {
         let mut handler = AdapterChangeHandler::new(self);
         let mut tree = self.context.tree.write().unwrap();
-        tree.update_and_process_changes(update, &mut handler);
+        tree.update(&mut handler, fill);
         drop(tree);
         handler.emit_selection_changed();
     }
@@ -524,7 +525,7 @@ impl Adapter {
     pub fn update_window_focus_state(&mut self, is_focused: bool) {
         let mut handler = AdapterChangeHandler::new(self);
         let mut tree = self.context.tree.write().unwrap();
-        tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
+        tree.update_host_focus_state(is_focused, &mut handler);
     }
 
     fn window_created(&self, adapter_index: usize, window: NodeId) {
