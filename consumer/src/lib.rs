@@ -28,6 +28,11 @@ pub use text::{
     WeakRange as WeakTextRange,
 };
 
+/// A wrapper over [`ActivationHandler`] that doesn't have any generics in its
+/// definition. Applications should generally not implement this directly.
+/// It's intended for wrappers over platform adapters that need to box
+/// the application-provided activation handler; they can do so by wrapping it
+/// in [`BoxedActivationHandler`], which implements this trait.
 pub trait NonGenericActivationHandler {
     fn request_initial_tree(&mut self, update: &mut TreeUpdate);
 }
