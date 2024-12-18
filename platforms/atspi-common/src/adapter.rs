@@ -8,15 +8,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use crate::{
-    AdapterCallback, CacheEvent, Event, ObjectEvent, WindowEvent,
-    context::{ActionHandlerNoMut, ActionHandlerWrapper, AppContext, Context},
-    filters::filter,
-    node::{NodeIdOrRoot, NodeWrapper, PlatformNode, PlatformRoot},
-    util::WindowBounds,
+use accesskit::{ActionHandler, Role, TreeId};
+use accesskit_consumer::{
+    FilterResult, Node, NodeId, Tree, TreeChangeHandler, TreeState, TreeUpdate,
 };
-use accesskit::{ActionHandler, Role, TreeUpdate};
-use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeChangeHandler, TreeState};
 use atspi_common::{InterfaceSet, Politeness, State};
 use std::fmt::{Debug, Formatter};
 use std::{
@@ -25,6 +20,14 @@ use std::{
         Arc, RwLock,
         atomic::{AtomicUsize, Ordering},
     },
+};
+
+use crate::{
+    AdapterCallback, CacheEvent, Event, ObjectEvent, WindowEvent,
+    context::{ActionHandlerNoMut, ActionHandlerWrapper, AppContext, Context},
+    filters::filter,
+    node::{NodeIdOrRoot, NodeWrapper, PlatformNode, PlatformRoot},
+    util::WindowBounds,
 };
 
 struct AdapterChangeHandler<'a> {
@@ -377,7 +380,7 @@ impl Adapter {
     pub fn new(
         app_context: &Arc<RwLock<AppContext>>,
         callback: impl 'static + AdapterCallback + Send + Sync,
-        initial_state: TreeUpdate,
+        fill: impl FnOnce(&mut TreeUpdate),
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
         action_handler: impl 'static + ActionHandler + Send,
@@ -387,7 +390,7 @@ impl Adapter {
             id,
             app_context,
             callback,
-            initial_state,
+            fill,
             is_window_focused,
             root_window_bounds,
             action_handler,
@@ -398,7 +401,7 @@ impl Adapter {
         id: usize,
         app_context: &Arc<RwLock<AppContext>>,
         callback: impl 'static + AdapterCallback + Send + Sync,
-        initial_state: TreeUpdate,
+        fill: impl FnOnce(&mut TreeUpdate),
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
         action_handler: impl 'static + ActionHandler + Send,
@@ -407,7 +410,7 @@ impl Adapter {
             id,
             app_context,
             callback,
-            initial_state,
+            fill,
             is_window_focused,
             root_window_bounds,
             Arc::new(ActionHandlerWrapper::new(action_handler)),
@@ -420,12 +423,12 @@ impl Adapter {
         id: usize,
         app_context: &Arc<RwLock<AppContext>>,
         callback: impl 'static + AdapterCallback + Send + Sync,
-        initial_state: TreeUpdate,
+        fill: impl FnOnce(&mut TreeUpdate),
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
         action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
     ) -> Self {
-        let tree = Tree::new(initial_state, is_window_focused);
+        let tree = Tree::new(is_window_focused, fill);
         let focus_id = tree.state().focus().map(|node| node.id());
         let context = Context::new(app_context, tree, action_handler, root_window_bounds);
         context.write_app_context().push_adapter(id, &context);
@@ -525,10 +528,10 @@ impl Adapter {
         *bounds = new_bounds;
     }
 
-    pub fn update(&mut self, update: TreeUpdate) {
+    pub fn update(&mut self, tree_id: TreeId, fill: impl FnOnce(&mut TreeUpdate)) {
         let mut handler = AdapterChangeHandler::new(self);
         let mut tree = self.context.tree.write().unwrap();
-        tree.update_and_process_changes(update, &mut handler);
+        tree.update(tree_id, &mut handler, fill);
         drop(tree);
         handler.emit_selection_changed();
     }
@@ -536,7 +539,7 @@ impl Adapter {
     pub fn update_window_focus_state(&mut self, is_focused: bool) {
         let mut handler = AdapterChangeHandler::new(self);
         let mut tree = self.context.tree.write().unwrap();
-        tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
+        tree.update_host_focus_state(is_focused, &mut handler);
     }
 
     fn window_created(&self, adapter_index: usize, window: NodeId) {
