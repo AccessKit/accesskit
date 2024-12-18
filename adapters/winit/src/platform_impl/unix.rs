@@ -2,9 +2,11 @@
 // Licensed under the Apache License, Version 2.0 (found in
 // the LICENSE-APACHE file).
 
-use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, Rect, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, Rect, TreeId};
 use accesskit_unix::Adapter as UnixAdapter;
 use winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::Window};
+
+pub use accesskit_unix::TreeUpdate;
 
 pub struct Adapter {
     adapter: UnixAdapter,
@@ -26,8 +28,8 @@ impl Adapter {
         self.adapter.set_root_window_bounds(outer, inner);
     }
 
-    pub fn update_if_active(&mut self, updater: impl FnOnce() -> TreeUpdate) {
-        self.adapter.update_if_active(updater);
+    pub fn update_if_active(&mut self, tree_id: TreeId, fill: impl FnOnce(&mut TreeUpdate)) {
+        self.adapter.update_if_active(tree_id, fill);
     }
 
     fn update_window_focus_state(&mut self, is_focused: bool) {

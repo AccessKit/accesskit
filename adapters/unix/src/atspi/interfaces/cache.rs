@@ -116,11 +116,9 @@ impl CacheInterface {
 mod tests {
     use super::{CacheInterface, object_ref};
     use crate::atspi::ObjectId;
-    use accesskit::{
-        ActionHandler, ActionRequest, Node, NodeId, Role, TreeId, TreeInfo, TreeUpdate,
-    };
+    use accesskit::{ActionHandler, ActionRequest, NodeId, Role, TreeInfo, TreeUpdate};
     use accesskit_atspi_common::{
-        Adapter, AdapterCallback, AppContext, Event, FullNodeId, PlatformRoot, WindowBounds,
+        Adapter, AdapterCallback, AppContext, Event, FullNodeId, PlatformRoot, Tree, WindowBounds,
     };
     use atspi::{Interface, ObjectRefOwned, Role as AtspiRole};
     use std::sync::{Arc, OnceLock};
@@ -138,21 +136,18 @@ mod tests {
         fn emit_event(&self, _: &Adapter, _: Event) {}
     }
 
-    fn with_children(role: Role, children: &[NodeId]) -> Node {
-        let mut node = Node::new(role);
-        node.set_children(children.to_vec());
-        node
+    fn with_children(update: &mut impl TreeUpdate, id: NodeId, role: Role, children: &[NodeId]) {
+        update.set_node(id, role, |node| node.set_children(children));
     }
 
     const BUS_NAME: &str = ":1.0";
 
-    fn root_for(update: TreeUpdate) -> (Adapter, PlatformRoot) {
+    fn root_for(tree: Tree) -> (Adapter, PlatformRoot) {
         let app_context = AppContext::new(None);
         let adapter = Adapter::new(
             &app_context,
             NoOpCallback,
-            update,
-            false,
+            tree,
             WindowBounds::default(),
             NoOpActionHandler,
         );
@@ -164,23 +159,20 @@ mod tests {
         OwnedUniqueName::try_from(BUS_NAME).unwrap()
     }
 
-    fn cache(update: TreeUpdate) -> (Adapter, CacheInterface) {
-        let (adapter, root) = root_for(update);
+    fn cache(tree: Tree) -> (Adapter, CacheInterface) {
+        let (adapter, root) = root_for(tree);
         let desktop = Arc::new(OnceLock::new());
         desktop.set(desktop_ref()).unwrap();
         (adapter, CacheInterface::new(bus_name(), root, desktop))
     }
 
-    fn window_with_button() -> TreeUpdate {
-        TreeUpdate {
-            nodes: vec![
-                (NodeId(0), with_children(Role::Window, &[NodeId(1)])),
-                (NodeId(1), Node::new(Role::Button)),
-            ],
-            tree: Some(TreeInfo::new(NodeId(0))),
-            tree_id: TreeId::ROOT,
-            focus: NodeId(0),
-        }
+    fn window_with_button() -> Tree {
+        Tree::new(false, |update| {
+            with_children(update, NodeId(0), Role::Window, &[NodeId(1)]);
+            update.set_node(NodeId(1), Role::Button, |_| ());
+            update.set_tree(TreeInfo::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        })
     }
 
     fn root_ref() -> ObjectRefOwned {
@@ -230,22 +222,14 @@ mod tests {
 
     #[test]
     fn filtered_child_excluded_from_items_and_counts() {
-        let mut hidden = Node::new(Role::Button);
-        hidden.set_hidden();
-        let update = TreeUpdate {
-            nodes: vec![
-                (
-                    NodeId(0),
-                    with_children(Role::Window, &[NodeId(1), NodeId(2)]),
-                ),
-                (NodeId(1), Node::new(Role::Button)),
-                (NodeId(2), hidden),
-            ],
-            tree: Some(TreeInfo::new(NodeId(0))),
-            tree_id: TreeId::ROOT,
-            focus: NodeId(0),
-        };
-        let (_adapter, iface) = cache(update);
+        let tree = Tree::new(false, |update| {
+            with_children(update, NodeId(0), Role::Window, &[NodeId(1), NodeId(2)]);
+            update.set_node(NodeId(1), Role::Button, |_| ());
+            update.set_node(NodeId(2), Role::Button, |node| node.set_hidden());
+            update.set_tree(TreeInfo::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        });
+        let (_adapter, iface) = cache(tree);
         let items = iface.items().unwrap();
         let [app_root, window, _visible_button] = items.as_slice() else {
             panic!("expected application root, window, and visible button only");
@@ -281,7 +265,6 @@ mod tests {
             &app_context,
             NoOpCallback,
             window_with_button(),
-            false,
             WindowBounds::default(),
             NoOpActionHandler,
         );
@@ -289,7 +272,6 @@ mod tests {
             &app_context,
             NoOpCallback,
             window_with_button(),
-            false,
             WindowBounds::default(),
             NoOpActionHandler,
         );
