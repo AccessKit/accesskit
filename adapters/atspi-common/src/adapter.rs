@@ -8,15 +8,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use crate::{
-    AdapterCallback, CacheEvent, Event, ObjectEvent, WindowEvent,
-    context::{ActionHandlerNoMut, ActionHandlerWrapper, AppContext, Context},
-    filters::filter,
-    node::{NodeIdOrRoot, NodeWrapper, PlatformNode, PlatformRoot},
-    util::WindowBounds,
+use accesskit::{ActionHandler, Role, TreeId};
+use accesskit_consumer::{
+    FilterResult, FullNodeId, NodeRef, Tree, TreeChangeHandler, TreeState, TreeUpdate,
 };
-use accesskit::{ActionHandler, Role, TreeUpdate};
-use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, Tree, TreeChangeHandler, TreeState};
 use atspi_common::{InterfaceSet, Politeness, State};
 use std::fmt::{Debug, Formatter};
 use std::{
@@ -25,6 +20,14 @@ use std::{
         Arc, RwLock,
         atomic::{AtomicUsize, Ordering},
     },
+};
+
+use crate::{
+    AdapterCallback, CacheEvent, Event, ObjectEvent, WindowEvent,
+    context::{ActionHandlerNoMut, ActionHandlerWrapper, AppContext, Context},
+    filters::filter,
+    node::{NodeIdOrRoot, NodeWrapper, PlatformNode, PlatformRoot},
+    util::WindowBounds,
 };
 
 struct AdapterChangeHandler<'a> {
@@ -377,7 +380,7 @@ impl Adapter {
     pub fn new(
         app_context: &Arc<RwLock<AppContext>>,
         callback: impl 'static + AdapterCallback + Send + Sync,
-        initial_state: TreeUpdate,
+        fill: impl FnOnce(&mut TreeUpdate),
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
         action_handler: impl 'static + ActionHandler + Send,
@@ -387,7 +390,7 @@ impl Adapter {
             id,
             app_context,
             callback,
-            initial_state,
+            fill,
             is_window_focused,
             root_window_bounds,
             action_handler,
@@ -398,7 +401,7 @@ impl Adapter {
         id: usize,
         app_context: &Arc<RwLock<AppContext>>,
         callback: impl 'static + AdapterCallback + Send + Sync,
-        initial_state: TreeUpdate,
+        fill: impl FnOnce(&mut TreeUpdate),
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
         action_handler: impl 'static + ActionHandler + Send,
@@ -407,7 +410,7 @@ impl Adapter {
             id,
             app_context,
             callback,
-            initial_state,
+            fill,
             is_window_focused,
             root_window_bounds,
             Arc::new(ActionHandlerWrapper::new(action_handler)),
@@ -420,12 +423,12 @@ impl Adapter {
         id: usize,
         app_context: &Arc<RwLock<AppContext>>,
         callback: impl 'static + AdapterCallback + Send + Sync,
-        initial_state: TreeUpdate,
+        fill: impl FnOnce(&mut TreeUpdate),
         is_window_focused: bool,
         root_window_bounds: WindowBounds,
         action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
     ) -> Self {
-        let tree = Tree::new(initial_state, is_window_focused);
+        let tree = Tree::new(is_window_focused, fill);
         let focus_id = tree.state().focus().map(|node| node.id());
         let context = Context::new(app_context, tree, action_handler, root_window_bounds);
         context.write_app_context().push_adapter(id, &context);
@@ -525,10 +528,10 @@ impl Adapter {
         *bounds = new_bounds;
     }
 
-    pub fn update(&mut self, update: TreeUpdate) {
+    pub fn update(&mut self, tree_id: TreeId, fill: impl FnOnce(&mut TreeUpdate)) {
         let mut handler = AdapterChangeHandler::new(self);
         let mut tree = self.context.tree.write().unwrap();
-        tree.update_and_process_changes(update, &mut handler);
+        tree.update(tree_id, &mut handler, fill);
         drop(tree);
         handler.emit_selection_changed();
     }
@@ -536,7 +539,7 @@ impl Adapter {
     pub fn update_window_focus_state(&mut self, is_focused: bool) {
         let mut handler = AdapterChangeHandler::new(self);
         let mut tree = self.context.tree.write().unwrap();
-        tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
+        tree.update_host_focus_state(is_focused, &mut handler);
     }
 
     fn window_created(&self, adapter_index: usize, window: FullNodeId) {
@@ -616,10 +619,8 @@ impl Drop for Adapter {
 mod tests {
     use super::Adapter;
     use crate::{AdapterCallback, AppContext, CacheEvent, Event, InterfaceSet, WindowBounds};
-    use accesskit::{
-        ActionHandler, ActionRequest, Node, NodeId, Role, TreeId, TreeInfo, TreeUpdate,
-    };
-    use accesskit_consumer::FullNodeId;
+    use accesskit::{ActionHandler, ActionRequest, NodeId, Role, TreeId, TreeInfo, TreeUpdate};
+    use accesskit_consumer::{FullNodeId, Tree};
     use std::sync::{Arc, Mutex};
 
     #[derive(Clone, Copy, Debug, PartialEq)]
@@ -650,45 +651,30 @@ mod tests {
         fn do_action(&mut self, _request: ActionRequest) {}
     }
 
-    fn with_children(role: Role, children: &[NodeId]) -> Node {
-        let mut node = Node::new(role);
-        node.set_children(children.to_vec());
-        node
+    fn with_children(update: &mut impl TreeUpdate, id: NodeId, role: Role, children: &[NodeId]) {
+        update.set_node(id, role, |node| node.set_children(children));
     }
 
-    fn build(initial: TreeUpdate) -> (Adapter, Arc<Mutex<Vec<CacheOp>>>) {
+    fn build(tree: Tree) -> (Adapter, Arc<Mutex<Vec<CacheOp>>>) {
         let ops = Arc::new(Mutex::new(Vec::new()));
         let app_context = AppContext::new(None);
         let adapter = Adapter::new(
             &app_context,
             CapturingCallback { ops: ops.clone() },
-            initial,
-            false,
+            tree,
             WindowBounds::default(),
             NoOpActionHandler,
         );
         (adapter, ops)
     }
 
-    fn initial_tree() -> TreeUpdate {
-        TreeUpdate {
-            nodes: vec![
-                (NodeId(0), with_children(Role::Window, &[NodeId(1)])),
-                (NodeId(1), Node::new(Role::Button)),
-            ],
-            tree: Some(TreeInfo::new(NodeId(0))),
-            tree_id: TreeId::ROOT,
-            focus: NodeId(0),
-        }
-    }
-
-    fn update(nodes: Vec<(NodeId, Node)>) -> TreeUpdate {
-        TreeUpdate {
-            nodes,
-            tree: None,
-            tree_id: TreeId::ROOT,
-            focus: NodeId(0),
-        }
+    fn initial_tree() -> Tree {
+        Tree::new(false, |update| {
+            with_children(update, NodeId(0), Role::Window, &[NodeId(1)]);
+            update.set_node(NodeId(1), Role::Button, |_| ());
+            update.set_tree(TreeInfo::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        })
     }
 
     #[test]
@@ -701,13 +687,10 @@ mod tests {
     fn add_node_emits_one_added() {
         let (mut adapter, ops) = build(initial_tree());
         ops.lock().unwrap().clear();
-        adapter.update(update(vec![
-            (
-                NodeId(0),
-                with_children(Role::Window, &[NodeId(1), NodeId(2)]),
-            ),
-            (NodeId(2), Node::new(Role::Button)),
-        ]));
+        adapter.update(TreeId::ROOT, |update| {
+            with_children(update, NodeId(0), Role::Window, &[NodeId(1), NodeId(2)]);
+            update.set_node(NodeId(2), Role::Button, |_| ());
+        });
         let ops = ops.lock().unwrap();
         assert_eq!(ops.len(), 1);
         assert!(matches!(ops[0], CacheOp::Added(_)));
@@ -716,22 +699,18 @@ mod tests {
     #[test]
     fn remove_node_emits_removed_for_same_id() {
         let (mut adapter, ops) = build(initial_tree());
-        adapter.update(update(vec![
-            (
-                NodeId(0),
-                with_children(Role::Window, &[NodeId(1), NodeId(2)]),
-            ),
-            (NodeId(2), Node::new(Role::Button)),
-        ]));
+        adapter.update(TreeId::ROOT, |update| {
+            with_children(update, NodeId(0), Role::Window, &[NodeId(1), NodeId(2)]);
+            update.set_node(NodeId(2), Role::Button, |_| ());
+        });
         let added_id = match ops.lock().unwrap().as_slice() {
             [CacheOp::Added(id)] => *id,
             other => panic!("expected exactly one Added, got {other:?}"),
         };
         ops.lock().unwrap().clear();
-        adapter.update(update(vec![(
-            NodeId(0),
-            with_children(Role::Window, &[NodeId(1)]),
-        )]));
+        adapter.update(TreeId::ROOT, |update| {
+            with_children(update, NodeId(0), Role::Window, &[NodeId(1)]);
+        });
         assert_eq!(*ops.lock().unwrap(), vec![CacheOp::Removed(added_id)]);
     }
 
@@ -739,18 +718,12 @@ mod tests {
     fn subtree_add_emits_added_per_node() {
         let (mut adapter, ops) = build(initial_tree());
         ops.lock().unwrap().clear();
-        adapter.update(update(vec![
-            (
-                NodeId(0),
-                with_children(Role::Window, &[NodeId(1), NodeId(2)]),
-            ),
-            (
-                NodeId(2),
-                with_children(Role::Group, &[NodeId(3), NodeId(4)]),
-            ),
-            (NodeId(3), Node::new(Role::Button)),
-            (NodeId(4), Node::new(Role::Button)),
-        ]));
+        adapter.update(TreeId::ROOT, |update| {
+            with_children(update, NodeId(0), Role::Window, &[NodeId(1), NodeId(2)]);
+            with_children(update, NodeId(2), Role::Group, &[NodeId(3), NodeId(4)]);
+            update.set_node(NodeId(3), Role::Button, |_| ());
+            update.set_node(NodeId(4), Role::Button, |_| ());
+        });
         let ops = ops.lock().unwrap();
         assert_eq!(ops.len(), 3);
         assert!(ops.iter().all(|op| matches!(op, CacheOp::Added(_))));
@@ -759,23 +732,16 @@ mod tests {
     #[test]
     fn subtree_remove_emits_removed_per_node() {
         let (mut adapter, ops) = build(initial_tree());
-        adapter.update(update(vec![
-            (
-                NodeId(0),
-                with_children(Role::Window, &[NodeId(1), NodeId(2)]),
-            ),
-            (
-                NodeId(2),
-                with_children(Role::Group, &[NodeId(3), NodeId(4)]),
-            ),
-            (NodeId(3), Node::new(Role::Button)),
-            (NodeId(4), Node::new(Role::Button)),
-        ]));
+        adapter.update(TreeId::ROOT, |update| {
+            with_children(update, NodeId(0), Role::Window, &[NodeId(1), NodeId(2)]);
+            with_children(update, NodeId(2), Role::Group, &[NodeId(3), NodeId(4)]);
+            update.set_node(NodeId(3), Role::Button, |_| ());
+            update.set_node(NodeId(4), Role::Button, |_| ());
+        });
         ops.lock().unwrap().clear();
-        adapter.update(update(vec![(
-            NodeId(0),
-            with_children(Role::Window, &[NodeId(1)]),
-        )]));
+        adapter.update(TreeId::ROOT, |update| {
+            with_children(update, NodeId(0), Role::Window, &[NodeId(1)]);
+        });
         let ops = ops.lock().unwrap();
         assert_eq!(ops.len(), 3);
         assert!(ops.iter().all(|op| matches!(op, CacheOp::Removed(_))));
@@ -783,23 +749,17 @@ mod tests {
 
     #[test]
     fn filter_transition_into_tree_emits_added() {
-        let mut hidden = Node::new(Role::Button);
-        hidden.set_hidden();
-        let (mut adapter, ops) = build(TreeUpdate {
-            nodes: vec![
-                (
-                    NodeId(0),
-                    with_children(Role::Window, &[NodeId(1), NodeId(2)]),
-                ),
-                (NodeId(1), Node::new(Role::Button)),
-                (NodeId(2), hidden),
-            ],
-            tree: Some(TreeInfo::new(NodeId(0))),
-            tree_id: TreeId::ROOT,
-            focus: NodeId(0),
-        });
+        let (mut adapter, ops) = build(Tree::new(false, |update| {
+            with_children(update, NodeId(0), Role::Window, &[NodeId(1), NodeId(2)]);
+            update.set_node(NodeId(1), Role::Button, |_| ());
+            update.set_node(NodeId(2), Role::Button, |node| node.set_hidden());
+            update.set_tree(TreeInfo::new(NodeId(0)));
+            update.set_focus(NodeId(0));
+        }));
         ops.lock().unwrap().clear();
-        adapter.update(update(vec![(NodeId(2), Node::new(Role::Button))]));
+        adapter.update(TreeId::ROOT, |update| {
+            update.set_node(NodeId(2), Role::Button, |_| ());
+        });
         let ops = ops.lock().unwrap();
         assert_eq!(ops.len(), 1);
         assert!(matches!(ops[0], CacheOp::Added(_)));
@@ -809,9 +769,9 @@ mod tests {
     fn filter_transition_out_of_tree_emits_removed() {
         let (mut adapter, ops) = build(initial_tree());
         ops.lock().unwrap().clear();
-        let mut hidden = Node::new(Role::Button);
-        hidden.set_hidden();
-        adapter.update(update(vec![(NodeId(1), hidden)]));
+        adapter.update(TreeId::ROOT, |update| {
+            update.set_node(NodeId(1), Role::Button, |node| node.set_hidden());
+        });
         let ops = ops.lock().unwrap();
         assert_eq!(ops.len(), 1);
         assert!(matches!(ops[0], CacheOp::Removed(_)));
