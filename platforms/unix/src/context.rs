@@ -3,8 +3,10 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActivationHandler, DeactivationHandler};
-use accesskit_atspi_common::{Adapter as AdapterImpl, AppContext, Event};
+use accesskit::DeactivationHandler;
+use accesskit_atspi_common::{
+    Adapter as AdapterImpl, AppContext, Event, NonGenericActivationHandler, Tree,
+};
 #[cfg(not(feature = "tokio"))]
 use async_channel::{Receiver, Sender};
 use atspi::proxy::bus::StatusProxy;
@@ -71,7 +73,7 @@ pub(crate) fn get_or_init_messages() -> Sender<Message> {
 
 struct AdapterEntry {
     id: usize,
-    activation_handler: Box<dyn ActivationHandler>,
+    activation_handler: Box<dyn NonGenericActivationHandler>,
     deactivation_handler: Box<dyn DeactivationHandler>,
     state: Arc<Mutex<AdapterState>>,
 }
@@ -84,14 +86,15 @@ fn activate_adapter(entry: &mut AdapterEntry) {
         action_handler,
     } = &*state
     {
-        *state = match entry.activation_handler.request_initial_tree() {
-            Some(initial_state) => {
+        *state = match Tree::new_optional(*is_window_focused, |update| {
+            entry.activation_handler.request_initial_tree(update)
+        }) {
+            Some(tree) => {
                 let r#impl = AdapterImpl::with_wrapped_action_handler(
                     entry.id,
                     get_or_init_app_context(),
                     Callback::new(),
-                    initial_state,
-                    *is_window_focused,
+                    tree,
                     *root_window_bounds,
                     Arc::clone(action_handler),
                 );

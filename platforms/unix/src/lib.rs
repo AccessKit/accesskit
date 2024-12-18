@@ -25,3 +25,5 @@ mod executor;
 mod util;
 
 pub use adapter::Adapter;
+
+pub use accesskit_atspi_common::{BoxedActivationHandler, NonGenericActivationHandler, TreeUpdate};
