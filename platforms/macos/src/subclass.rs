@@ -3,7 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, TreeId};
+use accesskit_consumer::{BoxedActivationHandler, NonGenericActivationHandler, TreeUpdate};
 use objc2::{
     ClassType, DeclaredClass,
     declare::ClassBuilder,
@@ -34,7 +35,7 @@ fn associated_object_key() -> *const c_void {
 
 struct AssociatedObjectState {
     adapter: Adapter,
-    activation_handler: Box<dyn ActivationHandler>,
+    activation_handler: Box<dyn NonGenericActivationHandler>,
 }
 
 struct AssociatedObjectIvars {
@@ -64,7 +65,7 @@ impl AssociatedObject {
     ) -> Id<Self> {
         let state = RefCell::new(AssociatedObjectState {
             adapter,
-            activation_handler: Box::new(activation_handler),
+            activation_handler: Box::new(BoxedActivationHandler(activation_handler)),
         });
         let this = Self::alloc().set_ivars(AssociatedObjectIvars { state, prev_class });
 
@@ -232,18 +233,18 @@ impl SubclassingAdapter {
 
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update. Note: If the caller's implementation of
-    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
-    /// the [`TreeUpdate`] returned by the provided function must contain
-    /// a full tree.
+    /// [`ActivationHandler::request_initial_tree`] doesn't build a tree,
+    /// the provided function must build a full tree.
     ///
     /// If a [`QueuedEvents`] instance is returned, the caller must call
     /// [`QueuedEvents::raise`] on it.
     pub fn update_if_active(
         &mut self,
-        update_factory: impl FnOnce() -> TreeUpdate,
+        tree_id: TreeId,
+        fill: impl FnOnce(&mut TreeUpdate),
     ) -> Option<QueuedEvents> {
         let mut state = self.associated.ivars().state.borrow_mut();
-        state.adapter.update_if_active(update_factory)
+        state.adapter.update_if_active(tree_id, fill)
     }
 
     /// Update the tree state based on whether the window is focused.
