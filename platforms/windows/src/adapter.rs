@@ -451,12 +451,6 @@ impl Adapter {
     /// on the `Adapter` or window state, while still abstracting away
     /// the details of that call to UIA.
     ///
-    /// Note: Applications should generally implement [`ActivationHandler`]
-    /// rather than directly implementing [`NonGenericActivationHandler`].
-    /// The latter allows wrappers on top of [`Adapter`] to box the activation
-    /// handler if necessary, and is automatically implemented by any
-    /// implementation of [`ActivationHandler`].
-    ///
     /// [`ActivationHandler`]: accesskit::ActivationHandler
     pub fn handle_wm_getobject<H: NonGenericActivationHandler + ?Sized>(
         &mut self,
