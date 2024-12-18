@@ -4,11 +4,10 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    ActionHandler, ActivationHandler, Live, NodeId, Role, Tree as TreeData,
-    TreeUpdate as TreeUpdateTrait,
+    ActionHandler, Live, NodeId, Role, Tree as TreeData, TreeUpdate as TreeUpdateTrait,
 };
 use accesskit_consumer::{
-    BoxableActivationHandler, FilterResult, Node, Tree, TreeChangeHandler, TreeUpdate,
+    FilterResult, Node, NonGenericActivationHandler, Tree, TreeChangeHandler, TreeUpdate,
 };
 use hashbrown::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
@@ -381,6 +380,8 @@ impl Adapter {
     /// This method may be safely called on any thread, but refer to
     /// [`QueuedEvents::raise`] for restrictions on the context in which
     /// it should be called.
+    ///
+    /// [`ActivationHandler::request_initial_tree`]: accesskit::ActivationHandler::request_initial_tree
     pub fn update_if_active(&mut self, fill: impl FnOnce(&mut TreeUpdate)) -> Option<QueuedEvents> {
         match &self.state {
             State::Inactive { .. } => None,
@@ -449,16 +450,15 @@ impl Adapter {
     /// message, can be done outside of any lock that the caller might hold
     /// on the `Adapter` or window state, while still abstracting away
     /// the details of that call to UIA.
-    pub fn handle_wm_getobject<H: ActivationHandler + ?Sized>(
-        &mut self,
-        wparam: WPARAM,
-        lparam: LPARAM,
-        activation_handler: &mut H,
-    ) -> Option<impl Into<LRESULT>> {
-        self.handle_wm_getobject_internal(wparam, lparam, activation_handler)
-    }
-
-    pub(crate) fn handle_wm_getobject_internal<H: BoxableActivationHandler + ?Sized>(
+    ///
+    /// Note: Applications should generally implement [`ActivationHandler`]
+    /// rather than directly implementing [`NonGenericActivationHandler`].
+    /// The latter allows wrappers on top of [`Adapter`] to box the activation
+    /// handler if necessary, and is automatically implemented by any
+    /// implementation of [`ActivationHandler`].
+    ///
+    /// [`ActivationHandler`]: accesskit::ActivationHandler
+    pub fn handle_wm_getobject<H: NonGenericActivationHandler + ?Sized>(
         &mut self,
         wparam: WPARAM,
         lparam: LPARAM,
@@ -478,7 +478,9 @@ impl Adapter {
                 hwnd,
                 is_window_focused,
                 action_handler,
-            } => match activation_handler.request_initial_tree(*is_window_focused) {
+            } => match Tree::new_optional(*is_window_focused, |update| {
+                activation_handler.request_initial_tree(update)
+            }) {
                 Some(tree) => {
                     let hwnd = *hwnd;
                     let context = Context::new(hwnd, tree, Arc::clone(action_handler), false);

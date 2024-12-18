@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{ActionHandler, ActivationHandler};
-use accesskit_consumer::{BoxableActivationHandler, BoxedActivationHandler};
+use accesskit_consumer::{BoxedActivationHandler, NonGenericActivationHandler};
 use once_cell::sync::Lazy;
 use std::{
     cell::RefCell,
@@ -52,7 +52,7 @@ static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
 });
 
 struct WindowState {
-    activation_handler: RefCell<Box<dyn BoxableActivationHandler>>,
+    activation_handler: RefCell<Box<dyn NonGenericActivationHandler>>,
     adapter: RefCell<Adapter>,
 }
 
@@ -69,7 +69,7 @@ fn update_window_focus_state(window: HWND, is_focused: bool) {
 }
 
 struct WindowCreateParams {
-    activation_handler: Box<dyn BoxableActivationHandler>,
+    activation_handler: Box<dyn NonGenericActivationHandler>,
     action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
 }
 
@@ -114,8 +114,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             let state = unsafe { &*state_ptr };
             let mut adapter = state.adapter.borrow_mut();
             let mut activation_handler = state.activation_handler.borrow_mut();
-            let result =
-                adapter.handle_wm_getobject_internal(wparam, lparam, &mut **activation_handler);
+            let result = adapter.handle_wm_getobject(wparam, lparam, &mut **activation_handler);
             drop(activation_handler);
             drop(adapter);
             result.map_or_else(
