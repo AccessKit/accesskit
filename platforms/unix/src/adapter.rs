@@ -3,10 +3,11 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, NodeId, Rect, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, NodeId, Rect};
 use accesskit_atspi_common::{
     next_adapter_id, ActionHandlerNoMut, ActionHandlerWrapper, Adapter as AdapterImpl,
-    AdapterCallback, Event, PlatformNode, WindowBounds,
+    AdapterCallback, BoxedActivationHandler, Event, NonGenericActivationHandler, PlatformNode,
+    Tree, TreeUpdate, WindowBounds,
 };
 #[cfg(not(feature = "tokio"))]
 use async_channel::Sender;
@@ -130,7 +131,7 @@ impl Adapter {
         };
         adapter.send_message(Message::AddAdapter {
             id,
-            activation_handler: Box::new(activation_handler),
+            activation_handler: Box::new(BoxedActivationHandler(activation_handler)),
             deactivation_handler: Box::new(deactivation_handler),
             state,
         });
@@ -171,10 +172,9 @@ impl Adapter {
 
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update. Note: If the caller's implementation of
-    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
-    /// the [`TreeUpdate`] returned by the provided function must contain
-    /// a full tree.
-    pub fn update_if_active(&mut self, update_factory: impl FnOnce() -> TreeUpdate) {
+    /// [`ActivationHandler::request_initial_tree`] doesn't build a tree,
+    /// the provided function must build a full tree.
+    pub fn update_if_active(&mut self, fill: impl FnOnce(&mut TreeUpdate)) {
         let mut state = self.state.lock().unwrap();
         match &mut *state {
             AdapterState::Inactive { .. } => (),
@@ -183,19 +183,18 @@ impl Adapter {
                 root_window_bounds,
                 action_handler,
             } => {
-                let initial_state = update_factory();
+                let tree = Tree::new(*is_window_focused, fill);
                 let r#impl = AdapterImpl::with_wrapped_action_handler(
                     self.id,
                     get_or_init_app_context(),
                     Callback::new(),
-                    initial_state,
-                    *is_window_focused,
+                    tree,
                     *root_window_bounds,
                     Arc::clone(action_handler),
                 );
                 *state = AdapterState::Active(r#impl);
             }
-            AdapterState::Active(r#impl) => r#impl.update(update_factory()),
+            AdapterState::Active(r#impl) => r#impl.update(fill),
         }
     }
 
@@ -227,7 +226,7 @@ impl Drop for Adapter {
 pub(crate) enum Message {
     AddAdapter {
         id: usize,
-        activation_handler: Box<dyn ActivationHandler + Send>,
+        activation_handler: Box<dyn NonGenericActivationHandler + Send>,
         deactivation_handler: Box<dyn DeactivationHandler + Send>,
         state: Arc<Mutex<AdapterState>>,
     },
