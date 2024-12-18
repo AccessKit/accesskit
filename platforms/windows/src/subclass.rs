@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{ActionHandler, ActivationHandler};
-use accesskit_consumer::{BoxableActivationHandler, BoxedActivationHandler, TreeUpdate};
+use accesskit_consumer::{BoxedActivationHandler, NonGenericActivationHandler, TreeUpdate};
 use std::{
     cell::{Cell, RefCell},
     ffi::c_void,
@@ -32,7 +32,7 @@ const PROP_NAME: PCWSTR = w!("AccessKitAdapter");
 
 struct SubclassState {
     adapter: Adapter,
-    activation_handler: Box<dyn BoxableActivationHandler>,
+    activation_handler: Box<dyn NonGenericActivationHandler>,
 }
 
 struct SubclassImpl {
@@ -51,7 +51,7 @@ extern "system" fn wnd_proc(window: HWND, message: u32, wparam: WPARAM, lparam: 
         WM_GETOBJECT => {
             let mut state = r#impl.state.borrow_mut();
             let state_mut = &mut *state;
-            if let Some(result) = state_mut.adapter.handle_wm_getobject_internal(
+            if let Some(result) = state_mut.adapter.handle_wm_getobject(
                 wparam,
                 lparam,
                 &mut *state_mut.activation_handler,
