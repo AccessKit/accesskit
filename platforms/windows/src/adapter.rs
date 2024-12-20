@@ -25,8 +25,8 @@ use crate::{
 };
 
 fn focus_event(context: &Arc<Context>, node_id: NodeId) -> QueuedEvent {
-    let platform_node = PlatformNode::new(context, node_id);
-    let element: IRawElementProviderSimple = platform_node.into();
+    let platform_node = context.get_or_create_platform_node(node_id);
+    let element: IRawElementProviderSimple = platform_node.into_interface();
     QueuedEvent::Simple {
         element,
         event_id: UIA_AutomationFocusChangedEventId,
@@ -58,8 +58,8 @@ impl AdapterChangeHandler<'_> {
         if self.text_changed.contains(&id) {
             return;
         }
-        let platform_node = PlatformNode::new(self.context, node.id());
-        let element: IRawElementProviderSimple = platform_node.into();
+        let platform_node = self.context.get_or_create_platform_node(node.id());
+        let element: IRawElementProviderSimple = platform_node.into_interface();
         // Text change events must come before selection change
         // events. It doesn't matter if text change events come
         // before other events.
@@ -91,8 +91,8 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
         let wrapper = NodeWrapper(node);
         if wrapper.name().is_some() && node.live() != Live::Off {
-            let platform_node = PlatformNode::new(self.context, node.id());
-            let element: IRawElementProviderSimple = platform_node.into();
+            let platform_node = self.context.get_or_create_platform_node(node.id());
+            let element: IRawElementProviderSimple = platform_node.into_interface();
             self.queue.push(QueuedEvent::Simple {
                 element,
                 event_id: UIA_LiveRegionChangedEventId,
@@ -107,8 +107,8 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         if filter(new_node) != FilterResult::Include {
             return;
         }
-        let platform_node = PlatformNode::new(self.context, new_node.id());
-        let element: IRawElementProviderSimple = platform_node.into();
+        let platform_node = self.context.get_or_create_platform_node(new_node.id());
+        let element: IRawElementProviderSimple = platform_node.into_interface();
         let old_wrapper = NodeWrapper(old_node);
         let new_wrapper = NodeWrapper(new_node);
         new_wrapper.enqueue_property_changes(&mut self.queue, &element, &old_wrapper);
@@ -134,6 +134,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
 
     fn node_removed(&mut self, node: &Node) {
         self.insert_text_change_if_needed(node);
+        self.context.remove_platform_node(node.id());
     }
 
     // TODO: handle other events (#20)
@@ -305,7 +306,7 @@ impl Adapter {
                     let hwnd = *hwnd;
                     let context = Context::new(hwnd, tree, Arc::clone(action_handler), false);
                     let node_id = context.read_tree().state().root_id();
-                    let platform_node = PlatformNode::new(&context, node_id);
+                    let platform_node = context.get_or_create_platform_node(node_id);
                     self.state = State::Active(context);
                     (hwnd, platform_node)
                 }
@@ -326,10 +327,10 @@ impl Adapter {
             State::Placeholder(context) => (context.hwnd, PlatformNode::unspecified_root(context)),
             State::Active(context) => {
                 let node_id = context.read_tree().state().root_id();
-                (context.hwnd, PlatformNode::new(context, node_id))
+                (context.hwnd, context.get_or_create_platform_node(node_id))
             }
         };
-        let el: IRawElementProviderSimple = platform_node.into();
+        let el: IRawElementProviderSimple = platform_node.into_interface();
         Some(WmGetObjectResult {
             hwnd,
             wparam,

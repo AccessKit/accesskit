@@ -488,18 +488,20 @@ pub(crate) struct PlatformNode {
 }
 
 impl PlatformNode {
-    pub(crate) fn new(context: &Arc<Context>, node_id: NodeId) -> Self {
+    pub(crate) fn new(context: &Arc<Context>, node_id: NodeId) -> ComObject<Self> {
         Self {
             context: Arc::downgrade(context),
             node_id: Some(node_id),
         }
+        .into_object()
     }
 
-    pub(crate) fn unspecified_root(context: &Arc<Context>) -> Self {
+    pub(crate) fn unspecified_root(context: &Arc<Context>) -> ComObject<Self> {
         Self {
             context: Arc::downgrade(context),
             node_id: None,
         }
+        .into_object()
     }
 
     fn upgrade_context(&self) -> Result<Arc<Context>> {
@@ -508,18 +510,11 @@ impl PlatformNode {
 
     fn with_tree_state_and_context<F, T>(&self, f: F) -> Result<T>
     where
-        F: FnOnce(&TreeState, &Context) -> Result<T>,
+        F: FnOnce(&TreeState, &Arc<Context>) -> Result<T>,
     {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
         f(tree.state(), &context)
-    }
-
-    fn with_tree_state<F, T>(&self, f: F) -> Result<T>
-    where
-        F: FnOnce(&TreeState) -> Result<T>,
-    {
-        self.with_tree_state_and_context(|state, _| f(state))
     }
 
     fn node<'a>(&self, state: &'a TreeState) -> Result<Node<'a>> {
@@ -536,7 +531,7 @@ impl PlatformNode {
 
     fn resolve_with_context<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
+        for<'a> F: FnOnce(Node<'a>, &Arc<Context>) -> Result<T>,
     {
         self.with_tree_state_and_context(|state, context| {
             let node = self.node(state)?;
@@ -546,7 +541,7 @@ impl PlatformNode {
 
     fn resolve_with_tree_state_and_context<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &TreeState, &Context) -> Result<T>,
+        for<'a> F: FnOnce(Node<'a>, &TreeState, &Arc<Context>) -> Result<T>,
     {
         self.with_tree_state_and_context(|state, context| {
             let node = self.node(state)?;
@@ -563,7 +558,7 @@ impl PlatformNode {
 
     fn resolve_with_context_for_text_pattern<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
+        for<'a> F: FnOnce(Node<'a>, &Arc<Context>) -> Result<T>,
     {
         self.with_tree_state_and_context(|state, context| {
             let node = self.node(state)?;
@@ -612,13 +607,6 @@ impl PlatformNode {
 
     fn click(&self) -> Result<()> {
         self.do_action(|| (Action::Click, None))
-    }
-
-    fn relative(&self, node_id: NodeId) -> Self {
-        Self {
-            context: self.context.clone(),
-            node_id: Some(node_id),
-        }
     }
 
     fn is_root(&self, state: &TreeState) -> bool {
@@ -676,7 +664,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode_Impl {
 #[allow(non_snake_case)]
 impl IRawElementProviderFragment_Impl for PlatformNode_Impl {
     fn Navigate(&self, direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
-        self.resolve(|node| {
+        self.resolve_with_context(|node, context| {
             let result = match direction {
                 NavigateDirection_Parent => node.filtered_parent(&filter_with_root_exception),
                 NavigateDirection_NextSibling => node.following_filtered_siblings(&filter).next(),
@@ -688,7 +676,9 @@ impl IRawElementProviderFragment_Impl for PlatformNode_Impl {
                 _ => None,
             };
             match result {
-                Some(result) => Ok(self.relative(result.id()).into()),
+                Some(result) => Ok(context
+                    .get_or_create_platform_node(result.id())
+                    .into_interface()),
                 None => Err(Error::empty()),
             }
         })
@@ -733,13 +723,15 @@ impl IRawElementProviderFragment_Impl for PlatformNode_Impl {
     }
 
     fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
-        self.with_tree_state(|state| {
+        self.with_tree_state_and_context(|state, context| {
             if self.is_root(state) {
                 // SAFETY: We know &self is inside a full COM implementation.
                 unsafe { self.cast() }
             } else {
                 let root_id = state.root_id();
-                Ok(self.relative(root_id).into())
+                Ok(context
+                    .get_or_create_platform_node(root_id)
+                    .into_interface())
             }
         })
     }
@@ -754,13 +746,17 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode_Impl {
             let point = node.transform().inverse() * point;
             node.node_at_point(point, &filter).map_or_else(
                 || Err(Error::empty()),
-                |node| Ok(self.relative(node.id()).into()),
+                |node| {
+                    Ok(context
+                        .get_or_create_platform_node(node.id())
+                        .into_interface())
+                },
             )
         })
     }
 
     fn GetFocus(&self) -> Result<IRawElementProviderFragment> {
-        self.with_tree_state(|state| {
+        self.with_tree_state_and_context(|state, context| {
             if let Some(id) = state.focus_id() {
                 let self_id = if let Some(id) = self.node_id {
                     id
@@ -768,7 +764,7 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode_Impl {
                     state.root_id()
                 };
                 if id != self_id {
-                    return Ok(self.relative(id).into());
+                    return Ok(context.get_or_create_platform_node(id).into_interface());
                 }
             }
             Err(Error::empty())

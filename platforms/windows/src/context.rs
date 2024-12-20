@@ -3,11 +3,13 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, ActionRequest, Point};
+use accesskit::{ActionHandler, ActionRequest, NodeId, Point};
 use accesskit_consumer::Tree;
+use hashbrown::HashMap;
 use std::sync::{atomic::AtomicBool, Arc, Mutex, RwLock, RwLockReadGuard};
+use windows::core::ComObject;
 
-use crate::{util::*, window_handle::WindowHandle};
+use crate::{node::PlatformNode, util::*, window_handle::WindowHandle};
 
 pub(crate) trait ActionHandlerNoMut {
     fn do_action(&self, request: ActionRequest);
@@ -32,6 +34,7 @@ pub(crate) struct Context {
     pub(crate) tree: RwLock<Tree>,
     pub(crate) action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
     pub(crate) is_placeholder: AtomicBool,
+    platform_nodes: Mutex<HashMap<NodeId, ComObject<PlatformNode>>>,
 }
 
 impl Context {
@@ -46,6 +49,7 @@ impl Context {
             tree: RwLock::new(tree),
             action_handler,
             is_placeholder: AtomicBool::new(is_placeholder),
+            platform_nodes: Mutex::new(HashMap::new()),
         })
     }
 
@@ -59,5 +63,24 @@ impl Context {
 
     pub(crate) fn do_action(&self, request: ActionRequest) {
         self.action_handler.do_action(request);
+    }
+
+    pub(crate) fn get_or_create_platform_node(
+        self: &Arc<Self>,
+        id: NodeId,
+    ) -> ComObject<PlatformNode> {
+        let mut platform_nodes = self.platform_nodes.lock().unwrap();
+        if let Some(result) = platform_nodes.get(&id) {
+            return result.clone();
+        }
+
+        let result = PlatformNode::new(self, id);
+        platform_nodes.insert(id, result.clone());
+        result
+    }
+
+    pub(crate) fn remove_platform_node(&self, id: NodeId) {
+        let mut platform_nodes = self.platform_nodes.lock().unwrap();
+        platform_nodes.remove(&id);
     }
 }
