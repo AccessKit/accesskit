@@ -26,8 +26,8 @@ use crate::{
 };
 
 fn focus_event(context: &Arc<Context>, node_id: NodeId) -> QueuedEvent {
-    let platform_node = PlatformNode::new(context, node_id);
-    let element: IRawElementProviderSimple = platform_node.into();
+    let platform_node = context.get_or_create_platform_node(node_id);
+    let element: IRawElementProviderSimple = platform_node.into_interface();
     QueuedEvent::Simple {
         element,
         event_id: UIA_AutomationFocusChangedEventId,
@@ -61,8 +61,8 @@ impl AdapterChangeHandler<'_> {
         if self.text_changed.contains(&id) {
             return;
         }
-        let platform_node = PlatformNode::new(self.context, node.id());
-        let element: IRawElementProviderSimple = platform_node.into();
+        let platform_node = self.context.get_or_create_platform_node(node.id());
+        let element: IRawElementProviderSimple = platform_node.into_interface();
         // Text change events must come before selection change
         // events. It doesn't matter if text change events come
         // before other events.
@@ -136,19 +136,25 @@ impl AdapterChangeHandler<'_> {
 
             if let Some(only_selected_child) = only_selected_child {
                 self.queue.push(QueuedEvent::Simple {
-                    element: PlatformNode::new(self.context, only_selected_child.id()).into(),
+                    element: self
+                        .context
+                        .get_or_create_platform_node(only_selected_child.id())
+                        .into_interface(),
                     event_id: UIA_SelectionItem_ElementSelectedEventId,
                 });
                 self.queue.push(QueuedEvent::PropertyChanged {
-                    element: PlatformNode::new(self.context, only_selected_child.id()).into(),
+                    element: self
+                        .context
+                        .get_or_create_platform_node(only_selected_child.id())
+                        .into_interface(),
                     property_id: UIA_SelectionItemIsSelectedPropertyId,
                     old_value: false.into(),
                     new_value: true.into(),
                 });
                 for child_id in changes.removed_items.iter() {
-                    let platform_node = PlatformNode::new(self.context, *child_id);
+                    let platform_node = self.context.get_or_create_platform_node(*child_id);
                     self.queue.push(QueuedEvent::PropertyChanged {
-                        element: platform_node.into(),
+                        element: platform_node.into_interface(),
                         property_id: UIA_SelectionItemIsSelectedPropertyId,
                         old_value: true.into(),
                         new_value: false.into(),
@@ -162,9 +168,9 @@ impl AdapterChangeHandler<'_> {
                 if let Some(container) = container.filter(|_| {
                     changes.added_items.len() + changes.removed_items.len() > INVALIDATE_LIMIT
                 }) {
-                    let platform_node = PlatformNode::new(self.context, container.id());
+                    let platform_node = self.context.get_or_create_platform_node(container.id());
                     self.queue.push(QueuedEvent::Simple {
-                        element: platform_node.into(),
+                        element: platform_node.into_interface(),
                         event_id: UIA_Selection_InvalidatedEventId,
                     });
                 } else {
@@ -172,14 +178,20 @@ impl AdapterChangeHandler<'_> {
                         container.is_some_and(|c| c.is_multiselectable());
                     for added_id in changes.added_items.iter() {
                         self.queue.push(QueuedEvent::Simple {
-                            element: PlatformNode::new(self.context, *added_id).into(),
+                            element: self
+                                .context
+                                .get_or_create_platform_node(*added_id)
+                                .into_interface(),
                             event_id: match container_is_multiselectable {
                                 true => UIA_SelectionItem_ElementAddedToSelectionEventId,
                                 false => UIA_SelectionItem_ElementSelectedEventId,
                             },
                         });
                         self.queue.push(QueuedEvent::PropertyChanged {
-                            element: PlatformNode::new(self.context, *added_id).into(),
+                            element: self
+                                .context
+                                .get_or_create_platform_node(*added_id)
+                                .into_interface(),
                             property_id: UIA_SelectionItemIsSelectedPropertyId,
                             old_value: false.into(),
                             new_value: true.into(),
@@ -187,11 +199,17 @@ impl AdapterChangeHandler<'_> {
                     }
                     for removed_id in changes.removed_items.iter() {
                         self.queue.push(QueuedEvent::Simple {
-                            element: PlatformNode::new(self.context, *removed_id).into(),
+                            element: self
+                                .context
+                                .get_or_create_platform_node(*removed_id)
+                                .into_interface(),
                             event_id: UIA_SelectionItem_ElementRemovedFromSelectionEventId,
                         });
                         self.queue.push(QueuedEvent::PropertyChanged {
-                            element: PlatformNode::new(self.context, *removed_id).into(),
+                            element: self
+                                .context
+                                .get_or_create_platform_node(*removed_id)
+                                .into_interface(),
                             property_id: UIA_SelectionItemIsSelectedPropertyId,
                             old_value: true.into(),
                             new_value: false.into(),
@@ -216,8 +234,8 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
         let wrapper = NodeWrapper(node);
         if wrapper.name().is_some() && node.live() != Live::Off {
-            let platform_node = PlatformNode::new(self.context, node.id());
-            let element: IRawElementProviderSimple = platform_node.into();
+            let platform_node = self.context.get_or_create_platform_node(node.id());
+            let element: IRawElementProviderSimple = platform_node.into_interface();
             self.queue.push(QueuedEvent::Simple {
                 element,
                 event_id: UIA_LiveRegionChangedEventId,
@@ -242,16 +260,11 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
             }
             return;
         }
-        let platform_node = PlatformNode::new(self.context, new_node.id());
-        let element: IRawElementProviderSimple = platform_node.into();
+        let platform_node = self.context.get_or_create_platform_node(new_node.id());
+        let element: IRawElementProviderSimple = platform_node.into_interface();
         let old_wrapper = NodeWrapper(old_node);
         let new_wrapper = NodeWrapper(new_node);
-        new_wrapper.enqueue_property_changes(
-            &mut self.queue,
-            &PlatformNode::new(self.context, new_node.id()),
-            &element,
-            &old_wrapper,
-        );
+        new_wrapper.enqueue_property_changes(&mut self.queue, self.context, &element, &old_wrapper);
         let new_name = new_wrapper.name();
         if new_name.is_some()
             && new_node.live() != Live::Off
@@ -280,6 +293,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
 
     fn node_removed(&mut self, node: &Node) {
         self.insert_text_change_if_needed(node);
+        self.context.remove_platform_node(node.id());
         if filter(node) != FilterResult::Include {
             return;
         }
@@ -479,7 +493,7 @@ impl Adapter {
                     let hwnd = *hwnd;
                     let context = Context::new(hwnd, tree, Arc::clone(action_handler), false);
                     let node_id = context.read_tree().state().root_id();
-                    let platform_node = PlatformNode::new(&context, node_id);
+                    let platform_node = context.get_or_create_platform_node(node_id);
                     self.state = State::Active(context);
                     (hwnd, platform_node)
                 }
@@ -500,10 +514,10 @@ impl Adapter {
             State::Placeholder(context) => (context.hwnd, PlatformNode::unspecified_root(context)),
             State::Active(context) => {
                 let node_id = context.read_tree().state().root_id();
-                (context.hwnd, PlatformNode::new(context, node_id))
+                (context.hwnd, context.get_or_create_platform_node(node_id))
             }
         };
-        let el: IRawElementProviderSimple = platform_node.into();
+        let el: IRawElementProviderSimple = platform_node.into_interface();
         Some(WmGetObjectResult {
             hwnd,
             wparam,
