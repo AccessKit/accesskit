@@ -207,6 +207,10 @@ pub(crate) fn element_not_available() -> Error {
     HRESULT(UIA_E_ELEMENTNOTAVAILABLE as _).into()
 }
 
+pub(crate) fn element_not_enabled() -> Error {
+    HRESULT(UIA_E_ELEMENTNOTENABLED as _).into()
+}
+
 pub(crate) fn invalid_operation() -> Error {
     HRESULT(UIA_E_INVALIDOPERATION as _).into()
 }
