@@ -32,6 +32,7 @@ struct AdapterChangeHandler<'a> {
     added_nodes: HashSet<NodeId>,
     removed_nodes: HashSet<NodeId>,
     checked_text_change: HashSet<NodeId>,
+    selection_changed: HashSet<NodeId>,
 }
 
 impl<'a> AdapterChangeHandler<'a> {
@@ -41,6 +42,7 @@ impl<'a> AdapterChangeHandler<'a> {
             added_nodes: HashSet::new(),
             removed_nodes: HashSet::new(),
             checked_text_change: HashSet::new(),
+            selection_changed: HashSet::new(),
         }
     }
 
@@ -53,8 +55,8 @@ impl<'a> AdapterChangeHandler<'a> {
 
         let role = node.role();
         let is_root = node.is_root();
-        let node = NodeWrapper(node);
-        let interfaces = node.interfaces();
+        let wrapper = NodeWrapper(node);
+        let interfaces = wrapper.interfaces();
         self.adapter.register_interfaces(node.id(), interfaces);
         if is_root && role == Role::Window {
             let adapter_index = self
@@ -66,12 +68,15 @@ impl<'a> AdapterChangeHandler<'a> {
             self.adapter.window_created(adapter_index, node.id());
         }
 
-        let live = node.live();
+        let live = wrapper.live();
         if live != Politeness::None {
-            if let Some(name) = node.name() {
+            if let Some(name) = wrapper.name() {
                 self.adapter
                     .emit_object_event(node.id(), ObjectEvent::Announcement(name, live));
             }
+        }
+        if let Some(true) = node.is_selected() {
+            self.enqueue_selection_changed_if_needed(node);
         }
     }
 
@@ -91,14 +96,17 @@ impl<'a> AdapterChangeHandler<'a> {
 
         let role = node.role();
         let is_root = node.is_root();
-        let node = NodeWrapper(node);
+        let wrapper = NodeWrapper(node);
         if is_root && role == Role::Window {
             self.adapter.window_destroyed(node.id());
         }
         self.adapter
             .emit_object_event(node.id(), ObjectEvent::StateChanged(State::Defunct, true));
         self.adapter
-            .unregister_interfaces(node.id(), node.interfaces());
+            .unregister_interfaces(node.id(), wrapper.interfaces());
+        if let Some(true) = node.is_selected() {
+            self.enqueue_selection_changed_if_needed(node);
+        }
     }
 
     fn remove_subtree(&mut self, node: &Node) {
@@ -235,6 +243,36 @@ impl<'a> AdapterChangeHandler<'a> {
             }
         }
     }
+
+    fn enqueue_selection_changed_if_needed_parent(&mut self, node: Node) {
+        if !node.is_container_with_selectable_children() {
+            return;
+        }
+        let id = node.id();
+        if self.selection_changed.contains(&id) {
+            return;
+        }
+        self.selection_changed.insert(id);
+    }
+
+    fn enqueue_selection_changed_if_needed(&mut self, node: &Node) {
+        if !node.is_item_like() {
+            return;
+        }
+        if let Some(node) = node.selection_container(&filter) {
+            self.enqueue_selection_changed_if_needed_parent(node);
+        }
+    }
+
+    fn emit_selection_changed(&mut self) {
+        for id in self.selection_changed.iter() {
+            if self.removed_nodes.contains(id) {
+                continue;
+            }
+            self.adapter
+                .emit_object_event(*id, ObjectEvent::SelectionChanged);
+        }
+    }
 }
 
 impl TreeChangeHandler for AdapterChangeHandler<'_> {
@@ -275,6 +313,9 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
             let bounds = *self.adapter.context.read_root_window_bounds();
             new_wrapper.notify_changes(&bounds, self.adapter, &old_wrapper);
             self.emit_text_selection_change(Some(old_node), new_node);
+            if new_node.is_selected() != old_node.is_selected() {
+                self.enqueue_selection_changed_if_needed(new_node);
+            }
         }
     }
 
@@ -476,6 +517,8 @@ impl Adapter {
         let mut handler = AdapterChangeHandler::new(self);
         let mut tree = self.context.tree.write().unwrap();
         tree.update_and_process_changes(update, &mut handler);
+        drop(tree);
+        handler.emit_selection_changed();
     }
 
     pub fn update_window_focus_state(&mut self, is_focused: bool) {
