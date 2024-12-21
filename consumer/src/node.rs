@@ -405,7 +405,13 @@ impl<'a> Node<'a> {
     }
 
     pub fn orientation(&self) -> Option<Orientation> {
-        self.data().orientation()
+        self.data().orientation().or_else(|| {
+            if self.role() == Role::ListBox {
+                Some(Orientation::Vertical)
+            } else {
+                None
+            }
+        })
     }
 
     // When probing for supported actions as the next several functions do,
@@ -419,6 +425,33 @@ impl<'a> Node<'a> {
 
     pub fn is_clickable(&self) -> bool {
         self.supports_action(Action::Click)
+    }
+
+    pub fn is_selectable(&self) -> bool {
+        // It's selectable if it has the attribute, whether it's true or false.
+        self.is_selected().is_some() && !self.is_disabled()
+    }
+
+    pub fn is_multiselectable(&self) -> bool {
+        self.data().is_multiselectable()
+    }
+
+    pub fn size_of_set_from_container(
+        &self,
+        filter: &impl Fn(&Node) -> FilterResult,
+    ) -> Option<usize> {
+        self.selection_container(filter)
+            .and_then(|c| c.size_of_set())
+    }
+
+    pub fn size_of_set(&self) -> Option<usize> {
+        // TODO: compute this if it is not provided (#9).
+        self.data().size_of_set()
+    }
+
+    pub fn position_in_set(&self) -> Option<usize> {
+        // TODO: compute this if it is not provided (#9).
+        self.data().position_in_set()
     }
 
     pub fn supports_toggle(&self) -> bool {
@@ -621,6 +654,44 @@ impl<'a> Node<'a> {
         self.data().is_selected()
     }
 
+    pub fn is_item_like(&self) -> bool {
+        matches!(
+            self.role(),
+            Role::Article
+                | Role::Comment
+                | Role::ListItem
+                | Role::MenuItem
+                | Role::MenuItemRadio
+                | Role::Tab
+                | Role::MenuItemCheckBox
+                | Role::TreeItem
+                | Role::ListBoxOption
+                | Role::MenuListOption
+                | Role::RadioButton
+                | Role::DescriptionListTerm
+                | Role::Term
+        )
+    }
+
+    pub fn is_container_with_selectable_children(&self) -> bool {
+        matches!(
+            self.role(),
+            Role::ComboBox
+                | Role::EditableComboBox
+                | Role::Grid
+                | Role::ListBox
+                | Role::ListGrid
+                | Role::Menu
+                | Role::MenuBar
+                | Role::MenuListPopup
+                | Role::RadioGroup
+                | Role::TabList
+                | Role::Toolbar
+                | Role::Tree
+                | Role::TreeGrid
+        )
+    }
+
     pub fn raw_text_selection(&self) -> Option<&TextSelection> {
         self.data().text_selection()
     }
@@ -687,6 +758,27 @@ impl<'a> Node<'a> {
             }
         }
         None
+    }
+
+    pub fn selection_container(&self, filter: &impl Fn(&Node) -> FilterResult) -> Option<Node<'a>> {
+        self.filtered_parent(&|parent| match filter(parent) {
+            FilterResult::Include if parent.is_container_with_selectable_children() => {
+                FilterResult::Include
+            }
+            FilterResult::Include => FilterResult::ExcludeNode,
+            filter_result => filter_result,
+        })
+    }
+
+    pub fn items(
+        &self,
+        filter: impl Fn(&Node) -> FilterResult + 'a,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+        self.filtered_children(move |child| match filter(child) {
+            FilterResult::Include if child.is_item_like() => FilterResult::Include,
+            FilterResult::Include => FilterResult::ExcludeNode,
+            filter_result => filter_result,
+        })
     }
 }
 
