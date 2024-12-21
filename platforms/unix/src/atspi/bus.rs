@@ -119,6 +119,13 @@ impl Bus {
             )
             .await?;
         }
+        if new_interfaces.contains(Interface::Selection) {
+            self.register_interface(
+                &path,
+                SelectionInterface::new(bus_name.clone(), node.clone()),
+            )
+            .await?;
+        }
         if new_interfaces.contains(Interface::Text) {
             self.register_interface(&path, TextInterface::new(node.clone()))
                 .await?;
@@ -164,6 +171,10 @@ impl Bus {
             self.unregister_interface::<ComponentInterface>(&path)
                 .await?;
         }
+        if old_interfaces.contains(Interface::Selection) {
+            self.unregister_interface::<SelectionInterface>(&path)
+                .await?;
+        }
         if old_interfaces.contains(Interface::Text) {
             self.unregister_interface::<TextInterface>(&path).await?;
         }
@@ -206,6 +217,7 @@ impl Bus {
             ObjectEvent::CaretMoved(_) => "TextCaretMoved",
             ObjectEvent::ChildAdded(_, _) | ObjectEvent::ChildRemoved(_) => "ChildrenChanged",
             ObjectEvent::PropertyChanged(_) => "PropertyChange",
+            ObjectEvent::SelectionChanged => "SelectionChanged",
             ObjectEvent::StateChanged(_, _) => "StateChanged",
             ObjectEvent::TextInserted { .. } | ObjectEvent::TextRemoved { .. } => "TextChanged",
             ObjectEvent::TextSelectionChanged => "TextSelectionChanged",
@@ -284,6 +296,10 @@ impl Bus {
                     Property::Value(value) => Value::F64(value),
                 };
                 self.emit_event(target, interface, signal, body).await
+            }
+            ObjectEvent::SelectionChanged => {
+                self.emit_event(target, interface, signal, EventBodyBorrowed::default())
+                    .await
             }
             ObjectEvent::StateChanged(state, value) => {
                 let mut body = EventBodyBorrowed::default();
