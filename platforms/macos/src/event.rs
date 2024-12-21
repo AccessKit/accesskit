@@ -137,6 +137,7 @@ pub(crate) struct EventGenerator {
     context: Rc<Context>,
     events: Vec<QueuedEvent>,
     text_changed: HashSet<NodeId>,
+    selected_rows_changed: HashSet<NodeId>,
 }
 
 impl EventGenerator {
@@ -145,6 +146,7 @@ impl EventGenerator {
             context,
             events: Vec::new(),
             text_changed: HashSet::new(),
+            selected_rows_changed: HashSet::new(),
         }
     }
 
@@ -181,6 +183,30 @@ impl EventGenerator {
             self.insert_text_change_if_needed_parent(node);
         }
     }
+
+    fn enqueue_selected_rows_change_if_needed_parent(&mut self, node: Node) {
+        if !node.is_container_with_selectable_children() {
+            return;
+        }
+        let id = node.id();
+        if self.selected_rows_changed.contains(&id) {
+            return;
+        }
+        self.events.push(QueuedEvent::Generic {
+            node_id: id,
+            notification: unsafe { NSAccessibilitySelectedRowsChangedNotification },
+        });
+        self.selected_rows_changed.insert(id);
+    }
+
+    fn enqueue_selected_rows_change_if_needed(&mut self, node: &Node) {
+        if !node.is_item_like() {
+            return;
+        }
+        if let Some(node) = node.selection_container(&filter) {
+            self.enqueue_selected_rows_change_if_needed_parent(node);
+        }
+    }
 }
 
 impl TreeChangeHandler for EventGenerator {
@@ -188,6 +214,9 @@ impl TreeChangeHandler for EventGenerator {
         self.insert_text_change_if_needed(node);
         if filter(node) != FilterResult::Include {
             return;
+        }
+        if let Some(true) = node.is_selected() {
+            self.enqueue_selected_rows_change_if_needed(node);
         }
         if node.value().is_some() && node.live() != Live::Off {
             self.events
@@ -199,7 +228,14 @@ impl TreeChangeHandler for EventGenerator {
         if old_node.raw_value() != new_node.raw_value() {
             self.insert_text_change_if_needed(new_node);
         }
+        let old_node_was_filtered_out = filter(old_node) != FilterResult::Include;
         if filter(new_node) != FilterResult::Include {
+            if !old_node_was_filtered_out
+                && old_node.is_item_like()
+                && old_node.is_selected() == Some(true)
+            {
+                self.enqueue_selected_rows_change_if_needed(old_node);
+            }
             return;
         }
         let node_id = new_node.id();
@@ -230,10 +266,16 @@ impl TreeChangeHandler for EventGenerator {
             && new_node.live() != Live::Off
             && (new_node.value() != old_node.value()
                 || new_node.live() != old_node.live()
-                || filter(old_node) != FilterResult::Include)
+                || old_node_was_filtered_out)
         {
             self.events
                 .push(QueuedEvent::live_region_announcement(new_node));
+        }
+        if new_node.is_item_like()
+            && (new_node.is_selected() != old_node.is_selected()
+                || (old_node_was_filtered_out && new_node.is_selected() == Some(true)))
+        {
+            self.enqueue_selected_rows_change_if_needed(new_node);
         }
     }
 
@@ -248,6 +290,9 @@ impl TreeChangeHandler for EventGenerator {
 
     fn node_removed(&mut self, node: &Node) {
         self.insert_text_change_if_needed(node);
+        if let Some(true) = node.is_selected() {
+            self.enqueue_selected_rows_change_if_needed(node);
+        }
         self.events.push(QueuedEvent::NodeDestroyed(node.id()));
     }
 }
