@@ -707,7 +707,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode_Impl {
                 if node.is_root() {
                     match property_id {
                         UIA_NamePropertyId => {
-                            result = window_title(context.hwnd).into();
+                            result = window_title(context.hwnd, &mut buffer).into();
                         }
                         UIA_NativeWindowHandlePropertyId => {
                             result = (context.hwnd.0 .0 as i32).into();

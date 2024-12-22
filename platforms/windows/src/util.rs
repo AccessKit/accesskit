@@ -268,7 +268,7 @@ pub(crate) fn client_top_left(hwnd: WindowHandle) -> Point {
     Point::new(result.x.into(), result.y.into())
 }
 
-pub(crate) fn window_title(hwnd: WindowHandle) -> Option<BSTR> {
+pub(crate) fn window_title(hwnd: WindowHandle, buffer: &mut Vec<u16>) -> Option<BSTR> {
     // The following is an old hack to get the window caption without ever
     // sending messages to the window itself, even if the window is in
     // the same process but possibly a separate thread. This prevents
@@ -279,7 +279,8 @@ pub(crate) fn window_title(hwnd: WindowHandle) -> Option<BSTR> {
         return None;
     }
     let capacity = (result.0 as usize) + 1; // make room for the null
-    let mut buffer = Vec::<u16>::with_capacity(capacity);
+    buffer.clear();
+    buffer.reserve(capacity);
     let result = unsafe {
         DefWindowProcW(
             hwnd.0,
@@ -293,7 +294,7 @@ pub(crate) fn window_title(hwnd: WindowHandle) -> Option<BSTR> {
     }
     let len = result.0 as usize;
     unsafe { buffer.set_len(len) };
-    Some(BSTR::from_wide(&buffer))
+    Some(BSTR::from_wide(buffer))
 }
 
 pub(crate) fn toolkit_description<'a>(
