@@ -42,9 +42,7 @@ impl Adapter {
     }
 
     pub fn update_if_active(&mut self, tree_id: TreeId, fill: impl FnOnce(&mut TreeUpdate)) {
-        if let Some(events) = self.adapter.update_if_active(tree_id, fill) {
-            events.raise();
-        }
+        self.adapter.update_if_active(tree_id, fill);
     }
 
     pub fn process_event(&mut self, _window: &Window, _event: &WindowEvent) {}
