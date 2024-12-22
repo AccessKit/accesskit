@@ -180,6 +180,10 @@ impl Adapter {
     /// some platform adapters to use a placeholder tree until you send
     /// the first update. However, remember that each of these handlers may be
     /// called on any thread, depending on the underlying platform adapter.
+    ///
+    /// Note: If the [`ActivationHandler`] implementation does any runtime
+    /// borrowing, the runtime-borrowed state must not include the [`Adapter`]
+    /// instance.
     pub fn with_direct_handlers(
         window: &Window,
         activation_handler: impl 'static + ActivationHandler + Send,
@@ -207,6 +211,10 @@ impl Adapter {
     /// while using a direct, caller-provided activation handler that can
     /// return the initial tree synchronously. Remember that the thread on which
     /// the activation handler is called is platform-dependent.
+    ///
+    /// Note: If the [`ActivationHandler`] implementation does any runtime
+    /// borrowing, the runtime-borrowed state must not include the [`Adapter`]
+    /// instance.
     pub fn with_mixed_handlers<T: From<Event> + Send + 'static>(
         window: &Window,
         activation_handler: impl 'static + ActivationHandler + Send,
