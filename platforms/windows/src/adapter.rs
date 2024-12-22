@@ -39,19 +39,23 @@ struct ChangeHandlerScratch {
     secondary_string_buffer: Vec<u16>,
 }
 
-struct AdapterChangeHandler<'a> {
+struct AdapterChangeHandler<'a, 'b> {
     context: &'a Arc<Context>,
-    queue: Vec<QueuedEvent>,
+    queue: &'b mut Vec<QueuedEvent>,
     text_changed: HashSet<NodeId>,
     selection_changed: HashMap<NodeId, SelectionChanges>,
     scratch: &'a mut ChangeHandlerScratch,
 }
 
-impl<'a> AdapterChangeHandler<'a> {
-    fn new(context: &'a Arc<Context>, scratch: &'a mut ChangeHandlerScratch) -> Self {
+impl<'a, 'b> AdapterChangeHandler<'a, 'b> {
+    fn new(
+        context: &'a Arc<Context>,
+        event_ctx: &'b mut EventContext,
+        scratch: &'a mut ChangeHandlerScratch,
+    ) -> Self {
         Self {
             context,
-            queue: Vec::new(),
+            queue: event_ctx.write_queue(),
             text_changed: HashSet::new(),
             selection_changed: HashMap::new(),
             scratch,
@@ -59,7 +63,7 @@ impl<'a> AdapterChangeHandler<'a> {
     }
 }
 
-impl AdapterChangeHandler<'_> {
+impl AdapterChangeHandler<'_, '_> {
     fn insert_text_change_if_needed_parent(&mut self, node: Node) {
         if !node.supports_text_ranges() {
             return;
@@ -233,7 +237,7 @@ struct SelectionChanges {
     removed_items: HashSet<NodeId>,
 }
 
-impl TreeChangeHandler for AdapterChangeHandler<'_> {
+impl TreeChangeHandler for AdapterChangeHandler<'_, '_> {
     fn node_added(&mut self, node: &Node) {
         self.insert_text_change_if_needed(node);
         if filter(node) != FilterResult::Include {
@@ -285,12 +289,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
             node: new_node,
             string_buffer: &mut buffer,
         };
-        new_wrapper.enqueue_property_changes(
-            &mut self.queue,
-            self.context,
-            &element,
-            &mut old_wrapper,
-        );
+        new_wrapper.enqueue_property_changes(self.queue, self.context, &element, &mut old_wrapper);
         let new_name = new_wrapper.name();
         if new_name.is_some()
             && new_node.live() != Live::Off
@@ -430,7 +429,11 @@ impl Adapter {
     /// it should be called.
     ///
     /// [`ActivationHandler::request_initial_tree`]: accesskit::ActivationHandler::request_initial_tree
-    pub fn update_if_active(&mut self, fill: impl FnOnce(&mut TreeUpdate)) -> Option<QueuedEvents> {
+    pub fn update_if_active<'a>(
+        &mut self,
+        event_ctx: &'a mut EventContext,
+        fill: impl FnOnce(&mut TreeUpdate),
+    ) -> Option<QueuedEvents<'a>> {
         match &self.state {
             State::Inactive { .. } => None,
             State::Placeholder(context) => {
@@ -438,17 +441,17 @@ impl Adapter {
                 let tree = Tree::new(is_window_focused, fill);
                 *context.tree.write().unwrap() = tree;
                 context.is_placeholder.store(false, Ordering::SeqCst);
-                let result = context
-                    .read_tree()
-                    .state()
-                    .focus_id()
-                    .map(|id| QueuedEvents(vec![focus_event(context, id)]));
+                let result = context.read_tree().state().focus_id().map(|id| {
+                    let queue = event_ctx.write_queue();
+                    queue.push(focus_event(context, id));
+                    QueuedEvents(queue)
+                });
                 self.state = State::Active(Arc::clone(context));
                 result
             }
             State::Active(context) => {
                 let mut handler =
-                    AdapterChangeHandler::new(context, &mut self.change_handler_scratch);
+                    AdapterChangeHandler::new(context, event_ctx, &mut self.change_handler_scratch);
                 let mut tree = context.tree.write().unwrap();
                 tree.update(&mut handler, fill);
                 handler.enqueue_selection_changes(&tree);
@@ -465,7 +468,11 @@ impl Adapter {
     /// This method may be safely called on any thread, but refer to
     /// [`QueuedEvents::raise`] for restrictions on the context in which
     /// it should be called.
-    pub fn update_window_focus_state(&mut self, is_focused: bool) -> Option<QueuedEvents> {
+    pub fn update_window_focus_state<'a>(
+        &mut self,
+        is_focused: bool,
+        event_ctx: &'a mut EventContext,
+    ) -> Option<QueuedEvents<'a>> {
         match &mut self.state {
             State::Inactive {
                 is_window_focused, ..
@@ -475,14 +482,14 @@ impl Adapter {
             }
             State::Placeholder(context) => {
                 let mut handler =
-                    AdapterChangeHandler::new(context, &mut self.change_handler_scratch);
+                    AdapterChangeHandler::new(context, event_ctx, &mut self.change_handler_scratch);
                 let mut tree = context.tree.write().unwrap();
                 tree.update_host_focus_state(is_focused, &mut handler);
                 Some(QueuedEvents(handler.queue))
             }
             State::Active(context) => {
                 let mut handler =
-                    AdapterChangeHandler::new(context, &mut self.change_handler_scratch);
+                    AdapterChangeHandler::new(context, event_ctx, &mut self.change_handler_scratch);
                 let mut tree = context.tree.write().unwrap();
                 tree.update_host_focus_state(is_focused, &mut handler);
                 Some(QueuedEvents(handler.queue))
@@ -596,11 +603,25 @@ impl From<WmGetObjectResult> for LRESULT {
     }
 }
 
+/// Persistent context for queued events. If an application needs to put this
+/// behind interior mutability, it must be borrowed separately from [`Adapter`]
+/// to avoid reentrancey issues if `WM_GETOBJECT` is received while raising
+/// events.
+#[derive(Default)]
+pub struct EventContext(Vec<QueuedEvent>);
+
+impl EventContext {
+    fn write_queue(&mut self) -> &mut Vec<QueuedEvent> {
+        debug_assert!(self.0.is_empty());
+        &mut self.0
+    }
+}
+
 /// Events generated by a tree update.
 #[must_use = "events must be explicitly raised"]
-pub struct QueuedEvents(Vec<QueuedEvent>);
+pub struct QueuedEvents<'a>(&'a mut Vec<QueuedEvent>);
 
-impl QueuedEvents {
+impl QueuedEvents<'_> {
     /// Raise all queued events synchronously.
     ///
     /// The window may receive `WM_GETOBJECT` messages during this call.
@@ -612,7 +633,7 @@ impl QueuedEvents {
     /// but based on the known behavior of UIA, MSAA, and some ATs,
     /// it's strongly recommended.
     pub fn raise(self) {
-        for event in self.0 {
+        for event in self.0.drain(..) {
             match event {
                 QueuedEvent::Simple { element, event_id } => {
                     unsafe { UiaRaiseAutomationEvent(&element, event_id) }.unwrap();
@@ -641,4 +662,4 @@ impl QueuedEvents {
 // We explicitly want to allow the queued events to be sent to the UI thread,
 // so implement Send even though windows-rs doesn't implement it for all
 // contained types. This is safe because we're not using COM threading.
-unsafe impl Send for QueuedEvents {}
+unsafe impl Send for QueuedEvents<'_> {}

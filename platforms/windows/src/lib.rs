@@ -11,7 +11,7 @@ mod util;
 mod window_handle;
 
 mod adapter;
-pub use adapter::{Adapter, QueuedEvents};
+pub use adapter::{Adapter, EventContext, QueuedEvents};
 
 mod subclass;
 pub use subclass::SubclassingAdapter;
