@@ -36,20 +36,27 @@ fn focus_event(context: &Arc<Context>, node_id: NodeId) -> QueuedEvent {
     }
 }
 
+#[derive(Debug, Default)]
+struct ChangeHandlerScratch {
+    secondary_string_buffer: Vec<u16>,
+}
+
 struct AdapterChangeHandler<'a> {
     context: &'a Arc<Context>,
     queue: Vec<QueuedEvent>,
     text_changed: HashSet<NodeId>,
     selection_changed: HashMap<NodeId, SelectionChanges>,
+    scratch: &'a mut ChangeHandlerScratch,
 }
 
 impl<'a> AdapterChangeHandler<'a> {
-    fn new(context: &'a Arc<Context>) -> Self {
+    fn new(context: &'a Arc<Context>, scratch: &'a mut ChangeHandlerScratch) -> Self {
         Self {
             context,
             queue: Vec::new(),
             text_changed: HashSet::new(),
             selection_changed: HashMap::new(),
+            scratch,
         }
     }
 }
@@ -244,7 +251,11 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         if filter(node) != FilterResult::Include {
             return;
         }
-        let wrapper = NodeWrapper(node);
+        let mut buffer = self.context.lock_string_buffer();
+        let mut wrapper = NodeWrapper {
+            node,
+            string_buffer: &mut buffer,
+        };
         if node.is_dialog() {
             let platform_node = self.context.get_or_create_platform_node(node.id());
             let element: IRawElementProviderSimple = platform_node.into_interface();
@@ -281,7 +292,10 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                         event_id: UIA_Window_WindowClosedEventId,
                     });
                 }
-                let old_wrapper = NodeWrapper(old_node);
+                let old_wrapper = NodeWrapper {
+                    node: old_node,
+                    string_buffer: &mut self.scratch.secondary_string_buffer,
+                };
                 if old_wrapper.is_selection_item_pattern_supported() && old_wrapper.is_selected() {
                     self.handle_selection_state_change(old_node, false);
                 }
@@ -290,9 +304,21 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
         let platform_node = self.context.get_or_create_platform_node(new_node.id());
         let element: IRawElementProviderSimple = platform_node.into_interface();
-        let old_wrapper = NodeWrapper(old_node);
-        let new_wrapper = NodeWrapper(new_node);
-        new_wrapper.enqueue_property_changes(&mut self.queue, self.context, &element, &old_wrapper);
+        let mut old_wrapper = NodeWrapper {
+            node: old_node,
+            string_buffer: &mut self.scratch.secondary_string_buffer,
+        };
+        let mut buffer = self.context.lock_string_buffer();
+        let mut new_wrapper = NodeWrapper {
+            node: new_node,
+            string_buffer: &mut buffer,
+        };
+        new_wrapper.enqueue_property_changes(
+            &mut self.queue,
+            self.context,
+            &element,
+            &mut old_wrapper,
+        );
         let new_name = new_wrapper.name();
         if new_name.is_some()
             && new_node.live() != Live::Off
@@ -341,7 +367,11 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 event_id: UIA_Window_WindowClosedEventId,
             });
         }
-        let wrapper = NodeWrapper(node);
+        let mut buffer = self.context.lock_string_buffer();
+        let wrapper = NodeWrapper {
+            node,
+            string_buffer: &mut buffer,
+        };
         if wrapper.is_selection_item_pattern_supported() {
             self.handle_selection_state_change(node, false);
         }
@@ -384,6 +414,7 @@ impl Debug for State {
 #[derive(Debug)]
 pub struct Adapter {
     state: State,
+    change_handler_scratch: ChangeHandlerScratch,
 }
 
 impl Adapter {
@@ -424,7 +455,10 @@ impl Adapter {
             is_window_focused,
             action_handler,
         };
-        Self { state }
+        Self {
+            state,
+            change_handler_scratch: Default::default(),
+        }
     }
 
     /// If and only if the tree has been initialized, call the provided function
@@ -461,7 +495,8 @@ impl Adapter {
                 result
             }
             State::Active(context) => {
-                let mut handler = AdapterChangeHandler::new(context);
+                let mut handler =
+                    AdapterChangeHandler::new(context, &mut self.change_handler_scratch);
                 let mut tree = context.tree.write().unwrap();
                 tree.update(tree_id, &mut handler, fill);
                 handler.enqueue_selection_changes(&tree);
@@ -487,13 +522,15 @@ impl Adapter {
                 None
             }
             State::Placeholder(context) => {
-                let mut handler = AdapterChangeHandler::new(context);
+                let mut handler =
+                    AdapterChangeHandler::new(context, &mut self.change_handler_scratch);
                 let mut tree = context.tree.write().unwrap();
                 tree.update_host_focus_state(is_focused, &mut handler);
                 Some(QueuedEvents(handler.queue))
             }
             State::Active(context) => {
-                let mut handler = AdapterChangeHandler::new(context);
+                let mut handler =
+                    AdapterChangeHandler::new(context, &mut self.change_handler_scratch);
                 let mut tree = context.tree.write().unwrap();
                 tree.update_host_focus_state(is_focused, &mut handler);
                 Some(QueuedEvents(handler.queue))

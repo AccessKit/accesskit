@@ -259,13 +259,6 @@ impl PlatformRange {
         })
     }
 
-    fn read<F, T>(&self, f: F) -> Result<T>
-    where
-        F: FnOnce(Range) -> Result<T>,
-    {
-        self.read_with_context(|range, _| f(range))
-    }
-
     fn write<F, T>(&self, f: F) -> Result<T>
     where
         F: FnOnce(&mut Range) -> Result<T>,
@@ -416,7 +409,7 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
     }
 
     fn GetAttributeValue(&self, id: UIA_TEXTATTRIBUTE_ID) -> Result<VARIANT> {
-        self.read(|range| match id {
+        self.read_with_context(|range, context| match id {
             UIA_IsReadOnlyAttributeId => {
                 // TBD: do we ever want to support mixed read-only/editable text?
                 let value = range.node().is_read_only();
@@ -435,7 +428,13 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
                 Ok(value.0.into())
             }
             UIA_CultureAttributeId => Ok(Variant::from(range.language().map(LocaleName)).into()),
-            UIA_FontNameAttributeId => Ok(Variant::from(range.font_family()).into()),
+            UIA_FontNameAttributeId => {
+                let mut buffer = context.lock_string_buffer();
+                Ok(
+                    Variant::from(range.font_family().map(|s| StrWrapper::new(s, &mut buffer)))
+                        .into(),
+                )
+            }
             UIA_FontSizeAttributeId => {
                 Ok(Variant::from(range.font_size().map(|value| value as f64)).into())
             }
@@ -513,8 +512,9 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
     fn GetText(&self, _max_length: i32) -> Result<BSTR> {
         // The Microsoft docs imply that the provider isn't _required_
         // to truncate text at the max length, so we just ignore it.
-        self.read(|range| {
-            let mut result = WideString::default();
+        self.read_with_context(|range, context| {
+            let mut buffer = context.lock_string_buffer();
+            let mut result = WideString::new(&mut buffer);
             range.write_text(&mut result).unwrap();
             Ok(result.into())
         })
