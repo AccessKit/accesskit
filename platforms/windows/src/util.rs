@@ -6,8 +6,10 @@
 use accesskit::{Color, Point, TextAlign, TextDecorationStyle};
 use accesskit_consumer::{TextRangePropertyValue, TreeState};
 use std::{
+    cell::RefCell,
     fmt::{self, Write},
     mem::ManuallyDrop,
+    ops::{Deref, DerefMut},
     sync::{Arc, Weak},
 };
 use windows::{
@@ -23,10 +25,61 @@ use windows::{
 
 use crate::window_handle::WindowHandle;
 
-#[derive(Clone, Default, PartialEq, Eq)]
-pub(crate) struct WideString(Vec<u16>);
+thread_local! {
+    static STRING_SCRATCH: RefCell<Vec<Vec<u16>>> = const { RefCell::new(Vec::new()) };
+}
 
-impl Write for WideString {
+const MAX_RETAINED_SCRATCH_CAPACITY: usize = 4096;
+const MAX_POOLED_BUFFERS: usize = 2;
+
+/// A scratch buffer for wide-string conversion, leased from a thread-local pool.
+pub(crate) struct StringBuffer(Vec<u16>);
+
+impl StringBuffer {
+    pub(crate) fn acquire() -> Self {
+        Self(STRING_SCRATCH.with(|c| c.borrow_mut().pop().unwrap_or_default()))
+    }
+}
+
+impl Drop for StringBuffer {
+    fn drop(&mut self) {
+        let mut buf = std::mem::take(&mut self.0);
+        if buf.capacity() > MAX_RETAINED_SCRATCH_CAPACITY {
+            buf.clear();
+            buf.shrink_to(MAX_RETAINED_SCRATCH_CAPACITY);
+        }
+        STRING_SCRATCH.with(|c| {
+            let mut pool = c.borrow_mut();
+            if pool.len() < MAX_POOLED_BUFFERS {
+                pool.push(buf);
+            }
+        });
+    }
+}
+
+impl Deref for StringBuffer {
+    type Target = Vec<u16>;
+    fn deref(&self) -> &Vec<u16> {
+        &self.0
+    }
+}
+
+impl DerefMut for StringBuffer {
+    fn deref_mut(&mut self) -> &mut Vec<u16> {
+        &mut self.0
+    }
+}
+
+pub(crate) struct WideString<'a>(&'a mut Vec<u16>);
+
+impl<'a> WideString<'a> {
+    pub(crate) fn new(buffer: &'a mut Vec<u16>) -> Self {
+        buffer.clear();
+        Self(buffer)
+    }
+}
+
+impl Write for WideString<'_> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.0.extend(s.encode_utf16());
         Ok(())
@@ -38,9 +91,15 @@ impl Write for WideString {
     }
 }
 
-impl From<WideString> for BSTR {
+impl PartialEq for WideString<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        *self.0 == *other.0
+    }
+}
+
+impl From<WideString<'_>> for BSTR {
     fn from(value: WideString) -> Self {
-        Self::from_wide(&value.0)
+        Self::from_wide(value.0)
     }
 }
 
@@ -78,23 +137,35 @@ impl From<BSTR> for Variant {
     }
 }
 
-impl From<WideString> for Variant {
+impl From<WideString<'_>> for Variant {
     fn from(value: WideString) -> Self {
         BSTR::from(value).into()
     }
 }
 
-impl From<&str> for Variant {
-    fn from(value: &str) -> Self {
-        let mut result = WideString::default();
-        result.write_str(value).unwrap();
-        result.into()
+#[derive(Debug)]
+pub(crate) struct StrWrapper<'a> {
+    value: &'a str,
+    buffer: &'a mut Vec<u16>,
+}
+
+impl<'a> StrWrapper<'a> {
+    pub(crate) fn new(value: &'a str, buffer: &'a mut Vec<u16>) -> Self {
+        Self { value, buffer }
     }
 }
 
-impl From<String> for Variant {
-    fn from(value: String) -> Self {
-        value.as_str().into()
+impl PartialEq for StrWrapper<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl From<StrWrapper<'_>> for Variant {
+    fn from(w: StrWrapper) -> Self {
+        let mut result = WideString::new(w.buffer);
+        result.write_str(w.value).unwrap();
+        result.into()
     }
 }
 
@@ -310,7 +381,7 @@ pub(crate) fn client_top_left(hwnd: WindowHandle) -> Point {
     Point::new(result.x.into(), result.y.into())
 }
 
-pub(crate) fn window_title(hwnd: WindowHandle) -> Option<BSTR> {
+pub(crate) fn window_title(hwnd: WindowHandle, buffer: &mut Vec<u16>) -> Option<BSTR> {
     // The following is an old hack to get the window caption without ever
     // sending messages to the window itself, even if the window is in
     // the same process but possibly a separate thread. This prevents
@@ -321,7 +392,8 @@ pub(crate) fn window_title(hwnd: WindowHandle) -> Option<BSTR> {
         return None;
     }
     let capacity = (result.0 as usize) + 1; // make room for the null
-    let mut buffer = Vec::<u16>::with_capacity(capacity);
+    buffer.clear();
+    buffer.reserve(capacity);
     let result = unsafe {
         DefWindowProcW(
             hwnd.0,
@@ -335,12 +407,15 @@ pub(crate) fn window_title(hwnd: WindowHandle) -> Option<BSTR> {
     }
     let len = result.0 as usize;
     unsafe { buffer.set_len(len) };
-    Some(BSTR::from_wide(&buffer))
+    Some(BSTR::from_wide(buffer))
 }
 
-pub(crate) fn toolkit_description(state: &TreeState) -> Option<WideString> {
+pub(crate) fn toolkit_description<'a>(
+    state: &TreeState,
+    buffer: &'a mut Vec<u16>,
+) -> Option<WideString<'a>> {
     state.toolkit_name().map(|name| {
-        let mut result = WideString::default();
+        let mut result = WideString::new(buffer);
         result.write_str(name).unwrap();
         if let Some(version) = state.toolkit_version() {
             result.write_char(' ').unwrap();
@@ -391,5 +466,73 @@ impl<W: Write> AriaProperties<W> {
 
     pub(crate) fn has_properties(&self) -> bool {
         self.need_separator
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn on_fresh_thread(f: impl FnOnce() + Send + 'static) {
+        std::thread::spawn(f).join().unwrap();
+    }
+
+    #[test]
+    fn acquire_reuses_dropped_allocation() {
+        on_fresh_thread(|| {
+            let ptr = {
+                let mut buf = StringBuffer::acquire();
+                buf.extend(std::iter::repeat_n(0u16, 64));
+                buf.as_ptr()
+            };
+            let buf = StringBuffer::acquire();
+            assert_eq!(buf.as_ptr(), ptr);
+            assert!(buf.capacity() >= 64);
+        });
+    }
+
+    #[test]
+    fn simultaneous_leases_are_distinct() {
+        on_fresh_thread(|| {
+            let mut a = StringBuffer::acquire();
+            let mut b = StringBuffer::acquire();
+            a.push(1);
+            b.push(2);
+            assert_ne!(a.as_ptr(), b.as_ptr());
+            assert_eq!(a[0], 1);
+            assert_eq!(b[0], 2);
+        });
+    }
+
+    #[test]
+    fn outsized_allocation_is_released_on_drop() {
+        on_fresh_thread(|| {
+            {
+                let mut buf = StringBuffer::acquire();
+                buf.reserve(MAX_RETAINED_SCRATCH_CAPACITY * 4);
+                assert!(buf.capacity() > MAX_RETAINED_SCRATCH_CAPACITY);
+            }
+            let buf = StringBuffer::acquire();
+            assert!(buf.capacity() <= MAX_RETAINED_SCRATCH_CAPACITY);
+        });
+    }
+
+    #[test]
+    fn pool_retains_at_most_max_pooled_buffers() {
+        on_fresh_thread(|| {
+            let bufs: Vec<_> = (0..MAX_POOLED_BUFFERS + 1)
+                .map(|_| {
+                    let mut buf = StringBuffer::acquire();
+                    buf.reserve(64);
+                    buf
+                })
+                .collect();
+            drop(bufs);
+            let reacquired: Vec<_> = (0..MAX_POOLED_BUFFERS + 1)
+                .map(|_| StringBuffer::acquire())
+                .collect();
+            let reused = reacquired.iter().filter(|buf| buf.capacity() >= 64).count();
+            assert_eq!(reused, MAX_POOLED_BUFFERS);
+        });
     }
 }
