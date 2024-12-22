@@ -4,7 +4,7 @@ use accesskit::{
     Action, ActionHandler, ActionRequest, ActivationHandler, Live, NodeId, Rect, Role, TreeId,
     TreeInfo, TreeUpdate,
 };
-use accesskit_windows::Adapter;
+use accesskit_windows::{Adapter, EventContext};
 use std::{cell::RefCell, sync::LazyLock};
 use windows::{
     Win32::{
@@ -116,13 +116,15 @@ impl ActivationHandler for InnerWindowState {
 struct WindowState {
     adapter: RefCell<Adapter>,
     inner_state: RefCell<InnerWindowState>,
+    event_ctx: RefCell<EventContext>,
 }
 
 impl WindowState {
     fn set_focus(&self, focus: NodeId) {
         self.inner_state.borrow_mut().focus = focus;
         let mut adapter = self.adapter.borrow_mut();
-        if let Some(events) = adapter.update_if_active(TreeId::ROOT, |update| {
+        let mut event_ctx = self.event_ctx.borrow_mut();
+        if let Some(events) = adapter.update_if_active(TreeId::ROOT, &mut event_ctx, |update| {
             update.set_focus(focus);
         }) {
             drop(adapter);
@@ -139,7 +141,8 @@ impl WindowState {
         };
         inner_state.announcement = Some(text.into());
         let mut adapter = self.adapter.borrow_mut();
-        if let Some(events) = adapter.update_if_active(TreeId::ROOT, |update| {
+        let mut event_ctx = self.event_ctx.borrow_mut();
+        if let Some(events) = adapter.update_if_active(TreeId::ROOT, &mut event_ctx, |update| {
             build_announcement(text, update);
             inner_state.build_root(update);
         }) {
@@ -157,7 +160,8 @@ unsafe fn get_window_state(window: HWND) -> *const WindowState {
 fn update_window_focus_state(window: HWND, is_focused: bool) {
     let state = unsafe { &*get_window_state(window) };
     let mut adapter = state.adapter.borrow_mut();
-    if let Some(events) = adapter.update_window_focus_state(is_focused) {
+    let mut event_ctx = state.event_ctx.borrow_mut();
+    if let Some(events) = adapter.update_window_focus_state(is_focused, &mut event_ctx) {
         drop(adapter);
         events.raise();
     }
@@ -217,6 +221,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             let state = Box::new(WindowState {
                 adapter: RefCell::new(adapter),
                 inner_state,
+                event_ctx: RefCell::new(EventContext::default()),
             });
             unsafe { SetWindowLongPtrW(window, GWLP_USERDATA, Box::into_raw(state) as _) };
             unsafe { DefWindowProcW(window, message, wparam, lparam) }
