@@ -22,10 +22,16 @@ use windows::{
 
 use crate::window_handle::WindowHandle;
 
-#[derive(Clone, Default, PartialEq, Eq)]
-pub(crate) struct WideString(Vec<u16>);
+pub(crate) struct WideString<'a>(&'a mut Vec<u16>);
 
-impl Write for WideString {
+impl<'a> WideString<'a> {
+    pub(crate) fn new(buffer: &'a mut Vec<u16>) -> Self {
+        buffer.clear();
+        Self(buffer)
+    }
+}
+
+impl Write for WideString<'_> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.0.extend(s.encode_utf16());
         Ok(())
@@ -37,9 +43,15 @@ impl Write for WideString {
     }
 }
 
-impl From<WideString> for BSTR {
+impl PartialEq for WideString<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        *self.0 == *other.0
+    }
+}
+
+impl From<WideString<'_>> for BSTR {
     fn from(value: WideString) -> Self {
-        Self::from_wide(&value.0)
+        Self::from_wide(value.0)
     }
 }
 
@@ -67,23 +79,34 @@ impl From<BSTR> for Variant {
     }
 }
 
-impl From<WideString> for Variant {
+impl From<WideString<'_>> for Variant {
     fn from(value: WideString) -> Self {
         BSTR::from(value).into()
     }
 }
 
-impl From<&str> for Variant {
-    fn from(value: &str) -> Self {
-        let mut result = WideString::default();
-        result.write_str(value).unwrap();
-        result.into()
+pub(crate) struct StrWrapper<'a> {
+    value: &'a str,
+    buffer: &'a mut Vec<u16>,
+}
+
+impl<'a> StrWrapper<'a> {
+    pub(crate) fn new(value: &'a str, buffer: &'a mut Vec<u16>) -> Self {
+        Self { value, buffer }
     }
 }
 
-impl From<String> for Variant {
-    fn from(value: String) -> Self {
-        value.as_str().into()
+impl PartialEq for StrWrapper<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl From<StrWrapper<'_>> for Variant {
+    fn from(w: StrWrapper) -> Self {
+        let mut result = WideString::new(w.buffer);
+        result.write_str(w.value).unwrap();
+        result.into()
     }
 }
 
@@ -273,9 +296,12 @@ pub(crate) fn window_title(hwnd: WindowHandle) -> Option<BSTR> {
     Some(BSTR::from_wide(&buffer))
 }
 
-pub(crate) fn toolkit_description(state: &TreeState) -> Option<WideString> {
+pub(crate) fn toolkit_description<'a>(
+    state: &TreeState,
+    buffer: &'a mut Vec<u16>,
+) -> Option<WideString<'a>> {
     state.toolkit_name().map(|name| {
-        let mut result = WideString::default();
+        let mut result = WideString::new(buffer);
         result.write_str(name).unwrap();
         if let Some(version) = state.toolkit_version() {
             result.write_char(' ').unwrap();

@@ -7,7 +7,7 @@ use accesskit::{ActionHandler, ActionRequest, NodeId, Point};
 use accesskit_consumer::Tree;
 use hashbrown::HashMap;
 use std::fmt::{Debug, Formatter};
-use std::sync::{atomic::AtomicBool, Arc, Mutex, RwLock, RwLockReadGuard};
+use std::sync::{atomic::AtomicBool, Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard};
 use windows::core::ComObject;
 
 use crate::{node::PlatformNode, util::*, window_handle::WindowHandle};
@@ -36,6 +36,7 @@ pub(crate) struct Context {
     pub(crate) action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
     pub(crate) is_placeholder: AtomicBool,
     platform_nodes: Mutex<HashMap<NodeId, ComObject<PlatformNode>>>,
+    string_buffer: Mutex<Vec<u16>>,
 }
 
 impl Debug for Context {
@@ -62,6 +63,7 @@ impl Context {
             action_handler,
             is_placeholder: AtomicBool::new(is_placeholder),
             platform_nodes: Mutex::new(HashMap::new()),
+            string_buffer: Mutex::new(Vec::new()),
         })
     }
 
@@ -94,5 +96,9 @@ impl Context {
     pub(crate) fn remove_platform_node(&self, id: NodeId) {
         let mut platform_nodes = self.platform_nodes.lock().unwrap();
         platform_nodes.remove(&id);
+    }
+
+    pub(crate) fn lock_string_buffer(&self) -> MutexGuard<'_, Vec<u16>> {
+        self.string_buffer.lock().unwrap()
     }
 }
