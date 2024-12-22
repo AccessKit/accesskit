@@ -27,7 +27,7 @@ use crate::window_handle::WindowHandle;
 
 use super::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper},
-    Adapter,
+    Adapter, EventContext,
 };
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
@@ -54,6 +54,7 @@ static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
 struct WindowState {
     activation_handler: RefCell<Box<dyn NonGenericActivationHandler>>,
     adapter: RefCell<Adapter>,
+    event_ctx: RefCell<EventContext>,
 }
 
 unsafe fn get_window_state(window: HWND) -> *const WindowState {
@@ -63,7 +64,9 @@ unsafe fn get_window_state(window: HWND) -> *const WindowState {
 fn update_window_focus_state(window: HWND, is_focused: bool) {
     let state = unsafe { &*get_window_state(window) };
     let mut adapter = state.adapter.borrow_mut();
-    if let Some(events) = adapter.update_window_focus_state(is_focused) {
+    let mut event_ctx = state.event_ctx.borrow_mut();
+    if let Some(events) = adapter.update_window_focus_state(is_focused, &mut event_ctx) {
+        drop(adapter);
         events.raise();
     }
 }
@@ -87,6 +90,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             let state = Box::new(WindowState {
                 activation_handler: RefCell::new(activation_handler),
                 adapter: RefCell::new(adapter),
+                event_ctx: RefCell::new(EventContext::default()),
             });
             unsafe { SetWindowLongPtrW(window, GWLP_USERDATA, Box::into_raw(state) as _) };
             unsafe { DefWindowProcW(window, message, wparam, lparam) }
