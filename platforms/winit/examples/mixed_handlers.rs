@@ -60,7 +60,7 @@ fn build_announcement(text: &str, update: &mut impl TreeUpdate) {
 
 struct UiState {
     focus: NodeId,
-    announcement: Option<String>,
+    announcement: Option<&'static str>,
 }
 
 impl UiState {
@@ -105,7 +105,7 @@ impl UiState {
         } else {
             "You pressed button 2"
         };
-        self.announcement = Some(text.into());
+        self.announcement = Some(text);
         adapter.update_if_active(|update| {
             build_announcement(text, update);
             self.build_root(update);
