@@ -28,10 +28,24 @@ use crate::tree::State as TreeState;
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub(crate) struct NodeState {
     pub(crate) parent_and_index: Option<ParentAndIndex>,
     pub(crate) data: NodeData,
+}
+
+impl Clone for NodeState {
+    fn clone(&self) -> Self {
+        Self {
+            parent_and_index: self.parent_and_index,
+            data: self.data.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, other: &Self) {
+        self.parent_and_index = other.parent_and_index;
+        self.data.clone_from(&other.data);
+    }
 }
 
 #[derive(Copy, Clone)]
