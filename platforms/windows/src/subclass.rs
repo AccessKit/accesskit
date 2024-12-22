@@ -15,7 +15,7 @@ use windows::{
     Win32::{Foundation::*, UI::WindowsAndMessaging::*},
 };
 
-use crate::{Adapter, EventContext, QueuedEvents};
+use crate::{Adapter, EventContext};
 
 fn win32_error() -> ! {
     panic!("{}", Error::from_win32())
@@ -38,7 +38,7 @@ struct SubclassState {
 struct SubclassImpl {
     hwnd: HWND,
     state: RefCell<SubclassState>,
-    focus_event_ctx: RefCell<EventContext>,
+    event_ctx: RefCell<EventContext>,
     prev_wnd_proc: WNDPROC,
     window_destroyed: Cell<bool>,
 }
@@ -89,7 +89,7 @@ impl SubclassImpl {
         Box::new(Self {
             hwnd,
             state,
-            focus_event_ctx: RefCell::new(EventContext::default()),
+            event_ctx: RefCell::new(EventContext::default()),
             prev_wnd_proc: None,
             window_destroyed: Cell::new(false),
         })
@@ -120,7 +120,7 @@ impl SubclassImpl {
 
     fn update_window_focus_state(&self, is_focused: bool) {
         let mut state = self.state.borrow_mut();
-        let mut event_ctx = self.focus_event_ctx.borrow_mut();
+        let mut event_ctx = self.event_ctx.borrow_mut();
         if let Some(events) = state
             .adapter
             .update_window_focus_state(is_focused, &mut event_ctx)
@@ -150,6 +150,10 @@ impl SubclassImpl {
 
 /// Uses [Win32 subclassing] to handle `WM_GETOBJECT` messages on a window
 /// that provides no other way of adding custom message handlers.
+///
+/// Note: If the [`ActivationHandler`] mplementation does any runtime borrowing,
+/// the runtime-borrowed state must not include the [`SubclassingAdapter`]
+/// instance.
 ///
 /// [Win32 subclassing]: https://docs.microsoft.com/en-us/windows/win32/controls/subclassing-overview
 pub struct SubclassingAdapter(Box<SubclassImpl>);
@@ -184,21 +188,18 @@ impl SubclassingAdapter {
     /// and apply the resulting update. Note: If the caller's implementation of
     /// [`ActivationHandler::request_initial_tree`] doesn't build a tree,
     /// the provided function must build a full tree.
-    ///
-    /// If a [`QueuedEvents`] instance is returned, the caller must call
-    /// [`QueuedEvents::raise`] on it.
-    pub fn update_if_active<'a>(
-        &mut self,
-        event_ctx: &'a mut EventContext,
-        fill: impl FnOnce(&mut TreeUpdate),
-    ) -> Option<QueuedEvents<'a>> {
+    pub fn update_if_active(&mut self, fill: impl FnOnce(&mut TreeUpdate)) {
         // SAFETY: We use `RefCell::borrow_mut` here, even though
         // `RefCell::get_mut` is allowed (because this method takes
         // a mutable self reference), just in case there's some way
         // this method can be called from within the subclassed window
         // procedure, e.g. via `ActivationHandler`.
         let mut state = self.0.state.borrow_mut();
-        state.adapter.update_if_active(event_ctx, fill)
+        let mut event_ctx = self.0.event_ctx.borrow_mut();
+        if let Some(events) = state.adapter.update_if_active(&mut event_ctx, fill) {
+            drop(state);
+            events.raise();
+        }
     }
 }
 

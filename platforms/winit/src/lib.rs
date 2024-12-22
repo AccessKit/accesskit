@@ -187,6 +187,10 @@ impl Adapter {
     /// the first update. However, remember that each of these handlers may be
     /// called on any thread, depending on the underlying platform adapter.
     ///
+    /// Note: If the [`ActivationHandler`] implementation does any runtime
+    /// borrowing, the runtime-borrowed state must not include the [`Adapter`]
+    /// instance.
+    ///
     /// # Panics
     ///
     /// Panics if the window is already visible.
@@ -223,6 +227,10 @@ impl Adapter {
     /// while using a direct, caller-provided activation handler that can
     /// return the initial tree synchronously. Remember that the thread on which
     /// the activation handler is called is platform-dependent.
+    ///
+    /// Note: If the [`ActivationHandler`] implementation does any runtime
+    /// borrowing, the runtime-borrowed state must not include the [`Adapter`]
+    /// instance.
     ///
     /// # Panics
     ///
