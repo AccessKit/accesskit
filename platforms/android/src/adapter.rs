@@ -9,7 +9,7 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, NodeBuilder, NodeId,
+    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node as NodeData, NodeId,
     Point, Role, TextSelection, Tree as TreeData, TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Node, TextPosition, Tree, TreeChangeHandler};
@@ -187,10 +187,7 @@ impl State {
                     Some(initial_state) => Self::Active(Tree::new(initial_state, true)),
                     None => {
                         let placeholder_update = TreeUpdate {
-                            nodes: vec![(
-                                PLACEHOLDER_ROOT_ID,
-                                NodeBuilder::new(Role::Window).build(),
-                            )],
+                            nodes: vec![(PLACEHOLDER_ROOT_ID, NodeData::new(Role::Window))],
                             tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
                             focus: PLACEHOLDER_ROOT_ID,
                         };
@@ -361,7 +358,7 @@ impl Adapter {
                     if node.is_focusable() && !node.is_focused() && !node.is_clickable() {
                         Action::Focus
                     } else {
-                        Action::Default
+                        Action::Click
                     }
                 },
                 target,
@@ -412,9 +409,8 @@ impl Adapter {
             anchor: anchor.to_raw(),
             focus: focus.to_raw(),
         };
-        let mut builder = NodeBuilder::from(node.data());
-        builder.set_text_selection(selection);
-        let new_node = builder.build();
+        let mut new_node = NodeData::from(node.data());
+        new_node.set_text_selection(selection);
         let update = TreeUpdate {
             nodes: vec![(node.id(), new_node)],
             tree: None,

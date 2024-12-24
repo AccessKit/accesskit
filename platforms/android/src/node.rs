@@ -63,19 +63,11 @@ impl<'a> NodeWrapper<'a> {
     }
 
     fn content_description(&self) -> Option<String> {
-        if self.0.role() == Role::Label {
-            return None;
-        }
-        self.0.name()
+        self.0.label()
     }
 
     pub(crate) fn text(&self) -> Option<String> {
-        self.0.value().or_else(|| {
-            if self.0.role() != Role::Label {
-                return None;
-            }
-            self.0.name()
-        })
+        self.0.value()
     }
 
     pub(crate) fn text_selection(&self) -> Option<(usize, usize)> {
