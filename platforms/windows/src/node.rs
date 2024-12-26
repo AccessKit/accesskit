@@ -440,6 +440,19 @@ impl NodeWrapper<'_> {
         self.0.role() == Role::PasswordInput
     }
 
+    fn is_expand_collapse_pattern_supported(&self) -> bool {
+        self.0.is_expanded().is_some()
+    }
+
+    fn expand_collapse_state(&self) -> ExpandCollapseState {
+        // TODO: menus (#27)
+        match self.0.is_expanded() {
+            Some(true) => ExpandCollapseState_Expanded,
+            Some(false) => ExpandCollapseState_Collapsed,
+            _ => ExpandCollapseState_LeafNode,
+        }
+    }
+
     pub(crate) fn enqueue_property_changes(
         &self,
         queue: &mut Vec<QueuedEvent>,
@@ -497,7 +510,8 @@ impl NodeWrapper<'_> {
     IRangeValueProvider,
     ISelectionItemProvider,
     ISelectionProvider,
-    ITextProvider
+    ITextProvider,
+    IExpandCollapseProvider
 )]
 pub(crate) struct PlatformNode {
     pub(crate) context: Weak<Context>,
@@ -1065,6 +1079,45 @@ patterns! {
                 } else {
                     Ok(SupportedTextSelection_None)
                 }
+            })
+        }
+    )),
+    (ExpandCollapse, is_expand_collapse_pattern_supported, (
+        (ExpandCollapseState, expand_collapse_state, ExpandCollapseState)
+    ), (
+        fn Collapse(&self) -> Result<()> {
+            self.resolve_with_context(|node, context| {
+                if node.is_disabled() {
+                    return Err(element_not_enabled());
+                }
+                let wrapper = NodeWrapper(&node);
+                if !wrapper.0.is_expanded().unwrap_or(false) {
+                    return Err(invalid_operation());
+                }
+                context.do_action(ActionRequest {
+                    action: Action::Collapse,
+                    target: node.id(),
+                    data: None,
+                });
+                Ok(())
+            })
+        },
+
+        fn Expand(&self) -> Result<()> {
+            self.resolve_with_context(|node, context| {
+                if node.is_disabled() {
+                    return Err(element_not_enabled());
+                }
+                let wrapper = NodeWrapper(&node);
+                if wrapper.0.is_expanded() == Some(true) {
+                    return Err(invalid_operation());
+                }
+                context.do_action(ActionRequest {
+                    action: Action::Expand,
+                    target: node.id(),
+                    data: None,
+                });
+                Ok(())
             })
         }
     ))
