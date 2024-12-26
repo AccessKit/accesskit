@@ -9,8 +9,7 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, Affine, Live, Node as NodeData, NodeId, Orientation, Point, Rect, Role, TextSelection,
-    Toggled,
+    Action, Affine, HasPopup, Live, Node as NodeData, NodeId, Orientation, Point, Rect, Role, TextSelection, Toggled
 };
 use alloc::{
     string::{String, ToString},
@@ -701,6 +700,14 @@ impl<'a> Node<'a> {
         data.controls()
             .iter()
             .map(move |id| state.node_by_id(*id).unwrap())
+    }
+
+    pub fn is_expanded(&self) -> Option<bool> {
+        self.data().is_expanded()
+    }
+
+    pub fn has_popup(&self) -> Option<HasPopup> {
+        self.data().has_popup()
     }
 
     pub fn raw_text_selection(&self) -> Option<&TextSelection> {
