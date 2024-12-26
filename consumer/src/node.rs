@@ -702,6 +702,10 @@ impl<'a> Node<'a> {
         }
     }
 
+    pub fn is_expanded(&self) -> Option<bool> {
+        self.data().is_expanded()
+    }
+
     pub fn raw_text_selection(&self) -> Option<&TextSelection> {
         self.data().text_selection()
     }
