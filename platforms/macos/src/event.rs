@@ -13,7 +13,7 @@ use std::{collections::VecDeque, rc::Rc};
 
 use crate::{
     context::Context,
-    filters::filter,
+    filters::{filter, filter_with_combobox_popup_exception},
     node::{NodeWrapper, Value},
 };
 
@@ -308,6 +308,16 @@ impl TreeChangeHandler for EventGenerator {
             || (old_filter_result != FilterResult::Include && new_node.is_selected() == Some(true))
         {
             self.enqueue_selected_rows_change_if_needed(new_node);
+        }
+
+        if new_node.role() == Role::ComboBox && new_node.is_expanded() != old_node.is_expanded() {
+            if let Some((old_child, new_child)) = old_node
+                .filtered_children(&filter_with_combobox_popup_exception)
+                .zip(new_node.filtered_children(&filter_with_combobox_popup_exception))
+                .next()
+            {
+                self.node_updated(&old_child, &new_child);
+            }
         }
     }
 

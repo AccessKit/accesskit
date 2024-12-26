@@ -283,6 +283,12 @@ impl NodeWrapper<'_> {
         if state.parent_id().is_none() && state.role() == Role::Window && is_window_focused {
             atspi_state.insert(State::Active);
         }
+        if let Some(expanded) = state.is_expanded() {
+            atspi_state.insert(State::Expandable);
+            if expanded {
+                atspi_state.insert(State::Expanded);
+            }
+        }
         if state.is_text_input() && !state.is_read_only() {
             atspi_state.insert(State::Editable);
         }

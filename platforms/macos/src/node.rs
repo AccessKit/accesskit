@@ -335,6 +335,19 @@ impl NodeWrapper<'_> {
         if let Some(value) = self.0.numeric_value() {
             return Some(Value::Number(value));
         }
+        if self.0.role() == Role::ComboBox {
+            return self.0
+                .filtered_children(|c| {
+                    if c.role() == Role::MenuListOption {
+                        FilterResult::Include
+                    } else {
+                        FilterResult::ExcludeNode
+                    }
+                })
+                .find(|c| c.is_selected() == Some(true))
+                .and_then(|c| c.label())
+                .map(|s| Value::String(s));
+        }
         None
     }
 
@@ -869,7 +882,11 @@ declare_class!(
                     return;
                 }
                 context.do_action(ActionRequest {
-                    action: Action::Click,
+                    action: if node.is_multiselectable() || node.role() == Role::MenuListOption {
+                        Action::Focus
+                    } else {
+                        Action::Click
+                    },
                     target: node.id(),
                     data: None,
                 });
@@ -961,6 +978,26 @@ declare_class!(
             .flatten()
         }
 
+        #[method(isAccessibilityExpanded)]
+        fn is_expanded(&self) -> bool {
+            self.resolve(|node| node.is_expanded()).flatten().unwrap_or(false)
+        }
+
+        #[method(setAccessibilityExpanded:)]
+        fn set_expanded(&self, expanded: bool) {
+            self.resolve_with_context(|node, context| {
+                let Some(currently_expanded) = node.is_expanded() else { return };
+                if expanded == currently_expanded {
+                    return;
+                }
+                context.do_action(ActionRequest {
+                    action: if expanded { Action::Expand } else { Action::Collapse },
+                    target: node.id(),
+                    data: None
+                });
+            });
+        }
+
         #[method(isAccessibilitySelectorAllowed:)]
         fn is_selector_allowed(&self, selector: Sel) -> bool {
             self.resolve(|node| {
@@ -1017,6 +1054,10 @@ declare_class!(
                 }
                 if selector == sel!(accessibilityTabs) {
                     return node.role() == Role::TabList;
+                }
+                if selector == sel!(isAccessibilityExpanded)
+                    || selector == sel!(setAccessibilityExpanded:) {
+                    return node.supports_expand_collapse();
                 }
                 selector == sel!(accessibilityParent)
                     || selector == sel!(accessibilityChildren)

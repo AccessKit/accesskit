@@ -357,6 +357,17 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
             if new_node.is_selected() != old_node.is_selected() {
                 self.enqueue_selection_changed_if_needed(new_node);
             }
+
+            if new_node.role() == Role::ComboBox && new_node.is_expanded() != old_node.is_expanded()
+            {
+                if let Some((old_child, new_child)) = old_node
+                    .filtered_children(&filter)
+                    .zip(new_node.filtered_children(&filter))
+                    .next()
+                {
+                    self.node_updated(&old_child, &new_child);
+                }
+            }
         }
     }
 

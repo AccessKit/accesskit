@@ -11,11 +11,14 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit::{
-    Action, ActionData, ActionRequest, Live, NodeId, NodeIdContent, Orientation, Point, Role,
-    Toggled,
+    Action, ActionData, ActionRequest, HasPopup, Live, NodeId, NodeIdContent, Orientation, Point,
+    Role, Toggled,
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
-use std::sync::{atomic::Ordering, Arc, Weak};
+use std::{
+    fmt::Write,
+    sync::{atomic::Ordering, Arc, Weak},
+};
 use windows::{
     core::*,
     Win32::{
@@ -27,7 +30,7 @@ use windows::{
 
 use crate::{
     context::Context,
-    filters::{filter, filter_with_root_exception},
+    filters::{filter, filter_with_combobox_popup_exception, filter_with_root_exception},
     text::PlatformRange as PlatformTextRange,
     util::*,
 };
@@ -423,7 +426,7 @@ impl NodeWrapper<'_> {
 
     fn size_of_set(&self) -> Option<i32> {
         self.0
-            .size_of_set_from_container(&filter)
+            .size_of_set_from_container(&filter_with_combobox_popup_exception)
             .and_then(|s| s.try_into().ok())
     }
 
@@ -441,6 +444,36 @@ impl NodeWrapper<'_> {
 
     fn is_password(&self) -> bool {
         self.0.role() == Role::PasswordInput
+    }
+
+    fn is_expand_collapse_pattern_supported(&self) -> bool {
+        self.0.supports_expand_collapse()
+    }
+
+    fn expand_collapse_state(&self) -> ExpandCollapseState {
+        // TODO: menus (#27)
+        match self.0.is_expanded() {
+            Some(true) => ExpandCollapseState_Expanded,
+            Some(false) => ExpandCollapseState_Collapsed,
+            _ => ExpandCollapseState_LeafNode,
+        }
+    }
+
+    fn aria_properties(&self) -> Option<WideString> {
+        let mut result = WideString::default();
+        if let Some(has_popup) = self.0.has_popup() {
+            result.write_str("haspopup=").ok()?;
+            result
+                .write_str(match has_popup {
+                    HasPopup::Menu => "menu",
+                    HasPopup::Listbox => "listbox",
+                    HasPopup::Tree => "tree",
+                    HasPopup::Grid => "grid",
+                    HasPopup::Dialog => "dialog",
+                })
+                .ok()?;
+        }
+        Some(result)
     }
 
     pub(crate) fn enqueue_property_changes(
@@ -501,7 +534,8 @@ impl NodeWrapper<'_> {
     IRangeValueProvider,
     ISelectionItemProvider,
     ISelectionProvider,
-    ITextProvider
+    ITextProvider,
+    IExpandCollapseProvider
 )]
 pub(crate) struct PlatformNode {
     pub(crate) context: Weak<Context>,
@@ -963,7 +997,8 @@ properties! {
     (UIA_IsRequiredForFormPropertyId, is_required),
     (UIA_IsPasswordPropertyId, is_password),
     (UIA_PositionInSetPropertyId, position_in_set),
-    (UIA_SizeOfSetPropertyId, size_of_set)
+    (UIA_SizeOfSetPropertyId, size_of_set),
+    (UIA_AriaPropertiesPropertyId, aria_properties)
 }
 
 patterns! {
@@ -1101,6 +1136,43 @@ patterns! {
                 } else {
                     Ok(SupportedTextSelection_None)
                 }
+            })
+        }
+    )),
+    (UIA_ExpandCollapsePatternId, IExpandCollapseProvider, IExpandCollapseProvider_Impl, is_expand_collapse_pattern_supported, (
+        (UIA_ExpandCollapseExpandCollapseStatePropertyId, ExpandCollapseState, expand_collapse_state, ExpandCollapseState)
+    ), (
+        fn Collapse(&self) -> Result<()> {
+            self.resolve_with_context(|node, context| {
+                if node.is_disabled() {
+                    return Err(element_not_enabled());
+                }
+                if node.is_expanded() == Some(false) {
+                    return Err(invalid_operation());
+                }
+                context.do_action(ActionRequest {
+                    action: Action::Collapse,
+                    target: node.id(),
+                    data: None,
+                });
+                Ok(())
+            })
+        },
+
+        fn Expand(&self) -> Result<()> {
+            self.resolve_with_context(|node, context| {
+                if node.is_disabled() {
+                    return Err(element_not_enabled());
+                }
+                if node.is_expanded() == Some(true) {
+                    return Err(invalid_operation());
+                }
+                context.do_action(ActionRequest {
+                    action: Action::Expand,
+                    target: node.id(),
+                    data: None,
+                });
+                Ok(())
             })
         }
     ))
