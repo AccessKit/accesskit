@@ -955,6 +955,26 @@ declare_class!(
             .flatten()
         }
 
+        #[method(isAccessibilityExpanded)]
+        fn is_expanded(&self) -> bool {
+            self.resolve(|node| node.is_expanded()).flatten().unwrap_or(false)
+        }
+
+        #[method(setAccessibilityExpanded:)]
+        fn set_expanded(&self, expanded: bool) {
+            self.resolve_with_context(|node, context| {
+                let Some(currently_expanded) = node.is_expanded() else { return };
+                if expanded == currently_expanded {
+                    return;
+                }
+                context.do_action(ActionRequest {
+                    action: if expanded { Action::Expand } else { Action::Collapse },
+                    target: node.id(),
+                    data: None
+                });
+            });
+        }
+
         #[method(isAccessibilitySelectorAllowed:)]
         fn is_selector_allowed(&self, selector: Sel) -> bool {
             self.resolve(|node| {
@@ -1009,6 +1029,10 @@ declare_class!(
                 }
                 if selector == sel!(accessibilityTabs) {
                     return node.role() == Role::TabList;
+                }
+                if selector == sel!(isAccessibilityExpanded)
+                    || selector == sel!(setAccessibilityExpanded:) {
+                    return node.supports_expand_collapse();
                 }
                 selector == sel!(accessibilityParent)
                     || selector == sel!(accessibilityChildren)
