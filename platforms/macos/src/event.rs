@@ -11,7 +11,11 @@ use objc2_app_kit::*;
 use objc2_foundation::{NSMutableDictionary, NSNumber, NSString};
 use std::rc::Rc;
 
-use crate::{context::Context, filters::filter, node::NodeWrapper};
+use crate::{
+    context::Context,
+    filters::filter,
+    node::{NodeWrapper, Value},
+};
 
 // This type is designed to be safe to create on a non-main thread
 // and send to the main thread. This ability isn't yet used though.
@@ -247,11 +251,26 @@ impl TreeChangeHandler for EventGenerator {
                 notification: unsafe { NSAccessibilityTitleChangedNotification },
             });
         }
-        if old_wrapper.value() != new_wrapper.value() {
-            self.events.push(QueuedEvent::Generic {
-                node_id,
-                notification: unsafe { NSAccessibilityValueChangedNotification },
-            });
+        let new_value = new_wrapper.value();
+        if old_wrapper.value() != new_value {
+            if !new_node.is_focused() && new_value.is_some_and(|v| matches!(v, Value::Bool(_))) {
+                // Bool value changed event for the focused node must come last
+                // in order for VoiceOver to announce it. Otherwise, if we raise
+                // bool value changed events for other nodes after this one, VoiceOver
+                // will announce them instead.
+                self.events.insert(
+                    0,
+                    QueuedEvent::Generic {
+                        node_id,
+                        notification: unsafe { NSAccessibilityValueChangedNotification },
+                    },
+                );
+            } else {
+                self.events.push(QueuedEvent::Generic {
+                    node_id,
+                    notification: unsafe { NSAccessibilityValueChangedNotification },
+                });
+            }
         }
         if old_wrapper.supports_text_ranges()
             && new_wrapper.supports_text_ranges()
