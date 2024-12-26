@@ -19,12 +19,12 @@ use alloc::{
 };
 use core::{fmt, iter::FusedIterator};
 
-use crate::filters::FilterResult;
 use crate::iterators::{
     FilteredChildren, FollowingFilteredSiblings, FollowingSiblings, LabelledBy,
     PrecedingFilteredSiblings, PrecedingSiblings,
 };
 use crate::tree::State as TreeState;
+use crate::{filters::FilterResult, iterators::Controls};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
@@ -690,6 +690,19 @@ impl<'a> Node<'a> {
                 | Role::Tree
                 | Role::TreeGrid
         )
+    }
+
+    pub fn is_expanded(&self) -> Option<bool> {
+        self.data().is_expanded()
+    }
+
+    pub fn controls(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+        Controls {
+            ids: self.state.data.controls().iter(),
+            tree_state: self.tree_state,
+        }
     }
 
     pub fn raw_text_selection(&self) -> Option<&TextSelection> {
