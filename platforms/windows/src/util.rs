@@ -168,6 +168,12 @@ impl From<Vec<IUnknown>> for Variant {
     }
 }
 
+impl From<ExpandCollapseState> for Variant {
+    fn from(value: ExpandCollapseState) -> Self {
+        Self(value.0.into())
+    }
+}
+
 fn safe_array_from_primitive_slice<T>(vt: VARENUM, slice: &[T]) -> *mut SAFEARRAY {
     let sa = unsafe { SafeArrayCreateVector(VARENUM(vt.0), 0, slice.len().try_into().unwrap()) };
     if sa.is_null() {
