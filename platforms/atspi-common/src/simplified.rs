@@ -14,7 +14,9 @@ use crate::{
     WindowEvent,
 };
 
-pub use crate::{CoordType, Error, Granularity, Layer, Rect, Result, Role, ScrollType, StateSet};
+pub use crate::{
+    CoordType, Error, Granularity, Layer, Rect, RelationType, Result, Role, ScrollType, StateSet,
+};
 
 #[derive(Clone, Hash, PartialEq)]
 pub enum Accessible {
@@ -114,6 +116,13 @@ impl Accessible {
         match self {
             Self::Node(node) => node.map_children(|id| f(Self::Node(node.relative(id)))),
             Self::Root(root) => root.map_children(|node| f(Self::Node(node))),
+        }
+    }
+
+    pub fn relation_set(&self) -> Result<HashMap<RelationType, Vec<Self>>> {
+        match self {
+            Self::Node(node) => node.relation_set(|id| Self::Node(node.relative(id))),
+            Self::Root(_) => Ok(HashMap::new()),
         }
     }
 

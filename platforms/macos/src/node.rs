@@ -324,6 +324,9 @@ impl NodeWrapper<'_> {
         if let Some(toggled) = self.0.toggled() {
             return Some(Value::Bool(toggled != Toggled::False));
         }
+        if self.0.role() == Role::Tab {
+            return Some(Value::Bool(self.0.is_selected().unwrap_or(false)));
+        }
         if let Some(value) = self.0.value() {
             return Some(Value::String(value));
         }

@@ -17,7 +17,7 @@ pub mod simplified;
 mod util;
 
 pub use atspi_common::{
-    CoordType, Granularity, InterfaceSet, Layer, Role, ScrollType, State, StateSet,
+    CoordType, Granularity, InterfaceSet, Layer, RelationType, Role, ScrollType, State, StateSet,
 };
 
 pub use action::*;

@@ -407,6 +407,8 @@ impl<'a> Node<'a> {
         self.data().orientation().or_else(|| {
             if self.role() == Role::ListBox {
                 Some(Orientation::Vertical)
+            } else if self.role() == Role::TabList {
+                Some(Orientation::Horizontal)
             } else {
                 None
             }
@@ -689,6 +691,16 @@ impl<'a> Node<'a> {
                 | Role::Tree
                 | Role::TreeGrid
         )
+    }
+
+    pub fn controls(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+        let state = self.tree_state;
+        let data = &self.state.data;
+        data.controls()
+            .iter()
+            .map(move |id| state.node_by_id(*id).unwrap())
     }
 
     pub fn raw_text_selection(&self) -> Option<&TextSelection> {
