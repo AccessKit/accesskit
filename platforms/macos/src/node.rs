@@ -325,6 +325,8 @@ impl NodeWrapper<'_> {
             return Some(Value::Bool(toggled != Toggled::False));
         }
         if self.0.role() == Role::Tab {
+            // On Mac, tabs are exposed as radio buttons, and are treated as checkable.
+            // Also, `Node::is_selected` is mapped to checked via `accessibilityValue`.
             return Some(Value::Bool(self.0.is_selected().unwrap_or(false)));
         }
         if let Some(value) = self.0.value() {
@@ -342,6 +344,14 @@ impl NodeWrapper<'_> {
 
     pub(crate) fn raw_text_selection(&self) -> Option<&TextSelection> {
         self.0.raw_text_selection()
+    }
+
+    fn is_container_with_selectable_children(&self) -> bool {
+        self.0.is_container_with_selectable_children() && self.0.role() != Role::TabList
+    }
+
+    pub(crate) fn is_item_like(&self) -> bool {
+        self.0.is_item_like() && self.0.role() != Role::Tab
     }
 }
 
@@ -417,7 +427,8 @@ declare_class!(
         #[method_id(accessibilitySelectedChildren)]
         fn selected_children(&self) -> Option<Id<NSArray<PlatformNode>>> {
             self.resolve_with_context(|node, context| {
-                if !node.is_container_with_selectable_children() {
+                let wrapper = NodeWrapper(node);
+                if !wrapper.is_container_with_selectable_children() {
                     return None;
                 }
                 let platform_nodes = node
@@ -835,13 +846,23 @@ declare_class!(
 
         #[method(isAccessibilitySelected)]
         fn is_selected(&self) -> bool {
-            self.resolve(|node| node.is_selected()).flatten().unwrap_or(false)
+            self.resolve(|node| {
+                let wrapper = NodeWrapper(node);
+                wrapper.is_item_like()
+                    && node.is_selectable()
+                    && node.is_selected().unwrap_or(false)
+            })
+            .unwrap_or(false)
         }
 
         #[method(setAccessibilitySelected:)]
         fn set_selected(&self, selected: bool) {
             self.resolve_with_context(|node, context| {
-                if !node.is_clickable() || !node.is_selectable() {
+                let wrapper = NodeWrapper(node);
+                if !node.is_clickable()
+                    || !wrapper.is_item_like()
+                    || !node.is_selectable()
+                {
                     return;
                 }
                 if node.is_selected() == Some(selected) {
@@ -858,7 +879,8 @@ declare_class!(
         #[method_id(accessibilityRows)]
         fn rows(&self) -> Option<Id<NSArray<PlatformNode>>> {
             self.resolve_with_context(|node, context| {
-                if !node.is_container_with_selectable_children() {
+                let wrapper = NodeWrapper(node);
+                if !wrapper.is_container_with_selectable_children() {
                     return None;
                 }
                 let platform_nodes = node
@@ -873,7 +895,8 @@ declare_class!(
         #[method_id(accessibilitySelectedRows)]
         fn selected_rows(&self) -> Option<Id<NSArray<PlatformNode>>> {
             self.resolve_with_context(|node, context| {
-                if !node.is_container_with_selectable_children() {
+                let wrapper = NodeWrapper(node);
+                if !wrapper.is_container_with_selectable_children() {
                     return None;
                 }
                 let platform_nodes = node
@@ -889,7 +912,10 @@ declare_class!(
         #[method(accessibilityPerformPick)]
         fn pick(&self) -> bool {
             self.resolve_with_context(|node, context| {
-                let selectable = node.is_clickable() && node.is_selectable();
+                let wrapper = NodeWrapper(node);
+                let selectable = node.is_clickable()
+                    && wrapper.is_item_like()
+                    && node.is_selectable();
                 if selectable {
                     context.do_action(ActionRequest {
                         action: Action::Click,
@@ -900,6 +926,39 @@ declare_class!(
                 selectable
             })
             .unwrap_or(false)
+        }
+
+        #[method_id(accessibilityLinkedUIElements)]
+        fn linked_ui_elements(&self) -> Option<Id<NSArray<PlatformNode>>> {
+            self.resolve_with_context(|node, context| {
+                let platform_nodes: Vec<Id<PlatformNode>> = node
+                    .controls()
+                    .filter(|controlled| filter(controlled) == FilterResult::Include)
+                    .map(|controlled| context.get_or_create_platform_node(controlled.id()))
+                    .collect();
+                if platform_nodes.is_empty() {
+                    None
+                } else {
+                    Some(NSArray::from_vec(platform_nodes))
+                }
+            })
+            .flatten()
+        }
+
+        #[method_id(accessibilityTabs)]
+        fn tabs(&self) -> Option<Id<NSArray<PlatformNode>>> {
+            self.resolve_with_context(|node, context| {
+                if node.role() != Role::TabList {
+                    return None;
+                }
+                let platform_nodes = node
+                    .filtered_children(filter)
+                    .filter(|child| child.role() == Role::Tab)
+                    .map(|tab| context.get_or_create_platform_node(tab.id()))
+                    .collect::<Vec<Id<PlatformNode>>>();
+                Some(NSArray::from_vec(platform_nodes))
+            })
+            .flatten()
         }
 
         #[method(isAccessibilitySelectorAllowed:)]
@@ -939,17 +998,25 @@ declare_class!(
                     return node.supports_text_ranges() && !node.is_read_only();
                 }
                 if selector == sel!(isAccessibilitySelected) {
-                    return node.is_selectable();
+                    let wrapper = NodeWrapper(node);
+                    return wrapper.is_item_like();
                 }
                 if selector == sel!(accessibilityRows)
                     || selector == sel!(accessibilitySelectedRows)
                 {
-                    return node.is_container_with_selectable_children()
+                    let wrapper = NodeWrapper(node);
+                    return wrapper.is_container_with_selectable_children()
                 }
                 if selector == sel!(setAccessibilitySelected:)
                     || selector == sel!(accessibilityPerformPick)
                 {
-                    return node.is_clickable() && node.is_selectable();
+                    let wrapper = NodeWrapper(node);
+                    return node.is_clickable()
+                        && wrapper.is_item_like()
+                        && node.is_selectable();
+                }
+                if selector == sel!(accessibilityTabs) {
+                    return node.role() == Role::TabList;
                 }
                 selector == sel!(accessibilityParent)
                     || selector == sel!(accessibilityChildren)
@@ -961,6 +1028,7 @@ declare_class!(
                     || selector == sel!(isAccessibilityEnabled)
                     || selector == sel!(accessibilityWindow)
                     || selector == sel!(accessibilityTopLevelUIElement)
+                    || selector == sel!(accessibilityLinkedUIElements)
                     || selector == sel!(accessibilityRoleDescription)
                     || selector == sel!(accessibilityIdentifier)
                     || selector == sel!(accessibilityTitle)

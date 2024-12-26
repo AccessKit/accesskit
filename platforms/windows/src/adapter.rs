@@ -245,7 +245,12 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         let element: IRawElementProviderSimple = platform_node.into();
         let old_wrapper = NodeWrapper(old_node);
         let new_wrapper = NodeWrapper(new_node);
-        new_wrapper.enqueue_property_changes(&mut self.queue, &element, &old_wrapper);
+        new_wrapper.enqueue_property_changes(
+            &mut self.queue,
+            &PlatformNode::new(self.context, new_node.id()),
+            &element,
+            &old_wrapper,
+        );
         let new_name = new_wrapper.name();
         if new_name.is_some()
             && new_node.live() != Live::Off

@@ -7,6 +7,7 @@ use accesskit::Point;
 use accesskit_consumer::TreeState;
 use std::{
     fmt::{self, Write},
+    mem::ManuallyDrop,
     sync::{Arc, Weak},
 };
 use windows::{
@@ -143,6 +144,27 @@ impl From<bool> for Variant {
 impl<T: Into<Variant>> From<Option<T>> for Variant {
     fn from(value: Option<T>) -> Self {
         value.map_or_else(Self::empty, T::into)
+    }
+}
+
+impl From<Vec<IUnknown>> for Variant {
+    fn from(value: Vec<IUnknown>) -> Self {
+        if value.is_empty() {
+            Variant::empty()
+        } else {
+            let parray = safe_array_from_com_slice(&value);
+            Self(VARIANT {
+                Anonymous: VARIANT_0 {
+                    Anonymous: ManuallyDrop::new(VARIANT_0_0 {
+                        vt: VT_ARRAY | VT_UNKNOWN,
+                        wReserved1: 0,
+                        wReserved2: 0,
+                        wReserved3: 0,
+                        Anonymous: VARIANT_0_0_0 { parray },
+                    }),
+                },
+            })
+        }
     }
 }
 
