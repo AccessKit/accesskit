@@ -62,6 +62,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "accesskit_demo_lib"
+version = "0.1.0"
+dependencies = [
+ "accesskit",
+]
+
+[[package]]
 name = "accesskit_macos"
 version = "0.18.1"
 dependencies = [
@@ -97,6 +104,7 @@ version = "0.24.1"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
+ "accesskit_demo_lib",
  "hashbrown",
  "once_cell",
  "paste",
@@ -113,6 +121,7 @@ version = "0.23.1"
 dependencies = [
  "accesskit",
  "accesskit_android",
+ "accesskit_demo_lib",
  "accesskit_macos",
  "accesskit_unix",
  "accesskit_windows",

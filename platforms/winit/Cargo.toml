@@ -36,6 +36,9 @@ accesskit_unix = { version = "0.13.1", path = "../unix", optional = true, defaul
 [target.'cfg(target_os = "android")'.dependencies]
 accesskit_android = { version = "0.1.0", path = "../android", features = ["embedded-dex"] }
 
+[dev-dependencies]
+accesskit_demo_lib = { version = "0.1.0", path = "../../demo" }
+
 [dev-dependencies.winit]
 version = "0.30.5"
 default-features = false

@@ -1,0 +1,15 @@
+[package]
+name = "accesskit_demo_lib"
+version = "0.1.0"
+authors.workspace = true
+license.workspace = true
+description = "AccessKit examples library (internal)"
+categories.workspace = true
+keywords = ["gui", "ui", "accessibility"]
+repository.workspace = true
+readme = "README.md"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+accesskit = { version = "0.17.1", path = "../common" }
