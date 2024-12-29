@@ -40,6 +40,7 @@ pub enum ObjectEvent {
     ChildAdded(usize, NodeId),
     ChildRemoved(NodeId),
     PropertyChanged(Property),
+    SelectionChanged,
     StateChanged(State, bool),
     TextInserted {
         start_index: i32,

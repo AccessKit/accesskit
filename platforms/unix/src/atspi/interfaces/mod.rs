@@ -7,6 +7,7 @@ mod accessible;
 mod action;
 mod application;
 mod component;
+mod selection;
 mod text;
 mod value;
 
@@ -31,5 +32,6 @@ pub(crate) use accessible::*;
 pub(crate) use action::*;
 pub(crate) use application::*;
 pub(crate) use component::*;
+pub(crate) use selection::*;
 pub(crate) use text::*;
 pub(crate) use value::*;
