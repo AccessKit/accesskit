@@ -111,7 +111,9 @@ impl AdapterChangeHandler<'_> {
     fn enqueue_selection_changes(&mut self, tree: &Tree) {
         let tree_state = tree.state();
         for (id, changes) in self.selection_changed.iter() {
-            let node = tree_state.node_by_id(*id).unwrap();
+            let Some(node) = tree_state.node_by_id(*id) else {
+                continue;
+            };
             // Determine if `node` is a selection container with one selected child in
             // order to optimize what platform events are sent.
             let mut container = None;
