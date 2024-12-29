@@ -36,6 +36,9 @@ accesskit_macos = { version = "0.18.1", path = "../macos" }
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
 accesskit_unix = { version = "0.13.1", path = "../unix", optional = true, default-features = false }
 
+[dev-dependencies]
+accesskit_demo_lib = { version = "0.1.0", path = "../../demo" }
+
 [dev-dependencies.winit]
 version = "0.30"
 default-features = false

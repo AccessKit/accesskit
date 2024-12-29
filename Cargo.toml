@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "common",
     "consumer",
+    "demo",
     "platforms/atspi-common",
     "platforms/macos",
     "platforms/unix",
@@ -12,6 +13,7 @@ members = [
 default-members = [
     "common",
     "consumer",
+    "demo",
     "platforms/atspi-common",
     "platforms/winit",
 ]
