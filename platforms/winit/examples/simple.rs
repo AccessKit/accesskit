@@ -31,13 +31,6 @@ const BUTTON_2_RECT: Rect = Rect {
     y1: 100.0,
 };
 
-const ANNOUNCEMENT_RECT: Rect = Rect {
-    x0: 20.0,
-    y0: 100.0,
-    x1: 100.0,
-    y1: 140.0,
-};
-
 fn build_button(id: NodeId, label: &str) -> Node {
     let rect = match id {
         BUTTON_1_ID => BUTTON_1_RECT,
@@ -55,7 +48,6 @@ fn build_button(id: NodeId, label: &str) -> Node {
 
 fn build_announcement(text: &str) -> Node {
     let mut node = Node::new(Role::Label);
-    node.set_bounds(ANNOUNCEMENT_RECT);
     node.set_value(text);
     node.set_live(Live::Polite);
     node
@@ -253,7 +245,6 @@ impl ApplicationHandler<AccessKitEvent> for Application {
             .expect("failed to create initial window");
     }
 
-    #[cfg(not(target_os = "android"))]
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         if self.window.is_none() {
             event_loop.exit();
@@ -261,17 +252,7 @@ impl ApplicationHandler<AccessKitEvent> for Application {
     }
 }
 
-fn run(event_loop: EventLoop<AccessKitEvent>) {
-    let mut app = Application::new(event_loop.create_proxy());
-    event_loop.run_app(&mut app).unwrap();
-}
-
-#[cfg(not(target_os = "android"))]
-#[allow(dead_code)]
-// This is treated as dead code by the Android version of the example, but is actually live
-// This hackery is required because Cargo doesn't care to support this use case, of one
-// example which works across Android and desktop
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     println!("This example has no visible GUI, and a keyboard interface:");
     println!("- [Tab] switches focus between two logical buttons.");
     println!("- [Space] 'presses' the button, adding static text in a live region announcing that it was pressed.");
@@ -289,34 +270,7 @@ fn main() {
     ))]
     println!("Enable Orca with [Super]+[Alt]+[S].");
 
-    let event_loop = EventLoop::with_user_event().build().unwrap();
-    run(event_loop);
-}
-
-// Boilerplate code for android: Identical across all applications
-
-#[cfg(target_os = "android")]
-use winit::platform::android::activity::AndroidApp;
-
-#[cfg(target_os = "android")]
-// Safety: We are following `android_activity`'s docs here
-// We believe that there are no other declarations using this name in the compiled objects here
-#[allow(unsafe_code)]
-#[no_mangle]
-fn android_main(app: AndroidApp) {
-    use winit::platform::android::EventLoopBuilderExtAndroid;
-
-    let event_loop = EventLoop::with_user_event()
-        .with_android_app(app)
-        .build()
-        .unwrap();
-    run(event_loop);
-}
-
-// TODO: This is a hack because of how we handle our examples in Cargo.toml
-// Ideally, we change Cargo to be more sensible here?
-#[cfg(target_os = "android")]
-#[allow(dead_code)]
-fn main() {
-    unreachable!()
+    let event_loop = EventLoop::with_user_event().build()?;
+    let mut state = Application::new(event_loop.create_proxy());
+    event_loop.run_app(&mut state).map_err(Into::into)
 }
