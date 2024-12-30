@@ -299,10 +299,13 @@ impl Tree {
             let node = self.state.node_by_id(*id).unwrap();
             handler.node_added(&node);
         }
+        for id in &changes.updated_node_ids {
+            let old_node = old_state.node_by_id(*id).unwrap();
+            let new_node = self.state.node_by_id(*id).unwrap();
+            handler.node_updated(&old_node, &new_node);
+        }
         if old_state.focus_id() != self.state.focus_id() {
             let old_node = old_state.focus();
-            let new_node = self.state.focus();
-            handler.focus_moved(old_node.as_ref(), new_node.as_ref());
             if let Some(old_node) = &old_node {
                 let id = old_node.id();
                 if !changes.updated_node_ids.contains(&id)
@@ -313,6 +316,7 @@ impl Tree {
                     }
                 }
             }
+            let new_node = self.state.focus();
             if let Some(new_node) = &new_node {
                 let id = new_node.id();
                 if !changes.added_node_ids.contains(&id) && !changes.updated_node_ids.contains(&id)
@@ -322,11 +326,7 @@ impl Tree {
                     }
                 }
             }
-        }
-        for id in &changes.updated_node_ids {
-            let old_node = old_state.node_by_id(*id).unwrap();
-            let new_node = self.state.node_by_id(*id).unwrap();
-            handler.node_updated(&old_node, &new_node);
+            handler.focus_moved(old_node.as_ref(), new_node.as_ref());
         }
         for id in &changes.removed_node_ids {
             let node = old_state.node_by_id(*id).unwrap();
