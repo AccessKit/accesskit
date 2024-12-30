@@ -161,7 +161,8 @@ impl Application {
             .with_visible(false);
 
         let window = event_loop.create_window(window_attributes)?;
-        let adapter = Adapter::with_event_loop_proxy(&window, self.event_loop_proxy.clone());
+        let adapter =
+            Adapter::with_event_loop_proxy(event_loop, &window, self.event_loop_proxy.clone());
         window.set_visible(true);
 
         self.window = Some(WindowState::new(window, adapter, UiState::new()));

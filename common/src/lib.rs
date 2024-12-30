@@ -1382,6 +1382,20 @@ impl From<Node> for FrozenNode {
     }
 }
 
+impl From<&FrozenNode> for Node {
+    fn from(node: &FrozenNode) -> Self {
+        Self {
+            role: node.role,
+            actions: node.actions,
+            flags: node.flags,
+            properties: Properties {
+                indices: node.properties.indices,
+                values: node.properties.values.to_vec(),
+            },
+        }
+    }
+}
+
 impl FrozenNode {
     #[inline]
     pub fn role(&self) -> Role {
