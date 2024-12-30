@@ -5,11 +5,7 @@
 
 use accesskit::NodeId;
 use accesskit_consumer::Node;
-use jni::{
-    objects::{JClass, JObject},
-    sys::jint,
-    JNIEnv,
-};
+use jni::sys::jint;
 use std::collections::HashMap;
 
 pub(crate) const ACTION_FOCUS: jint = 1 << 0;
@@ -18,8 +14,6 @@ pub(crate) const ACTION_NEXT_AT_MOVEMENT_GRANULARITY: jint = 1 << 8;
 pub(crate) const ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY: jint = 1 << 9;
 pub(crate) const ACTION_SET_SELECTION: jint = 1 << 17;
 pub(crate) const EVENT_VIEW_FOCUSED: jint = 1 << 3;
-pub(crate) const EVENT_VIEW_HOVER_ENTER: jint = 1 << 7;
-pub(crate) const EVENT_VIEW_HOVER_EXIT: jint = 1 << 8;
 pub(crate) const EVENT_WINDOW_CONTENT_CHANGED: jint = 1 << 11;
 pub(crate) const HOST_VIEW_ID: jint = -1;
 pub(crate) const LIVE_REGION_NONE: jint = 0;
@@ -56,20 +50,4 @@ impl NodeIdMap {
         self.java_to_accesskit.insert(java_id, accesskit_id);
         java_id
     }
-}
-
-pub(crate) fn send_event(
-    env: &mut JNIEnv,
-    callback_class: &JClass,
-    host: &JObject,
-    virtual_view_id: jint,
-    event_type: jint,
-) {
-    env.call_static_method(
-        callback_class,
-        "sendEvent",
-        "(Landroid/view/View;II)V",
-        &[host.into(), virtual_view_id.into(), event_type.into()],
-    )
-    .unwrap();
 }
