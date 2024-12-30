@@ -3,6 +3,24 @@ mod live;
 use accesskit::{ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
 use live::LiveView;
 
+#[macro_export]
+macro_rules! node_id {
+    ($($index:expr)?) => {
+        {
+            use std::hash::{DefaultHasher, Hasher};
+
+            let mut hasher = DefaultHasher::new();
+            hasher.write(file!().as_bytes());
+            hasher.write_u32(line!());
+            hasher.write_u32(column!());
+            $(
+                hasher.write_usize($index);
+            )*
+            NodeId(hasher.finish())
+        }
+    }
+}
+
 trait Widget {
     fn tab_pressed(&mut self);
 
@@ -14,7 +32,6 @@ trait Widget {
 }
 
 const WINDOW_TITLE: &str = "Hello world";
-const WINDOW_ID: NodeId = NodeId(0);
 
 pub struct WindowState {
     root_view: Box<dyn Widget + Send>,
@@ -25,7 +42,7 @@ impl Default for WindowState {
     fn default() -> Self {
         Self {
             root_view: Box::new(LiveView::new()),
-            id: WINDOW_ID,
+            id: node_id!(),
         }
     }
 }

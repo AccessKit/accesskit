@@ -1,12 +1,6 @@
 use accesskit::{Action, ActionRequest, Live, Node, NodeId, Rect, Role, TreeUpdate};
 
-use crate::Widget;
-
-const CONTAINER_ID: NodeId = NodeId(1);
-const BUTTON_1_ID: NodeId = NodeId(2);
-const BUTTON_2_ID: NodeId = NodeId(3);
-const ANNOUNCEMENT_ID: NodeId = NodeId(4);
-const INITIAL_FOCUS: NodeId = BUTTON_1_ID;
+use crate::{node_id, Widget};
 
 const BUTTON_1_RECT: Rect = Rect {
     x0: 20.0,
@@ -39,14 +33,19 @@ fn build_announcement(text: &str) -> Node {
 }
 
 pub(crate) struct LiveView {
+    button_1_id: NodeId,
+    button_2_id: NodeId,
     focus: NodeId,
     announcement: Option<String>,
 }
 
 impl LiveView {
     pub(crate) fn new() -> Self {
+        let button_1_id = node_id!();
         Self {
-            focus: INITIAL_FOCUS,
+            button_1_id,
+            button_2_id: node_id!(),
+            focus: button_1_id,
             announcement: None,
         }
     }
@@ -56,7 +55,7 @@ impl LiveView {
     }
 
     fn press_button(&mut self, id: NodeId) {
-        let text = if id == BUTTON_1_ID {
+        let text = if id == self.button_1_id {
             "You pressed button 1"
         } else {
             "You pressed button 2"
@@ -67,10 +66,10 @@ impl LiveView {
 
 impl Widget for LiveView {
     fn tab_pressed(&mut self) {
-        let new_focus = if self.focus == BUTTON_1_ID {
-            BUTTON_2_ID
+        let new_focus = if self.focus == self.button_1_id {
+            self.button_2_id
         } else {
-            BUTTON_1_ID
+            self.button_1_id
         };
         self.set_focus(new_focus);
     }
@@ -81,24 +80,26 @@ impl Widget for LiveView {
 
     fn render(&self, update: &mut TreeUpdate) -> NodeId {
         let mut container = Node::new(Role::GenericContainer);
-        container.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
+        container.set_children(vec![self.button_1_id, self.button_2_id]);
         let button_1 = build_button("Button 1", BUTTON_1_RECT);
         let button_2 = build_button("Button 2", BUTTON_2_RECT);
-        update.nodes.push((BUTTON_1_ID, button_1));
-        update.nodes.push((BUTTON_2_ID, button_2));
+        update.nodes.push((self.button_1_id, button_1));
+        update.nodes.push((self.button_2_id, button_2));
         if let Some(announcement) = &self.announcement {
+            let announcement_id = node_id!();
             update
                 .nodes
-                .push((ANNOUNCEMENT_ID, build_announcement(announcement)));
-            container.push_child(ANNOUNCEMENT_ID);
+                .push((announcement_id, build_announcement(announcement)));
+            container.push_child(announcement_id);
         }
-        update.nodes.push((CONTAINER_ID, container));
+        let container_id = node_id!();
+        update.nodes.push((container_id, container));
         update.focus = self.focus;
-        CONTAINER_ID
+        container_id
     }
 
     fn do_action(&mut self, request: ActionRequest) {
-        if request.target == BUTTON_1_ID || request.target == BUTTON_2_ID {
+        if request.target == self.button_1_id || request.target == self.button_2_id {
             match request.action {
                 Action::Focus => {
                     self.set_focus(request.target);
