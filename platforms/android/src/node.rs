@@ -71,6 +71,9 @@ impl<'a> NodeWrapper<'a> {
     }
 
     pub(crate) fn text_selection(&self) -> Option<(usize, usize)> {
+        if !self.is_focused() {
+            return None;
+        }
         self.0.text_selection().map(|range| {
             (
                 range.start().to_global_utf16_index(),

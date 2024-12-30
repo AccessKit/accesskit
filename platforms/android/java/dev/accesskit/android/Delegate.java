@@ -183,7 +183,6 @@ public final class Delegate extends View.AccessibilityDelegate {
                     nodeInfo.recycle();
                     return null;
                 }
-                nodeInfo.setVisibleToUser(true);
                 if (virtualViewId == accessibilityFocus) {
                     nodeInfo.setAccessibilityFocused(true);
                     nodeInfo.addAction(AccessibilityAction.ACTION_CLEAR_ACCESSIBILITY_FOCUS);
