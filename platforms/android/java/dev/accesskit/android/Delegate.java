@@ -29,30 +29,33 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
     }
 
     public static void inject(final View host, final long adapterHandle) {
-        host.post(new Runnable() {
-            @Override
-            public void run() {
-                if (host.getAccessibilityDelegate() != null) {
-                    throw new IllegalStateException("host already has an accessibility delegate");
-                }
-                Delegate delegate = new Delegate(adapterHandle);
-                host.setAccessibilityDelegate(delegate);
-                host.setOnHoverListener(delegate);
-            }
-        });
+        host.post(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        if (host.getAccessibilityDelegate() != null) {
+                            throw new IllegalStateException(
+                                    "host already has an accessibility delegate");
+                        }
+                        Delegate delegate = new Delegate(adapterHandle);
+                        host.setAccessibilityDelegate(delegate);
+                        host.setOnHoverListener(delegate);
+                    }
+                });
     }
 
     public static void remove(final View host) {
-        host.post(new Runnable() {
-            @Override
-            public void run() {
-                View.AccessibilityDelegate delegate = host.getAccessibilityDelegate();
-                if (delegate != null && delegate instanceof Delegate) {
-                    host.setAccessibilityDelegate(null);
-                    host.setOnHoverListener(null);
-                }
-            }
-        });
+        host.post(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        View.AccessibilityDelegate delegate = host.getAccessibilityDelegate();
+                        if (delegate != null && delegate instanceof Delegate) {
+                            host.setAccessibilityDelegate(null);
+                            host.setOnHoverListener(null);
+                        }
+                    }
+                });
     }
 
     private static AccessibilityEvent newEvent(View host, int virtualViewId, int type) {
@@ -79,15 +82,17 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
     }
 
     public static void sendEvent(final View host, final int virtualViewId, final int type) {
-        host.post(new Runnable() {
-            @Override
-            public void run() {
-                sendEventInternal(host, virtualViewId, type);
-            }
-        });
+        host.post(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        sendEventInternal(host, virtualViewId, type);
+                    }
+                });
     }
 
-    private static void sendTextChangedInternal(View host, int virtualViewId, String oldValue, String newValue) {
+    private static void sendTextChangedInternal(
+            View host, int virtualViewId, String oldValue, String newValue) {
         int i;
         for (i = 0; i < oldValue.length() && i < newValue.length(); ++i) {
             if (oldValue.charAt(i) != newValue.charAt(i)) {
@@ -97,7 +102,8 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
         if (i >= oldValue.length() && i >= newValue.length()) {
             return; // Text did not change
         }
-        AccessibilityEvent e = newEvent(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED);
+        AccessibilityEvent e =
+                newEvent(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED);
         e.setBeforeText(oldValue);
         e.getText().add(newValue);
         int firstDifference = i;
@@ -116,17 +122,24 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
         sendCompletedEvent(host, e);
     }
 
-    public static void sendTextChanged(final View host, final int virtualViewId, final String oldValue, final String newValue) {
-        host.post(new Runnable() {
-            @Override
-            public void run() {
-                sendTextChangedInternal(host, virtualViewId, oldValue, newValue);
-            }
-        });
+    public static void sendTextChanged(
+            final View host,
+            final int virtualViewId,
+            final String oldValue,
+            final String newValue) {
+        host.post(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        sendTextChangedInternal(host, virtualViewId, oldValue, newValue);
+                    }
+                });
     }
 
-    private static void sendTextSelectionChangedInternal(View host, int virtualViewId, String text, int start, int end) {
-        AccessibilityEvent e = newEvent(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED);
+    private static void sendTextSelectionChangedInternal(
+            View host, int virtualViewId, String text, int start, int end) {
+        AccessibilityEvent e =
+                newEvent(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED);
         e.getText().add(text);
         e.setFromIndex(start);
         e.setToIndex(end);
@@ -134,40 +147,92 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
         sendCompletedEvent(host, e);
     }
 
-    public static void sendTextSelectionChanged(final View host, final int virtualViewId, final String text, final int start, final int end) {
-        host.post(new Runnable() {
-            @Override
-            public void run() {
-                sendTextSelectionChangedInternal(host, virtualViewId, text, start, end);
-            }
-        });
+    public static void sendTextSelectionChanged(
+            final View host,
+            final int virtualViewId,
+            final String text,
+            final int start,
+            final int end) {
+        host.post(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        sendTextSelectionChangedInternal(host, virtualViewId, text, start, end);
+                    }
+                });
     }
 
-    private static void sendTextTraversedInternal(View host, int virtualViewId, int granularity, boolean forward, int segmentStart, int segmentEnd) {
-        AccessibilityEvent e = newEvent(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_TEXT_TRAVERSED_AT_MOVEMENT_GRANULARITY);
+    private static void sendTextTraversedInternal(
+            View host,
+            int virtualViewId,
+            int granularity,
+            boolean forward,
+            int segmentStart,
+            int segmentEnd) {
+        AccessibilityEvent e =
+                newEvent(
+                        host,
+                        virtualViewId,
+                        AccessibilityEvent.TYPE_VIEW_TEXT_TRAVERSED_AT_MOVEMENT_GRANULARITY);
         e.setMovementGranularity(granularity);
-        e.setAction(forward ? AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY : AccessibilityNodeInfo.ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY);
+        e.setAction(
+                forward
+                        ? AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY
+                        : AccessibilityNodeInfo.ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY);
         e.setFromIndex(segmentStart);
         e.setToIndex(segmentEnd);
         sendCompletedEvent(host, e);
     }
 
-    public static void sendTextTraversed(final View host, final int virtualViewId, final int granularity, final boolean forward, final int segmentStart, final int segmentEnd) {
-        host.post(new Runnable() {
-            @Override
-            public void run() {
-                sendTextTraversedInternal(host, virtualViewId, granularity, forward, segmentStart, segmentEnd);
-            }
-        });
+    public static void sendTextTraversed(
+            final View host,
+            final int virtualViewId,
+            final int granularity,
+            final boolean forward,
+            final int segmentStart,
+            final int segmentEnd) {
+        host.post(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        sendTextTraversedInternal(
+                                host,
+                                virtualViewId,
+                                granularity,
+                                forward,
+                                segmentStart,
+                                segmentEnd);
+                    }
+                });
     }
 
-    private static native boolean populateNodeInfo(long adapterHandle, View host, int screenX, int screenY, int virtualViewId, AccessibilityNodeInfo nodeInfo);
+    private static native boolean populateNodeInfo(
+            long adapterHandle,
+            View host,
+            int screenX,
+            int screenY,
+            int virtualViewId,
+            AccessibilityNodeInfo nodeInfo);
+
     private static native int getInputFocus(long adapterHandle);
+
     private static native int getVirtualViewAtPoint(long adapterHandle, float x, float y);
+
     private static native boolean performAction(long adapterHandle, int virtualViewId, int action);
-    private static native boolean setTextSelection(long adapterHandle, View host, int virtualViewId, int anchor, int focus);
-    private static native boolean collapseTextSelection(long adapterHandle, View host, int virtualViewId);
-    private static native boolean traverseText(long adapterHandle, View host, int virtualViewId, int granularity, boolean forward, boolean extendSelection);
+
+    private static native boolean setTextSelection(
+            long adapterHandle, View host, int virtualViewId, int anchor, int focus);
+
+    private static native boolean collapseTextSelection(
+            long adapterHandle, View host, int virtualViewId);
+
+    private static native boolean traverseText(
+            long adapterHandle,
+            View host,
+            int virtualViewId,
+            int granularity,
+            boolean forward,
+            boolean extendSelection);
 
     @Override
     public AccessibilityNodeProvider getAccessibilityNodeProvider(final View host) {
@@ -184,7 +249,8 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
                 }
                 nodeInfo.setPackageName(host.getContext().getPackageName());
                 nodeInfo.setVisibleToUser(true);
-                if (!populateNodeInfo(adapterHandle, host, location[0], location[1], virtualViewId, nodeInfo)) {
+                if (!populateNodeInfo(
+                        adapterHandle, host, location[0], location[1], virtualViewId, nodeInfo)) {
                     nodeInfo.recycle();
                     return null;
                 }
@@ -201,39 +267,71 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
             @Override
             public boolean performAction(int virtualViewId, int action, Bundle arguments) {
                 switch (action) {
-                case AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS:
-                    accessibilityFocus = virtualViewId;
-                    host.invalidate();
-                    sendEventInternal(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED);
-                    return true;
-                case AccessibilityNodeInfo.ACTION_CLEAR_ACCESSIBILITY_FOCUS:
-                    if (accessibilityFocus == virtualViewId) {
-                        accessibilityFocus = AccessibilityNodeProvider.HOST_VIEW_ID;
-                    }
-                    host.invalidate();
-                    sendEventInternal(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED);
-                    return true;
-                case AccessibilityNodeInfo.ACTION_SET_SELECTION:
-                    if (!(arguments != null && arguments.containsKey(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT) && arguments.containsKey(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT))) {
-                        return Delegate.collapseTextSelection(adapterHandle, host, virtualViewId);
-                    }
-                    int anchor = arguments.getInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT);
-                    int focus = arguments.getInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT);
-                    return Delegate.setTextSelection(adapterHandle, host, virtualViewId, anchor, focus);
-                case AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY:
-                case AccessibilityNodeInfo.ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY:
-                    int granularity = arguments.getInt(AccessibilityNodeInfo.ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT);
-                    boolean forward = (action == AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY);
-                    boolean extendSelection = arguments.getBoolean(AccessibilityNodeInfo.ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN);
-                    return Delegate.traverseText(adapterHandle, host, virtualViewId, granularity, forward, extendSelection);
+                    case AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS:
+                        accessibilityFocus = virtualViewId;
+                        host.invalidate();
+                        sendEventInternal(
+                                host,
+                                virtualViewId,
+                                AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED);
+                        return true;
+                    case AccessibilityNodeInfo.ACTION_CLEAR_ACCESSIBILITY_FOCUS:
+                        if (accessibilityFocus == virtualViewId) {
+                            accessibilityFocus = AccessibilityNodeProvider.HOST_VIEW_ID;
+                        }
+                        host.invalidate();
+                        sendEventInternal(
+                                host,
+                                virtualViewId,
+                                AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED);
+                        return true;
+                    case AccessibilityNodeInfo.ACTION_SET_SELECTION:
+                        if (!(arguments != null
+                                && arguments.containsKey(
+                                        AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT)
+                                && arguments.containsKey(
+                                        AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT))) {
+                            return Delegate.collapseTextSelection(
+                                    adapterHandle, host, virtualViewId);
+                        }
+                        int anchor =
+                                arguments.getInt(
+                                        AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT);
+                        int focus =
+                                arguments.getInt(
+                                        AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT);
+                        return Delegate.setTextSelection(
+                                adapterHandle, host, virtualViewId, anchor, focus);
+                    case AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY:
+                    case AccessibilityNodeInfo.ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY:
+                        int granularity =
+                                arguments.getInt(
+                                        AccessibilityNodeInfo
+                                                .ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT);
+                        boolean forward =
+                                (action
+                                        == AccessibilityNodeInfo
+                                                .ACTION_NEXT_AT_MOVEMENT_GRANULARITY);
+                        boolean extendSelection =
+                                arguments.getBoolean(
+                                        AccessibilityNodeInfo
+                                                .ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN);
+                        return Delegate.traverseText(
+                                adapterHandle,
+                                host,
+                                virtualViewId,
+                                granularity,
+                                forward,
+                                extendSelection);
                 }
                 if (!Delegate.performAction(adapterHandle, virtualViewId, action)) {
                     return false;
                 }
                 switch (action) {
-                case AccessibilityNodeInfo.ACTION_CLICK:
-                    sendEventInternal(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_CLICKED);
-                    break;
+                    case AccessibilityNodeInfo.ACTION_CLICK:
+                        sendEventInternal(
+                                host, virtualViewId, AccessibilityEvent.TYPE_VIEW_CLICKED);
+                        break;
                 }
                 return true;
             }
@@ -241,20 +339,24 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
             @Override
             public AccessibilityNodeInfo findFocus(int focusType) {
                 switch (focusType) {
-                    case AccessibilityNodeInfo.FOCUS_ACCESSIBILITY: {
-                        AccessibilityNodeInfo result = createAccessibilityNodeInfo(accessibilityFocus);
-                        if (result != null && result.isAccessibilityFocused()) {
-                            return result;
+                    case AccessibilityNodeInfo.FOCUS_ACCESSIBILITY:
+                        {
+                            AccessibilityNodeInfo result =
+                                    createAccessibilityNodeInfo(accessibilityFocus);
+                            if (result != null && result.isAccessibilityFocused()) {
+                                return result;
+                            }
+                            break;
                         }
-                        break;
-                    }
-                    case AccessibilityNodeInfo.FOCUS_INPUT: {
-                        AccessibilityNodeInfo result = createAccessibilityNodeInfo(getInputFocus(adapterHandle));
-                        if (result != null && result.isFocused()) {
-                            return result;
+                    case AccessibilityNodeInfo.FOCUS_INPUT:
+                        {
+                            AccessibilityNodeInfo result =
+                                    createAccessibilityNodeInfo(getInputFocus(adapterHandle));
+                            if (result != null && result.isFocused()) {
+                                return result;
+                            }
+                            break;
                         }
-                        break;
-                    }
                 }
                 return null;
             }
@@ -264,25 +366,25 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
     @Override
     public boolean onHover(View v, MotionEvent event) {
         switch (event.getAction()) {
-        case MotionEvent.ACTION_HOVER_ENTER:
-        case MotionEvent.ACTION_HOVER_MOVE:
-            int newId = getVirtualViewAtPoint(adapterHandle, event.getX(), event.getY());
-            if (newId != hoverId) {
-                if (newId != AccessibilityNodeProvider.HOST_VIEW_ID) {
-                    sendEventInternal(v, newId, AccessibilityEvent.TYPE_VIEW_HOVER_ENTER);
+            case MotionEvent.ACTION_HOVER_ENTER:
+            case MotionEvent.ACTION_HOVER_MOVE:
+                int newId = getVirtualViewAtPoint(adapterHandle, event.getX(), event.getY());
+                if (newId != hoverId) {
+                    if (newId != AccessibilityNodeProvider.HOST_VIEW_ID) {
+                        sendEventInternal(v, newId, AccessibilityEvent.TYPE_VIEW_HOVER_ENTER);
+                    }
+                    if (hoverId != AccessibilityNodeProvider.HOST_VIEW_ID) {
+                        sendEventInternal(v, hoverId, AccessibilityEvent.TYPE_VIEW_HOVER_EXIT);
+                    }
+                    hoverId = newId;
                 }
+                break;
+            case MotionEvent.ACTION_HOVER_EXIT:
                 if (hoverId != AccessibilityNodeProvider.HOST_VIEW_ID) {
                     sendEventInternal(v, hoverId, AccessibilityEvent.TYPE_VIEW_HOVER_EXIT);
+                    hoverId = AccessibilityNodeProvider.HOST_VIEW_ID;
                 }
-                hoverId = newId;
-            }
-            break;
-        case MotionEvent.ACTION_HOVER_EXIT:
-            if (hoverId != AccessibilityNodeProvider.HOST_VIEW_ID) {
-                sendEventInternal(v, hoverId, AccessibilityEvent.TYPE_VIEW_HOVER_EXIT);
-                hoverId = AccessibilityNodeProvider.HOST_VIEW_ID;
-            }
-            break;
+                break;
         }
         return true;
     }
