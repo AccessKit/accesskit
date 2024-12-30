@@ -13,4 +13,4 @@ While this crate's API is purely blocking, it internally spawns asynchronous tas
 
 ## Android activity compatibility
 
-The Android implementation of this adapter currently assumes that the Android activity Java class stores its content view in an instance variable called `mSurfaceView`. This is the case for [GameActivity](https://developer.android.com/games/agdk/game-activity), which is one of the two activity implementations that winit currently supports.
+The Android implementation of this adapter currently only works with [GameActivity](https://developer.android.com/games/agdk/game-activity), which is one of the two activity implementations that winit currently supports.
