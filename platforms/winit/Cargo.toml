@@ -39,24 +39,4 @@ accesskit_android = { version = "0.1.0", path = "../android", features = ["embed
 [dev-dependencies.winit]
 version = "0.30.5"
 default-features = false
-features = ["x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita", "android-native-activity"]
-
-[[example]]
-name = "simple"
-
-[[example]]
-# A custom example target which uses the same `simple.rs` file but for android
-name = "simple_android"
-path = "examples/simple.rs"
-# cdylib is required for cargo-apk
-crate-type = ["cdylib"]
-
-[[example]]
-name = "mixed_handlers"
-
-[[example]]
-# A custom example target which uses the same `mixed_handlers.rs` file but for android
-name = "mixed_handlers_android"
-path = "examples/mixed_handlers.rs"
-# cdylib is required for cargo-apk
-crate-type = ["cdylib"]
+features = ["x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita"]
