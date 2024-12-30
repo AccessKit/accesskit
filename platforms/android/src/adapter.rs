@@ -22,6 +22,22 @@ use jni::{
 
 use crate::{filters::filter, node::NodeWrapper, util::*};
 
+fn send_event(
+    env: &mut JNIEnv,
+    callback_class: &JClass,
+    host: &JObject,
+    virtual_view_id: jint,
+    event_type: jint,
+) {
+    env.call_static_method(
+        callback_class,
+        "sendEvent",
+        "(Landroid/view/View;II)V",
+        &[host.into(), virtual_view_id.into(), event_type.into()],
+    )
+    .unwrap();
+}
+
 fn send_window_content_changed(env: &mut JNIEnv, callback_class: &JClass, host: &JObject) {
     send_event(
         env,
