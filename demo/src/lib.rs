@@ -32,6 +32,10 @@ trait Widget {
 }
 
 const WINDOW_TITLE: &str = "Hello world";
+const MARGIN: f64 = 20.0;
+const PADDING: f64 = 5.0;
+const CHARACTER_WIDTH: f64 = 12.0;
+const CHARACTER_HEIGHT: f64 = 20.0;
 
 pub struct WindowState {
     root_view: Box<dyn Widget + Send>,

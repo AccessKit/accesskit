@@ -1,24 +1,17 @@
 use accesskit::{Action, ActionRequest, Live, Node, NodeId, Rect, Role, TreeUpdate};
 
-use crate::{node_id, Widget};
+use crate::{node_id, Widget, CHARACTER_HEIGHT, CHARACTER_WIDTH, MARGIN, PADDING};
 
-const BUTTON_1_RECT: Rect = Rect {
-    x0: 20.0,
-    y0: 20.0,
-    x1: 100.0,
-    y1: 60.0,
-};
+const BUTTON_HEIGHT: f64 = CHARACTER_HEIGHT + PADDING * 2.0;
 
-const BUTTON_2_RECT: Rect = Rect {
-    x0: 20.0,
-    y0: 60.0,
-    x1: 100.0,
-    y1: 100.0,
-};
-
-fn build_button(label: &str, rect: Rect) -> Node {
+fn build_button(label: &str, y: f64) -> Node {
     let mut node = Node::new(Role::Button);
-    node.set_bounds(rect);
+    node.set_bounds(Rect {
+        x0: MARGIN,
+        y0: y,
+        x1: MARGIN + label.len() as f64 * CHARACTER_WIDTH + PADDING * 2.0,
+        y1: MARGIN + BUTTON_HEIGHT,
+    });
     node.set_label(label);
     node.add_action(Action::Focus);
     node.add_action(Action::Click);
@@ -81,8 +74,8 @@ impl Widget for LiveView {
     fn render(&self, update: &mut TreeUpdate) -> NodeId {
         let mut container = Node::new(Role::GenericContainer);
         container.set_children(vec![self.button_1_id, self.button_2_id]);
-        let button_1 = build_button("Button 1", BUTTON_1_RECT);
-        let button_2 = build_button("Button 2", BUTTON_2_RECT);
+        let button_1 = build_button("Button 1", MARGIN);
+        let button_2 = build_button("Button 2", MARGIN + BUTTON_HEIGHT);
         update.nodes.push((self.button_1_id, button_1));
         update.nodes.push((self.button_2_id, button_2));
         if let Some(announcement) = &self.announcement {
