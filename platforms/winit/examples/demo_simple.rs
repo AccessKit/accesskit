@@ -39,7 +39,7 @@ impl Application {
     }
 
     fn create_window(&mut self, event_loop: &ActiveEventLoop) -> Result<(), Box<dyn Error>> {
-        let state = AccessKitWindowState::new();
+        let state = AccessKitWindowState::default();
         let window_attributes = Window::default_attributes()
             .with_title(state.title())
             .with_visible(false);

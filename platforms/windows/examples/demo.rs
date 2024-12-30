@@ -223,7 +223,7 @@ fn main() -> Result<()> {
     println!("- [Space] 'presses' the button, adding static text in a live region announcing that it was pressed.");
     println!("Enable Narrator with [Win]+[Ctrl]+[Enter] (or [Win]+[Enter] on older versions of Windows).");
 
-    let accesskit_state = AccessKitWindowState::new();
+    let accesskit_state = AccessKitWindowState::default();
     let window = create_window(accesskit_state)?;
     let _ = unsafe { ShowWindow(window, SW_SHOW) };
 

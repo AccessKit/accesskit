@@ -53,7 +53,7 @@ impl Application {
     }
 
     fn create_window(&mut self, event_loop: &ActiveEventLoop) -> Result<(), Box<dyn Error>> {
-        let state = Arc::new(Mutex::new(AccessKitWindowState::new()));
+        let state = Arc::new(Mutex::new(AccessKitWindowState::default()));
         let window_attributes = Window::default_attributes()
             .with_title(state.lock().unwrap().title())
             .with_visible(false);
