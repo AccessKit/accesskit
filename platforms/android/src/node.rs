@@ -16,7 +16,7 @@ use crate::{filters::filter, util::*};
 
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
 
-impl<'a> NodeWrapper<'a> {
+impl NodeWrapper<'_> {
     fn is_editable(&self) -> bool {
         self.0.is_text_input() && !self.0.is_read_only()
     }
