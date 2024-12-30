@@ -228,6 +228,26 @@ pub struct Adapter {
     state: State,
 }
 
+/// Low-level AccessKit adapter for Android. This layer provides maximum
+/// flexibility in the application threading model, the interface between
+/// Java and native code, and the implementation of action callbacks,
+/// at the expense of requiring its caller to provide glue code. For a
+/// higher-level implementation built on this type, see [`InjectingAdapter`].
+///
+/// Several of this type's functions have a `callback_class` parameter.
+/// The reference implementation of the duck-typed contract for this Java class
+/// is `dev.accesskit.android.Delegate`, the source code for which is in the
+/// `java` directory of this crate. The methods that are called from native
+/// code are all marked `public static`, and so far, all of them that are
+/// called by this type (rather than [`InjectingAdapter`]) are for sending
+/// events. Other implementations may differ by, for example, sending those
+/// events synchronously rather than posting them to the UI thread for
+/// asynchronous handling.
+///
+/// Several of this type's functions have a `host` parameter. This is always
+/// a Java object whose class must derive from `android.view.View`.
+///
+/// [`InjectingAdapter`]: crate::InjectingAdapter
 impl Adapter {
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update. Note: If the caller's implementation of
