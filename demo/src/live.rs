@@ -1,6 +1,6 @@
 use accesskit::{Action, ActionRequest, Live, Node, NodeId, Rect, Role, TreeUpdate};
 
-use crate::{node_id, Key, Widget, CHARACTER_HEIGHT, CHARACTER_WIDTH, MARGIN, PADDING};
+use crate::{node_id, tabs::Tab, Key, Widget, CHARACTER_HEIGHT, CHARACTER_WIDTH, MARGIN, PADDING};
 
 const BUTTON_HEIGHT: f64 = CHARACTER_HEIGHT + PADDING * 2.0;
 
@@ -25,7 +25,7 @@ fn build_announcement(text: &str) -> Node {
     node
 }
 
-pub(crate) struct LiveView {
+pub(crate) struct LiveRegionTab {
     button_1_id: NodeId,
     button_2_id: NodeId,
     has_focus: bool,
@@ -33,7 +33,7 @@ pub(crate) struct LiveView {
     announcement: Option<String>,
 }
 
-impl LiveView {
+impl LiveRegionTab {
     pub(crate) fn new() -> Self {
         let button_1_id = node_id!();
         Self {
@@ -43,10 +43,6 @@ impl LiveView {
             focus: button_1_id,
             announcement: None,
         }
-    }
-
-    fn set_focus(&mut self, focus: NodeId) {
-        self.focus = focus;
     }
 
     fn press_button(&mut self, id: NodeId) {
@@ -59,15 +55,15 @@ impl LiveView {
     }
 }
 
-impl Widget for LiveView {
+impl Widget for LiveRegionTab {
     fn key_pressed(&mut self, key: Key) -> bool {
         match key {
             Key::Tab => {
                 if self.focus == self.button_1_id {
-                    self.set_focus(self.button_2_id);
+                    self.focus = self.button_2_id;
                     true
                 } else {
-                    self.set_focus(self.button_1_id);
+                    self.focus = self.button_1_id;
                     self.set_focused(false);
                     false
                 }
@@ -76,6 +72,7 @@ impl Widget for LiveView {
                 self.press_button(self.focus);
                 true
             }
+            _ => false,
         }
     }
 
@@ -109,11 +106,11 @@ impl Widget for LiveView {
         container_id
     }
 
-    fn do_action(&mut self, request: ActionRequest) -> bool {
+    fn do_action(&mut self, request: &ActionRequest) -> bool {
         if request.target == self.button_1_id || request.target == self.button_2_id {
             match request.action {
                 Action::Focus => {
-                    self.set_focus(request.target);
+                    self.focus = request.target;
                     self.set_focused(true);
                 }
                 Action::Click => {
@@ -125,5 +122,11 @@ impl Widget for LiveView {
         } else {
             false
         }
+    }
+}
+
+impl Tab for LiveRegionTab {
+    fn title(&self) -> &str {
+        "Live Region"
     }
 }

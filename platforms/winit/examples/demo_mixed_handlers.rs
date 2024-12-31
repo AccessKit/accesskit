@@ -99,6 +99,8 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                 ..
             } => {
                 let key = match virtual_code {
+                    winit::keyboard::Key::Named(NamedKey::ArrowLeft) => Some(Key::Left),
+                    winit::keyboard::Key::Named(NamedKey::ArrowRight) => Some(Key::Right),
                     winit::keyboard::Key::Named(NamedKey::Space) => Some(Key::Space),
                     winit::keyboard::Key::Named(NamedKey::Tab) => Some(Key::Tab),
                     _ => None,
@@ -124,7 +126,7 @@ impl ApplicationHandler<AccessKitEvent> for Application {
         match user_event.window_event {
             AccessKitWindowEvent::InitialTreeRequested => unreachable!(),
             AccessKitWindowEvent::ActionRequested(request) => {
-                state.do_action(request);
+                state.do_action(&request);
                 adapter.update_if_active(|| state.build_tree());
             }
             AccessKitWindowEvent::AccessibilityDeactivated => {
