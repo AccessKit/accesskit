@@ -1,5 +1,5 @@
 use accesskit::{ActivationHandler, TreeUpdate};
-use accesskit_demo_lib::WindowState as AccessKitWindowState;
+use accesskit_demo_lib::{Key, WindowState as AccessKitWindowState};
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
 use std::{
     error::Error,
@@ -9,7 +9,7 @@ use winit::{
     application::ApplicationHandler,
     event::{ElementState, KeyEvent, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
-    keyboard::Key,
+    keyboard::NamedKey,
     window::{Window, WindowId},
 };
 
@@ -98,17 +98,16 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                     },
                 ..
             } => {
-                let mut state = state.lock().unwrap();
-                match virtual_code {
-                    Key::Named(winit::keyboard::NamedKey::Tab) => {
-                        state.tab_pressed();
-                    }
-                    Key::Named(winit::keyboard::NamedKey::Space) => {
-                        state.space_pressed();
-                    }
-                    _ => (),
+                let key = match virtual_code {
+                    winit::keyboard::Key::Named(NamedKey::Space) => Some(Key::Space),
+                    winit::keyboard::Key::Named(NamedKey::Tab) => Some(Key::Tab),
+                    _ => None,
+                };
+                if let Some(key) = key {
+                    let mut state = state.lock().unwrap();
+                    state.key_pressed(key);
+                    adapter.update_if_active(|| state.build_tree());
                 }
-                adapter.update_if_active(|| state.build_tree());
             }
             _ => (),
         }

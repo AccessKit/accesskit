@@ -22,13 +22,16 @@ macro_rules! node_id {
 }
 
 trait Widget {
-    fn tab_pressed(&mut self);
-
-    fn space_pressed(&mut self);
+    fn key_pressed(&mut self, key: Key);
 
     fn render(&self, update: &mut TreeUpdate) -> NodeId;
 
     fn do_action(&mut self, request: ActionRequest);
+}
+
+pub enum Key {
+    Space,
+    Tab,
 }
 
 const WINDOW_TITLE: &str = "Hello world";
@@ -52,12 +55,8 @@ impl Default for WindowState {
 }
 
 impl WindowState {
-    pub fn tab_pressed(&mut self) {
-        self.root_view.tab_pressed();
-    }
-
-    pub fn space_pressed(&mut self) {
-        self.root_view.space_pressed();
+    pub fn key_pressed(&mut self, key: Key) {
+        self.root_view.key_pressed(key);
     }
 
     fn build_root(&self, child: NodeId) -> Node {
