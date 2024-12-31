@@ -55,7 +55,7 @@ impl WindowState {
     }
 
     fn do_action(&self, request: ActionRequest) {
-        self.inner_state.borrow_mut().0.do_action(request);
+        self.inner_state.borrow_mut().0.do_action(&request);
     }
 
     fn update_accesskit_if_active(&self) {
@@ -163,6 +163,8 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
         }
         WM_KEYDOWN => {
             let key = match VIRTUAL_KEY(wparam.0 as u16) {
+                VK_LEFT => Some(Key::Left),
+                VK_RIGHT => Some(Key::Right),
                 VK_SPACE => Some(Key::Space),
                 VK_TAB => Some(Key::Tab),
                 _ => None,

@@ -1,11 +1,13 @@
 mod live;
+mod tabs;
 
 use accesskit::{ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
-use live::LiveView;
+use live::LiveRegionTab;
+use tabs::{Tab, TabView};
 
 #[macro_export]
 macro_rules! node_id {
-    ($($index:expr)?) => {
+    ($($name:expr $(, $index:expr)?)?) => {
         {
             use std::hash::{DefaultHasher, Hasher};
 
@@ -14,7 +16,10 @@ macro_rules! node_id {
             hasher.write_u32(line!());
             hasher.write_u32(column!());
             $(
-                hasher.write_usize($index);
+                hasher.write($name.as_bytes());
+                $(
+                    hasher.write_usize($index);
+                )*
             )*
             NodeId(hasher.finish())
         }
@@ -30,15 +35,17 @@ trait Widget {
 
     fn render(&self, update: &mut TreeUpdate) -> NodeId;
 
-    fn do_action(&mut self, request: ActionRequest) -> bool;
+    fn do_action(&mut self, request: &ActionRequest) -> bool;
 }
 
 pub enum Key {
+    Left,
+    Right,
     Space,
     Tab,
 }
 
-const WINDOW_TITLE: &str = "Hello world";
+const WINDOW_TITLE: &str = "AccessKit Demo";
 const MARGIN: f64 = 20.0;
 const PADDING: f64 = 5.0;
 const CHARACTER_WIDTH: f64 = 12.0;
@@ -51,7 +58,8 @@ pub struct WindowState {
 
 impl Default for WindowState {
     fn default() -> Self {
-        let mut root_view = Box::new(LiveView::new());
+        let tabs: Vec<Box<dyn Tab + Send>> = vec![Box::new(LiveRegionTab::new())];
+        let mut root_view = Box::new(TabView::new("examples", tabs));
         root_view.set_focused(true);
         Self {
             root_view,
@@ -70,7 +78,7 @@ impl WindowState {
     fn build_root(&self, child: NodeId) -> Node {
         let mut node = Node::new(Role::Window);
         node.set_children(vec![child]);
-        node.set_label(WINDOW_TITLE);
+        node.set_label(self.title());
         node
     }
 
@@ -92,7 +100,7 @@ impl WindowState {
         update
     }
 
-    pub fn do_action(&mut self, request: ActionRequest) {
+    pub fn do_action(&mut self, request: &ActionRequest) {
         self.root_view.do_action(request);
     }
 
