@@ -1,7 +1,7 @@
 // Based on the create_window sample in windows-samples-rs.
 
 use accesskit::{ActionHandler, ActionRequest, ActivationHandler, TreeUpdate};
-use accesskit_demo_lib::WindowState as AccessKitWindowState;
+use accesskit_demo_lib::{Key, WindowState as AccessKitWindowState};
 use accesskit_windows::Adapter;
 use once_cell::sync::Lazy;
 use std::cell::RefCell;
@@ -50,12 +50,8 @@ struct WindowState {
 }
 
 impl WindowState {
-    fn tab_pressed(&self) {
-        self.inner_state.borrow_mut().0.tab_pressed();
-    }
-
-    fn space_pressed(&self) {
-        self.inner_state.borrow_mut().0.space_pressed();
+    fn key_pressed(&self, key: Key) {
+        self.inner_state.borrow_mut().0.key_pressed(key);
     }
 
     fn do_action(&self, request: ActionRequest) {
@@ -166,17 +162,16 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             LRESULT(0)
         }
         WM_KEYDOWN => {
-            let state = unsafe { &*get_window_state(window) };
-            match VIRTUAL_KEY(wparam.0 as u16) {
-                VK_TAB => {
-                    state.tab_pressed();
-                }
-                VK_SPACE => {
-                    state.space_pressed();
-                }
-                _ => (),
+            let key = match VIRTUAL_KEY(wparam.0 as u16) {
+                VK_SPACE => Some(Key::Space),
+                VK_TAB => Some(Key::Tab),
+                _ => None,
+            };
+            if let Some(key) = key {
+                let state = unsafe { &*get_window_state(window) };
+                state.key_pressed(key);
+                state.update_accesskit_if_active();
             }
-            state.update_accesskit_if_active();
             LRESULT(0)
         }
         ACTION_REQUEST_MSG => {

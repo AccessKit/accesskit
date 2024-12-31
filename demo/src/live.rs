@@ -1,6 +1,6 @@
 use accesskit::{Action, ActionRequest, Live, Node, NodeId, Rect, Role, TreeUpdate};
 
-use crate::{node_id, Widget, CHARACTER_HEIGHT, CHARACTER_WIDTH, MARGIN, PADDING};
+use crate::{node_id, Key, Widget, CHARACTER_HEIGHT, CHARACTER_WIDTH, MARGIN, PADDING};
 
 const BUTTON_HEIGHT: f64 = CHARACTER_HEIGHT + PADDING * 2.0;
 
@@ -58,17 +58,20 @@ impl LiveView {
 }
 
 impl Widget for LiveView {
-    fn tab_pressed(&mut self) {
-        let new_focus = if self.focus == self.button_1_id {
-            self.button_2_id
-        } else {
-            self.button_1_id
-        };
-        self.set_focus(new_focus);
-    }
-
-    fn space_pressed(&mut self) {
-        self.press_button(self.focus);
+    fn key_pressed(&mut self, key: Key) {
+        match key {
+            Key::Tab => {
+                let new_focus = if self.focus == self.button_1_id {
+                    self.button_2_id
+                } else {
+                    self.button_1_id
+                };
+                self.set_focus(new_focus);
+            }
+            Key::Space => {
+                self.press_button(self.focus);
+            }
+        }
     }
 
     fn render(&self, update: &mut TreeUpdate) -> NodeId {
