@@ -22,11 +22,15 @@ macro_rules! node_id {
 }
 
 trait Widget {
-    fn key_pressed(&mut self, key: Key);
+    fn key_pressed(&mut self, key: Key) -> bool;
+
+    fn has_focus(&self) -> bool;
+
+    fn set_focused(&mut self, has_focus: bool);
 
     fn render(&self, update: &mut TreeUpdate) -> NodeId;
 
-    fn do_action(&mut self, request: ActionRequest);
+    fn do_action(&mut self, request: ActionRequest) -> bool;
 }
 
 pub enum Key {
@@ -47,8 +51,10 @@ pub struct WindowState {
 
 impl Default for WindowState {
     fn default() -> Self {
+        let mut root_view = Box::new(LiveView::new());
+        root_view.set_focused(true);
         Self {
-            root_view: Box::new(LiveView::new()),
+            root_view,
             id: node_id!(),
         }
     }
@@ -56,7 +62,9 @@ impl Default for WindowState {
 
 impl WindowState {
     pub fn key_pressed(&mut self, key: Key) {
-        self.root_view.key_pressed(key);
+        if !self.root_view.key_pressed(key) && !self.root_view.has_focus() {
+            self.root_view.set_focused(true);
+        }
     }
 
     fn build_root(&self, child: NodeId) -> Node {
