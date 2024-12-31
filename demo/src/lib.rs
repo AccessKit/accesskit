@@ -1,7 +1,9 @@
+mod basics;
 mod live;
 mod tabs;
 
 use accesskit::{ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
+use basics::BasicsTab;
 use live::LiveRegionTab;
 use tabs::{Tab, TabView};
 
@@ -45,6 +47,21 @@ pub enum Key {
     Tab,
 }
 
+fn group<F>(label: &str, update: &mut TreeUpdate, make_content: F) -> NodeId where F: FnOnce(&mut TreeUpdate, &mut Vec<NodeId>) {
+    let group_id = node_id!(label);
+    let mut group = Node::new(Role::Group);
+    let label_id = node_id!(label);
+    let mut label_node = Node::new(Role::Label);
+    label_node.set_value(label);
+    let mut children = vec![label_id];
+    make_content(update, &mut children);
+    group.set_children(children);
+    group.set_labelled_by(vec![label_id]);
+    update.nodes.push((group_id, group));
+    update.nodes.push((label_id, label_node));
+    group_id
+}
+
 const WINDOW_TITLE: &str = "AccessKit Demo";
 const MARGIN: f64 = 20.0;
 const PADDING: f64 = 5.0;
@@ -58,7 +75,8 @@ pub struct WindowState {
 
 impl Default for WindowState {
     fn default() -> Self {
-        let tabs: Vec<Box<dyn Tab + Send>> = vec![Box::new(LiveRegionTab::new())];
+        let tabs: Vec<Box<dyn Tab + Send>> =
+            vec![Box::new(BasicsTab::new()), Box::new(LiveRegionTab::new())];
         let mut root_view = Box::new(TabView::new("examples", tabs));
         root_view.set_focused(true);
         Self {
