@@ -28,6 +28,7 @@ fn build_announcement(text: &str) -> Node {
 pub(crate) struct LiveView {
     button_1_id: NodeId,
     button_2_id: NodeId,
+    has_focus: bool,
     focus: NodeId,
     announcement: Option<String>,
 }
@@ -38,6 +39,7 @@ impl LiveView {
         Self {
             button_1_id,
             button_2_id: node_id!(),
+            has_focus: false,
             focus: button_1_id,
             announcement: None,
         }
@@ -58,20 +60,31 @@ impl LiveView {
 }
 
 impl Widget for LiveView {
-    fn key_pressed(&mut self, key: Key) {
+    fn key_pressed(&mut self, key: Key) -> bool {
         match key {
             Key::Tab => {
-                let new_focus = if self.focus == self.button_1_id {
-                    self.button_2_id
+                if self.focus == self.button_1_id {
+                    self.set_focus(self.button_2_id);
+                    true
                 } else {
-                    self.button_1_id
-                };
-                self.set_focus(new_focus);
+                    self.set_focus(self.button_1_id);
+                    self.set_focused(false);
+                    false
+                }
             }
             Key::Space => {
                 self.press_button(self.focus);
+                true
             }
         }
+    }
+
+    fn has_focus(&self) -> bool {
+        self.has_focus
+    }
+
+    fn set_focused(&mut self, has_focus: bool) {
+        self.has_focus = has_focus;
     }
 
     fn render(&self, update: &mut TreeUpdate) -> NodeId {
@@ -90,21 +103,27 @@ impl Widget for LiveView {
         }
         let container_id = node_id!();
         update.nodes.push((container_id, container));
-        update.focus = self.focus;
+        if self.has_focus() {
+            update.focus = self.focus;
+        }
         container_id
     }
 
-    fn do_action(&mut self, request: ActionRequest) {
+    fn do_action(&mut self, request: ActionRequest) -> bool {
         if request.target == self.button_1_id || request.target == self.button_2_id {
             match request.action {
                 Action::Focus => {
                     self.set_focus(request.target);
+                    self.set_focused(true);
                 }
                 Action::Click => {
                     self.press_button(request.target);
                 }
                 _ => (),
             }
+            true
+        } else {
+            false
         }
     }
 }
