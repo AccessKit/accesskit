@@ -78,10 +78,12 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                 ..
             } => {
                 let key = match virtual_code {
+                    winit::keyboard::Key::Named(NamedKey::ArrowDown) => Some(Key::Down),
                     winit::keyboard::Key::Named(NamedKey::ArrowLeft) => Some(Key::Left),
                     winit::keyboard::Key::Named(NamedKey::ArrowRight) => Some(Key::Right),
                     winit::keyboard::Key::Named(NamedKey::Space) => Some(Key::Space),
                     winit::keyboard::Key::Named(NamedKey::Tab) => Some(Key::Tab),
+                    winit::keyboard::Key::Named(NamedKey::ArrowUp) => Some(Key::Up),
                     _ => None,
                 };
                 if let Some(key) = key {

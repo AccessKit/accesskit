@@ -1,11 +1,13 @@
 mod basics;
 mod live;
 mod tabs;
+mod text;
 
 use accesskit::{ActionRequest, Node, NodeId, Role, Tree, TreeUpdate};
 use basics::BasicsTab;
 use live::LiveRegionTab;
 use tabs::{Tab, TabView};
+use text::TextTab;
 
 #[macro_export]
 macro_rules! node_id {
@@ -41,10 +43,12 @@ trait Widget {
 }
 
 pub enum Key {
+    Down,
     Left,
     Right,
     Space,
     Tab,
+    Up,
 }
 
 fn group<F>(label: &str, update: &mut TreeUpdate, make_content: F) -> NodeId where F: FnOnce(&mut TreeUpdate, &mut Vec<NodeId>) {
@@ -76,7 +80,7 @@ pub struct WindowState {
 impl Default for WindowState {
     fn default() -> Self {
         let tabs: Vec<Box<dyn Tab + Send>> =
-            vec![Box::new(BasicsTab::new()), Box::new(LiveRegionTab::new())];
+            vec![Box::new(BasicsTab::new()), Box::new(TextTab::new()), Box::new(LiveRegionTab::new())];
         let mut root_view = Box::new(TabView::new("examples", tabs));
         root_view.set_focused(true);
         Self {

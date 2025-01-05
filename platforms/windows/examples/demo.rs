@@ -163,10 +163,12 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
         }
         WM_KEYDOWN => {
             let key = match VIRTUAL_KEY(wparam.0 as u16) {
+                VK_DOWN => Some(Key::Down),
                 VK_LEFT => Some(Key::Left),
                 VK_RIGHT => Some(Key::Right),
                 VK_SPACE => Some(Key::Space),
                 VK_TAB => Some(Key::Tab),
+                VK_UP => Some(Key::Up),
                 _ => None,
             };
             if let Some(key) = key {
