@@ -32,9 +32,9 @@ impl QueuedEvent {
         Self::Announcement {
             text: node.value().unwrap(),
             priority: if node.live() == Live::Assertive {
-                NSAccessibilityPriorityLevel::NSAccessibilityPriorityHigh
+                NSAccessibilityPriorityLevel::High
             } else {
-                NSAccessibilityPriorityLevel::NSAccessibilityPriorityMedium
+                NSAccessibilityPriorityLevel::Medium
             },
         }
     }
@@ -73,7 +73,7 @@ impl QueuedEvent {
                     }
                 };
 
-                let mut user_info = NSMutableDictionary::<_, AnyObject>::new();
+                let user_info = NSMutableDictionary::<_, AnyObject>::new();
                 let text = NSString::from_str(&text);
                 unsafe {
                     user_info.setObject_forKey(

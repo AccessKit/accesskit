@@ -6,7 +6,7 @@
 use accesskit::{ActionHandler, ActionRequest, NodeId};
 use accesskit_consumer::Tree;
 use hashbrown::HashMap;
-use objc2::rc::{Id, WeakId};
+use objc2::rc::{Retained, Weak};
 use objc2_app_kit::*;
 use objc2_foundation::MainThreadMarker;
 use std::{cell::RefCell, rc::Rc};
@@ -32,16 +32,16 @@ impl<H: ActionHandler> ActionHandlerNoMut for ActionHandlerWrapper<H> {
 }
 
 pub(crate) struct Context {
-    pub(crate) view: WeakId<NSView>,
+    pub(crate) view: Weak<NSView>,
     pub(crate) tree: RefCell<Tree>,
     pub(crate) action_handler: Rc<dyn ActionHandlerNoMut>,
-    platform_nodes: RefCell<HashMap<NodeId, Id<PlatformNode>>>,
+    platform_nodes: RefCell<HashMap<NodeId, Retained<PlatformNode>>>,
     pub(crate) mtm: MainThreadMarker,
 }
 
 impl Context {
     pub(crate) fn new(
-        view: WeakId<NSView>,
+        view: Weak<NSView>,
         tree: Tree,
         action_handler: Rc<dyn ActionHandlerNoMut>,
         mtm: MainThreadMarker,
@@ -55,7 +55,10 @@ impl Context {
         })
     }
 
-    pub(crate) fn get_or_create_platform_node(self: &Rc<Self>, id: NodeId) -> Id<PlatformNode> {
+    pub(crate) fn get_or_create_platform_node(
+        self: &Rc<Self>,
+        id: NodeId,
+    ) -> Retained<PlatformNode> {
         let mut platform_nodes = self.platform_nodes.borrow_mut();
         if let Some(result) = platform_nodes.get(&id) {
             return result.clone();
@@ -66,7 +69,7 @@ impl Context {
         result
     }
 
-    pub(crate) fn remove_platform_node(&self, id: NodeId) -> Option<Id<PlatformNode>> {
+    pub(crate) fn remove_platform_node(&self, id: NodeId) -> Option<Retained<PlatformNode>> {
         let mut platform_nodes = self.platform_nodes.borrow_mut();
         platform_nodes.remove(&id)
     }
