@@ -147,6 +147,27 @@
     * accesskit_macos bumped from 0.18.0 to 0.18.1
     * accesskit_unix bumped from 0.13.0 to 0.13.1
 
+## [0.24.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.23.1...accesskit_winit-v0.24.0) (2025-01-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop `Tree::app_name` ([#492](https://github.com/AccessKit/accesskit/issues/492))
+
+### Code Refactoring
+
+* Drop `Tree::app_name` ([#492](https://github.com/AccessKit/accesskit/issues/492)) ([089794c](https://github.com/AccessKit/accesskit/commit/089794c8f74957e91a19ae3df508e2a892f39ebc))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.17.1 to 0.18.0
+    * accesskit_windows bumped from 0.24.1 to 0.25.0
+    * accesskit_macos bumped from 0.18.1 to 0.19.0
+    * accesskit_unix bumped from 0.13.1 to 0.14.0
+
 ## [0.23.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.22.4...accesskit_winit-v0.23.0) (2024-10-31)
 
 
