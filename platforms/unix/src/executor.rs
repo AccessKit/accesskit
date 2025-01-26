@@ -41,7 +41,7 @@ pub(crate) struct Executor<'a> {
     phantom: PhantomData<&'a ()>,
 }
 
-impl<'a> Executor<'a> {
+impl Executor<'_> {
     /// Spawns a task onto the executor.
     pub(crate) fn spawn<T: Send + 'static>(
         &self,
