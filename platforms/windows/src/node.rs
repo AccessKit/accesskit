@@ -622,7 +622,7 @@ impl PlatformNode {
     }
 
     fn is_root(&self, state: &TreeState) -> bool {
-        self.node_id.map_or(false, |id| id == state.root_id())
+        self.node_id.is_some_and(|id| id == state.root_id())
     }
 }
 
