@@ -12,7 +12,6 @@ members = [
 default-members = [
     "common",
     "consumer",
-    "platforms/atspi-common",
     "platforms/winit",
 ]
 
