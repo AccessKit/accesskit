@@ -26,10 +26,10 @@ use crate::iterators::{
 };
 use crate::tree::State as TreeState;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct NodeState {
     pub(crate) parent_and_index: Option<ParentAndIndex>,
     pub(crate) data: Arc<NodeData>,

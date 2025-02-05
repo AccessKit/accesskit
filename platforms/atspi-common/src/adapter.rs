@@ -8,23 +8,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
-use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler, TreeState};
-use atspi_common::{InterfaceSet, Live, State};
-use std::{
-    collections::HashSet,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc, RwLock,
-    },
-};
-
 use crate::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper, AppContext, Context},
     filters::filter,
     node::{NodeIdOrRoot, NodeWrapper, PlatformNode, PlatformRoot},
     util::WindowBounds,
     AdapterCallback, Event, ObjectEvent, WindowEvent,
+};
+use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
+use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler, TreeState};
+use atspi_common::{InterfaceSet, Live, State};
+use std::fmt::{Debug, Formatter};
+use std::{
+    collections::HashSet,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, RwLock,
+    },
 };
 
 struct AdapterChangeHandler<'a> {
@@ -318,6 +318,16 @@ pub struct Adapter {
     id: usize,
     callback: Box<dyn AdapterCallback + Send + Sync>,
     context: Arc<Context>,
+}
+
+impl Debug for Adapter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Adapter")
+            .field("id", &self.id)
+            .field("callback", &"AdapterCallback")
+            .field("context", &self.context)
+            .finish()
+    }
 }
 
 impl Adapter {

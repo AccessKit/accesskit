@@ -11,7 +11,7 @@ use immutable_chunkmap::map::MapM as ChunkMap;
 
 use crate::node::{Node, NodeState, ParentAndIndex};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct State {
     pub(crate) nodes: ChunkMap<NodeId, NodeState>,
     pub(crate) data: TreeData,
@@ -229,6 +229,7 @@ pub trait ChangeHandler {
     fn node_removed(&mut self, node: &Node);
 }
 
+#[derive(Debug)]
 pub struct Tree {
     state: State,
 }
