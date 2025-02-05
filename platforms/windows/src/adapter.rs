@@ -9,6 +9,7 @@ use accesskit::{
 };
 use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler};
 use hashbrown::HashSet;
+use std::fmt::{Debug, Formatter};
 use std::sync::{atomic::Ordering, Arc};
 use windows::Win32::{
     Foundation::*,
@@ -150,6 +151,26 @@ enum State {
     Active(Arc<Context>),
 }
 
+impl Debug for State {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            State::Inactive {
+                hwnd,
+                is_window_focused,
+                action_handler: _,
+            } => f
+                .debug_struct("Inactive")
+                .field("hwnd", hwnd)
+                .field("is_window_focused", is_window_focused)
+                .field("action_handler", &"ActionHandler")
+                .finish(),
+            State::Placeholder(context) => f.debug_tuple("Placeholder").field(context).finish(),
+            State::Active(context) => f.debug_tuple("Active").field(context).finish(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Adapter {
     state: State,
 }

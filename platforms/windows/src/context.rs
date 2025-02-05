@@ -5,6 +5,7 @@
 
 use accesskit::{ActionHandler, ActionRequest, Point};
 use accesskit_consumer::Tree;
+use std::fmt::{Debug, Formatter};
 use std::sync::{atomic::AtomicBool, Arc, Mutex, RwLock, RwLockReadGuard};
 
 use crate::{util::*, window_handle::WindowHandle};
@@ -32,6 +33,17 @@ pub(crate) struct Context {
     pub(crate) tree: RwLock<Tree>,
     pub(crate) action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
     pub(crate) is_placeholder: AtomicBool,
+}
+
+impl Debug for Context {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Context")
+            .field("hwnd", &self.hwnd)
+            .field("tree", &self.tree)
+            .field("action_handler", &"ActionHandler")
+            .field("is_placeholder", &self.is_placeholder)
+            .finish()
+    }
 }
 
 impl Context {
