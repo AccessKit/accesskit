@@ -11,6 +11,7 @@ use accesskit_atspi_common::{
 #[cfg(not(feature = "tokio"))]
 use async_channel::Sender;
 use atspi::InterfaceSet;
+use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, Mutex};
 #[cfg(feature = "tokio")]
 use tokio::sync::mpsc::UnboundedSender as Sender;
@@ -71,6 +72,35 @@ pub(crate) enum AdapterState {
     Active(AdapterImpl),
 }
 
+impl Debug for AdapterState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AdapterState::Inactive {
+                is_window_focused,
+                root_window_bounds,
+                action_handler: _,
+            } => f
+                .debug_struct("Inactive")
+                .field("is_window_focused", is_window_focused)
+                .field("root_window_bounds", root_window_bounds)
+                .field("action_handler", &"ActionHandler")
+                .finish(),
+            AdapterState::Pending {
+                is_window_focused,
+                root_window_bounds,
+                action_handler: _,
+            } => f
+                .debug_struct("Pending")
+                .field("is_window_focused", is_window_focused)
+                .field("root_window_bounds", root_window_bounds)
+                .field("action_handler", &"ActionHandler")
+                .finish(),
+            AdapterState::Active(r#impl) => f.debug_tuple("Active").field(r#impl).finish(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Adapter {
     messages: Sender<Message>,
     id: usize,

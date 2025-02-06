@@ -348,6 +348,7 @@ pub(crate) struct PlatformNodeIvars {
 }
 
 declare_class!(
+    #[derive(Debug)]
     pub(crate) struct PlatformNode;
 
     unsafe impl ClassType for PlatformNode {

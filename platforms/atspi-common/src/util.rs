@@ -9,7 +9,7 @@ use atspi_common::{CoordType, Granularity};
 
 use crate::Error;
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, Debug)]
 pub struct WindowBounds {
     pub outer: Rect,
     pub inner: Rect,

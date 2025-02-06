@@ -3,6 +3,13 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use crate::{
+    context::{ActionHandlerNoMut, ActionHandlerWrapper, Context},
+    event::{focus_event, EventGenerator, QueuedEvents},
+    filters::filter,
+    node::can_be_focused,
+    util::*,
+};
 use accesskit::{
     ActionHandler, ActionRequest, ActivationHandler, Node as NodeProvider, NodeId, Role,
     Tree as TreeData, TreeUpdate,
@@ -11,15 +18,8 @@ use accesskit_consumer::{FilterResult, Tree};
 use objc2::rc::{Id, WeakId};
 use objc2_app_kit::NSView;
 use objc2_foundation::{MainThreadMarker, NSArray, NSObject, NSPoint};
+use std::fmt::{Debug, Formatter};
 use std::{ffi::c_void, ptr::null_mut, rc::Rc};
-
-use crate::{
-    context::{ActionHandlerNoMut, ActionHandlerWrapper, Context},
-    event::{focus_event, EventGenerator, QueuedEvents},
-    filters::filter,
-    node::can_be_focused,
-    util::*,
-};
 
 const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
 
@@ -38,12 +38,41 @@ enum State {
     Active(Rc<Context>),
 }
 
+impl Debug for State {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            State::Inactive {
+                view,
+                is_view_focused,
+                action_handler: _,
+                mtm,
+            } => f
+                .debug_struct("Inactive")
+                .field("view", view)
+                .field("is_view_focused", is_view_focused)
+                .field("mtm", mtm)
+                .finish(),
+            State::Placeholder {
+                placeholder_context,
+                is_view_focused,
+                action_handler: _,
+            } => f
+                .debug_struct("Placeholder")
+                .field("placeholder_context", placeholder_context)
+                .field("is_view_focused", is_view_focused)
+                .finish(),
+            State::Active(context) => f.debug_struct("Active").field("context", context).finish(),
+        }
+    }
+}
+
 struct PlaceholderActionHandler;
 
 impl ActionHandler for PlaceholderActionHandler {
     fn do_action(&mut self, _request: ActionRequest) {}
 }
 
+#[derive(Debug)]
 pub struct Adapter {
     state: State,
 }
