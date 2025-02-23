@@ -364,6 +364,7 @@ fn delegate_class(env: &mut JNIEnv) -> Result<&'static JClass<'static>> {
 
 /// High-level AccessKit Android adapter that injects itself into an Android
 /// view without requiring the view class to be modified for accessibility.
+///
 /// This depends on the Java `dev.accesskit.android.Delegate` class, the source
 /// code for which is in this crate's `java` directory. If the `embedded-dex`
 /// feature is enabled, then that class is loaded from a prebuilt `.dex` file
