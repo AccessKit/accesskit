@@ -4,7 +4,7 @@
 
 use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, Rect, TreeUpdate};
 use accesskit_unix::Adapter as UnixAdapter;
-use winit::{event::WindowEvent, window::Window};
+use winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::Window};
 
 pub struct Adapter {
     adapter: UnixAdapter,
@@ -12,7 +12,8 @@ pub struct Adapter {
 
 impl Adapter {
     pub fn new(
-        _: &Window,
+        _event_loop: &ActiveEventLoop,
+        _window: &Window,
         activation_handler: impl 'static + ActivationHandler + Send,
         action_handler: impl 'static + ActionHandler + Send,
         deactivation_handler: impl 'static + DeactivationHandler + Send,

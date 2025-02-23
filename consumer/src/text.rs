@@ -192,6 +192,10 @@ pub struct Position<'a> {
 }
 
 impl<'a> Position<'a> {
+    pub fn to_raw(self) -> WeakPosition {
+        self.inner.downgrade()
+    }
+
     pub fn inner_node(&self) -> &Node {
         &self.inner.node
     }
@@ -221,6 +225,14 @@ impl<'a> Position<'a> {
 
     pub fn is_paragraph_end(&self) -> bool {
         self.is_document_end() || self.inner.is_paragraph_end()
+    }
+
+    pub fn is_paragraph_separator(&self) -> bool {
+        if self.is_document_end() {
+            return false;
+        }
+        let next = self.forward_to_character_end();
+        !next.is_document_end() && next.is_paragraph_end()
     }
 
     pub fn is_page_start(&self) -> bool {
@@ -290,6 +302,20 @@ impl<'a> Position<'a> {
             lines_before_current += 1;
         }
         lines_before_current
+    }
+
+    pub fn biased_to_start(&self) -> Self {
+        Self {
+            root_node: self.root_node,
+            inner: self.inner.biased_to_start(&self.root_node),
+        }
+    }
+
+    pub fn biased_to_end(&self) -> Self {
+        Self {
+            root_node: self.root_node,
+            inner: self.inner.biased_to_end(&self.root_node),
+        }
     }
 
     pub fn forward_to_character_start(&self) -> Self {
@@ -902,6 +928,16 @@ impl<'a> Node<'a> {
             let anchor = InnerPosition::clamped_upgrade(self.tree_state, selection.anchor).unwrap();
             let focus = InnerPosition::clamped_upgrade(self.tree_state, selection.focus).unwrap();
             Range::new(*self, anchor, focus)
+        })
+    }
+
+    pub fn text_selection_anchor(&self) -> Option<Position> {
+        self.data().text_selection().map(|selection| {
+            let anchor = InnerPosition::clamped_upgrade(self.tree_state, selection.anchor).unwrap();
+            Position {
+                root_node: *self,
+                inner: anchor,
+            }
         })
     }
 
