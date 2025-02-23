@@ -238,17 +238,13 @@ fn update_tree(
     tree.update_and_process_changes(update, &mut handler);
 }
 
-#[derive(Debug, Default)]
-pub struct Adapter {
-    node_id_map: NodeIdMap,
-    state: State,
-}
-
-/// Low-level AccessKit adapter for Android. This layer provides maximum
-/// flexibility in the application threading model, the interface between
-/// Java and native code, and the implementation of action callbacks,
-/// at the expense of requiring its caller to provide glue code. For a
-/// higher-level implementation built on this type, see [`InjectingAdapter`].
+/// Low-level AccessKit adapter for Android.
+///
+/// This layer provides maximum flexibility in the application threading
+/// model, the interface between Java and native code, and the implementation
+/// of action callbacks, at the expense of requiring its caller to provide
+/// glue code. For a higher-level implementation built on this type, see
+/// [`InjectingAdapter`].
 ///
 /// Several of this type's functions have a `callback_class` parameter.
 /// The reference implementation of the duck-typed contract for this Java class
@@ -264,6 +260,12 @@ pub struct Adapter {
 /// a Java object whose class must derive from `android.view.View`.
 ///
 /// [`InjectingAdapter`]: crate::InjectingAdapter
+#[derive(Debug, Default)]
+pub struct Adapter {
+    node_id_map: NodeIdMap,
+    state: State,
+}
+
 impl Adapter {
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update. Note: If the caller's implementation of
