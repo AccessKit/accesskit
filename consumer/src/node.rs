@@ -757,12 +757,12 @@ impl<'a> Node<'a> {
     }
 
     pub fn selection_container(&self, filter: &impl Fn(&Node) -> FilterResult) -> Option<Node<'a>> {
-        self.filtered_parent(&|parent| {
-            if parent.is_container_with_selectable_children() {
-                filter(parent)
-            } else {
-                FilterResult::ExcludeNode
+        self.filtered_parent(&|parent| match filter(parent) {
+            FilterResult::Include if parent.is_container_with_selectable_children() => {
+                FilterResult::Include
             }
+            FilterResult::Include => FilterResult::ExcludeNode,
+            filter_result => filter_result,
         })
     }
 
@@ -770,12 +770,10 @@ impl<'a> Node<'a> {
         &self,
         filter: impl Fn(&Node) -> FilterResult + 'a,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
-        self.filtered_children(move |child| {
-            if child.is_item_like() {
-                filter(child)
-            } else {
-                FilterResult::ExcludeNode
-            }
+        self.filtered_children(move |child| match filter(child) {
+            FilterResult::Include if child.is_item_like() => FilterResult::Include,
+            FilterResult::Include => FilterResult::ExcludeNode,
+            filter_result => filter_result,
         })
     }
 }
