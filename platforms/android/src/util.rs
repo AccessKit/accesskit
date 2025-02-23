@@ -24,7 +24,7 @@ pub(crate) const MOVEMENT_GRANULARITY_WORD: jint = 1 << 1;
 pub(crate) const MOVEMENT_GRANULARITY_LINE: jint = 1 << 2;
 pub(crate) const MOVEMENT_GRANULARITY_PARAGRAPH: jint = 1 << 3;
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub(crate) struct NodeIdMap {
     java_to_accesskit: HashMap<jint, NodeId>,
     accesskit_to_java: HashMap<NodeId, jint>,

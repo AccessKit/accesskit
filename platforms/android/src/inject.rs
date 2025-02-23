@@ -21,6 +21,7 @@ use once_cell::sync::OnceCell;
 use std::{
     collections::BTreeMap,
     ffi::c_void,
+    fmt::{Debug, Formatter},
     sync::{
         atomic::{AtomicI64, Ordering},
         Arc, Mutex, Weak,
@@ -33,6 +34,16 @@ struct InnerInjectingAdapter {
     adapter: Adapter,
     activation_handler: Box<dyn ActivationHandler + Send>,
     action_handler: Box<dyn ActionHandler + Send>,
+}
+
+impl Debug for InnerInjectingAdapter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("InnerInjectingAdapter")
+            .field("adapter", &self.adapter)
+            .field("activation_handler", &"ActivationHandler")
+            .field("action_handler", &"ActionHandler")
+            .finish()
+    }
 }
 
 impl InnerInjectingAdapter {
@@ -367,6 +378,18 @@ pub struct InjectingAdapter {
     host: WeakRef,
     handle: jlong,
     inner: Arc<Mutex<InnerInjectingAdapter>>,
+}
+
+impl Debug for InjectingAdapter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("InnerInjectingAdapter")
+            .field("vm", &self.vm)
+            .field("delegate_class", &self.delegate_class)
+            .field("host", &"WeakRef")
+            .field("handle", &self.handle)
+            .field("inner", &self.inner)
+            .finish()
+    }
 }
 
 impl InjectingAdapter {
