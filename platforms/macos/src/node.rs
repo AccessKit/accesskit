@@ -943,7 +943,9 @@ declare_class!(
                 {
                     return node.is_container_with_selectable_children()
                 }
-                if selector == sel!(accessibilityPerformPick) {
+                if selector == sel!(setAccessibilitySelected:)
+                    || selector == sel!(accessibilityPerformPick)
+                {
                     return node.is_clickable() && node.is_selectable();
                 }
                 selector == sel!(accessibilityParent)
