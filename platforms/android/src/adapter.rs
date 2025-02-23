@@ -184,7 +184,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_, '_, '_, '_> {
 
 const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 enum State {
     #[default]
     Inactive,
@@ -238,7 +238,7 @@ fn update_tree(
     tree.update_and_process_changes(update, &mut handler);
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Adapter {
     node_id_map: NodeIdMap,
     state: State,
