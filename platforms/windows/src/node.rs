@@ -415,6 +415,10 @@ impl NodeWrapper<'_> {
         self.0.supports_text_ranges()
     }
 
+    fn is_password(&self) -> bool {
+        self.0.role() == Role::PasswordInput
+    }
+
     pub(crate) fn enqueue_property_changes(
         &self,
         queue: &mut Vec<QueuedEvent>,
@@ -890,7 +894,8 @@ properties! {
     (AutomationId, automation_id),
     (ClassName, class_name),
     (Orientation, orientation),
-    (IsRequiredForForm, is_required)
+    (IsRequiredForForm, is_required),
+    (IsPassword, is_password)
 }
 
 patterns! {
