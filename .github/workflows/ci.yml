@@ -22,6 +22,11 @@ jobs:
       - name: cargo fmt
         run: cargo fmt --all -- --check
 
+      - name: check Java formatting
+        uses: axel-op/googlejavaformat-action@v4
+        with:
+          args: "--aosp --set-exit-if-changed"
+
   cargo-deny:
     runs-on: ubuntu-22.04
     steps:
@@ -96,11 +101,3 @@ jobs:
       - run: cp platforms/android/classes.dex platforms/android/classes.dex.orig
       - run: ./platforms/android/build-dex.sh
       - run: cmp platforms/android/classes.dex.orig platforms/android/classes.dex
-
-  check-java-formatting:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: axel-op/googlejavaformat-action@v4
-        with:
-          args: "--aosp --set-exit-if-changed"
