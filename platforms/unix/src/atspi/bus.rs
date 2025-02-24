@@ -134,7 +134,7 @@ impl Bus {
 
     async fn register_interface<T>(&self, path: &str, interface: T) -> Result<bool>
     where
-        T: zbus::Interface,
+        T: zbus::object_server::Interface,
     {
         map_or_ignoring_broken_pipe(
             self.conn.object_server().at(path, interface).await,
@@ -177,7 +177,7 @@ impl Bus {
 
     async fn unregister_interface<T>(&self, path: &str) -> Result<bool>
     where
-        T: zbus::Interface,
+        T: zbus::object_server::Interface,
     {
         map_or_ignoring_broken_pipe(
             self.conn.object_server().remove::<T, _>(path).await,
