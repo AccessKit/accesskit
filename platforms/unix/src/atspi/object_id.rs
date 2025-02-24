@@ -9,7 +9,7 @@ use accesskit_atspi_common::PlatformNode;
 use serde::{Serialize, Serializer};
 use zbus::{
     names::UniqueName,
-    zvariant::{ObjectPath, OwnedObjectPath, Signature, Structure, StructureBuilder, Type},
+    zvariant::{ObjectPath, OwnedObjectPath, Signature, Structure, Type},
 };
 
 const ACCESSIBLE_PATH_PREFIX: &str = "/org/a11y/atspi/accessible/";
@@ -56,12 +56,10 @@ impl Type for ObjectId {
 
 impl From<ObjectId> for Structure<'_> {
     fn from(id: ObjectId) -> Self {
-        StructureBuilder::new()
-            .add_field(match id {
-                ObjectId::Root => "root".into(),
-                ObjectId::Node { node, .. } => node.0.to_string(),
-            })
-            .build()
+        Self::from((match id {
+            ObjectId::Root => "root".into(),
+            ObjectId::Node { node, .. } => node.0.to_string(),
+        },))
     }
 }
 
