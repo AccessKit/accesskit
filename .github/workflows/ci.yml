@@ -92,8 +92,8 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       - uses: android-actions/setup-android@v2
-      - run: sdkmanager platforms;android-30
-      - run: sdkmanager build-tools;33.0.2
+      - run: sdkmanager "platforms;android-30"
+      - run: sdkmanager "build-tools;33.0.2"
       - run: cp platforms/android/classes.dex platforms/android/classes.dex.orig
       - run: ./platforms/android/build-dex.sh
       - run: cmp platforms/android/classes.dex.orig platforms/android/classes.dex
