@@ -181,6 +181,7 @@ impl Application {
             state: Arc::clone(&ui),
         };
         let adapter = Adapter::with_mixed_handlers(
+            event_loop,
             &window,
             activation_handler,
             self.event_loop_proxy.clone(),
