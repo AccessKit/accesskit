@@ -20,9 +20,10 @@ use atspi::{
 use serde::Serialize;
 use std::{collections::HashMap, env::var, io};
 use zbus::{
+    connection::Builder,
     names::{BusName, InterfaceName, MemberName, OwnedUniqueName},
     zvariant::{Str, Value},
-    Address, Connection, ConnectionBuilder, Result,
+    Address, Connection, Result,
 };
 
 pub(crate) struct Bus {
@@ -41,7 +42,7 @@ impl Bus {
             _ => BusProxy::new(session_bus).await?.get_address().await?,
         };
         let address: Address = address.as_str().try_into()?;
-        let conn = ConnectionBuilder::address(address)?
+        let conn = Builder::address(address)?
             .internal_executor(false)
             .build()
             .await?;

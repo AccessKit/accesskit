@@ -21,7 +21,7 @@ use tokio::{
 };
 #[cfg(feature = "tokio")]
 use tokio_stream::{wrappers::UnboundedReceiverStream, StreamExt};
-use zbus::{Connection, ConnectionBuilder};
+use zbus::{connection::Builder, Connection};
 
 use crate::{
     adapter::{AdapterState, Callback, Message},
@@ -55,7 +55,7 @@ pub(crate) fn get_or_init_messages() -> Sender<Message> {
             thread::spawn(|| {
                 let executor = Executor::new();
                 block_on(executor.run(async {
-                    if let Ok(session_bus) = ConnectionBuilder::session() {
+                    if let Ok(session_bus) = Builder::session() {
                         if let Ok(session_bus) = session_bus.internal_executor(false).build().await
                         {
                             run_event_loop(&executor, session_bus, rx).await.unwrap();
