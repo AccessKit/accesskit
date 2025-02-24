@@ -101,6 +101,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: axel-op/googlejavaformat-action@4
+      - uses: axel-op/googlejavaformat-action@v4
         with:
           args: "--aosp --set-exit-if-changed"
