@@ -51,9 +51,7 @@ impl Serialize for ObjectId {
 }
 
 impl Type for ObjectId {
-    fn signature() -> Signature<'static> {
-        <&str>::signature()
-    }
+    const SIGNATURE: &'static Signature = <&str>::SIGNATURE;
 }
 
 impl From<ObjectId> for Structure<'_> {
