@@ -10,3 +10,7 @@ While this crate's API is purely blocking, it internally spawns asynchronous tas
 
 - If you use tokio, make sure to enable the `tokio` feature of this crate.
 - If you use another async runtime or if you don't use one at all, the default feature will suit your needs.
+
+## Android activity compatibility
+
+The Android implementation of this adapter currently only works with [GameActivity](https://developer.android.com/games/agdk/game-activity), which is one of the two activity implementations that winit currently supports.
