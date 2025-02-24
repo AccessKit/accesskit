@@ -14,7 +14,7 @@ use accesskit::{
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
 use atspi_common::{
-    CoordType, Granularity, Interface, InterfaceSet, Layer, Live as AtspiLive, Role as AtspiRole,
+    CoordType, Granularity, Interface, InterfaceSet, Layer, Politeness, Role as AtspiRole,
     ScrollType, State, StateSet,
 };
 use std::{
@@ -400,12 +400,12 @@ impl NodeWrapper<'_> {
         interfaces
     }
 
-    pub(crate) fn live(&self) -> AtspiLive {
+    pub(crate) fn live(&self) -> Politeness {
         let live = self.0.live();
         match live {
-            Live::Off => AtspiLive::None,
-            Live::Polite => AtspiLive::Polite,
-            Live::Assertive => AtspiLive::Assertive,
+            Live::Off => Politeness::None,
+            Live::Polite => Politeness::Polite,
+            Live::Assertive => Politeness::Assertive,
         }
     }
 
@@ -496,7 +496,7 @@ impl NodeWrapper<'_> {
             );
 
             let live = self.live();
-            if live != AtspiLive::None {
+            if live != Politeness::None {
                 adapter.emit_object_event(self.id(), ObjectEvent::Announcement(name, live));
             }
         }

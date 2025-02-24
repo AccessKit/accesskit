@@ -17,7 +17,7 @@ use crate::{
 };
 use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
 use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler, TreeState};
-use atspi_common::{InterfaceSet, Live, State};
+use atspi_common::{InterfaceSet, Politeness, State};
 use std::fmt::{Debug, Formatter};
 use std::{
     collections::HashSet,
@@ -67,7 +67,7 @@ impl<'a> AdapterChangeHandler<'a> {
         }
 
         let live = node.live();
-        if live != Live::None {
+        if live != Politeness::None {
             if let Some(name) = node.name() {
                 self.adapter
                     .emit_object_event(node.id(), ObjectEvent::Announcement(name, live));
