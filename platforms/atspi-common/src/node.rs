@@ -81,16 +81,16 @@ impl NodeWrapper<'_> {
                 if self.0.toggled().is_some() {
                     AtspiRole::ToggleButton
                 } else {
-                    AtspiRole::PushButton
+                    AtspiRole::Button
                 }
             }
-            Role::DefaultButton => AtspiRole::PushButton,
+            Role::DefaultButton => AtspiRole::Button,
             Role::Canvas => AtspiRole::Canvas,
             Role::Caption => AtspiRole::Caption,
             Role::Cell => AtspiRole::TableCell,
             Role::CheckBox => AtspiRole::CheckBox,
             Role::Switch => AtspiRole::ToggleButton,
-            Role::ColorWell => AtspiRole::PushButton,
+            Role::ColorWell => AtspiRole::Button,
             Role::ColumnHeader => AtspiRole::ColumnHeader,
             Role::ComboBox | Role::EditableComboBox => AtspiRole::ComboBox,
             Role::Complementary => AtspiRole::Landmark,
@@ -202,10 +202,10 @@ impl NodeWrapper<'_> {
             Role::Note => AtspiRole::Comment,
             Role::Pane | Role::ScrollView => AtspiRole::Panel,
             Role::Paragraph => AtspiRole::Paragraph,
-            Role::PdfActionableHighlight => AtspiRole::PushButton,
+            Role::PdfActionableHighlight => AtspiRole::Button,
             Role::PdfRoot => AtspiRole::DocumentFrame,
             Role::PluginObject => AtspiRole::Embedded,
-            Role::Portal => AtspiRole::PushButton,
+            Role::Portal => AtspiRole::Button,
             Role::Pre => AtspiRole::Section,
             Role::ProgressIndicator => AtspiRole::ProgressBar,
             Role::RadioButton => AtspiRole::RadioButton,
