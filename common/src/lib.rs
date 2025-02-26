@@ -1631,7 +1631,12 @@ usize_property_methods! {
     (RowSpan, row_span, set_row_span, clear_row_span),
     (ColumnSpan, column_span, set_column_span, clear_column_span),
     (Level, level, set_level, clear_level),
+    /// For containers like [`Role::ListBox`], specifies the total number of items.
     (SizeOfSet, size_of_set, set_size_of_set, clear_size_of_set),
+    /// For items like [`Role::ListBoxOption`], specifies their index in the item list.
+    /// This may not exceed the value of [`size_of_set`] as set on the container.
+    ///
+    /// [`size_of_set`]: Node::size_of_set
     (PositionInSet, position_in_set, set_position_in_set, clear_position_in_set)
 }
 
