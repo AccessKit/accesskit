@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::NodeId;
-use atspi_common::{Live, Role, State};
+use atspi_common::{Politeness, Role, State};
 
 use crate::{NodeIdOrRoot, Rect};
 
@@ -34,7 +34,7 @@ pub enum Property {
 #[derive(Debug)]
 pub enum ObjectEvent {
     ActiveDescendantChanged(NodeId),
-    Announcement(String, Live),
+    Announcement(String, Politeness),
     BoundsChanged(Rect),
     CaretMoved(i32),
     ChildAdded(usize, NodeId),

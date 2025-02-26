@@ -14,7 +14,7 @@ use accesskit::{
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
 use atspi_common::{
-    CoordType, Granularity, Interface, InterfaceSet, Layer, Live as AtspiLive, Role as AtspiRole,
+    CoordType, Granularity, Interface, InterfaceSet, Layer, Politeness, Role as AtspiRole,
     ScrollType, State, StateSet,
 };
 use std::{
@@ -81,16 +81,16 @@ impl NodeWrapper<'_> {
                 if self.0.toggled().is_some() {
                     AtspiRole::ToggleButton
                 } else {
-                    AtspiRole::PushButton
+                    AtspiRole::Button
                 }
             }
-            Role::DefaultButton => AtspiRole::PushButton,
+            Role::DefaultButton => AtspiRole::Button,
             Role::Canvas => AtspiRole::Canvas,
             Role::Caption => AtspiRole::Caption,
             Role::Cell => AtspiRole::TableCell,
             Role::CheckBox => AtspiRole::CheckBox,
             Role::Switch => AtspiRole::ToggleButton,
-            Role::ColorWell => AtspiRole::PushButton,
+            Role::ColorWell => AtspiRole::Button,
             Role::ColumnHeader => AtspiRole::ColumnHeader,
             Role::ComboBox | Role::EditableComboBox => AtspiRole::ComboBox,
             Role::Complementary => AtspiRole::Landmark,
@@ -202,10 +202,10 @@ impl NodeWrapper<'_> {
             Role::Note => AtspiRole::Comment,
             Role::Pane | Role::ScrollView => AtspiRole::Panel,
             Role::Paragraph => AtspiRole::Paragraph,
-            Role::PdfActionableHighlight => AtspiRole::PushButton,
+            Role::PdfActionableHighlight => AtspiRole::Button,
             Role::PdfRoot => AtspiRole::DocumentFrame,
             Role::PluginObject => AtspiRole::Embedded,
-            Role::Portal => AtspiRole::PushButton,
+            Role::Portal => AtspiRole::Button,
             Role::Pre => AtspiRole::Section,
             Role::ProgressIndicator => AtspiRole::ProgressBar,
             Role::RadioButton => AtspiRole::RadioButton,
@@ -400,12 +400,12 @@ impl NodeWrapper<'_> {
         interfaces
     }
 
-    pub(crate) fn live(&self) -> AtspiLive {
+    pub(crate) fn live(&self) -> Politeness {
         let live = self.0.live();
         match live {
-            Live::Off => AtspiLive::None,
-            Live::Polite => AtspiLive::Polite,
-            Live::Assertive => AtspiLive::Assertive,
+            Live::Off => Politeness::None,
+            Live::Polite => Politeness::Polite,
+            Live::Assertive => Politeness::Assertive,
         }
     }
 
@@ -496,7 +496,7 @@ impl NodeWrapper<'_> {
             );
 
             let live = self.live();
-            if live != AtspiLive::None {
+            if live != Politeness::None {
                 adapter.emit_object_event(self.id(), ObjectEvent::Announcement(name, live));
             }
         }

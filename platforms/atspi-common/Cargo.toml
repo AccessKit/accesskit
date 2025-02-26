@@ -17,8 +17,7 @@ simplified-api = []
 [dependencies]
 accesskit = { version = "0.17.1", path = "../../common" }
 accesskit_consumer = { version = "0.26.0", path = "../../consumer" }
-atspi-common = { version = "0.6", default-features = false }
+atspi-common = { version = "0.9", default-features = false }
 serde = "1.0"
 thiserror = "1.0"
-zvariant = { version = "4.2", default-features = false }
-
+zvariant = { version = "5.4", default-features = false }
