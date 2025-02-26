@@ -55,20 +55,7 @@ impl Executor<'_> {
 
         #[cfg(feature = "tokio")]
         {
-            #[cfg(tokio_unstable)]
-            {
-                Task(Some(
-                    tokio::task::Builder::new()
-                        .name(name)
-                        .spawn(future)
-                        // SAFETY: Looking at the code, this call always returns an `Ok`.
-                        .unwrap(),
-                ))
-            }
-            #[cfg(not(tokio_unstable))]
-            {
-                Task(Some(tokio::task::spawn(future)))
-            }
+            Task(Some(tokio::task::spawn(future)))
         }
     }
 
