@@ -473,6 +473,14 @@ impl<'a> Node<'a> {
         })
     }
 
+    pub fn is_dialog(&self) -> bool {
+        matches!(self.role(), Role::AlertDialog | Role::Dialog)
+    }
+
+    pub fn is_modal(&self) -> bool {
+        self.data().is_modal()
+    }
+
     // When probing for supported actions as the next several functions do,
     // it's tempting to check the role. But it's better to not assume anything
     // beyond what the provider has explicitly told us. Rationale:
