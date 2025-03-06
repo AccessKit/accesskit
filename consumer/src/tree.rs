@@ -221,6 +221,17 @@ impl State {
         self.focus_id().map(|id| self.node_by_id(id).unwrap())
     }
 
+    pub fn active_dialog(&self) -> Option<Node<'_>> {
+        let mut node = self.focus();
+        while let Some(candidate) = node {
+            if candidate.is_dialog() {
+                return Some(candidate);
+            }
+            node = candidate.parent();
+        }
+        None
+    }
+
     pub fn toolkit_name(&self) -> Option<&str> {
         self.data.toolkit_name.as_deref()
     }
