@@ -443,6 +443,18 @@ impl NodeWrapper<'_> {
         self.0.role() == Role::PasswordInput
     }
 
+    fn is_dialog(&self) -> bool {
+        self.0.is_dialog()
+    }
+
+    fn is_window_pattern_supported(&self) -> bool {
+        self.0.is_modal()
+    }
+
+    fn is_modal(&self) -> bool {
+        self.0.is_modal()
+    }
+
     pub(crate) fn enqueue_property_changes(
         &self,
         queue: &mut Vec<QueuedEvent>,
@@ -500,7 +512,8 @@ impl NodeWrapper<'_> {
     IRangeValueProvider,
     ISelectionItemProvider,
     ISelectionProvider,
-    ITextProvider
+    ITextProvider,
+    IWindowProvider
 )]
 pub(crate) struct PlatformNode {
     pub(crate) context: Weak<Context>,
@@ -925,7 +938,8 @@ properties! {
     (UIA_IsRequiredForFormPropertyId, is_required),
     (UIA_IsPasswordPropertyId, is_password),
     (UIA_PositionInSetPropertyId, position_in_set),
-    (UIA_SizeOfSetPropertyId, size_of_set)
+    (UIA_SizeOfSetPropertyId, size_of_set),
+    (UIA_IsDialogPropertyId, is_dialog)
 }
 
 patterns! {
@@ -1064,6 +1078,41 @@ patterns! {
                     Ok(SupportedTextSelection_None)
                 }
             })
+        }
+    )),
+    (UIA_WindowPatternId, IWindowProvider, IWindowProvider_Impl, is_window_pattern_supported, (
+        (UIA_WindowIsModalPropertyId, IsModal, is_modal, BOOL)
+    ), (
+        fn SetVisualState(&self, _: WindowVisualState) -> Result<()> {
+            Err(not_supported())
+        },
+
+        fn Close(&self) -> Result<()> {
+            Err(not_supported())
+        },
+
+        fn WaitForInputIdle(&self, _: i32) -> Result<BOOL> {
+            Err(not_supported())
+        },
+
+        fn CanMaximize(&self) -> Result<BOOL> {
+            Err(not_supported())
+        },
+
+        fn CanMinimize(&self) -> Result<BOOL> {
+            Err(not_supported())
+        },
+
+        fn WindowVisualState(&self) -> Result<WindowVisualState> {
+            Err(not_supported())
+        },
+
+        fn WindowInteractionState(&self) -> Result<WindowInteractionState> {
+            Err(not_supported())
+        },
+
+        fn IsTopmost(&self) -> Result<BOOL> {
+            Err(not_supported())
         }
     ))
 }
