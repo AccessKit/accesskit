@@ -24,6 +24,40 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_consumer bumped from 0.25.0 to 0.26.0
 
+## [0.11.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.10.1...accesskit_atspi_common-v0.11.0) (2025-03-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Optimize simple string getters ([#493](https://github.com/AccessKit/accesskit/issues/493))
+* Drop `Tree::app_name` ([#492](https://github.com/AccessKit/accesskit/issues/492))
+
+### Features
+
+* Add list box support to the `consumer` and `atspi-common` crates ([d6dca15](https://github.com/AccessKit/accesskit/commit/d6dca15d5c298c797ab7a702f0186043eac33c5c))
+* Expose the `is_required` property ([#497](https://github.com/AccessKit/accesskit/issues/497)) ([46ed99b](https://github.com/AccessKit/accesskit/commit/46ed99bb958ddb32cbf1bee2fcfb7b328bcbe0ab))
+
+
+### Bug Fixes
+
+* Derive `Debug` for adapters ([#513](https://github.com/AccessKit/accesskit/issues/513)) ([753d904](https://github.com/AccessKit/accesskit/commit/753d90473cf57682568c7a17c82474c8e5d00b25))
+* Remove unnecessary explicit lifetimes ([#488](https://github.com/AccessKit/accesskit/issues/488)) ([d2bcd6d](https://github.com/AccessKit/accesskit/commit/d2bcd6d3048d23df4e132bee6171eb247b2dc2c8))
+* Update zbus to 5.0 ([#519](https://github.com/AccessKit/accesskit/issues/519)) ([4c10b80](https://github.com/AccessKit/accesskit/commit/4c10b801b6924c7010b83f4eb44c8c350c860cf6))
+
+
+### Code Refactoring
+
+* Drop `Tree::app_name` ([#492](https://github.com/AccessKit/accesskit/issues/492)) ([089794c](https://github.com/AccessKit/accesskit/commit/089794c8f74957e91a19ae3df508e2a892f39ebc))
+* Optimize simple string getters ([#493](https://github.com/AccessKit/accesskit/issues/493)) ([484fd7c](https://github.com/AccessKit/accesskit/commit/484fd7cbfb778222369d3f57d31dd998f6fa80d8))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.17.1 to 0.18.0
+    * accesskit_consumer bumped from 0.26.0 to 0.27.0
+
 ## [0.10.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.9.3...accesskit_atspi_common-v0.10.0) (2024-10-31)
 
 

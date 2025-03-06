@@ -68,6 +68,34 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_atspi_common bumped from 0.10.0 to 0.10.1
 
+## [0.14.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.13.1...accesskit_unix-v0.14.0) (2025-03-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop `Tree::app_name` ([#492](https://github.com/AccessKit/accesskit/issues/492))
+
+### Bug Fixes
+
+* Add list box support to the platform adapters ([6c622cf](https://github.com/AccessKit/accesskit/commit/6c622cff4c0c989d9a5f16b775adff9cdacf534c))
+* Derive `Debug` for adapters ([#513](https://github.com/AccessKit/accesskit/issues/513)) ([753d904](https://github.com/AccessKit/accesskit/commit/753d90473cf57682568c7a17c82474c8e5d00b25))
+* Don't enable the `zbus/tokio` feature on Unix ([#521](https://github.com/AccessKit/accesskit/issues/521)) ([9dfad97](https://github.com/AccessKit/accesskit/commit/9dfad9796f71563a78bc6a7d5f01b111d80e63e6))
+* Fix some clippy warnings ([#509](https://github.com/AccessKit/accesskit/issues/509)) ([579b9c1](https://github.com/AccessKit/accesskit/commit/579b9c12dd8abc44ecab41fa3c326a1d8999871d))
+* Update zbus to 5.0 ([#519](https://github.com/AccessKit/accesskit/issues/519)) ([4c10b80](https://github.com/AccessKit/accesskit/commit/4c10b801b6924c7010b83f4eb44c8c350c860cf6))
+
+
+### Code Refactoring
+
+* Drop `Tree::app_name` ([#492](https://github.com/AccessKit/accesskit/issues/492)) ([089794c](https://github.com/AccessKit/accesskit/commit/089794c8f74957e91a19ae3df508e2a892f39ebc))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.17.1 to 0.18.0
+    * accesskit_atspi_common bumped from 0.10.1 to 0.11.0
+
 ## [0.13.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.12.3...accesskit_unix-v0.13.0) (2024-10-31)
 
 

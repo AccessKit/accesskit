@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.18.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.17.1...accesskit-v0.18.0) (2025-03-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop `Tree::app_name` ([#492](https://github.com/AccessKit/accesskit/issues/492))
+
+### Features
+
+* Android adapter ([#500](https://github.com/AccessKit/accesskit/issues/500)) ([7e65ac7](https://github.com/AccessKit/accesskit/commit/7e65ac77d7e108ac5b9f3722f488a2fdf2e3b3e0))
+
+
+### Bug Fixes
+
+* Update pyo3 to 0.23 ([#512](https://github.com/AccessKit/accesskit/issues/512)) ([93d3a27](https://github.com/AccessKit/accesskit/commit/93d3a27ac4af60eef4a1faf26392a6f7ff69cf81))
+
+
+### Code Refactoring
+
+* Drop `Tree::app_name` ([#492](https://github.com/AccessKit/accesskit/issues/492)) ([089794c](https://github.com/AccessKit/accesskit/commit/089794c8f74957e91a19ae3df508e2a892f39ebc))
+
 ## [0.17.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.17.0...accesskit-v0.17.1) (2024-11-23)
 
 
