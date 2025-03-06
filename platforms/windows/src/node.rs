@@ -440,6 +440,10 @@ impl NodeWrapper<'_> {
         self.0.role() == Role::PasswordInput
     }
 
+    fn is_dialog(&self) -> bool {
+        self.0.is_dialog()
+    }
+
     pub(crate) fn enqueue_property_changes(
         &self,
         queue: &mut Vec<QueuedEvent>,
@@ -927,7 +931,8 @@ properties! {
     (IsRequiredForForm, is_required),
     (IsPassword, is_password),
     (PositionInSet, position_in_set),
-    (SizeOfSet, size_of_set)
+    (SizeOfSet, size_of_set),
+    (IsDialog, is_dialog)
 }
 
 patterns! {
