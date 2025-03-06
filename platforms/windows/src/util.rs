@@ -248,6 +248,10 @@ pub(crate) fn invalid_operation() -> Error {
     HRESULT(UIA_E_INVALIDOPERATION as _).into()
 }
 
+pub(crate) fn not_supported() -> Error {
+    HRESULT(UIA_E_NOTSUPPORTED as _).into()
+}
+
 pub(crate) fn client_top_left(hwnd: WindowHandle) -> Point {
     let mut result = POINT::default();
     // If ClientToScreen fails, that means the window is gone.

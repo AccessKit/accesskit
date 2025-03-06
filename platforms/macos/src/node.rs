@@ -87,7 +87,7 @@ fn ns_role(node: &Node) -> &'static NSAccessibilityRole {
             Role::TimeInput => ns_string!("AXTimeField"),
             Role::Abbr => NSAccessibilityGroupRole,
             Role::Alert => NSAccessibilityGroupRole,
-            Role::AlertDialog => NSAccessibilityGroupRole,
+            Role::AlertDialog => NSAccessibilityWindowRole,
             Role::Application => NSAccessibilityGroupRole,
             Role::Article => NSAccessibilityGroupRole,
             Role::Audio => NSAccessibilityGroupRole,
@@ -108,7 +108,7 @@ fn ns_role(node: &Node) -> &'static NSAccessibilityRole {
             Role::Definition => NSAccessibilityGroupRole,
             Role::DescriptionList => NSAccessibilityListRole,
             Role::Details => NSAccessibilityGroupRole,
-            Role::Dialog => NSAccessibilityGroupRole,
+            Role::Dialog => NSAccessibilityWindowRole,
             Role::DisclosureTriangle => NSAccessibilityButtonRole,
             Role::Document => NSAccessibilityGroupRole,
             Role::EmbeddedObject => NSAccessibilityGroupRole,
@@ -235,7 +235,7 @@ fn ns_sub_role(node: &Node) -> &'static NSAccessibilitySubrole {
     unsafe {
         match role {
             Role::Alert => ns_string!("AXApplicationAlert"),
-            Role::AlertDialog => ns_string!("AXApplicationAlertDialog"),
+            Role::AlertDialog => NSAccessibilityDialogSubrole,
             Role::Article => ns_string!("AXDocumentArticle"),
             Role::Banner => ns_string!("AXLandmarkBanner"),
             Role::Button if node.toggled().is_some() => NSAccessibilityToggleSubrole,
@@ -996,6 +996,12 @@ declare_class!(
             .flatten()
         }
 
+        #[method(isAccessibilityModal)]
+        fn is_modal(&self) -> bool {
+            self.resolve(|node| node.is_modal())
+                .unwrap_or(false)
+        }
+
         // We discovered through experimentation that when mixing the newer
         // NSAccessibility protocols with the older informal protocol,
         // the platform uses both protocols to discover which actions are
@@ -1079,6 +1085,9 @@ declare_class!(
                 }
                 if selector == sel!(accessibilityTabs) {
                     return node.role() == Role::TabList;
+                }
+                if selector == sel!(isAccessibilityModal) {
+                    return node.is_dialog();
                 }
                 if selector == sel!(accessibilityAttributeValue:) {
                     return node.has_braille_label() || node.has_braille_role_description()

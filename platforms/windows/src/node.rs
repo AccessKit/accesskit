@@ -96,11 +96,10 @@ impl NodeWrapper<'_> {
             Role::Abbr => UIA_TextControlTypeId,
             Role::Alert => UIA_TextControlTypeId,
             Role::AlertDialog => {
-                // Chromium's implementation suggests the use of
-                // UIA_TextControlTypeId, not UIA_PaneControlTypeId, because some
-                // Windows screen readers are not compatible with
-                // Role::AlertDialog yet.
-                UIA_TextControlTypeId
+                // Documentation suggests the use of UIA_PaneControlTypeId,
+                // but Chromium's implementation uses UIA_WindowControlTypeId
+                // instead.
+                UIA_WindowControlTypeId
             }
             Role::Application => UIA_PaneControlTypeId,
             Role::Article => UIA_GroupControlTypeId,
@@ -121,7 +120,12 @@ impl NodeWrapper<'_> {
             Role::Definition => UIA_GroupControlTypeId,
             Role::DescriptionList => UIA_ListControlTypeId,
             Role::Details => UIA_GroupControlTypeId,
-            Role::Dialog => UIA_PaneControlTypeId,
+            Role::Dialog => {
+                // Documentation suggests the use of UIA_PaneControlTypeId,
+                // but Chromium's implementation uses UIA_WindowControlTypeId
+                // instead.
+                UIA_WindowControlTypeId
+            }
             Role::DisclosureTriangle => UIA_ButtonControlTypeId,
             Role::Document | Role::Terminal => UIA_DocumentControlTypeId,
             Role::EmbeddedObject => UIA_PaneControlTypeId,
@@ -254,6 +258,17 @@ impl NodeWrapper<'_> {
 
     fn localized_control_type(&self) -> Option<&str> {
         self.0.role_description()
+    }
+
+    fn aria_role(&self) -> Option<&str> {
+        match self.0.role() {
+            Role::AlertDialog => Some("alertdialog"),
+            Role::Dialog => Some("dialog"),
+            _ => {
+                // TODO: Expose more ARIA roles.
+                None
+            }
+        }
     }
 
     pub(crate) fn name(&self) -> Option<WideString> {
@@ -467,6 +482,18 @@ impl NodeWrapper<'_> {
         self.0.role() == Role::PasswordInput
     }
 
+    fn is_dialog(&self) -> bool {
+        self.0.is_dialog()
+    }
+
+    fn is_window_pattern_supported(&self) -> bool {
+        self.0.is_dialog()
+    }
+
+    fn is_modal(&self) -> bool {
+        self.0.is_modal()
+    }
+
     pub(crate) fn enqueue_property_changes(
         &self,
         queue: &mut Vec<QueuedEvent>,
@@ -526,7 +553,8 @@ impl NodeWrapper<'_> {
     IScrollItemProvider,
     ISelectionItemProvider,
     ISelectionProvider,
-    ITextProvider
+    ITextProvider,
+    IWindowProvider
 )]
 pub(crate) struct PlatformNode {
     pub(crate) context: Weak<Context>,
@@ -980,6 +1008,7 @@ macro_rules! patterns {
 properties! {
     (UIA_ControlTypePropertyId, control_type),
     (UIA_LocalizedControlTypePropertyId, localized_control_type),
+    (UIA_AriaRolePropertyId, aria_role),
     (UIA_NamePropertyId, name),
     (UIA_FullDescriptionPropertyId, description),
     (UIA_CulturePropertyId, culture),
@@ -997,7 +1026,8 @@ properties! {
     (UIA_IsPasswordPropertyId, is_password),
     (UIA_PositionInSetPropertyId, position_in_set),
     (UIA_SizeOfSetPropertyId, size_of_set),
-    (UIA_AriaPropertiesPropertyId, aria_properties)
+    (UIA_AriaPropertiesPropertyId, aria_properties),
+    (UIA_IsDialogPropertyId, is_dialog)
 }
 
 patterns! {
@@ -1147,6 +1177,41 @@ patterns! {
                     Ok(SupportedTextSelection_None)
                 }
             })
+        }
+    )),
+    (UIA_WindowPatternId, IWindowProvider, IWindowProvider_Impl, is_window_pattern_supported, (
+        (UIA_WindowIsModalPropertyId, IsModal, is_modal, BOOL)
+    ), (
+        fn SetVisualState(&self, _: WindowVisualState) -> Result<()> {
+            Err(invalid_operation())
+        },
+
+        fn Close(&self) -> Result<()> {
+            Err(not_supported())
+        },
+
+        fn WaitForInputIdle(&self, _: i32) -> Result<BOOL> {
+            Err(not_supported())
+        },
+
+        fn CanMaximize(&self) -> Result<BOOL> {
+            Err(not_supported())
+        },
+
+        fn CanMinimize(&self) -> Result<BOOL> {
+            Err(not_supported())
+        },
+
+        fn WindowVisualState(&self) -> Result<WindowVisualState> {
+            Err(not_supported())
+        },
+
+        fn WindowInteractionState(&self) -> Result<WindowInteractionState> {
+            Ok(WindowInteractionState_ReadyForUserInteraction)
+        },
+
+        fn IsTopmost(&self) -> Result<BOOL> {
+            Err(not_supported())
         }
     ))
 }
