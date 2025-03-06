@@ -147,6 +147,39 @@
     * accesskit_macos bumped from 0.18.0 to 0.18.1
     * accesskit_unix bumped from 0.13.0 to 0.13.1
 
+## [0.24.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.23.1...accesskit_winit-v0.24.0) (2025-03-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Add event loop parameter to winit adapter constructors ([#517](https://github.com/AccessKit/accesskit/issues/517))
+* Drop `Tree::app_name` ([#492](https://github.com/AccessKit/accesskit/issues/492))
+
+### Features
+
+* Android adapter ([#500](https://github.com/AccessKit/accesskit/issues/500)) ([7e65ac7](https://github.com/AccessKit/accesskit/commit/7e65ac77d7e108ac5b9f3722f488a2fdf2e3b3e0))
+
+
+### Bug Fixes
+
+* Update winit to 0.30.9 ([#511](https://github.com/AccessKit/accesskit/issues/511)) ([0be21e6](https://github.com/AccessKit/accesskit/commit/0be21e6a2979af483b573b1c9b07c677286b871d))
+
+
+### Code Refactoring
+
+* Add event loop parameter to winit adapter constructors ([#517](https://github.com/AccessKit/accesskit/issues/517)) ([0d15f24](https://github.com/AccessKit/accesskit/commit/0d15f246a301a68af4424f7602c2f3be25da9327))
+* Drop `Tree::app_name` ([#492](https://github.com/AccessKit/accesskit/issues/492)) ([089794c](https://github.com/AccessKit/accesskit/commit/089794c8f74957e91a19ae3df508e2a892f39ebc))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.17.1 to 0.18.0
+    * accesskit_windows bumped from 0.24.1 to 0.25.0
+    * accesskit_macos bumped from 0.18.1 to 0.19.0
+    * accesskit_unix bumped from 0.13.1 to 0.14.0
+
 ## [0.23.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.22.4...accesskit_winit-v0.23.0) (2024-10-31)
 
 

@@ -38,6 +38,42 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.25.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.24.1...accesskit_windows-v0.25.0) (2025-03-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Optimize simple string getters ([#493](https://github.com/AccessKit/accesskit/issues/493))
+* Drop `Tree::app_name` ([#492](https://github.com/AccessKit/accesskit/issues/492))
+
+### Features
+
+* Expose the `is_required` property ([#497](https://github.com/AccessKit/accesskit/issues/497)) ([46ed99b](https://github.com/AccessKit/accesskit/commit/46ed99bb958ddb32cbf1bee2fcfb7b328bcbe0ab))
+
+
+### Bug Fixes
+
+* Add list box support to the platform adapters ([6c622cf](https://github.com/AccessKit/accesskit/commit/6c622cff4c0c989d9a5f16b775adff9cdacf534c))
+* Derive `Debug` for adapters ([#513](https://github.com/AccessKit/accesskit/issues/513)) ([753d904](https://github.com/AccessKit/accesskit/commit/753d90473cf57682568c7a17c82474c8e5d00b25))
+* Expose password input fields on Windows ([#516](https://github.com/AccessKit/accesskit/issues/516)) ([19514da](https://github.com/AccessKit/accesskit/commit/19514dabc40bcfc01bee1b1efa77355ec5b0822b))
+* Fix some clippy warnings ([#509](https://github.com/AccessKit/accesskit/issues/509)) ([579b9c1](https://github.com/AccessKit/accesskit/commit/579b9c12dd8abc44ecab41fa3c326a1d8999871d))
+* Optimize dynamic string building ([#491](https://github.com/AccessKit/accesskit/issues/491)) ([a86901d](https://github.com/AccessKit/accesskit/commit/a86901ddea5d5ba72ab237e98b53d6adcc6087bb))
+* Remove unnecessary explicit lifetimes ([#488](https://github.com/AccessKit/accesskit/issues/488)) ([d2bcd6d](https://github.com/AccessKit/accesskit/commit/d2bcd6d3048d23df4e132bee6171eb247b2dc2c8))
+
+
+### Code Refactoring
+
+* Drop `Tree::app_name` ([#492](https://github.com/AccessKit/accesskit/issues/492)) ([089794c](https://github.com/AccessKit/accesskit/commit/089794c8f74957e91a19ae3df508e2a892f39ebc))
+* Optimize simple string getters ([#493](https://github.com/AccessKit/accesskit/issues/493)) ([484fd7c](https://github.com/AccessKit/accesskit/commit/484fd7cbfb778222369d3f57d31dd998f6fa80d8))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.17.1 to 0.18.0
+    * accesskit_consumer bumped from 0.26.0 to 0.27.0
+
 ## [0.24.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.24.0...accesskit_windows-v0.24.1) (2024-11-23)
 
 
