@@ -1873,14 +1873,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2b070231665d27ad9ec9b8df639893f46727666c6767db40317fbe920a5d998"
 dependencies = [
  "backtrace",
- "bytes",
  "libc",
  "mio",
  "pin-project-lite",
- "signal-hook-registry",
  "socket2",
  "tokio-macros",
- "tracing",
  "windows-sys 0.52.0",
 ]
 
@@ -2687,7 +2684,6 @@ dependencies = [
  "serde",
  "serde_repr",
  "static_assertions",
- "tokio",
  "tracing",
  "uds_windows",
  "windows-sys 0.59.0",
