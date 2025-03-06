@@ -279,7 +279,11 @@ impl NodeWrapper<'_> {
         let state = self.0;
         let atspi_role = self.role();
         let mut atspi_state = StateSet::empty();
-        if state.parent_id().is_none() && state.role() == Role::Window && is_window_focused {
+        if is_window_focused
+            && ((state.parent_id().is_none() && state.role() == Role::Window)
+                || (state.is_dialog()
+                    && state.tree_state.active_dialog().map(|d| d.id()) == Some(state.id())))
+        {
             atspi_state.insert(State::Active);
         }
         if state.is_text_input() && !state.is_read_only() {
@@ -308,6 +312,9 @@ impl NodeWrapper<'_> {
         }
         if atspi_role != AtspiRole::ToggleButton && state.toggled().is_some() {
             atspi_state.insert(State::Checkable);
+        }
+        if state.is_modal() {
+            atspi_state.insert(State::Modal);
         }
         if let Some(selected) = state.is_selected() {
             if !state.is_disabled() {
