@@ -109,7 +109,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_winit"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "accesskit",
  "accesskit_android",
