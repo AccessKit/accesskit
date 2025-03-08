@@ -147,6 +147,17 @@
     * accesskit_macos bumped from 0.18.0 to 0.18.1
     * accesskit_unix bumped from 0.13.0 to 0.13.1
 
+## [0.25.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.24.0...accesskit_winit-v0.25.0) (2025-03-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* Make accesskit_android an optional dependency of accesskit_winit ([#524](https://github.com/AccessKit/accesskit/issues/524))
+
+### Bug Fixes
+
+* Make accesskit_android an optional dependency of accesskit_winit ([#524](https://github.com/AccessKit/accesskit/issues/524)) ([bb17d44](https://github.com/AccessKit/accesskit/commit/bb17d449b601eaffad1c7201ec5bf8de241bb8f8))
+
 ## [0.24.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.23.1...accesskit_winit-v0.24.0) (2025-03-06)
 
 

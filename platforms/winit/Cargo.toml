@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_winit"
-version = "0.24.0"
+version = "0.25.0"
 authors.workspace = true
 license = "Apache-2.0"
 description = "AccessKit UI accessibility infrastructure: winit adapter"
