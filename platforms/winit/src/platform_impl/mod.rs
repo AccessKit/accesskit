@@ -27,7 +27,7 @@ mod platform;
 #[path = "unix.rs"]
 mod platform;
 
-#[cfg(target_os = "android")]
+#[cfg(all(feature = "accesskit_android", target_os = "android"))]
 #[path = "android.rs"]
 mod platform;
 
@@ -44,7 +44,7 @@ mod platform;
             target_os = "openbsd"
         )
     ),
-    target_os = "android"
+    all(feature = "accesskit_android", target_os = "android")
 )))]
 #[path = "null.rs"]
 mod platform;

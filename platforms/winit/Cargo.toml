@@ -34,7 +34,7 @@ accesskit_macos = { version = "0.19.0", path = "../macos" }
 accesskit_unix = { version = "0.14.0", path = "../unix", optional = true, default-features = false }
 
 [target.'cfg(target_os = "android")'.dependencies]
-accesskit_android = { version = "0.1.0", path = "../android", features = ["embedded-dex"] }
+accesskit_android = { version = "0.1.0", path = "../android", optional = true, features = ["embedded-dex"] }
 
 [dev-dependencies.winit]
 version = "0.30.5"
