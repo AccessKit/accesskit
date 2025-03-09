@@ -18,8 +18,8 @@ targets = []
 [dependencies]
 accesskit = { version = "0.18.0", path = "../../common" }
 accesskit_consumer = { version = "0.27.0", path = "../../consumer" }
+compose-idents = "0.0.3"
 hashbrown = { version = "0.15", default-features = false, features = ["default-hasher"] }
-paste = "1.0"
 static_assertions = "1.1.0"
 windows-core = "0.58.0"
 

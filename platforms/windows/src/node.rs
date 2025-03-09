@@ -15,7 +15,7 @@ use accesskit::{
     Toggled,
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
-use paste::paste;
+use compose_idents::compose_idents;
 use std::sync::{atomic::Ordering, Arc, Weak};
 use windows::{
     core::*,
@@ -814,12 +814,14 @@ macro_rules! properties {
     ($(($base_id:ident, $m:ident)),+) => {
         impl NodeWrapper<'_> {
             fn get_property_value(&self, property_id: UIA_PROPERTY_ID) -> Variant {
-                match property_id {
-                    $(paste! { [< UIA_ $base_id PropertyId>] } => {
-                        self.$m().into()
-                    })*
-                    _ => Variant::empty()
-                }
+                $(
+                    compose_idents!(uia_property_id = [UIA_, $base_id, PropertyId]; {
+                        if property_id == uia_property_id {
+                            return self.$m().into();
+                        }
+                    });
+                )*
+                Variant::empty()
             }
             fn enqueue_simple_property_changes(
                 &self,
@@ -827,19 +829,21 @@ macro_rules! properties {
                 element: &IRawElementProviderSimple,
                 old: &NodeWrapper,
             ) {
-                $({
-                    let old_value = old.$m();
-                    let new_value = self.$m();
-                    if old_value != new_value {
-                        self.enqueue_property_change(
-                            queue,
-                            element,
-                            paste! { [<UIA_ $base_id PropertyId>] },
-                            old_value.into(),
-                            new_value.into(),
-                        );
-                    }
-                })*
+                $(
+                    compose_idents!(uia_property_id = [UIA_, $base_id, PropertyId]; {
+                        let old_value = old.$m();
+                        let new_value = self.$m();
+                        if old_value != new_value {
+                            self.enqueue_property_change(
+                                queue,
+                                element,
+                                uia_property_id,
+                                old_value.into(),
+                                new_value.into(),
+                            );
+                        }
+                    });
+                )*
             }
         }
     };
@@ -855,17 +859,20 @@ macro_rules! patterns {
             fn pattern_provider(&self, pattern_id: UIA_PATTERN_ID) -> Result<IUnknown> {
                 self.resolve(|node| {
                     let wrapper = NodeWrapper(&node);
-                    match pattern_id {
-                        $(paste! { [< UIA_ $base_pattern_id PatternId>] } => {
-                            if wrapper.$is_supported() {
-                                // SAFETY: We know we're running inside a full COM implementation.
-                                let intermediate: paste! { [< I $base_pattern_id Provider>] } =
-                                    unsafe { self.cast() }?;
-                                return intermediate.cast();
+                    $(
+                        compose_idents!(
+                            uia_pattern_id = [UIA_, $base_pattern_id, PatternId];
+                            provider = [I, $base_pattern_id, Provider];
+                        {
+                            if pattern_id == uia_pattern_id {
+                                if wrapper.$is_supported() {
+                                    // SAFETY: We know we're running inside a full COM implementation.
+                                    let intermediate: provider = unsafe { self.cast() }?;
+                                    return intermediate.cast();
+                                }
                             }
-                        })*
-                        _ => (),
-                    }
+                        });
+                    )*
                     Err(Error::empty())
                 })
             }
@@ -878,34 +885,42 @@ macro_rules! patterns {
                 old: &NodeWrapper,
             ) {
                 $(if self.$is_supported() && old.$is_supported() {
-                    $({
-                        let old_value = old.$getter();
-                        let new_value = self.$getter();
-                        if old_value != new_value {
-                            self.enqueue_property_change(
-                                queue,
-                                element,
-                                paste! { [<UIA_ $base_pattern_id $base_property_id PropertyId>] },
-                                old_value.into(),
-                                new_value.into(),
-                            );
-                        }
-                    })*
+                    $(
+                        compose_idents!(
+                            uia_property_id = [UIA_, $base_pattern_id, $base_property_id, PropertyId];
+                        {
+                            let old_value = old.$getter();
+                            let new_value = self.$getter();
+                            if old_value != new_value {
+                                self.enqueue_property_change(
+                                    queue,
+                                    element,
+                                    uia_property_id,
+                                    old_value.into(),
+                                    new_value.into(),
+                                );
+                            }
+                        });
+                    )*
                 })*
             }
         }
-        paste! {
-            $(#[allow(non_snake_case)]
-            impl [< I $base_pattern_id Provider_Impl>] for PlatformNode_Impl {
-                $(fn $base_property_id(&self) -> Result<$com_type> {
-                    self.resolve(|node| {
-                        let wrapper = NodeWrapper(&node);
-                        Ok(wrapper.$getter().into())
-                    })
-                })*
-                $($extra_trait_method)*
-            })*
-        }
+        $(
+            compose_idents!(
+                provider_impl = [I, $base_pattern_id, Provider_Impl];
+            {
+                #[allow(non_snake_case)]
+                impl provider_impl for PlatformNode_Impl {
+                    $(fn $base_property_id(&self) -> Result<$com_type> {
+                        self.resolve(|node| {
+                            let wrapper = NodeWrapper(&node);
+                            Ok(wrapper.$getter().into())
+                        })
+                    })*
+                    $($extra_trait_method)*
+                }
+            });
+        )*
     };
 }
 
