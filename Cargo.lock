@@ -37,7 +37,6 @@ dependencies = [
  "jni",
  "log",
  "once_cell",
- "paste",
 ]
 
 [[package]]
@@ -99,7 +98,6 @@ dependencies = [
  "accesskit_consumer",
  "hashbrown",
  "once_cell",
- "paste",
  "scopeguard",
  "static_assertions",
  "windows",
@@ -1357,12 +1355,6 @@ name = "parking"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f38d5652c16fde515bb1ecef450ab0f6a219d619a7274976324d5e377f7dceba"
-
-[[package]]
-name = "paste"
-version = "1.0.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f746c4065a8fa3fe23974dd82f15431cc8d40779821001404d10d2e79ca7d79"
 
 [[package]]
 name = "percent-encoding"

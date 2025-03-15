@@ -15,7 +15,6 @@ use accesskit::{
     Toggled,
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
-use paste::paste;
 use std::sync::{atomic::Ordering, Arc, Weak};
 use windows::{
     core::*,
@@ -811,11 +810,11 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode_Impl {
 }
 
 macro_rules! properties {
-    ($(($base_id:ident, $m:ident)),+) => {
+    ($(($id:ident, $m:ident)),+) => {
         impl NodeWrapper<'_> {
             fn get_property_value(&self, property_id: UIA_PROPERTY_ID) -> Variant {
                 match property_id {
-                    $(paste! { [< UIA_ $base_id PropertyId>] } => {
+                    $($id => {
                         self.$m().into()
                     })*
                     _ => Variant::empty()
@@ -834,7 +833,7 @@ macro_rules! properties {
                         self.enqueue_property_change(
                             queue,
                             element,
-                            paste! { [<UIA_ $base_id PropertyId>] },
+                            $id,
                             old_value.into(),
                             new_value.into(),
                         );
@@ -846,8 +845,8 @@ macro_rules! properties {
 }
 
 macro_rules! patterns {
-    ($(($base_pattern_id:ident, $is_supported:ident, (
-        $(($base_property_id:ident, $getter:ident, $com_type:ident)),*
+    ($(($pattern_id:ident, $provider_interface:ident, $provider_interface_impl:ident, $is_supported:ident, (
+        $(($property_id:ident, $com_getter:ident, $getter:ident, $com_type:ident)),*
     ), (
         $($extra_trait_method:item),*
     ))),+) => {
@@ -856,11 +855,10 @@ macro_rules! patterns {
                 self.resolve(|node| {
                     let wrapper = NodeWrapper(&node);
                     match pattern_id {
-                        $(paste! { [< UIA_ $base_pattern_id PatternId>] } => {
+                        $($pattern_id => {
                             if wrapper.$is_supported() {
                                 // SAFETY: We know we're running inside a full COM implementation.
-                                let intermediate: paste! { [< I $base_pattern_id Provider>] } =
-                                    unsafe { self.cast() }?;
+                                let intermediate: $provider_interface = unsafe { self.cast() }?;
                                 return intermediate.cast();
                             }
                         })*
@@ -885,7 +883,7 @@ macro_rules! patterns {
                             self.enqueue_property_change(
                                 queue,
                                 element,
-                                paste! { [<UIA_ $base_pattern_id $base_property_id PropertyId>] },
+                                $property_id,
                                 old_value.into(),
                                 new_value.into(),
                             );
@@ -894,58 +892,56 @@ macro_rules! patterns {
                 })*
             }
         }
-        paste! {
-            $(#[allow(non_snake_case)]
-            impl [< I $base_pattern_id Provider_Impl>] for PlatformNode_Impl {
-                $(fn $base_property_id(&self) -> Result<$com_type> {
-                    self.resolve(|node| {
-                        let wrapper = NodeWrapper(&node);
-                        Ok(wrapper.$getter().into())
-                    })
-                })*
-                $($extra_trait_method)*
+        $(#[allow(non_snake_case)]
+        impl $provider_interface_impl for PlatformNode_Impl {
+            $(fn $com_getter(&self) -> Result<$com_type> {
+                self.resolve(|node| {
+                    let wrapper = NodeWrapper(&node);
+                    Ok(wrapper.$getter().into())
+                })
             })*
-        }
+            $($extra_trait_method)*
+        })*
     };
 }
 
 properties! {
-    (ControlType, control_type),
-    (LocalizedControlType, localized_control_type),
-    (Name, name),
-    (FullDescription, description),
-    (HelpText, placeholder),
-    (IsContentElement, is_content_element),
-    (IsControlElement, is_content_element),
-    (IsEnabled, is_enabled),
-    (IsKeyboardFocusable, is_focusable),
-    (HasKeyboardFocus, is_focused),
-    (LiveSetting, live_setting),
-    (AutomationId, automation_id),
-    (ClassName, class_name),
-    (Orientation, orientation),
-    (IsRequiredForForm, is_required),
-    (IsPassword, is_password),
-    (PositionInSet, position_in_set),
-    (SizeOfSet, size_of_set)
+    (UIA_ControlTypePropertyId, control_type),
+    (UIA_LocalizedControlTypePropertyId, localized_control_type),
+    (UIA_NamePropertyId, name),
+    (UIA_FullDescriptionPropertyId, description),
+    (UIA_HelpTextPropertyId, placeholder),
+    (UIA_IsContentElementPropertyId, is_content_element),
+    (UIA_IsControlElementPropertyId, is_content_element),
+    (UIA_IsEnabledPropertyId, is_enabled),
+    (UIA_IsKeyboardFocusablePropertyId, is_focusable),
+    (UIA_HasKeyboardFocusPropertyId, is_focused),
+    (UIA_LiveSettingPropertyId, live_setting),
+    (UIA_AutomationIdPropertyId, automation_id),
+    (UIA_ClassNamePropertyId, class_name),
+    (UIA_OrientationPropertyId, orientation),
+    (UIA_IsRequiredForFormPropertyId, is_required),
+    (UIA_IsPasswordPropertyId, is_password),
+    (UIA_PositionInSetPropertyId, position_in_set),
+    (UIA_SizeOfSetPropertyId, size_of_set)
 }
 
 patterns! {
-    (Toggle, is_toggle_pattern_supported, (
-        (ToggleState, toggle_state, ToggleState)
+    (UIA_TogglePatternId, IToggleProvider, IToggleProvider_Impl, is_toggle_pattern_supported, (
+        (UIA_ToggleToggleStatePropertyId, ToggleState, toggle_state, ToggleState)
     ), (
         fn Toggle(&self) -> Result<()> {
             self.click()
         }
     )),
-    (Invoke, is_invoke_pattern_supported, (), (
+    (UIA_InvokePatternId, IInvokeProvider, IInvokeProvider_Impl, is_invoke_pattern_supported, (), (
         fn Invoke(&self) -> Result<()> {
             self.click()
         }
     )),
-    (Value, is_value_pattern_supported, (
-        (Value, value, BSTR),
-        (IsReadOnly, is_read_only, BOOL)
+    (UIA_ValuePatternId, IValueProvider, IValueProvider_Impl, is_value_pattern_supported, (
+        (UIA_ValueValuePropertyId, Value, value, BSTR),
+        (UIA_ValueIsReadOnlyPropertyId, IsReadOnly, is_read_only, BOOL)
     ), (
         fn SetValue(&self, value: &PCWSTR) -> Result<()> {
             self.do_action(|| {
@@ -954,13 +950,13 @@ patterns! {
             })
         }
     )),
-    (RangeValue, is_range_value_pattern_supported, (
-        (Value, numeric_value, f64),
-        (IsReadOnly, is_read_only, BOOL),
-        (Minimum, min_numeric_value, f64),
-        (Maximum, max_numeric_value, f64),
-        (SmallChange, numeric_value_step, f64),
-        (LargeChange, numeric_value_jump, f64)
+    (UIA_RangeValuePatternId, IRangeValueProvider, IRangeValueProvider_Impl, is_range_value_pattern_supported, (
+        (UIA_RangeValueValuePropertyId, Value, numeric_value, f64),
+        (UIA_RangeValueIsReadOnlyPropertyId, IsReadOnly, is_read_only, BOOL),
+        (UIA_RangeValueMinimumPropertyId, Minimum, min_numeric_value, f64),
+        (UIA_RangeValueMaximumPropertyId, Maximum, max_numeric_value, f64),
+        (UIA_RangeValueSmallChangePropertyId, SmallChange, numeric_value_step, f64),
+        (UIA_RangeValueLargeChangePropertyId, LargeChange, numeric_value_jump, f64)
     ), (
         fn SetValue(&self, value: f64) -> Result<()> {
             self.do_action(|| {
@@ -968,7 +964,7 @@ patterns! {
             })
         }
     )),
-    (SelectionItem, is_selection_item_pattern_supported, (), (
+    (UIA_SelectionItemPatternId, ISelectionItemProvider, ISelectionItemProvider_Impl, is_selection_item_pattern_supported, (), (
         fn IsSelected(&self) -> Result<BOOL> {
             self.resolve(|node| {
                 let wrapper = NodeWrapper(&node);
@@ -998,9 +994,9 @@ patterns! {
             })
         }
     )),
-    (Selection, is_selection_pattern_supported, (
-        (CanSelectMultiple, is_multiselectable, BOOL),
-        (IsSelectionRequired, is_required, BOOL)
+    (UIA_SelectionPatternId, ISelectionProvider, ISelectionProvider_Impl, is_selection_pattern_supported, (
+        (UIA_SelectionCanSelectMultiplePropertyId, CanSelectMultiple, is_multiselectable, BOOL),
+        (UIA_SelectionIsSelectionRequiredPropertyId, IsSelectionRequired, is_required, BOOL)
     ), (
         fn GetSelection(&self) -> Result<*mut SAFEARRAY> {
             self.resolve(|node| {
@@ -1015,7 +1011,7 @@ patterns! {
             })
         }
     )),
-    (Text, is_text_pattern_supported, (), (
+    (UIA_TextPatternId, ITextProvider, ITextProvider_Impl, is_text_pattern_supported, (), (
         fn GetSelection(&self) -> Result<*mut SAFEARRAY> {
             self.resolve_for_text_pattern(|node| {
                 if let Some(range) = node.text_selection() {
