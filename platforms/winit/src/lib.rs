@@ -186,6 +186,10 @@ impl Adapter {
         action_handler: impl 'static + ActionHandler + Send,
         deactivation_handler: impl 'static + DeactivationHandler + Send,
     ) -> Self {
+        if window.is_visible() == Some(true) {
+            panic!("The AccessKit winit adapter must be created before the window is shown (made visible) for the first time.");
+        }
+
         let inner = platform_impl::Adapter::new(
             event_loop,
             window,
