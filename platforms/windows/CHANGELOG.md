@@ -38,6 +38,18 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.26.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.25.0...accesskit_windows-v0.26.0) (2025-03-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* Panic if the window is visible when the adapter is created, for adapters where this is a problem ([#529](https://github.com/AccessKit/accesskit/issues/529))
+
+### Bug Fixes
+
+* Eliminate the dependency on `paste` ([#528](https://github.com/AccessKit/accesskit/issues/528)) ([4aef05d](https://github.com/AccessKit/accesskit/commit/4aef05d0b34b434c0f0ce2e7583adef3e73bda4d))
+* Panic if the window is visible when the adapter is created, for adapters where this is a problem ([#529](https://github.com/AccessKit/accesskit/issues/529)) ([c43c37b](https://github.com/AccessKit/accesskit/commit/c43c37ba2502656fcae4fd726b9b7db0bb520f31))
+
 ## [0.25.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.24.1...accesskit_windows-v0.25.0) (2025-03-06)
 
 

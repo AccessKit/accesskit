@@ -147,6 +147,25 @@
     * accesskit_macos bumped from 0.18.0 to 0.18.1
     * accesskit_unix bumped from 0.13.0 to 0.13.1
 
+## [0.26.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.25.0...accesskit_winit-v0.26.0) (2025-03-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* Panic if the window is visible when the adapter is created, for adapters where this is a problem ([#529](https://github.com/AccessKit/accesskit/issues/529))
+
+### Bug Fixes
+
+* Panic if the window is visible when the adapter is created, for adapters where this is a problem ([#529](https://github.com/AccessKit/accesskit/issues/529)) ([c43c37b](https://github.com/AccessKit/accesskit/commit/c43c37ba2502656fcae4fd726b9b7db0bb520f31))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_windows bumped from 0.25.0 to 0.26.0
+    * accesskit_android bumped from 0.1.0 to 0.1.1
+
 ## [0.25.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.24.0...accesskit_winit-v0.25.0) (2025-03-08)
 
 
