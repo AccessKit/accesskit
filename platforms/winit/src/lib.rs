@@ -142,6 +142,10 @@ impl Adapter {
     /// until you send the first update. For an optimal implementation,
     /// consider using [`Adapter::with_direct_handlers`] or
     /// [`Adapter::with_mixed_handlers`] instead.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the window is already visible.
     pub fn with_event_loop_proxy<T: From<Event> + Send + 'static>(
         event_loop: &ActiveEventLoop,
         window: &Window,
@@ -179,6 +183,10 @@ impl Adapter {
     /// some platform adapters to use a placeholder tree until you send
     /// the first update. However, remember that each of these handlers may be
     /// called on any thread, depending on the underlying platform adapter.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the window is already visible.
     pub fn with_direct_handlers(
         event_loop: &ActiveEventLoop,
         window: &Window,
@@ -212,6 +220,10 @@ impl Adapter {
     /// while using a direct, caller-provided activation handler that can
     /// return the initial tree synchronously. Remember that the thread on which
     /// the activation handler is called is platform-dependent.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the window is already visible.
     pub fn with_mixed_handlers<T: From<Event> + Send + 'static>(
         event_loop: &ActiveEventLoop,
         window: &Window,
