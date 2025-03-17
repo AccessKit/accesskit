@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.1.0...accesskit_android-v0.1.1) (2025-03-17)
+
+
+### Bug Fixes
+
+* Eliminate the dependency on `paste` ([#528](https://github.com/AccessKit/accesskit/issues/528)) ([4aef05d](https://github.com/AccessKit/accesskit/commit/4aef05d0b34b434c0f0ce2e7583adef3e73bda4d))
+
 ## 0.1.0 (2025-03-06)
 
 
