@@ -9,8 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node as NodeData, NodeId,
-    Point, Role, TextSelection, Tree as TreeData, TreeUpdate,
+    Action, ActionData, ActionRequest, Node as NodeData, NodeId, Point, Role, TextSelection,
+    Tree as TreeData, TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Node, TextPosition, Tree, TreeChangeHandler};
 use jni::{
@@ -20,7 +20,7 @@ use jni::{
     JNIEnv,
 };
 
-use crate::{filters::filter, node::NodeWrapper, util::*};
+use crate::{filters::filter, handlers::*, node::NodeWrapper, util::*};
 
 fn send_event(
     env: &mut JNIEnv,
@@ -193,13 +193,15 @@ enum State {
 }
 
 impl State {
-    fn get_or_init_tree<H: ActivationHandler + ?Sized>(
+    fn get_or_init_tree<'local, H: ActivationHandlerWithAndroidContext + ?Sized>(
         &mut self,
         activation_handler: &mut H,
+        env: &mut JNIEnv<'local>,
+        view: &JObject<'local>,
     ) -> &Tree {
         match self {
             Self::Inactive => {
-                *self = match activation_handler.request_initial_tree() {
+                *self = match activation_handler.request_initial_tree(env, view) {
                     Some(initial_state) => Self::Active(Tree::new(initial_state, true)),
                     None => {
                         let placeholder_update = TreeUpdate {
@@ -210,7 +212,7 @@ impl State {
                         Self::Placeholder(Tree::new(placeholder_update, true))
                     }
                 };
-                self.get_or_init_tree(activation_handler)
+                self.get_or_init_tree(activation_handler, env, view)
             }
             Self::Placeholder(tree) => tree,
             Self::Active(tree) => tree,
@@ -310,17 +312,17 @@ impl Adapter {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn populate_node_info<H: ActivationHandler + ?Sized>(
+    pub fn populate_node_info<'local, H: ActivationHandlerWithAndroidContext + ?Sized>(
         &mut self,
         activation_handler: &mut H,
-        env: &mut JNIEnv,
-        host: &JObject,
+        env: &mut JNIEnv<'local>,
+        host: &JObject<'local>,
         host_screen_x: jint,
         host_screen_y: jint,
         virtual_view_id: jint,
-        jni_node: &JObject,
+        jni_node: &JObject<'local>,
     ) -> Result<bool> {
-        let tree = self.state.get_or_init_tree(activation_handler);
+        let tree = self.state.get_or_init_tree(activation_handler, env, host);
         let tree_state = tree.state();
         let node = if virtual_view_id == HOST_VIEW_ID {
             tree_state.root()
@@ -346,23 +348,27 @@ impl Adapter {
         Ok(true)
     }
 
-    pub fn input_focus<H: ActivationHandler + ?Sized>(
+    pub fn input_focus<'local, H: ActivationHandlerWithAndroidContext + ?Sized>(
         &mut self,
         activation_handler: &mut H,
+        env: &mut JNIEnv<'local>,
+        view: &JObject<'local>,
     ) -> jint {
-        let tree = self.state.get_or_init_tree(activation_handler);
+        let tree = self.state.get_or_init_tree(activation_handler, env, view);
         let tree_state = tree.state();
         let node = tree_state.focus_in_tree();
         self.node_id_map.get_or_create_java_id(&node)
     }
 
-    pub fn virtual_view_at_point<H: ActivationHandler + ?Sized>(
+    pub fn virtual_view_at_point<'local, H: ActivationHandlerWithAndroidContext + ?Sized>(
         &mut self,
         activation_handler: &mut H,
+        env: &mut JNIEnv<'local>,
+        view: &JObject<'local>,
         x: jfloat,
         y: jfloat,
     ) -> jint {
-        let tree = self.state.get_or_init_tree(activation_handler);
+        let tree = self.state.get_or_init_tree(activation_handler, env, view);
         let tree_state = tree.state();
         let root = tree_state.root();
         let point = Point::new(x.into(), y.into());
@@ -371,9 +377,11 @@ impl Adapter {
         self.node_id_map.get_or_create_java_id(&node)
     }
 
-    pub fn perform_action<H: ActionHandler + ?Sized>(
+    pub fn perform_action<'local, H: ActionHandlerWithAndroidContext + ?Sized>(
         &mut self,
         action_handler: &mut H,
+        env: &mut JNIEnv<'local>,
+        view: &JObject<'local>,
         virtual_view_id: jint,
         action: jint,
     ) -> bool {
@@ -411,16 +419,16 @@ impl Adapter {
                 return false;
             }
         };
-        action_handler.do_action(request);
+        action_handler.do_action(env, view, request);
         true
     }
 
-    fn set_text_selection_common<H: ActionHandler + ?Sized, F, Extra>(
+    fn set_text_selection_common<'local, H: ActionHandlerWithAndroidContext + ?Sized, F, Extra>(
         &mut self,
         action_handler: &mut H,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
+        env: &mut JNIEnv<'local>,
+        callback_class: &JClass<'local>,
+        host: &JObject<'local>,
         virtual_view_id: jint,
         selection_factory: F,
     ) -> Option<Extra>
@@ -467,17 +475,17 @@ impl Adapter {
             action: Action::SetTextSelection,
             data: Some(ActionData::SetTextSelection(selection)),
         };
-        action_handler.do_action(request);
+        action_handler.do_action(env, host, request);
         Some(extra)
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn set_text_selection<H: ActionHandler + ?Sized>(
+    pub fn set_text_selection<'local, H: ActionHandlerWithAndroidContext + ?Sized>(
         &mut self,
         action_handler: &mut H,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
+        env: &mut JNIEnv<'local>,
+        callback_class: &JClass<'local>,
+        host: &JObject<'local>,
         virtual_view_id: jint,
         anchor: jint,
         focus: jint,
@@ -499,12 +507,12 @@ impl Adapter {
         .is_some()
     }
 
-    pub fn collapse_text_selection<H: ActionHandler + ?Sized>(
+    pub fn collapse_text_selection<'local, H: ActionHandlerWithAndroidContext + ?Sized>(
         &mut self,
         action_handler: &mut H,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
+        env: &mut JNIEnv<'local>,
+        callback_class: &JClass<'local>,
+        host: &JObject<'local>,
         virtual_view_id: jint,
     ) -> bool {
         self.set_text_selection_common(
@@ -519,12 +527,12 @@ impl Adapter {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn traverse_text<H: ActionHandler + ?Sized>(
+    pub fn traverse_text<'local, H: ActionHandlerWithAndroidContext + ?Sized>(
         &mut self,
         action_handler: &mut H,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
+        env: &mut JNIEnv<'local>,
+        callback_class: &JClass<'local>,
+        host: &JObject<'local>,
         virtual_view_id: jint,
         granularity: jint,
         forward: bool,

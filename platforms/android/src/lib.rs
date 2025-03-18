@@ -10,6 +10,9 @@ mod util;
 mod adapter;
 pub use adapter::Adapter;
 
+mod handlers;
+pub use handlers::*;
+
 mod inject;
 pub use inject::InjectingAdapter;
 

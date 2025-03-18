@@ -9,7 +9,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
+use accesskit::TreeUpdate;
 use jni::{
     errors::Result,
     objects::{GlobalRef, JClass, JObject, WeakRef},
@@ -28,33 +28,33 @@ use std::{
     },
 };
 
-use crate::{adapter::Adapter, util::*};
+use crate::{adapter::Adapter, handlers::*, util::*};
 
 struct InnerInjectingAdapter {
     adapter: Adapter,
-    activation_handler: Box<dyn ActivationHandler + Send>,
-    action_handler: Box<dyn ActionHandler + Send>,
+    activation_handler: Box<dyn ActivationHandlerWithAndroidContext + Send>,
+    action_handler: Box<dyn ActionHandlerWithAndroidContext + Send>,
 }
 
 impl Debug for InnerInjectingAdapter {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("InnerInjectingAdapter")
             .field("adapter", &self.adapter)
-            .field("activation_handler", &"ActivationHandler")
-            .field("action_handler", &"ActionHandler")
+            .field("activation_handler", &"ActivationHandlerWithAndroidContext")
+            .field("action_handler", &"ActionHandlerWithAndroidContext")
             .finish()
     }
 }
 
 impl InnerInjectingAdapter {
-    fn populate_node_info(
+    fn populate_node_info<'local>(
         &mut self,
-        env: &mut JNIEnv,
-        host: &JObject,
+        env: &mut JNIEnv<'local>,
+        host: &JObject<'local>,
         host_screen_x: jint,
         host_screen_y: jint,
         virtual_view_id: jint,
-        jni_node: &JObject,
+        jni_node: &JObject<'local>,
     ) -> Result<bool> {
         self.adapter.populate_node_info(
             &mut *self.activation_handler,
@@ -67,25 +67,43 @@ impl InnerInjectingAdapter {
         )
     }
 
-    fn input_focus(&mut self) -> jint {
-        self.adapter.input_focus(&mut *self.activation_handler)
-    }
-
-    fn virtual_view_at_point(&mut self, x: jfloat, y: jfloat) -> jint {
+    fn input_focus<'local>(&mut self, env: &mut JNIEnv<'local>, view: &JObject<'local>) -> jint {
         self.adapter
-            .virtual_view_at_point(&mut *self.activation_handler, x, y)
+            .input_focus(&mut *self.activation_handler, env, view)
     }
 
-    fn perform_action(&mut self, virtual_view_id: jint, action: jint) -> bool {
-        self.adapter
-            .perform_action(&mut *self.action_handler, virtual_view_id, action)
-    }
-
-    fn set_text_selection(
+    fn virtual_view_at_point<'local>(
         &mut self,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
+        env: &mut JNIEnv<'local>,
+        view: &JObject<'local>,
+        x: jfloat,
+        y: jfloat,
+    ) -> jint {
+        self.adapter
+            .virtual_view_at_point(&mut *self.activation_handler, env, view, x, y)
+    }
+
+    fn perform_action<'local>(
+        &mut self,
+        env: &mut JNIEnv<'local>,
+        view: &JObject<'local>,
+        virtual_view_id: jint,
+        action: jint,
+    ) -> bool {
+        self.adapter.perform_action(
+            &mut *self.action_handler,
+            env,
+            view,
+            virtual_view_id,
+            action,
+        )
+    }
+
+    fn set_text_selection<'local>(
+        &mut self,
+        env: &mut JNIEnv<'local>,
+        callback_class: &JClass<'local>,
+        host: &JObject<'local>,
         virtual_view_id: jint,
         anchor: jint,
         focus: jint,
@@ -101,11 +119,11 @@ impl InnerInjectingAdapter {
         )
     }
 
-    fn collapse_text_selection(
+    fn collapse_text_selection<'local>(
         &mut self,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
+        env: &mut JNIEnv<'local>,
+        callback_class: &JClass<'local>,
+        host: &JObject<'local>,
         virtual_view_id: jint,
     ) -> bool {
         self.adapter.collapse_text_selection(
@@ -118,11 +136,11 @@ impl InnerInjectingAdapter {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn traverse_text(
+    fn traverse_text<'local>(
         &mut self,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
+        env: &mut JNIEnv<'local>,
+        callback_class: &JClass<'local>,
+        host: &JObject<'local>,
         virtual_view_id: jint,
         granularity: jint,
         forward: bool,
@@ -150,15 +168,15 @@ fn inner_adapter_from_handle(handle: jlong) -> Option<Arc<Mutex<InnerInjectingAd
     handle_map_guard.get(&handle).and_then(Weak::upgrade)
 }
 
-extern "system" fn populate_node_info(
-    mut env: JNIEnv,
-    _class: JClass,
+extern "system" fn populate_node_info<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
     adapter_handle: jlong,
-    host: JObject,
+    host: JObject<'local>,
     host_screen_x: jint,
     host_screen_y: jint,
     virtual_view_id: jint,
-    node_info: JObject,
+    node_info: JObject<'local>,
 ) -> jboolean {
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
         return JNI_FALSE;
@@ -181,18 +199,24 @@ extern "system" fn populate_node_info(
     }
 }
 
-extern "system" fn get_input_focus(_env: JNIEnv, _class: JClass, adapter_handle: jlong) -> jint {
+extern "system" fn get_input_focus<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    adapter_handle: jlong,
+    view: JObject<'local>,
+) -> jint {
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
         return HOST_VIEW_ID;
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    inner_adapter.input_focus()
+    inner_adapter.input_focus(&mut env, &view)
 }
 
-extern "system" fn get_virtual_view_at_point(
-    _env: JNIEnv,
-    _class: JClass,
+extern "system" fn get_virtual_view_at_point<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
     adapter_handle: jlong,
+    view: JObject<'local>,
     x: jfloat,
     y: jfloat,
 ) -> jint {
@@ -200,13 +224,14 @@ extern "system" fn get_virtual_view_at_point(
         return HOST_VIEW_ID;
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    inner_adapter.virtual_view_at_point(x, y)
+    inner_adapter.virtual_view_at_point(&mut env, &view, x, y)
 }
 
-extern "system" fn perform_action(
-    _env: JNIEnv,
-    _class: JClass,
+extern "system" fn perform_action<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
     adapter_handle: jlong,
+    view: JObject<'local>,
     virtual_view_id: jint,
     action: jint,
 ) -> jboolean {
@@ -214,18 +239,18 @@ extern "system" fn perform_action(
         return JNI_FALSE;
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    if inner_adapter.perform_action(virtual_view_id, action) {
+    if inner_adapter.perform_action(&mut env, &view, virtual_view_id, action) {
         JNI_TRUE
     } else {
         JNI_FALSE
     }
 }
 
-extern "system" fn set_text_selection(
-    mut env: JNIEnv,
-    class: JClass,
+extern "system" fn set_text_selection<'local>(
+    mut env: JNIEnv<'local>,
+    class: JClass<'local>,
     adapter_handle: jlong,
-    host: JObject,
+    host: JObject<'local>,
     virtual_view_id: jint,
     anchor: jint,
     focus: jint,
@@ -241,11 +266,11 @@ extern "system" fn set_text_selection(
     }
 }
 
-extern "system" fn collapse_text_selection(
-    mut env: JNIEnv,
-    class: JClass,
+extern "system" fn collapse_text_selection<'local>(
+    mut env: JNIEnv<'local>,
+    class: JClass<'local>,
     adapter_handle: jlong,
-    host: JObject,
+    host: JObject<'local>,
     virtual_view_id: jint,
 ) -> jboolean {
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
@@ -259,11 +284,11 @@ extern "system" fn collapse_text_selection(
     }
 }
 
-extern "system" fn traverse_text(
-    mut env: JNIEnv,
-    class: JClass,
+extern "system" fn traverse_text<'local>(
+    mut env: JNIEnv<'local>,
+    class: JClass<'local>,
     adapter_handle: jlong,
-    host: JObject,
+    host: JObject<'local>,
     virtual_view_id: jint,
     granularity: jint,
     forward: jboolean,
@@ -327,17 +352,17 @@ fn delegate_class(env: &mut JNIEnv) -> Result<&'static JClass<'static>> {
                 },
                 NativeMethod {
                     name: "getInputFocus".into(),
-                    sig: "(J)I".into(),
+                    sig: "(JLandroid/view/View;)I".into(),
                     fn_ptr: get_input_focus as *mut c_void,
                 },
                 NativeMethod {
                     name: "getVirtualViewAtPoint".into(),
-                    sig: "(JFF)I".into(),
+                    sig: "(JLandroid/view/View;FF)I".into(),
                     fn_ptr: get_virtual_view_at_point as *mut c_void,
                 },
                 NativeMethod {
                     name: "performAction".into(),
-                    sig: "(JII)Z".into(),
+                    sig: "(JLandroid/view/View;II)Z".into(),
                     fn_ptr: perform_action as *mut c_void,
                 },
                 NativeMethod {
@@ -397,8 +422,8 @@ impl InjectingAdapter {
     pub fn new(
         env: &mut JNIEnv,
         host_view: &JObject,
-        activation_handler: impl 'static + ActivationHandler + Send,
-        action_handler: impl 'static + ActionHandler + Send,
+        activation_handler: impl 'static + ActivationHandlerWithAndroidContext + Send,
+        action_handler: impl 'static + ActionHandlerWithAndroidContext + Send,
     ) -> Result<Self> {
         let inner = Arc::new(Mutex::new(InnerInjectingAdapter {
             adapter: Adapter::default(),
@@ -428,7 +453,7 @@ impl InjectingAdapter {
 
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update. Note: If the caller's implementation of
-    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
+    /// [`ActivationHandlerWithAndroidContext::request_initial_tree`] initially returned `None`,
     /// the [`TreeUpdate`] returned by the provided function must contain
     /// a full tree.
     pub fn update_if_active(&mut self, update_factory: impl FnOnce() -> TreeUpdate) {

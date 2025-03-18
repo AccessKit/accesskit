@@ -19,12 +19,14 @@ import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction;
 import android.view.accessibility.AccessibilityNodeProvider;
 
 public final class Delegate extends View.AccessibilityDelegate implements View.OnHoverListener {
+    private final View view;
     private final long adapterHandle;
     private int accessibilityFocus = AccessibilityNodeProvider.HOST_VIEW_ID;
     private int hoverId = AccessibilityNodeProvider.HOST_VIEW_ID;
 
-    private Delegate(long adapterHandle) {
+    private Delegate(View view, long adapterHandle) {
         super();
+        this.view = view;
         this.adapterHandle = adapterHandle;
     }
 
@@ -37,7 +39,7 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
                             throw new IllegalStateException(
                                     "host already has an accessibility delegate");
                         }
-                        Delegate delegate = new Delegate(adapterHandle);
+                        Delegate delegate = new Delegate(host, adapterHandle);
                         host.setAccessibilityDelegate(delegate);
                         host.setOnHoverListener(delegate);
                     }
@@ -214,11 +216,11 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
             int virtualViewId,
             AccessibilityNodeInfo nodeInfo);
 
-    private static native int getInputFocus(long adapterHandle);
+    private static native int getInputFocus(long adapterHandle, View view);
 
-    private static native int getVirtualViewAtPoint(long adapterHandle, float x, float y);
+    private static native int getVirtualViewAtPoint(long adapterHandle, View view, float x, float y);
 
-    private static native boolean performAction(long adapterHandle, int virtualViewId, int action);
+    private static native boolean performAction(long adapterHandle, View view, int virtualViewId, int action);
 
     private static native boolean setTextSelection(
             long adapterHandle, View host, int virtualViewId, int anchor, int focus);
@@ -324,7 +326,7 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
                                 forward,
                                 extendSelection);
                 }
-                if (!Delegate.performAction(adapterHandle, virtualViewId, action)) {
+                if (!Delegate.performAction(adapterHandle, view, virtualViewId, action)) {
                     return false;
                 }
                 switch (action) {
@@ -351,7 +353,7 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
                     case AccessibilityNodeInfo.FOCUS_INPUT:
                         {
                             AccessibilityNodeInfo result =
-                                    createAccessibilityNodeInfo(getInputFocus(adapterHandle));
+                                    createAccessibilityNodeInfo(getInputFocus(adapterHandle, view));
                             if (result != null && result.isFocused()) {
                                 return result;
                             }
@@ -368,7 +370,7 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
         switch (event.getAction()) {
             case MotionEvent.ACTION_HOVER_ENTER:
             case MotionEvent.ACTION_HOVER_MOVE:
-                int newId = getVirtualViewAtPoint(adapterHandle, event.getX(), event.getY());
+                int newId = getVirtualViewAtPoint(adapterHandle, v, event.getX(), event.getY());
                 if (newId != hoverId) {
                     if (newId != AccessibilityNodeProvider.HOST_VIEW_ID) {
                         sendEventInternal(v, newId, AccessibilityEvent.TYPE_VIEW_HOVER_ENTER);
