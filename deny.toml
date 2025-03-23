@@ -1,19 +1,23 @@
-targets = []
+[graph]
+# Note: running just `cargo deny check` without a `--target` can result in
+# false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
+targets = [
+  { triple = "aarch64-apple-darwin" },
+  { triple = "aarch64-linux-android" },
+  { triple = "i686-pc-windows-gnu" },
+  { triple = "i686-pc-windows-msvc" },
+  { triple = "x86_64-pc-windows-gnu" },
+  { triple = "x86_64-pc-windows-msvc" },
+  { triple = "x86_64-unknown-linux-gnu" },
+]
 all-features = true
-no-default-features = false
-feature-depth = 1
 
 [advisories]
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-vulnerability = "deny"
-unmaintained = "warn"
-yanked = "warn"
-notice = "warn"
 ignore = []
 
 [licenses]
-unlicensed = "deny"
 allow = [
     "Apache-2.0",
     "Apache-2.0 WITH LLVM-exception",
@@ -23,10 +27,6 @@ allow = [
     "MIT",
     "Zlib",
 ]
-deny = []
-copyleft = "warn"
-allow-osi-fsf-free = "neither"
-default = "deny"
 confidence-threshold = 0.8
 exceptions = [
     { name = "unicode-ident", allow = [
@@ -35,19 +35,24 @@ exceptions = [
 ]
 
 [bans]
-multiple-versions = "warn"
-wildcards = "allow"
+multiple-versions = "deny"
+wildcards = "deny"
 highlight = "all"
-workspace-default-features = "allow"
-external-default-features = "allow"
 allow = []
 deny = []
-
-skip = []
+skip = [
+    "bitflags:<2",
+    "quick-xml:<0.37",
+    "raw-window-handle:<0.6",
+    "windows-sys:<0.59",
+    "windows-targets:<0.52",
+    "windows_i686_gnu:<0.52",
+    "windows_i686_msvc:<0.52",
+    "windows_x86_64_gnu:<0.52",
+    "windows_x86_64_msvc:<0.52",
+]
 skip-tree = []
 
 [sources]
-unknown-registry = "warn"
-unknown-git = "warn"
-allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-allow-git = []
+unknown-registry = "deny"
+unknown-git = "deny"
