@@ -14,4 +14,3 @@ rust-version.workspace = true
 [dependencies]
 accesskit = { version = "0.18.0", path = "../common" }
 hashbrown = { version = "0.15", default-features = false, features = ["default-hasher"] }
-immutable-chunkmap = "2.0.6"
