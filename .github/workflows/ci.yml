@@ -72,6 +72,10 @@ jobs:
       - name: cargo clippy
         run: cargo clippy --all-targets -- -D warnings
 
+      - name: cargo clippy -p accesskit_atspi_common
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo clippy -p accesskit_atspi_common --all-features -- -D warnings
+
   find-msrv:
     runs-on: ubuntu-latest
     outputs:

@@ -618,7 +618,7 @@ impl Event {
                         data: None,
                     },
                     ObjectEvent::StateChanged(state, value) => Self {
-                        kind: format!("object:state-changed:{}", String::from(state)),
+                        kind: format!("object:state-changed:{}", state.to_static_str()),
                         source,
                         detail1: value as i32,
                         detail2: 0,
