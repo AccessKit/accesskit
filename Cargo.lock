@@ -41,7 +41,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_atspi_common"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -74,7 +74,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_unix"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "accesskit",
  "accesskit_atspi_common",
@@ -107,7 +107,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_winit"
-version = "0.26.0"
+version = "0.26.1"
 dependencies = [
  "accesskit",
  "accesskit_android",
