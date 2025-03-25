@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_winit"
-version = "0.26.0"
+version = "0.26.1"
 authors.workspace = true
 license = "Apache-2.0"
 description = "AccessKit UI accessibility infrastructure: winit adapter"
@@ -31,7 +31,7 @@ accesskit_windows = { version = "0.26.0", path = "../windows" }
 accesskit_macos = { version = "0.19.0", path = "../macos" }
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
-accesskit_unix = { version = "0.14.0", path = "../unix", optional = true, default-features = false }
+accesskit_unix = { version = "0.14.1", path = "../unix", optional = true, default-features = false }
 
 [target.'cfg(target_os = "android")'.dependencies]
 accesskit_android = { version = "0.1.1", path = "../android", optional = true, features = ["embedded-dex"] }
