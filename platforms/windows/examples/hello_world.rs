@@ -61,7 +61,7 @@ const BUTTON_2_RECT: Rect = Rect {
 const SET_FOCUS_MSG: u32 = WM_USER;
 const CLICK_MSG: u32 = WM_USER + 1;
 
-fn build_button(id: NodeId, label: &str) -> Node {
+fn build_button_with_static_label(id: NodeId, label: &'static str) -> Node {
     let rect = match id {
         BUTTON_1_ID => BUTTON_1_RECT,
         BUTTON_2_ID => BUTTON_2_RECT,
@@ -76,9 +76,25 @@ fn build_button(id: NodeId, label: &str) -> Node {
     node
 }
 
-fn build_announcement(text: &str) -> Node {
+#[allow(unused)]
+fn build_button_with_dynamic_label(id: NodeId, label: &str) -> Node {
+    let rect = match id {
+        BUTTON_1_ID => BUTTON_1_RECT,
+        BUTTON_2_ID => BUTTON_2_RECT,
+        _ => unreachable!(),
+    };
+
+    let mut node = Node::new(Role::Button);
+    node.set_bounds(rect);
+    node.set_label(label.to_owned());
+    node.add_action(Action::Focus);
+    node.add_action(Action::Click);
+    node
+}
+
+fn build_announcement_with_dynamic_label(text: &str) -> Node {
     let mut node = Node::new(Role::Label);
-    node.set_value(text);
+    node.set_value(text.to_owned());
     node.set_live(Live::Polite);
     node
 }
@@ -103,8 +119,8 @@ impl ActivationHandler for InnerWindowState {
     fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
         println!("Initial tree requested");
         let root = self.build_root();
-        let button_1 = build_button(BUTTON_1_ID, "Button 1");
-        let button_2 = build_button(BUTTON_2_ID, "Button 2");
+        let button_1 = build_button_with_static_label(BUTTON_1_ID, "Button 1");
+        let button_2 = build_button_with_static_label(BUTTON_2_ID, "Button 2");
         let tree = Tree::new(WINDOW_ID);
 
         let mut result = TreeUpdate {
@@ -117,9 +133,10 @@ impl ActivationHandler for InnerWindowState {
             focus: self.focus,
         };
         if let Some(announcement) = &self.announcement {
-            result
-                .nodes
-                .push((ANNOUNCEMENT_ID, build_announcement(announcement)));
+            result.nodes.push((
+                ANNOUNCEMENT_ID,
+                build_announcement_with_dynamic_label(announcement),
+            ));
         }
         Some(result)
     }
@@ -154,7 +171,7 @@ impl WindowState {
         inner_state.announcement = Some(text.into());
         let mut adapter = self.adapter.borrow_mut();
         if let Some(events) = adapter.update_if_active(|| {
-            let announcement = build_announcement(text);
+            let announcement = build_announcement_with_dynamic_label(text);
             let root = inner_state.build_root();
             TreeUpdate {
                 nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],

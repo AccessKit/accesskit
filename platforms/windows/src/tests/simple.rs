@@ -16,9 +16,17 @@ const WINDOW_ID: NodeId = NodeId(0);
 const BUTTON_1_ID: NodeId = NodeId(1);
 const BUTTON_2_ID: NodeId = NodeId(2);
 
-fn make_button(label: &str) -> Node {
+fn make_button_with_static_label(label: &'static str) -> Node {
     let mut node = Node::new(Role::Button);
     node.set_label(label);
+    node.add_action(Action::Focus);
+    node
+}
+
+#[allow(unused)]
+fn make_button_with_dynamic_label(label: &str) -> Node {
+    let mut node = Node::new(Role::Button);
+    node.set_label(label.to_owned());
     node.add_action(Action::Focus);
     node
 }
@@ -26,8 +34,8 @@ fn make_button(label: &str) -> Node {
 fn get_initial_state() -> TreeUpdate {
     let mut root = Node::new(Role::Window);
     root.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
-    let button_1 = make_button("Button 1");
-    let button_2 = make_button("Button 2");
+    let button_1 = make_button_with_static_label("Button 1");
+    let button_2 = make_button_with_static_label("Button 2");
     TreeUpdate {
         nodes: vec![
             (WINDOW_ID, root),
