@@ -36,7 +36,7 @@ const BUTTON_2_RECT: Rect = Rect {
     y1: 100.0,
 };
 
-fn build_button(id: NodeId, label: &str) -> Node {
+fn build_button_with_static_label(id: NodeId, label: &'static str) -> Node {
     let rect = match id {
         BUTTON_1_ID => BUTTON_1_RECT,
         BUTTON_2_ID => BUTTON_2_RECT,
@@ -51,9 +51,25 @@ fn build_button(id: NodeId, label: &str) -> Node {
     node
 }
 
-fn build_announcement(text: &str) -> Node {
+#[allow(unused)]
+fn build_button_with_dynamic_label(id: NodeId, label: &str) -> Node {
+    let rect = match id {
+        BUTTON_1_ID => BUTTON_1_RECT,
+        BUTTON_2_ID => BUTTON_2_RECT,
+        _ => unreachable!(),
+    };
+
+    let mut node = Node::new(Role::Button);
+    node.set_bounds(rect);
+    node.set_label(label.to_owned());
+    node.add_action(Action::Focus);
+    node.add_action(Action::Click);
+    node
+}
+
+fn build_announcement_with_dynamic_label(text: &str) -> Node {
     let mut node = Node::new(Role::Label);
-    node.set_value(text);
+    node.set_value(text.to_owned());
     node.set_live(Live::Polite);
     node
 }
@@ -83,8 +99,8 @@ impl UiState {
 
     fn build_initial_tree(&mut self) -> TreeUpdate {
         let root = self.build_root();
-        let button_1 = build_button(BUTTON_1_ID, "Button 1");
-        let button_2 = build_button(BUTTON_2_ID, "Button 2");
+        let button_1 = build_button_with_static_label(BUTTON_1_ID, "Button 1");
+        let button_2 = build_button_with_static_label(BUTTON_2_ID, "Button 2");
         let tree = Tree::new(WINDOW_ID);
         let mut result = TreeUpdate {
             nodes: vec![
@@ -96,9 +112,10 @@ impl UiState {
             focus: self.focus,
         };
         if let Some(announcement) = &self.announcement {
-            result
-                .nodes
-                .push((ANNOUNCEMENT_ID, build_announcement(announcement)));
+            result.nodes.push((
+                ANNOUNCEMENT_ID,
+                build_announcement_with_dynamic_label(announcement),
+            ));
         }
         result
     }
@@ -120,7 +137,7 @@ impl UiState {
         };
         self.announcement = Some(text.into());
         adapter.update_if_active(|| {
-            let announcement = build_announcement(text);
+            let announcement = build_announcement_with_dynamic_label(text);
             let root = self.build_root();
             TreeUpdate {
                 nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],

@@ -12,7 +12,7 @@
 
 extern crate alloc;
 
-use alloc::{boxed::Box, string::String, vec::Vec};
+use alloc::{borrow::Cow, boxed::Box, string::String, vec::Vec};
 use core::fmt;
 #[cfg(feature = "pyo3")]
 use pyo3::pyclass;
@@ -656,7 +656,7 @@ impl From<NodeId> for NodeIdContent {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct CustomAction {
     pub id: i32,
-    pub description: Box<str>,
+    pub description: Cow<'static, str>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -731,7 +731,7 @@ enum PropertyValue {
     None,
     NodeIdVec(Vec<NodeId>),
     NodeId(NodeId),
-    String(Box<str>),
+    String(Cow<'static, str>),
     F64(f64),
     Usize(usize),
     Color(u32),
@@ -1076,6 +1076,16 @@ macro_rules! box_type_setters {
     }
 }
 
+macro_rules! static_cow_type_setters {
+    ($(($method:ident, $type:ty, $variant:ident)),+) => {
+        impl Node {
+            $(fn $method(&mut self, id: PropertyId, value: impl Into<Cow<'static, $type>>) {
+                self.properties.set(id, PropertyValue::$variant(value.into()));
+            })*
+        }
+    }
+}
+
 macro_rules! copy_type_setters {
     ($(($method:ident, $type:ty, $variant:ident)),+) => {
         impl Node {
@@ -1208,7 +1218,7 @@ macro_rules! string_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_string_property, Option<&str>, $setter, set_string_property, impl Into<Box<str>>, $clearer)
+            ($id, $getter, get_string_property, Option<&str>, $setter, set_string_property, impl Into<Cow<'static, str>>, $clearer)
         })*
         impl FrozenNode {
             option_properties_debug_method! { debug_string_properties, [$($getter,)*] }
@@ -1499,10 +1509,13 @@ copy_type_getters! {
 
 box_type_setters! {
     (set_affine_property, Affine, Affine),
-    (set_string_property, str, String),
     (set_length_slice_property, [u8], LengthSlice),
     (set_coord_slice_property, [f32], CoordSlice),
     (set_text_selection_property, TextSelection, TextSelection)
+}
+
+static_cow_type_setters! {
+    (set_string_property, str, String)
 }
 
 copy_type_setters! {
@@ -2149,7 +2162,7 @@ impl JsonSchema for Properties {
                 PreviousOnLine,
                 PopupFor
             },
-            Box<str> {
+            Cow<'static, str> {
                 Label,
                 Description,
                 Value,
@@ -2336,7 +2349,7 @@ pub struct TreeUpdate {
 #[repr(C)]
 pub enum ActionData {
     CustomAction(i32),
-    Value(Box<str>),
+    Value(Cow<'static, str>),
     NumericValue(f64),
     /// Optional target rectangle for [`Action::ScrollIntoView`], in
     /// the coordinate space of the action's target node.
