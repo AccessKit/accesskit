@@ -18,7 +18,11 @@ use accesskit_consumer::{FilterResult, Node, TreeState};
 use std::sync::{atomic::Ordering, Arc, Weak};
 use windows::{
     core::*,
-    Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
+    Win32::{
+        Foundation::*,
+        System::{Com::*, Variant::*},
+        UI::Accessibility::*,
+    },
 };
 
 use crate::{
@@ -659,6 +663,15 @@ impl PlatformNode {
     }
 }
 
+impl Clone for PlatformNode {
+    fn clone(&self) -> Self {
+        PlatformNode {
+            context: self.context.clone(),
+            node_id: self.node_id,
+        }
+    }
+}
+
 #[allow(non_snake_case)]
 impl IRawElementProviderSimple_Impl for PlatformNode_Impl {
     fn ProviderOptions(&self) -> Result<ProviderOptions> {
@@ -768,8 +781,7 @@ impl IRawElementProviderFragment_Impl for PlatformNode_Impl {
     fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
         self.with_tree_state(|state| {
             if self.is_root(state) {
-                // SAFETY: We know &self is inside a full COM implementation.
-                unsafe { self.cast() }
+                Ok(self.this.clone().into())
             } else {
                 let root_id = state.root_id();
                 Ok(self.relative(root_id).into())
@@ -857,8 +869,7 @@ macro_rules! patterns {
                     match pattern_id {
                         $($pattern_id => {
                             if wrapper.$is_supported() {
-                                // SAFETY: We know we're running inside a full COM implementation.
-                                let intermediate: $provider_interface = unsafe { self.cast() }?;
+                                let intermediate: $provider_interface = self.clone().into();
                                 return intermediate.cast();
                             }
                         })*
@@ -1031,7 +1042,7 @@ patterns! {
             Ok(std::ptr::null_mut())
         },
 
-        fn RangeFromChild(&self, _child: Option<&IRawElementProviderSimple>) -> Result<ITextRangeProvider> {
+        fn RangeFromChild(&self, _child: Ref<IRawElementProviderSimple>) -> Result<ITextRangeProvider> {
             // We don't support embedded objects in text.
             Err(not_implemented())
         },

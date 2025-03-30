@@ -91,7 +91,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             unsafe { DefWindowProcW(window, message, wparam, lparam) }
         }
         WM_PAINT => {
-            unsafe { ValidateRect(window, None) }.unwrap();
+            unsafe { ValidateRect(Some(window), None) }.unwrap();
             LRESULT(0)
         }
         WM_DESTROY => {
@@ -142,6 +142,7 @@ fn create_window(
         activation_handler: Box::new(activation_handler),
         action_handler: Arc::new(ActionHandlerWrapper::new(action_handler)),
     });
+    let module = HINSTANCE::from(unsafe { GetModuleHandleW(None)? });
 
     let window = unsafe {
         CreateWindowExW(
@@ -155,7 +156,7 @@ fn create_window(
             CW_USEDEFAULT,
             None,
             None,
-            GetModuleHandleW(None).unwrap(),
+            Some(module),
             Some(Box::into_raw(create_params) as _),
         )?
     };
@@ -213,7 +214,7 @@ where
             }
 
             let mut message = MSG::default();
-            while unsafe { GetMessageW(&mut message, HWND::default(), 0, 0) }.into() {
+            while unsafe { GetMessageW(&mut message, None, 0, 0) }.into() {
                 let _ = unsafe { TranslateMessage(&message) };
                 unsafe { DispatchMessageW(&message) };
             }
@@ -230,7 +231,7 @@ where
         };
 
         let _window_guard = scopeguard::guard((), |_| {
-            unsafe { PostMessageW(window.0, WM_CLOSE, WPARAM(0), LPARAM(0)) }.unwrap()
+            unsafe { PostMessageW(Some(window.0), WM_CLOSE, WPARAM(0), LPARAM(0)) }.unwrap()
         });
 
         // We must initialize COM before creating the UIA client. The MTA option
@@ -326,7 +327,7 @@ impl FocusEventHandler {
 
 #[allow(non_snake_case)]
 impl IUIAutomationFocusChangedEventHandler_Impl for FocusEventHandler_Impl {
-    fn HandleFocusChangedEvent(&self, sender: Option<&IUIAutomationElement>) -> Result<()> {
+    fn HandleFocusChangedEvent(&self, sender: Ref<IUIAutomationElement>) -> Result<()> {
         self.received.put(sender.unwrap().clone());
         Ok(())
     }

@@ -38,7 +38,7 @@ impl Write for WideString {
 
 impl From<WideString> for BSTR {
     fn from(value: WideString) -> Self {
-        Self::from_wide(&value.0).unwrap()
+        Self::from_wide(&value.0)
     }
 }
 
@@ -199,8 +199,8 @@ pub(crate) fn invalid_arg() -> Error {
     E_INVALIDARG.into()
 }
 
-pub(crate) fn required_param<T>(param: Option<&T>) -> Result<&T> {
-    param.map_or_else(|| Err(invalid_arg()), Ok)
+pub(crate) fn required_param<'a, T: Interface>(param: &'a Ref<T>) -> Result<&'a T> {
+    param.ok().map_err(|_| invalid_arg())
 }
 
 pub(crate) fn element_not_available() -> Error {
@@ -248,7 +248,7 @@ pub(crate) fn window_title(hwnd: WindowHandle) -> Option<BSTR> {
     }
     let len = result.0 as usize;
     unsafe { buffer.set_len(len) };
-    Some(BSTR::from_wide(&buffer).unwrap())
+    Some(BSTR::from_wide(&buffer))
 }
 
 pub(crate) fn toolkit_description(state: &TreeState) -> Option<WideString> {
