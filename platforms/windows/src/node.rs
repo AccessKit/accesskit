@@ -18,7 +18,11 @@ use accesskit_consumer::{FilterResult, Node, TreeState};
 use std::sync::{atomic::Ordering, Arc, Weak};
 use windows::{
     core::*,
-    Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
+    Win32::{
+        Foundation::*,
+        System::{Com::*, Variant::*},
+        UI::Accessibility::*,
+    },
 };
 
 use crate::{
@@ -768,8 +772,7 @@ impl IRawElementProviderFragment_Impl for PlatformNode_Impl {
     fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
         self.with_tree_state(|state| {
             if self.is_root(state) {
-                // SAFETY: We know &self is inside a full COM implementation.
-                unsafe { self.cast() }
+                Ok(self.to_interface())
             } else {
                 let root_id = state.root_id();
                 Ok(self.relative(root_id).into())
@@ -850,15 +853,14 @@ macro_rules! patterns {
     ), (
         $($extra_trait_method:item),*
     ))),+) => {
-        impl PlatformNode {
+        impl PlatformNode_Impl {
             fn pattern_provider(&self, pattern_id: UIA_PATTERN_ID) -> Result<IUnknown> {
                 self.resolve(|node| {
                     let wrapper = NodeWrapper(&node);
                     match pattern_id {
                         $($pattern_id => {
                             if wrapper.$is_supported() {
-                                // SAFETY: We know we're running inside a full COM implementation.
-                                let intermediate: $provider_interface = unsafe { self.cast() }?;
+                                let intermediate: $provider_interface = self.to_interface();
                                 return intermediate.cast();
                             }
                         })*
@@ -1031,7 +1033,7 @@ patterns! {
             Ok(std::ptr::null_mut())
         },
 
-        fn RangeFromChild(&self, _child: Option<&IRawElementProviderSimple>) -> Result<ITextRangeProvider> {
+        fn RangeFromChild(&self, _child: Ref<IRawElementProviderSimple>) -> Result<ITextRangeProvider> {
             // We don't support embedded objects in text.
             Err(not_implemented())
         },

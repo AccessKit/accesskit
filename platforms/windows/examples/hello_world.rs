@@ -197,7 +197,7 @@ impl ActionHandler for SimpleActionHandler {
             Action::Focus => {
                 unsafe {
                     PostMessageW(
-                        self.window,
+                        Some(self.window),
                         SET_FOCUS_MSG,
                         WPARAM(0),
                         LPARAM(request.target.0 as _),
@@ -208,7 +208,7 @@ impl ActionHandler for SimpleActionHandler {
             Action::Click => {
                 unsafe {
                     PostMessageW(
-                        self.window,
+                        Some(self.window),
                         CLICK_MSG,
                         WPARAM(0),
                         LPARAM(request.target.0 as _),
@@ -241,7 +241,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             unsafe { DefWindowProcW(window, message, wparam, lparam) }
         }
         WM_PAINT => {
-            unsafe { ValidateRect(window, None) }.unwrap();
+            unsafe { ValidateRect(Some(window), None) }.unwrap();
             LRESULT(0)
         }
         WM_DESTROY => {
@@ -321,6 +321,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
 
 fn create_window(title: &str, initial_focus: NodeId) -> Result<HWND> {
     let create_params = Box::new(WindowCreateParams(initial_focus));
+    let module = HINSTANCE::from(unsafe { GetModuleHandleW(None)? });
 
     let window = unsafe {
         CreateWindowExW(
@@ -334,7 +335,7 @@ fn create_window(title: &str, initial_focus: NodeId) -> Result<HWND> {
             CW_USEDEFAULT,
             None,
             None,
-            GetModuleHandleW(None).unwrap(),
+            Some(module),
             Some(Box::into_raw(create_params) as _),
         )?
     };
@@ -355,7 +356,7 @@ fn main() -> Result<()> {
     let _ = unsafe { ShowWindow(window, SW_SHOW) };
 
     let mut message = MSG::default();
-    while unsafe { GetMessageW(&mut message, HWND::default(), 0, 0) }.into() {
+    while unsafe { GetMessageW(&mut message, None, 0, 0) }.into() {
         let _ = unsafe { TranslateMessage(&message) };
         unsafe { DispatchMessageW(&message) };
     }

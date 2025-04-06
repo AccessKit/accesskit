@@ -12,7 +12,10 @@ use accesskit_consumer::{
 use std::sync::{Arc, RwLock, Weak};
 use windows::{
     core::*,
-    Win32::{Foundation::*, System::Com::*, UI::Accessibility::*},
+    Win32::{
+        System::{Com::*, Variant::*},
+        UI::Accessibility::*,
+    },
 };
 
 use crate::{context::Context, node::PlatformNode, util::*};
@@ -328,8 +331,8 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
         Ok(self.this.clone().into())
     }
 
-    fn Compare(&self, other: Option<&ITextRangeProvider>) -> Result<BOOL> {
-        let other = unsafe { required_param(other)?.as_impl() };
+    fn Compare(&self, other: Ref<ITextRangeProvider>) -> Result<BOOL> {
+        let other = unsafe { required_param(&other)?.as_impl() };
         Ok((self.context.ptr_eq(&other.context)
             && *self.state.read().unwrap() == *other.state.read().unwrap())
         .into())
@@ -338,10 +341,10 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
     fn CompareEndpoints(
         &self,
         endpoint: TextPatternRangeEndpoint,
-        other: Option<&ITextRangeProvider>,
+        other: Ref<ITextRangeProvider>,
         other_endpoint: TextPatternRangeEndpoint,
     ) -> Result<i32> {
-        let other = unsafe { required_param(other)?.as_impl() };
+        let other = unsafe { required_param(&other)?.as_impl() };
         if std::ptr::eq(other as *const _, &self.this as *const _) {
             // Comparing endpoints within the same range can be done
             // safely without upgrading the range. This allows ATs
@@ -531,10 +534,10 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
     fn MoveEndpointByRange(
         &self,
         endpoint: TextPatternRangeEndpoint,
-        other: Option<&ITextRangeProvider>,
+        other: Ref<ITextRangeProvider>,
         other_endpoint: TextPatternRangeEndpoint,
     ) -> Result<()> {
-        let other = unsafe { required_param(other)?.as_impl() };
+        let other = unsafe { required_param(&other)?.as_impl() };
         self.require_same_context(other)?;
         // We have to obtain the tree state and ranges manually to avoid
         // lifetime issues, and work with the two locks in a specific order

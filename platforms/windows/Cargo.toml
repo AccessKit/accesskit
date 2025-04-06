@@ -20,12 +20,11 @@ accesskit = { version = "0.18.0", path = "../../common" }
 accesskit_consumer = { version = "0.27.0", path = "../../consumer" }
 hashbrown = { version = "0.15", default-features = false, features = ["default-hasher"] }
 static_assertions = "1.1.0"
-windows-core = "0.58.0"
+windows-core = "0.61.0"
 
 [dependencies.windows]
-version = "0.58.0"
+version = "0.61.1"
 features = [
-    "implement",
     "Win32_Foundation",
     "Win32_Graphics_Gdi",
     "Win32_System_Com",

@@ -97,7 +97,7 @@ impl SubclassImpl {
             SetPropW(
                 self.hwnd,
                 PROP_NAME,
-                HANDLE(self as *const SubclassImpl as _),
+                Some(HANDLE(self as *const SubclassImpl as _)),
             )
         }
         .unwrap();
