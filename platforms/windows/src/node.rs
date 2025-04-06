@@ -663,15 +663,6 @@ impl PlatformNode {
     }
 }
 
-impl Clone for PlatformNode {
-    fn clone(&self) -> Self {
-        PlatformNode {
-            context: self.context.clone(),
-            node_id: self.node_id,
-        }
-    }
-}
-
 #[allow(non_snake_case)]
 impl IRawElementProviderSimple_Impl for PlatformNode_Impl {
     fn ProviderOptions(&self) -> Result<ProviderOptions> {
@@ -679,7 +670,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode_Impl {
     }
 
     fn GetPatternProvider(&self, pattern_id: UIA_PATTERN_ID) -> Result<IUnknown> {
-        self.pattern_provider(pattern_id)
+        pattern_provider(self, pattern_id)
     }
 
     fn GetPropertyValue(&self, property_id: UIA_PROPERTY_ID) -> Result<VARIANT> {
@@ -781,7 +772,7 @@ impl IRawElementProviderFragment_Impl for PlatformNode_Impl {
     fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
         self.with_tree_state(|state| {
             if self.is_root(state) {
-                Ok(self.this.clone().into())
+                Ok(self.to_interface())
             } else {
                 let root_id = state.root_id();
                 Ok(self.relative(root_id).into())
@@ -862,22 +853,20 @@ macro_rules! patterns {
     ), (
         $($extra_trait_method:item),*
     ))),+) => {
-        impl PlatformNode {
-            fn pattern_provider(&self, pattern_id: UIA_PATTERN_ID) -> Result<IUnknown> {
-                self.resolve(|node| {
-                    let wrapper = NodeWrapper(&node);
-                    match pattern_id {
-                        $($pattern_id => {
-                            if wrapper.$is_supported() {
-                                let intermediate: $provider_interface = self.clone().into();
-                                return intermediate.cast();
-                            }
-                        })*
-                        _ => (),
-                    }
-                    Err(Error::empty())
-                })
-            }
+        fn pattern_provider(obj: &PlatformNode_Impl, pattern_id: UIA_PATTERN_ID) -> Result<IUnknown> {
+            obj.resolve(|node| {
+                let wrapper = NodeWrapper(&node);
+                match pattern_id {
+                    $($pattern_id => {
+                        if wrapper.$is_supported() {
+                            let intermediate: $provider_interface = obj.to_interface();
+                            return intermediate.cast();
+                        }
+                    })*
+                    _ => (),
+                }
+                Err(Error::empty())
+            })
         }
         impl NodeWrapper<'_> {
             fn enqueue_pattern_property_changes(
