@@ -884,23 +884,6 @@ impl Default for PropertyIndices {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-struct FrozenProperties {
-    indices: PropertyIndices,
-    values: Box<[PropertyValue]>,
-}
-
-/// An accessibility node snapshot that can't be modified. This is not used by
-/// toolkits or applications, but only by code that retains an AccessKit tree
-/// in memory, such as the `accesskit_consumer` crate.
-#[derive(Clone, PartialEq)]
-pub struct FrozenNode {
-    role: Role,
-    actions: u32,
-    flags: u32,
-    properties: FrozenProperties,
-}
-
 #[derive(Clone, Debug, Default, PartialEq)]
 struct Properties {
     indices: PropertyIndices,
@@ -974,31 +957,8 @@ impl Properties {
     }
 }
 
-impl From<Properties> for FrozenProperties {
-    fn from(props: Properties) -> Self {
-        Self {
-            indices: props.indices,
-            values: props.values.into_boxed_slice(),
-        }
-    }
-}
-
 macro_rules! flag_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        impl FrozenNode {
-            $($(#[$doc])*
-            #[inline]
-            pub fn $getter(&self) -> bool {
-                (self.flags & (Flag::$id).mask()) != 0
-            })*
-            fn debug_flag_properties(&self, fmt: &mut fmt::DebugStruct) {
-                $(
-                    if self.$getter() {
-                        fmt.field(stringify!($getter), &true);
-                    }
-                )*
-            }
-        }
         impl Node {
             $($(#[$doc])*
             #[inline]
@@ -1109,13 +1069,6 @@ macro_rules! vec_type_methods {
 
 macro_rules! property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $type_getter:ident, $getter_result:ty, $setter:ident, $type_setter:ident, $setter_param:ty, $clearer:ident)),+) => {
-        impl FrozenNode {
-            $($(#[$doc])*
-            #[inline]
-            pub fn $getter(&self) -> $getter_result {
-                self.properties.indices.$type_getter(&self.properties.values, PropertyId::$id)
-            })*
-        }
         impl Node {
             $($(#[$doc])*
             #[inline]
@@ -1168,9 +1121,6 @@ macro_rules! node_id_vec_property_methods {
             $(#[$doc])*
             ($id, NodeId, $getter, get_node_id_vec, $setter, set_node_id_vec, $pusher, push_to_node_id_vec, $clearer)
         })*
-        impl FrozenNode {
-            slice_properties_debug_method! { debug_node_id_vec_properties, [$($getter,)*] }
-        }
         impl Node {
             slice_properties_debug_method! { debug_node_id_vec_properties, [$($getter,)*] }
         }
@@ -1195,9 +1145,6 @@ macro_rules! node_id_property_methods {
             $(#[$doc])*
             ($id, $getter, get_node_id_property, Option<NodeId>, $setter, set_node_id_property, NodeId, $clearer)
         })*
-        impl FrozenNode {
-            option_properties_debug_method! { debug_node_id_properties, [$($getter,)*] }
-        }
         impl Node {
             option_properties_debug_method! { debug_node_id_properties, [$($getter,)*] }
         }
@@ -1210,9 +1157,6 @@ macro_rules! string_property_methods {
             $(#[$doc])*
             ($id, $getter, get_string_property, Option<&str>, $setter, set_string_property, impl Into<Box<str>>, $clearer)
         })*
-        impl FrozenNode {
-            option_properties_debug_method! { debug_string_properties, [$($getter,)*] }
-        }
         impl Node {
             option_properties_debug_method! { debug_string_properties, [$($getter,)*] }
         }
@@ -1225,9 +1169,6 @@ macro_rules! f64_property_methods {
             $(#[$doc])*
             ($id, $getter, get_f64_property, Option<f64>, $setter, set_f64_property, f64, $clearer)
         })*
-        impl FrozenNode {
-            option_properties_debug_method! { debug_f64_properties, [$($getter,)*] }
-        }
         impl Node {
             option_properties_debug_method! { debug_f64_properties, [$($getter,)*] }
         }
@@ -1240,9 +1181,6 @@ macro_rules! usize_property_methods {
             $(#[$doc])*
             ($id, $getter, get_usize_property, Option<usize>, $setter, set_usize_property, usize, $clearer)
         })*
-        impl FrozenNode {
-            option_properties_debug_method! { debug_usize_properties, [$($getter,)*] }
-        }
         impl Node {
             option_properties_debug_method! { debug_usize_properties, [$($getter,)*] }
         }
@@ -1255,9 +1193,6 @@ macro_rules! color_property_methods {
             $(#[$doc])*
             ($id, $getter, get_color_property, Option<u32>, $setter, set_color_property, u32, $clearer)
         })*
-        impl FrozenNode {
-            option_properties_debug_method! { debug_color_properties, [$($getter,)*] }
-        }
         impl Node {
             option_properties_debug_method! { debug_color_properties, [$($getter,)*] }
         }
@@ -1270,9 +1205,6 @@ macro_rules! text_decoration_property_methods {
             $(#[$doc])*
             ($id, $getter, get_text_decoration_property, Option<TextDecoration>, $setter, set_text_decoration_property, TextDecoration, $clearer)
         })*
-        impl FrozenNode {
-            option_properties_debug_method! { debug_text_decoration_properties, [$($getter,)*] }
-        }
         impl Node {
             option_properties_debug_method! { debug_text_decoration_properties, [$($getter,)*] }
         }
@@ -1285,9 +1217,6 @@ macro_rules! length_slice_property_methods {
             $(#[$doc])*
             ($id, $getter, get_length_slice_property, &[u8], $setter, set_length_slice_property, impl Into<Box<[u8]>>, $clearer)
         })*
-        impl FrozenNode {
-            slice_properties_debug_method! { debug_length_slice_properties, [$($getter,)*] }
-        }
         impl Node {
             slice_properties_debug_method! { debug_length_slice_properties, [$($getter,)*] }
         }
@@ -1300,9 +1229,6 @@ macro_rules! coord_slice_property_methods {
             $(#[$doc])*
             ($id, $getter, get_coord_slice_property, Option<&[f32]>, $setter, set_coord_slice_property, impl Into<Box<[f32]>>, $clearer)
         })*
-        impl FrozenNode {
-            option_properties_debug_method! { debug_coord_slice_properties, [$($getter,)*] }
-        }
         impl Node {
             option_properties_debug_method! { debug_coord_slice_properties, [$($getter,)*] }
         }
@@ -1315,9 +1241,6 @@ macro_rules! bool_property_methods {
             $(#[$doc])*
             ($id, $getter, get_bool_property, Option<bool>, $setter, set_bool_property, bool, $clearer)
         })*
-        impl FrozenNode {
-            option_properties_debug_method! { debug_bool_properties, [$($getter,)*] }
-        }
         impl Node {
             option_properties_debug_method! { debug_bool_properties, [$($getter,)*] }
         }
@@ -1326,18 +1249,6 @@ macro_rules! bool_property_methods {
 
 macro_rules! unique_enum_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
-        impl FrozenNode {
-            $($(#[$doc])*
-            #[inline]
-            pub fn $getter(&self) -> Option<$id> {
-                match self.properties.indices.get(&self.properties.values, PropertyId::$id) {
-                    PropertyValue::None => None,
-                    PropertyValue::$id(value) => Some(*value),
-                    _ => unexpected_property_type(),
-                }
-            })*
-            option_properties_debug_method! { debug_unique_enum_properties, [$($getter,)*] }
-        }
         impl Node {
             $($(#[$doc])*
             #[inline]
@@ -1371,38 +1282,6 @@ impl Node {
     }
 }
 
-impl From<Node> for FrozenNode {
-    fn from(node: Node) -> Self {
-        Self {
-            role: node.role,
-            actions: node.actions,
-            flags: node.flags,
-            properties: node.properties.into(),
-        }
-    }
-}
-
-impl From<&FrozenNode> for Node {
-    fn from(node: &FrozenNode) -> Self {
-        Self {
-            role: node.role,
-            actions: node.actions,
-            flags: node.flags,
-            properties: Properties {
-                indices: node.properties.indices,
-                values: node.properties.values.to_vec(),
-            },
-        }
-    }
-}
-
-impl FrozenNode {
-    #[inline]
-    pub fn role(&self) -> Role {
-        self.role
-    }
-}
-
 impl Node {
     #[inline]
     pub fn role(&self) -> Role {
@@ -1412,16 +1291,7 @@ impl Node {
     pub fn set_role(&mut self, value: Role) {
         self.role = value;
     }
-}
 
-impl FrozenNode {
-    #[inline]
-    pub fn supports_action(&self, action: Action) -> bool {
-        (self.actions & action.mask()) != 0
-    }
-}
-
-impl Node {
     #[inline]
     pub fn supports_action(&self, action: Action) -> bool {
         (self.actions & action.mask()) != 0
@@ -1806,50 +1676,12 @@ property_methods! {
     (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, impl Into<Box<TextSelection>>, clear_text_selection)
 }
 
-impl FrozenNode {
-    option_properties_debug_method! { debug_option_properties, [transform, bounds, text_selection,] }
-}
-
 impl Node {
     option_properties_debug_method! { debug_option_properties, [transform, bounds, text_selection,] }
 }
 
 vec_property_methods! {
     (CustomActions, CustomAction, custom_actions, get_custom_action_vec, set_custom_actions, set_custom_action_vec, push_custom_action, push_to_custom_action_vec, clear_custom_actions)
-}
-
-impl fmt::Debug for FrozenNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut fmt = f.debug_struct("FrozenNode");
-
-        fmt.field("role", &self.role());
-
-        let supported_actions = action_mask_to_action_vec(self.actions);
-        if !supported_actions.is_empty() {
-            fmt.field("actions", &supported_actions);
-        }
-
-        self.debug_flag_properties(&mut fmt);
-        self.debug_node_id_vec_properties(&mut fmt);
-        self.debug_node_id_properties(&mut fmt);
-        self.debug_string_properties(&mut fmt);
-        self.debug_f64_properties(&mut fmt);
-        self.debug_usize_properties(&mut fmt);
-        self.debug_color_properties(&mut fmt);
-        self.debug_text_decoration_properties(&mut fmt);
-        self.debug_length_slice_properties(&mut fmt);
-        self.debug_coord_slice_properties(&mut fmt);
-        self.debug_bool_properties(&mut fmt);
-        self.debug_unique_enum_properties(&mut fmt);
-        self.debug_option_properties(&mut fmt);
-
-        let custom_actions = self.custom_actions();
-        if !custom_actions.is_empty() {
-            fmt.field("custom_actions", &custom_actions);
-        }
-
-        fmt.finish()
-    }
 }
 
 impl fmt::Debug for Node {

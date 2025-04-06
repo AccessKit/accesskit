@@ -9,8 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, Affine, FrozenNode as NodeData, Live, NodeId, Orientation, Point, Rect, Role,
-    TextSelection, Toggled,
+    Action, Affine, Live, Node as NodeData, NodeId, Orientation, Point, Rect, Role, TextSelection,
+    Toggled,
 };
 use alloc::{
     string::{String, ToString},
