@@ -4,16 +4,15 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{FrozenNode as NodeData, NodeId, Tree as TreeData, TreeUpdate};
-use alloc::{sync::Arc, vec};
+use alloc::vec;
 use core::fmt;
 use hashbrown::{HashMap, HashSet};
-use immutable_chunkmap::map::MapM as ChunkMap;
 
 use crate::node::{Node, NodeState, ParentAndIndex};
 
 #[derive(Clone, Debug)]
 pub struct State {
-    pub(crate) nodes: ChunkMap<NodeId, NodeState>,
+    pub(crate) nodes: HashMap<NodeId, NodeState>,
     pub(crate) data: TreeData,
     pub(crate) focus: NodeId,
     is_host_focused: bool,
@@ -28,10 +27,10 @@ struct InternalChanges {
 
 impl State {
     fn validate_global(&self) {
-        if self.nodes.get_key(&self.data.root).is_none() {
+        if !self.nodes.contains_key(&self.data.root) {
             panic!("Root id #{} is not in the node list", self.data.root.0);
         }
-        if self.nodes.get_key(&self.focus).is_none() {
+        if !self.nodes.contains_key(&self.focus) {
             panic!("Focused id #{} is not in the node list", self.focus.0);
         }
     }
@@ -56,7 +55,7 @@ impl State {
         let mut pending_children = HashMap::new();
 
         fn add_node(
-            nodes: &mut ChunkMap<NodeId, NodeState>,
+            nodes: &mut HashMap<NodeId, NodeState>,
             changes: &mut Option<&mut InternalChanges>,
             parent_and_index: Option<ParentAndIndex>,
             id: NodeId,
@@ -64,9 +63,9 @@ impl State {
         ) {
             let state = NodeState {
                 parent_and_index,
-                data: Arc::new(data),
+                data,
             };
-            nodes.insert_cow(id, state);
+            nodes.insert(id, state);
             if let Some(changes) = changes {
                 changes.added_node_ids.insert(id);
             }
@@ -87,9 +86,12 @@ impl State {
                 }
                 unreachable.remove(child_id);
                 let parent_and_index = ParentAndIndex(node_id, child_index);
-                if let Some(child_state) = self.nodes.get_mut_cow(child_id) {
+                if let Some(child_state) = self.nodes.get_mut(child_id) {
                     if child_state.parent_and_index != Some(parent_and_index) {
                         child_state.parent_and_index = Some(parent_and_index);
+                        if let Some(changes) = &mut changes {
+                            changes.updated_node_ids.insert(*child_id);
+                        }
                     }
                 } else if let Some(child_data) = pending_nodes.remove(child_id) {
                     add_node(
@@ -105,7 +107,7 @@ impl State {
                 seen_child_ids.insert(*child_id);
             }
 
-            if let Some(node_state) = self.nodes.get_mut_cow(&node_id) {
+            if let Some(node_state) = self.nodes.get_mut(&node_id) {
                 if node_id == root {
                     node_state.parent_and_index = None;
                 }
@@ -114,8 +116,8 @@ impl State {
                         unreachable.insert(*child_id);
                     }
                 }
-                if *node_state.data != node_data {
-                    node_state.data = Arc::new(node_data);
+                if node_state.data != node_data {
+                    node_state.data.clone_from(&node_data);
                     if let Some(changes) = &mut changes {
                         changes.updated_node_ids.insert(node_id);
                     }
@@ -147,14 +149,14 @@ impl State {
 
         if !unreachable.is_empty() {
             fn traverse_unreachable(
-                nodes: &mut ChunkMap<NodeId, NodeState>,
+                nodes: &mut HashMap<NodeId, NodeState>,
                 changes: &mut Option<&mut InternalChanges>,
                 id: NodeId,
             ) {
                 if let Some(changes) = changes {
                     changes.removed_node_ids.insert(id);
                 }
-                let node = nodes.remove_cow(&id).unwrap();
+                let node = nodes.remove(&id).unwrap();
                 for child_id in node.data.children().iter() {
                     traverse_unreachable(nodes, changes, *child_id);
                 }
@@ -240,6 +242,7 @@ pub trait ChangeHandler {
 #[derive(Debug)]
 pub struct Tree {
     state: State,
+    next_state: State,
 }
 
 impl Tree {
@@ -248,17 +251,16 @@ impl Tree {
             panic!("Tried to initialize the accessibility tree without a root tree. TreeUpdate::tree must be Some.");
         };
         let mut state = State {
-            nodes: ChunkMap::new(),
+            nodes: HashMap::new(),
             data: tree,
             focus: initial_state.focus,
             is_host_focused,
         };
         state.update(initial_state, is_host_focused, None);
-        Self { state }
-    }
-
-    pub fn update(&mut self, update: TreeUpdate) {
-        self.state.update(update, self.state.is_host_focused, None);
+        Self {
+            next_state: state.clone(),
+            state,
+        }
     }
 
     pub fn update_and_process_changes(
@@ -267,14 +269,9 @@ impl Tree {
         handler: &mut impl ChangeHandler,
     ) {
         let mut changes = InternalChanges::default();
-        let old_state = self.state.clone();
-        self.state
+        self.next_state
             .update(update, self.state.is_host_focused, Some(&mut changes));
-        self.process_changes(old_state, changes, handler);
-    }
-
-    pub fn update_host_focus_state(&mut self, is_host_focused: bool) {
-        self.state.update_host_focus_state(is_host_focused, None);
+        self.process_changes(changes, handler);
     }
 
     pub fn update_host_focus_state_and_process_changes(
@@ -283,45 +280,39 @@ impl Tree {
         handler: &mut impl ChangeHandler,
     ) {
         let mut changes = InternalChanges::default();
-        let old_state = self.state.clone();
-        self.state
+        self.next_state
             .update_host_focus_state(is_host_focused, Some(&mut changes));
-        self.process_changes(old_state, changes, handler);
+        self.process_changes(changes, handler);
     }
 
-    fn process_changes(
-        &self,
-        old_state: State,
-        changes: InternalChanges,
-        handler: &mut impl ChangeHandler,
-    ) {
+    fn process_changes(&mut self, changes: InternalChanges, handler: &mut impl ChangeHandler) {
         for id in &changes.added_node_ids {
-            let node = self.state.node_by_id(*id).unwrap();
+            let node = self.next_state.node_by_id(*id).unwrap();
             handler.node_added(&node);
         }
         for id in &changes.updated_node_ids {
-            let old_node = old_state.node_by_id(*id).unwrap();
-            let new_node = self.state.node_by_id(*id).unwrap();
+            let old_node = self.state.node_by_id(*id).unwrap();
+            let new_node = self.next_state.node_by_id(*id).unwrap();
             handler.node_updated(&old_node, &new_node);
         }
-        if old_state.focus_id() != self.state.focus_id() {
-            let old_node = old_state.focus();
+        if self.state.focus_id() != self.next_state.focus_id() {
+            let old_node = self.state.focus();
             if let Some(old_node) = &old_node {
                 let id = old_node.id();
                 if !changes.updated_node_ids.contains(&id)
                     && !changes.removed_node_ids.contains(&id)
                 {
-                    if let Some(old_node_new_version) = self.state.node_by_id(id) {
+                    if let Some(old_node_new_version) = self.next_state.node_by_id(id) {
                         handler.node_updated(old_node, &old_node_new_version);
                     }
                 }
             }
-            let new_node = self.state.focus();
+            let new_node = self.next_state.focus();
             if let Some(new_node) = &new_node {
                 let id = new_node.id();
                 if !changes.added_node_ids.contains(&id) && !changes.updated_node_ids.contains(&id)
                 {
-                    if let Some(new_node_old_version) = old_state.node_by_id(id) {
+                    if let Some(new_node_old_version) = self.state.node_by_id(id) {
                         handler.node_updated(&new_node_old_version, new_node);
                     }
                 }
@@ -329,9 +320,29 @@ impl Tree {
             handler.focus_moved(old_node.as_ref(), new_node.as_ref());
         }
         for id in &changes.removed_node_ids {
-            let node = old_state.node_by_id(*id).unwrap();
+            let node = self.state.node_by_id(*id).unwrap();
             handler.node_removed(&node);
         }
+        for id in changes.added_node_ids {
+            self.state
+                .nodes
+                .insert(id, self.next_state.nodes.get(&id).unwrap().clone());
+        }
+        for id in changes.updated_node_ids {
+            self.state
+                .nodes
+                .get_mut(&id)
+                .unwrap()
+                .clone_from(self.next_state.nodes.get(&id).unwrap());
+        }
+        for id in changes.removed_node_ids {
+            self.state.nodes.remove(&id);
+        }
+        if self.state.data != self.next_state.data {
+            self.state.data.clone_from(&self.next_state.data);
+        }
+        self.state.focus = self.next_state.focus;
+        self.state.is_host_focused = self.next_state.is_host_focused;
     }
 
     pub fn state(&self) -> &State {

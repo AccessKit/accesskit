@@ -14,7 +14,6 @@ use accesskit::{
 };
 use alloc::{
     string::{String, ToString},
-    sync::Arc,
     vec::Vec,
 };
 use core::{fmt, iter::FusedIterator};
@@ -32,7 +31,7 @@ pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
 #[derive(Clone, Debug)]
 pub(crate) struct NodeState {
     pub(crate) parent_and_index: Option<ParentAndIndex>,
-    pub(crate) data: Arc<NodeData>,
+    pub(crate) data: NodeData,
 }
 
 #[derive(Copy, Clone)]
