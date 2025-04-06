@@ -670,7 +670,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode_Impl {
     }
 
     fn GetPatternProvider(&self, pattern_id: UIA_PATTERN_ID) -> Result<IUnknown> {
-        pattern_provider(self, pattern_id)
+        self.pattern_provider(pattern_id)
     }
 
     fn GetPropertyValue(&self, property_id: UIA_PROPERTY_ID) -> Result<VARIANT> {
@@ -853,20 +853,22 @@ macro_rules! patterns {
     ), (
         $($extra_trait_method:item),*
     ))),+) => {
-        fn pattern_provider(obj: &PlatformNode_Impl, pattern_id: UIA_PATTERN_ID) -> Result<IUnknown> {
-            obj.resolve(|node| {
-                let wrapper = NodeWrapper(&node);
-                match pattern_id {
-                    $($pattern_id => {
-                        if wrapper.$is_supported() {
-                            let intermediate: $provider_interface = obj.to_interface();
-                            return intermediate.cast();
-                        }
-                    })*
-                    _ => (),
-                }
-                Err(Error::empty())
-            })
+        impl PlatformNode_Impl {
+            fn pattern_provider(&self, pattern_id: UIA_PATTERN_ID) -> Result<IUnknown> {
+                self.resolve(|node| {
+                    let wrapper = NodeWrapper(&node);
+                    match pattern_id {
+                        $($pattern_id => {
+                            if wrapper.$is_supported() {
+                                let intermediate: $provider_interface = self.to_interface();
+                                return intermediate.cast();
+                            }
+                        })*
+                        _ => (),
+                    }
+                    Err(Error::empty())
+                })
+            }
         }
         impl NodeWrapper<'_> {
             fn enqueue_pattern_property_changes(
