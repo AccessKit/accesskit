@@ -16,7 +16,7 @@ features = ["schemars", "serde"]
 
 [dependencies]
 enumn = { version = "0.1.6", optional = true }
-pyo3 = { version = "0.23", optional = true }
+pyo3 = { version = "0.24", optional = true }
 schemars = { version = "0.8.7", optional = true }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"], optional = true }
 
