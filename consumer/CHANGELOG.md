@@ -24,6 +24,26 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.28.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.27.0...accesskit_consumer-v0.28.0) (2025-04-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop `FrozenNode` ([#496](https://github.com/AccessKit/accesskit/issues/496))
+* Replace `immutable-chunkmap` with dual tree states ([#495](https://github.com/AccessKit/accesskit/issues/495))
+
+### Code Refactoring
+
+* Drop `FrozenNode` ([#496](https://github.com/AccessKit/accesskit/issues/496)) ([f8c0d0a](https://github.com/AccessKit/accesskit/commit/f8c0d0a6fc9613cf1a2a6d8cfba11ebc892dfeb8))
+* Replace `immutable-chunkmap` with dual tree states ([#495](https://github.com/AccessKit/accesskit/issues/495)) ([a74dbfc](https://github.com/AccessKit/accesskit/commit/a74dbfcd2d30f9fbec781db811243ec070cbf8c5))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.18.0 to 0.19.0
+
 ## [0.27.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.26.0...accesskit_consumer-v0.27.0) (2025-03-06)
 
 
