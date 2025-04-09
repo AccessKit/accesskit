@@ -696,7 +696,6 @@ pub struct TextSelection {
 #[repr(u8)]
 enum Flag {
     Hidden,
-    Linked,
     Multiselectable,
     Required,
     Visited,
@@ -1314,7 +1313,6 @@ flag_methods! {
     /// Exclude this node and its descendants from the tree presented to
     /// assistive technologies, and from hit testing.
     (Hidden, is_hidden, set_hidden, clear_hidden),
-    (Linked, is_linked, set_linked, clear_linked),
     (Multiselectable, is_multiselectable, set_multiselectable, clear_multiselectable),
     (Required, is_required, set_required, clear_required),
     (Visited, is_visited, set_visited, clear_visited),
