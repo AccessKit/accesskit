@@ -24,6 +24,21 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_consumer bumped from 0.25.0 to 0.26.0
 
+## [0.11.1](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.11.0...accesskit_atspi_common-v0.11.1) (2025-04-09)
+
+
+### Bug Fixes
+
+* Fix a compilation error in atspi-common `Event::new` ([#537](https://github.com/AccessKit/accesskit/issues/537)) ([23b4d8d](https://github.com/AccessKit/accesskit/commit/23b4d8d49fed378899855a40e63aff10e829f6e8))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.18.0 to 0.19.0
+    * accesskit_consumer bumped from 0.27.0 to 0.28.0
+
 ## [0.11.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.10.1...accesskit_atspi_common-v0.11.0) (2025-03-06)
 
 
