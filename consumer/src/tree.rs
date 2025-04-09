@@ -28,10 +28,10 @@ struct InternalChanges {
 impl State {
     fn validate_global(&self) {
         if !self.nodes.contains_key(&self.data.root) {
-            panic!("Root id #{} is not in the node list", self.data.root.0);
+            panic!("Root ID {:?} is not in the node list", self.data.root);
         }
         if !self.nodes.contains_key(&self.focus) {
-            panic!("Focused id #{} is not in the node list", self.focus.0);
+            panic!("Focused ID {:?} is not in the node list", self.focus);
         }
     }
 
@@ -78,8 +78,8 @@ impl State {
             for (child_index, child_id) in node_data.children().iter().enumerate() {
                 if seen_child_ids.contains(child_id) {
                     panic!(
-                        "Node #{} of TreeUpdate includes duplicate child #{};",
-                        node_id.0, child_id.0
+                        "Node {:?} of TreeUpdate includes duplicate child {:?};",
+                        node_id, child_id
                     );
                 }
                 unreachable.remove(child_id);
@@ -139,7 +139,7 @@ impl State {
             panic!("TreeUpdate includes {} nodes which are neither in the current tree nor a child of another node from the update: {}", pending_nodes.len(), ShortNodeList(&pending_nodes));
         }
         if !pending_children.is_empty() {
-            panic!("TreeUpdate's nodes include {} children ids which are neither in the current tree nor the id of another node from the update: {}", pending_children.len(), ShortNodeList(&pending_children));
+            panic!("TreeUpdate's nodes include {} children ids which are neither in the current tree nor the ID of another node from the update: {}", pending_children.len(), ShortNodeList(&pending_children));
         }
 
         self.focus = update.focus;
@@ -361,7 +361,7 @@ impl<T> fmt::Display for ShortNodeList<'_, T> {
             if i != 0 {
                 write!(f, ", ")?;
             }
-            write!(f, "#{}", id.0)?;
+            write!(f, "{:?}", id)?;
         }
         if iter.next().is_some() {
             write!(f, " ...")?;
