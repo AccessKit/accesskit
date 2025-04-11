@@ -20,7 +20,7 @@ use core::{fmt, iter::FusedIterator};
 
 use crate::filters::FilterResult;
 use crate::iterators::{
-    FilteredChildren, FollowingFilteredSiblings, FollowingSiblings, LabelledBy,
+    Controls, FilteredChildren, FollowingFilteredSiblings, FollowingSiblings, LabelledBy,
     PrecedingFilteredSiblings, PrecedingSiblings,
 };
 use crate::tree::State as TreeState;
@@ -407,6 +407,8 @@ impl<'a> Node<'a> {
         self.data().orientation().or_else(|| {
             if self.role() == Role::ListBox {
                 Some(Orientation::Vertical)
+            } else if self.role() == Role::TabList {
+                Some(Orientation::Horizontal)
             } else {
                 None
             }
@@ -689,6 +691,15 @@ impl<'a> Node<'a> {
                 | Role::Tree
                 | Role::TreeGrid
         )
+    }
+
+    pub fn controls(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+        Controls {
+            ids: self.state.data.controls().iter(),
+            tree_state: self.tree_state,
+        }
     }
 
     pub fn raw_text_selection(&self) -> Option<&TextSelection> {

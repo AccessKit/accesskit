@@ -467,6 +467,35 @@ impl<Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator for LabelledBy<'_, F
 
 impl<Filter: Fn(&Node) -> FilterResult> FusedIterator for LabelledBy<'_, Filter> {}
 
+pub(crate) struct Controls<'a> {
+    pub(crate) ids: core::slice::Iter<'a, NodeId>,
+    pub(crate) tree_state: &'a TreeState,
+}
+
+impl<'a> Iterator for Controls<'a> {
+    type Item = Node<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.ids
+            .next()
+            .map(|id| self.tree_state.node_by_id(*id).unwrap())
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.ids.size_hint()
+    }
+}
+
+impl DoubleEndedIterator for Controls<'_> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.ids
+            .next_back()
+            .map(|id| self.tree_state.node_by_id(*id).unwrap())
+    }
+}
+
+impl FusedIterator for Controls<'_> {}
+
 #[cfg(test)]
 mod tests {
     use crate::tests::*;

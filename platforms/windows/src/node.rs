@@ -446,10 +446,11 @@ impl NodeWrapper<'_> {
     pub(crate) fn enqueue_property_changes(
         &self,
         queue: &mut Vec<QueuedEvent>,
+        platform_node: &PlatformNode,
         element: &IRawElementProviderSimple,
         old: &NodeWrapper,
     ) {
-        self.enqueue_simple_property_changes(queue, element, old);
+        self.enqueue_simple_property_changes(queue, platform_node, element, old);
         self.enqueue_pattern_property_changes(queue, element, old);
         self.enqueue_property_implied_events(queue, element, old);
     }
@@ -692,6 +693,16 @@ impl IRawElementProviderSimple_Impl for PlatformNode_Impl {
                 match property_id {
                     UIA_FrameworkIdPropertyId => result = state.toolkit_name().into(),
                     UIA_ProviderDescriptionPropertyId => result = toolkit_description(state).into(),
+                    UIA_ControllerForPropertyId => {
+                        let controlled: Vec<IUnknown> = node
+                            .controls()
+                            .filter(|controlled| filter(controlled) == FilterResult::Include)
+                            .map(|controlled| self.relative(controlled.id()))
+                            .map(IRawElementProviderSimple::from)
+                            .filter_map(|controlled| controlled.cast::<IUnknown>().ok())
+                            .collect();
+                        result = controlled.into();
+                    }
                     _ => (),
                 }
             }
@@ -826,6 +837,7 @@ macro_rules! properties {
             fn enqueue_simple_property_changes(
                 &self,
                 queue: &mut Vec<QueuedEvent>,
+                platform_node: &PlatformNode,
                 element: &IRawElementProviderSimple,
                 old: &NodeWrapper,
             ) {
@@ -842,6 +854,32 @@ macro_rules! properties {
                         );
                     }
                 })*
+
+                let mut old_controls = old.0.controls().filter(|controlled| filter(controlled) == FilterResult::Include);
+                let mut new_controls = self.0.controls().filter(|controlled| filter(controlled) == FilterResult::Include);
+                let mut are_equal = true;
+                let mut controls: Vec<IUnknown> = Vec::new();
+                loop {
+                    let old_controlled = old_controls.next();
+                    let new_controlled = new_controls.next();
+                    match (old_controlled, new_controlled) {
+                        (Some(a), Some(b)) => {
+                            are_equal = are_equal && a.id() == b.id();
+                            controls.push(platform_node.relative(b.id()).into());
+                        }
+                        (None, None) => break,
+                        _ => are_equal = false,
+                    }
+                }
+                if !are_equal {
+                    self.enqueue_property_change(
+                        queue,
+                        &element,
+                        UIA_ControllerForPropertyId,
+                        Variant::empty(),
+                        controls.into(),
+                    );
+                }
             }
         }
     };

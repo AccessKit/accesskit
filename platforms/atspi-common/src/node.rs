@@ -14,8 +14,8 @@ use accesskit::{
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
 use atspi_common::{
-    CoordType, Granularity, Interface, InterfaceSet, Layer, Politeness, Role as AtspiRole,
-    ScrollType, State, StateSet,
+    CoordType, Granularity, Interface, InterfaceSet, Layer, Politeness, RelationType,
+    Role as AtspiRole, ScrollType, State, StateSet,
 };
 use std::{
     collections::HashMap,
@@ -826,6 +826,25 @@ impl PlatformNode {
         self.resolve(|node| {
             i32::try_from(node.preceding_filtered_siblings(&filter).count())
                 .map_err(|_| Error::IndexOutOfRange)
+        })
+    }
+
+    pub fn relation_set<T>(
+        &self,
+        f: impl Fn(NodeId) -> T,
+    ) -> Result<HashMap<RelationType, Vec<T>>> {
+        self.resolve(|node| {
+            let mut relations = HashMap::new();
+            let controls: Vec<_> = node
+                .controls()
+                .filter(|controlled| filter(controlled) == FilterResult::Include)
+                .map(|controlled| controlled.id())
+                .map(f)
+                .collect();
+            if !controls.is_empty() {
+                relations.insert(RelationType::ControllerFor, controls);
+            }
+            Ok(relations)
         })
     }
 
