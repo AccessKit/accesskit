@@ -145,7 +145,6 @@ mod tests {
         let link_3_1_ignored = {
             let mut node = Node::new(Role::Link);
             node.set_children(vec![LABEL_3_1_0_ID]);
-            node.set_linked();
             node
         };
         let label_3_1_0 = {
