@@ -625,7 +625,7 @@ pub enum TextDecoration {
 pub type NodeIdContent = u64;
 
 /// The stable identity of a [`Node`], unique within the node's tree.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[repr(transparent)]
@@ -642,6 +642,12 @@ impl From<NodeId> for NodeIdContent {
     #[inline]
     fn from(outer: NodeId) -> Self {
         outer.0
+    }
+}
+
+impl fmt::Debug for NodeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "#{}", self.0)
     }
 }
 
