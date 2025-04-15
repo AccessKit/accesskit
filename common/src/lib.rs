@@ -544,7 +544,6 @@ pub enum Live {
 )]
 #[repr(u8)]
 pub enum HasPopup {
-    True,
     Menu,
     Listbox,
     Tree,
