@@ -67,7 +67,11 @@ impl NodeWrapper<'_> {
     }
 
     pub(crate) fn text(&self) -> Option<String> {
-        self.0.value()
+        self.0.value().or_else(|| {
+            self.0
+                .supports_text_ranges()
+                .then(|| self.0.document_range().text())
+        })
     }
 
     pub(crate) fn text_selection(&self) -> Option<(usize, usize)> {
