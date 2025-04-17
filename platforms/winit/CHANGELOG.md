@@ -147,6 +147,28 @@
     * accesskit_macos bumped from 0.18.0 to 0.18.1
     * accesskit_unix bumped from 0.13.0 to 0.13.1
 
+## [0.27.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.26.0...accesskit_winit-v0.27.0) (2025-04-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop redundant `HasPopup::True` ([#550](https://github.com/AccessKit/accesskit/issues/550))
+
+### Code Refactoring
+
+* Drop redundant `HasPopup::True` ([#550](https://github.com/AccessKit/accesskit/issues/550)) ([56abf17](https://github.com/AccessKit/accesskit/commit/56abf17356e4c7f13f64aaeaca6a63c8f7ede553))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.18.0 to 0.19.0
+    * accesskit_windows bumped from 0.26.0 to 0.27.0
+    * accesskit_macos bumped from 0.19.0 to 0.20.0
+    * accesskit_unix bumped from 0.14.0 to 0.15.0
+    * accesskit_android bumped from 0.1.1 to 0.2.0
+
 ## [0.26.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.25.0...accesskit_winit-v0.26.0) (2025-03-17)
 
 
