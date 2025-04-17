@@ -28,7 +28,10 @@ use std::{
     },
 };
 
-use crate::{adapter::Adapter, util::*};
+use crate::{
+    adapter::{Adapter, QueuedEvents},
+    util::*,
+};
 
 struct InnerInjectingAdapter {
     adapter: Adapter,
@@ -76,63 +79,36 @@ impl InnerInjectingAdapter {
             .virtual_view_at_point(&mut *self.activation_handler, x, y)
     }
 
-    fn perform_action(&mut self, virtual_view_id: jint, action: jint) -> bool {
+    fn perform_action(&mut self, virtual_view_id: jint, action: jint) -> Option<QueuedEvents> {
         self.adapter
             .perform_action(&mut *self.action_handler, virtual_view_id, action)
     }
 
     fn set_text_selection(
         &mut self,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
         virtual_view_id: jint,
         anchor: jint,
         focus: jint,
-    ) -> bool {
-        self.adapter.set_text_selection(
-            &mut *self.action_handler,
-            env,
-            callback_class,
-            host,
-            virtual_view_id,
-            anchor,
-            focus,
-        )
+    ) -> Option<QueuedEvents> {
+        self.adapter
+            .set_text_selection(&mut *self.action_handler, virtual_view_id, anchor, focus)
     }
 
-    fn collapse_text_selection(
-        &mut self,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
-        virtual_view_id: jint,
-    ) -> bool {
-        self.adapter.collapse_text_selection(
-            &mut *self.action_handler,
-            env,
-            callback_class,
-            host,
-            virtual_view_id,
-        )
+    fn collapse_text_selection(&mut self, virtual_view_id: jint) -> Option<QueuedEvents> {
+        self.adapter
+            .collapse_text_selection(&mut *self.action_handler, virtual_view_id)
     }
 
     #[allow(clippy::too_many_arguments)]
     fn traverse_text(
         &mut self,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
         virtual_view_id: jint,
         granularity: jint,
         forward: bool,
         extend_selection: bool,
-    ) -> bool {
+    ) -> Option<QueuedEvents> {
         self.adapter.traverse_text(
             &mut *self.action_handler,
-            env,
-            callback_class,
-            host,
             virtual_view_id,
             granularity,
             forward,
@@ -204,9 +180,10 @@ extern "system" fn get_virtual_view_at_point(
 }
 
 extern "system" fn perform_action(
-    _env: JNIEnv,
-    _class: JClass,
+    mut env: JNIEnv,
+    class: JClass,
     adapter_handle: jlong,
+    host: JObject,
     virtual_view_id: jint,
     action: jint,
 ) -> jboolean {
@@ -214,7 +191,8 @@ extern "system" fn perform_action(
         return JNI_FALSE;
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    if inner_adapter.perform_action(virtual_view_id, action) {
+    if let Some(events) = inner_adapter.perform_action(virtual_view_id, action) {
+        events.raise(&mut env, &class, &host);
         JNI_TRUE
     } else {
         JNI_FALSE
@@ -234,7 +212,8 @@ extern "system" fn set_text_selection(
         return JNI_FALSE;
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    if inner_adapter.set_text_selection(&mut env, &class, &host, virtual_view_id, anchor, focus) {
+    if let Some(events) = inner_adapter.set_text_selection(virtual_view_id, anchor, focus) {
+        events.raise(&mut env, &class, &host);
         JNI_TRUE
     } else {
         JNI_FALSE
@@ -252,7 +231,8 @@ extern "system" fn collapse_text_selection(
         return JNI_FALSE;
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    if inner_adapter.collapse_text_selection(&mut env, &class, &host, virtual_view_id) {
+    if let Some(events) = inner_adapter.collapse_text_selection(virtual_view_id) {
+        events.raise(&mut env, &class, &host);
         JNI_TRUE
     } else {
         JNI_FALSE
@@ -273,15 +253,13 @@ extern "system" fn traverse_text(
         return JNI_FALSE;
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    if inner_adapter.traverse_text(
-        &mut env,
-        &class,
-        &host,
+    if let Some(events) = inner_adapter.traverse_text(
         virtual_view_id,
         granularity,
         forward == JNI_TRUE,
         extend_selection == JNI_TRUE,
     ) {
+        events.raise(&mut env, &class, &host);
         JNI_TRUE
     } else {
         JNI_FALSE
@@ -337,7 +315,7 @@ fn delegate_class(env: &mut JNIEnv) -> Result<&'static JClass<'static>> {
                 },
                 NativeMethod {
                     name: "performAction".into(),
-                    sig: "(JII)Z".into(),
+                    sig: "(JLandroid/view/View;II)Z".into(),
                     fn_ptr: perform_action as *mut c_void,
                 },
                 NativeMethod {
@@ -436,12 +414,15 @@ impl InjectingAdapter {
         let Some(host) = self.host.upgrade_local(&env).unwrap() else {
             return;
         };
-        self.inner.lock().unwrap().adapter.update_if_active(
-            update_factory,
-            &mut env,
-            self.delegate_class,
-            &host,
-        );
+        if let Some(events) = self
+            .inner
+            .lock()
+            .unwrap()
+            .adapter
+            .update_if_active(update_factory)
+        {
+            events.raise(&mut env, self.delegate_class, &host);
+        }
     }
 }
 
