@@ -447,7 +447,7 @@ impl Adapter {
             anchor: anchor.to_raw(),
             focus: focus.to_raw(),
         };
-        let mut new_node = NodeData::from(node.data());
+        let mut new_node = node.data().clone();
         new_node.set_text_selection(selection);
         let update = TreeUpdate {
             nodes: vec![(node.id(), new_node)],
