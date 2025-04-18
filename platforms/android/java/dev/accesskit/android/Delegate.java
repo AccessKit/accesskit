@@ -218,7 +218,8 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
 
     private static native int getVirtualViewAtPoint(long adapterHandle, float x, float y);
 
-    private static native boolean performAction(long adapterHandle, int virtualViewId, int action);
+    private static native boolean performAction(
+            long adapterHandle, View host, int virtualViewId, int action);
 
     private static native boolean setTextSelection(
             long adapterHandle, View host, int virtualViewId, int anchor, int focus);
@@ -324,16 +325,7 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
                                 forward,
                                 extendSelection);
                 }
-                if (!Delegate.performAction(adapterHandle, virtualViewId, action)) {
-                    return false;
-                }
-                switch (action) {
-                    case AccessibilityNodeInfo.ACTION_CLICK:
-                        sendEventInternal(
-                                host, virtualViewId, AccessibilityEvent.TYPE_VIEW_CLICKED);
-                        break;
-                }
-                return true;
+                return Delegate.performAction(adapterHandle, host, virtualViewId, action);
             }
 
             @Override

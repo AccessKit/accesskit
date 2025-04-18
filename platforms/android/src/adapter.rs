@@ -22,36 +22,127 @@ use jni::{
 
 use crate::{filters::filter, node::NodeWrapper, util::*};
 
-fn send_event(
-    env: &mut JNIEnv,
-    callback_class: &JClass,
-    host: &JObject,
-    virtual_view_id: jint,
-    event_type: jint,
-) {
-    env.call_static_method(
-        callback_class,
-        "sendEvent",
-        "(Landroid/view/View;II)V",
-        &[host.into(), virtual_view_id.into(), event_type.into()],
-    )
-    .unwrap();
+enum QueuedEvent {
+    Simple {
+        virtual_view_id: jint,
+        event_type: jint,
+    },
+    TextChanged {
+        virtual_view_id: jint,
+        old: Option<String>,
+        new: Option<String>,
+    },
+    TextSelectionChanged {
+        virtual_view_id: jint,
+        text: String,
+        start: jint,
+        end: jint,
+    },
+    TextTraversed {
+        virtual_view_id: jint,
+        granularity: jint,
+        forward: bool,
+        segment_start: jint,
+        segment_end: jint,
+    },
 }
 
-fn send_window_content_changed(env: &mut JNIEnv, callback_class: &JClass, host: &JObject) {
-    send_event(
-        env,
-        callback_class,
-        host,
-        HOST_VIEW_ID,
-        EVENT_WINDOW_CONTENT_CHANGED,
-    );
+#[must_use = "events must be explicitly raised"]
+pub struct QueuedEvents(Vec<QueuedEvent>);
+
+impl QueuedEvents {
+    pub fn raise(self, env: &mut JNIEnv, callback_class: &JClass, host: &JObject) {
+        for event in self.0 {
+            match event {
+                QueuedEvent::Simple {
+                    virtual_view_id,
+                    event_type,
+                } => {
+                    env.call_static_method(
+                        callback_class,
+                        "sendEvent",
+                        "(Landroid/view/View;II)V",
+                        &[host.into(), virtual_view_id.into(), event_type.into()],
+                    )
+                    .unwrap();
+                }
+                QueuedEvent::TextChanged {
+                    virtual_view_id,
+                    old,
+                    new,
+                } => {
+                    let old = env.new_string(old.unwrap_or_else(String::new)).unwrap();
+                    let new = env.new_string(new.unwrap_or_else(String::new)).unwrap();
+                    env.call_static_method(
+                        callback_class,
+                        "sendTextChanged",
+                        "(Landroid/view/View;ILjava/lang/String;Ljava/lang/String;)V",
+                        &[
+                            host.into(),
+                            virtual_view_id.into(),
+                            (&old).into(),
+                            (&new).into(),
+                        ],
+                    )
+                    .unwrap();
+                }
+                QueuedEvent::TextSelectionChanged {
+                    virtual_view_id,
+                    text,
+                    start,
+                    end,
+                } => {
+                    let text = env.new_string(text).unwrap();
+                    env.call_static_method(
+                        callback_class,
+                        "sendTextSelectionChanged",
+                        "(Landroid/view/View;ILjava/lang/String;II)V",
+                        &[
+                            host.into(),
+                            virtual_view_id.into(),
+                            (&text).into(),
+                            start.into(),
+                            end.into(),
+                        ],
+                    )
+                    .unwrap();
+                }
+                QueuedEvent::TextTraversed {
+                    virtual_view_id,
+                    granularity,
+                    forward,
+                    segment_start,
+                    segment_end,
+                } => {
+                    env.call_static_method(
+                        callback_class,
+                        "sendTextTraversed",
+                        "(Landroid/view/View;IIZII)V",
+                        &[
+                            host.into(),
+                            virtual_view_id.into(),
+                            granularity.into(),
+                            forward.into(),
+                            segment_start.into(),
+                            segment_end.into(),
+                        ],
+                    )
+                    .unwrap();
+                }
+            }
+        }
+    }
 }
 
-fn send_focus_event_if_applicable(
-    env: &mut JNIEnv,
-    callback_class: &JClass,
-    host: &JObject,
+fn enqueue_window_content_changed(events: &mut Vec<QueuedEvent>) {
+    events.push(QueuedEvent::Simple {
+        virtual_view_id: HOST_VIEW_ID,
+        event_type: EVENT_WINDOW_CONTENT_CHANGED,
+    });
+}
+
+fn enqueue_focus_event_if_applicable(
+    events: &mut Vec<QueuedEvent>,
     node_id_map: &mut NodeIdMap,
     node: &Node,
 ) {
@@ -59,52 +150,46 @@ fn send_focus_event_if_applicable(
         return;
     }
     let id = node_id_map.get_or_create_java_id(node);
-    send_event(env, callback_class, host, id, EVENT_VIEW_FOCUSED);
+    events.push(QueuedEvent::Simple {
+        virtual_view_id: id,
+        event_type: EVENT_VIEW_FOCUSED,
+    });
 }
 
-struct AdapterChangeHandler<'a, 'b, 'c, 'd> {
-    env: &'a mut JNIEnv<'b>,
-    callback_class: &'a JClass<'c>,
-    host: &'a JObject<'d>,
+struct AdapterChangeHandler<'a> {
+    events: &'a mut Vec<QueuedEvent>,
     node_id_map: &'a mut NodeIdMap,
-    sent_window_content_changed: bool,
+    enqueued_window_content_changed: bool,
 }
 
-impl<'a, 'b, 'c, 'd> AdapterChangeHandler<'a, 'b, 'c, 'd> {
-    fn new(
-        env: &'a mut JNIEnv<'b>,
-        callback_class: &'a JClass<'c>,
-        host: &'a JObject<'d>,
-        node_id_map: &'a mut NodeIdMap,
-    ) -> Self {
+impl<'a> AdapterChangeHandler<'a> {
+    fn new(events: &'a mut Vec<QueuedEvent>, node_id_map: &'a mut NodeIdMap) -> Self {
         Self {
-            env,
-            callback_class,
-            host,
+            events,
             node_id_map,
-            sent_window_content_changed: false,
+            enqueued_window_content_changed: false,
         }
     }
 }
 
-impl AdapterChangeHandler<'_, '_, '_, '_> {
-    fn send_window_content_changed_if_needed(&mut self) {
-        if self.sent_window_content_changed {
+impl AdapterChangeHandler<'_> {
+    fn enqueue_window_content_changed_if_needed(&mut self) {
+        if self.enqueued_window_content_changed {
             return;
         }
-        send_window_content_changed(self.env, self.callback_class, self.host);
-        self.sent_window_content_changed = true;
+        enqueue_window_content_changed(self.events);
+        self.enqueued_window_content_changed = true;
     }
 }
 
-impl TreeChangeHandler for AdapterChangeHandler<'_, '_, '_, '_> {
+impl TreeChangeHandler for AdapterChangeHandler<'_> {
     fn node_added(&mut self, _node: &Node) {
-        self.send_window_content_changed_if_needed();
+        self.enqueue_window_content_changed_if_needed();
         // TODO: live regions?
     }
 
     fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
-        self.send_window_content_changed_if_needed();
+        self.enqueue_window_content_changed_if_needed();
         if filter(new_node) != FilterResult::Include {
             return;
         }
@@ -114,27 +199,11 @@ impl TreeChangeHandler for AdapterChangeHandler<'_, '_, '_, '_> {
         let new_text = new_wrapper.text();
         if old_text != new_text {
             let id = self.node_id_map.get_or_create_java_id(new_node);
-            let old_text = self
-                .env
-                .new_string(old_text.unwrap_or_else(String::new))
-                .unwrap();
-            let new_text = self
-                .env
-                .new_string(new_text.clone().unwrap_or_else(String::new))
-                .unwrap();
-            self.env
-                .call_static_method(
-                    self.callback_class,
-                    "sendTextChanged",
-                    "(Landroid/view/View;ILjava/lang/String;Ljava/lang/String;)V",
-                    &[
-                        self.host.into(),
-                        id.into(),
-                        (&old_text).into(),
-                        (&new_text).into(),
-                    ],
-                )
-                .unwrap();
+            self.events.push(QueuedEvent::TextChanged {
+                virtual_view_id: id,
+                old: old_text,
+                new: new_text.clone(),
+            });
         }
         if old_node.raw_text_selection() != new_node.raw_text_selection()
             || (new_node.raw_text_selection().is_some()
@@ -143,21 +212,12 @@ impl TreeChangeHandler for AdapterChangeHandler<'_, '_, '_, '_> {
             if let Some((start, end)) = new_wrapper.text_selection() {
                 if let Some(text) = new_text {
                     let id = self.node_id_map.get_or_create_java_id(new_node);
-                    let text = self.env.new_string(text).unwrap();
-                    self.env
-                        .call_static_method(
-                            self.callback_class,
-                            "sendTextSelectionChanged",
-                            "(Landroid/view/View;ILjava/lang/String;II)V",
-                            &[
-                                self.host.into(),
-                                id.into(),
-                                (&text).into(),
-                                (start as jint).into(),
-                                (end as jint).into(),
-                            ],
-                        )
-                        .unwrap();
+                    self.events.push(QueuedEvent::TextSelectionChanged {
+                        virtual_view_id: id,
+                        text,
+                        start: start as jint,
+                        end: end as jint,
+                    });
                 }
             }
         }
@@ -166,18 +226,12 @@ impl TreeChangeHandler for AdapterChangeHandler<'_, '_, '_, '_> {
 
     fn focus_moved(&mut self, _old_node: Option<&Node>, new_node: Option<&Node>) {
         if let Some(new_node) = new_node {
-            send_focus_event_if_applicable(
-                self.env,
-                self.callback_class,
-                self.host,
-                self.node_id_map,
-                new_node,
-            );
+            enqueue_focus_event_if_applicable(self.events, self.node_id_map, new_node);
         }
     }
 
     fn node_removed(&mut self, _node: &Node) {
-        self.send_window_content_changed_if_needed();
+        self.enqueue_window_content_changed_if_needed();
         // TODO: other events?
     }
 }
@@ -227,14 +281,12 @@ impl State {
 }
 
 fn update_tree(
-    env: &mut JNIEnv,
-    callback_class: &JClass,
-    host: &JObject,
+    events: &mut Vec<QueuedEvent>,
     node_id_map: &mut NodeIdMap,
     tree: &mut Tree,
     update: TreeUpdate,
 ) {
-    let mut handler = AdapterChangeHandler::new(env, callback_class, host, node_id_map);
+    let mut handler = AdapterChangeHandler::new(events, node_id_map);
     tree.update_and_process_changes(update, &mut handler);
 }
 
@@ -275,36 +327,24 @@ impl Adapter {
     pub fn update_if_active(
         &mut self,
         update_factory: impl FnOnce() -> TreeUpdate,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
-    ) {
+    ) -> Option<QueuedEvents> {
         match &mut self.state {
-            State::Inactive => (),
+            State::Inactive => None,
             State::Placeholder(_) => {
                 let tree = Tree::new(update_factory(), true);
-                send_window_content_changed(env, callback_class, host);
+                let mut events = Vec::new();
+                enqueue_window_content_changed(&mut events);
                 let state = tree.state();
                 if let Some(focus) = state.focus() {
-                    send_focus_event_if_applicable(
-                        env,
-                        callback_class,
-                        host,
-                        &mut self.node_id_map,
-                        &focus,
-                    );
+                    enqueue_focus_event_if_applicable(&mut events, &mut self.node_id_map, &focus);
                 }
                 self.state = State::Active(tree);
+                Some(QueuedEvents(events))
             }
             State::Active(tree) => {
-                update_tree(
-                    env,
-                    callback_class,
-                    host,
-                    &mut self.node_id_map,
-                    tree,
-                    update_factory(),
-                );
+                let mut events = Vec::new();
+                update_tree(&mut events, &mut self.node_id_map, tree, update_factory());
+                Some(QueuedEvents(events))
             }
         }
     }
@@ -376,17 +416,13 @@ impl Adapter {
         action_handler: &mut H,
         virtual_view_id: jint,
         action: jint,
-    ) -> bool {
-        let Some(tree) = self.state.get_full_tree() else {
-            return false;
-        };
+    ) -> Option<QueuedEvents> {
+        let tree = self.state.get_full_tree()?;
         let tree_state = tree.state();
         let target = if virtual_view_id == HOST_VIEW_ID {
             tree_state.root_id()
         } else {
-            let Some(accesskit_id) = self.node_id_map.get_accesskit_id(virtual_view_id) else {
-                return false;
-            };
+            let accesskit_id = self.node_id_map.get_accesskit_id(virtual_view_id)?;
             accesskit_id
         };
         let request = match action {
@@ -408,19 +444,24 @@ impl Adapter {
                 data: None,
             },
             _ => {
-                return false;
+                return None;
             }
         };
         action_handler.do_action(request);
-        true
+        let mut events = Vec::new();
+        if action == ACTION_CLICK {
+            events.push(QueuedEvent::Simple {
+                virtual_view_id,
+                event_type: EVENT_VIEW_CLICKED,
+            });
+        }
+        Some(QueuedEvents(events))
     }
 
     fn set_text_selection_common<H: ActionHandler + ?Sized, F, Extra>(
         &mut self,
         action_handler: &mut H,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
+        events: &mut Vec<QueuedEvent>,
         virtual_view_id: jint,
         selection_factory: F,
     ) -> Option<Extra>
@@ -454,14 +495,7 @@ impl Adapter {
             tree: None,
             focus: tree_state.focus_id_in_tree(),
         };
-        update_tree(
-            env,
-            callback_class,
-            host,
-            &mut self.node_id_map,
-            tree,
-            update,
-        );
+        update_tree(events, &mut self.node_id_map, tree, update);
         let request = ActionRequest {
             target,
             action: Action::SetTextSelection,
@@ -475,68 +509,45 @@ impl Adapter {
     pub fn set_text_selection<H: ActionHandler + ?Sized>(
         &mut self,
         action_handler: &mut H,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
         virtual_view_id: jint,
         anchor: jint,
         focus: jint,
-    ) -> bool {
-        self.set_text_selection_common(
-            action_handler,
-            env,
-            callback_class,
-            host,
-            virtual_view_id,
-            |node| {
-                let anchor = usize::try_from(anchor).ok()?;
-                let anchor = node.text_position_from_global_utf16_index(anchor)?;
-                let focus = usize::try_from(focus).ok()?;
-                let focus = node.text_position_from_global_utf16_index(focus)?;
-                Some((anchor, focus, ()))
-            },
-        )
-        .is_some()
+    ) -> Option<QueuedEvents> {
+        let mut events = Vec::new();
+        self.set_text_selection_common(action_handler, &mut events, virtual_view_id, |node| {
+            let anchor = usize::try_from(anchor).ok()?;
+            let anchor = node.text_position_from_global_utf16_index(anchor)?;
+            let focus = usize::try_from(focus).ok()?;
+            let focus = node.text_position_from_global_utf16_index(focus)?;
+            Some((anchor, focus, ()))
+        })?;
+        Some(QueuedEvents(events))
     }
 
     pub fn collapse_text_selection<H: ActionHandler + ?Sized>(
         &mut self,
         action_handler: &mut H,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
         virtual_view_id: jint,
-    ) -> bool {
-        self.set_text_selection_common(
-            action_handler,
-            env,
-            callback_class,
-            host,
-            virtual_view_id,
-            |node| node.text_selection_focus().map(|pos| (pos, pos, ())),
-        )
-        .is_some()
+    ) -> Option<QueuedEvents> {
+        let mut events = Vec::new();
+        self.set_text_selection_common(action_handler, &mut events, virtual_view_id, |node| {
+            node.text_selection_focus().map(|pos| (pos, pos, ()))
+        })?;
+        Some(QueuedEvents(events))
     }
 
     #[allow(clippy::too_many_arguments)]
     pub fn traverse_text<H: ActionHandler + ?Sized>(
         &mut self,
         action_handler: &mut H,
-        env: &mut JNIEnv,
-        callback_class: &JClass,
-        host: &JObject,
         virtual_view_id: jint,
         granularity: jint,
         forward: bool,
         extend_selection: bool,
-    ) -> bool {
-        let Some((segment_start, segment_end)) = self.set_text_selection_common(
-            action_handler,
-            env,
-            callback_class,
-            host,
-            virtual_view_id,
-            |node| {
+    ) -> Option<QueuedEvents> {
+        let mut events = Vec::new();
+        let (segment_start, segment_end) =
+            self.set_text_selection_common(action_handler, &mut events, virtual_view_id, |node| {
                 let current = node.text_selection_focus().unwrap_or_else(|| {
                     let range = node.document_range();
                     if forward {
@@ -668,24 +679,14 @@ impl Adapter {
                         segment_end.to_global_utf16_index(),
                     ),
                 ))
-            },
-        ) else {
-            return false;
-        };
-        env.call_static_method(
-            callback_class,
-            "sendTextTraversed",
-            "(Landroid/view/View;IIZII)V",
-            &[
-                host.into(),
-                virtual_view_id.into(),
-                granularity.into(),
-                forward.into(),
-                (segment_start as jint).into(),
-                (segment_end as jint).into(),
-            ],
-        )
-        .unwrap();
-        true
+            })?;
+        events.push(QueuedEvent::TextTraversed {
+            virtual_view_id,
+            granularity,
+            forward,
+            segment_start: segment_start as jint,
+            segment_end: segment_end as jint,
+        });
+        Some(QueuedEvents(events))
     }
 }
