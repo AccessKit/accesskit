@@ -923,10 +923,6 @@ impl PropertyIndices {
     }
 }
 
-fn unexpected_property_type() -> ! {
-    panic!();
-}
-
 impl Properties {
     fn get_mut(&mut self, id: PropertyId, default: PropertyValue) -> &mut PropertyValue {
         let index = self.indices.0[id as usize] as usize;
@@ -936,9 +932,6 @@ impl Properties {
             self.indices.0[id as usize] = index as u8;
             &mut self.values[index]
         } else {
-            if matches!(self.values[index], PropertyValue::None) {
-                self.values[index] = default;
-            }
             &mut self.values[index]
         }
     }
@@ -985,6 +978,31 @@ macro_rules! flag_methods {
                 )*
             }
         }
+        $(#[cfg(test)]
+        mod $getter {
+            use super::{Node, Role};
+
+            #[test]
+            fn getter_should_return_default_value() {
+                let node = Node::new(Role::Unknown);
+                assert!(!node.$getter());
+            }
+
+            #[test]
+            fn setter_should_update_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter();
+                assert!(node.$getter());
+            }
+
+            #[test]
+            fn clearer_should_reset_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter();
+                node.$clearer();
+                assert!(!node.$getter());
+            }
+        })*
     }
 }
 
@@ -993,9 +1011,8 @@ macro_rules! option_ref_type_getters {
         impl PropertyIndices {
             $(fn $method<'a>(&self, values: &'a [PropertyValue], id: PropertyId) -> Option<&'a $type> {
                 match self.get(values, id) {
-                    PropertyValue::None => None,
                     PropertyValue::$variant(value) => Some(value),
-                    _ => unexpected_property_type(),
+                    _ => None,
                 }
             })*
         }
@@ -1007,9 +1024,8 @@ macro_rules! slice_type_getters {
         impl PropertyIndices {
             $(fn $method<'a>(&self, values: &'a [PropertyValue], id: PropertyId) -> &'a [$type] {
                 match self.get(values, id) {
-                    PropertyValue::None => &[],
                     PropertyValue::$variant(value) => value,
-                    _ => unexpected_property_type(),
+                    _ => &[],
                 }
             })*
         }
@@ -1021,9 +1037,8 @@ macro_rules! copy_type_getters {
         impl PropertyIndices {
             $(fn $method(&self, values: &[PropertyValue], id: PropertyId) -> Option<$type> {
                 match self.get(values, id) {
-                    PropertyValue::None => None,
                     PropertyValue::$variant(value) => Some(*value),
-                    _ => unexpected_property_type(),
+                    _ => None,
                 }
             })*
         }
@@ -1060,11 +1075,8 @@ macro_rules! vec_type_methods {
                 self.properties.set(id, PropertyValue::$variant(value.into()));
             }
             fn $pusher(&mut self, id: PropertyId, item: $type) {
-                match self.properties.get_mut(id, PropertyValue::$variant(Vec::new())) {
-                    PropertyValue::$variant(v) => {
-                        v.push(item);
-                    }
-                    _ => unexpected_property_type(),
+                if let PropertyValue::$variant(v) = self.properties.get_mut(id, PropertyValue::$variant(Vec::new())) {
+                    v.push(item);
                 }
             })*
         }
@@ -1128,6 +1140,39 @@ macro_rules! node_id_vec_property_methods {
         impl Node {
             slice_properties_debug_method! { debug_node_id_vec_properties, [$($getter,)*] }
         }
+        $(#[cfg(test)]
+        mod $getter {
+            use super::{Node, NodeId, Role};
+
+            #[test]
+            fn getter_should_return_default_value() {
+                let node = Node::new(Role::Unknown);
+                assert!(node.$getter().is_empty());
+            }
+            #[test]
+            fn setter_should_update_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter([]);
+                assert!(node.$getter().is_empty());
+                node.$setter([NodeId(0), NodeId(1)]);
+                assert_eq!(node.$getter(), &[NodeId(0), NodeId(1)]);
+            }
+            #[test]
+            fn pusher_should_update_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$pusher(NodeId(0));
+                assert_eq!(node.$getter(), &[NodeId(0)]);
+                node.$pusher(NodeId(1));
+                assert_eq!(node.$getter(), &[NodeId(0), NodeId(1)]);
+            }
+            #[test]
+            fn clearer_should_reset_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter([NodeId(0)]);
+                node.$clearer();
+                assert!(node.$getter().is_empty());
+            }
+        })*
     }
 }
 
@@ -1152,6 +1197,29 @@ macro_rules! node_id_property_methods {
         impl Node {
             option_properties_debug_method! { debug_node_id_properties, [$($getter,)*] }
         }
+        $(#[cfg(test)]
+        mod $getter {
+            use super::{Node, NodeId, Role};
+
+            #[test]
+            fn getter_should_return_default_value() {
+                let node = Node::new(Role::Unknown);
+                assert!(node.$getter().is_none());
+            }
+            #[test]
+            fn setter_should_update_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter(NodeId(1));
+                assert_eq!(node.$getter(), Some(NodeId(1)));
+            }
+            #[test]
+            fn clearer_should_reset_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter(NodeId(1));
+                node.$clearer();
+                assert!(node.$getter().is_none());
+            }
+        })*
     }
 }
 
@@ -1164,6 +1232,29 @@ macro_rules! string_property_methods {
         impl Node {
             option_properties_debug_method! { debug_string_properties, [$($getter,)*] }
         }
+        $(#[cfg(test)]
+        mod $getter {
+            use super::{Node, Role};
+
+            #[test]
+            fn getter_should_return_default_value() {
+                let node = Node::new(Role::Unknown);
+                assert!(node.$getter().is_none());
+            }
+            #[test]
+            fn setter_should_update_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter("test");
+                assert_eq!(node.$getter(), Some("test"));
+            }
+            #[test]
+            fn clearer_should_reset_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter("test");
+                node.$clearer();
+                assert!(node.$getter().is_none());
+            }
+        })*
     }
 }
 
@@ -1176,6 +1267,29 @@ macro_rules! f64_property_methods {
         impl Node {
             option_properties_debug_method! { debug_f64_properties, [$($getter,)*] }
         }
+        $(#[cfg(test)]
+        mod $getter {
+            use super::{Node, Role};
+
+            #[test]
+            fn getter_should_return_default_value() {
+                let node = Node::new(Role::Unknown);
+                assert!(node.$getter().is_none());
+            }
+            #[test]
+            fn setter_should_update_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter(1.0);
+                assert_eq!(node.$getter(), Some(1.0));
+            }
+            #[test]
+            fn clearer_should_reset_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter(1.0);
+                node.$clearer();
+                assert!(node.$getter().is_none());
+            }
+        })*
     }
 }
 
@@ -1188,6 +1302,29 @@ macro_rules! usize_property_methods {
         impl Node {
             option_properties_debug_method! { debug_usize_properties, [$($getter,)*] }
         }
+        $(#[cfg(test)]
+        mod $getter {
+            use super::{Node, Role};
+
+            #[test]
+            fn getter_should_return_default_value() {
+                let node = Node::new(Role::Unknown);
+                assert!(node.$getter().is_none());
+            }
+            #[test]
+            fn setter_should_update_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter(1);
+                assert_eq!(node.$getter(), Some(1));
+            }
+            #[test]
+            fn clearer_should_reset_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter(1);
+                node.$clearer();
+                assert!(node.$getter().is_none());
+            }
+        })*
     }
 }
 
@@ -1200,6 +1337,29 @@ macro_rules! color_property_methods {
         impl Node {
             option_properties_debug_method! { debug_color_properties, [$($getter,)*] }
         }
+        $(#[cfg(test)]
+        mod $getter {
+            use super::{Node, Role};
+
+            #[test]
+            fn getter_should_return_default_value() {
+                let node = Node::new(Role::Unknown);
+                assert!(node.$getter().is_none());
+            }
+            #[test]
+            fn setter_should_update_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter(1);
+                assert_eq!(node.$getter(), Some(1));
+            }
+            #[test]
+            fn clearer_should_reset_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter(1);
+                node.$clearer();
+                assert!(node.$getter().is_none());
+            }
+        })*
     }
 }
 
@@ -1212,6 +1372,29 @@ macro_rules! text_decoration_property_methods {
         impl Node {
             option_properties_debug_method! { debug_text_decoration_properties, [$($getter,)*] }
         }
+        $(#[cfg(test)]
+        mod $getter {
+            use super::{Node, Role, TextDecoration};
+
+            #[test]
+            fn getter_should_return_default_value() {
+                let node = Node::new(Role::Unknown);
+                assert!(node.$getter().is_none());
+            }
+            #[test]
+            fn setter_should_update_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter(TextDecoration::Dotted);
+                assert_eq!(node.$getter(), Some(TextDecoration::Dotted));
+            }
+            #[test]
+            fn clearer_should_reset_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter(TextDecoration::Dotted);
+                node.$clearer();
+                assert!(node.$getter().is_none());
+            }
+        })*
     }
 }
 
@@ -1224,6 +1407,31 @@ macro_rules! length_slice_property_methods {
         impl Node {
             slice_properties_debug_method! { debug_length_slice_properties, [$($getter,)*] }
         }
+        $(#[cfg(test)]
+        mod $getter {
+            use super::{Node, Role};
+
+            #[test]
+            fn getter_should_return_default_value() {
+                let node = Node::new(Role::Unknown);
+                assert!(node.$getter().is_empty());
+            }
+            #[test]
+            fn setter_should_update_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter([]);
+                assert!(node.$getter().is_empty());
+                node.$setter([1, 2]);
+                assert_eq!(node.$getter(), &[1, 2]);
+            }
+            #[test]
+            fn clearer_should_reset_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter([1, 2]);
+                node.$clearer();
+                assert!(node.$getter().is_empty());
+            }
+        })*
     }
 }
 
@@ -1236,6 +1444,33 @@ macro_rules! coord_slice_property_methods {
         impl Node {
             option_properties_debug_method! { debug_coord_slice_properties, [$($getter,)*] }
         }
+        $(#[cfg(test)]
+        mod $getter {
+            use super::{Node, Role};
+
+            #[test]
+            fn getter_should_return_default_value() {
+                let node = Node::new(Role::Unknown);
+                assert!(node.$getter().is_none());
+            }
+            #[test]
+            fn setter_should_update_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter([]);
+                let expected: Option<&[f32]> = Some(&[]);
+                assert_eq!(node.$getter(), expected);
+                node.$setter([1.0, 2.0]);
+                let expected: Option<&[f32]> = Some(&[1.0, 2.0]);
+                assert_eq!(node.$getter(), expected);
+            }
+            #[test]
+            fn clearer_should_reset_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter([1.0, 2.0]);
+                node.$clearer();
+                assert!(node.$getter().is_none());
+            }
+        })*
     }
 }
 
@@ -1248,19 +1483,41 @@ macro_rules! bool_property_methods {
         impl Node {
             option_properties_debug_method! { debug_bool_properties, [$($getter,)*] }
         }
+        $(#[cfg(test)]
+        mod $getter {
+            use super::{Node, Role};
+
+            #[test]
+            fn getter_should_return_default_value() {
+                let node = Node::new(Role::Unknown);
+                assert!(node.$getter().is_none());
+            }
+            #[test]
+            fn setter_should_update_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter(true);
+                assert_eq!(node.$getter(), Some(true));
+            }
+            #[test]
+            fn clearer_should_reset_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter(true);
+                node.$clearer();
+                assert!(node.$getter().is_none());
+            }
+        })*
     }
 }
 
 macro_rules! unique_enum_property_methods {
-    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident, $variant:ident)),+) => {
         impl Node {
             $($(#[$doc])*
             #[inline]
             pub fn $getter(&self) -> Option<$id> {
                 match self.properties.indices.get(&self.properties.values, PropertyId::$id) {
-                    PropertyValue::None => None,
                     PropertyValue::$id(value) => Some(*value),
-                    _ => unexpected_property_type(),
+                    _ => None,
                 }
             }
             #[inline]
@@ -1273,6 +1530,30 @@ macro_rules! unique_enum_property_methods {
             })*
             option_properties_debug_method! { debug_unique_enum_properties, [$($getter,)*] }
         }
+        $(#[cfg(test)]
+        mod $getter {
+            use super::{Node, Role};
+
+            #[test]
+            fn getter_should_return_default_value() {
+                let node = Node::new(Role::Unknown);
+                assert!(node.$getter().is_none());
+            }
+            #[test]
+            fn setter_should_update_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                let variant = super::$id::$variant;
+                node.$setter(variant);
+                assert_eq!(node.$getter(), Some(variant));
+            }
+            #[test]
+            fn clearer_should_reset_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter(super::$id::$variant);
+                node.$clearer();
+                assert!(node.$getter().is_none());
+            }
+        })*
     }
 }
 
@@ -1634,19 +1915,19 @@ bool_property_methods! {
 }
 
 unique_enum_property_methods! {
-    (Invalid, invalid, set_invalid, clear_invalid),
-    (Toggled, toggled, set_toggled, clear_toggled),
-    (Live, live, set_live, clear_live),
-    (TextDirection, text_direction, set_text_direction, clear_text_direction),
-    (Orientation, orientation, set_orientation, clear_orientation),
-    (SortDirection, sort_direction, set_sort_direction, clear_sort_direction),
-    (AriaCurrent, aria_current, set_aria_current, clear_aria_current),
-    (AutoComplete, auto_complete, set_auto_complete, clear_auto_complete),
-    (HasPopup, has_popup, set_has_popup, clear_has_popup),
+    (Invalid, invalid, set_invalid, clear_invalid, Grammar),
+    (Toggled, toggled, set_toggled, clear_toggled, True),
+    (Live, live, set_live, clear_live, Polite),
+    (TextDirection, text_direction, set_text_direction, clear_text_direction, RightToLeft),
+    (Orientation, orientation, set_orientation, clear_orientation, Vertical),
+    (SortDirection, sort_direction, set_sort_direction, clear_sort_direction, Descending),
+    (AriaCurrent, aria_current, set_aria_current, clear_aria_current, True),
+    (AutoComplete, auto_complete, set_auto_complete, clear_auto_complete, List),
+    (HasPopup, has_popup, set_has_popup, clear_has_popup, Menu),
     /// The list style type. Only available on list items.
-    (ListStyle, list_style, set_list_style, clear_list_style),
-    (TextAlign, text_align, set_text_align, clear_text_align),
-    (VerticalOffset, vertical_offset, set_vertical_offset, clear_vertical_offset)
+    (ListStyle, list_style, set_list_style, clear_list_style, Disc),
+    (TextAlign, text_align, set_text_align, clear_text_align, Right),
+    (VerticalOffset, vertical_offset, set_vertical_offset, clear_vertical_offset, Superscript)
 }
 
 property_methods! {
@@ -1683,8 +1964,163 @@ impl Node {
     option_properties_debug_method! { debug_option_properties, [transform, bounds, text_selection,] }
 }
 
+#[cfg(test)]
+mod transform {
+    use super::{Affine, Node, Role};
+
+    #[test]
+    fn getter_should_return_default_value() {
+        let node = Node::new(Role::Unknown);
+        assert!(node.transform().is_none());
+    }
+    #[test]
+    fn setter_should_update_the_property() {
+        let mut node = Node::new(Role::Unknown);
+        node.set_transform(Affine::IDENTITY);
+        assert_eq!(node.transform(), Some(&Affine::IDENTITY));
+    }
+    #[test]
+    fn clearer_should_reset_the_property() {
+        let mut node = Node::new(Role::Unknown);
+        node.set_transform(Affine::IDENTITY);
+        node.clear_transform();
+        assert!(node.transform().is_none());
+    }
+}
+
+#[cfg(test)]
+mod bounds {
+    use super::{Node, Rect, Role};
+
+    #[test]
+    fn getter_should_return_default_value() {
+        let node = Node::new(Role::Unknown);
+        assert!(node.bounds().is_none());
+    }
+    #[test]
+    fn setter_should_update_the_property() {
+        let mut node = Node::new(Role::Unknown);
+        let value = Rect {
+            x0: 0.0,
+            y0: 1.0,
+            x1: 2.0,
+            y1: 3.0,
+        };
+        node.set_bounds(value);
+        assert_eq!(node.bounds(), Some(value));
+    }
+    #[test]
+    fn clearer_should_reset_the_property() {
+        let mut node = Node::new(Role::Unknown);
+        node.set_bounds(Rect {
+            x0: 0.0,
+            y0: 1.0,
+            x1: 2.0,
+            y1: 3.0,
+        });
+        node.clear_bounds();
+        assert!(node.bounds().is_none());
+    }
+}
+
+#[cfg(test)]
+mod text_selection {
+    use super::{Node, NodeId, Role, TextPosition, TextSelection};
+
+    #[test]
+    fn getter_should_return_default_value() {
+        let node = Node::new(Role::Unknown);
+        assert!(node.text_selection().is_none());
+    }
+    #[test]
+    fn setter_should_update_the_property() {
+        let mut node = Node::new(Role::Unknown);
+        let value = TextSelection {
+            anchor: TextPosition {
+                node: NodeId(0),
+                character_index: 0,
+            },
+            focus: TextPosition {
+                node: NodeId(0),
+                character_index: 2,
+            },
+        };
+        node.set_text_selection(value);
+        assert_eq!(node.text_selection(), Some(&value));
+    }
+    #[test]
+    fn clearer_should_reset_the_property() {
+        let mut node = Node::new(Role::Unknown);
+        node.set_text_selection(TextSelection {
+            anchor: TextPosition {
+                node: NodeId(0),
+                character_index: 0,
+            },
+            focus: TextPosition {
+                node: NodeId(0),
+                character_index: 2,
+            },
+        });
+        node.clear_text_selection();
+        assert!(node.text_selection().is_none());
+    }
+}
+
 vec_property_methods! {
     (CustomActions, CustomAction, custom_actions, get_custom_action_vec, set_custom_actions, set_custom_action_vec, push_custom_action, push_to_custom_action_vec, clear_custom_actions)
+}
+
+#[cfg(test)]
+mod custom_actions {
+    use super::{CustomAction, Node, Role};
+
+    #[test]
+    fn getter_should_return_default_value() {
+        let node = Node::new(Role::Unknown);
+        assert!(node.custom_actions().is_empty());
+    }
+    #[test]
+    fn setter_should_update_the_property() {
+        let mut node = Node::new(Role::Unknown);
+        let value = alloc::vec![
+            CustomAction {
+                id: 0,
+                description: "first test action".into(),
+            },
+            CustomAction {
+                id: 1,
+                description: "second test action".into(),
+            },
+        ];
+        node.set_custom_actions(value.clone());
+        assert_eq!(node.custom_actions(), value);
+    }
+    #[test]
+    fn pusher_should_update_the_property() {
+        let mut node = Node::new(Role::Unknown);
+        let first_action = CustomAction {
+            id: 0,
+            description: "first test action".into(),
+        };
+        let second_action = CustomAction {
+            id: 1,
+            description: "second test action".into(),
+        };
+        node.push_custom_action(first_action.clone());
+        assert_eq!(node.custom_actions(), &[first_action.clone()]);
+        node.push_custom_action(second_action.clone());
+        assert_eq!(node.custom_actions(), &[first_action, second_action]);
+    }
+    #[test]
+    fn clearer_should_reset_the_property() {
+        let mut node = Node::new(Role::Unknown);
+        node.set_custom_actions([CustomAction {
+            id: 0,
+            description: "test action".into(),
+        }]);
+        node.clear_custom_actions();
+        assert!(node.custom_actions().is_empty());
+    }
 }
 
 impl fmt::Debug for Node {
@@ -2251,9 +2687,28 @@ pub trait DeactivationHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::format;
 
     #[test]
-    fn action_n() {
+    fn u64_should_be_convertible_to_node_id() {
+        assert_eq!(NodeId::from(0u64), NodeId(0));
+        assert_eq!(NodeId::from(1u64), NodeId(1));
+    }
+
+    #[test]
+    fn node_id_should_be_convertible_to_u64() {
+        assert_eq!(u64::from(NodeId(0)), 0u64);
+        assert_eq!(u64::from(NodeId(1)), 1u64);
+    }
+
+    #[test]
+    fn node_id_should_have_debug_repr() {
+        assert_eq!(&format!("{:?}", NodeId(0)), "#0");
+        assert_eq!(&format!("{:?}", NodeId(1)), "#1");
+    }
+
+    #[test]
+    fn action_n_should_return_the_corresponding_variant() {
         assert_eq!(Action::n(0), Some(Action::Click));
         assert_eq!(Action::n(1), Some(Action::Focus));
         assert_eq!(Action::n(2), Some(Action::Blur));
@@ -2285,12 +2740,15 @@ mod tests {
     }
 
     #[test]
-    fn test_action_mask_to_action_vec() {
+    fn empty_action_mask_should_be_converted_to_empty_vec() {
         assert_eq!(
             Vec::<Action>::new(),
             action_mask_to_action_vec(Node::new(Role::Unknown).actions)
         );
+    }
 
+    #[test]
+    fn action_mask_should_be_convertible_to_vec() {
         let mut node = Node::new(Role::Unknown);
         node.add_action(Action::Click);
         assert_eq!(
@@ -2321,5 +2779,110 @@ mod tests {
             &[Action::Focus, Action::Blur, Action::Collapse],
             action_mask_to_action_vec(node.actions).as_slice()
         );
+    }
+
+    #[test]
+    fn new_node_should_have_user_provided_role() {
+        let node = Node::new(Role::Button);
+        assert_eq!(node.role(), Role::Button);
+    }
+
+    #[test]
+    fn node_role_setter_should_update_the_role() {
+        let mut node = Node::new(Role::Button);
+        node.set_role(Role::CheckBox);
+        assert_eq!(node.role(), Role::CheckBox);
+    }
+
+    #[test]
+    fn new_node_should_not_support_anyaction() {
+        let node = Node::new(Role::Unknown);
+        assert!(!node.supports_action(Action::Click));
+        assert!(!node.supports_action(Action::Focus));
+        assert!(!node.supports_action(Action::Blur));
+        assert!(!node.supports_action(Action::Collapse));
+        assert!(!node.supports_action(Action::Expand));
+        assert!(!node.supports_action(Action::CustomAction));
+        assert!(!node.supports_action(Action::Decrement));
+        assert!(!node.supports_action(Action::Increment));
+        assert!(!node.supports_action(Action::HideTooltip));
+        assert!(!node.supports_action(Action::ShowTooltip));
+        assert!(!node.supports_action(Action::ReplaceSelectedText));
+        assert!(!node.supports_action(Action::ScrollBackward));
+        assert!(!node.supports_action(Action::ScrollDown));
+        assert!(!node.supports_action(Action::ScrollForward));
+        assert!(!node.supports_action(Action::ScrollLeft));
+        assert!(!node.supports_action(Action::ScrollRight));
+        assert!(!node.supports_action(Action::ScrollUp));
+        assert!(!node.supports_action(Action::ScrollIntoView));
+        assert!(!node.supports_action(Action::ScrollToPoint));
+        assert!(!node.supports_action(Action::SetScrollOffset));
+        assert!(!node.supports_action(Action::SetTextSelection));
+        assert!(!node.supports_action(Action::SetSequentialFocusNavigationStartingPoint));
+        assert!(!node.supports_action(Action::SetValue));
+        assert!(!node.supports_action(Action::ShowContextMenu));
+    }
+
+    #[test]
+    fn node_add_action_should_add_the_action() {
+        let mut node = Node::new(Role::Unknown);
+        node.add_action(Action::Focus);
+        assert!(node.supports_action(Action::Focus));
+        node.add_action(Action::Blur);
+        assert!(node.supports_action(Action::Blur));
+    }
+
+    #[test]
+    fn node_add_action_should_do_nothing_if_the_action_is_already_supported() {
+        let mut node = Node::new(Role::Unknown);
+        node.add_action(Action::Focus);
+        node.add_action(Action::Focus);
+        assert!(node.supports_action(Action::Focus));
+    }
+
+    #[test]
+    fn node_remove_action_should_remove_the_action() {
+        let mut node = Node::new(Role::Unknown);
+        node.add_action(Action::Blur);
+        node.remove_action(Action::Blur);
+        assert!(!node.supports_action(Action::Blur));
+    }
+
+    #[test]
+    fn node_clear_actions_should_remove_all_actions() {
+        let mut node = Node::new(Role::Unknown);
+        node.add_action(Action::Focus);
+        node.add_action(Action::Blur);
+        node.clear_actions();
+        assert!(!node.supports_action(Action::Focus));
+        assert!(!node.supports_action(Action::Blur));
+    }
+
+    #[test]
+    fn node_should_have_debug_repr() {
+        let mut node = Node::new(Role::Unknown);
+        node.add_action(Action::Click);
+        node.add_action(Action::Focus);
+        node.set_hidden();
+        node.set_multiselectable();
+        node.set_children([NodeId(0), NodeId(1)]);
+        node.set_active_descendant(NodeId(2));
+        node.push_custom_action(CustomAction {
+            id: 0,
+            description: "test action".into(),
+        });
+
+        assert_eq!(
+            &format!("{:?}", node),
+            r#"Node { role: Unknown, actions: [Click, Focus], is_hidden: true, is_multiselectable: true, children: [#0, #1], active_descendant: #2, custom_actions: [CustomAction { id: 0, description: "test action" }] }"#
+        );
+    }
+
+    #[test]
+    fn new_tree_should_have_root_id() {
+        let tree = Tree::new(NodeId(1));
+        assert_eq!(tree.root, NodeId(1));
+        assert_eq!(tree.toolkit_name, None);
+        assert_eq!(tree.toolkit_version, None);
     }
 }
