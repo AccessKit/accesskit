@@ -864,3 +864,104 @@ impl Neg for Vec2 {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloc::format;
+
+    #[test]
+    fn new_point_should_have_user_provided_coordinates() {
+        assert_eq!(Point::new(1.0, 2.0), Point { x: 1.0, y: 2.0 });
+        assert_eq!(Point::new(4.0, 3.0), Point { x: 4.0, y: 3.0 });
+    }
+
+    #[test]
+    fn point_should_be_convertible_to_vec2() {
+        assert_eq!(Point::new(1.0, 2.0).to_vec2(), Vec2 { x: 1.0, y: 2.0 });
+        assert_eq!(Point::new(4.0, 3.0).to_vec2(), Vec2 { x: 4.0, y: 3.0 });
+    }
+
+    #[test]
+    fn tuple_of_f64_should_be_convertible_to_point() {
+        assert_eq!(Point::from((1.0, 2.0)), Point { x: 1.0, y: 2.0 });
+        assert_eq!(Point::from((4.0, 3.0)), Point { x: 4.0, y: 3.0 });
+    }
+
+    #[test]
+    fn point_should_be_convertible_to_tuple_of_f64() {
+        assert_eq!(Into::<(f64, f64)>::into(Point::new(1.0, 2.0)), (1.0, 2.0));
+        assert_eq!(Into::<(f64, f64)>::into(Point::new(4.0, 3.0)), (4.0, 3.0));
+    }
+
+    #[test]
+    fn adding_a_point_and_a_vec2_should_give_a_point() {
+        assert_eq!(
+            Point::new(1.0, 2.0) + Vec2::new(3.0, 4.0),
+            Point { x: 4.0, y: 6.0 }
+        );
+    }
+
+    #[test]
+    fn adding_a_vec2_to_a_point_should_update_the_point() {
+        let mut p = Point::new(1.0, 2.0);
+        p += Vec2::new(3.0, 4.0);
+        assert_eq!(p, Point { x: 4.0, y: 6.0 });
+    }
+
+    #[test]
+    fn subtracting_a_point_and_a_vec2_should_give_a_point() {
+        assert_eq!(
+            Point::new(1.0, 2.0) - Vec2::new(4.0, 3.0),
+            Point { x: -3.0, y: -1.0 }
+        );
+    }
+
+    #[test]
+    fn subtracting_a_vec2_to_a_point_should_update_the_point() {
+        let mut p = Point::new(1.0, 2.0);
+        p -= Vec2::new(4.0, 3.0);
+        assert_eq!(p, Point { x: -3.0, y: -1.0 });
+    }
+
+    #[test]
+    fn adding_a_point_and_a_tuple_of_f64_should_give_a_point() {
+        assert_eq!(Point::new(1.0, 2.0) + (3.0, 4.0), Point { x: 4.0, y: 6.0 });
+    }
+
+    #[test]
+    fn adding_a_tuple_of_f64_to_a_point_should_update_the_point() {
+        let mut p = Point::new(1.0, 2.0);
+        p += (3.0, 4.0);
+        assert_eq!(p, Point { x: 4.0, y: 6.0 });
+    }
+
+    #[test]
+    fn subtracting_a_point_and_a_tuple_of_f64_should_give_a_point() {
+        assert_eq!(
+            Point::new(1.0, 2.0) - (4.0, 3.0),
+            Point { x: -3.0, y: -1.0 }
+        );
+    }
+
+    #[test]
+    fn subtracting_a_tuple_of_f64_to_a_point_should_update_the_point() {
+        let mut p = Point::new(1.0, 2.0);
+        p -= (4.0, 3.0);
+        assert_eq!(p, Point { x: -3.0, y: -1.0 });
+    }
+
+    #[test]
+    fn subtracting_two_points_should_give_a_vec2() {
+        assert_eq!(
+            Point::new(1.0, 2.0) - Point::new(4.0, 3.0),
+            Vec2 { x: -3.0, y: -1.0 }
+        );
+    }
+
+    #[test]
+    fn point_should_have_debug_repr() {
+        assert_eq!(&format!("{:?}", Point::new(1.0, 2.0)), "(1.0, 2.0)");
+        assert_eq!(&format!("{:?}", Point::new(4.2, 3.7)), "(4.2, 3.7)");
+    }
+}
