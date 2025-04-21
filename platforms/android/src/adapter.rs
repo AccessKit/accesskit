@@ -422,8 +422,7 @@ impl Adapter {
         let target = if virtual_view_id == HOST_VIEW_ID {
             tree_state.root_id()
         } else {
-            let accesskit_id = self.node_id_map.get_accesskit_id(virtual_view_id)?;
-            accesskit_id
+            self.node_id_map.get_accesskit_id(virtual_view_id)?
         };
         let request = match action {
             ACTION_CLICK => ActionRequest {
