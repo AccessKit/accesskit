@@ -10,12 +10,18 @@ use std::collections::HashMap;
 
 pub(crate) const ACTION_FOCUS: jint = 1 << 0;
 pub(crate) const ACTION_CLICK: jint = 1 << 4;
+pub(crate) const ACTION_ACCESSIBILITY_FOCUS: jint = 1 << 6;
+pub(crate) const ACTION_CLEAR_ACCESSIBILITY_FOCUS: jint = 1 << 7;
 pub(crate) const ACTION_NEXT_AT_MOVEMENT_GRANULARITY: jint = 1 << 8;
 pub(crate) const ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY: jint = 1 << 9;
 pub(crate) const ACTION_SET_SELECTION: jint = 1 << 17;
 pub(crate) const EVENT_VIEW_CLICKED: jint = 1;
 pub(crate) const EVENT_VIEW_FOCUSED: jint = 1 << 3;
+pub(crate) const EVENT_VIEW_ACCESSIBILITY_FOCUSED: jint = 1 << 15;
+pub(crate) const EVENT_VIEW_ACCESSIBILITY_FOCUS_CLEARED: jint = 1 << 16;
 pub(crate) const EVENT_WINDOW_CONTENT_CHANGED: jint = 1 << 11;
+pub(crate) const FOCUS_INPUT: jint = 1;
+pub(crate) const FOCUS_ACCESSIBILITY: jint = 2;
 pub(crate) const HOST_VIEW_ID: jint = -1;
 pub(crate) const LIVE_REGION_NONE: jint = 0;
 pub(crate) const LIVE_REGION_POLITE: jint = 1;

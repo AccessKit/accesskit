@@ -14,6 +14,16 @@ use jni::{errors::Result, objects::JObject, sys::jint, JNIEnv};
 
 use crate::{filters::filter, util::*};
 
+pub(crate) fn add_action(env: &mut JNIEnv, jni_node: &JObject, action: jint) -> Result<()> {
+    // Note: We're using the deprecated addAction signature.
+    // But this one is much easier to call from JNI since it uses
+    // a simple integer constant. Revisit if Android ever gets strict
+    // about prohibiting deprecated methods for applications targeting
+    // newer SDKs.
+    env.call_method(jni_node, "addAction", "(I)V", &[action.into()])?;
+    Ok(())
+}
+
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
 
 impl NodeWrapper<'_> {
@@ -252,16 +262,6 @@ impl NodeWrapper<'_> {
             "(Ljava/lang/CharSequence;)V",
             &[(&class_name).into()],
         )?;
-
-        fn add_action(env: &mut JNIEnv, jni_node: &JObject, action: jint) -> Result<()> {
-            // Note: We're using the deprecated addAction signature.
-            // But this one is much easier to call from JNI since it uses
-            // a simple integer constant. Revisit if Android ever gets strict
-            // about prohibiting deprecated methods for applications targeting
-            // newer SDKs.
-            env.call_method(jni_node, "addAction", "(I)V", &[action.into()])?;
-            Ok(())
-        }
 
         let can_focus = self.0.is_focusable() && !self.0.is_focused();
         if self.0.is_clickable() || can_focus {

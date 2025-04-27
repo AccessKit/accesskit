@@ -15,12 +15,10 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction;
 import android.view.accessibility.AccessibilityNodeProvider;
 
 public final class Delegate extends View.AccessibilityDelegate implements View.OnHoverListener {
     private final long adapterHandle;
-    private int accessibilityFocus = AccessibilityNodeProvider.HOST_VIEW_ID;
     private int hoverId = AccessibilityNodeProvider.HOST_VIEW_ID;
 
     private Delegate(long adapterHandle) {
@@ -214,7 +212,7 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
             int virtualViewId,
             AccessibilityNodeInfo nodeInfo);
 
-    private static native int getInputFocus(long adapterHandle);
+    private static native int findFocus(long adapterHandle, int focusType);
 
     private static native int getVirtualViewAtPoint(long adapterHandle, float x, float y);
 
@@ -255,37 +253,12 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
                     nodeInfo.recycle();
                     return null;
                 }
-                if (virtualViewId == accessibilityFocus) {
-                    nodeInfo.setAccessibilityFocused(true);
-                    nodeInfo.addAction(AccessibilityAction.ACTION_CLEAR_ACCESSIBILITY_FOCUS);
-                } else {
-                    nodeInfo.setAccessibilityFocused(false);
-                    nodeInfo.addAction(AccessibilityAction.ACTION_ACCESSIBILITY_FOCUS);
-                }
                 return nodeInfo;
             }
 
             @Override
             public boolean performAction(int virtualViewId, int action, Bundle arguments) {
                 switch (action) {
-                    case AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS:
-                        accessibilityFocus = virtualViewId;
-                        host.invalidate();
-                        sendEventInternal(
-                                host,
-                                virtualViewId,
-                                AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED);
-                        return true;
-                    case AccessibilityNodeInfo.ACTION_CLEAR_ACCESSIBILITY_FOCUS:
-                        if (accessibilityFocus == virtualViewId) {
-                            accessibilityFocus = AccessibilityNodeProvider.HOST_VIEW_ID;
-                        }
-                        host.invalidate();
-                        sendEventInternal(
-                                host,
-                                virtualViewId,
-                                AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED);
-                        return true;
                     case AccessibilityNodeInfo.ACTION_SET_SELECTION:
                         if (!(arguments != null
                                 && arguments.containsKey(
@@ -330,27 +303,7 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
 
             @Override
             public AccessibilityNodeInfo findFocus(int focusType) {
-                switch (focusType) {
-                    case AccessibilityNodeInfo.FOCUS_ACCESSIBILITY:
-                        {
-                            AccessibilityNodeInfo result =
-                                    createAccessibilityNodeInfo(accessibilityFocus);
-                            if (result != null && result.isAccessibilityFocused()) {
-                                return result;
-                            }
-                            break;
-                        }
-                    case AccessibilityNodeInfo.FOCUS_INPUT:
-                        {
-                            AccessibilityNodeInfo result =
-                                    createAccessibilityNodeInfo(getInputFocus(adapterHandle));
-                            if (result != null && result.isFocused()) {
-                                return result;
-                            }
-                            break;
-                        }
-                }
-                return null;
+                return createAccessibilityNodeInfo(Delegate.findFocus(adapterHandle, focusType));
             }
         };
     }

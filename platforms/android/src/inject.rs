@@ -70,8 +70,9 @@ impl InnerInjectingAdapter {
         )
     }
 
-    fn input_focus(&mut self) -> jint {
-        self.adapter.input_focus(&mut *self.activation_handler)
+    fn find_focus(&mut self, focus_type: jint) -> jint {
+        self.adapter
+            .find_focus(&mut *self.activation_handler, focus_type)
     }
 
     fn virtual_view_at_point(&mut self, x: jfloat, y: jfloat) -> jint {
@@ -157,12 +158,17 @@ extern "system" fn populate_node_info(
     }
 }
 
-extern "system" fn get_input_focus(_env: JNIEnv, _class: JClass, adapter_handle: jlong) -> jint {
+extern "system" fn find_focus(
+    _env: JNIEnv,
+    _class: JClass,
+    adapter_handle: jlong,
+    focus_type: jint,
+) -> jint {
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
         return HOST_VIEW_ID;
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    inner_adapter.input_focus()
+    inner_adapter.find_focus(focus_type)
 }
 
 extern "system" fn get_virtual_view_at_point(
@@ -304,9 +310,9 @@ fn delegate_class(env: &mut JNIEnv) -> Result<&'static JClass<'static>> {
                     fn_ptr: populate_node_info as *mut c_void,
                 },
                 NativeMethod {
-                    name: "getInputFocus".into(),
-                    sig: "(J)I".into(),
-                    fn_ptr: get_input_focus as *mut c_void,
+                    name: "findFocus".into(),
+                    sig: "(JI)I".into(),
+                    fn_ptr: find_focus as *mut c_void,
                 },
                 NativeMethod {
                     name: "getVirtualViewAtPoint".into(),
