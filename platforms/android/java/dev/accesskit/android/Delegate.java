@@ -207,7 +207,8 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
     private static native AccessibilityNodeInfo createAccessibilityNodeInfo(
             long adapterHandle, View host, int virtualViewId);
 
-    private static native int findFocus(long adapterHandle, int focusType);
+    private static native AccessibilityNodeInfo findFocus(
+            long adapterHandle, View host, int focusType);
 
     private static native int getVirtualViewAtPoint(long adapterHandle, float x, float y);
 
@@ -283,7 +284,7 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
 
             @Override
             public AccessibilityNodeInfo findFocus(int focusType) {
-                return createAccessibilityNodeInfo(Delegate.findFocus(adapterHandle, focusType));
+                return Delegate.findFocus(adapterHandle, host, focusType);
             }
         };
     }

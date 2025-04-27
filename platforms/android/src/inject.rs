@@ -64,9 +64,14 @@ impl InnerInjectingAdapter {
         )
     }
 
-    fn find_focus(&mut self, focus_type: jint) -> jint {
+    fn find_focus<'local>(
+        &mut self,
+        env: &mut JNIEnv<'local>,
+        host: &JObject,
+        focus_type: jint,
+    ) -> JObject<'local> {
         self.adapter
-            .find_focus(&mut *self.activation_handler, focus_type)
+            .find_focus(&mut *self.activation_handler, env, host, focus_type)
     }
 
     fn virtual_view_at_point(&mut self, x: jfloat, y: jfloat) -> jint {
@@ -135,17 +140,18 @@ extern "system" fn create_accessibility_node_info<'local>(
     inner_adapter.create_accessibility_node_info(&mut env, &host, virtual_view_id)
 }
 
-extern "system" fn find_focus(
-    _env: JNIEnv,
-    _class: JClass,
+extern "system" fn find_focus<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
     adapter_handle: jlong,
+    host: JObject<'local>,
     focus_type: jint,
-) -> jint {
+) -> JObject<'local> {
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return HOST_VIEW_ID;
+        return JObject::null();
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    inner_adapter.find_focus(focus_type)
+    inner_adapter.find_focus(&mut env, &host, focus_type)
 }
 
 extern "system" fn get_virtual_view_at_point(
@@ -296,7 +302,9 @@ fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
                 },
                 NativeMethod {
                     name: "findFocus".into(),
-                    sig: "(JI)I".into(),
+                    sig:
+                        "(JLandroid/view/View;I)Landroid/view/accessibility/AccessibilityNodeInfo;"
+                            .into(),
                     fn_ptr: find_focus as *mut c_void,
                 },
                 NativeMethod {

@@ -457,21 +457,29 @@ impl Adapter {
         node_info
     }
 
-    pub fn find_focus<H: ActivationHandler + ?Sized>(
+    pub fn find_focus<'local, H: ActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
+        env: &mut JNIEnv<'local>,
+        host: &JObject,
         focus_type: jint,
-    ) -> jint {
-        match focus_type {
+    ) -> JObject<'local> {
+        let virtual_view_id = match focus_type {
             FOCUS_INPUT => {
                 let tree = self.state.get_or_init_tree(activation_handler);
                 let tree_state = tree.state();
                 let node = tree_state.focus_in_tree();
                 self.node_id_map.get_or_create_java_id(&node)
             }
-            FOCUS_ACCESSIBILITY => self.accessibility_focus.unwrap_or(-1),
-            _ => -1,
-        }
+            FOCUS_ACCESSIBILITY => {
+                let Some(id) = self.accessibility_focus else {
+                    return JObject::null();
+                };
+                id
+            }
+            _ => return JObject::null(),
+        };
+        self.create_accessibility_node_info(activation_handler, env, host, virtual_view_id)
     }
 
     pub fn virtual_view_at_point<H: ActivationHandler + ?Sized>(
