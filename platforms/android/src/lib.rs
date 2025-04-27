@@ -9,10 +9,8 @@ mod util;
 
 mod action;
 pub use action::PlatformAction;
-
 mod adapter;
 pub use adapter::{Adapter, QueuedEvents};
-
 mod inject;
 pub use inject::InjectingAdapter;
 
