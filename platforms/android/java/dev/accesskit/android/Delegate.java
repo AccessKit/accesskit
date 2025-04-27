@@ -224,14 +224,14 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
             }
 
             @Override
-            public boolean performAction(int virtualViewId, int action, Bundle arguments) {
-                return Delegate.performAction(
-                        adapterHandle, host, virtualViewId, action, arguments);
+            public AccessibilityNodeInfo findFocus(int focusType) {
+                return Delegate.findFocus(adapterHandle, host, focusType);
             }
 
             @Override
-            public AccessibilityNodeInfo findFocus(int focusType) {
-                return Delegate.findFocus(adapterHandle, host, focusType);
+            public boolean performAction(int virtualViewId, int action, Bundle arguments) {
+                return Delegate.performAction(
+                        adapterHandle, host, virtualViewId, action, arguments);
             }
         };
     }
