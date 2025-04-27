@@ -204,8 +204,8 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
                 });
     }
 
-    private static native boolean populateNodeInfo(
-            long adapterHandle, View host, int virtualViewId, AccessibilityNodeInfo nodeInfo);
+    private static native AccessibilityNodeInfo createAccessibilityNodeInfo(
+            long adapterHandle, View host, int virtualViewId);
 
     private static native int findFocus(long adapterHandle, int focusType);
 
@@ -233,19 +233,7 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
         return new AccessibilityNodeProvider() {
             @Override
             public AccessibilityNodeInfo createAccessibilityNodeInfo(int virtualViewId) {
-                AccessibilityNodeInfo nodeInfo;
-                if (virtualViewId == HOST_VIEW_ID) {
-                    nodeInfo = AccessibilityNodeInfo.obtain(host);
-                } else {
-                    nodeInfo = AccessibilityNodeInfo.obtain(host, virtualViewId);
-                }
-                nodeInfo.setPackageName(host.getContext().getPackageName());
-                nodeInfo.setVisibleToUser(true);
-                if (!populateNodeInfo(adapterHandle, host, virtualViewId, nodeInfo)) {
-                    nodeInfo.recycle();
-                    return null;
-                }
-                return nodeInfo;
+                return Delegate.createAccessibilityNodeInfo(adapterHandle, host, virtualViewId);
             }
 
             @Override

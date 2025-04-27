@@ -375,39 +375,70 @@ impl Adapter {
         }
     }
 
-    /// Populate an `AccessibilityNodeInfo` with information about the
+    /// Create an `AccessibilityNodeInfo` with information about the
     /// AccessKit node identified by the given virtual view ID.
     ///
     /// The `host` paramter is the Android view for this adapter.
     /// It must be an instance of `android.view.View` or a subclass.
-    pub fn populate_node_info<H: ActivationHandler + ?Sized>(
+    pub fn create_accessibility_node_info<'local, H: ActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
-        env: &mut JNIEnv,
+        env: &mut JNIEnv<'local>,
         host: &JObject,
         virtual_view_id: jint,
-        jni_node: &JObject,
-    ) -> bool {
+    ) -> JObject<'local> {
         let tree = self.state.get_or_init_tree(activation_handler);
         let tree_state = tree.state();
         let node = if virtual_view_id == HOST_VIEW_ID {
             tree_state.root()
         } else {
             let Some(accesskit_id) = self.node_id_map.get_accesskit_id(virtual_view_id) else {
-                return false;
+                return JObject::null();
             };
             let Some(node) = tree_state.node_by_id(accesskit_id) else {
-                return false;
+                return JObject::null();
             };
             node
         };
 
+        let node_info_class = env
+            .find_class("android/view/accessibility/AccessibilityNodeInfo")
+            .unwrap();
+        let node_info = env
+            .call_static_method(
+                &node_info_class,
+                "obtain",
+                "(Landroid/view/View;I)Landroid/view/accessibility/AccessibilityNodeInfo;",
+                &[host.into(), virtual_view_id.into()],
+            )
+            .unwrap()
+            .l()
+            .unwrap();
+
+        let context = env
+            .call_method(host, "getContext", "()Landroid/content/Context;", &[])
+            .unwrap()
+            .l()
+            .unwrap();
+        let package_name = env
+            .call_method(&context, "getPackageName", "()Ljava/lang/String;", &[])
+            .unwrap()
+            .l()
+            .unwrap();
+        env.call_method(
+            &node_info,
+            "setPackageName",
+            "(Ljava/lang/CharSequence;)V",
+            &[(&package_name).into()],
+        )
+        .unwrap();
+
         let wrapper = NodeWrapper(&node);
-        wrapper.populate_node_info(env, host, &mut self.node_id_map, jni_node);
+        wrapper.populate_node_info(env, host, &mut self.node_id_map, &node_info);
 
         let is_accessibility_focus = self.accessibility_focus == Some(virtual_view_id);
         env.call_method(
-            jni_node,
+            &node_info,
             "setAccessibilityFocused",
             "(Z)V",
             &[is_accessibility_focus.into()],
@@ -415,7 +446,7 @@ impl Adapter {
         .unwrap();
         add_action(
             env,
-            jni_node,
+            &node_info,
             if is_accessibility_focus {
                 ACTION_CLEAR_ACCESSIBILITY_FOCUS
             } else {
@@ -423,7 +454,7 @@ impl Adapter {
             },
         );
 
-        true
+        node_info
     }
 
     pub fn find_focus<H: ActivationHandler + ?Sized>(

@@ -50,19 +50,17 @@ impl Debug for InnerInjectingAdapter {
 }
 
 impl InnerInjectingAdapter {
-    fn populate_node_info(
+    fn create_accessibility_node_info<'local>(
         &mut self,
-        env: &mut JNIEnv,
+        env: &mut JNIEnv<'local>,
         host: &JObject,
         virtual_view_id: jint,
-        jni_node: &JObject,
-    ) -> bool {
-        self.adapter.populate_node_info(
+    ) -> JObject<'local> {
+        self.adapter.create_accessibility_node_info(
             &mut *self.activation_handler,
             env,
             host,
             virtual_view_id,
-            jni_node,
         )
     }
 
@@ -123,23 +121,18 @@ fn inner_adapter_from_handle(handle: jlong) -> Option<Arc<Mutex<InnerInjectingAd
     handle_map_guard.get(&handle).and_then(Weak::upgrade)
 }
 
-extern "system" fn populate_node_info(
-    mut env: JNIEnv,
-    _class: JClass,
+extern "system" fn create_accessibility_node_info<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
     adapter_handle: jlong,
-    host: JObject,
+    host: JObject<'local>,
     virtual_view_id: jint,
-    node_info: JObject,
-) -> jboolean {
+) -> JObject<'local> {
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return JNI_FALSE;
+        return JObject::null();
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    if inner_adapter.populate_node_info(&mut env, &host, virtual_view_id, &node_info) {
-        JNI_TRUE
-    } else {
-        JNI_FALSE
-    }
+    inner_adapter.create_accessibility_node_info(&mut env, &host, virtual_view_id)
 }
 
 extern "system" fn find_focus(
@@ -295,11 +288,11 @@ fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
             &class,
             &[
                 NativeMethod {
-                    name: "populateNodeInfo".into(),
+                    name: "createAccessibilityNodeInfo".into(),
                     sig:
-                        "(JLandroid/view/View;ILandroid/view/accessibility/AccessibilityNodeInfo;)Z"
+                        "(JLandroid/view/View;I)Landroid/view/accessibility/AccessibilityNodeInfo;"
                             .into(),
-                    fn_ptr: populate_node_info as *mut c_void,
+                    fn_ptr: create_accessibility_node_info as *mut c_void,
                 },
                 NativeMethod {
                     name: "findFocus".into(),

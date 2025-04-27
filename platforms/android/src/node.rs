@@ -14,13 +14,13 @@ use jni::{objects::JObject, sys::jint, JNIEnv};
 
 use crate::{filters::filter, util::*};
 
-pub(crate) fn add_action(env: &mut JNIEnv, jni_node: &JObject, action: jint) {
+pub(crate) fn add_action(env: &mut JNIEnv, node_info: &JObject, action: jint) {
     // Note: We're using the deprecated addAction signature.
     // But this one is much easier to call from JNI since it uses
     // a simple integer constant. Revisit if Android ever gets strict
     // about prohibiting deprecated methods for applications targeting
     // newer SDKs.
-    env.call_method(jni_node, "addAction", "(I)V", &[action.into()])
+    env.call_method(node_info, "addAction", "(I)V", &[action.into()])
         .unwrap();
 }
 
@@ -147,11 +147,11 @@ impl NodeWrapper<'_> {
         env: &mut JNIEnv,
         host: &JObject,
         id_map: &mut NodeIdMap,
-        jni_node: &JObject,
+        node_info: &JObject,
     ) {
         for child in self.0.filtered_children(&filter) {
             env.call_method(
-                jni_node,
+                node_info,
                 "addChild",
                 "(Landroid/view/View;I)V",
                 &[host.into(), id_map.get_or_create_java_id(&child).into()],
@@ -161,7 +161,7 @@ impl NodeWrapper<'_> {
         if let Some(parent) = self.0.filtered_parent(&filter) {
             if parent.is_root() {
                 env.call_method(
-                    jni_node,
+                    node_info,
                     "setParent",
                     "(Landroid/view/View;)V",
                     &[host.into()],
@@ -169,7 +169,7 @@ impl NodeWrapper<'_> {
                 .unwrap();
             } else {
                 env.call_method(
-                    jni_node,
+                    node_info,
                     "setParent",
                     "(Landroid/view/View;I)V",
                     &[host.into(), id_map.get_or_create_java_id(&parent).into()],
@@ -201,7 +201,7 @@ impl NodeWrapper<'_> {
                 )
                 .unwrap();
             env.call_method(
-                jni_node,
+                node_info,
                 "setBoundsInScreen",
                 "(Landroid/graphics/Rect;)V",
                 &[(&android_rect).into()],
@@ -210,47 +210,50 @@ impl NodeWrapper<'_> {
         }
 
         if self.is_checkable() {
-            env.call_method(jni_node, "setCheckable", "(Z)V", &[true.into()])
+            env.call_method(node_info, "setCheckable", "(Z)V", &[true.into()])
                 .unwrap();
-            env.call_method(jni_node, "setChecked", "(Z)V", &[self.is_checked().into()])
+            env.call_method(node_info, "setChecked", "(Z)V", &[self.is_checked().into()])
                 .unwrap();
         }
         env.call_method(
-            jni_node,
+            node_info,
             "setEditable",
             "(Z)V",
             &[self.is_editable().into()],
         )
         .unwrap();
-        env.call_method(jni_node, "setEnabled", "(Z)V", &[self.is_enabled().into()])
+        env.call_method(node_info, "setEnabled", "(Z)V", &[self.is_enabled().into()])
             .unwrap();
         env.call_method(
-            jni_node,
+            node_info,
             "setFocusable",
             "(Z)V",
             &[self.is_focusable().into()],
         )
         .unwrap();
-        env.call_method(jni_node, "setFocused", "(Z)V", &[self.is_focused().into()])
+        env.call_method(node_info, "setFocused", "(Z)V", &[self.is_focused().into()])
             .unwrap();
         env.call_method(
-            jni_node,
+            node_info,
             "setPassword",
             "(Z)V",
             &[self.is_password().into()],
         )
         .unwrap();
         env.call_method(
-            jni_node,
+            node_info,
             "setSelected",
             "(Z)V",
             &[self.is_selected().into()],
         )
         .unwrap();
+        // TBD: When, if ever, should the visible-to-user property be false?
+        env.call_method(node_info, "setVisibleToUser", "(Z)V", &[true.into()])
+            .unwrap();
         if let Some(desc) = self.content_description() {
             let desc = env.new_string(desc).unwrap();
             env.call_method(
-                jni_node,
+                node_info,
                 "setContentDescription",
                 "(Ljava/lang/CharSequence;)V",
                 &[(&desc).into()],
@@ -261,7 +264,7 @@ impl NodeWrapper<'_> {
         if let Some(text) = self.text() {
             let text = env.new_string(text).unwrap();
             env.call_method(
-                jni_node,
+                node_info,
                 "setText",
                 "(Ljava/lang/CharSequence;)V",
                 &[(&text).into()],
@@ -270,7 +273,7 @@ impl NodeWrapper<'_> {
         }
         if let Some((start, end)) = self.text_selection() {
             env.call_method(
-                jni_node,
+                node_info,
                 "setTextSelection",
                 "(II)V",
                 &[(start as jint).into(), (end as jint).into()],
@@ -280,7 +283,7 @@ impl NodeWrapper<'_> {
 
         let class_name = env.new_string(self.class_name()).unwrap();
         env.call_method(
-            jni_node,
+            node_info,
             "setClassName",
             "(Ljava/lang/CharSequence;)V",
             &[(&class_name).into()],
@@ -289,17 +292,17 @@ impl NodeWrapper<'_> {
 
         let can_focus = self.0.is_focusable() && !self.0.is_focused();
         if self.0.is_clickable() || can_focus {
-            add_action(env, jni_node, ACTION_CLICK);
+            add_action(env, node_info, ACTION_CLICK);
         }
         if can_focus {
-            add_action(env, jni_node, ACTION_FOCUS);
+            add_action(env, node_info, ACTION_FOCUS);
         }
         if self.0.supports_text_ranges() {
-            add_action(env, jni_node, ACTION_SET_SELECTION);
-            add_action(env, jni_node, ACTION_NEXT_AT_MOVEMENT_GRANULARITY);
-            add_action(env, jni_node, ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY);
+            add_action(env, node_info, ACTION_SET_SELECTION);
+            add_action(env, node_info, ACTION_NEXT_AT_MOVEMENT_GRANULARITY);
+            add_action(env, node_info, ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY);
             env.call_method(
-                jni_node,
+                node_info,
                 "setMovementGranularities",
                 "(I)V",
                 &[(MOVEMENT_GRANULARITY_CHARACTER
@@ -316,7 +319,7 @@ impl NodeWrapper<'_> {
             Live::Polite => LIVE_REGION_POLITE,
             Live::Assertive => LIVE_REGION_ASSERTIVE,
         };
-        env.call_method(jni_node, "setLiveRegion", "(I)V", &[live.into()])
+        env.call_method(node_info, "setLiveRegion", "(I)V", &[live.into()])
             .unwrap();
     }
 }
