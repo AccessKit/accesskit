@@ -380,14 +380,11 @@ impl Adapter {
     ///
     /// The `host` paramter is the Android view for this adapter.
     /// It must be an instance of `android.view.View` or a subclass.
-    #[allow(clippy::too_many_arguments)]
     pub fn populate_node_info<H: ActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
         env: &mut JNIEnv,
         host: &JObject,
-        host_screen_x: jint,
-        host_screen_y: jint,
         virtual_view_id: jint,
         jni_node: &JObject,
     ) -> bool {
@@ -406,14 +403,7 @@ impl Adapter {
         };
 
         let wrapper = NodeWrapper(&node);
-        wrapper.populate_node_info(
-            env,
-            host,
-            host_screen_x,
-            host_screen_y,
-            &mut self.node_id_map,
-            jni_node,
-        );
+        wrapper.populate_node_info(env, host, &mut self.node_id_map, jni_node);
 
         let is_accessibility_focus = self.accessibility_focus == Some(virtual_view_id);
         env.call_method(

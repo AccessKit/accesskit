@@ -54,8 +54,6 @@ impl InnerInjectingAdapter {
         &mut self,
         env: &mut JNIEnv,
         host: &JObject,
-        host_screen_x: jint,
-        host_screen_y: jint,
         virtual_view_id: jint,
         jni_node: &JObject,
     ) -> bool {
@@ -63,8 +61,6 @@ impl InnerInjectingAdapter {
             &mut *self.activation_handler,
             env,
             host,
-            host_screen_x,
-            host_screen_y,
             virtual_view_id,
             jni_node,
         )
@@ -132,8 +128,6 @@ extern "system" fn populate_node_info(
     _class: JClass,
     adapter_handle: jlong,
     host: JObject,
-    host_screen_x: jint,
-    host_screen_y: jint,
     virtual_view_id: jint,
     node_info: JObject,
 ) -> jboolean {
@@ -141,14 +135,7 @@ extern "system" fn populate_node_info(
         return JNI_FALSE;
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    if inner_adapter.populate_node_info(
-        &mut env,
-        &host,
-        host_screen_x,
-        host_screen_y,
-        virtual_view_id,
-        &node_info,
-    ) {
+    if inner_adapter.populate_node_info(&mut env, &host, virtual_view_id, &node_info) {
         JNI_TRUE
     } else {
         JNI_FALSE
@@ -274,16 +261,21 @@ fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
     let global = CLASS.get_or_init(|| {
         #[cfg(feature = "embedded-dex")]
         let class = {
-            let dex_class_loader_class = env.find_class("dalvik/system/InMemoryDexClassLoader").unwrap();
+            let dex_class_loader_class = env
+                .find_class("dalvik/system/InMemoryDexClassLoader")
+                .unwrap();
             let dex_bytes = include_bytes!("../classes.dex");
             let dex_buffer = unsafe {
                 env.new_direct_byte_buffer(dex_bytes.as_ptr() as *mut u8, dex_bytes.len())
-            }.unwrap();
-            let dex_class_loader = env.new_object(
-                &dex_class_loader_class,
-                "(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V",
-                &[(&dex_buffer).into(), (&JObject::null()).into()],
-            ).unwrap();
+            }
+            .unwrap();
+            let dex_class_loader = env
+                .new_object(
+                    &dex_class_loader_class,
+                    "(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V",
+                    &[(&dex_buffer).into(), (&JObject::null()).into()],
+                )
+                .unwrap();
             let class_name = env.new_string("dev.accesskit.android.Delegate").unwrap();
             let class_obj = env
                 .call_method(
@@ -291,8 +283,10 @@ fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
                     "loadClass",
                     "(Ljava/lang/String;)Ljava/lang/Class;",
                     &[(&class_name).into()],
-                ).unwrap()
-                .l().unwrap();
+                )
+                .unwrap()
+                .l()
+                .unwrap();
             JClass::from(class_obj)
         };
         #[cfg(not(feature = "embedded-dex"))]
@@ -302,8 +296,9 @@ fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
             &[
                 NativeMethod {
                     name: "populateNodeInfo".into(),
-                    sig: "(JLandroid/view/View;IIILandroid/view/accessibility/AccessibilityNodeInfo;)Z"
-                        .into(),
+                    sig:
+                        "(JLandroid/view/View;ILandroid/view/accessibility/AccessibilityNodeInfo;)Z"
+                            .into(),
                     fn_ptr: populate_node_info as *mut c_void,
                 },
                 NativeMethod {
@@ -337,7 +332,8 @@ fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
                     fn_ptr: traverse_text as *mut c_void,
                 },
             ],
-        ).unwrap();
+        )
+        .unwrap();
         env.new_global_ref(class).unwrap()
     });
     global.as_obj().into()

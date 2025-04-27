@@ -146,8 +146,6 @@ impl NodeWrapper<'_> {
         &self,
         env: &mut JNIEnv,
         host: &JObject,
-        host_screen_x: jint,
-        host_screen_y: jint,
         id_map: &mut NodeIdMap,
         jni_node: &JObject,
     ) {
@@ -181,6 +179,14 @@ impl NodeWrapper<'_> {
         }
 
         if let Some(rect) = self.0.bounding_box() {
+            let location = env.new_int_array(2).unwrap();
+            env.call_method(host, "getLocationOnScreen", "([I)V", &[(&location).into()])
+                .unwrap();
+            let mut location_buf = [0; 2];
+            env.get_int_array_region(&location, 0, &mut location_buf)
+                .unwrap();
+            let host_screen_x = location_buf[0];
+            let host_screen_y = location_buf[1];
             let android_rect_class = env.find_class("android/graphics/Rect").unwrap();
             let android_rect = env
                 .new_object(
