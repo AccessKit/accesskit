@@ -213,21 +213,7 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
     private static native int getVirtualViewAtPoint(long adapterHandle, float x, float y);
 
     private static native boolean performAction(
-            long adapterHandle, View host, int virtualViewId, int action);
-
-    private static native boolean setTextSelection(
-            long adapterHandle, View host, int virtualViewId, int anchor, int focus);
-
-    private static native boolean collapseTextSelection(
-            long adapterHandle, View host, int virtualViewId);
-
-    private static native boolean traverseText(
-            long adapterHandle,
-            View host,
-            int virtualViewId,
-            int granularity,
-            boolean forward,
-            boolean extendSelection);
+            long adapterHandle, View host, int virtualViewId, int action, Bundle arguments);
 
     @Override
     public AccessibilityNodeProvider getAccessibilityNodeProvider(final View host) {
@@ -239,47 +225,8 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
 
             @Override
             public boolean performAction(int virtualViewId, int action, Bundle arguments) {
-                switch (action) {
-                    case AccessibilityNodeInfo.ACTION_SET_SELECTION:
-                        if (!(arguments != null
-                                && arguments.containsKey(
-                                        AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT)
-                                && arguments.containsKey(
-                                        AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT))) {
-                            return Delegate.collapseTextSelection(
-                                    adapterHandle, host, virtualViewId);
-                        }
-                        int anchor =
-                                arguments.getInt(
-                                        AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT);
-                        int focus =
-                                arguments.getInt(
-                                        AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT);
-                        return Delegate.setTextSelection(
-                                adapterHandle, host, virtualViewId, anchor, focus);
-                    case AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY:
-                    case AccessibilityNodeInfo.ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY:
-                        int granularity =
-                                arguments.getInt(
-                                        AccessibilityNodeInfo
-                                                .ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT);
-                        boolean forward =
-                                (action
-                                        == AccessibilityNodeInfo
-                                                .ACTION_NEXT_AT_MOVEMENT_GRANULARITY);
-                        boolean extendSelection =
-                                arguments.getBoolean(
-                                        AccessibilityNodeInfo
-                                                .ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN);
-                        return Delegate.traverseText(
-                                adapterHandle,
-                                host,
-                                virtualViewId,
-                                granularity,
-                                forward,
-                                extendSelection);
-                }
-                return Delegate.performAction(adapterHandle, host, virtualViewId, action);
+                return Delegate.performAction(
+                        adapterHandle, host, virtualViewId, action, arguments);
             }
 
             @Override

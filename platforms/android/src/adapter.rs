@@ -20,6 +20,7 @@ use jni::{
 };
 
 use crate::{
+    action::{PlatformAction, PlatformActionInner},
     filters::filter,
     node::{add_action, NodeWrapper},
     util::*,
@@ -497,17 +498,7 @@ impl Adapter {
         self.node_id_map.get_or_create_java_id(&node)
     }
 
-    /// Perform the specified accessibility action.
-    ///
-    /// If a [`QueuedEvents`] instance is returned, the caller must call
-    /// [`QueuedEvents::raise`] on it, and the Java `performAction` method
-    /// must return `true`. Otherwise, the Java `performAction` method
-    /// must either handle the action some other way or return false.
-    ///
-    /// This method may be safely called on any thread, but refer to
-    /// [`QueuedEvents::raise`] for restrictions on the context in which
-    /// it should be called.
-    pub fn perform_action<H: ActionHandler + ?Sized>(
+    fn perform_simple_action<H: ActionHandler + ?Sized>(
         &mut self,
         action_handler: &mut H,
         virtual_view_id: jint,
@@ -620,18 +611,7 @@ impl Adapter {
         Some(extra)
     }
 
-    /// Set the text selection of the specified virtual view to the specified
-    /// endpoints.
-    ///
-    /// If a [`QueuedEvents`] instance is returned, the caller must call
-    /// [`QueuedEvents::raise`] on it, and the Java `performAction` method
-    /// must return `true`. Otherwise, the Java `performAction` method
-    /// must either handle the action some other way or return false.
-    ///
-    /// This method may be safely called on any thread, but refer to
-    /// [`QueuedEvents::raise`] for restrictions on the context in which
-    /// it should be called.
-    pub fn set_text_selection<H: ActionHandler + ?Sized>(
+    fn set_text_selection<H: ActionHandler + ?Sized>(
         &mut self,
         action_handler: &mut H,
         virtual_view_id: jint,
@@ -649,17 +629,7 @@ impl Adapter {
         Some(QueuedEvents(events))
     }
 
-    /// Collapse the text selection of the specified virtual view.
-    ///
-    /// If a [`QueuedEvents`] instance is returned, the caller must call
-    /// [`QueuedEvents::raise`] on it, and the Java `performAction` method
-    /// must return `true`. Otherwise, the Java `performAction` method
-    /// must either handle the action some other way or return false.
-    ///
-    /// This method may be safely called on any thread, but refer to
-    /// [`QueuedEvents::raise`] for restrictions on the context in which
-    /// it should be called.
-    pub fn collapse_text_selection<H: ActionHandler + ?Sized>(
+    fn collapse_text_selection<H: ActionHandler + ?Sized>(
         &mut self,
         action_handler: &mut H,
         virtual_view_id: jint,
@@ -671,17 +641,7 @@ impl Adapter {
         Some(QueuedEvents(events))
     }
 
-    /// Traverse the text in the specified virtual view.
-    ///
-    /// If a [`QueuedEvents`] instance is returned, the caller must call
-    /// [`QueuedEvents::raise`] on it, and the Java `performAction` method
-    /// must return `true`. Otherwise, the Java `performAction` method
-    /// must either handle the action some other way or return false.
-    ///
-    /// This method may be safely called on any thread, but refer to
-    /// [`QueuedEvents::raise`] for restrictions on the context in which
-    /// it should be called.
-    pub fn traverse_text<H: ActionHandler + ?Sized>(
+    fn traverse_text<H: ActionHandler + ?Sized>(
         &mut self,
         action_handler: &mut H,
         virtual_view_id: jint,
@@ -832,5 +792,45 @@ impl Adapter {
             segment_end: segment_end as jint,
         });
         Some(QueuedEvents(events))
+    }
+
+    /// Perform the specified accessibility action.
+    ///
+    /// If a [`QueuedEvents`] instance is returned, the caller must call
+    /// [`QueuedEvents::raise`] on it, and the Java `performAction` method
+    /// must return `true`. Otherwise, the Java `performAction` method
+    /// must either handle the action some other way or return false.
+    ///
+    /// This method may be safely called on any thread, but refer to
+    /// [`QueuedEvents::raise`] for restrictions on the context in which
+    /// it should be called.
+    pub fn perform_action<H: ActionHandler + ?Sized>(
+        &mut self,
+        action_handler: &mut H,
+        virtual_view_id: jint,
+        action: &PlatformAction,
+    ) -> Option<QueuedEvents> {
+        match action.0 {
+            PlatformActionInner::Simple { action } => {
+                self.perform_simple_action(action_handler, virtual_view_id, action)
+            }
+            PlatformActionInner::SetTextSelection { anchor, focus } => {
+                self.set_text_selection(action_handler, virtual_view_id, anchor, focus)
+            }
+            PlatformActionInner::CollapseTextSelection => {
+                self.collapse_text_selection(action_handler, virtual_view_id)
+            }
+            PlatformActionInner::TraverseText {
+                granularity,
+                forward,
+                extend_selection,
+            } => self.traverse_text(
+                action_handler,
+                virtual_view_id,
+                granularity,
+                forward,
+                extend_selection,
+            ),
+        }
     }
 }

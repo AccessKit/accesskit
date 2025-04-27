@@ -29,6 +29,7 @@ use std::{
 };
 
 use crate::{
+    action::PlatformAction,
     adapter::{Adapter, QueuedEvents},
     util::*,
 };
@@ -79,41 +80,13 @@ impl InnerInjectingAdapter {
             .virtual_view_at_point(&mut *self.activation_handler, x, y)
     }
 
-    fn perform_action(&mut self, virtual_view_id: jint, action: jint) -> Option<QueuedEvents> {
+    fn perform_action(
+        &mut self,
+        virtual_view_id: jint,
+        action: &PlatformAction,
+    ) -> Option<QueuedEvents> {
         self.adapter
             .perform_action(&mut *self.action_handler, virtual_view_id, action)
-    }
-
-    fn set_text_selection(
-        &mut self,
-        virtual_view_id: jint,
-        anchor: jint,
-        focus: jint,
-    ) -> Option<QueuedEvents> {
-        self.adapter
-            .set_text_selection(&mut *self.action_handler, virtual_view_id, anchor, focus)
-    }
-
-    fn collapse_text_selection(&mut self, virtual_view_id: jint) -> Option<QueuedEvents> {
-        self.adapter
-            .collapse_text_selection(&mut *self.action_handler, virtual_view_id)
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn traverse_text(
-        &mut self,
-        virtual_view_id: jint,
-        granularity: jint,
-        forward: bool,
-        extend_selection: bool,
-    ) -> Option<QueuedEvents> {
-        self.adapter.traverse_text(
-            &mut *self.action_handler,
-            virtual_view_id,
-            granularity,
-            forward,
-            extend_selection,
-        )
     }
 }
 
@@ -168,86 +141,23 @@ extern "system" fn get_virtual_view_at_point(
     inner_adapter.virtual_view_at_point(x, y)
 }
 
-extern "system" fn perform_action(
-    mut env: JNIEnv,
-    class: JClass,
+extern "system" fn perform_action<'local>(
+    mut env: JNIEnv<'local>,
+    class: JClass<'local>,
     adapter_handle: jlong,
-    host: JObject,
+    host: JObject<'local>,
     virtual_view_id: jint,
     action: jint,
+    arguments: JObject<'local>,
 ) -> jboolean {
+    let Some(action) = PlatformAction::from_java(&mut env, action, &arguments) else {
+        return JNI_FALSE;
+    };
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
         return JNI_FALSE;
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    if let Some(events) = inner_adapter.perform_action(virtual_view_id, action) {
-        events.raise(&mut env, &class, &host);
-        JNI_TRUE
-    } else {
-        JNI_FALSE
-    }
-}
-
-extern "system" fn set_text_selection(
-    mut env: JNIEnv,
-    class: JClass,
-    adapter_handle: jlong,
-    host: JObject,
-    virtual_view_id: jint,
-    anchor: jint,
-    focus: jint,
-) -> jboolean {
-    let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return JNI_FALSE;
-    };
-    let mut inner_adapter = inner_adapter.lock().unwrap();
-    if let Some(events) = inner_adapter.set_text_selection(virtual_view_id, anchor, focus) {
-        events.raise(&mut env, &class, &host);
-        JNI_TRUE
-    } else {
-        JNI_FALSE
-    }
-}
-
-extern "system" fn collapse_text_selection(
-    mut env: JNIEnv,
-    class: JClass,
-    adapter_handle: jlong,
-    host: JObject,
-    virtual_view_id: jint,
-) -> jboolean {
-    let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return JNI_FALSE;
-    };
-    let mut inner_adapter = inner_adapter.lock().unwrap();
-    if let Some(events) = inner_adapter.collapse_text_selection(virtual_view_id) {
-        events.raise(&mut env, &class, &host);
-        JNI_TRUE
-    } else {
-        JNI_FALSE
-    }
-}
-
-extern "system" fn traverse_text(
-    mut env: JNIEnv,
-    class: JClass,
-    adapter_handle: jlong,
-    host: JObject,
-    virtual_view_id: jint,
-    granularity: jint,
-    forward: jboolean,
-    extend_selection: jboolean,
-) -> jboolean {
-    let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return JNI_FALSE;
-    };
-    let mut inner_adapter = inner_adapter.lock().unwrap();
-    if let Some(events) = inner_adapter.traverse_text(
-        virtual_view_id,
-        granularity,
-        forward == JNI_TRUE,
-        extend_selection == JNI_TRUE,
-    ) {
+    if let Some(events) = inner_adapter.perform_action(virtual_view_id, &action) {
         events.raise(&mut env, &class, &host);
         JNI_TRUE
     } else {
@@ -314,23 +224,8 @@ fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
                 },
                 NativeMethod {
                     name: "performAction".into(),
-                    sig: "(JLandroid/view/View;II)Z".into(),
+                    sig: "(JLandroid/view/View;IILandroid/os/Bundle;)Z".into(),
                     fn_ptr: perform_action as *mut c_void,
-                },
-                NativeMethod {
-                    name: "setTextSelection".into(),
-                    sig: "(JLandroid/view/View;III)Z".into(),
-                    fn_ptr: set_text_selection as *mut c_void,
-                },
-                NativeMethod {
-                    name: "collapseTextSelection".into(),
-                    sig: "(JLandroid/view/View;I)Z".into(),
-                    fn_ptr: collapse_text_selection as *mut c_void,
-                },
-                NativeMethod {
-                    name: "traverseText".into(),
-                    sig: "(JLandroid/view/View;IIZZ)Z".into(),
-                    fn_ptr: traverse_text as *mut c_void,
                 },
             ],
         )
