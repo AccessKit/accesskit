@@ -3,23 +3,16 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-// Derived from the Flutter engine.
-// Copyright 2013 The Flutter Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE.chromium file.
-
 package dev.accesskit.android;
 
 import android.os.Bundle;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityNodeProvider;
 
 public final class Delegate extends View.AccessibilityDelegate implements View.OnHoverListener {
     private final long adapterHandle;
-    private int hoverId = AccessibilityNodeProvider.HOST_VIEW_ID;
 
     private Delegate(long adapterHandle) {
         super();
@@ -56,153 +49,7 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
                 });
     }
 
-    private static AccessibilityEvent newEvent(View host, int virtualViewId, int type) {
-        AccessibilityEvent e = AccessibilityEvent.obtain(type);
-        e.setPackageName(host.getContext().getPackageName());
-        if (virtualViewId == AccessibilityNodeProvider.HOST_VIEW_ID) {
-            e.setSource(host);
-        } else {
-            e.setSource(host, virtualViewId);
-        }
-        return e;
-    }
-
-    private static void sendCompletedEvent(View host, AccessibilityEvent e) {
-        host.getParent().requestSendAccessibilityEvent(host, e);
-    }
-
-    private static void sendEventInternal(View host, int virtualViewId, int type) {
-        AccessibilityEvent e = newEvent(host, virtualViewId, type);
-        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
-            e.setContentChangeTypes(AccessibilityEvent.CONTENT_CHANGE_TYPE_SUBTREE);
-        }
-        sendCompletedEvent(host, e);
-    }
-
-    public static void sendEvent(final View host, final int virtualViewId, final int type) {
-        host.post(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        sendEventInternal(host, virtualViewId, type);
-                    }
-                });
-    }
-
-    private static void sendTextChangedInternal(
-            View host, int virtualViewId, String oldValue, String newValue) {
-        int i;
-        for (i = 0; i < oldValue.length() && i < newValue.length(); ++i) {
-            if (oldValue.charAt(i) != newValue.charAt(i)) {
-                break;
-            }
-        }
-        if (i >= oldValue.length() && i >= newValue.length()) {
-            return; // Text did not change
-        }
-        AccessibilityEvent e =
-                newEvent(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED);
-        e.setBeforeText(oldValue);
-        e.getText().add(newValue);
-        int firstDifference = i;
-        e.setFromIndex(firstDifference);
-        int oldIndex = oldValue.length() - 1;
-        int newIndex = newValue.length() - 1;
-        while (oldIndex >= firstDifference && newIndex >= firstDifference) {
-            if (oldValue.charAt(oldIndex) != newValue.charAt(newIndex)) {
-                break;
-            }
-            --oldIndex;
-            --newIndex;
-        }
-        e.setRemovedCount(oldIndex - firstDifference + 1);
-        e.setAddedCount(newIndex - firstDifference + 1);
-        sendCompletedEvent(host, e);
-    }
-
-    public static void sendTextChanged(
-            final View host,
-            final int virtualViewId,
-            final String oldValue,
-            final String newValue) {
-        host.post(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        sendTextChangedInternal(host, virtualViewId, oldValue, newValue);
-                    }
-                });
-    }
-
-    private static void sendTextSelectionChangedInternal(
-            View host, int virtualViewId, String text, int start, int end) {
-        AccessibilityEvent e =
-                newEvent(host, virtualViewId, AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED);
-        e.getText().add(text);
-        e.setFromIndex(start);
-        e.setToIndex(end);
-        e.setItemCount(text.length());
-        sendCompletedEvent(host, e);
-    }
-
-    public static void sendTextSelectionChanged(
-            final View host,
-            final int virtualViewId,
-            final String text,
-            final int start,
-            final int end) {
-        host.post(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        sendTextSelectionChangedInternal(host, virtualViewId, text, start, end);
-                    }
-                });
-    }
-
-    private static void sendTextTraversedInternal(
-            View host,
-            int virtualViewId,
-            int granularity,
-            boolean forward,
-            int segmentStart,
-            int segmentEnd) {
-        AccessibilityEvent e =
-                newEvent(
-                        host,
-                        virtualViewId,
-                        AccessibilityEvent.TYPE_VIEW_TEXT_TRAVERSED_AT_MOVEMENT_GRANULARITY);
-        e.setMovementGranularity(granularity);
-        e.setAction(
-                forward
-                        ? AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY
-                        : AccessibilityNodeInfo.ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY);
-        e.setFromIndex(segmentStart);
-        e.setToIndex(segmentEnd);
-        sendCompletedEvent(host, e);
-    }
-
-    public static void sendTextTraversed(
-            final View host,
-            final int virtualViewId,
-            final int granularity,
-            final boolean forward,
-            final int segmentStart,
-            final int segmentEnd) {
-        host.post(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        sendTextTraversedInternal(
-                                host,
-                                virtualViewId,
-                                granularity,
-                                forward,
-                                segmentStart,
-                                segmentEnd);
-                    }
-                });
-    }
+    private static native void runCallback(View host, long handle);
 
     private static native AccessibilityNodeInfo createAccessibilityNodeInfo(
             long adapterHandle, View host, int virtualViewId);
@@ -210,10 +57,20 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
     private static native AccessibilityNodeInfo findFocus(
             long adapterHandle, View host, int focusType);
 
-    private static native int getVirtualViewAtPoint(long adapterHandle, float x, float y);
-
     private static native boolean performAction(
             long adapterHandle, View host, int virtualViewId, int action, Bundle arguments);
+
+    private static native boolean onHoverEvent(
+            long adapterHandle, View host, int action, float x, float y);
+
+    public static Runnable newCallback(final View host, final long handle) {
+        return new Runnable() {
+            @Override
+            public void run() {
+                runCallback(host, handle);
+            }
+        };
+    }
 
     @Override
     public AccessibilityNodeProvider getAccessibilityNodeProvider(final View host) {
@@ -238,27 +95,6 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
 
     @Override
     public boolean onHover(View v, MotionEvent event) {
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_HOVER_ENTER:
-            case MotionEvent.ACTION_HOVER_MOVE:
-                int newId = getVirtualViewAtPoint(adapterHandle, event.getX(), event.getY());
-                if (newId != hoverId) {
-                    if (newId != AccessibilityNodeProvider.HOST_VIEW_ID) {
-                        sendEventInternal(v, newId, AccessibilityEvent.TYPE_VIEW_HOVER_ENTER);
-                    }
-                    if (hoverId != AccessibilityNodeProvider.HOST_VIEW_ID) {
-                        sendEventInternal(v, hoverId, AccessibilityEvent.TYPE_VIEW_HOVER_EXIT);
-                    }
-                    hoverId = newId;
-                }
-                break;
-            case MotionEvent.ACTION_HOVER_EXIT:
-                if (hoverId != AccessibilityNodeProvider.HOST_VIEW_ID) {
-                    sendEventInternal(v, hoverId, AccessibilityEvent.TYPE_VIEW_HOVER_EXIT);
-                    hoverId = AccessibilityNodeProvider.HOST_VIEW_ID;
-                }
-                break;
-        }
-        return true;
+        return onHoverEvent(adapterHandle, v, event.getAction(), event.getX(), event.getY());
     }
 }

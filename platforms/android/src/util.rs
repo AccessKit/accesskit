@@ -23,10 +23,17 @@ pub(crate) const ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN: &str =
 pub(crate) const ACTION_ARGUMENT_SELECTION_START_INT: &str = "ACTION_ARGUMENT_SELECTION_START_INT";
 pub(crate) const ACTION_ARGUMENT_SELECTION_END_INT: &str = "ACTION_ARGUMENT_SELECTION_END_INT";
 
+pub(crate) const CONTENT_CHANGE_TYPE_SUBTREE: jint = 1 << 0;
+
 pub(crate) const EVENT_VIEW_CLICKED: jint = 1;
 pub(crate) const EVENT_VIEW_FOCUSED: jint = 1 << 3;
+pub(crate) const EVENT_VIEW_TEXT_CHANGED: jint = 1 << 4;
+pub(crate) const EVENT_VIEW_HOVER_ENTER: jint = 1 << 7;
+pub(crate) const EVENT_VIEW_HOVER_EXIT: jint = 1 << 8;
+pub(crate) const EVENT_VIEW_TEXT_SELECTION_CHANGED: jint = 1 << 13;
 pub(crate) const EVENT_VIEW_ACCESSIBILITY_FOCUSED: jint = 1 << 15;
 pub(crate) const EVENT_VIEW_ACCESSIBILITY_FOCUS_CLEARED: jint = 1 << 16;
+pub(crate) const EVENT_VIEW_TEXT_TRAVERSED_AT_MOVEMENT_GRANULARITY: jint = 1 << 17;
 pub(crate) const EVENT_WINDOW_CONTENT_CHANGED: jint = 1 << 11;
 
 pub(crate) const FOCUS_INPUT: jint = 1;
@@ -37,6 +44,10 @@ pub(crate) const HOST_VIEW_ID: jint = -1;
 pub(crate) const LIVE_REGION_NONE: jint = 0;
 pub(crate) const LIVE_REGION_POLITE: jint = 1;
 pub(crate) const LIVE_REGION_ASSERTIVE: jint = 2;
+
+pub(crate) const MOTION_ACTION_HOVER_MOVE: jint = 7;
+pub(crate) const MOTION_ACTION_HOVER_ENTER: jint = 9;
+pub(crate) const MOTION_ACTION_HOVER_EXIT: jint = 10;
 
 pub(crate) const MOVEMENT_GRANULARITY_CHARACTER: jint = 1 << 0;
 pub(crate) const MOVEMENT_GRANULARITY_WORD: jint = 1 << 1;
@@ -103,4 +114,19 @@ pub(crate) fn bundle_get_bool(env: &mut JNIEnv, bundle: &JObject, key: &str) -> 
     .unwrap()
     .z()
     .unwrap()
+}
+
+pub(crate) fn get_package_name<'local>(
+    env: &mut JNIEnv<'local>,
+    view: &JObject,
+) -> JObject<'local> {
+    let context = env
+        .call_method(view, "getContext", "()Landroid/content/Context;", &[])
+        .unwrap()
+        .l()
+        .unwrap();
+    env.call_method(&context, "getPackageName", "()Ljava/lang/String;", &[])
+        .unwrap()
+        .l()
+        .unwrap()
 }
