@@ -310,15 +310,12 @@ impl InjectingAdapter {
         let Some(host) = self.host.upgrade_local(&env).unwrap() else {
             return;
         };
-        if let Some(events) = self
-            .inner
-            .lock()
-            .unwrap()
-            .adapter
-            .update_if_active(update_factory)
-        {
-            events.raise(&mut env, self.delegate_class, &host);
-        }
+        let mut inner = self.inner.lock().unwrap();
+        let Some(events) = inner.adapter.update_if_active(update_factory) else {
+            return;
+        };
+        drop(inner);
+        events.raise(&mut env, self.delegate_class, &host);
     }
 }
 
