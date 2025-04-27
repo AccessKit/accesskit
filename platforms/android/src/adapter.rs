@@ -14,7 +14,6 @@ use accesskit::{
 };
 use accesskit_consumer::{FilterResult, Node, TextPosition, Tree, TreeChangeHandler};
 use jni::{
-    errors::Result,
     objects::{JClass, JObject},
     sys::{jfloat, jint},
     JNIEnv,
@@ -391,17 +390,17 @@ impl Adapter {
         host_screen_y: jint,
         virtual_view_id: jint,
         jni_node: &JObject,
-    ) -> Result<bool> {
+    ) -> bool {
         let tree = self.state.get_or_init_tree(activation_handler);
         let tree_state = tree.state();
         let node = if virtual_view_id == HOST_VIEW_ID {
             tree_state.root()
         } else {
             let Some(accesskit_id) = self.node_id_map.get_accesskit_id(virtual_view_id) else {
-                return Ok(false);
+                return false;
             };
             let Some(node) = tree_state.node_by_id(accesskit_id) else {
-                return Ok(false);
+                return false;
             };
             node
         };
@@ -414,7 +413,7 @@ impl Adapter {
             host_screen_y,
             &mut self.node_id_map,
             jni_node,
-        )?;
+        );
 
         let is_accessibility_focus = self.accessibility_focus == Some(virtual_view_id);
         env.call_method(
@@ -422,7 +421,8 @@ impl Adapter {
             "setAccessibilityFocused",
             "(Z)V",
             &[is_accessibility_focus.into()],
-        )?;
+        )
+        .unwrap();
         add_action(
             env,
             jni_node,
@@ -431,9 +431,9 @@ impl Adapter {
             } else {
                 ACTION_ACCESSIBILITY_FOCUS
             },
-        )?;
+        );
 
-        Ok(true)
+        true
     }
 
     pub fn find_focus<H: ActivationHandler + ?Sized>(

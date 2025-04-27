@@ -58,7 +58,7 @@ impl InnerInjectingAdapter {
         host_screen_y: jint,
         virtual_view_id: jint,
         jni_node: &JObject,
-    ) -> Result<bool> {
+    ) -> bool {
         self.adapter.populate_node_info(
             &mut *self.activation_handler,
             env,
@@ -141,17 +141,14 @@ extern "system" fn populate_node_info(
         return JNI_FALSE;
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    if inner_adapter
-        .populate_node_info(
-            &mut env,
-            &host,
-            host_screen_x,
-            host_screen_y,
-            virtual_view_id,
-            &node_info,
-        )
-        .unwrap()
-    {
+    if inner_adapter.populate_node_info(
+        &mut env,
+        &host,
+        host_screen_x,
+        host_screen_y,
+        virtual_view_id,
+        &node_info,
+    ) {
         JNI_TRUE
     } else {
         JNI_FALSE
@@ -272,34 +269,34 @@ extern "system" fn traverse_text(
     }
 }
 
-fn delegate_class(env: &mut JNIEnv) -> Result<&'static JClass<'static>> {
+fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
     static CLASS: OnceCell<GlobalRef> = OnceCell::new();
-    let global = CLASS.get_or_try_init(|| {
+    let global = CLASS.get_or_init(|| {
         #[cfg(feature = "embedded-dex")]
         let class = {
-            let dex_class_loader_class = env.find_class("dalvik/system/InMemoryDexClassLoader")?;
+            let dex_class_loader_class = env.find_class("dalvik/system/InMemoryDexClassLoader").unwrap();
             let dex_bytes = include_bytes!("../classes.dex");
             let dex_buffer = unsafe {
                 env.new_direct_byte_buffer(dex_bytes.as_ptr() as *mut u8, dex_bytes.len())
-            }?;
+            }.unwrap();
             let dex_class_loader = env.new_object(
                 &dex_class_loader_class,
                 "(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V",
                 &[(&dex_buffer).into(), (&JObject::null()).into()],
-            )?;
-            let class_name = env.new_string("dev.accesskit.android.Delegate")?;
+            ).unwrap();
+            let class_name = env.new_string("dev.accesskit.android.Delegate").unwrap();
             let class_obj = env
                 .call_method(
                     &dex_class_loader,
                     "loadClass",
                     "(Ljava/lang/String;)Ljava/lang/Class;",
                     &[(&class_name).into()],
-                )?
-                .l()?;
+                ).unwrap()
+                .l().unwrap();
             JClass::from(class_obj)
         };
         #[cfg(not(feature = "embedded-dex"))]
-        let class = env.find_class("dev/accesskit/android/Delegate")?;
+        let class = env.find_class("dev/accesskit/android/Delegate").unwrap();
         env.register_native_methods(
             &class,
             &[
@@ -340,10 +337,10 @@ fn delegate_class(env: &mut JNIEnv) -> Result<&'static JClass<'static>> {
                     fn_ptr: traverse_text as *mut c_void,
                 },
             ],
-        )?;
-        env.new_global_ref(class)
-    })?;
-    Ok(global.as_obj().into())
+        ).unwrap();
+        env.new_global_ref(class).unwrap()
+    });
+    global.as_obj().into()
 }
 
 /// High-level AccessKit Android adapter that injects itself into an Android
@@ -383,7 +380,7 @@ impl InjectingAdapter {
         host_view: &JObject,
         activation_handler: impl 'static + ActivationHandler + Send,
         action_handler: impl 'static + ActionHandler + Send,
-    ) -> Result<Self> {
+    ) -> Self {
         let inner = Arc::new(Mutex::new(InnerInjectingAdapter {
             adapter: Adapter::default(),
             activation_handler: Box::new(activation_handler),
@@ -394,20 +391,21 @@ impl InjectingAdapter {
             .lock()
             .unwrap()
             .insert(handle, Arc::downgrade(&inner));
-        let delegate_class = delegate_class(env)?;
+        let delegate_class = delegate_class(env);
         env.call_static_method(
             delegate_class,
             "inject",
             "(Landroid/view/View;J)V",
             &[host_view.into(), handle.into()],
-        )?;
-        Ok(Self {
-            vm: env.get_java_vm()?,
+        )
+        .unwrap();
+        Self {
+            vm: env.get_java_vm().unwrap(),
             delegate_class,
-            host: env.new_weak_ref(host_view)?.unwrap(),
+            host: env.new_weak_ref(host_view).unwrap().unwrap(),
             handle,
             inner,
-        })
+        }
     }
 
     /// If and only if the tree has been initialized, call the provided function
@@ -438,7 +436,7 @@ impl Drop for InjectingAdapter {
             let Some(host) = host.upgrade_local(env)? else {
                 return Ok(());
             };
-            let delegate_class = delegate_class(env)?;
+            let delegate_class = delegate_class(env);
             env.call_static_method(
                 delegate_class,
                 "remove",

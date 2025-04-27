@@ -10,18 +10,18 @@
 
 use accesskit::{Live, Role, Toggled};
 use accesskit_consumer::Node;
-use jni::{errors::Result, objects::JObject, sys::jint, JNIEnv};
+use jni::{objects::JObject, sys::jint, JNIEnv};
 
 use crate::{filters::filter, util::*};
 
-pub(crate) fn add_action(env: &mut JNIEnv, jni_node: &JObject, action: jint) -> Result<()> {
+pub(crate) fn add_action(env: &mut JNIEnv, jni_node: &JObject, action: jint) {
     // Note: We're using the deprecated addAction signature.
     // But this one is much easier to call from JNI since it uses
     // a simple integer constant. Revisit if Android ever gets strict
     // about prohibiting deprecated methods for applications targeting
     // newer SDKs.
-    env.call_method(jni_node, "addAction", "(I)V", &[action.into()])?;
-    Ok(())
+    env.call_method(jni_node, "addAction", "(I)V", &[action.into()])
+        .unwrap();
 }
 
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
@@ -150,14 +150,15 @@ impl NodeWrapper<'_> {
         host_screen_y: jint,
         id_map: &mut NodeIdMap,
         jni_node: &JObject,
-    ) -> Result<()> {
+    ) {
         for child in self.0.filtered_children(&filter) {
             env.call_method(
                 jni_node,
                 "addChild",
                 "(Landroid/view/View;I)V",
                 &[host.into(), id_map.get_or_create_java_id(&child).into()],
-            )?;
+            )
+            .unwrap();
         }
         if let Some(parent) = self.0.filtered_parent(&filter) {
             if parent.is_root() {
@@ -166,85 +167,100 @@ impl NodeWrapper<'_> {
                     "setParent",
                     "(Landroid/view/View;)V",
                     &[host.into()],
-                )?;
+                )
+                .unwrap();
             } else {
                 env.call_method(
                     jni_node,
                     "setParent",
                     "(Landroid/view/View;I)V",
                     &[host.into(), id_map.get_or_create_java_id(&parent).into()],
-                )?;
+                )
+                .unwrap();
             }
         }
 
         if let Some(rect) = self.0.bounding_box() {
-            let android_rect_class = env.find_class("android/graphics/Rect")?;
-            let android_rect = env.new_object(
-                &android_rect_class,
-                "(IIII)V",
-                &[
-                    ((rect.x0 as jint) + host_screen_x).into(),
-                    ((rect.y0 as jint) + host_screen_y).into(),
-                    ((rect.x1 as jint) + host_screen_x).into(),
-                    ((rect.y1 as jint) + host_screen_y).into(),
-                ],
-            )?;
+            let android_rect_class = env.find_class("android/graphics/Rect").unwrap();
+            let android_rect = env
+                .new_object(
+                    &android_rect_class,
+                    "(IIII)V",
+                    &[
+                        ((rect.x0 as jint) + host_screen_x).into(),
+                        ((rect.y0 as jint) + host_screen_y).into(),
+                        ((rect.x1 as jint) + host_screen_x).into(),
+                        ((rect.y1 as jint) + host_screen_y).into(),
+                    ],
+                )
+                .unwrap();
             env.call_method(
                 jni_node,
                 "setBoundsInScreen",
                 "(Landroid/graphics/Rect;)V",
                 &[(&android_rect).into()],
-            )?;
+            )
+            .unwrap();
         }
 
         if self.is_checkable() {
-            env.call_method(jni_node, "setCheckable", "(Z)V", &[true.into()])?;
-            env.call_method(jni_node, "setChecked", "(Z)V", &[self.is_checked().into()])?;
+            env.call_method(jni_node, "setCheckable", "(Z)V", &[true.into()])
+                .unwrap();
+            env.call_method(jni_node, "setChecked", "(Z)V", &[self.is_checked().into()])
+                .unwrap();
         }
         env.call_method(
             jni_node,
             "setEditable",
             "(Z)V",
             &[self.is_editable().into()],
-        )?;
-        env.call_method(jni_node, "setEnabled", "(Z)V", &[self.is_enabled().into()])?;
+        )
+        .unwrap();
+        env.call_method(jni_node, "setEnabled", "(Z)V", &[self.is_enabled().into()])
+            .unwrap();
         env.call_method(
             jni_node,
             "setFocusable",
             "(Z)V",
             &[self.is_focusable().into()],
-        )?;
-        env.call_method(jni_node, "setFocused", "(Z)V", &[self.is_focused().into()])?;
+        )
+        .unwrap();
+        env.call_method(jni_node, "setFocused", "(Z)V", &[self.is_focused().into()])
+            .unwrap();
         env.call_method(
             jni_node,
             "setPassword",
             "(Z)V",
             &[self.is_password().into()],
-        )?;
+        )
+        .unwrap();
         env.call_method(
             jni_node,
             "setSelected",
             "(Z)V",
             &[self.is_selected().into()],
-        )?;
+        )
+        .unwrap();
         if let Some(desc) = self.content_description() {
-            let desc = env.new_string(desc)?;
+            let desc = env.new_string(desc).unwrap();
             env.call_method(
                 jni_node,
                 "setContentDescription",
                 "(Ljava/lang/CharSequence;)V",
                 &[(&desc).into()],
-            )?;
+            )
+            .unwrap();
         }
 
         if let Some(text) = self.text() {
-            let text = env.new_string(text)?;
+            let text = env.new_string(text).unwrap();
             env.call_method(
                 jni_node,
                 "setText",
                 "(Ljava/lang/CharSequence;)V",
                 &[(&text).into()],
-            )?;
+            )
+            .unwrap();
         }
         if let Some((start, end)) = self.text_selection() {
             env.call_method(
@@ -252,28 +268,30 @@ impl NodeWrapper<'_> {
                 "setTextSelection",
                 "(II)V",
                 &[(start as jint).into(), (end as jint).into()],
-            )?;
+            )
+            .unwrap();
         }
 
-        let class_name = env.new_string(self.class_name())?;
+        let class_name = env.new_string(self.class_name()).unwrap();
         env.call_method(
             jni_node,
             "setClassName",
             "(Ljava/lang/CharSequence;)V",
             &[(&class_name).into()],
-        )?;
+        )
+        .unwrap();
 
         let can_focus = self.0.is_focusable() && !self.0.is_focused();
         if self.0.is_clickable() || can_focus {
-            add_action(env, jni_node, ACTION_CLICK)?;
+            add_action(env, jni_node, ACTION_CLICK);
         }
         if can_focus {
-            add_action(env, jni_node, ACTION_FOCUS)?;
+            add_action(env, jni_node, ACTION_FOCUS);
         }
         if self.0.supports_text_ranges() {
-            add_action(env, jni_node, ACTION_SET_SELECTION)?;
-            add_action(env, jni_node, ACTION_NEXT_AT_MOVEMENT_GRANULARITY)?;
-            add_action(env, jni_node, ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY)?;
+            add_action(env, jni_node, ACTION_SET_SELECTION);
+            add_action(env, jni_node, ACTION_NEXT_AT_MOVEMENT_GRANULARITY);
+            add_action(env, jni_node, ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY);
             env.call_method(
                 jni_node,
                 "setMovementGranularities",
@@ -283,7 +301,8 @@ impl NodeWrapper<'_> {
                     | MOVEMENT_GRANULARITY_LINE
                     | MOVEMENT_GRANULARITY_PARAGRAPH)
                     .into()],
-            )?;
+            )
+            .unwrap();
         }
 
         let live = match self.0.live() {
@@ -291,8 +310,7 @@ impl NodeWrapper<'_> {
             Live::Polite => LIVE_REGION_POLITE,
             Live::Assertive => LIVE_REGION_ASSERTIVE,
         };
-        env.call_method(jni_node, "setLiveRegion", "(I)V", &[live.into()])?;
-
-        Ok(())
+        env.call_method(jni_node, "setLiveRegion", "(I)V", &[live.into()])
+            .unwrap();
     }
 }
