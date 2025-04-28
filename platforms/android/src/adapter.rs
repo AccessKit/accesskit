@@ -237,8 +237,9 @@ impl Adapter {
         }
     }
 
-    /// Create an `AccessibilityNodeInfo` with information about the
-    /// AccessKit node identified by the given virtual view ID.
+    /// Create an `AccessibilityNodeInfo` for the AccessKit node
+    /// corresponding to the given virtual view ID. Returns null if
+    /// there is no such node.
     ///
     /// The `host` paramter is the Android view for this adapter.
     /// It must be an instance of `android.view.View` or a subclass.
@@ -310,6 +311,11 @@ impl Adapter {
         node_info
     }
 
+    /// Create an `AccessibilityNodeInfo` for the AccessKit node
+    /// with the given focus type. Returns null if there is no such node.
+    ///
+    /// The `host` paramter is the Android view for this adapter.
+    /// It must be an instance of `android.view.View` or a subclass.
     pub fn find_focus<'local, H: ActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
