@@ -43,17 +43,12 @@ impl PlatformAction {
                 }))
             }
             ACTION_NEXT_AT_MOVEMENT_GRANULARITY | ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY => {
-                if !(!arguments.is_null()
-                    && bundle_contains_key(
+                if arguments.is_null()
+                    || !bundle_contains_key(
                         env,
                         arguments,
                         ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT,
                     )
-                    && bundle_contains_key(
-                        env,
-                        arguments,
-                        ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN,
-                    ))
                 {
                     return None;
                 }
