@@ -118,18 +118,15 @@ fn send_text_changed(
     let new = env.new_string(new).unwrap();
     env.call_method(&text_list, "add", "(Ljava/lang/Object;)Z", &[(&new).into()])
         .unwrap();
-    let first_difference = i;
-    env.call_method(
-        &event,
-        "setFromIndex",
-        "(I)V",
-        &[(first_difference as jint).into()],
-    )
-    .unwrap();
-    let mut old_index = old_u16.len() - 1;
-    let mut new_index = new_u16.len() - 1;
+    // Note: This algorithm, translated from code in Flutter, assumes
+    // that the indices are signed.
+    let first_difference = i as jint;
+    env.call_method(&event, "setFromIndex", "(I)V", &[first_difference.into()])
+        .unwrap();
+    let mut old_index = (old_u16.len() - 1) as jint;
+    let mut new_index = (new_u16.len() - 1) as jint;
     while old_index >= first_difference && new_index >= first_difference {
-        if old_u16[old_index] != new_u16[new_index] {
+        if old_u16[old_index as usize] != new_u16[new_index as usize] {
             break;
         }
         old_index -= 1;
@@ -139,14 +136,14 @@ fn send_text_changed(
         &event,
         "setRemovedCount",
         "(I)V",
-        &[((old_index - first_difference + 1) as jint).into()],
+        &[(old_index - first_difference + 1).into()],
     )
     .unwrap();
     env.call_method(
         &event,
         "setAddedCount",
         "(I)V",
-        &[((new_index - first_difference + 1) as jint).into()],
+        &[(new_index - first_difference + 1).into()],
     )
     .unwrap();
     send_completed_event(env, host, event);
