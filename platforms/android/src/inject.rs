@@ -97,14 +97,15 @@ fn inner_adapter_from_handle(handle: jlong) -> Option<Arc<Mutex<InnerInjectingAd
 
 static NEXT_CALLBACK_HANDLE: AtomicI64 = AtomicI64::new(0);
 #[allow(clippy::type_complexity)]
-static CALLBACK_MAP: Mutex<BTreeMap<jlong, Box<dyn FnOnce(&mut JNIEnv, &JObject) + Send>>> =
-    Mutex::new(BTreeMap::new());
+static CALLBACK_MAP: Mutex<
+    BTreeMap<jlong, Box<dyn FnOnce(&mut JNIEnv, &JClass, &JObject) + Send>>,
+> = Mutex::new(BTreeMap::new());
 
 fn post_to_ui_thread(
     env: &mut JNIEnv,
     delegate_class: &JClass,
     host: &JObject,
-    callback: impl FnOnce(&mut JNIEnv, &JObject) + Send + 'static,
+    callback: impl FnOnce(&mut JNIEnv, &JClass, &JObject) + Send + 'static,
 ) {
     let handle = NEXT_CALLBACK_HANDLE.fetch_add(1, Ordering::Relaxed);
     CALLBACK_MAP
@@ -132,14 +133,14 @@ fn post_to_ui_thread(
 
 extern "system" fn run_callback<'local>(
     mut env: JNIEnv<'local>,
-    _class: JClass<'local>,
+    class: JClass<'local>,
     host: JObject<'local>,
     handle: jlong,
 ) {
     let Some(callback) = CALLBACK_MAP.lock().unwrap().remove(&handle) else {
         return;
     };
-    callback(&mut env, &host);
+    callback(&mut env, &class, &host);
 }
 
 extern "system" fn create_accessibility_node_info<'local>(
@@ -324,7 +325,7 @@ impl Debug for InjectingAdapter {
 impl InjectingAdapter {
     pub fn new(
         env: &mut JNIEnv,
-        host_view: &JObject,
+        host: &JObject,
         activation_handler: impl 'static + ActivationHandler + Send,
         action_handler: impl 'static + ActionHandler + Send,
     ) -> Self {
@@ -339,17 +340,47 @@ impl InjectingAdapter {
             .unwrap()
             .insert(handle, Arc::downgrade(&inner));
         let delegate_class = delegate_class(env);
-        env.call_static_method(
+        post_to_ui_thread(
+            env,
             delegate_class,
-            "inject",
-            "(Landroid/view/View;J)V",
-            &[host_view.into(), handle.into()],
-        )
-        .unwrap();
+            host,
+            move |env, delegate_class, host| {
+                let prev_delegate = env
+                    .call_method(
+                        host,
+                        "getAccessibilityDelegate",
+                        "()Landroid/view/View$AccessibilityDelegate;",
+                        &[],
+                    )
+                    .unwrap()
+                    .l()
+                    .unwrap();
+                if !prev_delegate.is_null() {
+                    panic!("host already has an accessibility delegate");
+                }
+                let delegate = env
+                    .new_object(delegate_class, "(J)V", &[handle.into()])
+                    .unwrap();
+                env.call_method(
+                    host,
+                    "setAccessibilityDelegate",
+                    "(Landroid/view/View$AccessibilityDelegate;)V",
+                    &[(&delegate).into()],
+                )
+                .unwrap();
+                env.call_method(
+                    host,
+                    "setOnHoverListener",
+                    "(Landroid/view/View$OnHoverListener;)V",
+                    &[(&delegate).into()],
+                )
+                .unwrap();
+            },
+        );
         Self {
             vm: env.get_java_vm().unwrap(),
             delegate_class,
-            host: env.new_weak_ref(host_view).unwrap().unwrap(),
+            host: env.new_weak_ref(host).unwrap().unwrap(),
             handle,
             inner,
         }
@@ -370,34 +401,64 @@ impl InjectingAdapter {
             return;
         };
         drop(inner);
-        post_to_ui_thread(&mut env, self.delegate_class, &host, |env, host| {
-            events.raise(env, host);
-        });
+        post_to_ui_thread(
+            &mut env,
+            self.delegate_class,
+            &host,
+            |env, _delegate_class, host| {
+                events.raise(env, host);
+            },
+        );
     }
 }
 
 impl Drop for InjectingAdapter {
     fn drop(&mut self) {
-        fn drop_impl(env: &mut JNIEnv, host: &WeakRef) -> Result<()> {
+        fn drop_impl(env: &mut JNIEnv, delegate_class: &JClass, host: &WeakRef) -> Result<()> {
             let Some(host) = host.upgrade_local(env)? else {
                 return Ok(());
             };
-            let delegate_class = delegate_class(env);
-            env.call_static_method(
-                delegate_class,
-                "remove",
-                "(Landroid/view/View;)V",
-                &[(&host).into()],
-            )?;
+            post_to_ui_thread(env, delegate_class, &host, |env, delegate_class, host| {
+                let prev_delegate = env
+                    .call_method(
+                        host,
+                        "getAccessibilityDelegate",
+                        "()Landroid/view/View$AccessibilityDelegate;",
+                        &[],
+                    )
+                    .unwrap()
+                    .l()
+                    .unwrap();
+                if prev_delegate.is_null()
+                    && !env.is_instance_of(&prev_delegate, delegate_class).unwrap()
+                {
+                    return;
+                }
+                let null = JObject::null();
+                env.call_method(
+                    host,
+                    "setAccessibilityDelegate",
+                    "(Landroid/view/View$AccessibilityDelegate;)V",
+                    &[(&null).into()],
+                )
+                .unwrap();
+                env.call_method(
+                    host,
+                    "setOnHoverListener",
+                    "(Landroid/view/View$OnHoverListener;)V",
+                    &[(&null).into()],
+                )
+                .unwrap();
+            });
             Ok(())
         }
 
         let res = match self.vm.get_env() {
-            Ok(mut env) => drop_impl(&mut env, &self.host),
+            Ok(mut env) => drop_impl(&mut env, self.delegate_class, &self.host),
             Err(_) => self
                 .vm
                 .attach_current_thread()
-                .and_then(|mut env| drop_impl(&mut env, &self.host)),
+                .and_then(|mut env| drop_impl(&mut env, self.delegate_class, &self.host)),
         };
 
         if let Err(err) = res {

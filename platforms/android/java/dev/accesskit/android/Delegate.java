@@ -19,36 +19,6 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
         this.adapterHandle = adapterHandle;
     }
 
-    public static void inject(final View host, final long adapterHandle) {
-        host.post(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        if (host.getAccessibilityDelegate() != null) {
-                            throw new IllegalStateException(
-                                    "host already has an accessibility delegate");
-                        }
-                        Delegate delegate = new Delegate(adapterHandle);
-                        host.setAccessibilityDelegate(delegate);
-                        host.setOnHoverListener(delegate);
-                    }
-                });
-    }
-
-    public static void remove(final View host) {
-        host.post(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        View.AccessibilityDelegate delegate = host.getAccessibilityDelegate();
-                        if (delegate != null && delegate instanceof Delegate) {
-                            host.setAccessibilityDelegate(null);
-                            host.setOnHoverListener(null);
-                        }
-                    }
-                });
-    }
-
     private static native void runCallback(View host, long handle);
 
     private static native AccessibilityNodeInfo createAccessibilityNodeInfo(
