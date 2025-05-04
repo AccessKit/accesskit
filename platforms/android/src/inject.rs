@@ -17,14 +17,13 @@ use jni::{
     JNIEnv, JavaVM, NativeMethod,
 };
 use log::debug;
-use once_cell::sync::OnceCell;
 use std::{
     collections::BTreeMap,
     ffi::c_void,
     fmt::{Debug, Formatter},
     sync::{
         atomic::{AtomicI64, Ordering},
-        Arc, Mutex, Weak,
+        Arc, Mutex, OnceLock, Weak,
     },
 };
 
@@ -217,7 +216,7 @@ extern "system" fn on_hover_event<'local>(
 }
 
 fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
-    static CLASS: OnceCell<GlobalRef> = OnceCell::new();
+    static CLASS: OnceLock<GlobalRef> = OnceLock::new();
     let global = CLASS.get_or_init(|| {
         #[cfg(feature = "embedded-dex")]
         let class = {
