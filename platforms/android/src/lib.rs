@@ -7,9 +7,12 @@ mod filters;
 mod node;
 mod util;
 
+mod action;
+pub use action::PlatformAction;
 mod adapter;
-pub use adapter::{Adapter, QueuedEvents};
-
+pub use adapter::Adapter;
+mod event;
+pub use event::QueuedEvents;
 mod inject;
 pub use inject::InjectingAdapter;
 

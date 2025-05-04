@@ -10,9 +10,19 @@
 
 use accesskit::{Live, Role, Toggled};
 use accesskit_consumer::Node;
-use jni::{errors::Result, objects::JObject, sys::jint, JNIEnv};
+use jni::{objects::JObject, sys::jint, JNIEnv};
 
 use crate::{filters::filter, util::*};
+
+pub(crate) fn add_action(env: &mut JNIEnv, node_info: &JObject, action: jint) {
+    // Note: We're using the deprecated addAction signature.
+    // But this one is much easier to call from JNI since it uses
+    // a simple integer constant. Revisit if Android ever gets strict
+    // about prohibiting deprecated methods for applications targeting
+    // newer SDKs.
+    env.call_method(node_info, "addAction", "(I)V", &[action.into()])
+        .unwrap();
+}
 
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
 
@@ -136,146 +146,163 @@ impl NodeWrapper<'_> {
         &self,
         env: &mut JNIEnv,
         host: &JObject,
-        host_screen_x: jint,
-        host_screen_y: jint,
         id_map: &mut NodeIdMap,
-        jni_node: &JObject,
-    ) -> Result<()> {
+        node_info: &JObject,
+    ) {
         for child in self.0.filtered_children(&filter) {
             env.call_method(
-                jni_node,
+                node_info,
                 "addChild",
                 "(Landroid/view/View;I)V",
                 &[host.into(), id_map.get_or_create_java_id(&child).into()],
-            )?;
+            )
+            .unwrap();
         }
         if let Some(parent) = self.0.filtered_parent(&filter) {
             if parent.is_root() {
                 env.call_method(
-                    jni_node,
+                    node_info,
                     "setParent",
                     "(Landroid/view/View;)V",
                     &[host.into()],
-                )?;
+                )
+                .unwrap();
             } else {
                 env.call_method(
-                    jni_node,
+                    node_info,
                     "setParent",
                     "(Landroid/view/View;I)V",
                     &[host.into(), id_map.get_or_create_java_id(&parent).into()],
-                )?;
+                )
+                .unwrap();
             }
         }
 
         if let Some(rect) = self.0.bounding_box() {
-            let android_rect_class = env.find_class("android/graphics/Rect")?;
-            let android_rect = env.new_object(
-                &android_rect_class,
-                "(IIII)V",
-                &[
-                    ((rect.x0 as jint) + host_screen_x).into(),
-                    ((rect.y0 as jint) + host_screen_y).into(),
-                    ((rect.x1 as jint) + host_screen_x).into(),
-                    ((rect.y1 as jint) + host_screen_y).into(),
-                ],
-            )?;
+            let location = env.new_int_array(2).unwrap();
+            env.call_method(host, "getLocationOnScreen", "([I)V", &[(&location).into()])
+                .unwrap();
+            let mut location_buf = [0; 2];
+            env.get_int_array_region(&location, 0, &mut location_buf)
+                .unwrap();
+            let host_screen_x = location_buf[0];
+            let host_screen_y = location_buf[1];
+            let android_rect_class = env.find_class("android/graphics/Rect").unwrap();
+            let android_rect = env
+                .new_object(
+                    &android_rect_class,
+                    "(IIII)V",
+                    &[
+                        ((rect.x0 as jint) + host_screen_x).into(),
+                        ((rect.y0 as jint) + host_screen_y).into(),
+                        ((rect.x1 as jint) + host_screen_x).into(),
+                        ((rect.y1 as jint) + host_screen_y).into(),
+                    ],
+                )
+                .unwrap();
             env.call_method(
-                jni_node,
+                node_info,
                 "setBoundsInScreen",
                 "(Landroid/graphics/Rect;)V",
                 &[(&android_rect).into()],
-            )?;
+            )
+            .unwrap();
         }
 
         if self.is_checkable() {
-            env.call_method(jni_node, "setCheckable", "(Z)V", &[true.into()])?;
-            env.call_method(jni_node, "setChecked", "(Z)V", &[self.is_checked().into()])?;
+            env.call_method(node_info, "setCheckable", "(Z)V", &[true.into()])
+                .unwrap();
+            env.call_method(node_info, "setChecked", "(Z)V", &[self.is_checked().into()])
+                .unwrap();
         }
         env.call_method(
-            jni_node,
+            node_info,
             "setEditable",
             "(Z)V",
             &[self.is_editable().into()],
-        )?;
-        env.call_method(jni_node, "setEnabled", "(Z)V", &[self.is_enabled().into()])?;
+        )
+        .unwrap();
+        env.call_method(node_info, "setEnabled", "(Z)V", &[self.is_enabled().into()])
+            .unwrap();
         env.call_method(
-            jni_node,
+            node_info,
             "setFocusable",
             "(Z)V",
             &[self.is_focusable().into()],
-        )?;
-        env.call_method(jni_node, "setFocused", "(Z)V", &[self.is_focused().into()])?;
+        )
+        .unwrap();
+        env.call_method(node_info, "setFocused", "(Z)V", &[self.is_focused().into()])
+            .unwrap();
         env.call_method(
-            jni_node,
+            node_info,
             "setPassword",
             "(Z)V",
             &[self.is_password().into()],
-        )?;
+        )
+        .unwrap();
         env.call_method(
-            jni_node,
+            node_info,
             "setSelected",
             "(Z)V",
             &[self.is_selected().into()],
-        )?;
+        )
+        .unwrap();
+        // TBD: When, if ever, should the visible-to-user property be false?
+        env.call_method(node_info, "setVisibleToUser", "(Z)V", &[true.into()])
+            .unwrap();
         if let Some(desc) = self.content_description() {
-            let desc = env.new_string(desc)?;
+            let desc = env.new_string(desc).unwrap();
             env.call_method(
-                jni_node,
+                node_info,
                 "setContentDescription",
                 "(Ljava/lang/CharSequence;)V",
                 &[(&desc).into()],
-            )?;
+            )
+            .unwrap();
         }
 
         if let Some(text) = self.text() {
-            let text = env.new_string(text)?;
+            let text = env.new_string(text).unwrap();
             env.call_method(
-                jni_node,
+                node_info,
                 "setText",
                 "(Ljava/lang/CharSequence;)V",
                 &[(&text).into()],
-            )?;
+            )
+            .unwrap();
         }
         if let Some((start, end)) = self.text_selection() {
             env.call_method(
-                jni_node,
+                node_info,
                 "setTextSelection",
                 "(II)V",
                 &[(start as jint).into(), (end as jint).into()],
-            )?;
+            )
+            .unwrap();
         }
 
-        let class_name = env.new_string(self.class_name())?;
+        let class_name = env.new_string(self.class_name()).unwrap();
         env.call_method(
-            jni_node,
+            node_info,
             "setClassName",
             "(Ljava/lang/CharSequence;)V",
             &[(&class_name).into()],
-        )?;
-
-        fn add_action(env: &mut JNIEnv, jni_node: &JObject, action: jint) -> Result<()> {
-            // Note: We're using the deprecated addAction signature.
-            // But this one is much easier to call from JNI since it uses
-            // a simple integer constant. Revisit if Android ever gets strict
-            // about prohibiting deprecated methods for applications targeting
-            // newer SDKs.
-            env.call_method(jni_node, "addAction", "(I)V", &[action.into()])?;
-            Ok(())
-        }
+        )
+        .unwrap();
 
         let can_focus = self.0.is_focusable() && !self.0.is_focused();
         if self.0.is_clickable() || can_focus {
-            add_action(env, jni_node, ACTION_CLICK)?;
+            add_action(env, node_info, ACTION_CLICK);
         }
         if can_focus {
-            add_action(env, jni_node, ACTION_FOCUS)?;
+            add_action(env, node_info, ACTION_FOCUS);
         }
         if self.0.supports_text_ranges() {
-            add_action(env, jni_node, ACTION_SET_SELECTION)?;
-            add_action(env, jni_node, ACTION_NEXT_AT_MOVEMENT_GRANULARITY)?;
-            add_action(env, jni_node, ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY)?;
+            add_action(env, node_info, ACTION_SET_SELECTION);
+            add_action(env, node_info, ACTION_NEXT_AT_MOVEMENT_GRANULARITY);
+            add_action(env, node_info, ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY);
             env.call_method(
-                jni_node,
+                node_info,
                 "setMovementGranularities",
                 "(I)V",
                 &[(MOVEMENT_GRANULARITY_CHARACTER
@@ -283,7 +310,8 @@ impl NodeWrapper<'_> {
                     | MOVEMENT_GRANULARITY_LINE
                     | MOVEMENT_GRANULARITY_PARAGRAPH)
                     .into()],
-            )?;
+            )
+            .unwrap();
         }
 
         let live = match self.0.live() {
@@ -291,8 +319,7 @@ impl NodeWrapper<'_> {
             Live::Polite => LIVE_REGION_POLITE,
             Live::Assertive => LIVE_REGION_ASSERTIVE,
         };
-        env.call_method(jni_node, "setLiveRegion", "(I)V", &[live.into()])?;
-
-        Ok(())
+        env.call_method(node_info, "setLiveRegion", "(I)V", &[live.into()])
+            .unwrap();
     }
 }

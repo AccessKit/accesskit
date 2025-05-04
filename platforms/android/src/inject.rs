@@ -17,21 +17,17 @@ use jni::{
     JNIEnv, JavaVM, NativeMethod,
 };
 use log::debug;
-use once_cell::sync::OnceCell;
 use std::{
     collections::BTreeMap,
     ffi::c_void,
     fmt::{Debug, Formatter},
     sync::{
         atomic::{AtomicI64, Ordering},
-        Arc, Mutex, Weak,
+        Arc, Mutex, OnceLock, Weak,
     },
 };
 
-use crate::{
-    adapter::{Adapter, QueuedEvents},
-    util::*,
-};
+use crate::{action::PlatformAction, adapter::Adapter, event::QueuedEvents};
 
 struct InnerInjectingAdapter {
     adapter: Adapter,
@@ -50,70 +46,42 @@ impl Debug for InnerInjectingAdapter {
 }
 
 impl InnerInjectingAdapter {
-    fn populate_node_info(
+    fn create_accessibility_node_info<'local>(
         &mut self,
-        env: &mut JNIEnv,
+        env: &mut JNIEnv<'local>,
         host: &JObject,
-        host_screen_x: jint,
-        host_screen_y: jint,
         virtual_view_id: jint,
-        jni_node: &JObject,
-    ) -> Result<bool> {
-        self.adapter.populate_node_info(
+    ) -> JObject<'local> {
+        self.adapter.create_accessibility_node_info(
             &mut *self.activation_handler,
             env,
             host,
-            host_screen_x,
-            host_screen_y,
             virtual_view_id,
-            jni_node,
         )
     }
 
-    fn input_focus(&mut self) -> jint {
-        self.adapter.input_focus(&mut *self.activation_handler)
-    }
-
-    fn virtual_view_at_point(&mut self, x: jfloat, y: jfloat) -> jint {
+    fn find_focus<'local>(
+        &mut self,
+        env: &mut JNIEnv<'local>,
+        host: &JObject,
+        focus_type: jint,
+    ) -> JObject<'local> {
         self.adapter
-            .virtual_view_at_point(&mut *self.activation_handler, x, y)
+            .find_focus(&mut *self.activation_handler, env, host, focus_type)
     }
 
-    fn perform_action(&mut self, virtual_view_id: jint, action: jint) -> Option<QueuedEvents> {
+    fn perform_action(
+        &mut self,
+        virtual_view_id: jint,
+        action: &PlatformAction,
+    ) -> Option<QueuedEvents> {
         self.adapter
             .perform_action(&mut *self.action_handler, virtual_view_id, action)
     }
 
-    fn set_text_selection(
-        &mut self,
-        virtual_view_id: jint,
-        anchor: jint,
-        focus: jint,
-    ) -> Option<QueuedEvents> {
+    fn on_hover_event(&mut self, action: jint, x: jfloat, y: jfloat) -> Option<QueuedEvents> {
         self.adapter
-            .set_text_selection(&mut *self.action_handler, virtual_view_id, anchor, focus)
-    }
-
-    fn collapse_text_selection(&mut self, virtual_view_id: jint) -> Option<QueuedEvents> {
-        self.adapter
-            .collapse_text_selection(&mut *self.action_handler, virtual_view_id)
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn traverse_text(
-        &mut self,
-        virtual_view_id: jint,
-        granularity: jint,
-        forward: bool,
-        extend_selection: bool,
-    ) -> Option<QueuedEvents> {
-        self.adapter.traverse_text(
-            &mut *self.action_handler,
-            virtual_view_id,
-            granularity,
-            forward,
-            extend_selection,
-        )
+            .on_hover_event(&mut *self.activation_handler, action, x, y)
     }
 }
 
@@ -126,218 +94,200 @@ fn inner_adapter_from_handle(handle: jlong) -> Option<Arc<Mutex<InnerInjectingAd
     handle_map_guard.get(&handle).and_then(Weak::upgrade)
 }
 
-extern "system" fn populate_node_info(
-    mut env: JNIEnv,
-    _class: JClass,
-    adapter_handle: jlong,
-    host: JObject,
-    host_screen_x: jint,
-    host_screen_y: jint,
-    virtual_view_id: jint,
-    node_info: JObject,
-) -> jboolean {
-    let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return JNI_FALSE;
-    };
-    let mut inner_adapter = inner_adapter.lock().unwrap();
-    if inner_adapter
-        .populate_node_info(
-            &mut env,
-            &host,
-            host_screen_x,
-            host_screen_y,
-            virtual_view_id,
-            &node_info,
+static NEXT_CALLBACK_HANDLE: AtomicI64 = AtomicI64::new(0);
+#[allow(clippy::type_complexity)]
+static CALLBACK_MAP: Mutex<
+    BTreeMap<jlong, Box<dyn FnOnce(&mut JNIEnv, &JClass, &JObject) + Send>>,
+> = Mutex::new(BTreeMap::new());
+
+fn post_to_ui_thread(
+    env: &mut JNIEnv,
+    delegate_class: &JClass,
+    host: &JObject,
+    callback: impl FnOnce(&mut JNIEnv, &JClass, &JObject) + Send + 'static,
+) {
+    let handle = NEXT_CALLBACK_HANDLE.fetch_add(1, Ordering::Relaxed);
+    CALLBACK_MAP
+        .lock()
+        .unwrap()
+        .insert(handle, Box::new(callback));
+    let runnable = env
+        .call_static_method(
+            delegate_class,
+            "newCallback",
+            "(Landroid/view/View;J)Ljava/lang/Runnable;",
+            &[host.into(), handle.into()],
         )
         .unwrap()
-    {
-        JNI_TRUE
-    } else {
-        JNI_FALSE
-    }
+        .l()
+        .unwrap();
+    env.call_method(
+        host,
+        "post",
+        "(Ljava/lang/Runnable;)Z",
+        &[(&runnable).into()],
+    )
+    .unwrap();
 }
 
-extern "system" fn get_input_focus(_env: JNIEnv, _class: JClass, adapter_handle: jlong) -> jint {
+extern "system" fn run_callback<'local>(
+    mut env: JNIEnv<'local>,
+    class: JClass<'local>,
+    host: JObject<'local>,
+    handle: jlong,
+) {
+    let Some(callback) = CALLBACK_MAP.lock().unwrap().remove(&handle) else {
+        return;
+    };
+    callback(&mut env, &class, &host);
+}
+
+extern "system" fn create_accessibility_node_info<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    adapter_handle: jlong,
+    host: JObject<'local>,
+    virtual_view_id: jint,
+) -> JObject<'local> {
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return HOST_VIEW_ID;
+        return JObject::null();
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    inner_adapter.input_focus()
+    inner_adapter.create_accessibility_node_info(&mut env, &host, virtual_view_id)
 }
 
-extern "system" fn get_virtual_view_at_point(
-    _env: JNIEnv,
-    _class: JClass,
+extern "system" fn find_focus<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
     adapter_handle: jlong,
-    x: jfloat,
-    y: jfloat,
-) -> jint {
+    host: JObject<'local>,
+    focus_type: jint,
+) -> JObject<'local> {
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return HOST_VIEW_ID;
+        return JObject::null();
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    inner_adapter.virtual_view_at_point(x, y)
+    inner_adapter.find_focus(&mut env, &host, focus_type)
 }
 
-extern "system" fn perform_action(
-    mut env: JNIEnv,
-    class: JClass,
+extern "system" fn perform_action<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
     adapter_handle: jlong,
-    host: JObject,
+    host: JObject<'local>,
     virtual_view_id: jint,
     action: jint,
+    arguments: JObject<'local>,
 ) -> jboolean {
+    let Some(action) = PlatformAction::from_java(&mut env, action, &arguments) else {
+        return JNI_FALSE;
+    };
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
         return JNI_FALSE;
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    if let Some(events) = inner_adapter.perform_action(virtual_view_id, action) {
-        events.raise(&mut env, &class, &host);
-        JNI_TRUE
-    } else {
-        JNI_FALSE
-    }
+    let Some(events) = inner_adapter.perform_action(virtual_view_id, &action) else {
+        return JNI_FALSE;
+    };
+    drop(inner_adapter);
+    events.raise(&mut env, &host);
+    JNI_TRUE
 }
 
-extern "system" fn set_text_selection(
-    mut env: JNIEnv,
-    class: JClass,
+extern "system" fn on_hover_event<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
     adapter_handle: jlong,
-    host: JObject,
-    virtual_view_id: jint,
-    anchor: jint,
-    focus: jint,
+    host: JObject<'local>,
+    action: jint,
+    x: jfloat,
+    y: jfloat,
 ) -> jboolean {
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
         return JNI_FALSE;
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    if let Some(events) = inner_adapter.set_text_selection(virtual_view_id, anchor, focus) {
-        events.raise(&mut env, &class, &host);
-        JNI_TRUE
-    } else {
-        JNI_FALSE
-    }
-}
-
-extern "system" fn collapse_text_selection(
-    mut env: JNIEnv,
-    class: JClass,
-    adapter_handle: jlong,
-    host: JObject,
-    virtual_view_id: jint,
-) -> jboolean {
-    let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
+    let Some(events) = inner_adapter.on_hover_event(action, x, y) else {
         return JNI_FALSE;
     };
-    let mut inner_adapter = inner_adapter.lock().unwrap();
-    if let Some(events) = inner_adapter.collapse_text_selection(virtual_view_id) {
-        events.raise(&mut env, &class, &host);
-        JNI_TRUE
-    } else {
-        JNI_FALSE
-    }
+    drop(inner_adapter);
+    events.raise(&mut env, &host);
+    JNI_TRUE
 }
 
-extern "system" fn traverse_text(
-    mut env: JNIEnv,
-    class: JClass,
-    adapter_handle: jlong,
-    host: JObject,
-    virtual_view_id: jint,
-    granularity: jint,
-    forward: jboolean,
-    extend_selection: jboolean,
-) -> jboolean {
-    let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return JNI_FALSE;
-    };
-    let mut inner_adapter = inner_adapter.lock().unwrap();
-    if let Some(events) = inner_adapter.traverse_text(
-        virtual_view_id,
-        granularity,
-        forward == JNI_TRUE,
-        extend_selection == JNI_TRUE,
-    ) {
-        events.raise(&mut env, &class, &host);
-        JNI_TRUE
-    } else {
-        JNI_FALSE
-    }
-}
-
-fn delegate_class(env: &mut JNIEnv) -> Result<&'static JClass<'static>> {
-    static CLASS: OnceCell<GlobalRef> = OnceCell::new();
-    let global = CLASS.get_or_try_init(|| {
+fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
+    static CLASS: OnceLock<GlobalRef> = OnceLock::new();
+    let global = CLASS.get_or_init(|| {
         #[cfg(feature = "embedded-dex")]
         let class = {
-            let dex_class_loader_class = env.find_class("dalvik/system/InMemoryDexClassLoader")?;
+            let dex_class_loader_class = env
+                .find_class("dalvik/system/InMemoryDexClassLoader")
+                .unwrap();
             let dex_bytes = include_bytes!("../classes.dex");
             let dex_buffer = unsafe {
                 env.new_direct_byte_buffer(dex_bytes.as_ptr() as *mut u8, dex_bytes.len())
-            }?;
-            let dex_class_loader = env.new_object(
-                &dex_class_loader_class,
-                "(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V",
-                &[(&dex_buffer).into(), (&JObject::null()).into()],
-            )?;
-            let class_name = env.new_string("dev.accesskit.android.Delegate")?;
+            }
+            .unwrap();
+            let dex_class_loader = env
+                .new_object(
+                    &dex_class_loader_class,
+                    "(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V",
+                    &[(&dex_buffer).into(), (&JObject::null()).into()],
+                )
+                .unwrap();
+            let class_name = env.new_string("dev.accesskit.android.Delegate").unwrap();
             let class_obj = env
                 .call_method(
                     &dex_class_loader,
                     "loadClass",
                     "(Ljava/lang/String;)Ljava/lang/Class;",
                     &[(&class_name).into()],
-                )?
-                .l()?;
+                )
+                .unwrap()
+                .l()
+                .unwrap();
             JClass::from(class_obj)
         };
         #[cfg(not(feature = "embedded-dex"))]
-        let class = env.find_class("dev/accesskit/android/Delegate")?;
+        let class = env.find_class("dev/accesskit/android/Delegate").unwrap();
         env.register_native_methods(
             &class,
             &[
                 NativeMethod {
-                    name: "populateNodeInfo".into(),
-                    sig: "(JLandroid/view/View;IIILandroid/view/accessibility/AccessibilityNodeInfo;)Z"
-                        .into(),
-                    fn_ptr: populate_node_info as *mut c_void,
+                    name: "runCallback".into(),
+                    sig: "(Landroid/view/View;J)V".into(),
+                    fn_ptr: run_callback as *mut c_void,
                 },
                 NativeMethod {
-                    name: "getInputFocus".into(),
-                    sig: "(J)I".into(),
-                    fn_ptr: get_input_focus as *mut c_void,
+                    name: "createAccessibilityNodeInfo".into(),
+                    sig:
+                        "(JLandroid/view/View;I)Landroid/view/accessibility/AccessibilityNodeInfo;"
+                            .into(),
+                    fn_ptr: create_accessibility_node_info as *mut c_void,
                 },
                 NativeMethod {
-                    name: "getVirtualViewAtPoint".into(),
-                    sig: "(JFF)I".into(),
-                    fn_ptr: get_virtual_view_at_point as *mut c_void,
+                    name: "findFocus".into(),
+                    sig:
+                        "(JLandroid/view/View;I)Landroid/view/accessibility/AccessibilityNodeInfo;"
+                            .into(),
+                    fn_ptr: find_focus as *mut c_void,
                 },
                 NativeMethod {
                     name: "performAction".into(),
-                    sig: "(JLandroid/view/View;II)Z".into(),
+                    sig: "(JLandroid/view/View;IILandroid/os/Bundle;)Z".into(),
                     fn_ptr: perform_action as *mut c_void,
                 },
                 NativeMethod {
-                    name: "setTextSelection".into(),
-                    sig: "(JLandroid/view/View;III)Z".into(),
-                    fn_ptr: set_text_selection as *mut c_void,
-                },
-                NativeMethod {
-                    name: "collapseTextSelection".into(),
-                    sig: "(JLandroid/view/View;I)Z".into(),
-                    fn_ptr: collapse_text_selection as *mut c_void,
-                },
-                NativeMethod {
-                    name: "traverseText".into(),
-                    sig: "(JLandroid/view/View;IIZZ)Z".into(),
-                    fn_ptr: traverse_text as *mut c_void,
+                    name: "onHoverEvent".into(),
+                    sig: "(JLandroid/view/View;IFF)Z".into(),
+                    fn_ptr: on_hover_event as *mut c_void,
                 },
             ],
-        )?;
-        env.new_global_ref(class)
-    })?;
-    Ok(global.as_obj().into())
+        )
+        .unwrap();
+        env.new_global_ref(class).unwrap()
+    });
+    global.as_obj().into()
 }
 
 /// High-level AccessKit Android adapter that injects itself into an Android
@@ -374,10 +324,10 @@ impl Debug for InjectingAdapter {
 impl InjectingAdapter {
     pub fn new(
         env: &mut JNIEnv,
-        host_view: &JObject,
+        host: &JObject,
         activation_handler: impl 'static + ActivationHandler + Send,
         action_handler: impl 'static + ActionHandler + Send,
-    ) -> Result<Self> {
+    ) -> Self {
         let inner = Arc::new(Mutex::new(InnerInjectingAdapter {
             adapter: Adapter::default(),
             activation_handler: Box::new(activation_handler),
@@ -388,20 +338,51 @@ impl InjectingAdapter {
             .lock()
             .unwrap()
             .insert(handle, Arc::downgrade(&inner));
-        let delegate_class = delegate_class(env)?;
-        env.call_static_method(
+        let delegate_class = delegate_class(env);
+        post_to_ui_thread(
+            env,
             delegate_class,
-            "inject",
-            "(Landroid/view/View;J)V",
-            &[host_view.into(), handle.into()],
-        )?;
-        Ok(Self {
-            vm: env.get_java_vm()?,
+            host,
+            move |env, delegate_class, host| {
+                let prev_delegate = env
+                    .call_method(
+                        host,
+                        "getAccessibilityDelegate",
+                        "()Landroid/view/View$AccessibilityDelegate;",
+                        &[],
+                    )
+                    .unwrap()
+                    .l()
+                    .unwrap();
+                if !prev_delegate.is_null() {
+                    panic!("host already has an accessibility delegate");
+                }
+                let delegate = env
+                    .new_object(delegate_class, "(J)V", &[handle.into()])
+                    .unwrap();
+                env.call_method(
+                    host,
+                    "setAccessibilityDelegate",
+                    "(Landroid/view/View$AccessibilityDelegate;)V",
+                    &[(&delegate).into()],
+                )
+                .unwrap();
+                env.call_method(
+                    host,
+                    "setOnHoverListener",
+                    "(Landroid/view/View$OnHoverListener;)V",
+                    &[(&delegate).into()],
+                )
+                .unwrap();
+            },
+        );
+        Self {
+            vm: env.get_java_vm().unwrap(),
             delegate_class,
-            host: env.new_weak_ref(host_view)?.unwrap(),
+            host: env.new_weak_ref(host).unwrap().unwrap(),
             handle,
             inner,
-        })
+        }
     }
 
     /// If and only if the tree has been initialized, call the provided function
@@ -414,40 +395,69 @@ impl InjectingAdapter {
         let Some(host) = self.host.upgrade_local(&env).unwrap() else {
             return;
         };
-        if let Some(events) = self
-            .inner
-            .lock()
-            .unwrap()
-            .adapter
-            .update_if_active(update_factory)
-        {
-            events.raise(&mut env, self.delegate_class, &host);
-        }
+        let mut inner = self.inner.lock().unwrap();
+        let Some(events) = inner.adapter.update_if_active(update_factory) else {
+            return;
+        };
+        drop(inner);
+        post_to_ui_thread(
+            &mut env,
+            self.delegate_class,
+            &host,
+            |env, _delegate_class, host| {
+                events.raise(env, host);
+            },
+        );
     }
 }
 
 impl Drop for InjectingAdapter {
     fn drop(&mut self) {
-        fn drop_impl(env: &mut JNIEnv, host: &WeakRef) -> Result<()> {
+        fn drop_impl(env: &mut JNIEnv, delegate_class: &JClass, host: &WeakRef) -> Result<()> {
             let Some(host) = host.upgrade_local(env)? else {
                 return Ok(());
             };
-            let delegate_class = delegate_class(env)?;
-            env.call_static_method(
-                delegate_class,
-                "remove",
-                "(Landroid/view/View;)V",
-                &[(&host).into()],
-            )?;
+            post_to_ui_thread(env, delegate_class, &host, |env, delegate_class, host| {
+                let prev_delegate = env
+                    .call_method(
+                        host,
+                        "getAccessibilityDelegate",
+                        "()Landroid/view/View$AccessibilityDelegate;",
+                        &[],
+                    )
+                    .unwrap()
+                    .l()
+                    .unwrap();
+                if prev_delegate.is_null()
+                    && !env.is_instance_of(&prev_delegate, delegate_class).unwrap()
+                {
+                    return;
+                }
+                let null = JObject::null();
+                env.call_method(
+                    host,
+                    "setAccessibilityDelegate",
+                    "(Landroid/view/View$AccessibilityDelegate;)V",
+                    &[(&null).into()],
+                )
+                .unwrap();
+                env.call_method(
+                    host,
+                    "setOnHoverListener",
+                    "(Landroid/view/View$OnHoverListener;)V",
+                    &[(&null).into()],
+                )
+                .unwrap();
+            });
             Ok(())
         }
 
         let res = match self.vm.get_env() {
-            Ok(mut env) => drop_impl(&mut env, &self.host),
+            Ok(mut env) => drop_impl(&mut env, self.delegate_class, &self.host),
             Err(_) => self
                 .vm
                 .attach_current_thread()
-                .and_then(|mut env| drop_impl(&mut env, &self.host)),
+                .and_then(|mut env| drop_impl(&mut env, self.delegate_class, &self.host)),
         };
 
         if let Err(err) = res {

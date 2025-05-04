@@ -36,7 +36,6 @@ dependencies = [
  "accesskit_consumer",
  "jni",
  "log",
- "once_cell",
 ]
 
 [[package]]

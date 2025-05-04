@@ -37,8 +37,7 @@ impl Adapter {
             .unwrap()
             .l()
             .unwrap();
-        let adapter =
-            InjectingAdapter::new(&mut env, &view, activation_handler, action_handler).unwrap();
+        let adapter = InjectingAdapter::new(&mut env, &view, activation_handler, action_handler);
         Self { adapter }
     }
 
