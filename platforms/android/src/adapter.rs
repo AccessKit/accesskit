@@ -241,7 +241,7 @@ impl Adapter {
     /// corresponding to the given virtual view ID. Returns null if
     /// there is no such node.
     ///
-    /// The `host` paramter is the Android view for this adapter.
+    /// The `host` parameter is the Android view for this adapter.
     /// It must be an instance of `android.view.View` or a subclass.
     pub fn create_accessibility_node_info<'local, H: ActivationHandler + ?Sized>(
         &mut self,
@@ -314,7 +314,7 @@ impl Adapter {
     /// Create an `AccessibilityNodeInfo` for the AccessKit node
     /// with the given focus type. Returns null if there is no such node.
     ///
-    /// The `host` paramter is the Android view for this adapter.
+    /// The `host` parameter is the Android view for this adapter.
     /// It must be an instance of `android.view.View` or a subclass.
     pub fn find_focus<'local, H: ActivationHandler + ?Sized>(
         &mut self,
@@ -695,7 +695,7 @@ impl Adapter {
     /// Handle the provided hover event.
     ///
     /// The `action`, `x`, and `y` parameters must be retrieved from
-    /// the corresopnding properties on an Android motion event. These
+    /// the corresponding properties on an Android motion event. These
     /// parameters are passed individually so you can use either a Java
     /// or NDK event.
     ///
