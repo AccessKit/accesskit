@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.2.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.1.1...accesskit_android-v0.2.0) (2025-05-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Simplify the core Android adapter API ([#558](https://github.com/AccessKit/accesskit/issues/558))
+* Use the queued-events pattern in the Android adapter ([#555](https://github.com/AccessKit/accesskit/issues/555))
+* Drop redundant `HasPopup::True` ([#550](https://github.com/AccessKit/accesskit/issues/550))
+
+### Bug Fixes
+
+* Fix Android adapter after dropping `FrozenNode` ([#553](https://github.com/AccessKit/accesskit/issues/553)) ([735cb7e](https://github.com/AccessKit/accesskit/commit/735cb7e292b87e7660586a924954689e4894dcea))
+* Return text content from multiline inputs ([#552](https://github.com/AccessKit/accesskit/issues/552)) ([4b74090](https://github.com/AccessKit/accesskit/commit/4b74090dc0b848747296b4a66d3bbe3cef96fc56))
+
+
+### Code Refactoring
+
+* Drop redundant `HasPopup::True` ([#550](https://github.com/AccessKit/accesskit/issues/550)) ([56abf17](https://github.com/AccessKit/accesskit/commit/56abf17356e4c7f13f64aaeaca6a63c8f7ede553))
+* Simplify the core Android adapter API ([#558](https://github.com/AccessKit/accesskit/issues/558)) ([7ac5911](https://github.com/AccessKit/accesskit/commit/7ac5911b11f3d6b8b777b91e6476e7073f6b0e4a))
+* Use the queued-events pattern in the Android adapter ([#555](https://github.com/AccessKit/accesskit/issues/555)) ([0316518](https://github.com/AccessKit/accesskit/commit/0316518b94cf1bc9755e67f0cf48e37c096975fa))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.18.0 to 0.19.0
+    * accesskit_consumer bumped from 0.27.0 to 0.28.0
+
 ## [0.1.1](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.1.0...accesskit_android-v0.1.1) (2025-03-17)
 
 

@@ -24,6 +24,38 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.28.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.27.0...accesskit_consumer-v0.28.0) (2025-05-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop unused `Node::is_linked` ([#545](https://github.com/AccessKit/accesskit/issues/545))
+* Drop `FrozenNode` ([#496](https://github.com/AccessKit/accesskit/issues/496))
+* Replace `immutable-chunkmap` with dual tree states ([#495](https://github.com/AccessKit/accesskit/issues/495))
+
+### Features
+
+* Expose tabs in consumer and atspi-common ([b1fb5b3](https://github.com/AccessKit/accesskit/commit/b1fb5b3de12c001e34021263038b66a6e3a7dd1e))
+
+
+### Bug Fixes
+
+* Improve `NodeId`'s debug representation ([#547](https://github.com/AccessKit/accesskit/issues/547)) ([a47bca1](https://github.com/AccessKit/accesskit/commit/a47bca1e376de7b0a22a7dfe6c23dedad315c449))
+
+
+### Code Refactoring
+
+* Drop `FrozenNode` ([#496](https://github.com/AccessKit/accesskit/issues/496)) ([f8c0d0a](https://github.com/AccessKit/accesskit/commit/f8c0d0a6fc9613cf1a2a6d8cfba11ebc892dfeb8))
+* Drop unused `Node::is_linked` ([#545](https://github.com/AccessKit/accesskit/issues/545)) ([3aab4ac](https://github.com/AccessKit/accesskit/commit/3aab4ac6f0193b8a06d7962f933582a4dbdf0c98))
+* Replace `immutable-chunkmap` with dual tree states ([#495](https://github.com/AccessKit/accesskit/issues/495)) ([a74dbfc](https://github.com/AccessKit/accesskit/commit/a74dbfcd2d30f9fbec781db811243ec070cbf8c5))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.18.0 to 0.19.0
+
 ## [0.27.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.26.0...accesskit_consumer-v0.27.0) (2025-03-06)
 
 
