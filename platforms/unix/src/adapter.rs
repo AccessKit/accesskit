@@ -144,6 +144,13 @@ impl Adapter {
         let _ = self.messages.send(message);
     }
 
+    /// Set the bounds of the top-level window. The outer bounds contain any
+    /// window decoration and borders.
+    ///
+    /// # Caveats
+    ///
+    /// Since an application can not get the position of its window under
+    /// Wayland, calling this method only makes sense under X11.
     pub fn set_root_window_bounds(&mut self, outer: Rect, inner: Rect) {
         let new_bounds = WindowBounds::new(outer, inner);
         let mut state = self.state.lock().unwrap();
