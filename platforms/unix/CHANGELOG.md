@@ -68,6 +68,31 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_atspi_common bumped from 0.10.0 to 0.10.1
 
+## [0.15.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.14.0...accesskit_unix-v0.15.0) (2025-05-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop redundant `HasPopup::True` ([#550](https://github.com/AccessKit/accesskit/issues/550))
+
+### Bug Fixes
+
+* Expose tabs in the platform adapters ([341a11b](https://github.com/AccessKit/accesskit/commit/341a11bca2c8a29682c11ddcfe91fa58776ea11d))
+* Mention caveats with window bounds under Wayland ([#559](https://github.com/AccessKit/accesskit/issues/559)) ([b0cf01a](https://github.com/AccessKit/accesskit/commit/b0cf01a26ded03d722818a193fa6902f69bbc102))
+
+
+### Code Refactoring
+
+* Drop redundant `HasPopup::True` ([#550](https://github.com/AccessKit/accesskit/issues/550)) ([56abf17](https://github.com/AccessKit/accesskit/commit/56abf17356e4c7f13f64aaeaca6a63c8f7ede553))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.18.0 to 0.19.0
+    * accesskit_atspi_common bumped from 0.11.0 to 0.12.0
+
 ## [0.14.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.13.1...accesskit_unix-v0.14.0) (2025-03-06)
 
 

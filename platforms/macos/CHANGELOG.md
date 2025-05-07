@@ -37,6 +37,35 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.20.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.19.0...accesskit_macos-v0.20.0) (2025-05-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop redundant `HasPopup::True` ([#550](https://github.com/AccessKit/accesskit/issues/550))
+
+### Features
+
+* Expose tabs in consumer and atspi-common ([b1fb5b3](https://github.com/AccessKit/accesskit/commit/b1fb5b3de12c001e34021263038b66a6e3a7dd1e))
+
+
+### Bug Fixes
+
+* Expose tabs in the platform adapters ([341a11b](https://github.com/AccessKit/accesskit/commit/341a11bca2c8a29682c11ddcfe91fa58776ea11d))
+
+
+### Code Refactoring
+
+* Drop redundant `HasPopup::True` ([#550](https://github.com/AccessKit/accesskit/issues/550)) ([56abf17](https://github.com/AccessKit/accesskit/commit/56abf17356e4c7f13f64aaeaca6a63c8f7ede553))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.18.0 to 0.19.0
+    * accesskit_consumer bumped from 0.27.0 to 0.28.0
+
 ## [0.19.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.18.1...accesskit_macos-v0.19.0) (2025-03-06)
 
 

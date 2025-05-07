@@ -38,6 +38,31 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.27.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.26.0...accesskit_windows-v0.27.0) (2025-05-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop redundant `HasPopup::True` ([#550](https://github.com/AccessKit/accesskit/issues/550))
+
+### Bug Fixes
+
+* Expose tabs in the platform adapters ([341a11b](https://github.com/AccessKit/accesskit/commit/341a11bca2c8a29682c11ddcfe91fa58776ea11d))
+* Update windows-rs to 0.61 ([#541](https://github.com/AccessKit/accesskit/issues/541)) ([2f86c45](https://github.com/AccessKit/accesskit/commit/2f86c453a776956ca36c06c9689be22323646421))
+
+
+### Code Refactoring
+
+* Drop redundant `HasPopup::True` ([#550](https://github.com/AccessKit/accesskit/issues/550)) ([56abf17](https://github.com/AccessKit/accesskit/commit/56abf17356e4c7f13f64aaeaca6a63c8f7ede553))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.18.0 to 0.19.0
+    * accesskit_consumer bumped from 0.27.0 to 0.28.0
+
 ## [0.26.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.25.0...accesskit_windows-v0.26.0) (2025-03-17)
 
 

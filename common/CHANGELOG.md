@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.19.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.18.0...accesskit-v0.19.0) (2025-05-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop redundant `HasPopup::True` ([#550](https://github.com/AccessKit/accesskit/issues/550))
+* Drop unused `Node::is_linked` ([#545](https://github.com/AccessKit/accesskit/issues/545))
+* Drop `FrozenNode` ([#496](https://github.com/AccessKit/accesskit/issues/496))
+
+### Bug Fixes
+
+* Improve `NodeId`'s debug representation ([#547](https://github.com/AccessKit/accesskit/issues/547)) ([a47bca1](https://github.com/AccessKit/accesskit/commit/a47bca1e376de7b0a22a7dfe6c23dedad315c449))
+* Update pyo3 to 0.24 ([#544](https://github.com/AccessKit/accesskit/issues/544)) ([6338e45](https://github.com/AccessKit/accesskit/commit/6338e45097662bf39994e19a09054c20cb2ee782))
+
+
+### Code Refactoring
+
+* Drop `FrozenNode` ([#496](https://github.com/AccessKit/accesskit/issues/496)) ([f8c0d0a](https://github.com/AccessKit/accesskit/commit/f8c0d0a6fc9613cf1a2a6d8cfba11ebc892dfeb8))
+* Drop redundant `HasPopup::True` ([#550](https://github.com/AccessKit/accesskit/issues/550)) ([56abf17](https://github.com/AccessKit/accesskit/commit/56abf17356e4c7f13f64aaeaca6a63c8f7ede553))
+* Drop unused `Node::is_linked` ([#545](https://github.com/AccessKit/accesskit/issues/545)) ([3aab4ac](https://github.com/AccessKit/accesskit/commit/3aab4ac6f0193b8a06d7962f933582a4dbdf0c98))
+
 ## [0.18.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.17.1...accesskit-v0.18.0) (2025-03-06)
 
 
