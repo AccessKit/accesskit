@@ -12,17 +12,32 @@ pub(crate) fn filter(node: &Node) -> FilterResult {
         return result;
     }
 
-    filter_combobox_descendants(node)
-}
-
-fn filter_combobox_descendants(node: &Node) -> FilterResult {
     if node.role() == Role::MenuListPopup
         || (node.role() == Role::MenuListOption && !node.is_selected().unwrap_or(false))
     {
-        if let Some(parent) = node.filtered_parent(&filter) {
-            if parent.role() == Role::ComboBox && parent.is_expanded() == Some(false) {
-                return FilterResult::ExcludeNode;
-            }
+        filter_combobox_descendants(node)
+    } else {
+        FilterResult::Include
+    }
+}
+
+pub(crate) fn filter_with_combobox_popup_exception(node: &Node) -> FilterResult {
+    let result = common_filter(node);
+    if result != FilterResult::Include {
+        return result;
+    }
+
+    if node.role() == Role::MenuListOption && !node.is_selected().unwrap_or(false) {
+        filter_combobox_descendants(node)
+    } else {
+        FilterResult::Include
+    }
+}
+
+fn filter_combobox_descendants(node: &Node) -> FilterResult {
+    if let Some(parent) = node.filtered_parent(&filter) {
+        if parent.role() == Role::ComboBox && parent.is_expanded() == Some(false) {
+            return FilterResult::ExcludeNode;
         }
     }
 

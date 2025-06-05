@@ -10,7 +10,7 @@
 
 use crate::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper, AppContext, Context},
-    filters::filter,
+    filters::{filter, filter_with_combobox_popup_exception},
     node::{NodeIdOrRoot, NodeWrapper, PlatformNode, PlatformRoot},
     util::WindowBounds,
     AdapterCallback, Event, ObjectEvent, WindowEvent,
@@ -361,10 +361,11 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
             if new_node.role() == Role::ComboBox && new_node.is_expanded() != old_node.is_expanded()
             {
                 if let Some((old_child, new_child)) = old_node
-                    .filtered_children(&filter)
-                    .zip(new_node.filtered_children(&filter))
+                    .filtered_children(&filter_with_combobox_popup_exception)
+                    .zip(new_node.filtered_children(&filter_with_combobox_popup_exception))
                     .next()
                 {
+                    println!("forcing");
                     self.node_updated(&old_child, &new_child);
                 }
             }
