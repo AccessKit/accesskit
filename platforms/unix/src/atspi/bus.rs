@@ -189,11 +189,15 @@ impl Bus {
     where
         T: zbus::object_server::Interface,
     {
-        map_or_ignoring_broken_pipe(
+        let result = map_or_ignoring_broken_pipe(
             self.conn.object_server().remove::<T, _>(path).await,
             false,
             |result| result,
-        )
+        );
+        match result {
+            Err(zbus::Error::InterfaceNotFound) => Ok(false),
+            _ => result,
+        }
     }
 
     pub(crate) async fn emit_object_event(
