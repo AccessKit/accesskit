@@ -56,7 +56,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macOS-latest, windows-2019, ubuntu-latest]
+        os: [macOS-latest, windows-latest, ubuntu-latest]
     name: cargo clippy
     steps:
       - uses: actions/checkout@v4
@@ -90,7 +90,7 @@ jobs:
     needs: find-msrv
     strategy:
       matrix:
-        os: [macOS-latest, windows-2019, ubuntu-latest]
+        os: [macOS-latest, windows-latest, ubuntu-latest]
     name: cargo test
     steps:
       - uses: actions/checkout@v4
@@ -107,7 +107,7 @@ jobs:
         run: cargo test
 
       - name: cargo test -p accesskit_windows
-        if: matrix.os == 'windows-2019'
+        if: matrix.os == 'windows-latest'
         run: cargo test -p accesskit_windows
 
   check-android-dex:
