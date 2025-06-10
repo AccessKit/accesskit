@@ -9,7 +9,7 @@ use hashbrown::HashSet;
 use objc2::runtime::{AnyObject, ProtocolObject};
 use objc2_app_kit::*;
 use objc2_foundation::{NSMutableDictionary, NSNumber, NSString};
-use std::rc::Rc;
+use std::{collections::VecDeque, rc::Rc};
 
 use crate::{
     context::Context,
@@ -158,6 +158,19 @@ impl EventGenerator {
         QueuedEvents::new(self.context, self.events)
     }
 
+    fn remove_subtree(&mut self, node: &Node) {
+        let mut to_remove = VecDeque::new();
+        to_remove.push_back(*node);
+
+        while let Some(node) = to_remove.pop_front() {
+            for child in node.filtered_children(&filter) {
+                to_remove.push_back(child);
+            }
+
+            self.events.push(QueuedEvent::NodeDestroyed(node.id()));
+        }
+    }
+
     fn insert_text_change_if_needed_parent(&mut self, node: Node) {
         if !node.supports_text_ranges() {
             return;
@@ -230,10 +243,16 @@ impl TreeChangeHandler for EventGenerator {
         if old_node.raw_value() != new_node.raw_value() {
             self.insert_text_change_if_needed(new_node);
         }
-        let old_node_was_filtered_out = filter(old_node) != FilterResult::Include;
-        if filter(new_node) != FilterResult::Include {
-            if !old_node_was_filtered_out && old_node.is_selected() == Some(true) {
+        let old_filter_result = filter(old_node);
+        let new_filter_result = filter(new_node);
+        if new_filter_result != FilterResult::Include {
+            if old_filter_result == FilterResult::Include && old_node.is_selected() == Some(true) {
                 self.enqueue_selected_rows_change_if_needed(old_node);
+            }
+            if new_filter_result == FilterResult::ExcludeSubtree {
+                self.remove_subtree(old_node);
+            } else {
+                self.events.push(QueuedEvent::NodeDestroyed(new_node.id()));
             }
             return;
         }
@@ -280,13 +299,13 @@ impl TreeChangeHandler for EventGenerator {
             && new_node.live() != Live::Off
             && (new_node.value() != old_node.value()
                 || new_node.live() != old_node.live()
-                || old_node_was_filtered_out)
+                || old_filter_result != FilterResult::Include)
         {
             self.events
                 .push(QueuedEvent::live_region_announcement(new_node));
         }
         if new_node.is_selected() != old_node.is_selected()
-            || (old_node_was_filtered_out && new_node.is_selected() == Some(true))
+            || (old_filter_result != FilterResult::Include && new_node.is_selected() == Some(true))
         {
             self.enqueue_selected_rows_change_if_needed(new_node);
         }
