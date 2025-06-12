@@ -227,6 +227,45 @@ fn send_text_traversed(
     send_completed_event(env, host, event);
 }
 
+pub(crate) struct ScrollDimension {
+    pub(crate) current: jint,
+    pub(crate) delta: jint,
+    pub(crate) max: Option<jint>,
+}
+
+fn send_scrolled(
+    env: &mut JNIEnv,
+    host: &JObject,
+    virtual_view_id: jint,
+    x: Option<ScrollDimension>,
+    y: Option<ScrollDimension>,
+) {
+    let event = new_event(env, host, virtual_view_id, EVENT_VIEW_SCROLLED);
+    env.call_method(&event, "setScrollable", "(Z)V", &[true.into()])
+        .unwrap();
+    if let Some(x) = x {
+        env.call_method(&event, "setScrollX", "(I)V", &[x.current.into()])
+            .unwrap();
+        env.call_method(&event, "setScrollDeltaX", "(I)V", &[x.delta.into()])
+            .unwrap();
+        if let Some(max) = x.max {
+            env.call_method(&event, "setMaxScrollX", "(I)V", &[max.into()])
+                .unwrap();
+        }
+    }
+    if let Some(y) = y {
+        env.call_method(&event, "setScrollY", "(I)V", &[y.current.into()])
+            .unwrap();
+        env.call_method(&event, "setScrollDeltaY", "(I)V", &[y.delta.into()])
+            .unwrap();
+        if let Some(max) = y.max {
+            env.call_method(&event, "setMaxScrollY", "(I)V", &[max.into()])
+                .unwrap();
+        }
+    }
+    send_completed_event(env, host, event);
+}
+
 pub(crate) enum QueuedEvent {
     Simple {
         virtual_view_id: jint,
@@ -252,6 +291,11 @@ pub(crate) enum QueuedEvent {
         forward: bool,
         segment_start: jint,
         segment_end: jint,
+    },
+    Scrolled {
+        virtual_view_id: jint,
+        x: Option<ScrollDimension>,
+        y: Option<ScrollDimension>,
     },
     InvalidateHost,
 }
@@ -313,6 +357,13 @@ impl QueuedEvents {
                         segment_start,
                         segment_end,
                     );
+                }
+                QueuedEvent::Scrolled {
+                    virtual_view_id,
+                    x,
+                    y,
+                } => {
+                    send_scrolled(env, host, virtual_view_id, x, y);
                 }
                 QueuedEvent::InvalidateHost => {
                     env.call_method(host, "invalidate", "()V", &[]).unwrap();
