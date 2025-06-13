@@ -378,6 +378,10 @@ impl<'a> Node<'a> {
         self.data().numeric_value_jump()
     }
 
+    pub fn clips_children(&self) -> bool {
+        self.data().clips_children()
+    }
+
     pub fn scroll_x(&self) -> Option<f64> {
         self.data().scroll_x()
     }
