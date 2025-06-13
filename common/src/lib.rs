@@ -304,14 +304,13 @@ pub enum Action {
     /// Requires [`ActionRequest::data`] to be set to [`ActionData::Value`].
     ReplaceSelectedText,
 
-    // Scrolls by approximately one screen in a specific direction.
-    // TBD: Do we need a doc comment on each of the values below?
-    // Or does this awkwardness suggest a refactor?
-    ScrollBackward,
+    /// Scroll down by the specified unit.
     ScrollDown,
-    ScrollForward,
+    /// Scroll left by the specified unit.
     ScrollLeft,
+    /// Scroll right by the specified unit.
     ScrollRight,
+    /// Scroll up by the specified unit.
     ScrollUp,
 
     /// Scroll any scrollable containers to make the target object visible
@@ -365,19 +364,17 @@ impl Action {
             8 => Some(Action::HideTooltip),
             9 => Some(Action::ShowTooltip),
             10 => Some(Action::ReplaceSelectedText),
-            11 => Some(Action::ScrollBackward),
-            12 => Some(Action::ScrollDown),
-            13 => Some(Action::ScrollForward),
-            14 => Some(Action::ScrollLeft),
-            15 => Some(Action::ScrollRight),
-            16 => Some(Action::ScrollUp),
-            17 => Some(Action::ScrollIntoView),
-            18 => Some(Action::ScrollToPoint),
-            19 => Some(Action::SetScrollOffset),
-            20 => Some(Action::SetTextSelection),
-            21 => Some(Action::SetSequentialFocusNavigationStartingPoint),
-            22 => Some(Action::SetValue),
-            23 => Some(Action::ShowContextMenu),
+            11 => Some(Action::ScrollDown),
+            12 => Some(Action::ScrollLeft),
+            13 => Some(Action::ScrollRight),
+            14 => Some(Action::ScrollUp),
+            15 => Some(Action::ScrollIntoView),
+            16 => Some(Action::ScrollToPoint),
+            17 => Some(Action::SetScrollOffset),
+            18 => Some(Action::SetTextSelection),
+            19 => Some(Action::SetSequentialFocusNavigationStartingPoint),
+            20 => Some(Action::SetValue),
+            21 => Some(Action::ShowContextMenu),
             _ => None,
         }
     }
@@ -2600,6 +2597,22 @@ pub struct TreeUpdate {
     pub focus: NodeId,
 }
 
+/// The amount by which to scroll in the direction specified by one of the
+/// `Scroll` actions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[repr(C)]
+pub enum ScrollUnit {
+    /// A single item of a list, line of text (for vertical scrolling),
+    /// character (for horizontal scrolling), or an approximation of
+    /// one of these.
+    Item,
+    /// The amount of content that fits in the viewport.
+    Page,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
@@ -2609,6 +2622,7 @@ pub enum ActionData {
     CustomAction(i32),
     Value(Box<str>),
     NumericValue(f64),
+    ScrollUnit(ScrollUnit),
     /// Optional target rectangle for [`Action::ScrollIntoView`], in
     /// the coordinate space of the action's target node.
     ScrollTargetRect(Rect),
@@ -2720,23 +2734,21 @@ mod tests {
         assert_eq!(Action::n(8), Some(Action::HideTooltip));
         assert_eq!(Action::n(9), Some(Action::ShowTooltip));
         assert_eq!(Action::n(10), Some(Action::ReplaceSelectedText));
-        assert_eq!(Action::n(11), Some(Action::ScrollBackward));
-        assert_eq!(Action::n(12), Some(Action::ScrollDown));
-        assert_eq!(Action::n(13), Some(Action::ScrollForward));
-        assert_eq!(Action::n(14), Some(Action::ScrollLeft));
-        assert_eq!(Action::n(15), Some(Action::ScrollRight));
-        assert_eq!(Action::n(16), Some(Action::ScrollUp));
-        assert_eq!(Action::n(17), Some(Action::ScrollIntoView));
-        assert_eq!(Action::n(18), Some(Action::ScrollToPoint));
-        assert_eq!(Action::n(19), Some(Action::SetScrollOffset));
-        assert_eq!(Action::n(20), Some(Action::SetTextSelection));
+        assert_eq!(Action::n(11), Some(Action::ScrollDown));
+        assert_eq!(Action::n(12), Some(Action::ScrollLeft));
+        assert_eq!(Action::n(13), Some(Action::ScrollRight));
+        assert_eq!(Action::n(14), Some(Action::ScrollUp));
+        assert_eq!(Action::n(15), Some(Action::ScrollIntoView));
+        assert_eq!(Action::n(16), Some(Action::ScrollToPoint));
+        assert_eq!(Action::n(17), Some(Action::SetScrollOffset));
+        assert_eq!(Action::n(18), Some(Action::SetTextSelection));
         assert_eq!(
-            Action::n(21),
+            Action::n(19),
             Some(Action::SetSequentialFocusNavigationStartingPoint)
         );
-        assert_eq!(Action::n(22), Some(Action::SetValue));
-        assert_eq!(Action::n(23), Some(Action::ShowContextMenu));
-        assert_eq!(Action::n(24), None);
+        assert_eq!(Action::n(20), Some(Action::SetValue));
+        assert_eq!(Action::n(21), Some(Action::ShowContextMenu));
+        assert_eq!(Action::n(22), None);
     }
 
     #[test]
@@ -2808,9 +2820,7 @@ mod tests {
         assert!(!node.supports_action(Action::HideTooltip));
         assert!(!node.supports_action(Action::ShowTooltip));
         assert!(!node.supports_action(Action::ReplaceSelectedText));
-        assert!(!node.supports_action(Action::ScrollBackward));
         assert!(!node.supports_action(Action::ScrollDown));
-        assert!(!node.supports_action(Action::ScrollForward));
         assert!(!node.supports_action(Action::ScrollLeft));
         assert!(!node.supports_action(Action::ScrollRight));
         assert!(!node.supports_action(Action::ScrollUp));
