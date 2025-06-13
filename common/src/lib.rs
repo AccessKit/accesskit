@@ -2603,7 +2603,11 @@ pub struct TreeUpdate {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-#[repr(C)]
+#[cfg_attr(
+    feature = "pyo3",
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
+)]
+#[repr(u8)]
 pub enum ScrollUnit {
     /// A single item of a list, line of text (for vertical scrolling),
     /// character (for horizontal scrolling), or an approximation of
