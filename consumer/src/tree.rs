@@ -77,7 +77,7 @@ impl State {
 
             for (child_index, child_id) in node_data.children().iter().enumerate() {
                 if seen_child_ids.contains(child_id) {
-                    panic!("TreeUpdate includes duplicate child {:?};", child_id);
+                    panic!("TreeUpdate includes duplicate child {:?}", child_id);
                 }
                 seen_child_ids.insert(*child_id);
                 unreachable.remove(child_id);
