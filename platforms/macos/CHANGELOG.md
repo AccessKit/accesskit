@@ -37,6 +37,21 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.20.1](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.20.0...accesskit_macos-v0.20.1) (2025-06-14)
+
+
+### Bug Fixes
+
+* Destroy nodes that become filtered out on macOS ([#569](https://github.com/AccessKit/accesskit/issues/569)) ([29584d4](https://github.com/AccessKit/accesskit/commit/29584d46ff1b2faa23195f69913f0e193b2e883a))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.19.0 to 0.20.0
+    * accesskit_consumer bumped from 0.28.0 to 0.28.1
+
 ## [0.20.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.19.0...accesskit_macos-v0.20.0) (2025-05-06)
 
 

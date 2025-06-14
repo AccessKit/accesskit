@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.20.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.19.0...accesskit-v0.20.0) (2025-06-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* Refactor actions for scrolling by discrete units ([#573](https://github.com/AccessKit/accesskit/issues/573))
+
+### Code Refactoring
+
+* Refactor actions for scrolling by discrete units ([#573](https://github.com/AccessKit/accesskit/issues/573)) ([fad11a1](https://github.com/AccessKit/accesskit/commit/fad11a1b66340e7be6b2eb00dfd07004451a17eb))
+
 ## [0.19.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.18.0...accesskit-v0.19.0) (2025-05-06)
 
 
