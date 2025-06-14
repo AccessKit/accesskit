@@ -42,6 +42,7 @@ impl State {
         mut changes: Option<&mut InternalChanges>,
     ) {
         let mut unreachable = HashSet::new();
+        let mut seen_child_ids = HashSet::new();
 
         if let Some(tree) = update.tree {
             if tree.root != self.data.root {
@@ -74,14 +75,11 @@ impl State {
         for (node_id, node_data) in update.nodes {
             unreachable.remove(&node_id);
 
-            let mut seen_child_ids = HashSet::with_capacity(node_data.children().len());
             for (child_index, child_id) in node_data.children().iter().enumerate() {
                 if seen_child_ids.contains(child_id) {
-                    panic!(
-                        "Node {:?} of TreeUpdate includes duplicate child {:?};",
-                        node_id, child_id
-                    );
+                    panic!("TreeUpdate includes duplicate child {:?};", child_id);
                 }
+                seen_child_ids.insert(*child_id);
                 unreachable.remove(child_id);
                 let parent_and_index = ParentAndIndex(node_id, child_index);
                 if let Some(child_state) = self.nodes.get_mut(child_id) {
@@ -102,7 +100,6 @@ impl State {
                 } else {
                     pending_children.insert(*child_id, parent_and_index);
                 }
-                seen_child_ids.insert(*child_id);
             }
 
             if let Some(node_state) = self.nodes.get_mut(&node_id) {
@@ -149,6 +146,7 @@ impl State {
             fn traverse_unreachable(
                 nodes: &mut HashMap<NodeId, NodeState>,
                 changes: &mut Option<&mut InternalChanges>,
+                seen_child_ids: &HashSet<NodeId>,
                 id: NodeId,
             ) {
                 if let Some(changes) = changes {
@@ -156,12 +154,14 @@ impl State {
                 }
                 let node = nodes.remove(&id).unwrap();
                 for child_id in node.data.children().iter() {
-                    traverse_unreachable(nodes, changes, *child_id);
+                    if !seen_child_ids.contains(child_id) {
+                        traverse_unreachable(nodes, changes, seen_child_ids, *child_id);
+                    }
                 }
             }
 
             for id in unreachable {
-                traverse_unreachable(&mut self.nodes, &mut changes, id);
+                traverse_unreachable(&mut self.nodes, &mut changes, &seen_child_ids, id);
             }
         }
 
@@ -373,7 +373,7 @@ impl<T> fmt::Display for ShortNodeList<'_, T> {
 #[cfg(test)]
 mod tests {
     use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
-    use alloc::vec;
+    use alloc::{vec, vec::Vec};
 
     #[test]
     fn init_tree_with_root_node() {
@@ -764,5 +764,100 @@ mod tests {
         }
         let mut handler = Handler {};
         tree.update_and_process_changes(update, &mut handler);
+    }
+
+    #[test]
+    fn move_node() {
+        struct Handler {
+            got_updated_root: bool,
+            got_updated_child: bool,
+            got_removed_container: bool,
+        }
+
+        fn unexpected_change() {
+            panic!("expected only updated root and removed container");
+        }
+
+        impl super::ChangeHandler for Handler {
+            fn node_added(&mut self, _node: &crate::Node) {
+                unexpected_change();
+            }
+            fn node_updated(&mut self, old_node: &crate::Node, new_node: &crate::Node) {
+                if new_node.id() == NodeId(0)
+                    && old_node.child_ids().collect::<Vec<NodeId>>() == vec![NodeId(1)]
+                    && new_node.child_ids().collect::<Vec<NodeId>>() == vec![NodeId(2)]
+                {
+                    self.got_updated_root = true;
+                    return;
+                }
+                if new_node.id() == NodeId(2)
+                    && old_node.parent_id() == Some(NodeId(1))
+                    && new_node.parent_id() == Some(NodeId(0))
+                {
+                    self.got_updated_child = true;
+                    return;
+                }
+                unexpected_change();
+            }
+            fn focus_moved(
+                &mut self,
+                _old_node: Option<&crate::Node>,
+                _new_node: Option<&crate::Node>,
+            ) {
+                unexpected_change();
+            }
+            fn node_removed(&mut self, node: &crate::Node) {
+                if node.id() == NodeId(1) {
+                    self.got_removed_container = true;
+                    return;
+                }
+                unexpected_change();
+            }
+        }
+
+        let mut root = Node::new(Role::Window);
+        root.set_children([NodeId(1)]);
+        let mut container = Node::new(Role::GenericContainer);
+        container.set_children([NodeId(2)]);
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), root.clone()),
+                (NodeId(1), container),
+                (NodeId(2), Node::new(Role::Button)),
+            ],
+            tree: Some(Tree::new(NodeId(0))),
+            focus: NodeId(0),
+        };
+        let mut tree = crate::Tree::new(update, false);
+        root.set_children([NodeId(2)]);
+        let mut handler = Handler {
+            got_updated_root: false,
+            got_updated_child: false,
+            got_removed_container: false,
+        };
+        tree.update_and_process_changes(
+            TreeUpdate {
+                nodes: vec![(NodeId(0), root)],
+                tree: None,
+                focus: NodeId(0),
+            },
+            &mut handler,
+        );
+        assert!(handler.got_updated_root);
+        assert!(handler.got_updated_child);
+        assert!(handler.got_removed_container);
+        assert_eq!(
+            tree.state()
+                .node_by_id(NodeId(0))
+                .unwrap()
+                .child_ids()
+                .collect::<Vec<NodeId>>(),
+            vec![NodeId(2)]
+        );
+        assert!(tree.state().node_by_id(NodeId(1)).is_none());
+        assert_eq!(
+            tree.state().node_by_id(NodeId(2)).unwrap().parent_id(),
+            Some(NodeId(0))
+        );
     }
 }
