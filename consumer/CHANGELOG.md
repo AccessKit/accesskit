@@ -24,6 +24,20 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.28.1](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.28.0...accesskit_consumer-v0.28.1) (2025-06-20)
+
+
+### Bug Fixes
+
+* Eliminate incorrect removal of reparented nodes ([#576](https://github.com/AccessKit/accesskit/issues/576)) ([db7d4d0](https://github.com/AccessKit/accesskit/commit/db7d4d050d89a4aafa6b5ad2097d0bd8a7997940))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.19.0 to 0.20.0
+
 ## [0.28.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.27.0...accesskit_consumer-v0.28.0) (2025-05-06)
 
 
