@@ -273,8 +273,7 @@ mod tests {
         );
     }
 
-    #[test]
-    fn clipped_children() {
+    fn clipped_children_test_tree() -> crate::Tree {
         let update = TreeUpdate {
             nodes: vec![
                 (NodeId(0), {
@@ -355,7 +354,12 @@ mod tests {
             tree: Some(Tree::new(NodeId(0))),
             focus: NodeId(0),
         };
-        let tree = crate::Tree::new(update, false);
+        crate::Tree::new(update, false)
+    }
+
+    #[test]
+    fn clipped_children_excluded_above() {
+        let tree = clipped_children_test_tree();
         assert_eq!(
             FilterResult::ExcludeSubtree,
             common_filter(&tree.state().node_by_id(NodeId(1)).unwrap())
@@ -364,14 +368,33 @@ mod tests {
             FilterResult::ExcludeSubtree,
             common_filter(&tree.state().node_by_id(NodeId(2)).unwrap())
         );
+    }
+
+    #[test]
+    fn clipped_children_included_above() {
+        let tree = clipped_children_test_tree();
         assert_eq!(
             FilterResult::Include,
             common_filter(&tree.state().node_by_id(NodeId(3)).unwrap())
         );
+    }
+
+    #[test]
+    fn clipped_children_hidden() {
+        let tree = clipped_children_test_tree();
         assert_eq!(
             FilterResult::ExcludeSubtree,
             common_filter(&tree.state().node_by_id(NodeId(4)).unwrap())
         );
+        assert_eq!(
+            FilterResult::ExcludeSubtree,
+            common_filter(&tree.state().node_by_id(NodeId(8)).unwrap())
+        );
+    }
+
+    #[test]
+    fn clipped_children_visible() {
+        let tree = clipped_children_test_tree();
         assert_eq!(
             FilterResult::Include,
             common_filter(&tree.state().node_by_id(NodeId(5)).unwrap())
@@ -384,14 +407,20 @@ mod tests {
             FilterResult::Include,
             common_filter(&tree.state().node_by_id(NodeId(7)).unwrap())
         );
-        assert_eq!(
-            FilterResult::ExcludeSubtree,
-            common_filter(&tree.state().node_by_id(NodeId(8)).unwrap())
-        );
+    }
+
+    #[test]
+    fn clipped_children_included_below() {
+        let tree = clipped_children_test_tree();
         assert_eq!(
             FilterResult::Include,
             common_filter(&tree.state().node_by_id(NodeId(9)).unwrap())
         );
+    }
+
+    #[test]
+    fn clipped_children_excluded_below() {
+        let tree = clipped_children_test_tree();
         assert_eq!(
             FilterResult::ExcludeSubtree,
             common_filter(&tree.state().node_by_id(NodeId(10)).unwrap())
