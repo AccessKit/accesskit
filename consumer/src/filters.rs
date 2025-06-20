@@ -59,6 +59,12 @@ pub fn common_filter(node: &Node) -> FilterResult {
 
     if let Some(parent) = node.filtered_parent(&common_filter_without_parent_checks) {
         if parent.clips_children() {
+            // If the parent clips its children, then exclude this subtree
+            // if this child's bounding box isn't inside the parent's bounding
+            // box, and if the previous or next filtered sibling isn't inside
+            // the parent's bounding box either. The latter condition is meant
+            // to allow off-screen items to be seen by consumers so they can be
+            // scrolled into view.
             if let Some(bbox) = node.bounding_box() {
                 if let Some(parent_bbox) = parent.bounding_box() {
                     if bbox.intersect(parent_bbox).is_empty()
@@ -89,7 +95,7 @@ pub fn common_filter_with_root_exception(node: &Node) -> FilterResult {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
+    use accesskit::{Node, NodeId, Rect, Role, Tree, TreeUpdate};
     use alloc::vec;
 
     use super::{common_filter, common_filter_with_root_exception, FilterResult};
@@ -264,6 +270,135 @@ mod tests {
         assert_eq!(
             FilterResult::ExcludeNode,
             common_filter(&tree.state().node_by_id(NodeId(1)).unwrap())
+        );
+    }
+
+    #[test]
+    fn clipped_children() {
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut node = Node::new(Role::ScrollView);
+                    node.set_clips_children();
+                    node.set_bounds(Rect::new(0.0, 0.0, 30.0, 30.0));
+                    node.set_children(vec![
+                        NodeId(1),
+                        NodeId(2),
+                        NodeId(3),
+                        NodeId(4),
+                        NodeId(5),
+                        NodeId(6),
+                        NodeId(7),
+                        NodeId(8),
+                        NodeId(9),
+                        NodeId(10),
+                        NodeId(11),
+                    ]);
+                    node
+                }),
+                (NodeId(1), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, -30.0, 30.0, -20.0));
+                    node
+                }),
+                (NodeId(2), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, -20.0, 30.0, -10.0));
+                    node
+                }),
+                (NodeId(3), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, -10.0, 30.0, 0.0));
+                    node
+                }),
+                (NodeId(4), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_hidden();
+                    node
+                }),
+                (NodeId(5), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, 0.0, 30.0, 10.0));
+                    node
+                }),
+                (NodeId(6), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, 10.0, 30.0, 20.0));
+                    node
+                }),
+                (NodeId(7), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, 20.0, 30.0, 30.0));
+                    node
+                }),
+                (NodeId(8), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_hidden();
+                    node
+                }),
+                (NodeId(9), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, 30.0, 30.0, 40.0));
+                    node
+                }),
+                (NodeId(10), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, 40.0, 30.0, 50.0));
+                    node
+                }),
+                (NodeId(11), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, 50.0, 30.0, 60.0));
+                    node
+                }),
+            ],
+            tree: Some(Tree::new(NodeId(0))),
+            focus: NodeId(0),
+        };
+        let tree = crate::Tree::new(update, false);
+        assert_eq!(
+            FilterResult::ExcludeSubtree,
+            common_filter(&tree.state().node_by_id(NodeId(1)).unwrap())
+        );
+        assert_eq!(
+            FilterResult::ExcludeSubtree,
+            common_filter(&tree.state().node_by_id(NodeId(2)).unwrap())
+        );
+        assert_eq!(
+            FilterResult::Include,
+            common_filter(&tree.state().node_by_id(NodeId(3)).unwrap())
+        );
+        assert_eq!(
+            FilterResult::ExcludeSubtree,
+            common_filter(&tree.state().node_by_id(NodeId(4)).unwrap())
+        );
+        assert_eq!(
+            FilterResult::Include,
+            common_filter(&tree.state().node_by_id(NodeId(5)).unwrap())
+        );
+        assert_eq!(
+            FilterResult::Include,
+            common_filter(&tree.state().node_by_id(NodeId(6)).unwrap())
+        );
+        assert_eq!(
+            FilterResult::Include,
+            common_filter(&tree.state().node_by_id(NodeId(7)).unwrap())
+        );
+        assert_eq!(
+            FilterResult::ExcludeSubtree,
+            common_filter(&tree.state().node_by_id(NodeId(8)).unwrap())
+        );
+        assert_eq!(
+            FilterResult::Include,
+            common_filter(&tree.state().node_by_id(NodeId(9)).unwrap())
+        );
+        assert_eq!(
+            FilterResult::ExcludeSubtree,
+            common_filter(&tree.state().node_by_id(NodeId(10)).unwrap())
+        );
+        assert_eq!(
+            FilterResult::ExcludeSubtree,
+            common_filter(&tree.state().node_by_id(NodeId(11)).unwrap())
         );
     }
 }
