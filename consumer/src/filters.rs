@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::Role;
+use accesskit::{Rect, Role};
 
 use crate::node::Node;
 
@@ -14,13 +14,41 @@ pub enum FilterResult {
     ExcludeSubtree,
 }
 
-pub fn common_filter(node: &Node) -> FilterResult {
+fn common_filter_base(node: &Node) -> Option<FilterResult> {
     if node.is_focused() {
-        return FilterResult::Include;
+        return Some(FilterResult::Include);
     }
 
     if node.is_hidden() {
-        return FilterResult::ExcludeSubtree;
+        return Some(FilterResult::ExcludeSubtree);
+    }
+
+    let role = node.role();
+    if role == Role::GenericContainer || role == Role::TextRun {
+        return Some(FilterResult::ExcludeNode);
+    }
+
+    None
+}
+
+fn common_filter_without_parent_checks(node: &Node) -> FilterResult {
+    common_filter_base(node).unwrap_or(FilterResult::Include)
+}
+
+fn is_first_sibling_in_parent_bbox<'a>(
+    mut siblings: impl Iterator<Item = Node<'a>>,
+    parent_bbox: Rect,
+) -> bool {
+    siblings.next().is_some_and(|sibling| {
+        sibling
+            .bounding_box()
+            .is_some_and(|bbox| !bbox.intersect(parent_bbox).is_empty())
+    })
+}
+
+pub fn common_filter(node: &Node) -> FilterResult {
+    if let Some(result) = common_filter_base(node) {
+        return result;
     }
 
     if let Some(parent) = node.parent() {
@@ -29,9 +57,30 @@ pub fn common_filter(node: &Node) -> FilterResult {
         }
     }
 
-    let role = node.role();
-    if role == Role::GenericContainer || role == Role::TextRun {
-        return FilterResult::ExcludeNode;
+    if let Some(parent) = node.filtered_parent(&common_filter_without_parent_checks) {
+        if parent.clips_children() {
+            // If the parent clips its children, then exclude this subtree
+            // if this child's bounding box isn't inside the parent's bounding
+            // box, and if the previous or next filtered sibling isn't inside
+            // the parent's bounding box either. The latter condition is meant
+            // to allow off-screen items to be seen by consumers so they can be
+            // scrolled into view.
+            if let Some(bbox) = node.bounding_box() {
+                if let Some(parent_bbox) = parent.bounding_box() {
+                    if bbox.intersect(parent_bbox).is_empty()
+                        && !(is_first_sibling_in_parent_bbox(
+                            node.following_filtered_siblings(&common_filter_without_parent_checks),
+                            parent_bbox,
+                        ) || is_first_sibling_in_parent_bbox(
+                            node.preceding_filtered_siblings(&common_filter_without_parent_checks),
+                            parent_bbox,
+                        ))
+                    {
+                        return FilterResult::ExcludeSubtree;
+                    }
+                }
+            }
+        }
     }
 
     FilterResult::Include
@@ -46,10 +95,21 @@ pub fn common_filter_with_root_exception(node: &Node) -> FilterResult {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
+    use accesskit::{Node, NodeId, Rect, Role, Tree, TreeUpdate};
     use alloc::vec;
 
-    use super::{common_filter, common_filter_with_root_exception, FilterResult};
+    use super::{
+        common_filter, common_filter_with_root_exception,
+        FilterResult::{self, *},
+    };
+
+    #[track_caller]
+    fn assert_filter_result(expected: FilterResult, tree: &crate::Tree, id: NodeId) {
+        assert_eq!(
+            expected,
+            common_filter(&tree.state().node_by_id(id).unwrap())
+        );
+    }
 
     #[test]
     fn normal() {
@@ -66,10 +126,7 @@ mod tests {
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
-        assert_eq!(
-            FilterResult::Include,
-            common_filter(&tree.state().node_by_id(NodeId(1)).unwrap())
-        );
+        assert_filter_result(Include, &tree, NodeId(1));
     }
 
     #[test]
@@ -91,10 +148,7 @@ mod tests {
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
-        assert_eq!(
-            FilterResult::ExcludeSubtree,
-            common_filter(&tree.state().node_by_id(NodeId(1)).unwrap())
-        );
+        assert_filter_result(ExcludeSubtree, &tree, NodeId(1));
     }
 
     #[test]
@@ -116,10 +170,7 @@ mod tests {
             focus: NodeId(1),
         };
         let tree = crate::Tree::new(update, true);
-        assert_eq!(
-            FilterResult::Include,
-            common_filter(&tree.state().node_by_id(NodeId(1)).unwrap())
-        );
+        assert_filter_result(Include, &tree, NodeId(1));
     }
 
     #[test]
@@ -137,18 +188,12 @@ mod tests {
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
+        assert_filter_result(ExcludeNode, &tree, NodeId(0));
         assert_eq!(
-            FilterResult::ExcludeNode,
-            common_filter(&tree.state().node_by_id(NodeId(0)).unwrap())
-        );
-        assert_eq!(
-            FilterResult::Include,
+            Include,
             common_filter_with_root_exception(&tree.state().node_by_id(NodeId(0)).unwrap())
         );
-        assert_eq!(
-            FilterResult::Include,
-            common_filter(&tree.state().node_by_id(NodeId(1)).unwrap())
-        );
+        assert_filter_result(Include, &tree, NodeId(1));
     }
 
     #[test]
@@ -167,14 +212,8 @@ mod tests {
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
-        assert_eq!(
-            FilterResult::ExcludeSubtree,
-            common_filter(&tree.state().node_by_id(NodeId(0)).unwrap())
-        );
-        assert_eq!(
-            FilterResult::ExcludeSubtree,
-            common_filter(&tree.state().node_by_id(NodeId(1)).unwrap())
-        );
+        assert_filter_result(ExcludeSubtree, &tree, NodeId(0));
+        assert_filter_result(ExcludeSubtree, &tree, NodeId(1));
     }
 
     #[test]
@@ -193,14 +232,8 @@ mod tests {
             focus: NodeId(1),
         };
         let tree = crate::Tree::new(update, true);
-        assert_eq!(
-            FilterResult::ExcludeSubtree,
-            common_filter(&tree.state().node_by_id(NodeId(0)).unwrap())
-        );
-        assert_eq!(
-            FilterResult::Include,
-            common_filter(&tree.state().node_by_id(NodeId(1)).unwrap())
-        );
+        assert_filter_result(ExcludeSubtree, &tree, NodeId(0));
+        assert_filter_result(Include, &tree, NodeId(1));
     }
 
     #[test]
@@ -218,9 +251,131 @@ mod tests {
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
-        assert_eq!(
-            FilterResult::ExcludeNode,
-            common_filter(&tree.state().node_by_id(NodeId(1)).unwrap())
-        );
+        assert_filter_result(ExcludeNode, &tree, NodeId(1));
+    }
+
+    fn clipped_children_test_tree() -> crate::Tree {
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut node = Node::new(Role::ScrollView);
+                    node.set_clips_children();
+                    node.set_bounds(Rect::new(0.0, 0.0, 30.0, 30.0));
+                    node.set_children(vec![
+                        NodeId(1),
+                        NodeId(2),
+                        NodeId(3),
+                        NodeId(4),
+                        NodeId(5),
+                        NodeId(6),
+                        NodeId(7),
+                        NodeId(8),
+                        NodeId(9),
+                        NodeId(10),
+                        NodeId(11),
+                    ]);
+                    node
+                }),
+                (NodeId(1), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, -30.0, 30.0, -20.0));
+                    node
+                }),
+                (NodeId(2), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, -20.0, 30.0, -10.0));
+                    node
+                }),
+                (NodeId(3), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, -10.0, 30.0, 0.0));
+                    node
+                }),
+                (NodeId(4), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_hidden();
+                    node
+                }),
+                (NodeId(5), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, 0.0, 30.0, 10.0));
+                    node
+                }),
+                (NodeId(6), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, 10.0, 30.0, 20.0));
+                    node
+                }),
+                (NodeId(7), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, 20.0, 30.0, 30.0));
+                    node
+                }),
+                (NodeId(8), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_hidden();
+                    node
+                }),
+                (NodeId(9), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, 30.0, 30.0, 40.0));
+                    node
+                }),
+                (NodeId(10), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, 40.0, 30.0, 50.0));
+                    node
+                }),
+                (NodeId(11), {
+                    let mut node = Node::new(Role::Unknown);
+                    node.set_bounds(Rect::new(0.0, 50.0, 30.0, 60.0));
+                    node
+                }),
+            ],
+            tree: Some(Tree::new(NodeId(0))),
+            focus: NodeId(0),
+        };
+        crate::Tree::new(update, false)
+    }
+
+    #[test]
+    fn clipped_children_excluded_above() {
+        let tree = clipped_children_test_tree();
+        assert_filter_result(ExcludeSubtree, &tree, NodeId(1));
+        assert_filter_result(ExcludeSubtree, &tree, NodeId(2));
+    }
+
+    #[test]
+    fn clipped_children_included_above() {
+        let tree = clipped_children_test_tree();
+        assert_filter_result(Include, &tree, NodeId(3));
+    }
+
+    #[test]
+    fn clipped_children_hidden() {
+        let tree = clipped_children_test_tree();
+        assert_filter_result(ExcludeSubtree, &tree, NodeId(4));
+        assert_filter_result(ExcludeSubtree, &tree, NodeId(8));
+    }
+
+    #[test]
+    fn clipped_children_visible() {
+        let tree = clipped_children_test_tree();
+        assert_filter_result(Include, &tree, NodeId(5));
+        assert_filter_result(Include, &tree, NodeId(6));
+        assert_filter_result(Include, &tree, NodeId(7));
+    }
+
+    #[test]
+    fn clipped_children_included_below() {
+        let tree = clipped_children_test_tree();
+        assert_filter_result(Include, &tree, NodeId(9));
+    }
+
+    #[test]
+    fn clipped_children_excluded_below() {
+        let tree = clipped_children_test_tree();
+        assert_filter_result(ExcludeSubtree, &tree, NodeId(10));
+        assert_filter_result(ExcludeSubtree, &tree, NodeId(11));
     }
 }

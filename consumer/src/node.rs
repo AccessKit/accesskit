@@ -378,6 +378,34 @@ impl<'a> Node<'a> {
         self.data().numeric_value_jump()
     }
 
+    pub fn clips_children(&self) -> bool {
+        self.data().clips_children()
+    }
+
+    pub fn scroll_x(&self) -> Option<f64> {
+        self.data().scroll_x()
+    }
+
+    pub fn scroll_x_min(&self) -> Option<f64> {
+        self.data().scroll_x_min()
+    }
+
+    pub fn scroll_x_max(&self) -> Option<f64> {
+        self.data().scroll_x_max()
+    }
+
+    pub fn scroll_y(&self) -> Option<f64> {
+        self.data().scroll_y()
+    }
+
+    pub fn scroll_y_min(&self) -> Option<f64> {
+        self.data().scroll_y_min()
+    }
+
+    pub fn scroll_y_max(&self) -> Option<f64> {
+        self.data().scroll_y_max()
+    }
+
     pub fn is_text_input(&self) -> bool {
         matches!(
             self.role(),
