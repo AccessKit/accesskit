@@ -14,6 +14,8 @@ pub(crate) const ACTION_ACCESSIBILITY_FOCUS: jint = 1 << 6;
 pub(crate) const ACTION_CLEAR_ACCESSIBILITY_FOCUS: jint = 1 << 7;
 pub(crate) const ACTION_NEXT_AT_MOVEMENT_GRANULARITY: jint = 1 << 8;
 pub(crate) const ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY: jint = 1 << 9;
+pub(crate) const ACTION_SCROLL_FORWARD: jint = 1 << 12;
+pub(crate) const ACTION_SCROLL_BACKWARD: jint = 1 << 13;
 pub(crate) const ACTION_SET_SELECTION: jint = 1 << 17;
 
 pub(crate) const ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT: &str =
@@ -30,6 +32,7 @@ pub(crate) const EVENT_VIEW_FOCUSED: jint = 1 << 3;
 pub(crate) const EVENT_VIEW_TEXT_CHANGED: jint = 1 << 4;
 pub(crate) const EVENT_VIEW_HOVER_ENTER: jint = 1 << 7;
 pub(crate) const EVENT_VIEW_HOVER_EXIT: jint = 1 << 8;
+pub(crate) const EVENT_VIEW_SCROLLED: jint = 1 << 12;
 pub(crate) const EVENT_VIEW_TEXT_SELECTION_CHANGED: jint = 1 << 13;
 pub(crate) const EVENT_VIEW_ACCESSIBILITY_FOCUSED: jint = 1 << 15;
 pub(crate) const EVENT_VIEW_ACCESSIBILITY_FOCUS_CLEARED: jint = 1 << 16;
