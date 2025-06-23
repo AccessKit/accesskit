@@ -8,7 +8,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use accesskit::{Live, Role, Toggled};
+use accesskit::{Action, Live, Role, Toggled};
 use accesskit_consumer::Node;
 use jni::{objects::JObject, sys::jint, JNIEnv};
 
@@ -36,7 +36,7 @@ impl NodeWrapper<'_> {
     }
 
     fn is_focusable(&self) -> bool {
-        self.0.is_focusable()
+        self.0.is_focusable() && self.0.role() != Role::ScrollView
     }
 
     fn is_focused(&self) -> bool {
@@ -57,6 +57,13 @@ impl NodeWrapper<'_> {
             Toggled::True => true,
             Toggled::Mixed => true,
         }
+    }
+
+    fn is_scrollable(&self) -> bool {
+        self.0.supports_action(Action::ScrollDown)
+            || self.0.supports_action(Action::ScrollLeft)
+            || self.0.supports_action(Action::ScrollRight)
+            || self.0.supports_action(Action::ScrollUp)
     }
 
     fn is_selected(&self) -> bool {
@@ -131,7 +138,9 @@ impl NodeWrapper<'_> {
             Role::Meter | Role::ProgressIndicator => "android.widget.ProgressBar",
             Role::TabList => "android.widget.TabWidget",
             Role::Grid | Role::Table | Role::TreeGrid => "android.widget.GridView",
-            Role::DescriptionList | Role::List | Role::ListBox => "android.widget.ListView",
+            Role::DescriptionList | Role::List | Role::ListBox | Role::ScrollView => {
+                "android.widget.ListView"
+            }
             Role::Dialog => "android.app.Dialog",
             Role::RootWebArea => "android.webkit.WebView",
             Role::MenuItem | Role::MenuItemCheckBox | Role::MenuItemRadio => {
@@ -140,6 +149,30 @@ impl NodeWrapper<'_> {
             Role::Label => "android.widget.TextView",
             _ => "android.view.View",
         }
+    }
+
+    pub(crate) fn scroll_x(&self) -> Option<jint> {
+        self.0
+            .scroll_x()
+            .map(|value| (value - self.0.scroll_x_min().unwrap_or(0.0)) as jint)
+    }
+
+    pub(crate) fn max_scroll_x(&self) -> Option<jint> {
+        self.0
+            .scroll_x_max()
+            .map(|value| (value - self.0.scroll_x_min().unwrap_or(0.0)) as jint)
+    }
+
+    pub(crate) fn scroll_y(&self) -> Option<jint> {
+        self.0
+            .scroll_y()
+            .map(|value| (value - self.0.scroll_y_min().unwrap_or(0.0)) as jint)
+    }
+
+    pub(crate) fn max_scroll_y(&self) -> Option<jint> {
+        self.0
+            .scroll_y_max()
+            .map(|value| (value - self.0.scroll_y_min().unwrap_or(0.0)) as jint)
     }
 
     pub(crate) fn populate_node_info(
@@ -242,6 +275,13 @@ impl NodeWrapper<'_> {
         .unwrap();
         env.call_method(
             node_info,
+            "setScrollable",
+            "(Z)V",
+            &[self.is_scrollable().into()],
+        )
+        .unwrap();
+        env.call_method(
+            node_info,
             "setSelected",
             "(Z)V",
             &[self.is_selected().into()],
@@ -290,7 +330,7 @@ impl NodeWrapper<'_> {
         )
         .unwrap();
 
-        let can_focus = self.0.is_focusable() && !self.0.is_focused();
+        let can_focus = self.is_focusable() && !self.0.is_focused();
         if self.0.is_clickable() || can_focus {
             add_action(env, node_info, ACTION_CLICK);
         }
@@ -312,6 +352,13 @@ impl NodeWrapper<'_> {
                     .into()],
             )
             .unwrap();
+        }
+        if self.0.supports_action(Action::ScrollLeft) || self.0.supports_action(Action::ScrollUp) {
+            add_action(env, node_info, ACTION_SCROLL_BACKWARD);
+        }
+        if self.0.supports_action(Action::ScrollRight) || self.0.supports_action(Action::ScrollDown)
+        {
+            add_action(env, node_info, ACTION_SCROLL_FORWARD);
         }
 
         let live = match self.0.live() {
