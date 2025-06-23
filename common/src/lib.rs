@@ -462,6 +462,16 @@ pub enum Toggled {
     Mixed,
 }
 
+impl From<bool> for Toggled {
+    #[inline]
+    fn from(b: bool) -> Self {
+        match b {
+            false => Self::False,
+            true => Self::True,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
