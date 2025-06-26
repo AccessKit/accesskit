@@ -37,6 +37,27 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.21.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.20.0...accesskit_macos-v0.21.0) (2025-06-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* Force a semver-breaking release ([#589](https://github.com/AccessKit/accesskit/issues/589))
+
+### Bug Fixes
+
+* Destroy nodes that become filtered out on macOS ([#569](https://github.com/AccessKit/accesskit/issues/569)) ([29584d4](https://github.com/AccessKit/accesskit/commit/29584d46ff1b2faa23195f69913f0e193b2e883a))
+* Force a semver-breaking release ([#589](https://github.com/AccessKit/accesskit/issues/589)) ([2887cdd](https://github.com/AccessKit/accesskit/commit/2887cddde817ba3851688068d8d10de5cef7c624))
+* Resolve new clippy warning about using variables directly in format strings ([#590](https://github.com/AccessKit/accesskit/issues/590)) ([ccc62b7](https://github.com/AccessKit/accesskit/commit/ccc62b7f1dd32f0c372ba127a1e65c377048f670))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.19.0 to 0.20.0
+    * accesskit_consumer bumped from 0.28.0 to 0.29.0
+
 ## [0.20.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.19.0...accesskit_macos-v0.20.0) (2025-05-06)
 
 

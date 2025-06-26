@@ -24,6 +24,26 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.29.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.28.0...accesskit_consumer-v0.29.0) (2025-06-26)
+
+
+### Features
+
+* Consumer support for scrolling and clipping children ([#574](https://github.com/AccessKit/accesskit/issues/574)) ([4094dec](https://github.com/AccessKit/accesskit/commit/4094dec2ad512570c7837d057f1d5893e89ff9b4))
+
+
+### Bug Fixes
+
+* Eliminate incorrect removal of reparented nodes ([#576](https://github.com/AccessKit/accesskit/issues/576)) ([db7d4d0](https://github.com/AccessKit/accesskit/commit/db7d4d050d89a4aafa6b5ad2097d0bd8a7997940))
+* Resolve new clippy warning about using variables directly in format strings ([#590](https://github.com/AccessKit/accesskit/issues/590)) ([ccc62b7](https://github.com/AccessKit/accesskit/commit/ccc62b7f1dd32f0c372ba127a1e65c377048f670))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.19.0 to 0.20.0
+
 ## [0.28.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.27.0...accesskit_consumer-v0.28.0) (2025-05-06)
 
 
