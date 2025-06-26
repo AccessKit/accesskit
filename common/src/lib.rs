@@ -2897,7 +2897,7 @@ mod tests {
         });
 
         assert_eq!(
-            &format!("{:?}", node),
+            &format!("{node:?}"),
             r#"Node { role: Unknown, actions: [Click, Focus], is_hidden: true, is_multiselectable: true, children: [#0, #1], active_descendant: #2, custom_actions: [CustomAction { id: 0, description: "test action" }] }"#
         );
     }

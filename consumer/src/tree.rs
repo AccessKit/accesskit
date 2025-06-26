@@ -361,7 +361,7 @@ impl<T> fmt::Display for ShortNodeList<'_, T> {
             if i != 0 {
                 write!(f, ", ")?;
             }
-            write!(f, "{:?}", id)?;
+            write!(f, "{id:?}")?;
         }
         if iter.next().is_some() {
             write!(f, " ...")?;

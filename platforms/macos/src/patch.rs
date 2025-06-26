@@ -74,7 +74,7 @@ where
             types.as_ptr(),
         )
     });
-    assert!(success.as_bool(), "Failed to add method {:?}", sel);
+    assert!(success.as_bool(), "Failed to add method {sel:?}");
 }
 
 fn count_args(sel: Sel) -> usize {
@@ -86,7 +86,7 @@ fn method_type_encoding(ret: &Encoding, args: &[Encoding]) -> CString {
     let mut types = format!("{}{}{}", ret, <*mut AnyObject>::ENCODING, Sel::ENCODING);
     for enc in args {
         use core::fmt::Write;
-        write!(&mut types, "{}", enc).unwrap();
+        write!(&mut types, "{enc}").unwrap();
     }
     CString::new(types).unwrap()
 }
