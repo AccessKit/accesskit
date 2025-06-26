@@ -40,4 +40,3 @@ accesskit_android = { version = "0.2.0", path = "../android", optional = true, f
 version = "0.30.5"
 default-features = false
 features = ["x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita"]
-
