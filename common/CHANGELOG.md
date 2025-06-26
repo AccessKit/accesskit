@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.20.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.19.0...accesskit-v0.20.0) (2025-06-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* Refactor actions for scrolling by discrete units ([#573](https://github.com/AccessKit/accesskit/issues/573))
+
+### Bug Fixes
+
+* impl `From<bool>` for `Toggled` ([#585](https://github.com/AccessKit/accesskit/issues/585)) ([d38776a](https://github.com/AccessKit/accesskit/commit/d38776a014744db849edbfc9e0a7d0378709ed4b))
+* Resolve new clippy warning about using variables directly in format strings ([#590](https://github.com/AccessKit/accesskit/issues/590)) ([ccc62b7](https://github.com/AccessKit/accesskit/commit/ccc62b7f1dd32f0c372ba127a1e65c377048f670))
+
+
+### Code Refactoring
+
+* Refactor actions for scrolling by discrete units ([#573](https://github.com/AccessKit/accesskit/issues/573)) ([fad11a1](https://github.com/AccessKit/accesskit/commit/fad11a1b66340e7be6b2eb00dfd07004451a17eb))
+
 ## [0.19.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.18.0...accesskit-v0.19.0) (2025-05-06)
 
 
