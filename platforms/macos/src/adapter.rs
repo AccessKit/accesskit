@@ -103,6 +103,25 @@ impl Adapter {
         Self { state }
     }
 
+    /// Check if the adapter is currently active.
+    pub fn active(&self) -> bool {
+        match self.state {
+            State::Inactive { .. } => false,
+            _ => true,
+        }
+    }
+
+    /// If the tree has been initialized, apply the given TreeUpdate. Note: If
+    /// the caller's implementation of [`ActivationHandler::request_initial_tree`]
+    /// initially returned `None`, the [`TreeUpdate`] returned by the provided function
+    /// must contain a full tree.
+    ///
+    /// If a [`QueuedEvents`] instance is returned, the caller must call
+    /// [`QueuedEvents::raise`] on it.
+    pub fn update(&mut self, update: TreeUpdate) -> Option<QueuedEvents> {
+        self.update_if_active(|| update)
+    }
+
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update. Note: If the caller's implementation of
     /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
