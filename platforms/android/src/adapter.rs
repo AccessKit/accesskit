@@ -113,26 +113,26 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 }
             }
         }
-        let scroll_x =
-            if let (Some(old), Some(new)) = (old_wrapper.scroll_x(), new_wrapper.scroll_x()) {
+        let scroll_x = old_wrapper
+            .scroll_x()
+            .zip(new_wrapper.scroll_x())
+            .and_then(|(old, new)| {
                 (new != old).then(|| ScrollDimension {
                     current: new,
                     delta: new - old,
                     max: new_wrapper.max_scroll_x(),
                 })
-            } else {
-                None
-            };
-        let scroll_y =
-            if let (Some(old), Some(new)) = (old_wrapper.scroll_y(), new_wrapper.scroll_y()) {
+            });
+        let scroll_y = old_wrapper
+            .scroll_y()
+            .zip(new_wrapper.scroll_y())
+            .and_then(|(old, new)| {
                 (new != old).then(|| ScrollDimension {
                     current: new,
                     delta: new - old,
                     max: new_wrapper.max_scroll_y(),
                 })
-            } else {
-                None
-            };
+            });
         if scroll_x.is_some() || scroll_y.is_some() {
             let id = self.node_id_map.get_or_create_java_id(new_node);
             self.events.push(QueuedEvent::Scrolled {
