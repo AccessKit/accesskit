@@ -387,7 +387,10 @@ impl Adapter {
             ACTION_CLICK => ActionRequest {
                 action: {
                     let node = tree_state.node_by_id(target).unwrap();
-                    if node.is_focusable() && !node.is_focused() && !node.is_clickable() {
+                    if node.is_focusable(&filter)
+                        && !node.is_focused()
+                        && !node.is_clickable(&filter)
+                    {
                         Action::Focus
                     } else {
                         Action::Click
@@ -422,12 +425,13 @@ impl Adapter {
                             }
                         }
                     } else if action == ACTION_SCROLL_BACKWARD {
-                        if node.supports_action(Action::ScrollUp) {
+                        if node.supports_action(Action::ScrollUp, &filter) {
                             Action::ScrollUp
                         } else {
                             Action::ScrollLeft
                         }
-                    } else if node.supports_action(Action::ScrollDown) {
+                    } else if node.supports_action(Action::ScrollDown, &filter)
+                    {
                         Action::ScrollDown
                     } else {
                         Action::ScrollRight
@@ -492,7 +496,7 @@ impl Adapter {
         // TalkBack expects the text selection change to take effect
         // immediately, so we optimistically update the node.
         // But don't be *too* optimistic.
-        if !node.supports_action(Action::SetTextSelection) {
+        if !node.supports_action(Action::SetTextSelection, &filter) {
             return None;
         }
         let (anchor, focus, extra) = selection_factory(&node)?;

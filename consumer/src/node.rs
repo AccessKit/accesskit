@@ -54,8 +54,8 @@ impl<'a> Node<'a> {
         self.tree_state.focus == self.id()
     }
 
-    pub fn is_focusable(&self) -> bool {
-        self.supports_action(Action::Focus) || self.is_focused_in_tree()
+    pub fn is_focusable(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
+        self.supports_action(Action::Focus, parent_filter) || self.is_focused_in_tree()
     }
 
     pub fn is_root(&self) -> bool {
@@ -452,8 +452,8 @@ impl<'a> Node<'a> {
     // and we assume that it will based on the role, the attempted action
     // does nothing. This stance is a departure from Chromium.
 
-    pub fn is_clickable(&self) -> bool {
-        self.supports_action(Action::Click)
+    pub fn is_clickable(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
+        self.supports_action(Action::Click, parent_filter)
     }
 
     pub fn is_selectable(&self) -> bool {
@@ -491,7 +491,7 @@ impl<'a> Node<'a> {
         self.data().is_expanded().is_some()
     }
 
-    pub fn is_invocable(&self) -> bool {
+    pub fn is_invocable(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
         // A control is "invocable" if it initiates an action when activated but
         // does not maintain any state. A control that maintains state
         // when activated would be considered a toggle or expand-collapse
@@ -500,7 +500,7 @@ impl<'a> Node<'a> {
         // such as when clicking a text input, the control is not considered
         // "invocable", as the "invoke" action would be a redundant synonym
         // for the "set focus" action. The same logic applies to selection.
-        self.is_clickable()
+        self.is_clickable(parent_filter)
             && !self.is_text_input()
             && !matches!(self.role(), Role::Document | Role::Terminal)
             && !self.supports_toggle()
@@ -508,16 +508,26 @@ impl<'a> Node<'a> {
             && self.is_selected().is_none()
     }
 
-    pub fn supports_action(&self, action: Action) -> bool {
-        self.data().supports_action(action)
+    pub fn supports_action(
+        &self,
+        action: Action,
+        parent_filter: &impl Fn(&Node) -> FilterResult,
+    ) -> bool {
+        if self.data().supports_action(action) {
+            return true;
+        }
+        if let Some(parent) = self.filtered_parent(parent_filter) {
+            return parent.data().child_supports_action(action);
+        }
+        false
     }
 
-    pub fn supports_increment(&self) -> bool {
-        self.supports_action(Action::Increment)
+    pub fn supports_increment(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
+        self.supports_action(Action::Increment, parent_filter)
     }
 
-    pub fn supports_decrement(&self) -> bool {
-        self.supports_action(Action::Decrement)
+    pub fn supports_decrement(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
+        self.supports_action(Action::Decrement, parent_filter)
     }
 }
 
