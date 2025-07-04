@@ -434,7 +434,7 @@ impl Adapter {
                     }
                 },
                 target,
-                data: Some(ActionData::ScrollUnit(ScrollUnit::Item)),
+                data: Some(ActionData::ScrollUnit(ScrollUnit::Page)),
             },
             ACTION_ACCESSIBILITY_FOCUS => {
                 self.accessibility_focus = Some(virtual_view_id);
