@@ -10,7 +10,7 @@
 
 use accesskit::{
     Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node as NodeData, NodeId,
-    Point, Role, TextSelection, Tree as TreeData, TreeUpdate,
+    Orientation, Point, Role, ScrollUnit, TextSelection, Tree as TreeData, TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Node, TextPosition, Tree, TreeChangeHandler};
 use jni::{
@@ -21,7 +21,7 @@ use jni::{
 
 use crate::{
     action::{PlatformAction, PlatformActionInner},
-    event::{QueuedEvent, QueuedEvents},
+    event::{QueuedEvent, QueuedEvents, ScrollDimension},
     filters::filter,
     node::{add_action, NodeWrapper},
     util::*,
@@ -112,6 +112,34 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                     });
                 }
             }
+        }
+        let scroll_x = old_wrapper
+            .scroll_x()
+            .zip(new_wrapper.scroll_x())
+            .and_then(|(old, new)| {
+                (new != old).then(|| ScrollDimension {
+                    current: new,
+                    delta: new - old,
+                    max: new_wrapper.max_scroll_x(),
+                })
+            });
+        let scroll_y = old_wrapper
+            .scroll_y()
+            .zip(new_wrapper.scroll_y())
+            .and_then(|(old, new)| {
+                (new != old).then(|| ScrollDimension {
+                    current: new,
+                    delta: new - old,
+                    max: new_wrapper.max_scroll_y(),
+                })
+            });
+        if scroll_x.is_some() || scroll_y.is_some() {
+            let id = self.node_id_map.get_or_create_java_id(new_node);
+            self.events.push(QueuedEvent::Scrolled {
+                virtual_view_id: id,
+                x: scroll_x,
+                y: scroll_y,
+            });
         }
         // TODO: other events
     }
@@ -372,6 +400,41 @@ impl Adapter {
                 action: Action::Focus,
                 target,
                 data: None,
+            },
+            ACTION_SCROLL_BACKWARD | ACTION_SCROLL_FORWARD => ActionRequest {
+                action: {
+                    let node = tree_state.node_by_id(target).unwrap();
+                    if let Some(orientation) = node.orientation() {
+                        match orientation {
+                            Orientation::Horizontal => {
+                                if action == ACTION_SCROLL_BACKWARD {
+                                    Action::ScrollLeft
+                                } else {
+                                    Action::ScrollRight
+                                }
+                            }
+                            Orientation::Vertical => {
+                                if action == ACTION_SCROLL_BACKWARD {
+                                    Action::ScrollUp
+                                } else {
+                                    Action::ScrollDown
+                                }
+                            }
+                        }
+                    } else if action == ACTION_SCROLL_BACKWARD {
+                        if node.supports_action(Action::ScrollUp) {
+                            Action::ScrollUp
+                        } else {
+                            Action::ScrollLeft
+                        }
+                    } else if node.supports_action(Action::ScrollDown) {
+                        Action::ScrollDown
+                    } else {
+                        Action::ScrollRight
+                    }
+                },
+                target,
+                data: Some(ActionData::ScrollUnit(ScrollUnit::Page)),
             },
             ACTION_ACCESSIBILITY_FOCUS => {
                 self.accessibility_focus = Some(virtual_view_id);
