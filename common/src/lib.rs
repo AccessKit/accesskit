@@ -915,6 +915,7 @@ struct Properties {
 pub struct Node {
     role: Role,
     actions: u32,
+    child_actions: u32,
     flags: u32,
     properties: Properties,
 }
@@ -1600,6 +1601,31 @@ impl Node {
     pub fn clear_actions(&mut self) {
         self.actions = 0;
     }
+
+    /// Return whether the specified action is in the set supported on this node's
+    /// direct children in the filtered tree.
+    #[inline]
+    pub fn child_supports_action(&self, action: Action) -> bool {
+        (self.child_actions & action.mask()) != 0
+    }
+    /// Add the specified action to the set supported on this node's direct
+    /// children in the filtered tree.
+    #[inline]
+    pub fn add_child_action(&mut self, action: Action) {
+        self.child_actions |= action.mask();
+    }
+    /// Remove the specified action from the set supported on this node's direct
+    /// children in the filtered tree.
+    #[inline]
+    pub fn remove_child_action(&mut self, action: Action) {
+        self.child_actions &= !(action.mask());
+    }
+    /// Clear the set of actions supported on this node's direct children in the
+    /// filtered tree.
+    #[inline]
+    pub fn clear_child_actions(&mut self) {
+        self.child_actions = 0;
+    }
 }
 
 flag_methods! {
@@ -2139,6 +2165,11 @@ impl fmt::Debug for Node {
         let supported_actions = action_mask_to_action_vec(self.actions);
         if !supported_actions.is_empty() {
             fmt.field("actions", &supported_actions);
+        }
+
+        let child_supported_actions = action_mask_to_action_vec(self.child_actions);
+        if !child_supported_actions.is_empty() {
+            fmt.field("child_actions", &child_supported_actions);
         }
 
         self.debug_flag_properties(&mut fmt);
@@ -2887,6 +2918,7 @@ mod tests {
         let mut node = Node::new(Role::Unknown);
         node.add_action(Action::Click);
         node.add_action(Action::Focus);
+        node.add_child_action(Action::ScrollIntoView);
         node.set_hidden();
         node.set_multiselectable();
         node.set_children([NodeId(0), NodeId(1)]);
@@ -2898,7 +2930,7 @@ mod tests {
 
         assert_eq!(
             &format!("{node:?}"),
-            r#"Node { role: Unknown, actions: [Click, Focus], is_hidden: true, is_multiselectable: true, children: [#0, #1], active_descendant: #2, custom_actions: [CustomAction { id: 0, description: "test action" }] }"#
+            r#"Node { role: Unknown, actions: [Click, Focus], child_actions: [ScrollIntoView], is_hidden: true, is_multiselectable: true, children: [#0, #1], active_descendant: #2, custom_actions: [CustomAction { id: 0, description: "test action" }] }"#
         );
     }
 
