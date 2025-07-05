@@ -30,7 +30,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_android"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -105,7 +105,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_winit"
-version = "0.28.0"
+version = "0.28.1"
 dependencies = [
  "accesskit",
  "accesskit_android",
