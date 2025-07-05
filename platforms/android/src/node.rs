@@ -12,10 +12,7 @@ use accesskit::{Action, Live, Role, Toggled};
 use accesskit_consumer::Node;
 use jni::{objects::JObject, sys::jint, JNIEnv};
 
-use crate::{
-    filters::filter,
-    util::*,
-};
+use crate::{filters::filter, util::*};
 
 pub(crate) fn add_action(env: &mut JNIEnv, node_info: &JObject, action: jint) {
     // Note: We're using the deprecated addAction signature.
@@ -63,17 +60,10 @@ impl NodeWrapper<'_> {
     }
 
     fn is_scrollable(&self) -> bool {
-        self.0
-            .supports_action(Action::ScrollDown, &filter)
-            || self
-                .0
-                .supports_action(Action::ScrollLeft, &filter)
-            || self
-                .0
-                .supports_action(Action::ScrollRight, &filter)
-            || self
-                .0
-                .supports_action(Action::ScrollUp, &filter)
+        self.0.supports_action(Action::ScrollDown, &filter)
+            || self.0.supports_action(Action::ScrollLeft, &filter)
+            || self.0.supports_action(Action::ScrollRight, &filter)
+            || self.0.supports_action(Action::ScrollUp, &filter)
     }
 
     fn is_selected(&self) -> bool {
@@ -363,21 +353,13 @@ impl NodeWrapper<'_> {
             )
             .unwrap();
         }
-        if self
-            .0
-            .supports_action(Action::ScrollLeft, &filter)
-            || self
-                .0
-                .supports_action(Action::ScrollUp, &filter)
+        if self.0.supports_action(Action::ScrollLeft, &filter)
+            || self.0.supports_action(Action::ScrollUp, &filter)
         {
             add_action(env, node_info, ACTION_SCROLL_BACKWARD);
         }
-        if self
-            .0
-            .supports_action(Action::ScrollRight, &filter)
-            || self
-                .0
-                .supports_action(Action::ScrollDown, &filter)
+        if self.0.supports_action(Action::ScrollRight, &filter)
+            || self.0.supports_action(Action::ScrollDown, &filter)
         {
             add_action(env, node_info, ACTION_SCROLL_FORWARD);
         }

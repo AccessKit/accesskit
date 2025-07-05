@@ -430,8 +430,7 @@ impl Adapter {
                         } else {
                             Action::ScrollLeft
                         }
-                    } else if node.supports_action(Action::ScrollDown, &filter)
-                    {
+                    } else if node.supports_action(Action::ScrollDown, &filter) {
                         Action::ScrollDown
                     } else {
                         Action::ScrollRight
