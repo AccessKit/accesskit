@@ -289,7 +289,7 @@ impl NodeWrapper<'_> {
     }
 
     fn is_focusable(&self) -> bool {
-        self.0.is_focusable()
+        self.0.is_focusable(&filter)
     }
 
     fn is_focused(&self) -> bool {
@@ -334,7 +334,7 @@ impl NodeWrapper<'_> {
     }
 
     fn is_invoke_pattern_supported(&self) -> bool {
-        self.0.is_invocable()
+        self.0.is_invocable(&filter)
     }
 
     fn is_value_pattern_supported(&self) -> bool {
