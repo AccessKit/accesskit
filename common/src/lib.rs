@@ -313,9 +313,8 @@ pub enum Action {
     /// Scroll up by the specified unit.
     ScrollUp,
 
-    /// Scroll any scrollable containers to make the target object visible
-    /// on the screen.  Optionally set [`ActionRequest::data`] to
-    /// [`ActionData::ScrollTargetRect`].
+    /// Scroll any scrollable containers to make the target node visible.
+    /// Optionally set [`ActionRequest::data`] to [`ActionData::ScrollHint`].
     ScrollIntoView,
 
     /// Scroll the given object to a specified point in the tree's container
@@ -2658,6 +2657,26 @@ pub enum ScrollUnit {
     Page,
 }
 
+/// A suggestion about where the node being scrolled into view should be
+/// positioned relative to the edges of the scrollable container.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "pyo3",
+    pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
+)]
+#[repr(u8)]
+pub enum ScrollHint {
+    TopLeft,
+    BottomRight,
+    TopEdge,
+    BottomEdge,
+    LeftEdge,
+    RightEdge,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
@@ -2668,9 +2687,10 @@ pub enum ActionData {
     Value(Box<str>),
     NumericValue(f64),
     ScrollUnit(ScrollUnit),
-    /// Optional target rectangle for [`Action::ScrollIntoView`], in
-    /// the coordinate space of the action's target node.
-    ScrollTargetRect(Rect),
+    /// Optional suggestion for [`ActionData::ScrollIntoView`], specifying
+    /// the preferred position of the target node relative to the scrollable
+    /// container's viewport.
+    ScrollHint(ScrollHint),
     /// Target for [`Action::ScrollToPoint`], in platform-native coordinates
     /// relative to the origin of the tree's container (e.g. window).
     ScrollToPoint(Point),

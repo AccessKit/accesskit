@@ -1022,6 +1022,15 @@ impl PlatformNode {
         Ok(true)
     }
 
+    pub fn scroll_to(&self, scroll_type: ScrollType) -> Result<bool> {
+        self.do_action_internal(|_, _| ActionRequest {
+            action: Action::ScrollIntoView,
+            target: self.id,
+            data: atspi_scroll_type_to_scroll_hint(scroll_type).map(ActionData::ScrollHint),
+        })?;
+        Ok(true)
+    }
+
     pub fn scroll_to_point(&self, coord_type: CoordType, x: i32, y: i32) -> Result<bool> {
         self.resolve_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
@@ -1378,14 +1387,22 @@ impl PlatformNode {
         &self,
         start_offset: i32,
         end_offset: i32,
-        _: ScrollType,
+        scroll_type: ScrollType,
     ) -> Result<bool> {
         self.resolve_for_text_with_context(|node, context| {
-            if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
+            if let Some(range) = text_range_from_offsets(&node, start_offset, end_offset) {
+                let position = if matches!(
+                    scroll_type,
+                    ScrollType::BottomRight | ScrollType::BottomEdge | ScrollType::RightEdge
+                ) {
+                    range.end()
+                } else {
+                    range.start()
+                };
                 context.do_action(ActionRequest {
                     action: Action::ScrollIntoView,
-                    target: node.id(),
-                    data: Some(ActionData::ScrollTargetRect(rect)),
+                    target: position.inner_node().id(),
+                    data: atspi_scroll_type_to_scroll_hint(scroll_type).map(ActionData::ScrollHint),
                 });
                 Ok(true)
             } else {

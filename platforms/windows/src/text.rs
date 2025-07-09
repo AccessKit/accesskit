@@ -5,7 +5,7 @@
 
 #![allow(non_upper_case_globals)]
 
-use accesskit::{Action, ActionData, ActionRequest};
+use accesskit::{Action, ActionData, ActionRequest, ScrollHint};
 use accesskit_consumer::{
     Node, TextPosition as Position, TextRange as Range, TreeState, WeakTextRange as WeakRange,
 };
@@ -582,9 +582,13 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
                 range.end()
             };
             ActionRequest {
-                action: Action::ScrollIntoView,
                 target: position.inner_node().id(),
-                data: None,
+                action: Action::ScrollIntoView,
+                data: Some(ActionData::ScrollHint(if align_to_top.into() {
+                    ScrollHint::TopEdge
+                } else {
+                    ScrollHint::BottomEdge
+                })),
             }
         })
     }

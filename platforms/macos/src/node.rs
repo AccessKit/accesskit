@@ -30,6 +30,8 @@ use std::rc::{Rc, Weak};
 
 use crate::{context::Context, filters::filter, util::*};
 
+const SCROLL_TO_VISIBLE_ACTION: &str = "AXScrollToVisible";
+
 fn ns_role(node: &Node) -> &'static NSAccessibilityRole {
     let role = node.role();
     // TODO: Handle special cases.
@@ -961,6 +963,37 @@ declare_class!(
             .flatten()
         }
 
+        // We discovered through epxerimentation that when mixing the newer
+        // NSAccessibility protocols with the older informal protocol,
+        // the platform uses both protocols to discover which actions are
+        // available and then perform actions. That means our implementation
+        // of the legacy methods below only needs to cover actions not already
+        // handled by the newer methods.
+
+        #[method_id(accessibilityActionNames)]
+        fn action_names(&self) -> Id<NSArray<NSString>> {
+            let mut result = vec![];
+            self.resolve(|node| {
+                if node.supports_action(Action::ScrollIntoView, &filter) {
+                    result.push(ns_string!(SCROLL_TO_VISIBLE_ACTION).copy());
+                }
+            });
+            NSArray::from_vec(result)
+        }
+
+        #[method(accessibilityPerformAction:)]
+        fn perform_action(&self, action: &NSString) {
+            self.resolve_with_context(|node, context| {
+                if action == ns_string!(SCROLL_TO_VISIBLE_ACTION) {
+                    context.do_action(ActionRequest {
+                        action: Action::ScrollIntoView,
+                        target: node.id(),
+                        data: None,
+                    });
+                }
+            });
+        }
+
         #[method(isAccessibilitySelectorAllowed:)]
         fn is_selector_allowed(&self, selector: Sel) -> bool {
             self.resolve(|node| {
@@ -1043,6 +1076,8 @@ declare_class!(
                     || selector == sel!(isAccessibilityFocused)
                     || selector == sel!(accessibilityNotifiesWhenDestroyed)
                     || selector == sel!(isAccessibilitySelectorAllowed:)
+                    || selector == sel!(accessibilityActionNames)
+                    || selector == sel!(accessibilityPerformAction:)
             })
             .unwrap_or(false)
         }
