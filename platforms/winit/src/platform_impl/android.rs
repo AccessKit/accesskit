@@ -31,8 +31,8 @@ impl Adapter {
         let view = env
             .get_field(
                 &activity,
-                "mSurfaceView",
-                "Lcom/google/androidgamesdk/GameActivity$InputEnabledSurfaceView;",
+                "mNativeContentView",
+                "Landroid/app/NativeActivity$NativeContentView;",
             )
             .unwrap()
             .l()
