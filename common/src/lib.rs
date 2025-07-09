@@ -915,6 +915,7 @@ struct Properties {
 pub struct Node {
     role: Role,
     actions: u32,
+    child_actions: u32,
     flags: u32,
     properties: Properties,
 }
@@ -1600,6 +1601,31 @@ impl Node {
     pub fn clear_actions(&mut self) {
         self.actions = 0;
     }
+
+    /// Return whether the specified action is in the set supported on this node's
+    /// direct children in the filtered tree.
+    #[inline]
+    pub fn child_supports_action(&self, action: Action) -> bool {
+        (self.child_actions & action.mask()) != 0
+    }
+    /// Add the specified action to the set supported on this node's direct
+    /// children in the filtered tree.
+    #[inline]
+    pub fn add_child_action(&mut self, action: Action) {
+        self.child_actions |= action.mask();
+    }
+    /// Remove the specified action from the set supported on this node's direct
+    /// children in the filtered tree.
+    #[inline]
+    pub fn remove_child_action(&mut self, action: Action) {
+        self.child_actions &= !(action.mask());
+    }
+    /// Clear the set of actions supported on this node's direct children in the
+    /// filtered tree.
+    #[inline]
+    pub fn clear_child_actions(&mut self) {
+        self.child_actions = 0;
+    }
 }
 
 flag_methods! {
@@ -2139,6 +2165,11 @@ impl fmt::Debug for Node {
         let supported_actions = action_mask_to_action_vec(self.actions);
         if !supported_actions.is_empty() {
             fmt.field("actions", &supported_actions);
+        }
+
+        let child_supported_actions = action_mask_to_action_vec(self.child_actions);
+        if !child_supported_actions.is_empty() {
+            fmt.field("child_actions", &child_supported_actions);
         }
 
         self.debug_flag_properties(&mut fmt);
@@ -2820,31 +2851,38 @@ mod tests {
         assert_eq!(node.role(), Role::CheckBox);
     }
 
+    macro_rules! assert_absent_action {
+        ($node:ident, $action:ident) => {
+            assert!(!$node.supports_action(Action::$action));
+            assert!(!$node.child_supports_action(Action::$action));
+        };
+    }
+
     #[test]
     fn new_node_should_not_support_anyaction() {
         let node = Node::new(Role::Unknown);
-        assert!(!node.supports_action(Action::Click));
-        assert!(!node.supports_action(Action::Focus));
-        assert!(!node.supports_action(Action::Blur));
-        assert!(!node.supports_action(Action::Collapse));
-        assert!(!node.supports_action(Action::Expand));
-        assert!(!node.supports_action(Action::CustomAction));
-        assert!(!node.supports_action(Action::Decrement));
-        assert!(!node.supports_action(Action::Increment));
-        assert!(!node.supports_action(Action::HideTooltip));
-        assert!(!node.supports_action(Action::ShowTooltip));
-        assert!(!node.supports_action(Action::ReplaceSelectedText));
-        assert!(!node.supports_action(Action::ScrollDown));
-        assert!(!node.supports_action(Action::ScrollLeft));
-        assert!(!node.supports_action(Action::ScrollRight));
-        assert!(!node.supports_action(Action::ScrollUp));
-        assert!(!node.supports_action(Action::ScrollIntoView));
-        assert!(!node.supports_action(Action::ScrollToPoint));
-        assert!(!node.supports_action(Action::SetScrollOffset));
-        assert!(!node.supports_action(Action::SetTextSelection));
-        assert!(!node.supports_action(Action::SetSequentialFocusNavigationStartingPoint));
-        assert!(!node.supports_action(Action::SetValue));
-        assert!(!node.supports_action(Action::ShowContextMenu));
+        assert_absent_action!(node, Click);
+        assert_absent_action!(node, Focus);
+        assert_absent_action!(node, Blur);
+        assert_absent_action!(node, Collapse);
+        assert_absent_action!(node, Expand);
+        assert_absent_action!(node, CustomAction);
+        assert_absent_action!(node, Decrement);
+        assert_absent_action!(node, Increment);
+        assert_absent_action!(node, HideTooltip);
+        assert_absent_action!(node, ShowTooltip);
+        assert_absent_action!(node, ReplaceSelectedText);
+        assert_absent_action!(node, ScrollDown);
+        assert_absent_action!(node, ScrollLeft);
+        assert_absent_action!(node, ScrollRight);
+        assert_absent_action!(node, ScrollUp);
+        assert_absent_action!(node, ScrollIntoView);
+        assert_absent_action!(node, ScrollToPoint);
+        assert_absent_action!(node, SetScrollOffset);
+        assert_absent_action!(node, SetTextSelection);
+        assert_absent_action!(node, SetSequentialFocusNavigationStartingPoint);
+        assert_absent_action!(node, SetValue);
+        assert_absent_action!(node, ShowContextMenu);
     }
 
     #[test]
@@ -2857,6 +2895,15 @@ mod tests {
     }
 
     #[test]
+    fn node_add_child_action_should_add_the_action() {
+        let mut node = Node::new(Role::Unknown);
+        node.add_child_action(Action::Focus);
+        assert!(node.child_supports_action(Action::Focus));
+        node.add_child_action(Action::Blur);
+        assert!(node.child_supports_action(Action::Blur));
+    }
+
+    #[test]
     fn node_add_action_should_do_nothing_if_the_action_is_already_supported() {
         let mut node = Node::new(Role::Unknown);
         node.add_action(Action::Focus);
@@ -2865,11 +2912,27 @@ mod tests {
     }
 
     #[test]
+    fn node_add_child_action_should_do_nothing_if_the_action_is_already_supported() {
+        let mut node = Node::new(Role::Unknown);
+        node.add_child_action(Action::Focus);
+        node.add_child_action(Action::Focus);
+        assert!(node.child_supports_action(Action::Focus));
+    }
+
+    #[test]
     fn node_remove_action_should_remove_the_action() {
         let mut node = Node::new(Role::Unknown);
         node.add_action(Action::Blur);
         node.remove_action(Action::Blur);
         assert!(!node.supports_action(Action::Blur));
+    }
+
+    #[test]
+    fn node_remove_child_action_should_remove_the_action() {
+        let mut node = Node::new(Role::Unknown);
+        node.add_child_action(Action::Blur);
+        node.remove_child_action(Action::Blur);
+        assert!(!node.child_supports_action(Action::Blur));
     }
 
     #[test]
@@ -2883,10 +2946,21 @@ mod tests {
     }
 
     #[test]
+    fn node_clear_child_actions_should_remove_all_actions() {
+        let mut node = Node::new(Role::Unknown);
+        node.add_child_action(Action::Focus);
+        node.add_child_action(Action::Blur);
+        node.clear_child_actions();
+        assert!(!node.child_supports_action(Action::Focus));
+        assert!(!node.child_supports_action(Action::Blur));
+    }
+
+    #[test]
     fn node_should_have_debug_repr() {
         let mut node = Node::new(Role::Unknown);
         node.add_action(Action::Click);
         node.add_action(Action::Focus);
+        node.add_child_action(Action::ScrollIntoView);
         node.set_hidden();
         node.set_multiselectable();
         node.set_children([NodeId(0), NodeId(1)]);
@@ -2898,7 +2972,7 @@ mod tests {
 
         assert_eq!(
             &format!("{node:?}"),
-            r#"Node { role: Unknown, actions: [Click, Focus], is_hidden: true, is_multiselectable: true, children: [#0, #1], active_descendant: #2, custom_actions: [CustomAction { id: 0, description: "test action" }] }"#
+            r#"Node { role: Unknown, actions: [Click, Focus], child_actions: [ScrollIntoView], is_hidden: true, is_multiselectable: true, children: [#0, #1], active_descendant: #2, custom_actions: [CustomAction { id: 0, description: "test action" }] }"#
         );
     }
 

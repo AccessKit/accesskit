@@ -36,7 +36,7 @@ impl NodeWrapper<'_> {
     }
 
     fn is_focusable(&self) -> bool {
-        self.0.is_focusable() && self.0.role() != Role::ScrollView
+        self.0.is_focusable(&filter) && self.0.role() != Role::ScrollView
     }
 
     fn is_focused(&self) -> bool {
@@ -60,10 +60,10 @@ impl NodeWrapper<'_> {
     }
 
     fn is_scrollable(&self) -> bool {
-        self.0.supports_action(Action::ScrollDown)
-            || self.0.supports_action(Action::ScrollLeft)
-            || self.0.supports_action(Action::ScrollRight)
-            || self.0.supports_action(Action::ScrollUp)
+        self.0.supports_action(Action::ScrollDown, &filter)
+            || self.0.supports_action(Action::ScrollLeft, &filter)
+            || self.0.supports_action(Action::ScrollRight, &filter)
+            || self.0.supports_action(Action::ScrollUp, &filter)
     }
 
     fn is_selected(&self) -> bool {
@@ -331,7 +331,7 @@ impl NodeWrapper<'_> {
         .unwrap();
 
         let can_focus = self.is_focusable() && !self.0.is_focused();
-        if self.0.is_clickable() || can_focus {
+        if self.0.is_clickable(&filter) || can_focus {
             add_action(env, node_info, ACTION_CLICK);
         }
         if can_focus {
@@ -353,10 +353,13 @@ impl NodeWrapper<'_> {
             )
             .unwrap();
         }
-        if self.0.supports_action(Action::ScrollLeft) || self.0.supports_action(Action::ScrollUp) {
+        if self.0.supports_action(Action::ScrollLeft, &filter)
+            || self.0.supports_action(Action::ScrollUp, &filter)
+        {
             add_action(env, node_info, ACTION_SCROLL_BACKWARD);
         }
-        if self.0.supports_action(Action::ScrollRight) || self.0.supports_action(Action::ScrollDown)
+        if self.0.supports_action(Action::ScrollRight, &filter)
+            || self.0.supports_action(Action::ScrollDown, &filter)
         {
             add_action(env, node_info, ACTION_SCROLL_FORWARD);
         }

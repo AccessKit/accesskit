@@ -291,7 +291,7 @@ impl NodeWrapper<'_> {
             atspi_state.insert(State::Editable);
         }
         // TODO: Focus and selection.
-        if state.is_focusable() {
+        if state.is_focusable(&filter) {
             atspi_state.insert(State::Focusable);
         }
         let filter_result = filter(self.0);
@@ -392,7 +392,7 @@ impl NodeWrapper<'_> {
     }
 
     fn supports_action(&self) -> bool {
-        self.0.is_clickable()
+        self.0.is_clickable(&filter)
     }
 
     fn supports_component(&self) -> bool {
@@ -441,7 +441,7 @@ impl NodeWrapper<'_> {
     }
 
     fn n_actions(&self) -> i32 {
-        if self.0.is_clickable() {
+        if self.0.is_clickable(&filter) {
             1
         } else {
             0
@@ -452,7 +452,11 @@ impl NodeWrapper<'_> {
         if index != 0 {
             return String::new();
         }
-        String::from(if self.0.is_clickable() { "click" } else { "" })
+        String::from(if self.0.is_clickable(&filter) {
+            "click"
+        } else {
+            ""
+        })
     }
 
     fn raw_bounds_and_transform(&self) -> (Option<Rect>, Affine) {
@@ -1061,7 +1065,7 @@ impl PlatformNode {
             if let Some(child) = node.filtered_children(filter).nth(child_index) {
                 if let Some(true) = child.is_selected() {
                     Ok(true)
-                } else if child.is_selectable() && child.is_clickable() {
+                } else if child.is_selectable() && child.is_clickable(&filter) {
                     context.do_action(ActionRequest {
                         action: Action::Click,
                         target: child.id(),
@@ -1084,7 +1088,7 @@ impl PlatformNode {
                 .filter(|c| c.is_selected() == Some(true))
                 .nth(selected_child_index)
             {
-                if child.is_clickable() {
+                if child.is_clickable(&filter) {
                     context.do_action(ActionRequest {
                         action: Action::Click,
                         target: child.id(),
@@ -1124,7 +1128,7 @@ impl PlatformNode {
             if let Some(child) = node.filtered_children(filter).nth(child_index) {
                 if let Some(false) = child.is_selected() {
                     Ok(true)
-                } else if child.is_selectable() && child.is_clickable() {
+                } else if child.is_selectable() && child.is_clickable(&filter) {
                     context.do_action(ActionRequest {
                         action: Action::Click,
                         target: child.id(),
