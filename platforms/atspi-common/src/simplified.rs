@@ -224,6 +224,13 @@ impl Accessible {
         }
     }
 
+    pub fn scroll_to(&self, scroll_type: ScrollType) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.scroll_to(scroll_type),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
     pub fn scroll_to_point(&self, coord_type: CoordType, x: i32, y: i32) -> Result<bool> {
         match self {
             Self::Node(node) => node.scroll_to_point(coord_type, x, y),

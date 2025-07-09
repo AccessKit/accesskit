@@ -1022,6 +1022,15 @@ impl PlatformNode {
         Ok(true)
     }
 
+    pub fn scroll_to(&self, scroll_type: ScrollType) -> Result<bool> {
+        self.do_action_internal(|_, _| ActionRequest {
+            action: Action::ScrollIntoView,
+            target: self.id,
+            data: atspi_scroll_type_to_scroll_hint(scroll_type).map(ActionData::ScrollHint),
+        })?;
+        Ok(true)
+    }
+
     pub fn scroll_to_point(&self, coord_type: CoordType, x: i32, y: i32) -> Result<bool> {
         self.resolve_with_context(|node, context| {
             let window_bounds = context.read_root_window_bounds();
