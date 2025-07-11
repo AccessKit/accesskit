@@ -26,6 +26,7 @@ pub(crate) enum PlatformActionInner {
 pub struct PlatformAction(pub(crate) PlatformActionInner);
 
 impl PlatformAction {
+    #[profiling::function]
     pub fn from_java(env: &mut JNIEnv, action: jint, arguments: &JObject) -> Option<Self> {
         match action {
             ACTION_SET_SELECTION => {

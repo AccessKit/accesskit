@@ -35,6 +35,7 @@ impl State {
         }
     }
 
+    #[profiling::function]
     fn update(
         &mut self,
         update: TreeUpdate,
@@ -55,6 +56,7 @@ impl State {
         let mut pending_nodes: HashMap<NodeId, _> = HashMap::new();
         let mut pending_children = HashMap::new();
 
+        #[profiling::function]
         fn add_node(
             nodes: &mut HashMap<NodeId, NodeState>,
             changes: &mut Option<&mut InternalChanges>,
@@ -143,6 +145,7 @@ impl State {
         self.is_host_focused = is_host_focused;
 
         if !unreachable.is_empty() {
+            #[profiling::function]
             fn traverse_unreachable(
                 nodes: &mut HashMap<NodeId, NodeState>,
                 changes: &mut Option<&mut InternalChanges>,
@@ -181,10 +184,12 @@ impl State {
         self.update(update, is_host_focused, changes);
     }
 
+    #[profiling::function]
     pub fn has_node(&self, id: NodeId) -> bool {
         self.nodes.get(&id).is_some()
     }
 
+    #[profiling::function]
     pub fn node_by_id(&self, id: NodeId) -> Option<Node<'_>> {
         self.nodes.get(&id).map(|node_state| Node {
             tree_state: self,
@@ -193,10 +198,12 @@ impl State {
         })
     }
 
+    #[profiling::function]
     pub fn root_id(&self) -> NodeId {
         self.data.root
     }
 
+    #[profiling::function]
     pub fn root(&self) -> Node<'_> {
         self.node_by_id(self.root_id()).unwrap()
     }
@@ -261,6 +268,7 @@ impl Tree {
         }
     }
 
+    #[profiling::function]
     pub fn update_and_process_changes(
         &mut self,
         update: TreeUpdate,
@@ -283,6 +291,7 @@ impl Tree {
         self.process_changes(changes, handler);
     }
 
+    #[profiling::function]
     fn process_changes(&mut self, changes: InternalChanges, handler: &mut impl ChangeHandler) {
         for id in &changes.added_node_ids {
             let node = self.next_state.node_by_id(*id).unwrap();

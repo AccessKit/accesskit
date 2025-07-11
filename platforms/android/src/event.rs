@@ -12,6 +12,7 @@ use jni::{objects::JObject, sys::jint, JNIEnv};
 
 use crate::util::*;
 
+#[profiling::function]
 fn new_event<'local>(
     env: &mut JNIEnv<'local>,
     host: &JObject,
@@ -49,6 +50,7 @@ fn new_event<'local>(
     event
 }
 
+#[profiling::function]
 fn send_completed_event(env: &mut JNIEnv, host: &JObject, event: JObject) {
     let parent = env
         .call_method(host, "getParent", "()Landroid/view/ViewParent;", &[])
@@ -64,11 +66,13 @@ fn send_completed_event(env: &mut JNIEnv, host: &JObject, event: JObject) {
     .unwrap();
 }
 
+#[profiling::function]
 fn send_simple_event(env: &mut JNIEnv, host: &JObject, virtual_view_id: jint, event_type: jint) {
     let event = new_event(env, host, virtual_view_id, event_type);
     send_completed_event(env, host, event);
 }
 
+#[profiling::function]
 fn send_window_content_changed(env: &mut JNIEnv, host: &JObject, virtual_view_id: jint) {
     let event = new_event(env, host, virtual_view_id, EVENT_WINDOW_CONTENT_CHANGED);
     env.call_method(
@@ -81,6 +85,7 @@ fn send_window_content_changed(env: &mut JNIEnv, host: &JObject, virtual_view_id
     send_completed_event(env, host, event);
 }
 
+#[profiling::function]
 fn send_text_changed(
     env: &mut JNIEnv,
     host: &JObject,
@@ -233,6 +238,7 @@ pub(crate) struct ScrollDimension {
     pub(crate) max: Option<jint>,
 }
 
+#[profiling::function]
 fn send_scrolled(
     env: &mut JNIEnv,
     host: &JObject,
@@ -314,6 +320,7 @@ impl QueuedEvents {
     /// This function must be called on the Android UI thread, while not holding
     /// any locks required by the host view's implementations of Android
     /// framework callbacks.
+    #[profiling::function]
     pub fn raise(self, env: &mut JNIEnv, host: &JObject) {
         for event in self.0 {
             match event {

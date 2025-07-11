@@ -27,6 +27,7 @@ use crate::{
     util::*,
 };
 
+#[profiling::function]
 fn enqueue_window_content_changed(events: &mut Vec<QueuedEvent>) {
     events.push(QueuedEvent::WindowContentChanged {
         virtual_view_id: HOST_VIEW_ID,
@@ -65,6 +66,7 @@ impl<'a> AdapterChangeHandler<'a> {
 }
 
 impl AdapterChangeHandler<'_> {
+    #[profiling::function]
     fn enqueue_window_content_changed_if_needed(&mut self) {
         if self.enqueued_window_content_changed {
             return;
@@ -75,11 +77,13 @@ impl AdapterChangeHandler<'_> {
 }
 
 impl TreeChangeHandler for AdapterChangeHandler<'_> {
+    #[profiling::function]
     fn node_added(&mut self, _node: &Node) {
         self.enqueue_window_content_changed_if_needed();
         // TODO: live regions?
     }
 
+    #[profiling::function]
     fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
         self.enqueue_window_content_changed_if_needed();
         if filter(new_node) != FilterResult::Include {
@@ -150,6 +154,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
     }
 
+    #[profiling::function]
     fn node_removed(&mut self, _node: &Node) {
         self.enqueue_window_content_changed_if_needed();
         // TODO: other events?
@@ -167,6 +172,7 @@ enum State {
 }
 
 impl State {
+    #[profiling::function]
     fn get_or_init_tree<H: ActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
@@ -191,6 +197,7 @@ impl State {
         }
     }
 
+    #[profiling::function]
     fn get_full_tree(&mut self) -> Option<&mut Tree> {
         match self {
             Self::Inactive => None,
@@ -200,6 +207,7 @@ impl State {
     }
 }
 
+#[profiling::function]
 fn update_tree(
     events: &mut Vec<QueuedEvent>,
     node_id_map: &mut NodeIdMap,
@@ -240,6 +248,7 @@ impl Adapter {
     /// This method may be safely called on any thread, but refer to
     /// [`QueuedEvents::raise`] for restrictions on the context in which
     /// it should be called.
+    #[profiling::function]
     pub fn update_if_active(
         &mut self,
         update_factory: impl FnOnce() -> TreeUpdate,
@@ -271,6 +280,7 @@ impl Adapter {
     ///
     /// The `host` parameter is the Android view for this adapter.
     /// It must be an instance of `android.view.View` or a subclass.
+    #[profiling::function]
     pub fn create_accessibility_node_info<'local, H: ActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
@@ -344,6 +354,7 @@ impl Adapter {
     ///
     /// The `host` parameter is the Android view for this adapter.
     /// It must be an instance of `android.view.View` or a subclass.
+    #[profiling::function]
     pub fn find_focus<'local, H: ActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
@@ -369,6 +380,7 @@ impl Adapter {
         self.create_accessibility_node_info(activation_handler, env, host, virtual_view_id)
     }
 
+    #[profiling::function]
     fn perform_simple_action<H: ActionHandler + ?Sized>(
         &mut self,
         action_handler: &mut H,
@@ -713,6 +725,7 @@ impl Adapter {
     /// This method may be safely called on any thread, but refer to
     /// [`QueuedEvents::raise`] for restrictions on the context in which
     /// it should be called.
+    #[profiling::function]
     pub fn perform_action<H: ActionHandler + ?Sized>(
         &mut self,
         action_handler: &mut H,
@@ -743,6 +756,7 @@ impl Adapter {
         }
     }
 
+    #[profiling::function]
     fn virtual_view_at_point<H: ActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
@@ -773,6 +787,7 @@ impl Adapter {
     /// This method may be safely called on any thread, but refer to
     /// [`QueuedEvents::raise`] for restrictions on the context in which
     /// it should be called.
+    #[profiling::function]
     pub fn on_hover_event<H: ActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,

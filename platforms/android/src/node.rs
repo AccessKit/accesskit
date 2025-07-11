@@ -14,6 +14,7 @@ use jni::{objects::JObject, sys::jint, JNIEnv};
 
 use crate::{filters::filter, util::*};
 
+#[profiling::function]
 pub(crate) fn add_action(env: &mut JNIEnv, node_info: &JObject, action: jint) {
     // Note: We're using the deprecated addAction signature.
     // But this one is much easier to call from JNI since it uses
@@ -175,6 +176,7 @@ impl NodeWrapper<'_> {
             .map(|value| (value - self.0.scroll_y_min().unwrap_or(0.0)) as jint)
     }
 
+    #[profiling::function]
     pub(crate) fn populate_node_info(
         &self,
         env: &mut JNIEnv,
