@@ -189,7 +189,6 @@ impl State {
         self.nodes.get(&id).is_some()
     }
 
-    #[profiling::function]
     pub fn node_by_id(&self, id: NodeId) -> Option<Node<'_>> {
         self.nodes.get(&id).map(|node_state| Node {
             tree_state: self,
