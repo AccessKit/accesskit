@@ -198,12 +198,10 @@ impl State {
         })
     }
 
-    #[profiling::function]
     pub fn root_id(&self) -> NodeId {
         self.data.root
     }
 
-    #[profiling::function]
     pub fn root(&self) -> Node<'_> {
         self.node_by_id(self.root_id()).unwrap()
     }
