@@ -963,7 +963,7 @@ declare_class!(
             .flatten()
         }
 
-        // We discovered through epxerimentation that when mixing the newer
+        // We discovered through experimentation that when mixing the newer
         // NSAccessibility protocols with the older informal protocol,
         // the platform uses both protocols to discover which actions are
         // available and then perform actions. That means our implementation
