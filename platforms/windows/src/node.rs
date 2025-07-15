@@ -381,6 +381,10 @@ impl NodeWrapper<'_> {
         self.0.is_required()
     }
 
+    fn is_scroll_item_pattern_supported(&self) -> bool {
+        self.0.supports_action(Action::ScrollIntoView, &filter)
+    }
+
     pub(crate) fn is_selection_item_pattern_supported(&self) -> bool {
         match self.0.role() {
             // TODO: tables (#29)
@@ -499,6 +503,7 @@ impl NodeWrapper<'_> {
     IInvokeProvider,
     IValueProvider,
     IRangeValueProvider,
+    IScrollItemProvider,
     ISelectionItemProvider,
     ISelectionProvider,
     ITextProvider
@@ -603,32 +608,39 @@ impl PlatformNode {
         self.resolve_with_context_for_text_pattern(|node, _| f(node))
     }
 
+    fn do_complex_action<F>(&self, f: F) -> Result<()>
+    where
+        for<'a> F: FnOnce(Node<'a>) -> Result<Option<ActionRequest>>,
+    {
+        let context = self.upgrade_context()?;
+        if context.is_placeholder.load(Ordering::SeqCst) {
+            return Err(element_not_enabled());
+        }
+        let tree = context.read_tree();
+        let state = tree.state();
+        let node = self.node(state)?;
+        if let Some(request) = f(node)? {
+            drop(tree);
+            context.do_action(request);
+        }
+        Ok(())
+    }
+
     fn do_action<F>(&self, f: F) -> Result<()>
     where
         F: FnOnce() -> (Action, Option<ActionData>),
     {
-        let context = self.upgrade_context()?;
-        if context.is_placeholder.load(Ordering::SeqCst) {
-            return Ok(());
-        }
-        let tree = context.read_tree();
-        let node_id = if let Some(id) = self.node_id {
-            if !tree.state().has_node(id) {
-                return Err(element_not_available());
+        self.do_complex_action(|node| {
+            if node.is_disabled() {
+                return Err(element_not_enabled());
             }
-            id
-        } else {
-            tree.state().root_id()
-        };
-        drop(tree);
-        let (action, data) = f();
-        let request = ActionRequest {
-            target: node_id,
-            action,
-            data,
-        };
-        context.do_action(request);
-        Ok(())
+            let (action, data) = f();
+            Ok(Some(ActionRequest {
+                target: node.id(),
+                action,
+                data,
+            }))
+        })
     }
 
     fn click(&self) -> Result<()> {
@@ -636,19 +648,19 @@ impl PlatformNode {
     }
 
     fn set_selected(&self, selected: bool) -> Result<()> {
-        self.resolve_with_context(|node, context| {
+        self.do_complex_action(|node| {
             if node.is_disabled() {
                 return Err(element_not_enabled());
             }
             let wrapper = NodeWrapper(&node);
-            if selected != wrapper.is_selected() {
-                context.do_action(ActionRequest {
-                    action: Action::Click,
-                    target: node.id(),
-                    data: None,
-                });
+            if selected == wrapper.is_selected() {
+                return Ok(None);
             }
-            Ok(())
+            Ok(Some(ActionRequest {
+                action: Action::Click,
+                target: node.id(),
+                data: None,
+            }))
         })
     }
 
@@ -1001,6 +1013,17 @@ patterns! {
         fn SetValue(&self, value: f64) -> Result<()> {
             self.do_action(|| {
                 (Action::SetValue, Some(ActionData::NumericValue(value)))
+            })
+        }
+    )),
+    (UIA_ScrollItemPatternId, IScrollItemProvider, IScrollItemProvider_Impl, is_scroll_item_pattern_supported, (), (
+        fn ScrollIntoView(&self) -> Result<()> {
+            self.do_complex_action(|node| {
+                Ok(Some(ActionRequest {
+                    target: node.id(),
+                    action: Action::ScrollIntoView,
+                    data: None,
+                }))
             })
         }
     )),
