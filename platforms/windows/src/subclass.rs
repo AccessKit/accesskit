@@ -93,6 +93,12 @@ impl SubclassImpl {
     }
 
     fn install(&mut self) {
+        if !unsafe { GetPropW(self.hwnd, PROP_NAME) }.0.is_null() {
+            panic!(
+                "subclassing adapter already instantiated on window {:?}",
+                self.hwnd.0
+            );
+        }
         unsafe {
             SetPropW(
                 self.hwnd,
