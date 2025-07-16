@@ -24,6 +24,26 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_consumer bumped from 0.25.0 to 0.26.0
 
+## [0.14.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.13.0...accesskit_atspi_common-v0.14.0) (2025-07-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* Implement refactored `ScrollIntoView` action across desktop platforms ([#594](https://github.com/AccessKit/accesskit/issues/594))
+
+### Features
+
+* Implement refactored `ScrollIntoView` action across desktop platforms ([#594](https://github.com/AccessKit/accesskit/issues/594)) ([1d9b74c](https://github.com/AccessKit/accesskit/commit/1d9b74c057051509b3ffbf63afeacfb16f544ff8))
+* Let parents declare actions supported on their children ([#593](https://github.com/AccessKit/accesskit/issues/593)) ([70b534b](https://github.com/AccessKit/accesskit/commit/70b534bed168a84b84cc35199588aa8ab784fb43))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.20.0 to 0.21.0
+    * accesskit_consumer bumped from 0.29.0 to 0.30.0
+
 ## [0.13.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.12.0...accesskit_atspi_common-v0.13.0) (2025-06-26)
 
 

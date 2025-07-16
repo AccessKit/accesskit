@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.21.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.20.0...accesskit-v0.21.0) (2025-07-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* Implement refactored `ScrollIntoView` action across desktop platforms ([#594](https://github.com/AccessKit/accesskit/issues/594))
+
+### Features
+
+* Implement refactored `ScrollIntoView` action across desktop platforms ([#594](https://github.com/AccessKit/accesskit/issues/594)) ([1d9b74c](https://github.com/AccessKit/accesskit/commit/1d9b74c057051509b3ffbf63afeacfb16f544ff8))
+* Let parents declare actions supported on their children ([#593](https://github.com/AccessKit/accesskit/issues/593)) ([70b534b](https://github.com/AccessKit/accesskit/commit/70b534bed168a84b84cc35199588aa8ab784fb43))
+
 ## [0.20.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.19.0...accesskit-v0.20.0) (2025-06-26)
 
 

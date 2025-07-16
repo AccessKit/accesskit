@@ -24,6 +24,20 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.30.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.29.0...accesskit_consumer-v0.30.0) (2025-07-16)
+
+
+### Features
+
+* Let parents declare actions supported on their children ([#593](https://github.com/AccessKit/accesskit/issues/593)) ([70b534b](https://github.com/AccessKit/accesskit/commit/70b534bed168a84b84cc35199588aa8ab784fb43))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.20.0 to 0.21.0
+
 ## [0.29.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.28.0...accesskit_consumer-v0.29.0) (2025-06-26)
 
 
