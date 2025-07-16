@@ -180,7 +180,9 @@ impl Scope {
 }
 
 // It's not safe to run these UI-related tests concurrently.
-pub(crate) static MUTEX: Mutex<()> = Mutex::new(());
+// We need a non-poisoning mutex here because the subclassing adapter's
+// double-instantiation test intentionally panics.
+pub(crate) static MUTEX: parking_lot::Mutex<()> = parking_lot::const_mutex(());
 
 pub(crate) fn scope<F>(
     window_title: &str,
@@ -191,7 +193,7 @@ pub(crate) fn scope<F>(
 where
     F: FnOnce(&Scope) -> Result<()>,
 {
-    let _lock_guard = MUTEX.lock().unwrap();
+    let _lock_guard = MUTEX.lock();
 
     let window_mutex: Mutex<Option<WindowHandle>> = Mutex::new(None);
     let window_cv = Condvar::new();

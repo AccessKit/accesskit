@@ -146,6 +146,13 @@ impl SubclassingAdapter {
         action_handler: impl 'static + ActionHandler,
     ) -> Self {
         let view = Id::as_ptr(&retained_view) as *mut NSView;
+        if !unsafe {
+            objc_getAssociatedObject(view as *const NSView as *const _, associated_object_key())
+        }
+        .is_null()
+        {
+            panic!("subclassing adapter already instantiated on view {view:?}");
+        }
         let adapter = unsafe { Adapter::new(view as *mut c_void, false, action_handler) };
         // Cast to a pointer and back to force the lifetime to 'static
         // SAFETY: We know the class will live as long as the instance,
