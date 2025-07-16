@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.3.0...accesskit_android-v0.4.0) (2025-07-16)
+
+
+### Features
+
+* Let parents declare actions supported on their children ([#593](https://github.com/AccessKit/accesskit/issues/593)) ([70b534b](https://github.com/AccessKit/accesskit/commit/70b534bed168a84b84cc35199588aa8ab784fb43))
+* Scrolling on Android ([#586](https://github.com/AccessKit/accesskit/issues/586)) ([62f193a](https://github.com/AccessKit/accesskit/commit/62f193a50e6c11c6726629410548244e486ce940))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.20.0 to 0.21.0
+    * accesskit_consumer bumped from 0.29.0 to 0.30.0
+
 ## [0.3.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.2.0...accesskit_android-v0.3.0) (2025-06-26)
 
 

@@ -37,6 +37,31 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.22.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.21.0...accesskit_macos-v0.22.0) (2025-07-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* Implement refactored `ScrollIntoView` action across desktop platforms ([#594](https://github.com/AccessKit/accesskit/issues/594))
+
+### Features
+
+* Implement refactored `ScrollIntoView` action across desktop platforms ([#594](https://github.com/AccessKit/accesskit/issues/594)) ([1d9b74c](https://github.com/AccessKit/accesskit/commit/1d9b74c057051509b3ffbf63afeacfb16f544ff8))
+* Let parents declare actions supported on their children ([#593](https://github.com/AccessKit/accesskit/issues/593)) ([70b534b](https://github.com/AccessKit/accesskit/commit/70b534bed168a84b84cc35199588aa8ab784fb43))
+
+
+### Bug Fixes
+
+* Panic if the subclassing adapter is double-instantiated ([#596](https://github.com/AccessKit/accesskit/issues/596)) ([0598573](https://github.com/AccessKit/accesskit/commit/05985732f0611a9ac96eb458e586c6dd3c1a131d))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.20.0 to 0.21.0
+    * accesskit_consumer bumped from 0.29.0 to 0.30.0
+
 ## [0.21.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.20.0...accesskit_macos-v0.21.0) (2025-06-26)
 
 

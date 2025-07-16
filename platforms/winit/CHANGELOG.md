@@ -147,6 +147,24 @@
     * accesskit_macos bumped from 0.18.0 to 0.18.1
     * accesskit_unix bumped from 0.13.0 to 0.13.1
 
+## [0.29.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.28.0...accesskit_winit-v0.29.0) (2025-07-16)
+
+
+### Features
+
+* Let parents declare actions supported on their children ([#593](https://github.com/AccessKit/accesskit/issues/593)) ([70b534b](https://github.com/AccessKit/accesskit/commit/70b534bed168a84b84cc35199588aa8ab784fb43))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.20.0 to 0.21.0
+    * accesskit_windows bumped from 0.28.0 to 0.29.0
+    * accesskit_macos bumped from 0.21.0 to 0.22.0
+    * accesskit_unix bumped from 0.16.0 to 0.17.0
+    * accesskit_android bumped from 0.3.0 to 0.4.0
+
 ## [0.28.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.27.0...accesskit_winit-v0.28.0) (2025-06-26)
 
 
