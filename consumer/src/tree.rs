@@ -56,7 +56,6 @@ impl State {
         let mut pending_nodes: HashMap<NodeId, _> = HashMap::new();
         let mut pending_children = HashMap::new();
 
-        #[profiling::function]
         fn add_node(
             nodes: &mut HashMap<NodeId, NodeState>,
             changes: &mut Option<&mut InternalChanges>,
@@ -145,7 +144,6 @@ impl State {
         self.is_host_focused = is_host_focused;
 
         if !unreachable.is_empty() {
-            #[profiling::function]
             fn traverse_unreachable(
                 nodes: &mut HashMap<NodeId, NodeState>,
                 changes: &mut Option<&mut InternalChanges>,
