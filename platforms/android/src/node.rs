@@ -184,15 +184,19 @@ impl NodeWrapper<'_> {
         id_map: &mut NodeIdMap,
         node_info: &JObject,
     ) {
-        for child in self.0.filtered_children(&filter) {
-            env.call_method(
-                node_info,
-                "addChild",
-                "(Landroid/view/View;I)V",
-                &[host.into(), id_map.get_or_create_java_id(&child).into()],
-            )
-            .unwrap();
+        {
+            profiling::scope!("add children");
+            for child in self.0.filtered_children(&filter) {
+                env.call_method(
+                    node_info,
+                    "addChild",
+                    "(Landroid/view/View;I)V",
+                    &[host.into(), id_map.get_or_create_java_id(&child).into()],
+                )
+                .unwrap();
+            }
         }
+
         if let Some(parent) = self.0.filtered_parent(&filter) {
             if parent.is_root() {
                 env.call_method(
