@@ -14,7 +14,7 @@ use accesskit::{
 };
 use accesskit_consumer::{FilterResult, Node, TextPosition, Tree, TreeChangeHandler};
 use jni::{
-    objects::JObject,
+    objects::{JClass, JObject},
     sys::{jfloat, jint},
     JNIEnv,
 };
@@ -283,6 +283,7 @@ impl Adapter {
         &mut self,
         activation_handler: &mut H,
         env: &mut JNIEnv<'local>,
+        helper_class: &JClass,
         host: &JObject,
         virtual_view_id: jint,
     ) -> JObject<'local> {
@@ -324,7 +325,7 @@ impl Adapter {
         .unwrap();
 
         let wrapper = NodeWrapper(&node);
-        wrapper.populate_node_info(env, host, &mut self.node_id_map, &node_info);
+        wrapper.populate_node_info(env, helper_class, host, &mut self.node_id_map, &node_info);
 
         let is_accessibility_focus = self.accessibility_focus == Some(virtual_view_id);
         env.call_method(
@@ -357,6 +358,7 @@ impl Adapter {
         &mut self,
         activation_handler: &mut H,
         env: &mut JNIEnv<'local>,
+        helper_class: &JClass,
         host: &JObject,
         focus_type: jint,
     ) -> JObject<'local> {
@@ -375,7 +377,13 @@ impl Adapter {
             }
             _ => return JObject::null(),
         };
-        self.create_accessibility_node_info(activation_handler, env, host, virtual_view_id)
+        self.create_accessibility_node_info(
+            activation_handler,
+            env,
+            helper_class,
+            host,
+            virtual_view_id,
+        )
     }
 
     #[profiling::function]
@@ -440,8 +448,7 @@ impl Adapter {
                         } else {
                             Action::ScrollLeft
                         }
-                    } else if node.supports_action(Action::ScrollDown, &filter)
-                    {
+                    } else if node.supports_action(Action::ScrollDown, &filter) {
                         Action::ScrollDown
                     } else {
                         Action::ScrollRight

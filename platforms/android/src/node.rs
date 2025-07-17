@@ -10,12 +10,13 @@
 
 use accesskit::{Action, Live, Role, Toggled};
 use accesskit_consumer::Node;
-use jni::{objects::JObject, sys::jint, JNIEnv};
-
-use crate::{
-    filters::filter,
-    util::*,
+use jni::{
+    objects::{JClass, JObject},
+    sys::jint,
+    JNIEnv,
 };
+
+use crate::{filters::filter, util::*};
 
 #[profiling::function]
 pub(crate) fn add_action(env: &mut JNIEnv, node_info: &JObject, action: jint) {
@@ -64,17 +65,10 @@ impl NodeWrapper<'_> {
     }
 
     fn is_scrollable(&self) -> bool {
-        self.0
-            .supports_action(Action::ScrollDown, &filter)
-            || self
-                .0
-                .supports_action(Action::ScrollLeft, &filter)
-            || self
-                .0
-                .supports_action(Action::ScrollRight, &filter)
-            || self
-                .0
-                .supports_action(Action::ScrollUp, &filter)
+        self.0.supports_action(Action::ScrollDown, &filter)
+            || self.0.supports_action(Action::ScrollLeft, &filter)
+            || self.0.supports_action(Action::ScrollRight, &filter)
+            || self.0.supports_action(Action::ScrollUp, &filter)
     }
 
     fn is_selected(&self) -> bool {
@@ -190,18 +184,27 @@ impl NodeWrapper<'_> {
     pub(crate) fn populate_node_info(
         &self,
         env: &mut JNIEnv,
+        helper_class: &JClass,
         host: &JObject,
         id_map: &mut NodeIdMap,
         node_info: &JObject,
     ) {
         {
             profiling::scope!("add children");
-            for child in self.0.filtered_children(&filter) {
-                env.call_method(
-                    node_info,
-                    "addChild",
-                    "(Landroid/view/View;I)V",
-                    &[host.into(), id_map.get_or_create_java_id(&child).into()],
+            let child_ids = self
+                .0
+                .filtered_children(&filter)
+                .map(|child| id_map.get_or_create_java_id(&child))
+                .collect::<Vec<jint>>();
+            if !child_ids.is_empty() {
+                let child_id_array = env.new_int_array(child_ids.len() as jint).unwrap();
+                env.set_int_array_region(&child_id_array, 0, &child_ids)
+                    .unwrap();
+                env.call_static_method(
+                    helper_class,
+                    "addChildren",
+                    "(Landroid/view/accessibility/AccessibilityNodeInfo;Landroid/view/View;[I)V",
+                    &[node_info.into(), host.into(), (&child_id_array).into()],
                 )
                 .unwrap();
             }
@@ -357,21 +360,13 @@ impl NodeWrapper<'_> {
             )
             .unwrap();
         }
-        if self
-            .0
-            .supports_action(Action::ScrollLeft, &filter)
-            || self
-                .0
-                .supports_action(Action::ScrollUp, &filter)
+        if self.0.supports_action(Action::ScrollLeft, &filter)
+            || self.0.supports_action(Action::ScrollUp, &filter)
         {
             add_action(env, node_info, ACTION_SCROLL_BACKWARD);
         }
-        if self
-            .0
-            .supports_action(Action::ScrollRight, &filter)
-            || self
-                .0
-                .supports_action(Action::ScrollDown, &filter)
+        if self.0.supports_action(Action::ScrollRight, &filter)
+            || self.0.supports_action(Action::ScrollDown, &filter)
         {
             add_action(env, node_info, ACTION_SCROLL_FORWARD);
         }
