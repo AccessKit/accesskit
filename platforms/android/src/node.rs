@@ -250,48 +250,36 @@ impl NodeWrapper<'_> {
             env.call_method(node_info, "setChecked", "(Z)V", &[self.is_checked().into()])
                 .unwrap();
         }
-        env.call_method(
-            node_info,
-            "setEditable",
-            "(Z)V",
-            &[self.is_editable().into()],
-        )
-        .unwrap();
+        if self.is_editable() {
+            env.call_method(node_info, "setEditable", "(Z)V", &[true.into()])
+                .unwrap();
+        }
         env.call_method(node_info, "setEnabled", "(Z)V", &[self.is_enabled().into()])
             .unwrap();
-        env.call_method(
-            node_info,
-            "setFocusable",
-            "(Z)V",
-            &[self.is_focusable().into()],
-        )
-        .unwrap();
-        env.call_method(node_info, "setFocused", "(Z)V", &[self.is_focused().into()])
-            .unwrap();
-        env.call_method(
-            node_info,
-            "setPassword",
-            "(Z)V",
-            &[self.is_password().into()],
-        )
-        .unwrap();
-        env.call_method(
-            node_info,
-            "setScrollable",
-            "(Z)V",
-            &[self.is_scrollable().into()],
-        )
-        .unwrap();
-        env.call_method(
-            node_info,
-            "setSelected",
-            "(Z)V",
-            &[self.is_selected().into()],
-        )
-        .unwrap();
+        if self.is_focusable() {
+            env.call_method(node_info, "setFocusable", "(Z)V", &[true.into()])
+                .unwrap();
+        }
+        if self.is_focused() {
+            env.call_method(node_info, "setFocused", "(Z)V", &[true.into()])
+                .unwrap();
+        }
+        if self.is_password() {
+            env.call_method(node_info, "setPassword", "(Z)V", &[true.into()])
+                .unwrap();
+        }
+        if self.is_scrollable() {
+            env.call_method(node_info, "setScrollable", "(Z)V", &[true.into()])
+                .unwrap();
+        }
+        if self.is_selected() {
+            env.call_method(node_info, "setSelected", "(Z)V", &[true.into()])
+                .unwrap();
+        }
         // TBD: When, if ever, should the visible-to-user property be false?
         env.call_method(node_info, "setVisibleToUser", "(Z)V", &[true.into()])
             .unwrap();
+
         if let Some(desc) = self.content_description() {
             let desc = env.new_string(desc).unwrap();
             env.call_method(
@@ -371,7 +359,9 @@ impl NodeWrapper<'_> {
             Live::Polite => LIVE_REGION_POLITE,
             Live::Assertive => LIVE_REGION_ASSERTIVE,
         };
-        env.call_method(node_info, "setLiveRegion", "(I)V", &[live.into()])
-            .unwrap();
+        if live != LIVE_REGION_NONE {
+            env.call_method(node_info, "setLiveRegion", "(I)V", &[live.into()])
+                .unwrap();
+        }
     }
 }
