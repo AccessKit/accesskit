@@ -77,7 +77,6 @@ impl AdapterChangeHandler<'_> {
 }
 
 impl TreeChangeHandler for AdapterChangeHandler<'_> {
-    #[profiling::function]
     fn node_added(&mut self, _node: &Node) {
         self.enqueue_window_content_changed_if_needed();
         // TODO: live regions?
@@ -154,7 +153,6 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
     }
 
-    #[profiling::function]
     fn node_removed(&mut self, _node: &Node) {
         self.enqueue_window_content_changed_if_needed();
         // TODO: other events?
