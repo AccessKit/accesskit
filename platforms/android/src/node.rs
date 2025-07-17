@@ -10,7 +10,12 @@
 
 use accesskit::{Action, Live, Role, Toggled};
 use accesskit_consumer::Node;
-use jni::{objects::JObject, sys::jint, JNIEnv};
+use jni::{
+    objects::{JMethodID, JObject, JValue},
+    signature::{Primitive, ReturnType},
+    sys::jint,
+    JNIEnv,
+};
 
 use crate::{filters::filter, util::*};
 
@@ -180,6 +185,7 @@ impl NodeWrapper<'_> {
     pub(crate) fn populate_node_info(
         &self,
         env: &mut JNIEnv,
+        add_child_method_id: JMethodID,
         host: &JObject,
         id_map: &mut NodeIdMap,
         node_info: &JObject,
@@ -187,12 +193,17 @@ impl NodeWrapper<'_> {
         {
             profiling::scope!("add children");
             for child in self.0.filtered_children(&filter) {
-                env.call_method(
-                    node_info,
-                    "addChild",
-                    "(Landroid/view/View;I)V",
-                    &[host.into(), id_map.get_or_create_java_id(&child).into()],
-                )
+                unsafe {
+                    env.call_method_unchecked(
+                        node_info,
+                        add_child_method_id,
+                        ReturnType::Primitive(Primitive::Void),
+                        &[
+                            JValue::from(host).as_jni(),
+                            JValue::from(id_map.get_or_create_java_id(&child)).as_jni(),
+                        ],
+                    )
+                }
                 .unwrap();
             }
         }

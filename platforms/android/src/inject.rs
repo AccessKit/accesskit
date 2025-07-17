@@ -333,7 +333,7 @@ impl InjectingAdapter {
         action_handler: impl 'static + ActionHandler + Send,
     ) -> Self {
         let inner = Arc::new(Mutex::new(InnerInjectingAdapter {
-            adapter: Adapter::default(),
+            adapter: Adapter::new(env),
             activation_handler: Box::new(activation_handler),
             action_handler: Box::new(action_handler),
         }));

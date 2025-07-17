@@ -14,7 +14,7 @@ use accesskit::{
 };
 use accesskit_consumer::{FilterResult, Node, TextPosition, Tree, TreeChangeHandler};
 use jni::{
-    objects::JObject,
+    objects::{JMethodID, JObject},
     sys::{jfloat, jint},
     JNIEnv,
 };
@@ -224,15 +224,32 @@ fn update_tree(
 /// [`InjectingAdapter`].
 ///
 /// [`InjectingAdapter`]: crate::InjectingAdapter
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Adapter {
     node_id_map: NodeIdMap,
     state: State,
     accessibility_focus: Option<jint>,
     hover_target: Option<jint>,
+    add_child_method_id: JMethodID,
 }
 
 impl Adapter {
+    pub fn new(env: &mut JNIEnv) -> Self {
+        let class = env
+            .find_class("android/view/accessibility/AccessibilityNodeInfo")
+            .unwrap();
+        let add_child_method_id = env
+            .get_method_id(&class, "addChild", "(Landroid/view/View;I)V")
+            .unwrap();
+        Self {
+            node_id_map: Default::default(),
+            state: Default::default(),
+            accessibility_focus: None,
+            hover_target: None,
+            add_child_method_id,
+        }
+    }
+
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update. Note: If the caller's implementation of
     /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
@@ -323,7 +340,13 @@ impl Adapter {
         .unwrap();
 
         let wrapper = NodeWrapper(&node);
-        wrapper.populate_node_info(env, host, &mut self.node_id_map, &node_info);
+        wrapper.populate_node_info(
+            env,
+            self.add_child_method_id,
+            host,
+            &mut self.node_id_map,
+            &node_info,
+        );
 
         let is_accessibility_focus = self.accessibility_focus == Some(virtual_view_id);
         env.call_method(
