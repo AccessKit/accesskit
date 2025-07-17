@@ -67,4 +67,10 @@ public final class Delegate extends View.AccessibilityDelegate implements View.O
     public boolean onHover(View v, MotionEvent event) {
         return onHoverEvent(adapterHandle, v, event.getAction(), event.getX(), event.getY());
     }
+
+    public static void addChildren(AccessibilityNodeInfo nodeInfo, View root, int[] childIds) {
+        for (int childId : childIds) {
+            nodeInfo.addChild(root, childId);
+        }
+    }
 }

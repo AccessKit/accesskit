@@ -10,7 +10,11 @@
 
 use accesskit::{Action, Live, Role, Toggled};
 use accesskit_consumer::Node;
-use jni::{objects::JObject, sys::jint, JNIEnv};
+use jni::{
+    objects::{JClass, JObject},
+    sys::jint,
+    JNIEnv,
+};
 
 use crate::{filters::filter, util::*};
 
@@ -180,18 +184,27 @@ impl NodeWrapper<'_> {
     pub(crate) fn populate_node_info(
         &self,
         env: &mut JNIEnv,
+        helper_class: &JClass,
         host: &JObject,
         id_map: &mut NodeIdMap,
         node_info: &JObject,
     ) {
         {
             profiling::scope!("add children");
-            for child in self.0.filtered_children(&filter) {
-                env.call_method(
-                    node_info,
-                    "addChild",
-                    "(Landroid/view/View;I)V",
-                    &[host.into(), id_map.get_or_create_java_id(&child).into()],
+            let child_ids = self
+                .0
+                .filtered_children(&filter)
+                .map(|child| id_map.get_or_create_java_id(&child))
+                .collect::<Vec<jint>>();
+            if !child_ids.is_empty() {
+                let child_id_array = env.new_int_array(child_ids.len() as jint).unwrap();
+                env.set_int_array_region(&child_id_array, 0, &child_ids)
+                    .unwrap();
+                env.call_static_method(
+                    helper_class,
+                    "addChildren",
+                    "(Landroid/view/accessibility/AccessibilityNodeInfo;Landroid/view/View;[I)V",
+                    &[node_info.into(), host.into(), (&child_id_array).into()],
                 )
                 .unwrap();
             }

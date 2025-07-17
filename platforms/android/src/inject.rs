@@ -52,9 +52,11 @@ impl InnerInjectingAdapter {
         host: &JObject,
         virtual_view_id: jint,
     ) -> JObject<'local> {
+        let class = delegate_class(env);
         self.adapter.create_accessibility_node_info(
             &mut *self.activation_handler,
             env,
+            class,
             host,
             virtual_view_id,
         )
@@ -66,8 +68,9 @@ impl InnerInjectingAdapter {
         host: &JObject,
         focus_type: jint,
     ) -> JObject<'local> {
+        let class = delegate_class(env);
         self.adapter
-            .find_focus(&mut *self.activation_handler, env, host, focus_type)
+            .find_focus(&mut *self.activation_handler, env, class, host, focus_type)
     }
 
     fn perform_action(
