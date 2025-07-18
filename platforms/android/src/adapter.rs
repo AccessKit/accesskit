@@ -66,7 +66,6 @@ impl<'a> AdapterChangeHandler<'a> {
 }
 
 impl AdapterChangeHandler<'_> {
-    #[profiling::function]
     fn enqueue_window_content_changed_if_needed(&mut self) {
         if self.enqueued_window_content_changed {
             return;
