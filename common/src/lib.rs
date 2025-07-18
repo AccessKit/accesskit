@@ -2687,7 +2687,7 @@ pub enum ActionData {
     Value(Box<str>),
     NumericValue(f64),
     ScrollUnit(ScrollUnit),
-    /// Optional suggestion for [`ActionData::ScrollIntoView`], specifying
+    /// Optional suggestion for [`Action::ScrollIntoView`], specifying
     /// the preferred position of the target node relative to the scrollable
     /// container's viewport.
     ScrollHint(ScrollHint),
