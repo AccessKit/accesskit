@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.21.0...accesskit-v0.21.1) (2025-07-18)
+
+
+### Bug Fixes
+
+* Fix link in `ActionData::ScrollHint` documentation ([#598](https://github.com/AccessKit/accesskit/issues/598)) ([28b82e9](https://github.com/AccessKit/accesskit/commit/28b82e9941b10ac0643201b9b3989f0184346216))
+
 ## [0.21.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.20.0...accesskit-v0.21.0) (2025-07-16)
 
 
