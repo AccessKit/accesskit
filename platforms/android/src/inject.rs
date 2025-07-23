@@ -142,6 +142,7 @@ extern "system" fn run_callback<'local>(
     callback(&mut env, &class, &host);
 }
 
+#[profiling::function]
 extern "system" fn create_accessibility_node_info<'local>(
     mut env: JNIEnv<'local>,
     _class: JClass<'local>,
@@ -156,6 +157,7 @@ extern "system" fn create_accessibility_node_info<'local>(
     inner_adapter.create_accessibility_node_info(&mut env, &host, virtual_view_id)
 }
 
+#[profiling::function]
 extern "system" fn find_focus<'local>(
     mut env: JNIEnv<'local>,
     _class: JClass<'local>,
@@ -170,6 +172,7 @@ extern "system" fn find_focus<'local>(
     inner_adapter.find_focus(&mut env, &host, focus_type)
 }
 
+#[profiling::function]
 extern "system" fn perform_action<'local>(
     mut env: JNIEnv<'local>,
     _class: JClass<'local>,
@@ -194,6 +197,7 @@ extern "system" fn perform_action<'local>(
     JNI_TRUE
 }
 
+#[profiling::function]
 extern "system" fn on_hover_event<'local>(
     mut env: JNIEnv<'local>,
     _class: JClass<'local>,
@@ -390,6 +394,7 @@ impl InjectingAdapter {
     /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
     /// the [`TreeUpdate`] returned by the provided function must contain
     /// a full tree.
+    #[profiling::function]
     pub fn update_if_active(&mut self, update_factory: impl FnOnce() -> TreeUpdate) {
         let mut env = self.vm.get_env().unwrap();
         let Some(host) = self.host.upgrade_local(&env).unwrap() else {
