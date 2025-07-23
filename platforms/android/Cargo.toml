@@ -17,6 +17,6 @@ embedded-dex = []
 [dependencies]
 accesskit = { version = "0.21.0", path = "../../common" }
 accesskit_consumer = { version = "0.30.0", path = "../../consumer" }
-jni = { git = "https://github.com/mwcampbell/jni-rs", branch = "profiling" }
+jni = "0.21.1"
 log = "0.4.17"
 profiling = "1.0.17"

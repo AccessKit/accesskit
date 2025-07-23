@@ -34,7 +34,7 @@ version = "0.4.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
- "jni 0.21.1 (git+https://github.com/mwcampbell/jni-rs?branch=profiling)",
+ "jni",
  "log",
  "profiling",
 ]
@@ -158,7 +158,7 @@ dependencies = [
  "bitflags 2.8.0",
  "cc",
  "cesu8",
- "jni 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jni",
  "jni-sys",
  "libc",
  "log",
@@ -894,22 +894,6 @@ dependencies = [
  "combine",
  "jni-sys",
  "log",
- "thiserror",
- "walkdir",
- "windows-sys 0.45.0",
-]
-
-[[package]]
-name = "jni"
-version = "0.21.1"
-source = "git+https://github.com/mwcampbell/jni-rs?branch=profiling#aae532776c1e31c212fde733ff1cf598ca986540"
-dependencies = [
- "cesu8",
- "cfg-if",
- "combine",
- "jni-sys",
- "log",
- "profiling",
  "thiserror",
  "walkdir",
  "windows-sys 0.45.0",
