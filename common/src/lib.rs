@@ -2105,6 +2105,7 @@ vec_property_methods! {
 #[cfg(test)]
 mod custom_actions {
     use super::{CustomAction, Node, Role};
+    use core::slice;
 
     #[test]
     fn getter_should_return_default_value() {
@@ -2139,7 +2140,7 @@ mod custom_actions {
             description: "second test action".into(),
         };
         node.push_custom_action(first_action.clone());
-        assert_eq!(node.custom_actions(), &[first_action.clone()]);
+        assert_eq!(node.custom_actions(), slice::from_ref(&first_action));
         node.push_custom_action(second_action.clone());
         assert_eq!(node.custom_actions(), &[first_action, second_action]);
     }

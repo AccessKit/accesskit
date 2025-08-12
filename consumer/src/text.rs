@@ -196,7 +196,7 @@ impl<'a> Position<'a> {
         self.inner.downgrade()
     }
 
-    pub fn inner_node(&self) -> &Node {
+    pub fn inner_node(&self) -> &Node<'a> {
         &self.inner.node
     }
 
@@ -520,7 +520,7 @@ impl<'a> Range<'a> {
         Self { node, start, end }
     }
 
-    pub fn node(&self) -> &Node {
+    pub fn node(&self) -> &Node<'a> {
         &self.node
     }
 
@@ -913,7 +913,7 @@ impl<'a> Node<'a> {
         }
     }
 
-    pub fn document_range(&self) -> Range {
+    pub fn document_range(&self) -> Range<'_> {
         let start = self.document_start();
         let end = self.document_end();
         Range::new(*self, start, end)
@@ -923,7 +923,7 @@ impl<'a> Node<'a> {
         self.data().text_selection().is_some()
     }
 
-    pub fn text_selection(&self) -> Option<Range> {
+    pub fn text_selection(&self) -> Option<Range<'_>> {
         self.data().text_selection().map(|selection| {
             let anchor = InnerPosition::clamped_upgrade(self.tree_state, selection.anchor).unwrap();
             let focus = InnerPosition::clamped_upgrade(self.tree_state, selection.focus).unwrap();
@@ -931,7 +931,7 @@ impl<'a> Node<'a> {
         })
     }
 
-    pub fn text_selection_anchor(&self) -> Option<Position> {
+    pub fn text_selection_anchor(&self) -> Option<Position<'_>> {
         self.data().text_selection().map(|selection| {
             let anchor = InnerPosition::clamped_upgrade(self.tree_state, selection.anchor).unwrap();
             Position {
@@ -941,7 +941,7 @@ impl<'a> Node<'a> {
         })
     }
 
-    pub fn text_selection_focus(&self) -> Option<Position> {
+    pub fn text_selection_focus(&self) -> Option<Position<'_>> {
         self.data().text_selection().map(|selection| {
             let focus = InnerPosition::clamped_upgrade(self.tree_state, selection.focus).unwrap();
             Position {
@@ -953,7 +953,7 @@ impl<'a> Node<'a> {
 
     /// Returns the nearest text position to the given point
     /// in this node's coordinate space.
-    pub fn text_position_at_point(&self, point: Point) -> Position {
+    pub fn text_position_at_point(&self, point: Point) -> Position<'_> {
         let id = self.id();
         if let Some((node, point)) = self.hit_test(point, &move |node| text_node_filter(id, node)) {
             if node.role() == Role::TextRun {
@@ -1022,7 +1022,7 @@ impl<'a> Node<'a> {
         }
     }
 
-    pub fn line_range_from_index(&self, line_index: usize) -> Option<Range> {
+    pub fn line_range_from_index(&self, line_index: usize) -> Option<Range<'_>> {
         let mut pos = self.document_range().start();
 
         if line_index > 0 {
@@ -1045,7 +1045,7 @@ impl<'a> Node<'a> {
         Some(Range::new(*self, pos.inner, end.inner))
     }
 
-    pub fn text_position_from_global_usv_index(&self, index: usize) -> Option<Position> {
+    pub fn text_position_from_global_usv_index(&self, index: usize) -> Option<Position<'_>> {
         let mut total_length = 0usize;
         for node in self.text_runs() {
             let node_text = node.data().value().unwrap();
@@ -1087,7 +1087,7 @@ impl<'a> Node<'a> {
         None
     }
 
-    pub fn text_position_from_global_utf16_index(&self, index: usize) -> Option<Position> {
+    pub fn text_position_from_global_utf16_index(&self, index: usize) -> Option<Position<'_>> {
         let mut total_length = 0usize;
         for node in self.text_runs() {
             let node_text = node.data().value().unwrap();
