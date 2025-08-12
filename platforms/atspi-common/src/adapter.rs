@@ -579,7 +579,7 @@ impl Adapter {
     }
 }
 
-fn root_window(current_state: &TreeState) -> Option<Node> {
+fn root_window(current_state: &TreeState) -> Option<Node<'_>> {
     const WINDOW_ROLES: &[Role] = &[Role::AlertDialog, Role::Dialog, Role::Window];
     let root = current_state.root();
     if WINDOW_ROLES.contains(&root.role()) {
