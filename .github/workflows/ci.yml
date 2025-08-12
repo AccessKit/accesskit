@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Check formatting
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: install stable toolchain
         uses: dtolnay/rust-toolchain@master
@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: find-msrv
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           rust-version: ${{ needs.find-msrv.outputs.version }}
@@ -59,7 +59,7 @@ jobs:
         os: [macOS-latest, windows-latest, ubuntu-latest]
     name: cargo clippy
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: install stable toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -81,7 +81,7 @@ jobs:
     outputs:
       version: ${{ steps.step2.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: step2
         run: echo "version=`cat Cargo.toml | sed -n 's/rust-version = "\(.*\)"/\1/p'`" >> "$GITHUB_OUTPUT"
 
@@ -93,7 +93,7 @@ jobs:
         os: [macOS-latest, windows-latest, ubuntu-latest]
     name: cargo test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: install stable toolchain
         uses: dtolnay/rust-toolchain@master
@@ -113,7 +113,7 @@ jobs:
   check-android-dex:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
