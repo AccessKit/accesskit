@@ -24,6 +24,20 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.30.1](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.30.0...accesskit_consumer-v0.30.1) (2025-08-12)
+
+
+### Bug Fixes
+
+* Fix clippy warnings introduced in 1.89 ([#606](https://github.com/AccessKit/accesskit/issues/606)) ([b2c07d6](https://github.com/AccessKit/accesskit/commit/b2c07d654a8ce6f01e61a79c91f2f9d5a96afdc9))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.0 to 0.21.1
+
 ## [0.30.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.29.0...accesskit_consumer-v0.30.0) (2025-07-16)
 
 
