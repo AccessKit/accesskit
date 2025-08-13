@@ -494,6 +494,86 @@ impl TreeUpdate for Update<'_> {
         self.state.pending_nodes.insert(id, data);
     }
 
+    fn update_node(&mut self, local_id: LocalNodeId, update: impl FnOnce(&mut NodeData)) {
+        let id = self.map_id(local_id);
+        let root = self.root();
+        let tree_index = self.tree_index;
+        self.state.unreachable.remove(&id);
+
+        if let Some(node_state) = self.nodes.get_mut(&id) {
+            let old_tree_id = node_state.data.tree_id();
+            self.state.processing_children.clear();
+            self.state.processing_children.extend(
+                node_state
+                    .data
+                    .children()
+                    .iter()
+                    .map(|child_id| NodeId::new(*child_id, tree_index)),
+            );
+            update(&mut node_state.data);
+            let new_tree_id = node_state.data.tree_id();
+            if new_tree_id.is_some() && !node_state.data.children().is_empty() {
+                panic!(
+                    "Node {:?} has both tree_id and children. \
+                     A graft node's only child comes from its subtree.",
+                    local_id
+                );
+            }
+
+            if let Some(prev_node_state) = self.prev_state.and_then(|p| p.nodes.get(&id)) {
+                if *prev_node_state != *node_state {
+                    self.state.changes.updated_node_ids.insert(id);
+                }
+            }
+
+            if old_tree_id != new_tree_id {
+                if let Some(old_subtree_id) = old_tree_id {
+                    self.state.grafts_to_remove.insert(old_subtree_id);
+                }
+                if let Some(new_subtree_id) = new_tree_id {
+                    record_graft(self.state, new_subtree_id, id);
+                }
+            }
+
+            let children_differ = self.state.processing_children.len()
+                != node_state.data.children().len()
+                || self
+                    .state
+                    .processing_children
+                    .iter()
+                    .zip(node_state.data.children())
+                    .any(|(old, new)| *old != NodeId::new(*new, tree_index));
+            if children_differ {
+                for child_id in self.state.processing_children.drain(..) {
+                    if root != Some(child_id) {
+                        self.state.unreachable.insert(child_id);
+                    }
+                }
+                self.state.processing_children.extend(
+                    node_state
+                        .data
+                        .children()
+                        .iter()
+                        .map(|child_id| NodeId::new(*child_id, tree_index)),
+                );
+                self.process_children(id);
+            } else {
+                self.state.processing_children.clear();
+            }
+            return;
+        }
+
+        let data = self.state.pending_nodes.get_mut(&id).unwrap();
+        update(data);
+        self.state.processing_children.clear();
+        self.state.processing_children.extend(
+            data.children()
+                .iter()
+                .map(|child_id| NodeId::new(*child_id, tree_index)),
+        );
+        self.process_children(id);
+    }
+
     fn set_tree(&mut self, tree: TreeData) {
         let new_root = self.map_id(tree.root);
         let tree_index = self.tree_index;
