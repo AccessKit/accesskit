@@ -1456,7 +1456,7 @@ mod tests {
             got_removed_container: false,
         };
         tree.update(TreeId::ROOT, &mut handler, |update| {
-            update.set_node(LocalNodeId(0), Role::Window, |node| {
+            update.update_node(LocalNodeId(0), |node| {
                 node.set_children(&[LocalNodeId(2)]);
             });
         });
