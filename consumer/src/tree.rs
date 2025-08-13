@@ -243,7 +243,9 @@ impl TreeUpdate for Update<'_> {
                     }
                 }
             }
-            if self.state.processing_children != node_state.data.children() {
+            if self.state.processing_children == node_state.data.children() {
+                self.state.processing_children.clear();
+            } else {
                 for child_id in self.state.processing_children.drain(..) {
                     if root != Some(child_id) {
                         self.state.unreachable.insert(child_id);
@@ -291,7 +293,9 @@ impl TreeUpdate for Update<'_> {
                     }
                 }
             }
-            if self.state.processing_children != node_state.data.children() {
+            if self.state.processing_children == node_state.data.children() {
+                self.state.processing_children.clear();
+            } else {
                 for child_id in self.state.processing_children.drain(..) {
                     if root != Some(child_id) {
                         self.state.unreachable.insert(child_id);
