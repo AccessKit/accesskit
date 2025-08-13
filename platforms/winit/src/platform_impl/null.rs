@@ -9,6 +9,7 @@ pub struct TreeUpdate;
 
 impl accesskit::TreeUpdate for TreeUpdate {
     fn set_node(&mut self, _: NodeId, _: Role, _: impl FnOnce(&mut Node)) {}
+    fn update_node(&mut self, _: NodeId, _: impl FnOnce(&mut Node)) {}
     fn set_tree(&mut self, _: Tree) {}
     fn set_focus(&mut self, _: NodeId) {}
 }
