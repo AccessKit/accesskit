@@ -215,6 +215,7 @@ struct UpdateState {
     unreachable: HashSet<NodeId>,
     pending_nodes: HashMap<NodeId, NodeData>,
     pending_children: HashMap<NodeId, ParentAndIndex>,
+    seen_child_ids: HashSet<NodeId>,
     processing_children: Vec<NodeId>,
     pending_grafts: HashMap<TreeId, NodeId>,
     grafts_to_remove: HashSet<TreeId>,
@@ -310,6 +311,10 @@ impl Update<'_> {
 
     fn process_children(&mut self, parent_id: NodeId) {
         for (child_index, child_id) in self.state.processing_children.drain(..).enumerate() {
+            if self.state.seen_child_ids.contains(&child_id) {
+                panic!("TreeUpdate includes duplicate child {child_id:?}");
+            }
+            self.state.seen_child_ids.insert(child_id);
             self.state.unreachable.remove(&child_id);
             let parent_and_index = ParentAndIndex(parent_id, child_index);
             if let Some(child_state) = self.nodes.get_mut(&child_id) {
@@ -398,6 +403,7 @@ impl Update<'_> {
                 id,
             );
         }
+        self.state.seen_child_ids.clear();
 
         (self.new_tree, self.new_focus)
     }
