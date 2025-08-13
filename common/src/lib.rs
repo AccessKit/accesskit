@@ -2965,6 +2965,18 @@ pub trait TreeUpdate {
     /// may be included in this update.
     fn set_node(&mut self, id: NodeId, role: Role, fill: impl FnOnce(&mut Node));
 
+    /// Update the node with the specified ID. The application provides a callback
+    /// which receives a mutable reference to the existing node, on which it
+    /// should set the properties that have changed.
+    ///
+    /// The node with the specified ID must already exist either in the previous
+    /// tree or in this tree update. Therefore it's not necessary to set
+    /// properties that haven't changed when using this method. Conversely,
+    /// unlike when calling [`TreeUpdate::set_node`], it _is_ necessary
+    /// to set any properties that have changed from a non-default value
+    /// to the default.
+    fn update_node(&mut self, id: NodeId, update: impl FnOnce(&mut Node));
+
     /// Set rarely updated information about the tree as a whole. This must
     /// be called when building the initial tree; otherwise, it only needs to be
     /// called if the information has changed.

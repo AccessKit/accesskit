@@ -230,9 +230,6 @@ impl TreeUpdate for Update<'_> {
         self.state.unreachable.remove(&id);
 
         if let Some(node_state) = self.nodes.get_mut(&id) {
-            if root == Some(id) {
-                node_state.parent_and_index = None;
-            }
             node_state
                 .data
                 .children()
@@ -275,6 +272,45 @@ impl TreeUpdate for Update<'_> {
             return;
         }
         self.state.pending_nodes.insert(id, data);
+    }
+
+    fn update_node(&mut self, id: NodeId, update: impl FnOnce(&mut NodeData)) {
+        let root = self.root();
+        self.state.unreachable.remove(&id);
+
+        if let Some(node_state) = self.nodes.get_mut(&id) {
+            node_state
+                .data
+                .children()
+                .clone_into(&mut self.state.processing_children);
+            update(&mut node_state.data);
+            if let Some(prev_state) = self.prev_state {
+                if let Some(prev_node_state) = prev_state.nodes.get(&id) {
+                    if *prev_node_state != *node_state {
+                        self.state.changes.updated_node_ids.insert(id);
+                    }
+                }
+            }
+            if self.state.processing_children != node_state.data.children() {
+                for child_id in self.state.processing_children.drain(..) {
+                    if root != Some(child_id) {
+                        self.state.unreachable.insert(child_id);
+                    }
+                }
+                node_state
+                    .data
+                    .children()
+                    .clone_into(&mut self.state.processing_children);
+                self.process_children(id);
+            }
+            return;
+        }
+
+        let data = self.state.pending_nodes.get_mut(&id).unwrap();
+        update(data);
+        data.children()
+            .clone_into(&mut self.state.processing_children);
+        self.process_children(id);
     }
 
     fn set_tree(&mut self, tree: TreeData) {
