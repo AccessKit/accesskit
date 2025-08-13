@@ -900,7 +900,7 @@ mod tests {
             update.set_node(NodeId(0), Role::Window, |node| {
                 node.set_children(&[NodeId(1)]);
             });
-            update.set_node(NodeId(0), Role::GenericContainer, |node| {
+            update.set_node(NodeId(1), Role::GenericContainer, |node| {
                 node.set_children(&[NodeId(2)]);
             });
             update.set_node(NodeId(2), Role::Button, |_| ());
@@ -913,7 +913,7 @@ mod tests {
             got_removed_container: false,
         };
         tree.update(&mut handler, |update| {
-            update.set_node(NodeId(0), Role::Window, |node| {
+            update.update_node(NodeId(0), |node| {
                 node.set_children(&[NodeId(2)]);
             });
         });
