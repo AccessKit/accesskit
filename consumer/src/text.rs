@@ -868,7 +868,7 @@ fn character_index_at_point(node: &Node, point: Point) -> usize {
 }
 
 impl<'a> Node<'a> {
-    fn text_runs(
+    pub(crate) fn text_runs(
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
         let id = self.id();
