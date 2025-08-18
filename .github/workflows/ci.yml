@@ -66,6 +66,17 @@ jobs:
         with:
           components: clippy
 
+      - name: install Java
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: setup Android
+        if: matrix.os == 'ubuntu-latest'
+        uses: android-actions/setup-android@v3
+
       - name: restore cache
         uses: Swatinem/rust-cache@v2
 
@@ -75,6 +86,16 @@ jobs:
       - name: cargo clippy -p accesskit_atspi_common
         if: matrix.os == 'ubuntu-latest'
         run: cargo clippy -p accesskit_atspi_common --all-features -- -D warnings
+
+      - name: cargo clippy -p accesskit_android --features embedded-dex
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          ANDROID_PLATFORM: android-30
+          ANDROID_BUILD_TOOLS_VERSION: 33.0.2
+        run: |
+          sdkmanager "platforms;android-30"
+          sdkmanager "build-tools;33.0.2"
+          cargo clippy -p accesskit_android --features embedded-dex -- -D warnings
 
   find-msrv:
     runs-on: ubuntu-latest
@@ -109,18 +130,3 @@ jobs:
       - name: cargo test -p accesskit_windows
         if: matrix.os == 'windows-latest'
         run: cargo test -p accesskit_windows
-
-  check-android-dex:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - run: sdkmanager "platforms;android-30"
-      - run: sdkmanager "build-tools;33.0.2"
-      - run: cp platforms/android/classes.dex platforms/android/classes.dex.orig
-      - run: ./platforms/android/build-dex.sh
-      - run: cmp platforms/android/classes.dex.orig platforms/android/classes.dex

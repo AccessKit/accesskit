@@ -34,6 +34,7 @@ version = "0.4.1"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
+ "android-build",
  "jni",
  "log",
 ]
@@ -165,6 +166,15 @@ dependencies = [
  "ndk-sys",
  "num_enum",
  "thiserror",
+]
+
+[[package]]
+name = "android-build"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cac4c64175d504608cf239756339c07f6384a476f97f20a7043f92920b0b8fd"
+dependencies = [
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
