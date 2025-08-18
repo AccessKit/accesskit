@@ -223,7 +223,7 @@ fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
             let dex_class_loader_class = env
                 .find_class("dalvik/system/InMemoryDexClassLoader")
                 .unwrap();
-            let dex_bytes = include_bytes!("../classes.dex");
+            let dex_bytes = include_bytes!(concat!(env!("OUT_DIR"), "/classes.dex"));
             let dex_buffer = unsafe {
                 env.new_direct_byte_buffer(dex_bytes.as_ptr() as *mut u8, dex_bytes.len())
             }
