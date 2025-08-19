@@ -223,7 +223,7 @@ fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
             let dex_class_loader_class = env
                 .find_class("dalvik/system/InMemoryDexClassLoader")
                 .unwrap();
-            let dex_bytes = include_bytes!("../classes.dex");
+            let dex_bytes = include_bytes!(concat!(env!("OUT_DIR"), "/classes.dex"));
             let dex_buffer = unsafe {
                 env.new_direct_byte_buffer(dex_bytes.as_ptr() as *mut u8, dex_bytes.len())
             }
@@ -295,7 +295,7 @@ fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
 ///
 /// This depends on the Java `dev.accesskit.android.Delegate` class, the source
 /// code for which is in this crate's `java` directory. If the `embedded-dex`
-/// feature is enabled, then that class is loaded from a prebuilt `.dex` file
+/// feature is enabled, then that class is loaded from a `.dex` file
 /// that this crate embeds. Otherwise, it's simply assumed that the class
 /// is in the application package. None of this type's public functions
 /// make assumptions about whether they're called from the Android UI thread.
