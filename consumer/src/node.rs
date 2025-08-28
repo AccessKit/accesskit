@@ -611,8 +611,23 @@ impl<'a> Node<'a> {
             .map(|description| description.to_string())
     }
 
+    fn is_empty_text_input(&self) -> bool {
+        let mut text_runs = self.text_runs();
+        if let Some(first_text_run) = text_runs.next() {
+            first_text_run
+                .data()
+                .value()
+                .map_or(true, |value| value.is_empty())
+                && text_runs.next().is_none()
+        } else {
+            true
+        }
+    }
+
     pub fn placeholder(&self) -> Option<&str> {
-        self.data().placeholder()
+        self.data()
+            .placeholder()
+            .filter(|_| self.is_text_input() && self.is_empty_text_input())
     }
 
     pub fn value(&self) -> Option<String> {
@@ -860,7 +875,10 @@ impl<W: fmt::Write> fmt::Write for SpacePrefixingWriter<W> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Point, Rect, Role, Tree, TreeUpdate};
+    use accesskit::{
+        Action, Node, NodeId, Point, Rect, Role, TextDirection, TextPosition, TextSelection, Tree,
+        TreeUpdate,
+    };
     use alloc::vec;
 
     use crate::tests::*;
@@ -1363,6 +1381,142 @@ mod tests {
         assert_eq!(
             Some(MENU_ITEM_RADIO_LABEL.into()),
             tree.state().node_by_id(MENU_ITEM_RADIO_ID).unwrap().label()
+        );
+    }
+
+    #[test]
+    fn placeholder_should_be_exposed_on_empty_text_input() {
+        const ROOT_ID: NodeId = NodeId(0);
+        const TEXT_INPUT_ID: NodeId = NodeId(1);
+        const TEXT_RUN_ID: NodeId = NodeId(2);
+
+        const PLACEHOLDER: &str = "John Doe";
+
+        let update = TreeUpdate {
+            nodes: vec![
+                (ROOT_ID, {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![TEXT_INPUT_ID]);
+                    node
+                }),
+                (TEXT_INPUT_ID, {
+                    let mut node = Node::new(Role::MultilineTextInput);
+                    node.set_bounds(Rect {
+                        x0: 8.0,
+                        y0: 8.0,
+                        x1: 296.0,
+                        y1: 69.5,
+                    });
+                    node.push_child(TEXT_RUN_ID);
+                    node.set_placeholder(PLACEHOLDER);
+                    node.set_text_selection(TextSelection {
+                        anchor: TextPosition {
+                            node: TEXT_RUN_ID,
+                            character_index: 0,
+                        },
+                        focus: TextPosition {
+                            node: TEXT_RUN_ID,
+                            character_index: 0,
+                        },
+                    });
+                    node.add_action(Action::Focus);
+                    node
+                }),
+                (TEXT_RUN_ID, {
+                    let mut node = Node::new(Role::TextRun);
+                    node.set_bounds(Rect {
+                        x0: 12.0,
+                        y0: 10.0,
+                        x1: 12.0,
+                        y1: 24.0,
+                    });
+                    node.set_value("");
+                    node.set_character_lengths([]);
+                    node.set_character_positions([]);
+                    node.set_character_widths([]);
+                    node.set_word_lengths([0]);
+                    node.set_text_direction(TextDirection::LeftToRight);
+                    node
+                }),
+            ],
+            tree: Some(Tree::new(ROOT_ID)),
+            focus: TEXT_INPUT_ID,
+        };
+        let tree = crate::Tree::new(update, false);
+        assert_eq!(
+            Some(PLACEHOLDER),
+            tree.state()
+                .node_by_id(TEXT_INPUT_ID)
+                .unwrap()
+                .placeholder()
+        );
+    }
+
+    #[test]
+    fn placeholder_should_be_ignored_on_non_empty_text_input() {
+        const ROOT_ID: NodeId = NodeId(0);
+        const TEXT_INPUT_ID: NodeId = NodeId(1);
+        const TEXT_RUN_ID: NodeId = NodeId(2);
+
+        const PLACEHOLDER: &str = "John Doe";
+
+        let update = TreeUpdate {
+            nodes: vec![
+                (ROOT_ID, {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![TEXT_INPUT_ID]);
+                    node
+                }),
+                (TEXT_INPUT_ID, {
+                    let mut node = Node::new(Role::MultilineTextInput);
+                    node.set_bounds(Rect {
+                        x0: 8.0,
+                        y0: 8.0,
+                        x1: 296.0,
+                        y1: 69.5,
+                    });
+                    node.push_child(TEXT_RUN_ID);
+                    node.set_placeholder(PLACEHOLDER);
+                    node.set_text_selection(TextSelection {
+                        anchor: TextPosition {
+                            node: TEXT_RUN_ID,
+                            character_index: 1,
+                        },
+                        focus: TextPosition {
+                            node: TEXT_RUN_ID,
+                            character_index: 1,
+                        },
+                    });
+                    node.add_action(Action::Focus);
+                    node
+                }),
+                (TEXT_RUN_ID, {
+                    let mut node = Node::new(Role::TextRun);
+                    node.set_bounds(Rect {
+                        x0: 12.0,
+                        y0: 10.0,
+                        x1: 20.0,
+                        y1: 24.0,
+                    });
+                    node.set_value("A");
+                    node.set_character_lengths([1]);
+                    node.set_character_positions([0.0]);
+                    node.set_character_widths([8.0]);
+                    node.set_word_lengths([1]);
+                    node.set_text_direction(TextDirection::LeftToRight);
+                    node
+                }),
+            ],
+            tree: Some(Tree::new(ROOT_ID)),
+            focus: TEXT_INPUT_ID,
+        };
+        let tree = crate::Tree::new(update, false);
+        assert_eq!(
+            None,
+            tree.state()
+                .node_by_id(TEXT_INPUT_ID)
+                .unwrap()
+                .placeholder()
         );
     }
 }
