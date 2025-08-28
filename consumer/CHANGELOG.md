@@ -24,6 +24,21 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.30.1](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.30.0...accesskit_consumer-v0.30.1) (2025-08-28)
+
+
+### Bug Fixes
+
+* Fix clippy warnings introduced in 1.89 ([#606](https://github.com/AccessKit/accesskit/issues/606)) ([b2c07d6](https://github.com/AccessKit/accesskit/commit/b2c07d654a8ce6f01e61a79c91f2f9d5a96afdc9))
+* Only expose the `placeholder` property on empty text inputs ([#607](https://github.com/AccessKit/accesskit/issues/607)) ([1764cef](https://github.com/AccessKit/accesskit/commit/1764cef1892e3bf05182fb9c4c65d5ba4f157f50))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.0 to 0.21.1
+
 ## [0.30.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.29.0...accesskit_consumer-v0.30.0) (2025-07-16)
 
 
