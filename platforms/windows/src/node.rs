@@ -979,8 +979,8 @@ properties! {
     (UIA_LiveSettingPropertyId, live_setting),
     (UIA_AutomationIdPropertyId, automation_id),
     (UIA_ClassNamePropertyId, class_name),
-    (UIA_AccessKeyPropertyId, access_key);
-    (UIA_AcceleratorKeyPropertyId, accelerator_key);
+    (UIA_AccessKeyPropertyId, access_key),
+    (UIA_AcceleratorKeyPropertyId, accelerator_key),
     (UIA_OrientationPropertyId, orientation),
     (UIA_IsRequiredForFormPropertyId, is_required),
     (UIA_IsPasswordPropertyId, is_password),
