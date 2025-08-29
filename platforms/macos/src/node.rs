@@ -23,12 +23,15 @@ use objc2::{
 };
 use objc2_app_kit::*;
 use objc2_foundation::{
-    ns_string, NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSPoint, NSRange, NSRect,
-    NSString,
+    ns_string, NSArray, NSCopying, NSInteger, NSMutableCopying, NSNumber, NSObject, NSPoint,
+    NSRange, NSRect, NSString,
 };
 use std::rc::{Rc, Weak};
 
 use crate::{context::Context, filters::filter, util::*};
+
+const ARIA_POS_IN_SET_ATTRIBUTE: &str = "AXARIAPosInSet";
+const ARIA_SET_SIZE_ATTRIBUTE: &str = "AXARIASetSize";
 
 const SCROLL_TO_VISIBLE_ACTION: &str = "AXScrollToVisible";
 
@@ -994,6 +997,45 @@ declare_class!(
             });
         }
 
+        // However, `NSAccessibilityElement` does have implementations of
+        // `accessibilityAttributeNames` and `accessibilityAttributeValue:`,
+        // so we need to work with those implementations.
+
+        #[method_id(accessibilityAttributeNames)]
+        fn attribute_names(&self) -> Id<NSArray<NSString>> {
+            let result: Id<NSArray<NSString>> =
+                unsafe { msg_send_id![super(self), accessibilityAttributeNames] };
+            let mut result = result.mutableCopy();
+            self.resolve(|node| {
+                if node.position_in_set().is_some() {
+                    result.push(ns_string!(ARIA_POS_IN_SET_ATTRIBUTE).copy());
+                }
+                if node.size_of_set_from_container(&filter).is_some() {
+                    result.push(ns_string!(ARIA_SET_SIZE_ATTRIBUTE).copy());
+                }
+            });
+            Id::into_super(result)
+        }
+
+        #[method_id(accessibilityAttributeValue:)]
+        fn attribute_value(&self, attribute: &NSString) -> Option<Id<NSObject>> {
+            self.resolve(|node| {
+                if attribute == ns_string!(ARIA_POS_IN_SET_ATTRIBUTE) {
+                    return node.position_in_set()
+                        .map(|value| Id::into_super(Id::into_super(NSNumber::new_usize(value))));
+                }
+                if attribute == ns_string!(ARIA_SET_SIZE_ATTRIBUTE) {
+                    return node.size_of_set_from_container(&filter)
+                        .map(|value| Id::into_super(Id::into_super(NSNumber::new_usize(value))));
+                }
+                None
+            })
+            .flatten()
+            .or_else(|| {
+                unsafe { msg_send_id![super(self), accessibilityAttributeValue: attribute] }
+            })
+        }
+
         #[method(isAccessibilitySelectorAllowed:)]
         fn is_selector_allowed(&self, selector: Sel) -> bool {
             self.resolve(|node| {
@@ -1078,6 +1120,8 @@ declare_class!(
                     || selector == sel!(isAccessibilitySelectorAllowed:)
                     || selector == sel!(accessibilityActionNames)
                     || selector == sel!(accessibilityPerformAction:)
+                    || selector == sel!(accessibilityAttributeNames)
+                    || selector == sel!(accessibilityAttributeValue:)
             })
             .unwrap_or(false)
         }
