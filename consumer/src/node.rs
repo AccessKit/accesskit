@@ -772,6 +772,14 @@ impl<'a> Node<'a> {
         self.data().class_name()
     }
 
+    pub fn access_key(&self) -> Option<&str> {
+        self.data().access_key()
+    }
+
+    pub fn keyboard_shortcut(&self) -> Option<&str> {
+        self.data().keyboard_shortcut()
+    }
+
     pub fn index_path(&self) -> Vec<usize> {
         self.relative_index_path(self.tree_state.root_id())
     }

@@ -313,6 +313,14 @@ impl NodeWrapper<'_> {
         self.0.class_name()
     }
 
+    fn access_key(&self) -> Option<&str> {
+        self.0.access_key()
+    }
+
+    fn accelerator_key(&self) -> Option<&str> {
+        self.0.keyboard_shortcut()
+    }
+
     fn orientation(&self) -> OrientationType {
         match self.0.orientation() {
             Some(Orientation::Horizontal) => OrientationType_Horizontal,
@@ -971,6 +979,8 @@ properties! {
     (UIA_LiveSettingPropertyId, live_setting),
     (UIA_AutomationIdPropertyId, automation_id),
     (UIA_ClassNamePropertyId, class_name),
+    (UIA_AccessKeyPropertyId, access_key);
+    (UIA_AcceleratorKeyPropertyId, accelerator_key);
     (UIA_OrientationPropertyId, orientation),
     (UIA_IsRequiredForFormPropertyId, is_required),
     (UIA_IsPasswordPropertyId, is_password),
