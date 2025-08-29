@@ -30,8 +30,10 @@ use std::rc::{Rc, Weak};
 
 use crate::{context::Context, filters::filter, util::*};
 
+const ACCESS_KEY_ATTRIBUTE: &str = "AXAccessKey";
 const ARIA_POS_IN_SET_ATTRIBUTE: &str = "AXARIAPosInSet";
 const ARIA_SET_SIZE_ATTRIBUTE: &str = "AXARIASetSize";
+const KEY_SHORTCUTS_VALUE_ATTRIBUTE: &str = "AXKeyShortcutsValue";
 
 const SCROLL_TO_VISIBLE_ACTION: &str = "AXScrollToVisible";
 
@@ -1013,6 +1015,12 @@ declare_class!(
                 if node.size_of_set_from_container(&filter).is_some() {
                     result.push(ns_string!(ARIA_SET_SIZE_ATTRIBUTE).copy());
                 }
+                if node.access_key().is_some() {
+                    result.push(ns_string!(ACCESS_KEY_ATTRIBUTE).copy());
+                }
+                if node.keyboard_shortcut().is_some() {
+                    result.push(ns_string!(KEY_SHORTCUTS_VALUE_ATTRIBUTE).copy());
+                }
             });
             Id::into_super(result)
         }
@@ -1027,6 +1035,14 @@ declare_class!(
                 if attribute == ns_string!(ARIA_SET_SIZE_ATTRIBUTE) {
                     return node.size_of_set_from_container(&filter)
                         .map(|value| Id::into_super(Id::into_super(NSNumber::new_usize(value))));
+                }
+                if attribute == ns_string!(ACCESS_KEY_ATTRIBUTE) {
+                    return node.access_key()
+                        .map(|value| Id::into_super(NSString::from_str(value)));
+                }
+                if attribute == ns_string!(KEY_SHORTCUTS_VALUE_ATTRIBUTE) {
+                    return node.keyboard_shortcut()
+                        .map(|value| Id::into_super(NSString::from_str(value)));
                 }
                 None
             })
