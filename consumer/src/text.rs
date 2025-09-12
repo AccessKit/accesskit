@@ -955,7 +955,7 @@ impl<'a> Node<'a> {
     /// in this node's coordinate space.
     pub fn text_position_at_point(&self, point: Point) -> Position<'_> {
         let id = self.id();
-        if let Some((node, point)) = self.hit_test(point, &move |node| text_node_filter(id, node)) {
+        if let Some((node, point)) = self.hit_test(point, move |node| text_node_filter(id, node)) {
             if node.role() == Role::TextRun {
                 let pos = InnerPosition {
                     node,

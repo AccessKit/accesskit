@@ -54,7 +54,7 @@ impl<'a> Node<'a> {
         self.tree_state.focus == self.id()
     }
 
-    pub fn is_focusable(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
+    pub fn is_focusable(&self, parent_filter: impl Fn(&Node) -> FilterResult) -> bool {
         self.supports_action(Action::Focus, parent_filter) || self.is_focused_in_tree()
     }
 
@@ -76,7 +76,7 @@ impl<'a> Node<'a> {
             .map(|id| self.tree_state.node_by_id(id).unwrap())
     }
 
-    pub fn filtered_parent(&self, filter: &impl Fn(&Node) -> FilterResult) -> Option<Node<'a>> {
+    pub fn filtered_parent(&self, filter: impl Fn(&Node) -> FilterResult) -> Option<Node<'a>> {
         self.parent().and_then(move |parent| {
             if filter(&parent) == FilterResult::Include {
                 Some(parent)
@@ -189,10 +189,10 @@ impl<'a> Node<'a> {
 
     pub fn deepest_first_filtered_child(
         &self,
-        filter: &impl Fn(&Node) -> FilterResult,
+        filter: impl Fn(&Node) -> FilterResult,
     ) -> Option<Node<'a>> {
-        let mut deepest_child = self.first_filtered_child(filter)?;
-        while let Some(first_child) = deepest_child.first_filtered_child(filter) {
+        let mut deepest_child = self.first_filtered_child(&filter)?;
+        while let Some(first_child) = deepest_child.first_filtered_child(&filter) {
             deepest_child = first_child;
         }
         Some(deepest_child)
@@ -208,10 +208,10 @@ impl<'a> Node<'a> {
 
     pub fn deepest_last_filtered_child(
         &self,
-        filter: &impl Fn(&Node) -> FilterResult,
+        filter: impl Fn(&Node) -> FilterResult,
     ) -> Option<Node<'a>> {
-        let mut deepest_child = self.last_filtered_child(filter)?;
-        while let Some(last_child) = deepest_child.last_filtered_child(filter) {
+        let mut deepest_child = self.last_filtered_child(&filter)?;
+        while let Some(last_child) = deepest_child.last_filtered_child(&filter) {
             deepest_child = last_child;
         }
         Some(deepest_child)
@@ -281,7 +281,7 @@ impl<'a> Node<'a> {
     pub(crate) fn hit_test(
         &self,
         point: Point,
-        filter: &impl Fn(&Node) -> FilterResult,
+        filter: impl Fn(&Node) -> FilterResult,
     ) -> Option<(Node<'a>, Point)> {
         let filter_result = filter(self);
 
@@ -291,7 +291,7 @@ impl<'a> Node<'a> {
 
         for child in self.children().rev() {
             let point = child.direct_transform().inverse() * point;
-            if let Some(result) = child.hit_test(point, filter) {
+            if let Some(result) = child.hit_test(point, &filter) {
                 return Some(result);
             }
         }
@@ -312,7 +312,7 @@ impl<'a> Node<'a> {
     pub fn node_at_point(
         &self,
         point: Point,
-        filter: &impl Fn(&Node) -> FilterResult,
+        filter: impl Fn(&Node) -> FilterResult,
     ) -> Option<Node<'a>> {
         self.hit_test(point, filter).map(|(node, _)| node)
     }
@@ -452,7 +452,7 @@ impl<'a> Node<'a> {
     // and we assume that it will based on the role, the attempted action
     // does nothing. This stance is a departure from Chromium.
 
-    pub fn is_clickable(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
+    pub fn is_clickable(&self, parent_filter: impl Fn(&Node) -> FilterResult) -> bool {
         self.supports_action(Action::Click, parent_filter)
     }
 
@@ -467,7 +467,7 @@ impl<'a> Node<'a> {
 
     pub fn size_of_set_from_container(
         &self,
-        filter: &impl Fn(&Node) -> FilterResult,
+        filter: impl Fn(&Node) -> FilterResult,
     ) -> Option<usize> {
         self.selection_container(filter)
             .and_then(|c| c.size_of_set())
@@ -491,7 +491,7 @@ impl<'a> Node<'a> {
         self.data().is_expanded().is_some()
     }
 
-    pub fn is_invocable(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
+    pub fn is_invocable(&self, parent_filter: impl Fn(&Node) -> FilterResult) -> bool {
         // A control is "invocable" if it initiates an action when activated but
         // does not maintain any state. A control that maintains state
         // when activated would be considered a toggle or expand-collapse
@@ -511,7 +511,7 @@ impl<'a> Node<'a> {
     pub fn supports_action(
         &self,
         action: Action,
-        parent_filter: &impl Fn(&Node) -> FilterResult,
+        parent_filter: impl Fn(&Node) -> FilterResult,
     ) -> bool {
         if self.data().supports_action(action) {
             return true;
@@ -522,11 +522,11 @@ impl<'a> Node<'a> {
         false
     }
 
-    pub fn supports_increment(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
+    pub fn supports_increment(&self, parent_filter: impl Fn(&Node) -> FilterResult) -> bool {
         self.supports_action(Action::Increment, parent_filter)
     }
 
-    pub fn supports_decrement(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
+    pub fn supports_decrement(&self, parent_filter: impl Fn(&Node) -> FilterResult) -> bool {
         self.supports_action(Action::Decrement, parent_filter)
     }
 }
@@ -557,7 +557,7 @@ impl<'a> Node<'a> {
                     | Role::RadioButton
             )
         {
-            LabelledBy::FromDescendants(FilteredChildren::new(*self, &descendant_label_filter))
+            LabelledBy::FromDescendants(FilteredChildren::new(*self, descendant_label_filter))
         } else {
             LabelledBy::Explicit {
                 ids: explicit.iter(),
@@ -790,7 +790,7 @@ impl<'a> Node<'a> {
 
     pub(crate) fn first_filtered_child(
         &self,
-        filter: &impl Fn(&Node) -> FilterResult,
+        filter: impl Fn(&Node) -> FilterResult,
     ) -> Option<Node<'a>> {
         for child in self.children() {
             let result = filter(&child);
@@ -798,7 +798,7 @@ impl<'a> Node<'a> {
                 return Some(child);
             }
             if result == FilterResult::ExcludeNode {
-                if let Some(descendant) = child.first_filtered_child(filter) {
+                if let Some(descendant) = child.first_filtered_child(&filter) {
                     return Some(descendant);
                 }
             }
@@ -808,7 +808,7 @@ impl<'a> Node<'a> {
 
     pub(crate) fn last_filtered_child(
         &self,
-        filter: &impl Fn(&Node) -> FilterResult,
+        filter: impl Fn(&Node) -> FilterResult,
     ) -> Option<Node<'a>> {
         for child in self.children().rev() {
             let result = filter(&child);
@@ -816,7 +816,7 @@ impl<'a> Node<'a> {
                 return Some(child);
             }
             if result == FilterResult::ExcludeNode {
-                if let Some(descendant) = child.last_filtered_child(filter) {
+                if let Some(descendant) = child.last_filtered_child(&filter) {
                     return Some(descendant);
                 }
             }
@@ -824,8 +824,8 @@ impl<'a> Node<'a> {
         None
     }
 
-    pub fn selection_container(&self, filter: &impl Fn(&Node) -> FilterResult) -> Option<Node<'a>> {
-        self.filtered_parent(&|parent| match filter(parent) {
+    pub fn selection_container(&self, filter: impl Fn(&Node) -> FilterResult) -> Option<Node<'a>> {
+        self.filtered_parent(|parent| match filter(parent) {
             FilterResult::Include if parent.is_container_with_selectable_children() => {
                 FilterResult::Include
             }
@@ -945,14 +945,14 @@ mod tests {
             tree.state()
                 .node_by_id(LABEL_1_1_ID)
                 .unwrap()
-                .filtered_parent(&test_tree_filter)
+                .filtered_parent(test_tree_filter)
                 .unwrap()
                 .id()
         );
         assert!(tree
             .state()
             .root()
-            .filtered_parent(&test_tree_filter)
+            .filtered_parent(test_tree_filter)
             .is_none());
     }
 
@@ -963,7 +963,7 @@ mod tests {
             PARAGRAPH_0_ID,
             tree.state()
                 .root()
-                .deepest_first_filtered_child(&test_tree_filter)
+                .deepest_first_filtered_child(test_tree_filter)
                 .unwrap()
                 .id()
         );
@@ -971,13 +971,13 @@ mod tests {
             .state()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
-            .deepest_first_filtered_child(&test_tree_filter)
+            .deepest_first_filtered_child(test_tree_filter)
             .is_none());
         assert!(tree
             .state()
             .node_by_id(LABEL_0_0_IGNORED_ID)
             .unwrap()
-            .deepest_first_filtered_child(&test_tree_filter)
+            .deepest_first_filtered_child(test_tree_filter)
             .is_none());
     }
 
@@ -1012,7 +1012,7 @@ mod tests {
             BUTTON_3_2_ID,
             tree.state()
                 .root()
-                .deepest_last_filtered_child(&test_tree_filter)
+                .deepest_last_filtered_child(test_tree_filter)
                 .unwrap()
                 .id()
         );
@@ -1021,7 +1021,7 @@ mod tests {
             tree.state()
                 .node_by_id(PARAGRAPH_3_IGNORED_ID)
                 .unwrap()
-                .deepest_last_filtered_child(&test_tree_filter)
+                .deepest_last_filtered_child(test_tree_filter)
                 .unwrap()
                 .id()
         );
@@ -1029,13 +1029,13 @@ mod tests {
             .state()
             .node_by_id(BUTTON_3_2_ID)
             .unwrap()
-            .deepest_last_filtered_child(&test_tree_filter)
+            .deepest_last_filtered_child(test_tree_filter)
             .is_none());
         assert!(tree
             .state()
             .node_by_id(PARAGRAPH_0_ID)
             .unwrap()
-            .deepest_last_filtered_child(&test_tree_filter)
+            .deepest_last_filtered_child(test_tree_filter)
             .is_none());
     }
 
@@ -1117,26 +1117,26 @@ mod tests {
         assert!(tree
             .state()
             .root()
-            .node_at_point(Point::new(10.0, 40.0), &test_tree_filter)
+            .node_at_point(Point::new(10.0, 40.0), test_tree_filter)
             .is_none());
         assert_eq!(
             Some(LABEL_1_1_ID),
             tree.state()
                 .root()
-                .node_at_point(Point::new(20.0, 50.0), &test_tree_filter)
+                .node_at_point(Point::new(20.0, 50.0), test_tree_filter)
                 .map(|node| node.id())
         );
         assert_eq!(
             Some(LABEL_1_1_ID),
             tree.state()
                 .root()
-                .node_at_point(Point::new(50.0, 60.0), &test_tree_filter)
+                .node_at_point(Point::new(50.0, 60.0), test_tree_filter)
                 .map(|node| node.id())
         );
         assert!(tree
             .state()
             .root()
-            .node_at_point(Point::new(100.0, 70.0), &test_tree_filter)
+            .node_at_point(Point::new(100.0, 70.0), test_tree_filter)
             .is_none());
     }
 

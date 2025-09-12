@@ -57,7 +57,7 @@ pub fn common_filter(node: &Node) -> FilterResult {
         }
     }
 
-    if let Some(parent) = node.filtered_parent(&common_filter_without_parent_checks) {
+    if let Some(parent) = node.filtered_parent(common_filter_without_parent_checks) {
         if parent.clips_children() {
             // If the parent clips its children, then exclude this subtree
             // if this child's bounding box isn't inside the parent's bounding
@@ -69,10 +69,10 @@ pub fn common_filter(node: &Node) -> FilterResult {
                 if let Some(parent_bbox) = parent.bounding_box() {
                     if bbox.intersect(parent_bbox).is_empty()
                         && !(is_first_sibling_in_parent_bbox(
-                            node.following_filtered_siblings(&common_filter_without_parent_checks),
+                            node.following_filtered_siblings(common_filter_without_parent_checks),
                             parent_bbox,
                         ) || is_first_sibling_in_parent_bbox(
-                            node.preceding_filtered_siblings(&common_filter_without_parent_checks),
+                            node.preceding_filtered_siblings(common_filter_without_parent_checks),
                             parent_bbox,
                         ))
                     {

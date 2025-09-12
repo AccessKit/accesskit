@@ -180,7 +180,7 @@ impl FusedIterator for PrecedingSiblings<'_> {}
 
 fn next_filtered_sibling<'a>(
     node: Option<Node<'a>>,
-    filter: &impl Fn(&Node) -> FilterResult,
+    filter: impl Fn(&Node) -> FilterResult,
 ) -> Option<Node<'a>> {
     let mut next = node;
     let mut consider_children = false;
@@ -219,7 +219,7 @@ fn next_filtered_sibling<'a>(
 
 fn previous_filtered_sibling<'a>(
     node: Option<Node<'a>>,
-    filter: &impl Fn(&Node) -> FilterResult,
+    filter: impl Fn(&Node) -> FilterResult,
 ) -> Option<Node<'a>> {
     let mut previous = node;
     let mut consider_children = false;
