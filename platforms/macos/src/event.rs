@@ -163,7 +163,7 @@ impl EventGenerator {
         to_remove.push_back(*node);
 
         while let Some(node) = to_remove.pop_front() {
-            for child in node.filtered_children(&filter) {
+            for child in node.filtered_children(filter) {
                 to_remove.push_back(child);
             }
 
@@ -196,7 +196,7 @@ impl EventGenerator {
         if node.role() != Role::TextRun {
             return;
         }
-        if let Some(node) = node.filtered_parent(&filter) {
+        if let Some(node) = node.filtered_parent(filter) {
             self.insert_text_change_if_needed_parent(node);
         }
     }
@@ -218,7 +218,7 @@ impl EventGenerator {
         if !wrapper.is_item_like() {
             return;
         }
-        if let Some(node) = node.selection_container(&filter) {
+        if let Some(node) = node.selection_container(filter) {
             self.enqueue_selected_rows_change_if_needed_parent(node);
         }
     }

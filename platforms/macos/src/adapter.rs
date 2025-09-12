@@ -291,7 +291,7 @@ impl Adapter {
         let state = tree.state();
         let root = state.root();
         let point = from_ns_point(&view, &root, point);
-        let node = root.node_at_point(point, &filter).unwrap_or(root);
+        let node = root.node_at_point(point, filter).unwrap_or(root);
         Id::autorelease_return(context.get_or_create_platform_node(node.id())) as *mut _
     }
 }

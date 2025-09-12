@@ -58,7 +58,7 @@ impl NodeWrapper<'_> {
     fn filtered_child_ids(
         &self,
     ) -> impl DoubleEndedIterator<Item = NodeId> + FusedIterator<Item = NodeId> + '_ {
-        self.0.filtered_children(&filter).map(|child| child.id())
+        self.0.filtered_children(filter).map(|child| child.id())
     }
 
     pub(crate) fn role(&self) -> AtspiRole {
@@ -291,7 +291,7 @@ impl NodeWrapper<'_> {
             atspi_state.insert(State::Editable);
         }
         // TODO: Focus and selection.
-        if state.is_focusable(&filter) {
+        if state.is_focusable(filter) {
             atspi_state.insert(State::Focusable);
         }
         let filter_result = filter(self.0);
@@ -368,7 +368,7 @@ impl NodeWrapper<'_> {
 
     fn size_of_set(&self) -> Option<String> {
         self.0
-            .size_of_set_from_container(&filter)
+            .size_of_set_from_container(filter)
             .map(|s| s.to_string())
     }
 
@@ -392,7 +392,7 @@ impl NodeWrapper<'_> {
     }
 
     fn supports_action(&self) -> bool {
-        self.0.is_clickable(&filter)
+        self.0.is_clickable(filter)
     }
 
     fn supports_component(&self) -> bool {
@@ -441,7 +441,7 @@ impl NodeWrapper<'_> {
     }
 
     fn n_actions(&self) -> i32 {
-        if self.0.is_clickable(&filter) {
+        if self.0.is_clickable(filter) {
             1
         } else {
             0
@@ -452,7 +452,7 @@ impl NodeWrapper<'_> {
         if index != 0 {
             return String::new();
         }
-        String::from(if self.0.is_clickable(&filter) {
+        String::from(if self.0.is_clickable(filter) {
             "click"
         } else {
             ""
@@ -482,7 +482,7 @@ impl NodeWrapper<'_> {
         bounds.map(|bounds| {
             let new_origin = window_bounds.accesskit_point_to_atspi_point(
                 bounds.origin(),
-                self.0.filtered_parent(&filter),
+                self.0.filtered_parent(filter),
                 coord_type,
             );
             bounds.with_origin(new_origin)
@@ -548,7 +548,7 @@ impl NodeWrapper<'_> {
         if parent_id != old.parent_id() {
             let parent = self
                 .0
-                .filtered_parent(&filter)
+                .filtered_parent(filter)
                 .map_or(NodeIdOrRoot::Root, |node| NodeIdOrRoot::Node(node.id()));
             adapter.emit_object_event(
                 self.id(),
@@ -771,7 +771,7 @@ impl PlatformNode {
     pub fn parent(&self) -> Result<NodeIdOrRoot> {
         self.resolve(|node| {
             let parent = node
-                .filtered_parent(&filter)
+                .filtered_parent(filter)
                 .map_or(NodeIdOrRoot::Root, |node| NodeIdOrRoot::Node(node.id()));
             Ok(parent)
         })
@@ -779,7 +779,7 @@ impl PlatformNode {
 
     pub fn child_count(&self) -> Result<i32> {
         self.resolve(|node| {
-            i32::try_from(node.filtered_children(&filter).count())
+            i32::try_from(node.filtered_children(filter).count())
                 .map_err(|_| Error::TooManyChildren)
         })
     }
@@ -805,7 +805,7 @@ impl PlatformNode {
     pub fn child_at_index(&self, index: usize) -> Result<Option<NodeId>> {
         self.resolve(|node| {
             let child = node
-                .filtered_children(&filter)
+                .filtered_children(filter)
                 .nth(index)
                 .map(|child| child.id());
             Ok(child)
@@ -818,7 +818,7 @@ impl PlatformNode {
     {
         self.resolve(|node| {
             let children = node
-                .filtered_children(&filter)
+                .filtered_children(filter)
                 .map(|child| child.id())
                 .map(f)
                 .collect();
@@ -828,7 +828,7 @@ impl PlatformNode {
 
     pub fn index_in_parent(&self) -> Result<i32> {
         self.resolve(|node| {
-            i32::try_from(node.preceding_filtered_siblings(&filter).count())
+            i32::try_from(node.preceding_filtered_siblings(filter).count())
                 .map_err(|_| Error::IndexOutOfRange)
         })
     }
@@ -988,7 +988,7 @@ impl PlatformNode {
                 coord_type,
             );
             let point = node.transform().inverse() * point;
-            Ok(node.node_at_point(point, &filter).map(|node| node.id()))
+            Ok(node.node_at_point(point, filter).map(|node| node.id()))
         })
     }
 
@@ -1036,7 +1036,7 @@ impl PlatformNode {
             let window_bounds = context.read_root_window_bounds();
             let point = window_bounds.atspi_point_to_accesskit_point(
                 Point::new(x.into(), y.into()),
-                node.filtered_parent(&filter),
+                node.filtered_parent(filter),
                 coord_type,
             );
             context.do_action(ActionRequest {
@@ -1074,7 +1074,7 @@ impl PlatformNode {
             if let Some(child) = node.filtered_children(filter).nth(child_index) {
                 if let Some(true) = child.is_selected() {
                     Ok(true)
-                } else if child.is_selectable() && child.is_clickable(&filter) {
+                } else if child.is_selectable() && child.is_clickable(filter) {
                     context.do_action(ActionRequest {
                         action: Action::Click,
                         target: child.id(),
@@ -1097,7 +1097,7 @@ impl PlatformNode {
                 .filter(|c| c.is_selected() == Some(true))
                 .nth(selected_child_index)
             {
-                if child.is_clickable(&filter) {
+                if child.is_clickable(filter) {
                     context.do_action(ActionRequest {
                         action: Action::Click,
                         target: child.id(),
@@ -1137,7 +1137,7 @@ impl PlatformNode {
             if let Some(child) = node.filtered_children(filter).nth(child_index) {
                 if let Some(false) = child.is_selected() {
                     Ok(true)
-                } else if child.is_selectable() && child.is_clickable(&filter) {
+                } else if child.is_selectable() && child.is_clickable(filter) {
                     context.do_action(ActionRequest {
                         action: Action::Click,
                         target: child.id(),

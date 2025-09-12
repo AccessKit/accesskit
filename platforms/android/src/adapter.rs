@@ -387,9 +387,7 @@ impl Adapter {
             ACTION_CLICK => ActionRequest {
                 action: {
                     let node = tree_state.node_by_id(target).unwrap();
-                    if node.is_focusable(&filter)
-                        && !node.is_focused()
-                        && !node.is_clickable(&filter)
+                    if node.is_focusable(filter) && !node.is_focused() && !node.is_clickable(filter)
                     {
                         Action::Focus
                     } else {
@@ -425,12 +423,12 @@ impl Adapter {
                             }
                         }
                     } else if action == ACTION_SCROLL_BACKWARD {
-                        if node.supports_action(Action::ScrollUp, &filter) {
+                        if node.supports_action(Action::ScrollUp, filter) {
                             Action::ScrollUp
                         } else {
                             Action::ScrollLeft
                         }
-                    } else if node.supports_action(Action::ScrollDown, &filter) {
+                    } else if node.supports_action(Action::ScrollDown, filter) {
                         Action::ScrollDown
                     } else {
                         Action::ScrollRight
@@ -495,7 +493,7 @@ impl Adapter {
         // TalkBack expects the text selection change to take effect
         // immediately, so we optimistically update the node.
         // But don't be *too* optimistic.
-        if !node.supports_action(Action::SetTextSelection, &filter) {
+        if !node.supports_action(Action::SetTextSelection, filter) {
             return None;
         }
         let (anchor, focus, extra) = selection_factory(&node)?;
@@ -754,7 +752,7 @@ impl Adapter {
         let root = tree_state.root();
         let point = Point::new(x.into(), y.into());
         let point = root.transform().inverse() * point;
-        let node = root.node_at_point(point, &filter)?;
+        let node = root.node_at_point(point, filter)?;
         Some(self.node_id_map.get_or_create_java_id(&node))
     }
 

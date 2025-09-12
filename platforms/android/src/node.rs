@@ -36,7 +36,7 @@ impl NodeWrapper<'_> {
     }
 
     fn is_focusable(&self) -> bool {
-        self.0.is_focusable(&filter) && self.0.role() != Role::ScrollView
+        self.0.is_focusable(filter) && self.0.role() != Role::ScrollView
     }
 
     fn is_focused(&self) -> bool {
@@ -60,10 +60,10 @@ impl NodeWrapper<'_> {
     }
 
     fn is_scrollable(&self) -> bool {
-        self.0.supports_action(Action::ScrollDown, &filter)
-            || self.0.supports_action(Action::ScrollLeft, &filter)
-            || self.0.supports_action(Action::ScrollRight, &filter)
-            || self.0.supports_action(Action::ScrollUp, &filter)
+        self.0.supports_action(Action::ScrollDown, filter)
+            || self.0.supports_action(Action::ScrollLeft, filter)
+            || self.0.supports_action(Action::ScrollRight, filter)
+            || self.0.supports_action(Action::ScrollUp, filter)
     }
 
     fn is_selected(&self) -> bool {
@@ -182,7 +182,7 @@ impl NodeWrapper<'_> {
         id_map: &mut NodeIdMap,
         node_info: &JObject,
     ) {
-        for child in self.0.filtered_children(&filter) {
+        for child in self.0.filtered_children(filter) {
             env.call_method(
                 node_info,
                 "addChild",
@@ -191,7 +191,7 @@ impl NodeWrapper<'_> {
             )
             .unwrap();
         }
-        if let Some(parent) = self.0.filtered_parent(&filter) {
+        if let Some(parent) = self.0.filtered_parent(filter) {
             if parent.is_root() {
                 env.call_method(
                     node_info,
@@ -331,7 +331,7 @@ impl NodeWrapper<'_> {
         .unwrap();
 
         let can_focus = self.is_focusable() && !self.0.is_focused();
-        if self.0.is_clickable(&filter) || can_focus {
+        if self.0.is_clickable(filter) || can_focus {
             add_action(env, node_info, ACTION_CLICK);
         }
         if can_focus {
@@ -353,13 +353,13 @@ impl NodeWrapper<'_> {
             )
             .unwrap();
         }
-        if self.0.supports_action(Action::ScrollLeft, &filter)
-            || self.0.supports_action(Action::ScrollUp, &filter)
+        if self.0.supports_action(Action::ScrollLeft, filter)
+            || self.0.supports_action(Action::ScrollUp, filter)
         {
             add_action(env, node_info, ACTION_SCROLL_BACKWARD);
         }
-        if self.0.supports_action(Action::ScrollRight, &filter)
-            || self.0.supports_action(Action::ScrollDown, &filter)
+        if self.0.supports_action(Action::ScrollRight, filter)
+            || self.0.supports_action(Action::ScrollDown, filter)
         {
             add_action(env, node_info, ACTION_SCROLL_FORWARD);
         }

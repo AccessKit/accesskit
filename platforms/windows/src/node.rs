@@ -289,7 +289,7 @@ impl NodeWrapper<'_> {
     }
 
     fn is_focusable(&self) -> bool {
-        self.0.is_focusable(&filter)
+        self.0.is_focusable(filter)
     }
 
     fn is_focused(&self) -> bool {
@@ -334,7 +334,7 @@ impl NodeWrapper<'_> {
     }
 
     fn is_invoke_pattern_supported(&self) -> bool {
-        self.0.is_invocable(&filter)
+        self.0.is_invocable(filter)
     }
 
     fn is_value_pattern_supported(&self) -> bool {
@@ -382,7 +382,7 @@ impl NodeWrapper<'_> {
     }
 
     fn is_scroll_item_pattern_supported(&self) -> bool {
-        self.0.supports_action(Action::ScrollIntoView, &filter)
+        self.0.supports_action(Action::ScrollIntoView, filter)
     }
 
     pub(crate) fn is_selection_item_pattern_supported(&self) -> bool {
@@ -427,7 +427,7 @@ impl NodeWrapper<'_> {
 
     fn size_of_set(&self) -> Option<i32> {
         self.0
-            .size_of_set_from_container(&filter)
+            .size_of_set_from_container(filter)
             .and_then(|s| s.try_into().ok())
     }
 
@@ -738,13 +738,13 @@ impl IRawElementProviderFragment_Impl for PlatformNode_Impl {
     fn Navigate(&self, direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
         self.resolve(|node| {
             let result = match direction {
-                NavigateDirection_Parent => node.filtered_parent(&filter_with_root_exception),
-                NavigateDirection_NextSibling => node.following_filtered_siblings(&filter).next(),
+                NavigateDirection_Parent => node.filtered_parent(filter_with_root_exception),
+                NavigateDirection_NextSibling => node.following_filtered_siblings(filter).next(),
                 NavigateDirection_PreviousSibling => {
-                    node.preceding_filtered_siblings(&filter).next()
+                    node.preceding_filtered_siblings(filter).next()
                 }
-                NavigateDirection_FirstChild => node.filtered_children(&filter).next(),
-                NavigateDirection_LastChild => node.filtered_children(&filter).next_back(),
+                NavigateDirection_FirstChild => node.filtered_children(filter).next(),
+                NavigateDirection_LastChild => node.filtered_children(filter).next_back(),
                 _ => None,
             };
             match result {
@@ -811,7 +811,7 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode_Impl {
             let client_top_left = context.client_top_left();
             let point = Point::new(x - client_top_left.x, y - client_top_left.y);
             let point = node.transform().inverse() * point;
-            node.node_at_point(point, &filter).map_or_else(
+            node.node_at_point(point, filter).map_or_else(
                 || Err(Error::empty()),
                 |node| Ok(self.relative(node.id()).into()),
             )
@@ -1049,7 +1049,7 @@ patterns! {
 
         fn SelectionContainer(&self) -> Result<IRawElementProviderSimple> {
             self.resolve(|node| {
-                if let Some(container) = node.selection_container(&filter) {
+                if let Some(container) = node.selection_container(filter) {
                     Ok(self.relative(container.id()).into())
                 } else {
                     Err(E_FAIL.into())
@@ -1064,7 +1064,7 @@ patterns! {
         fn GetSelection(&self) -> Result<*mut SAFEARRAY> {
             self.resolve(|node| {
                 let selection: Vec<_> = node
-                    .items(&filter)
+                    .items(filter)
                     .filter(|item| item.is_selected() == Some(true))
                     .map(|item| self.relative(item.id()))
                     .map(IRawElementProviderSimple::from)

@@ -381,7 +381,7 @@ declare_class!(
         #[method_id(accessibilityParent)]
         fn parent(&self) -> Option<Id<AnyObject>> {
             self.resolve_with_context(|node, context| {
-                if let Some(parent) = node.filtered_parent(&filter) {
+                if let Some(parent) = node.filtered_parent(filter) {
                     Some(Id::into_super(Id::into_super(Id::into_super(context.get_or_create_platform_node(parent.id())))))
                 } else {
                     context
@@ -602,7 +602,7 @@ declare_class!(
         fn set_focused(&self, focused: bool) {
             self.resolve_with_context(|node, context| {
                 if focused {
-                    if node.is_focusable(&filter) {
+                    if node.is_focusable(filter) {
                         context.do_action(ActionRequest {
                             action: Action::Focus,
                             target: node.id(),
@@ -611,7 +611,7 @@ declare_class!(
                     }
                 } else {
                     let root = node.tree_state.root();
-                    if root.is_focusable(&filter) {
+                    if root.is_focusable(filter) {
                         context.do_action(ActionRequest {
                             action: Action::Focus,
                             target: root.id(),
@@ -625,7 +625,7 @@ declare_class!(
         #[method(accessibilityPerformPress)]
         fn press(&self) -> bool {
             self.resolve_with_context(|node, context| {
-                let clickable = node.is_clickable(&filter);
+                let clickable = node.is_clickable(filter);
                 if clickable {
                     context.do_action(ActionRequest {
                         action: Action::Click,
@@ -641,7 +641,7 @@ declare_class!(
         #[method(accessibilityPerformIncrement)]
         fn increment(&self) -> bool {
             self.resolve_with_context(|node, context| {
-                let supports_increment = node.supports_increment(&filter);
+                let supports_increment = node.supports_increment(filter);
                 if supports_increment {
                     context.do_action(ActionRequest {
                         action: Action::Increment,
@@ -657,7 +657,7 @@ declare_class!(
         #[method(accessibilityPerformDecrement)]
         fn decrement(&self) -> bool {
             self.resolve_with_context(|node, context| {
-                let supports_decrement = node.supports_decrement(&filter);
+                let supports_decrement = node.supports_decrement(filter);
                 if supports_decrement {
                     context.do_action(ActionRequest {
                         action: Action::Decrement,
@@ -861,7 +861,7 @@ declare_class!(
         fn set_selected(&self, selected: bool) {
             self.resolve_with_context(|node, context| {
                 let wrapper = NodeWrapper(node);
-                if !node.is_clickable(&filter)
+                if !node.is_clickable(filter)
                     || !wrapper.is_item_like()
                     || !node.is_selectable()
                 {
@@ -915,7 +915,7 @@ declare_class!(
         fn pick(&self) -> bool {
             self.resolve_with_context(|node, context| {
                 let wrapper = NodeWrapper(node);
-                let selectable = node.is_clickable(&filter)
+                let selectable = node.is_clickable(filter)
                     && wrapper.is_item_like()
                     && node.is_selectable();
                 if selectable {
@@ -974,7 +974,7 @@ declare_class!(
         fn action_names(&self) -> Id<NSArray<NSString>> {
             let mut result = vec![];
             self.resolve(|node| {
-                if node.supports_action(Action::ScrollIntoView, &filter) {
+                if node.supports_action(Action::ScrollIntoView, filter) {
                     result.push(ns_string!(SCROLL_TO_VISIBLE_ACTION).copy());
                 }
             });
@@ -998,16 +998,16 @@ declare_class!(
         fn is_selector_allowed(&self, selector: Sel) -> bool {
             self.resolve(|node| {
                 if selector == sel!(setAccessibilityFocused:) {
-                    return node.is_focusable(&filter);
+                    return node.is_focusable(filter);
                 }
                 if selector == sel!(accessibilityPerformPress) {
-                    return node.is_clickable(&filter);
+                    return node.is_clickable(filter);
                 }
                 if selector == sel!(accessibilityPerformIncrement) {
-                    return node.supports_increment(&filter);
+                    return node.supports_increment(filter);
                 }
                 if selector == sel!(accessibilityPerformDecrement) {
-                    return node.supports_decrement(&filter);
+                    return node.supports_decrement(filter);
                 }
                 if selector == sel!(accessibilityNumberOfCharacters)
                     || selector == sel!(accessibilitySelectedText)
@@ -1044,7 +1044,7 @@ declare_class!(
                     || selector == sel!(accessibilityPerformPick)
                 {
                     let wrapper = NodeWrapper(node);
-                    return node.is_clickable(&filter)
+                    return node.is_clickable(filter)
                         && wrapper.is_item_like()
                         && node.is_selectable();
                 }

@@ -82,7 +82,7 @@ impl<'a> AdapterChangeHandler<'a> {
 
     fn add_subtree(&mut self, node: &Node) {
         self.add_node(node);
-        for child in node.filtered_children(&filter) {
+        for child in node.filtered_children(filter) {
             self.add_subtree(&child);
         }
     }
@@ -110,7 +110,7 @@ impl<'a> AdapterChangeHandler<'a> {
     }
 
     fn remove_subtree(&mut self, node: &Node) {
-        for child in node.filtered_children(&filter) {
+        for child in node.filtered_children(filter) {
             self.remove_subtree(&child);
         }
         self.remove_node(node);
@@ -182,8 +182,8 @@ impl<'a> AdapterChangeHandler<'a> {
     fn emit_text_change_if_needed(&mut self, old_node: &Node, new_node: &Node) {
         if let Role::TextRun | Role::GenericContainer = new_node.role() {
             if let (Some(old_parent), Some(new_parent)) = (
-                old_node.filtered_parent(&filter),
-                new_node.filtered_parent(&filter),
+                old_node.filtered_parent(filter),
+                new_node.filtered_parent(filter),
             ) {
                 self.emit_text_change_if_needed_parent(&old_parent, &new_parent);
             }
@@ -259,7 +259,7 @@ impl<'a> AdapterChangeHandler<'a> {
         if !node.is_item_like() {
             return;
         }
-        if let Some(node) = node.selection_container(&filter) {
+        if let Some(node) = node.selection_container(filter) {
             self.enqueue_selection_changed_if_needed_parent(node);
         }
     }
@@ -441,7 +441,7 @@ impl Adapter {
 
     fn register_tree(&self) {
         fn add_children(node: Node<'_>, to_add: &mut Vec<(NodeId, InterfaceSet)>) {
-            for child in node.filtered_children(&filter) {
+            for child in node.filtered_children(filter) {
                 let child_id = child.id();
                 let wrapper = NodeWrapper(&child);
                 let interfaces = wrapper.interfaces();

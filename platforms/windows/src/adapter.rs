@@ -79,7 +79,7 @@ impl AdapterChangeHandler<'_> {
         if node.role() != Role::TextRun {
             return;
         }
-        if let Some(node) = node.filtered_parent(&filter) {
+        if let Some(node) = node.filtered_parent(filter) {
             self.insert_text_change_if_needed_parent(node);
         }
     }
@@ -89,7 +89,7 @@ impl AdapterChangeHandler<'_> {
         // selection container as the key because |FinalizeSelectionEvents| needs to
         // determine whether or not there is only one element selected in order to
         // optimize what platform events are sent.
-        let key = if let Some(container) = node.selection_container(&filter) {
+        let key = if let Some(container) = node.selection_container(filter) {
             container.id()
         } else {
             node.id()
