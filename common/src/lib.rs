@@ -55,8 +55,14 @@ pub use geometry::{Affine, Point, Rect, Size, Vec2};
 pub enum Role {
     #[default]
     Unknown,
+
+    /// Should be used for selectable Text. For each line of text one `TextRun` should be used.
+    /// Each one of them should be added as a child to a `Label`, `TextInput`, `MultiLineTextInput`
+    /// or similar [`Node`]. The selection can be specified with [`Node::set_text_selection`] on the
+    /// parent [`Node`].
     TextRun,
     Cell,
+    /// If the text should be selectable see the documentation at [`Role::MultilineTextInput`].
     Label,
     Image,
     Link,
@@ -79,6 +85,8 @@ pub enum Role {
 
     CheckBox,
     RadioButton,
+
+    /// To make the text selectable see the documentation at [`Role::MultilineTextInput`].
     TextInput,
     Button,
     DefaultButton,
@@ -94,17 +102,31 @@ pub enum Role {
     Switch,
     Menu,
 
+    /// `MultilineTextInput` should have a child with [`Role::TextRun`] for each line of text.
+    /// For text selection [`Node::set_text_selection`] and [`Node::set_character_lengths`] are necessary.
+    /// These should be used on the `MultilineTextInput` node and not on the `TextRun` nodes.
     MultilineTextInput,
+    /// To make the text selectable see the documentation at [`Role::MultilineTextInput`].
     SearchInput,
+    /// To make the text selectable see the documentation at [`Role::MultilineTextInput`].
     DateInput,
+    /// To make the text selectable see the documentation at [`Role::MultilineTextInput`].
     DateTimeInput,
+    /// To make the text selectable see the documentation at [`Role::MultilineTextInput`].
     WeekInput,
+    /// To make the text selectable see the documentation at [`Role::MultilineTextInput`].
     MonthInput,
+    /// To make the text selectable see the documentation at [`Role::MultilineTextInput`].
     TimeInput,
+    /// To make the text selectable see the documentation at [`Role::MultilineTextInput`].
     EmailInput,
+    /// To make the text selectable see the documentation at [`Role::MultilineTextInput`].
     NumberInput,
+    /// To make the text selectable see the documentation at [`Role::MultilineTextInput`].
     PasswordInput,
+    /// To make the text selectable see the documentation at [`Role::MultilineTextInput`].
     PhoneNumberInput,
+    /// To make the text selectable see the documentation at [`Role::MultilineTextInput`].
     UrlInput,
 
     Abbr,
@@ -1989,6 +2011,11 @@ property_methods! {
     /// [`transform`]: Node::transform
     (Bounds, bounds, get_rect_property, Option<Rect>, set_bounds, set_rect_property, Rect, clear_bounds),
 
+    /// Text selection should be added to the parent [`Node`] of the `TextRun` nodes.
+    /// In [`TextSelection`] the line of selected text is specified by setting the [`NodeId`]
+    /// to the `TextRun` that holds the selected line.
+    ///
+    /// For text selection to work correctly [`Node::character_lengths`] needs to be set as well.
     (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, impl Into<Box<TextSelection>>, clear_text_selection)
 }
 
