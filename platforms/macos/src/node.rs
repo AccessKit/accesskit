@@ -548,9 +548,14 @@ declare_class!(
         }
 
         #[method(setAccessibilityValue:)]
-        fn set_value(&self, _value: &NSObject) {
-            // This isn't yet implemented. See the comment on this selector
-            // in `is_selector_allowed`.
+        fn set_value(&self, value: &NSString) {
+            self.resolve_with_context(|node, context| {
+                context.do_action(ActionRequest {
+                    action: Action::SetValue,
+                    target: node.id(),
+                    data: Some(ActionData::Value(value.to_string().into())),
+                });
+            });
         }
 
         #[method_id(accessibilityMinValue)]
@@ -1024,11 +1029,7 @@ declare_class!(
                     return node.supports_text_ranges();
                 }
                 if selector == sel!(setAccessibilityValue:) {
-                    // Our implementation of this currently does nothing,
-                    // and it's not clear if VoiceOver ever actually uses it,
-                    // but it must be allowed for editable text in order to get
-                    // the expected VoiceOver behavior.
-                    return node.supports_text_ranges() && !node.is_read_only();
+                    return node.supports_action(Action::SetValue, &filter) && !node.is_read_only();
                 }
                 if selector == sel!(isAccessibilitySelected) {
                     let wrapper = NodeWrapper(node);
