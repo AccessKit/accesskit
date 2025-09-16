@@ -1029,7 +1029,10 @@ declare_class!(
                     return node.supports_text_ranges();
                 }
                 if selector == sel!(setAccessibilityValue:) {
-                    return node.supports_action(Action::SetValue, &filter) && !node.is_read_only();
+                    return (
+                        node.supports_text_ranges()
+                        || node.supports_action(Action::SetValue, &filter)
+                    ) && !node.is_read_only();
                 }
                 if selector == sel!(isAccessibilitySelected) {
                     let wrapper = NodeWrapper(node);
