@@ -23,8 +23,7 @@ use objc2::{
 };
 use objc2_app_kit::*;
 use objc2_foundation::{
-    ns_string, NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSPoint, NSRange, NSRect,
-    NSString,
+    ns_string, NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSObjectProtocol, NSPoint, NSRange, NSRect, NSString
 };
 use std::rc::{Rc, Weak};
 
@@ -357,6 +356,12 @@ impl NodeWrapper<'_> {
     }
 }
 
+// derived from objc2 0.6 `AnyObject::downcast_ref`
+// TODO: can be removed after updating objc2 to 0.6 which has `AnyObject::downcast_ref`
+fn downcast_ref<T: ClassType>(obj: &NSObject) -> Option<&T> {
+    obj.is_kind_of::<T>().then(|| unsafe { &*(obj as *const NSObject).cast::<T>() })
+}
+
 pub(crate) struct PlatformNodeIvars {
     context: Weak<Context>,
     node_id: NodeId,
@@ -548,14 +553,25 @@ declare_class!(
         }
 
         #[method(setAccessibilityValue:)]
-        fn set_value(&self, value: &NSString) {
-            self.resolve_with_context(|node, context| {
-                context.do_action(ActionRequest {
-                    action: Action::SetValue,
-                    target: node.id(),
-                    data: Some(ActionData::Value(value.to_string().into())),
+        fn set_value(&self, value: &NSObject) {
+            dbg!(value.class());
+            if let Some(string) = downcast_ref::<NSString>(value) {
+                self.resolve_with_context(|node, context| {
+                    context.do_action(ActionRequest {
+                        action: Action::SetValue,
+                        target: node.id(),
+                        data: Some(ActionData::Value(string.to_string().into())),
+                    });
                 });
-            });
+            } else if let Some(number) = downcast_ref::<NSNumber>(value) {
+                self.resolve_with_context(|node, context| {
+                    context.do_action(ActionRequest {
+                        action: Action::SetValue,
+                        target: node.id(),
+                        data: Some(ActionData::NumericValue(number.doubleValue())),
+                    });
+                });
+            }
         }
 
         #[method_id(accessibilityMinValue)]
