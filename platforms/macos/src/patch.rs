@@ -7,11 +7,11 @@ use objc2::{
     encode::{Encode, EncodeArguments, EncodeReturn, Encoding},
     ffi::class_addMethod,
     msg_send,
-    runtime::{AnyClass, AnyObject, Bool, MethodImplementation, Sel},
+    runtime::{AnyClass, AnyObject, MethodImplementation, Sel},
     sel, Message,
 };
 use objc2_app_kit::NSWindow;
-use std::{ffi::CString, ptr::null_mut};
+use std::{ffi::CString, ptr::null_mut, str::FromStr};
 
 extern "C" fn focus_forwarder(this: &NSWindow, _cmd: Sel) -> *mut AnyObject {
     unsafe {
@@ -36,7 +36,7 @@ extern "C" fn focus_forwarder(this: &NSWindow, _cmd: Sel) -> *mut AnyObject {
 /// Also, this function assumes that the specified class is a subclass
 /// of `NSWindow`.
 pub unsafe fn add_focus_forwarder_to_window_class(class_name: &str) {
-    let class = AnyClass::get(class_name).unwrap();
+    let class = AnyClass::get(&CString::from_str(class_name).unwrap()).unwrap();
     unsafe {
         add_method(
             class as *const AnyClass as *mut AnyClass,
@@ -66,19 +66,17 @@ where
     );
 
     let types = method_type_encoding(&F::Return::ENCODING_RETURN, encs);
-    let success = Bool::from_raw(unsafe {
-        class_addMethod(
-            class as *mut _,
-            sel.as_ptr(),
-            Some(func.__imp()),
-            types.as_ptr(),
-        )
-    });
+    let success = unsafe { class_addMethod(class as *mut _, sel, func.__imp(), types.as_ptr()) };
     assert!(success.as_bool(), "Failed to add method {sel:?}");
 }
 
 fn count_args(sel: Sel) -> usize {
-    sel.name().chars().filter(|&c| c == ':').count()
+    sel.name()
+        .to_str()
+        .unwrap()
+        .chars()
+        .filter(|&c| c == ':')
+        .count()
 }
 
 fn method_type_encoding(ret: &Encoding, args: &[Encoding]) -> CString {
