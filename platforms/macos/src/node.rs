@@ -554,7 +554,6 @@ declare_class!(
 
         #[method(setAccessibilityValue:)]
         fn set_value(&self, value: &NSObject) {
-            dbg!(value.class());
             if let Some(string) = downcast_ref::<NSString>(value) {
                 self.resolve_with_context(|node, context| {
                     context.do_action(ActionRequest {
