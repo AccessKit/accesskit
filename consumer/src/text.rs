@@ -4,7 +4,8 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    NodeId, Point, Rect, Role, TextDirection, TextPosition as WeakPosition, TextSelection,
+    Node as NodeData, NodeId, Point, Rect, Role, TextAlign, TextDecoration, TextDirection,
+    TextPosition as WeakPosition, TextSelection, VerticalOffset,
 };
 use alloc::{string::String, vec::Vec};
 use core::{cmp::Ordering, fmt, iter::FusedIterator};
@@ -647,7 +648,7 @@ impl<'a> Range<'a> {
                     return Some(Vec::new());
                 }
             };
-            let direction = match node.data().text_direction() {
+            let direction = match node.text_direction() {
                 Some(direction) => direction,
                 None => {
                     return Some(Vec::new());
@@ -844,7 +845,7 @@ fn character_index_at_point(node: &Node, point: Point) -> usize {
             return 0;
         }
     };
-    let direction = match node.data().text_direction() {
+    let direction = match node.text_direction() {
         Some(direction) => direction,
         None => {
             return 0;
@@ -868,6 +869,54 @@ fn character_index_at_point(node: &Node, point: Point) -> usize {
 }
 
 impl<'a> Node<'a> {
+    pub fn text_direction(&self) -> Option<TextDirection> {
+        self.fetch_inherited_property(NodeData::text_direction)
+    }
+
+    pub fn font_family(&self) -> Option<&str> {
+        self.fetch_inherited_property(NodeData::font_family)
+    }
+
+    pub fn language(&self) -> Option<&str> {
+        self.fetch_inherited_property(NodeData::language)
+    }
+
+    pub fn font_size(&self) -> Option<f64> {
+        self.fetch_inherited_property(NodeData::font_size)
+    }
+
+    pub fn font_weight(&self) -> Option<f64> {
+        self.fetch_inherited_property(NodeData::font_weight)
+    }
+
+    pub fn background_color(&self) -> Option<u32> {
+        self.fetch_inherited_property(NodeData::background_color)
+    }
+
+    pub fn foreground_color(&self) -> Option<u32> {
+        self.fetch_inherited_property(NodeData::foreground_color)
+    }
+
+    pub fn overline(&self) -> Option<TextDecoration> {
+        self.fetch_inherited_property(NodeData::overline)
+    }
+
+    pub fn strikethrough(&self) -> Option<TextDecoration> {
+        self.fetch_inherited_property(NodeData::strikethrough)
+    }
+
+    pub fn underline(&self) -> Option<TextDecoration> {
+        self.fetch_inherited_property(NodeData::underline)
+    }
+
+    pub fn text_align(&self) -> Option<TextAlign> {
+        self.fetch_inherited_property(NodeData::text_align)
+    }
+
+    pub fn vertical_offset(&self) -> Option<VerticalOffset> {
+        self.fetch_inherited_property(NodeData::vertical_offset)
+    }
+
     pub(crate) fn text_runs(
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
@@ -985,7 +1034,7 @@ impl<'a> Node<'a> {
 
         for node in self.text_runs().rev() {
             if let Some(rect) = node.bounding_box_in_coordinate_space(self) {
-                if let Some(direction) = node.data().text_direction() {
+                if let Some(direction) = node.text_direction() {
                     let is_past_end = match direction {
                         TextDirection::LeftToRight => {
                             point.y >= rect.y0 && point.y < rect.y1 && point.x >= rect.x1
