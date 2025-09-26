@@ -71,7 +71,7 @@ pub struct Event {
     pub window_event: WindowEvent,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum WindowEvent {
     InitialTreeRequested,
     ActionRequested(ActionRequest),
