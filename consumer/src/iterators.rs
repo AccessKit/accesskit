@@ -289,7 +289,12 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> Iterator for FollowingFilteredSiblin
         if self.done {
             None
         } else {
-            self.done = self.front.as_ref().unwrap().id() == self.back.as_ref().unwrap().id();
+            self.done = self
+                .front
+                .as_ref()
+                .zip(self.back.as_ref())
+                .map(|(f, b)| f.id() == b.id())
+                .unwrap_or(true);
             let current = self.front;
             self.front = next_filtered_sibling(self.front, &self.filter);
             current
@@ -304,7 +309,12 @@ impl<Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator
         if self.done {
             None
         } else {
-            self.done = self.back.as_ref().unwrap().id() == self.front.as_ref().unwrap().id();
+            self.done = self
+                .front
+                .as_ref()
+                .zip(self.back.as_ref())
+                .map(|(f, b)| f.id() == b.id())
+                .unwrap_or(true);
             let current = self.back;
             self.back = previous_filtered_sibling(self.back, &self.filter);
             current
@@ -347,7 +357,12 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> Iterator for PrecedingFilteredSiblin
         if self.done {
             None
         } else {
-            self.done = self.front.as_ref().unwrap().id() == self.back.as_ref().unwrap().id();
+            self.done = self
+                .front
+                .as_ref()
+                .zip(self.back.as_ref())
+                .map(|(f, b)| f.id() == b.id())
+                .unwrap_or(true);
             let current = self.front;
             self.front = previous_filtered_sibling(self.front, &self.filter);
             current
@@ -362,7 +377,12 @@ impl<Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator
         if self.done {
             None
         } else {
-            self.done = self.back.as_ref().unwrap().id() == self.front.as_ref().unwrap().id();
+            self.done = self
+                .front
+                .as_ref()
+                .zip(self.back.as_ref())
+                .map(|(f, b)| f.id() == b.id())
+                .unwrap_or(true);
             let current = self.back;
             self.back = next_filtered_sibling(self.back, &self.filter);
             current
@@ -403,7 +423,12 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> Iterator for FilteredChildren<'a, Fi
         if self.done {
             None
         } else {
-            self.done = self.front.as_ref().unwrap().id() == self.back.as_ref().unwrap().id();
+            self.done = self
+                .front
+                .as_ref()
+                .zip(self.back.as_ref())
+                .map(|(f, b)| f.id() == b.id())
+                .unwrap_or(true);
             let current = self.front;
             self.front = next_filtered_sibling(self.front, &self.filter);
             current
@@ -416,7 +441,12 @@ impl<Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator for FilteredChildren
         if self.done {
             None
         } else {
-            self.done = self.back.as_ref().unwrap().id() == self.front.as_ref().unwrap().id();
+            self.done = self
+                .front
+                .as_ref()
+                .zip(self.back.as_ref())
+                .map(|(f, b)| f.id() == b.id())
+                .unwrap_or(true);
             let current = self.back;
             self.back = previous_filtered_sibling(self.back, &self.filter);
             current
