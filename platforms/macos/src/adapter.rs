@@ -15,7 +15,7 @@ use accesskit::{
     Tree as TreeData, TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Tree};
-use objc2::rc::{Id, WeakId};
+use objc2::rc::{Retained, Weak};
 use objc2_app_kit::NSView;
 use objc2_foundation::{MainThreadMarker, NSArray, NSObject, NSPoint};
 use std::fmt::{Debug, Formatter};
@@ -25,7 +25,7 @@ const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
 
 enum State {
     Inactive {
-        view: WeakId<NSView>,
+        view: Weak<NSView>,
         is_view_focused: bool,
         action_handler: Rc<dyn ActionHandlerNoMut>,
         mtm: MainThreadMarker,
@@ -91,8 +91,8 @@ impl Adapter {
         is_view_focused: bool,
         action_handler: impl 'static + ActionHandler,
     ) -> Self {
-        let view = unsafe { Id::retain(view as *mut NSView) }.unwrap();
-        let view = WeakId::from_id(&view);
+        let view = unsafe { Retained::retain(view as *mut NSView) }.unwrap();
+        let view = Weak::from_retained(&view);
         let mtm = MainThreadMarker::new().unwrap();
         let state = State::Inactive {
             view,
@@ -231,20 +231,20 @@ impl Adapter {
         let state = tree.state();
         let node = state.root();
         let platform_nodes = if filter(&node) == FilterResult::Include {
-            vec![Id::into_super(Id::into_super(
+            vec![Retained::into_super(Retained::into_super(
                 context.get_or_create_platform_node(node.id()),
             ))]
         } else {
             node.filtered_children(filter)
                 .map(|node| {
-                    Id::into_super(Id::into_super(
+                    Retained::into_super(Retained::into_super(
                         context.get_or_create_platform_node(node.id()),
                     ))
                 })
-                .collect::<Vec<Id<NSObject>>>()
+                .collect::<Vec<Retained<NSObject>>>()
         };
-        let array = NSArray::from_vec(platform_nodes);
-        Id::autorelease_return(array)
+        let array = NSArray::from_retained_slice(&platform_nodes);
+        Retained::autorelease_return(array)
     }
 
     pub fn focus<H: ActivationHandler + ?Sized>(
@@ -256,14 +256,14 @@ impl Adapter {
         let state = tree.state();
         if let Some(node) = state.focus() {
             if can_be_focused(&node) {
-                return Id::autorelease_return(context.get_or_create_platform_node(node.id()))
+                return Retained::autorelease_return(context.get_or_create_platform_node(node.id()))
                     as *mut _;
             }
         }
         null_mut()
     }
 
-    fn weak_view(&self) -> &WeakId<NSView> {
+    fn weak_view(&self) -> &Weak<NSView> {
         match &self.state {
             State::Inactive { view, .. } => view,
             State::Placeholder {
@@ -292,6 +292,6 @@ impl Adapter {
         let root = state.root();
         let point = from_ns_point(&view, &root, point);
         let node = root.node_at_point(point, &filter).unwrap_or(root);
-        Id::autorelease_return(context.get_or_create_platform_node(node.id())) as *mut _
+        Retained::autorelease_return(context.get_or_create_platform_node(node.id())) as *mut _
     }
 }
