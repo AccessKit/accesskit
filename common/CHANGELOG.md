@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.21.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.21.0...accesskit-v0.21.1) (2025-10-02)
+
+
+### Bug Fixes
+
+* Fix clippy warnings introduced in 1.89 ([#606](https://github.com/AccessKit/accesskit/issues/606)) ([b2c07d6](https://github.com/AccessKit/accesskit/commit/b2c07d654a8ce6f01e61a79c91f2f9d5a96afdc9))
+* Fix link in `ActionData::ScrollHint` documentation ([#598](https://github.com/AccessKit/accesskit/issues/598)) ([28b82e9](https://github.com/AccessKit/accesskit/commit/28b82e9941b10ac0643201b9b3989f0184346216))
+* Update pyo3 to 0.26 ([#620](https://github.com/AccessKit/accesskit/issues/620)) ([61e9dcc](https://github.com/AccessKit/accesskit/commit/61e9dccb2c2e035463593aacbac7ae25573a9006))
+
 ## [0.21.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.20.0...accesskit-v0.21.0) (2025-07-16)
 
 

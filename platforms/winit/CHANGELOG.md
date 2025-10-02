@@ -147,6 +147,24 @@
     * accesskit_macos bumped from 0.18.0 to 0.18.1
     * accesskit_unix bumped from 0.13.0 to 0.13.1
 
+## [0.29.1](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.29.0...accesskit_winit-v0.29.1) (2025-10-02)
+
+
+### Bug Fixes
+
+* Impl `Clone` and `PartialEq` on `WindowEvent` ([#618](https://github.com/AccessKit/accesskit/issues/618)) ([3a4771b](https://github.com/AccessKit/accesskit/commit/3a4771b87455cc005c18152935535818a3f9f825))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.0 to 0.21.1
+    * accesskit_windows bumped from 0.29.0 to 0.29.1
+    * accesskit_macos bumped from 0.22.0 to 0.22.1
+    * accesskit_unix bumped from 0.17.0 to 0.17.1
+    * accesskit_android bumped from 0.4.0 to 0.4.1
+
 ## [0.29.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.28.0...accesskit_winit-v0.29.0) (2025-07-16)
 
 

@@ -68,6 +68,16 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_atspi_common bumped from 0.10.0 to 0.10.1
 
+## [0.17.1](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.17.0...accesskit_unix-v0.17.1) (2025-10-02)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.0 to 0.21.1
+    * accesskit_atspi_common bumped from 0.14.0 to 0.14.1
+
 ## [0.17.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.16.0...accesskit_unix-v0.17.0) (2025-07-16)
 
 
