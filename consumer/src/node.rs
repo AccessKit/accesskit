@@ -42,7 +42,7 @@ pub struct Node<'a> {
 }
 
 impl<'a> Node<'a> {
-    pub fn data(&self) -> &NodeData {
+    pub fn data(&self) -> &'a NodeData {
         &self.state.data
     }
 
@@ -404,6 +404,20 @@ impl<'a> Node<'a> {
 
     pub fn scroll_y_max(&self) -> Option<f64> {
         self.data().scroll_y_max()
+    }
+
+    pub(crate) fn fetch_inherited_property<T>(
+        &self,
+        getter: fn(&'a NodeData) -> Option<T>,
+    ) -> Option<T> {
+        let mut node = *self;
+        loop {
+            let value = getter(node.data());
+            if value.is_some() {
+                return value;
+            }
+            node = node.parent()?;
+        }
     }
 
     pub fn is_text_input(&self) -> bool {
