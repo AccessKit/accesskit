@@ -25,7 +25,10 @@ jobs:
       - name: check Java formatting
         uses: axel-op/googlejavaformat-action@v4
         with:
-          args: "--aosp --set-exit-if-changed"
+          args: "--aosp --replace"
+          skip-commit: true
+      - name: Print diffs
+        run: git --no-pager diff --exit-code
 
   cargo-deny:
     strategy:
