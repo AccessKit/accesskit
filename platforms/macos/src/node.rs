@@ -23,7 +23,8 @@ use objc2::{
 };
 use objc2_app_kit::*;
 use objc2_foundation::{
-    ns_string, NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSObjectProtocol, NSPoint, NSRange, NSRect, NSString
+    ns_string, NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSObjectProtocol, NSPoint,
+    NSRange, NSRect, NSString,
 };
 use std::rc::{Rc, Weak};
 
@@ -359,7 +360,8 @@ impl NodeWrapper<'_> {
 // derived from objc2 0.6 `AnyObject::downcast_ref`
 // TODO: can be removed after updating objc2 to 0.6 which has `AnyObject::downcast_ref`
 fn downcast_ref<T: ClassType>(obj: &NSObject) -> Option<&T> {
-    obj.is_kind_of::<T>().then(|| unsafe { &*(obj as *const NSObject).cast::<T>() })
+    obj.is_kind_of::<T>()
+        .then(|| unsafe { &*(obj as *const NSObject).cast::<T>() })
 }
 
 pub(crate) struct PlatformNodeIvars {
