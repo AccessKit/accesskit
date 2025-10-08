@@ -868,55 +868,93 @@ fn character_index_at_point(node: &Node, point: Point) -> usize {
     character_lengths.len()
 }
 
+macro_rules! inherited_properties {
+    ($(($getter:ident, $type:ty, $setter:ident, $test_value:expr)),+) => {
+        impl Node<'_> {
+            $(pub fn $getter(&self) -> Option<$type> {
+                self.fetch_inherited_property(NodeData::$getter)
+            })*
+        }
+        $(#[cfg(test)]
+        mod $getter {
+            use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
+            use alloc::vec;
+            #[test]
+            fn directly_set() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1)]);
+                            node
+                        }),
+                        (NodeId(1), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.$setter($test_value);
+                            node
+                        }),
+                    ],
+                    tree: Some(Tree::new(NodeId(0))),
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                assert_eq!(tree.state().node_by_id(NodeId(1)).unwrap().$getter(), Some($test_value));
+            }
+            #[test]
+            fn set_on_parent() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1)]);
+                            node.$setter($test_value);
+                            node
+                        }),
+                        (NodeId(1), Node::new(Role::TextRun)),
+                    ],
+                    tree: Some(Tree::new(NodeId(0))),
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                assert_eq!(tree.state().node_by_id(NodeId(1)).unwrap().$getter(), Some($test_value));
+            }
+            #[test]
+            fn unset() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1)]);
+                            node
+                        }),
+                        (NodeId(1), Node::new(Role::TextRun)),
+                    ],
+                    tree: Some(Tree::new(NodeId(0))),
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                assert!(tree.state().node_by_id(NodeId(1)).unwrap().$getter().is_none());
+            }
+        })*
+    }
+}
+
+inherited_properties! {
+    (text_direction, TextDirection, set_text_direction, accesskit::TextDirection::RightToLeft),
+    (font_family, &str, set_font_family, "Inconsolata"),
+    (language, &str, set_language, "fr"),
+    (font_size, f64, set_font_size, 24.0),
+    (font_weight, f64, set_font_weight, 700.0),
+    (background_color, u32, set_background_color, 0xff),
+    (foreground_color, u32, set_foreground_color, 0xff00),
+    (overline, TextDecoration, set_overline, accesskit::TextDecoration::Dotted),
+    (strikethrough, TextDecoration, set_strikethrough, accesskit::TextDecoration::Dashed),
+    (underline, TextDecoration, set_underline, accesskit::TextDecoration::Double),
+    (text_align, TextAlign, set_text_align, accesskit::TextAlign::Justify),
+    (vertical_offset, VerticalOffset, set_vertical_offset, accesskit::VerticalOffset::Superscript)
+}
+
 impl<'a> Node<'a> {
-    pub fn text_direction(&self) -> Option<TextDirection> {
-        self.fetch_inherited_property(NodeData::text_direction)
-    }
-
-    pub fn font_family(&self) -> Option<&str> {
-        self.fetch_inherited_property(NodeData::font_family)
-    }
-
-    pub fn language(&self) -> Option<&str> {
-        self.fetch_inherited_property(NodeData::language)
-    }
-
-    pub fn font_size(&self) -> Option<f64> {
-        self.fetch_inherited_property(NodeData::font_size)
-    }
-
-    pub fn font_weight(&self) -> Option<f64> {
-        self.fetch_inherited_property(NodeData::font_weight)
-    }
-
-    pub fn background_color(&self) -> Option<u32> {
-        self.fetch_inherited_property(NodeData::background_color)
-    }
-
-    pub fn foreground_color(&self) -> Option<u32> {
-        self.fetch_inherited_property(NodeData::foreground_color)
-    }
-
-    pub fn overline(&self) -> Option<TextDecoration> {
-        self.fetch_inherited_property(NodeData::overline)
-    }
-
-    pub fn strikethrough(&self) -> Option<TextDecoration> {
-        self.fetch_inherited_property(NodeData::strikethrough)
-    }
-
-    pub fn underline(&self) -> Option<TextDecoration> {
-        self.fetch_inherited_property(NodeData::underline)
-    }
-
-    pub fn text_align(&self) -> Option<TextAlign> {
-        self.fetch_inherited_property(NodeData::text_align)
-    }
-
-    pub fn vertical_offset(&self) -> Option<VerticalOffset> {
-        self.fetch_inherited_property(NodeData::vertical_offset)
-    }
-
     pub(crate) fn text_runs(
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
