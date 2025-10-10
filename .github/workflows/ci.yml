@@ -22,6 +22,11 @@ jobs:
       - name: cargo fmt
         run: cargo fmt --all -- --check
 
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
       - name: check Java formatting
         uses: axel-op/googlejavaformat-action@v4
         with:
