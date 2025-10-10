@@ -1,3 +1,6 @@
+#[path = "util/fill.rs"]
+mod fill;
+
 use accesskit::{
     Action, ActionRequest, ActivationHandler, Live, Node, NodeId, Rect, Role, Tree, TreeUpdate,
 };
@@ -207,6 +210,9 @@ impl ApplicationHandler<AccessKitEvent> for Application {
             WindowEvent::CloseRequested => {
                 self.window = None;
             }
+            WindowEvent::RedrawRequested => {
+                fill::fill_window(&window.window);
+            }
             WindowEvent::KeyboardInput {
                 event:
                     KeyEvent {
@@ -270,7 +276,9 @@ impl ApplicationHandler<AccessKitEvent> for Application {
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        if self.window.is_none() {
+        if let Some(window) = self.window.as_ref() {
+            window.window.request_redraw();
+        } else {
             event_loop.exit();
         }
     }
