@@ -1046,7 +1046,7 @@ declare_class!(
                     return node.supports_text_ranges();
                 }
                 if selector == sel!(setAccessibilityValue:) {
-                    return node.supports_action(Action::SetValue, &filter);
+                    return (node.supports_text_ranges() && !node.is_read_only()) || node.supports_action(Action::SetValue, &filter);
                 }
                 if selector == sel!(isAccessibilitySelected) {
                     let wrapper = NodeWrapper(node);
