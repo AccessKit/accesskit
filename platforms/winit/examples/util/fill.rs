@@ -9,14 +9,10 @@
 //! The `softbuffer` crate is used, largely because of its ease of use. `glutin` or `wgpu` could
 //! also be used to fill the window buffer, but they are more complicated to use.
 
-#[allow(unused_imports)]
 pub use platform::cleanup_window;
 pub use platform::fill_window;
 
-#[cfg(all(
-    any(feature = "rwh_05", feature = "rwh_06",),
-    not(any(target_os = "android", target_os = "ios"))
-))]
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod platform {
     use std::cell::RefCell;
     use std::collections::HashMap;
@@ -105,7 +101,6 @@ mod platform {
         })
     }
 
-    #[allow(dead_code)]
     pub fn cleanup_window(window: &Window) {
         GC.with(|gc| {
             let mut gc = gc.borrow_mut();
@@ -122,7 +117,6 @@ mod platform {
         // No-op on mobile platforms.
     }
 
-    #[allow(dead_code)]
     pub fn cleanup_window(_window: &winit::window::Window) {
         // No-op on mobile platforms.
     }

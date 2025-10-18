@@ -208,6 +208,7 @@ impl ApplicationHandler<AccessKitEvent> for Application {
         adapter.process_event(&window.window, &event);
         match event {
             WindowEvent::CloseRequested => {
+                fill::cleanup_window(&window.window);
                 self.window = None;
             }
             WindowEvent::RedrawRequested => {
