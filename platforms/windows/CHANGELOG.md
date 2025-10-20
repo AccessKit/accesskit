@@ -38,6 +38,15 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.29.2](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.29.1...accesskit_windows-v0.29.2) (2025-10-20)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.30.1 to 0.31.0
+
 ## [0.29.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.29.0...accesskit_windows-v0.29.1) (2025-10-02)
 
 

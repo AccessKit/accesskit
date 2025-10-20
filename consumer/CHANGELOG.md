@@ -24,6 +24,13 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.31.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.30.1...accesskit_consumer-v0.31.0) (2025-10-20)
+
+
+### Features
+
+* Expose text properties on consumer `Node` with inheritance ([#617](https://github.com/AccessKit/accesskit/issues/617)) ([0f132ea](https://github.com/AccessKit/accesskit/commit/0f132ea7b94c33d0ee47dfe6b0549a68d331f493))
+
 ## [0.30.1](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.30.0...accesskit_consumer-v0.30.1) (2025-10-02)
 
 

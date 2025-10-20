@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_unix"
-version = "0.17.1"
+version = "0.17.2"
 authors.workspace = true
 license.workspace = true
 description = "AccessKit UI accessibility infrastructure: Linux adapter"
@@ -18,7 +18,7 @@ tokio = ["dep:tokio", "dep:tokio-stream"]
 
 [dependencies]
 accesskit = { version = "0.21.1", path = "../../common" }
-accesskit_atspi_common = { version = "0.14.1", path = "../atspi-common" }
+accesskit_atspi_common = { version = "0.14.2", path = "../atspi-common" }
 atspi = { version = "0.25", default-features = false, features = ["async-std"] }
 futures-lite = "2.3"
 serde = "1.0"
