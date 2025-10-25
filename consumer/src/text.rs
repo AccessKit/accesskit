@@ -202,8 +202,16 @@ impl<'a> Position<'a> {
     }
 
     pub fn is_format_start(&self) -> bool {
-        // TODO: support variable text formatting (part of rich text)
         self.is_document_start()
+            || (self.inner.character_index == 0
+                && self.inner.node.text_attributes_differ(
+                    &self
+                        .inner
+                        .node
+                        .preceding_text_runs(&self.root_node)
+                        .next()
+                        .unwrap(),
+                ))
     }
 
     pub fn is_word_start(&self) -> bool {
@@ -355,17 +363,49 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_to_format_start(&self) -> Self {
-        // TODO: support variable text formatting (part of rich text)
+        for node in self.inner.node.following_text_runs(&self.root_node) {
+            if self.inner.node.text_attributes_differ(&node) {
+                return Self {
+                    root_node: self.root_node,
+                    inner: InnerPosition {
+                        node,
+                        character_index: 0,
+                    },
+                };
+            }
+        }
         self.document_end()
     }
 
     pub fn forward_to_format_end(&self) -> Self {
-        // TODO: support variable text formatting (part of rich text)
-        self.document_end()
+        self.forward_to_format_start().biased_to_end()
     }
 
     pub fn backward_to_format_start(&self) -> Self {
-        // TODO: support variable text formatting (part of rich text)
+        if self.inner.character_index != 0 {
+            let test_pos = Self {
+                root_node: self.root_node,
+                inner: InnerPosition {
+                    node: self.inner.node,
+                    character_index: 0,
+                },
+            };
+            if test_pos.is_format_start() {
+                return test_pos;
+            }
+        }
+        for node in self.inner.node.preceding_text_runs(&self.root_node) {
+            let test_pos = Self {
+                root_node: self.root_node,
+                inner: InnerPosition {
+                    node,
+                    character_index: 0,
+                },
+            };
+            if test_pos.is_format_start() {
+                return test_pos;
+            }
+        }
         self.document_start()
     }
 
@@ -1091,6 +1131,21 @@ inherited_properties! {
 }
 
 impl<'a> Node<'a> {
+    fn text_attributes_differ(&self, other: &Self) -> bool {
+        self.font_family() != other.font_family()
+            || self.language() != other.language()
+            || self.font_size() != other.font_size()
+            || self.font_weight() != other.font_weight()
+            || self.background_color() != other.background_color()
+            || self.foreground_color() != other.foreground_color()
+            || self.overline() != other.overline()
+            || self.strikethrough() != other.strikethrough()
+            || self.underline() != other.underline()
+            || self.text_align() != other.text_align()
+            || self.vertical_offset() != other.vertical_offset()
+        // TODO: more attributes
+    }
+
     pub(crate) fn text_runs(
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
@@ -1357,10 +1412,11 @@ impl<'a> Node<'a> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{NodeId, Point, Rect, TextSelection};
+    use accesskit::{NodeId, Point, Rect, TextDecoration, TextSelection};
     use alloc::vec;
 
-    // This is based on an actual tree produced by egui.
+    // This was originally based on an actual tree produced by egui but
+    // has since been heavily modified by hand to cover various test cases.
     fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {
         use accesskit::{Action, Affine, Node, Role, TextDirection, Tree, TreeUpdate};
 
@@ -1387,8 +1443,11 @@ mod tests {
                         NodeId(5),
                         NodeId(6),
                         NodeId(7),
+                        NodeId(8),
+                        NodeId(9),
                     ]);
                     node.add_action(Action::Focus);
+                    node.set_text_direction(TextDirection::LeftToRight);
                     if let Some(selection) = selection {
                         node.set_text_selection(selection);
                     }
@@ -1407,7 +1466,6 @@ mod tests {
                     // is to test conversion between UTF-8 and UTF-16
                     // indices.
                     node.set_value("This paragraph is\u{a0}long enough to wrap ");
-                    node.set_text_direction(TextDirection::LeftToRight);
                     node.set_character_lengths([
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1,
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -1434,26 +1492,60 @@ mod tests {
                     node.set_bounds(Rect {
                         x0: 12.0,
                         y0: 48.33333206176758,
-                        x1: 129.5855712890625,
+                        x1: 34.252257,
                         y1: 63.0,
                     });
-                    node.set_value("to another line.\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node.set_character_lengths([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
-                    node.set_character_positions([
-                        0.0, 7.3333435, 14.666687, 22.0, 29.333344, 36.666687, 44.0, 51.333344,
-                        58.666687, 66.0, 73.33334, 80.66669, 88.0, 95.33334, 102.66669, 110.0,
-                        117.58557,
-                    ]);
-                    node.set_character_widths([
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        0.0,
-                    ]);
-                    node.set_word_lengths([3, 8, 6]);
+                    node.set_value("to ");
+                    node.set_character_lengths([1, 1, 1]);
+                    node.set_character_positions([0.0, 7.3333435, 14.666687]);
+                    node.set_character_widths([7.58557, 7.58557, 7.58557]);
+                    node.set_word_lengths([3]);
+                    node.set_next_on_line(NodeId(4));
                     node
                 }),
                 (NodeId(4), {
+                    let mut node = Node::new(Role::TextRun);
+                    node.set_bounds(Rect {
+                        x0: 34.0,
+                        y0: 48.33333206176758,
+                        x1: 85.58557,
+                        y1: 63.0,
+                    });
+                    node.set_value("another");
+                    node.set_character_lengths([1, 1, 1, 1, 1, 1, 1]);
+                    node.set_character_positions([
+                        0.0, 7.333344, 14.666687, 22.0, 29.333344, 36.666687, 44.0,
+                    ]);
+                    node.set_character_widths([
+                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    ]);
+                    node.set_word_lengths([7]);
+                    node.set_underline(TextDecoration::Solid);
+                    node.set_previous_on_line(NodeId(3));
+                    node.set_next_on_line(NodeId(5));
+                    node
+                }),
+                (NodeId(5), {
+                    let mut node = Node::new(Role::TextRun);
+                    node.set_bounds(Rect {
+                        x0: 85.33334,
+                        y0: 48.33333206176758,
+                        x1: 129.5855712890625,
+                        y1: 63.0,
+                    });
+                    node.set_value(" line.\n");
+                    node.set_character_lengths([1, 1, 1, 1, 1, 1, 1]);
+                    node.set_character_positions([
+                        0.0, 7.333344, 14.666687, 22.0, 29.333344, 36.666687, 44.252257,
+                    ]);
+                    node.set_character_widths([
+                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 0.0,
+                    ]);
+                    node.set_word_lengths([1, 6]);
+                    node.set_previous_on_line(NodeId(4));
+                    node
+                }),
+                (NodeId(6), {
                     let mut node = Node::new(Role::TextRun);
                     node.set_bounds(Rect {
                         x0: 12.0,
@@ -1462,7 +1554,6 @@ mod tests {
                         y1: 77.66666412353516,
                     });
                     node.set_value("Another paragraph.\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
                     node.set_character_lengths([
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                     ]);
@@ -1479,7 +1570,7 @@ mod tests {
                     node.set_word_lengths([8, 11]);
                     node
                 }),
-                (NodeId(5), {
+                (NodeId(7), {
                     let mut node = Node::new(Role::TextRun);
                     node.set_bounds(Rect {
                         x0: 12.0,
@@ -1488,14 +1579,13 @@ mod tests {
                         y1: 92.33332824707031,
                     });
                     node.set_value("\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
                     node.set_character_lengths([1]);
                     node.set_character_positions([0.0]);
                     node.set_character_widths([0.0]);
                     node.set_word_lengths([1]);
                     node
                 }),
-                (NodeId(6), {
+                (NodeId(8), {
                     let mut node = Node::new(Role::TextRun);
                     node.set_bounds(Rect {
                         x0: 12.0,
@@ -1508,7 +1598,6 @@ mod tests {
                     // UTF-16 code units, to fully test conversion between
                     // UTF-8, UTF-16, and AccessKit character indices.
                     node.set_value("Last non-blank line\u{1f44d}\u{1f3fb}\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
                     node.set_character_lengths([
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 8, 1,
                     ]);
@@ -1525,7 +1614,7 @@ mod tests {
                     node.set_word_lengths([5, 4, 6, 6]);
                     node
                 }),
-                (NodeId(7), {
+                (NodeId(9), {
                     let mut node = Node::new(Role::TextRun);
                     node.set_bounds(Rect {
                         x0: 12.0,
@@ -1534,7 +1623,6 @@ mod tests {
                         y1: 121.66666412353516,
                     });
                     node.set_value("");
-                    node.set_text_direction(TextDirection::LeftToRight);
                     node.set_character_lengths([]);
                     node.set_character_positions([]);
                     node.set_character_widths([]);
@@ -1554,11 +1642,11 @@ mod tests {
 
         TextSelection {
             anchor: TextPosition {
-                node: NodeId(7),
+                node: NodeId(9),
                 character_index: 0,
             },
             focus: TextPosition {
-                node: NodeId(7),
+                node: NodeId(9),
                 character_index: 0,
             },
         }
@@ -1569,11 +1657,11 @@ mod tests {
 
         TextSelection {
             anchor: TextPosition {
-                node: NodeId(7),
+                node: NodeId(9),
                 character_index: 3,
             },
             focus: TextPosition {
-                node: NodeId(7),
+                node: NodeId(9),
                 character_index: 3,
             },
         }
@@ -1614,12 +1702,12 @@ mod tests {
 
         TextSelection {
             anchor: TextPosition {
-                node: NodeId(3),
-                character_index: 5,
+                node: NodeId(4),
+                character_index: 3,
             },
             focus: TextPosition {
-                node: NodeId(3),
-                character_index: 5,
+                node: NodeId(4),
+                character_index: 3,
             },
         }
     }
@@ -1665,6 +1753,84 @@ mod tests {
                 },
                 Rect {
                     x0: 18.0,
+                    y0: 72.49999809265137,
+                    x1: 51.3783855,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 51.0,
+                    y0: 72.49999809265137,
+                    x1: 128.378355,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 128.00001,
+                    y0: 72.49999809265137,
+                    x1: 194.37835693359375,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 18.0,
+                    y0: 94.5,
+                    x1: 216.3783416748047,
+                    y1: 116.49999618530273
+                },
+                Rect {
+                    x0: 18.0,
+                    y0: 116.49999618530273,
+                    x1: 18.0,
+                    y1: 138.49999237060547
+                },
+                Rect {
+                    x0: 18.0,
+                    y0: 138.49999237060547,
+                    x1: 238.37834930419922,
+                    y1: 160.5
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn multiline_document_range_to_first_format_change() {
+        let tree = main_multiline_tree(None);
+        let state = tree.state();
+        let node = state.node_by_id(NodeId(1)).unwrap();
+        let mut range = node.document_range();
+        range.set_end(range.start().forward_to_format_end());
+        assert_eq!(range.text(), "This paragraph is\u{a0}long enough to wrap to ");
+        assert_eq!(
+            range.bounding_boxes(),
+            vec![
+                Rect {
+                    x0: 18.0,
+                    y0: 50.499996185302734,
+                    x1: 436.3783721923828,
+                    y1: 72.49999809265137
+                },
+                Rect {
+                    x0: 18.0,
+                    y0: 72.49999809265137,
+                    x1: 51.3783855,
+                    y1: 94.5
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn multiline_document_range_from_last_format_change() {
+        let tree = main_multiline_tree(None);
+        let state = tree.state();
+        let node = state.node_by_id(NodeId(1)).unwrap();
+        let mut range = node.document_range();
+        range.set_start(range.end().backward_to_format_start());
+        assert_eq!(range.text(), " line.\nAnother paragraph.\n\nLast non-blank line\u{1f44d}\u{1f3fb}\n");
+        assert_eq!(
+            range.bounding_boxes(),
+            vec![
+                Rect {
+                    x0: 128.00001,
                     y0: 72.49999809265137,
                     x1: 194.37835693359375,
                     y1: 94.5
@@ -1801,12 +1967,26 @@ mod tests {
         assert_eq!(range.text(), "to another line.\n");
         assert_eq!(
             range.bounding_boxes(),
-            vec![Rect {
-                x0: 18.0,
-                y0: 72.49999809265137,
-                x1: 194.37835693359375,
-                y1: 94.5
-            },]
+            vec![
+                Rect {
+                    x0: 18.0,
+                    y0: 72.49999809265137,
+                    x1: 51.3783855,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 51.0,
+                    y0: 72.49999809265137,
+                    x1: 128.378355,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 128.00001,
+                    y0: 72.49999809265137,
+                    x1: 194.37835693359375,
+                    y1: 94.5
+                },
+            ]
         );
         assert!(line_start.forward_to_line_start().is_line_start());
     }
@@ -1877,6 +2057,18 @@ mod tests {
                 Rect {
                     x0: 18.0,
                     y0: 72.49999809265137,
+                    x1: 51.3783855,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 51.0,
+                    y0: 72.49999809265137,
+                    x1: 128.378355,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 128.00001,
+                    y0: 72.49999809265137,
                     x1: 194.37835693359375,
                     y1: 94.5
                 },
@@ -1885,6 +2077,34 @@ mod tests {
         assert!(paragraph_start
             .forward_to_paragraph_start()
             .is_paragraph_start());
+    }
+
+    #[test]
+    fn multiline_find_format_ends_from_middle() {
+        let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
+        let state = tree.state();
+        let node = state.node_by_id(NodeId(1)).unwrap();
+        let mut range = node.text_selection().unwrap();
+        assert!(range.is_degenerate());
+        let pos = range.start();
+        assert!(!pos.is_format_start());
+        assert!(!pos.is_document_start());
+        assert!(!pos.is_document_end());
+        let format_start = pos.backward_to_format_start();
+        range.set_start(format_start);
+        let format_end = pos.forward_to_format_end();
+        range.set_end(format_end);
+        assert!(!range.is_degenerate());
+        assert_eq!(range.text(), "another");
+        assert_eq!(
+            range.bounding_boxes(),
+            vec![Rect {
+                x0: 51.0,
+                y0: 72.49999809265137,
+                x1: 128.378355,
+                y1: 94.5
+            }]
+        );
     }
 
     #[test]
@@ -1903,13 +2123,15 @@ mod tests {
         let word_end = word_start.forward_to_word_end();
         range.set_end(word_end);
         assert!(!range.is_degenerate());
-        assert_eq!(range.text(), "another ");
+        // TODO(mwcampbell): Refactor so the word can include the space again,
+        // even though the space is now part of a different run.
+        assert_eq!(range.text(), "another");
         assert_eq!(
             range.bounding_boxes(),
             vec![Rect {
                 x0: 51.0,
                 y0: 72.49999809265137,
-                x1: 139.3783721923828,
+                x1: 128.378355,
                 y1: 94.5
             }]
         );
