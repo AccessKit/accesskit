@@ -37,6 +37,20 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.22.2](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.22.1...accesskit_macos-v0.22.2) (2025-10-20)
+
+
+### Bug Fixes
+
+* Implement setting values on macOS ([#615](https://github.com/AccessKit/accesskit/issues/615)) ([9e07b15](https://github.com/AccessKit/accesskit/commit/9e07b158c34d6df3a0a08f1cc1ecdd1a0b7a943f))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.30.1 to 0.31.0
+
 ## [0.22.1](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.22.0...accesskit_macos-v0.22.1) (2025-10-02)
 
 

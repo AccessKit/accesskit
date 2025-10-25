@@ -147,6 +147,23 @@
     * accesskit_macos bumped from 0.18.0 to 0.18.1
     * accesskit_unix bumped from 0.13.0 to 0.13.1
 
+## [0.29.2](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.29.1...accesskit_winit-v0.29.2) (2025-10-20)
+
+
+### Bug Fixes
+
+* Fix winit examples window not showing up under Wayland ([#625](https://github.com/AccessKit/accesskit/issues/625)) ([87ce769](https://github.com/AccessKit/accesskit/commit/87ce769282b00684f2b2ab6a3410ed6edb894f22))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_windows bumped from 0.29.1 to 0.29.2
+    * accesskit_macos bumped from 0.22.1 to 0.22.2
+    * accesskit_unix bumped from 0.17.1 to 0.17.2
+    * accesskit_android bumped from 0.4.1 to 0.4.2
+
 ## [0.29.1](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.29.0...accesskit_winit-v0.29.1) (2025-10-02)
 
 
