@@ -850,7 +850,7 @@ enum PropertyId {
 
     // LengthSlice
     CharacterLengths,
-    WordLengths,
+    WordStarts,
 
     // CoordSlice
     CharacterPositions,
@@ -1862,9 +1862,16 @@ length_slice_property_methods! {
     /// [`value`]: Node::value
     (CharacterLengths, character_lengths, set_character_lengths, clear_character_lengths),
 
-    /// For text runs, the length of each word in characters, as defined
-    /// in [`character_lengths`]. The sum of these lengths must equal
-    /// the length of [`character_lengths`].
+    /// For text runs, the start index of each word in characters, as defined
+    /// in [`character_lengths`]. This list must be sorted.
+    ///
+    /// If this text run doesn't contain the start of any words, but only
+    /// the middle or end of a word, this list must be empty.
+    ///
+    /// If this text run is the first in the document or the first in a paragraph
+    /// (that is, the previous run ends with a newline character), then the first
+    /// character of the run is implicitly the start of a word. In this case,
+    /// beginning this list with `0` is permitted but not necessary.
     ///
     /// The end of each word is the beginning of the next word; there are no
     /// characters that are not considered part of a word. Trailing whitespace
@@ -1884,7 +1891,7 @@ length_slice_property_methods! {
     /// word boundaries itself.
     ///
     /// [`character_lengths`]: Node::character_lengths
-    (WordLengths, word_lengths, set_word_lengths, clear_word_lengths)
+    (WordStarts, word_starts, set_word_starts, clear_word_starts)
 }
 
 coord_slice_property_methods! {
@@ -2369,7 +2376,7 @@ impl<'de> Visitor<'de> for PropertiesVisitor {
                 },
                 LengthSlice {
                     CharacterLengths,
-                    WordLengths
+                    WordStarts
                 },
                 CoordSlice {
                     CharacterPositions,
@@ -2516,7 +2523,7 @@ impl JsonSchema for Properties {
             },
             Box<[u8]> {
                 CharacterLengths,
-                WordLengths
+                WordStarts
             },
             Box<[f32]> {
                 CharacterPositions,

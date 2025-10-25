@@ -12,7 +12,7 @@ use core::{cmp::Ordering, fmt, iter::FusedIterator};
 
 use crate::{FilterResult, Node, TreeState};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct InnerPosition<'a> {
     pub(crate) node: Node<'a>,
     pub(crate) character_index: usize,
@@ -46,17 +46,6 @@ impl<'a> InnerPosition<'a> {
             node,
             character_index,
         })
-    }
-
-    fn is_word_start(&self) -> bool {
-        let mut total_length = 0usize;
-        for length in self.node.data().word_lengths().iter() {
-            if total_length == self.character_index {
-                return true;
-            }
-            total_length += *length as usize;
-        }
-        false
     }
 
     fn is_run_start(&self) -> bool {
@@ -119,35 +108,6 @@ impl<'a> InnerPosition<'a> {
         )
     }
 
-    fn previous_word_start(&self) -> Self {
-        let mut total_length_before = 0usize;
-        for length in self.node.data().word_lengths().iter() {
-            let new_total_length = total_length_before + (*length as usize);
-            if new_total_length >= self.character_index {
-                break;
-            }
-            total_length_before = new_total_length;
-        }
-        Self {
-            node: self.node,
-            character_index: total_length_before,
-        }
-    }
-
-    fn word_end(&self) -> Self {
-        let mut total_length = 0usize;
-        for length in self.node.data().word_lengths().iter() {
-            total_length += *length as usize;
-            if total_length > self.character_index {
-                break;
-            }
-        }
-        Self {
-            node: self.node,
-            character_index: total_length,
-        }
-    }
-
     fn line_start(&self) -> Self {
         let mut node = self.node;
         while let Some(id) = node.data().previous_on_line() {
@@ -186,7 +146,7 @@ impl PartialEq for InnerPosition<'_> {
 
 impl Eq for InnerPosition<'_> {}
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Position<'a> {
     root_node: Node<'a>,
     pub(crate) inner: InnerPosition<'a>,
@@ -215,7 +175,14 @@ impl<'a> Position<'a> {
     }
 
     pub fn is_word_start(&self) -> bool {
-        self.inner.is_word_start()
+        self.is_paragraph_start()
+            || self
+                .inner
+                .node
+                .data()
+                .word_starts()
+                .binary_search(&(self.inner.character_index as u8))
+                .is_ok()
     }
 
     pub fn is_line_start(&self) -> bool {
@@ -410,27 +377,105 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_to_word_start(&self) -> Self {
-        let pos = self.inner.biased_to_start(&self.root_node);
-        Self {
-            root_node: self.root_node,
-            inner: pos.word_end().biased_to_start(&self.root_node),
+        // Wrap the following in a scope to make sure we can't misuse the
+        // `word_starts` local later.
+        {
+            let word_starts = self.inner.node.data().word_starts();
+            let index = match word_starts.binary_search(&(self.inner.character_index as u8)) {
+                Ok(index) => index + 1,
+                Err(index) => index,
+            };
+            if let Some(start) = word_starts.get(index) {
+                return Self {
+                    root_node: self.root_node,
+                    inner: InnerPosition {
+                        node: self.inner.node,
+                        character_index: *start as usize,
+                    },
+                };
+            }
         }
+        for node in self.inner.node.following_text_runs(&self.root_node) {
+            let start_pos = Self {
+                root_node: self.root_node,
+                inner: InnerPosition {
+                    node,
+                    character_index: 0,
+                },
+            };
+            if start_pos.is_paragraph_start() {
+                return start_pos;
+            }
+            if let Some(start) = node.data().word_starts().first() {
+                return Self {
+                    root_node: self.root_node,
+                    inner: InnerPosition {
+                        node,
+                        character_index: *start as usize,
+                    },
+                };
+            }
+        }
+        self.document_end()
     }
 
     pub fn forward_to_word_end(&self) -> Self {
-        let pos = self.inner.biased_to_start(&self.root_node);
-        Self {
-            root_node: self.root_node,
-            inner: pos.word_end(),
-        }
+        self.forward_to_word_start().biased_to_end()
     }
 
     pub fn backward_to_word_start(&self) -> Self {
-        let pos = self.inner.biased_to_end(&self.root_node);
-        Self {
-            root_node: self.root_node,
-            inner: pos.previous_word_start().biased_to_start(&self.root_node),
+        // Wrap the following in a scope to make sure we can't misuse the
+        // `word_starts` local later.
+        {
+            let word_starts = self.inner.node.data().word_starts();
+            let index = match word_starts.binary_search(&(self.inner.character_index as u8)) {
+                Ok(index) => index,
+                Err(index) => index,
+            };
+            if let Some(index) = index.checked_sub(1) {
+                return Self {
+                    root_node: self.root_node,
+                    inner: InnerPosition {
+                        node: self.inner.node,
+                        character_index: word_starts[index] as usize,
+                    },
+                };
+            }
         }
+        if self.inner.character_index != 0 {
+            let start_pos = Self {
+                root_node: self.root_node,
+                inner: InnerPosition {
+                    node: self.inner.node,
+                    character_index: 0,
+                },
+            };
+            if start_pos.is_paragraph_start() {
+                return start_pos;
+            }
+        }
+        for node in self.inner.node.preceding_text_runs(&self.root_node) {
+            if let Some(start) = node.data().word_starts().last() {
+                return Self {
+                    root_node: self.root_node,
+                    inner: InnerPosition {
+                        node,
+                        character_index: *start as usize,
+                    },
+                };
+            }
+            let start_pos = Self {
+                root_node: self.root_node,
+                inner: InnerPosition {
+                    node,
+                    character_index: 0,
+                },
+            };
+            if start_pos.is_paragraph_start() {
+                return start_pos;
+            }
+        }
+        self.document_start()
     }
 
     pub fn forward_to_line_start(&self) -> Self {
@@ -1484,7 +1529,7 @@ mod tests {
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                     ]);
-                    node.set_word_lengths([5, 10, 3, 5, 7, 3, 5]);
+                    node.set_word_starts([5, 15, 18, 23, 30, 33]);
                     node
                 }),
                 (NodeId(3), {
@@ -1499,7 +1544,7 @@ mod tests {
                     node.set_character_lengths([1, 1, 1]);
                     node.set_character_positions([0.0, 7.3333435, 14.666687]);
                     node.set_character_widths([7.58557, 7.58557, 7.58557]);
-                    node.set_word_lengths([3]);
+                    node.set_word_starts([0]);
                     node.set_next_on_line(NodeId(4));
                     node
                 }),
@@ -1519,7 +1564,7 @@ mod tests {
                     node.set_character_widths([
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                     ]);
-                    node.set_word_lengths([7]);
+                    node.set_word_starts([0]);
                     node.set_underline(TextDecoration::Solid);
                     node.set_previous_on_line(NodeId(3));
                     node.set_next_on_line(NodeId(5));
@@ -1541,7 +1586,7 @@ mod tests {
                     node.set_character_widths([
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 0.0,
                     ]);
-                    node.set_word_lengths([1, 6]);
+                    node.set_word_starts([1]);
                     node.set_previous_on_line(NodeId(4));
                     node
                 }),
@@ -1567,7 +1612,7 @@ mod tests {
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 0.0,
                     ]);
-                    node.set_word_lengths([8, 11]);
+                    node.set_word_starts([8]);
                     node
                 }),
                 (NodeId(7), {
@@ -1582,7 +1627,6 @@ mod tests {
                     node.set_character_lengths([1]);
                     node.set_character_positions([0.0]);
                     node.set_character_widths([0.0]);
-                    node.set_word_lengths([1]);
                     node
                 }),
                 (NodeId(8), {
@@ -1611,7 +1655,7 @@ mod tests {
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 0.0,
                     ]);
-                    node.set_word_lengths([5, 4, 6, 6]);
+                    node.set_word_starts([5, 9, 15]);
                     node
                 }),
                 (NodeId(9), {
@@ -1626,7 +1670,6 @@ mod tests {
                     node.set_character_lengths([]);
                     node.set_character_positions([]);
                     node.set_character_widths([]);
-                    node.set_word_lengths([0]);
                     node
                 }),
             ],
@@ -1798,7 +1841,10 @@ mod tests {
         let node = state.node_by_id(NodeId(1)).unwrap();
         let mut range = node.document_range();
         range.set_end(range.start().forward_to_format_end());
-        assert_eq!(range.text(), "This paragraph is\u{a0}long enough to wrap to ");
+        assert_eq!(
+            range.text(),
+            "This paragraph is\u{a0}long enough to wrap to "
+        );
         assert_eq!(
             range.bounding_boxes(),
             vec![
@@ -1825,7 +1871,10 @@ mod tests {
         let node = state.node_by_id(NodeId(1)).unwrap();
         let mut range = node.document_range();
         range.set_start(range.end().backward_to_format_start());
-        assert_eq!(range.text(), " line.\nAnother paragraph.\n\nLast non-blank line\u{1f44d}\u{1f3fb}\n");
+        assert_eq!(
+            range.text(),
+            " line.\nAnother paragraph.\n\nLast non-blank line\u{1f44d}\u{1f3fb}\n"
+        );
         assert_eq!(
             range.bounding_boxes(),
             vec![
@@ -2121,19 +2170,29 @@ mod tests {
         let word_start = pos.backward_to_word_start();
         range.set_start(word_start);
         let word_end = word_start.forward_to_word_end();
+        let word_end2 = pos.forward_to_word_end();
+        assert_eq!(word_end, word_end2);
+        let word_start2 = word_end.backward_to_word_start();
+        assert_eq!(word_start, word_start2);
         range.set_end(word_end);
         assert!(!range.is_degenerate());
-        // TODO(mwcampbell): Refactor so the word can include the space again,
-        // even though the space is now part of a different run.
-        assert_eq!(range.text(), "another");
+        assert_eq!(range.text(), "another ");
         assert_eq!(
             range.bounding_boxes(),
-            vec![Rect {
-                x0: 51.0,
-                y0: 72.49999809265137,
-                x1: 128.378355,
-                y1: 94.5
-            }]
+            [
+                Rect {
+                    x0: 51.0,
+                    y0: 72.49999809265137,
+                    x1: 128.378355,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 128.00001,
+                    y0: 72.49999809265137,
+                    x1: 139.37836478782654,
+                    y1: 94.5
+                }
+            ]
         );
     }
 
