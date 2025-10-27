@@ -20,7 +20,7 @@ pub(crate) mod iterators;
 
 pub(crate) mod text;
 pub use text::{
-    AttributeValue as TextAttributeValue, Position as TextPosition, Range as TextRange,
+    Position as TextPosition, Range as TextRange, RangePropertyValue as TextRangePropertyValue,
     WeakRange as WeakTextRange,
 };
 
