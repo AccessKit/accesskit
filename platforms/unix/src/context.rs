@@ -151,7 +151,7 @@ async fn run_event_loop(
     );
 
     let status = StatusProxy::new(&session_bus).await?;
-    let changes = status.receive_is_enabled_changed().await.fuse();
+    let changes = status.receive_screen_reader_enabled_changed().await.fuse();
     pin!(changes);
 
     #[cfg(not(feature = "tokio"))]
