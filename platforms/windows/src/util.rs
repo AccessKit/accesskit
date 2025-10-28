@@ -14,6 +14,7 @@ use windows::{
     core::*,
     Win32::{
         Foundation::*,
+        Globalization::*,
         Graphics::Gdi::*,
         System::{Com::*, Ole::*, Variant::*},
         UI::{Accessibility::*, WindowsAndMessaging::*},
@@ -40,6 +41,16 @@ impl Write for WideString {
 impl From<WideString> for BSTR {
     fn from(value: WideString) -> Self {
         Self::from_wide(&value.0)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct LocaleName<'a>(pub(crate) &'a str);
+
+impl From<LocaleName<'_>> for Variant {
+    fn from(value: LocaleName) -> Self {
+        let lcid = unsafe { LocaleNameToLCID(&HSTRING::from(value.0), LOCALE_ALLOW_NEUTRAL_NAMES) };
+        (lcid != 0).then_some(lcid as i32).into()
     }
 }
 
