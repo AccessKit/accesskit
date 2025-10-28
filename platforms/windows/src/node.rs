@@ -276,6 +276,10 @@ impl NodeWrapper<'_> {
         self.0.description()
     }
 
+    fn culture(&self) -> Option<LocaleName<'_>> {
+        self.0.language().map(LocaleName)
+    }
+
     fn placeholder(&self) -> Option<&str> {
         self.0.placeholder()
     }
@@ -962,6 +966,7 @@ properties! {
     (UIA_LocalizedControlTypePropertyId, localized_control_type),
     (UIA_NamePropertyId, name),
     (UIA_FullDescriptionPropertyId, description),
+    (UIA_CulturePropertyId, culture),
     (UIA_HelpTextPropertyId, placeholder),
     (UIA_IsContentElementPropertyId, is_content_element),
     (UIA_IsControlElementPropertyId, is_content_element),

@@ -95,6 +95,7 @@ impl InnerWindowState {
         if self.announcement.is_some() {
             node.push_child(ANNOUNCEMENT_ID);
         }
+        node.set_language("en");
         node
     }
 }
