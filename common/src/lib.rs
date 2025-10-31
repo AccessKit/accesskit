@@ -1764,6 +1764,7 @@ string_property_methods! {
     /// modifiers(s), that will perform this node's default action.
     /// The value of this property should be in a human-friendly format.
     (KeyboardShortcut, keyboard_shortcut, set_keyboard_shortcut, clear_keyboard_shortcut),
+    /// An [IETF language tag](https://www.rfc-editor.org/info/bcp47).
     /// Only present when different from parent.
     (Language, language, set_language, clear_language),
     /// If a text input has placeholder text, it should be exposed
