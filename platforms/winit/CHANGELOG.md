@@ -147,6 +147,28 @@
     * accesskit_macos bumped from 0.18.0 to 0.18.1
     * accesskit_unix bumped from 0.13.0 to 0.13.1
 
+## [0.30.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.29.2...accesskit_winit-v0.30.0) (2025-10-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626))
+
+### Code Refactoring
+
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626)) ([ea23ec4](https://github.com/AccessKit/accesskit/commit/ea23ec424c7dbb8841e03d71b6a15b74264850a9))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.1 to 0.22.0
+    * accesskit_windows bumped from 0.29.2 to 0.30.0
+    * accesskit_macos bumped from 0.22.2 to 0.23.0
+    * accesskit_unix bumped from 0.17.2 to 0.18.0
+    * accesskit_android bumped from 0.4.2 to 0.5.0
+
 ## [0.29.2](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.29.1...accesskit_winit-v0.29.2) (2025-10-20)
 
 
