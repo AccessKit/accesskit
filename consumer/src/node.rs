@@ -34,7 +34,7 @@ pub(crate) struct NodeState {
     pub(crate) data: NodeData,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Node<'a> {
     pub tree_state: &'a TreeState,
     pub(crate) id: NodeId,
@@ -1448,7 +1448,6 @@ mod tests {
                     node.set_character_lengths([]);
                     node.set_character_positions([]);
                     node.set_character_widths([]);
-                    node.set_word_lengths([0]);
                     node.set_text_direction(TextDirection::LeftToRight);
                     node
                 }),
@@ -1516,7 +1515,7 @@ mod tests {
                     node.set_character_lengths([1]);
                     node.set_character_positions([0.0]);
                     node.set_character_widths([8.0]);
-                    node.set_word_lengths([1]);
+                    node.set_word_starts([0]);
                     node.set_text_direction(TextDirection::LeftToRight);
                     node
                 }),
