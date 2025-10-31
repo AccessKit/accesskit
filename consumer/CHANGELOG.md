@@ -24,6 +24,30 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.32.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.31.0...accesskit_consumer-v0.32.0) (2025-10-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626))
+* Support properties on text ranges ([#627](https://github.com/AccessKit/accesskit/issues/627))
+
+### Features
+
+* Support properties on text ranges ([#627](https://github.com/AccessKit/accesskit/issues/627)) ([b854ad8](https://github.com/AccessKit/accesskit/commit/b854ad8dbd54eeb38105c9b39c9e76310a753570))
+
+
+### Code Refactoring
+
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626)) ([ea23ec4](https://github.com/AccessKit/accesskit/commit/ea23ec424c7dbb8841e03d71b6a15b74264850a9))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.1 to 0.22.0
+
 ## [0.31.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.30.1...accesskit_consumer-v0.31.0) (2025-10-20)
 
 

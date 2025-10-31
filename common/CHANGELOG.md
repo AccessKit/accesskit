@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.22.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.21.1...accesskit-v0.22.0) (2025-10-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626))
+
+### Code Refactoring
+
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626)) ([ea23ec4](https://github.com/AccessKit/accesskit/commit/ea23ec424c7dbb8841e03d71b6a15b74264850a9))
+
 ## [0.21.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.21.0...accesskit-v0.21.1) (2025-10-02)
 
 
