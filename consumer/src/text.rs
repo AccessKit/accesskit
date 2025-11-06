@@ -586,6 +586,18 @@ pub enum RangePropertyValue<T: alloc::fmt::Debug + PartialEq> {
     Mixed,
 }
 
+impl<T: alloc::fmt::Debug + PartialEq> RangePropertyValue<Option<T>> {
+    pub fn map<U: alloc::fmt::Debug + PartialEq>(
+        self,
+        f: impl FnOnce(T) -> U,
+    ) -> RangePropertyValue<Option<U>> {
+        match self {
+            Self::Single(value) => RangePropertyValue::Single(value.map(f)),
+            Self::Mixed => RangePropertyValue::Mixed,
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct Range<'a> {
     pub(crate) node: Node<'a>,
@@ -2567,5 +2579,22 @@ mod tests {
         let state = tree.state();
         let node = state.node_by_id(NodeId(1)).unwrap();
         let _ = node.text_selection().unwrap();
+    }
+
+    #[test]
+    fn range_property_value_map() {
+        use super::RangePropertyValue;
+        assert_eq!(
+            RangePropertyValue::Single(Some(0)).map(|x| x + 1),
+            RangePropertyValue::Single(Some(1))
+        );
+        assert_eq!(
+            RangePropertyValue::<Option<usize>>::Single(None).map(|x| x + 1),
+            RangePropertyValue::Single(None)
+        );
+        assert_eq!(
+            RangePropertyValue::<Option<usize>>::Mixed.map(|x| x + 1),
+            RangePropertyValue::Mixed
+        );
     }
 }
