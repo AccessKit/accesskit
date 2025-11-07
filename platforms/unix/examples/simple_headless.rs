@@ -93,7 +93,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         label.set_live(Live::Polite);
 
         // when we update the tree with an announcement
-        // it can be detected by the assistive technology client
+        // it can be detected by an assistive technology client
+        // like Orca and presented to the user
         adapter.update_if_active(|| TreeUpdate {
             nodes: vec![(ANNOUNCE_ID, label)],
             tree: None,
