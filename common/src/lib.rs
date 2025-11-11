@@ -181,6 +181,8 @@ pub enum Role {
     ScrollView,
     Search,
     Section,
+    SectionFooter,
+    SectionHeader,
     Slider,
     SpinButton,
     Splitter,

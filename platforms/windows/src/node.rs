@@ -181,6 +181,8 @@ impl NodeWrapper<'_> {
             Role::ScrollView => UIA_PaneControlTypeId,
             Role::Search => UIA_GroupControlTypeId,
             Role::Section => UIA_GroupControlTypeId,
+            Role::SectionFooter => UIA_GroupControlTypeId,
+            Role::SectionHeader => UIA_GroupControlTypeId,
             Role::Slider => UIA_SliderControlTypeId,
             Role::SpinButton => UIA_SpinnerControlTypeId,
             Role::Splitter => UIA_SeparatorControlTypeId,

@@ -224,6 +224,8 @@ impl NodeWrapper<'_> {
             // shows up in the tree.
             Role::RubyAnnotation => AtspiRole::Static,
             Role::Section => AtspiRole::Section,
+            Role::SectionFooter => AtspiRole::Footer,
+            Role::SectionHeader => AtspiRole::Header,
             Role::ScrollBar => AtspiRole::ScrollBar,
             Role::Search => AtspiRole::Landmark,
             Role::Slider => AtspiRole::Slider,
