@@ -150,8 +150,6 @@ impl NodeWrapper<'_> {
             Role::Form => AtspiRole::Form,
             Role::Figure | Role::Feed => AtspiRole::Panel,
             Role::GenericContainer
-            | Role::FooterAsNonLandmark
-            | Role::HeaderAsNonLandmark
             | Role::Ruby => AtspiRole::Section,
             Role::GraphicsDocument => AtspiRole::DocumentFrame,
             Role::GraphicsObject => AtspiRole::Panel,
