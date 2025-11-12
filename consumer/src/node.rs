@@ -333,6 +333,22 @@ impl<'a> Node<'a> {
         self.data().role_description().is_some()
     }
 
+    pub fn braille_label(&self) -> Option<&str> {
+        self.data().braille_label()
+    }
+
+    pub fn has_braille_label(&self) -> bool {
+        self.data().braille_label().is_some()
+    }
+
+    pub fn braille_role_description(&self) -> Option<&str> {
+        self.data().braille_role_description()
+    }
+
+    pub fn has_braille_role_description(&self) -> bool {
+        self.data().braille_role_description().is_some()
+    }
+
     pub fn is_hidden(&self) -> bool {
         self.data().is_hidden()
     }

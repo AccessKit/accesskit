@@ -15,6 +15,7 @@ use accesskit::{
     Toggled,
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
+use std::fmt::Write;
 use std::sync::{atomic::Ordering, Arc, Weak};
 use windows::{
     core::*,
@@ -286,6 +287,28 @@ impl NodeWrapper<'_> {
 
     fn is_content_element(&self) -> bool {
         filter(self.0) == FilterResult::Include
+    }
+
+    fn aria_properties(&self) -> Option<WideString> {
+        let mut parts = Vec::new();
+
+        if let Some(label) = self.0.braille_label() {
+            parts.push(format!("braillelabel={label}"));
+        }
+
+        if let Some(description) = self.0.braille_role_description() {
+            parts.push(format!("brailleroledescription={description}"));
+        }
+
+        if parts.is_empty() {
+            None
+        } else {
+            let mut result = WideString::default();
+            result
+                .write_str(parts.join(";").as_str())
+                .expect("TODO: panic message");
+            Some(result)
+        }
     }
 
     fn is_enabled(&self) -> bool {
@@ -980,7 +1003,8 @@ properties! {
     (UIA_IsRequiredForFormPropertyId, is_required),
     (UIA_IsPasswordPropertyId, is_password),
     (UIA_PositionInSetPropertyId, position_in_set),
-    (UIA_SizeOfSetPropertyId, size_of_set)
+    (UIA_SizeOfSetPropertyId, size_of_set),
+    (UIA_AriaPropertiesPropertyId, aria_properties)
 }
 
 patterns! {

@@ -811,6 +811,8 @@ enum PropertyId {
     Url,
     RowIndexText,
     ColumnIndexText,
+    BrailleLabel,
+    BrailleRoleDescription,
 
     // f64
     ScrollX,
@@ -1788,7 +1790,9 @@ string_property_methods! {
     (Tooltip, tooltip, set_tooltip, clear_tooltip),
     (Url, url, set_url, clear_url),
     (RowIndexText, row_index_text, set_row_index_text, clear_row_index_text),
-    (ColumnIndexText, column_index_text, set_column_index_text, clear_column_index_text)
+    (ColumnIndexText, column_index_text, set_column_index_text, clear_column_index_text),
+    (BrailleLabel, braille_label, set_braille_label, clear_braille_label),
+    (BrailleRoleDescription, braille_role_description, set_braille_role_description, clear_braille_role_description)
 }
 
 f64_property_methods! {
@@ -2337,7 +2341,9 @@ impl<'de> Visitor<'de> for PropertiesVisitor {
                     Tooltip,
                     Url,
                     RowIndexText,
-                    ColumnIndexText
+                    ColumnIndexText,
+                    BrailleLabel,
+                    BrailleRoleDescription
                 },
                 F64 {
                     ScrollX,
@@ -2484,7 +2490,9 @@ impl JsonSchema for Properties {
                 Tooltip,
                 Url,
                 RowIndexText,
-                ColumnIndexText
+                ColumnIndexText,
+                BrailleLabel,
+                BrailleRoleDescription
             },
             f64 {
                 ScrollX,
