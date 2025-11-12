@@ -149,10 +149,7 @@ impl NodeWrapper<'_> {
             // names should be exposed as `AtspiRole::Landmark` according to Core AAM.
             Role::Form => AtspiRole::Form,
             Role::Figure | Role::Feed => AtspiRole::Panel,
-            Role::GenericContainer
-            | Role::FooterAsNonLandmark
-            | Role::HeaderAsNonLandmark
-            | Role::Ruby => AtspiRole::Section,
+            Role::GenericContainer | Role::Ruby => AtspiRole::Section,
             Role::GraphicsDocument => AtspiRole::DocumentFrame,
             Role::GraphicsObject => AtspiRole::Panel,
             Role::GraphicsSymbol => AtspiRole::Image,
@@ -224,6 +221,8 @@ impl NodeWrapper<'_> {
             // shows up in the tree.
             Role::RubyAnnotation => AtspiRole::Static,
             Role::Section => AtspiRole::Section,
+            Role::SectionFooter => AtspiRole::Footer,
+            Role::SectionHeader => AtspiRole::Header,
             Role::ScrollBar => AtspiRole::ScrollBar,
             Role::Search => AtspiRole::Landmark,
             Role::Slider => AtspiRole::Slider,
