@@ -12,6 +12,8 @@ AccessKit makes it easier to implement accessibility, for screen readers and oth
 
 * [How AccessKit works (architecture + Quick Start)](docs/how-it-works.md): canonical walkthrough of the schema, adapters, and a runnable winit example.
 * [Tips for application developers](README-APPLICATION-DEVELOPERS.md): practical screen reader testing guidance.
+* [Using the C bindings](docs/c-bindings.md): how to consume AccessKit from C/C++ (releases, CMake, source builds).
+* [Using the Python bindings](docs/python-bindings.md): installing the `accesskit` PyPI package and wiring adapters into Python toolkits.
 * [Crate documentation on docs.rs](https://docs.rs/accesskit/): API reference for each published crate.
 
 ## Platform adapters
