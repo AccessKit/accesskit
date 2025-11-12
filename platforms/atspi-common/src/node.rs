@@ -372,6 +372,14 @@ impl NodeWrapper<'_> {
             .map(|s| s.to_string())
     }
 
+    fn braille_label(&self) -> Option<&str> {
+        self.0.braille_label()
+    }
+
+    fn braille_role_description(&self) -> Option<&str> {
+        self.0.braille_role_description()
+    }
+
     fn attributes(&self) -> HashMap<&'static str, String> {
         let mut attributes = HashMap::new();
         if let Some(placeholder) = self.placeholder() {
@@ -382,6 +390,12 @@ impl NodeWrapper<'_> {
         }
         if let Some(size_of_set) = self.size_of_set() {
             attributes.insert("setsize", size_of_set);
+        }
+        if let Some(label) = self.braille_label() {
+            attributes.insert("braillelabel", label.to_string());
+        }
+        if let Some(role_description) = self.braille_role_description() {
+            attributes.insert("brailleroledescription", role_description.to_string());
         }
 
         attributes
