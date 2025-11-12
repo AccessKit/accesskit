@@ -1,0 +1,8 @@
+[package]
+name = "accesskit_multi_tree"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+accesskit = "0.21.1"
+accesskit_winit = "0.29.2"
