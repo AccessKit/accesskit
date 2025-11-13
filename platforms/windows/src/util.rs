@@ -303,3 +303,32 @@ pub(crate) fn upgrade<T>(weak: &Weak<T>) -> Result<Arc<T>> {
         Err(element_not_available())
     }
 }
+
+pub(crate) struct AriaProperties<W: Write> {
+    inner: W,
+    need_separator: bool,
+}
+
+impl<W: Write> AriaProperties<W> {
+    pub(crate) fn new(inner: W) -> Self {
+        Self {
+            inner,
+            need_separator: false,
+        }
+    }
+
+    pub(crate) fn write_property(&mut self, name: &str, value: &str) -> fmt::Result {
+        if self.need_separator {
+            self.inner.write_char(';')?;
+        }
+        self.inner.write_str(name)?;
+        self.inner.write_char('=')?;
+        self.inner.write_str(value)?;
+        self.need_separator = true;
+        Ok(())
+    }
+
+    pub(crate) fn has_properties(&self) -> bool {
+        self.need_separator
+    }
+}

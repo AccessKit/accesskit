@@ -15,7 +15,6 @@ use accesskit::{
     Toggled,
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
-use std::fmt::Write;
 use std::sync::{atomic::Ordering, Arc, Weak};
 use windows::{
     core::*,
@@ -290,24 +289,23 @@ impl NodeWrapper<'_> {
     }
 
     fn aria_properties(&self) -> Option<WideString> {
-        let mut parts = Vec::new();
+        let mut result = WideString::default();
+        let mut properties = AriaProperties::new(&mut result);
 
         if let Some(label) = self.0.braille_label() {
-            parts.push(format!("braillelabel={label}"));
+            properties.write_property("braillelabel", label).unwrap();
         }
 
         if let Some(description) = self.0.braille_role_description() {
-            parts.push(format!("brailleroledescription={description}"));
+            properties
+                .write_property("brailleroledescription", description)
+                .unwrap();
         }
 
-        if parts.is_empty() {
-            None
-        } else {
-            let mut result = WideString::default();
-            result
-                .write_str(parts.join(";").as_str())
-                .expect("TODO: panic message");
+        if properties.has_properties() {
             Some(result)
+        } else {
+            None
         }
     }
 
