@@ -288,6 +288,27 @@ impl NodeWrapper<'_> {
         filter(self.0) == FilterResult::Include
     }
 
+    fn aria_properties(&self) -> Option<WideString> {
+        let mut result = WideString::default();
+        let mut properties = AriaProperties::new(&mut result);
+
+        if let Some(label) = self.0.braille_label() {
+            properties.write_property("braillelabel", label).unwrap();
+        }
+
+        if let Some(description) = self.0.braille_role_description() {
+            properties
+                .write_property("brailleroledescription", description)
+                .unwrap();
+        }
+
+        if properties.has_properties() {
+            Some(result)
+        } else {
+            None
+        }
+    }
+
     fn is_enabled(&self) -> bool {
         !self.0.is_disabled()
     }
@@ -980,7 +1001,8 @@ properties! {
     (UIA_IsRequiredForFormPropertyId, is_required),
     (UIA_IsPasswordPropertyId, is_password),
     (UIA_PositionInSetPropertyId, position_in_set),
-    (UIA_SizeOfSetPropertyId, size_of_set)
+    (UIA_SizeOfSetPropertyId, size_of_set),
+    (UIA_AriaPropertiesPropertyId, aria_properties)
 }
 
 patterns! {

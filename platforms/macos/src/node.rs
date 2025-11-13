@@ -902,6 +902,20 @@ declare_class!(
             });
         }
 
+        #[method_id(accessibilityAttributeValue:)]
+        fn accessibility_attribute_value(&self, attr: &NSString) -> Option<Id<NSString>> {
+            self.resolve(|node| {
+                if attr == ns_string!("AXBrailleLabel") && node.has_braille_label() {
+                    return Some(NSString::from_str(node.braille_label().unwrap()))
+                } else if attr == ns_string!("AXBrailleRoleDescription") && node.has_braille_role_description() {
+                    return Some(NSString::from_str(node.braille_role_description().unwrap()))
+                }
+
+                None
+            })
+            .flatten()
+        }
+
         #[method_id(accessibilityRows)]
         fn rows(&self) -> Option<Id<NSArray<PlatformNode>>> {
             self.resolve_with_context(|node, context| {
@@ -1070,6 +1084,9 @@ declare_class!(
                 }
                 if selector == sel!(accessibilityTabs) {
                     return node.role() == Role::TabList;
+                }
+                if selector == sel!(accessibilityAttributeValue:) {
+                    return node.has_braille_label() || node.has_braille_role_description()
                 }
                 selector == sel!(accessibilityParent)
                     || selector == sel!(accessibilityChildren)
