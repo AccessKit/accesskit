@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "accesskit_multi_tree",
     "common",
     "consumer",
     "platforms/android",

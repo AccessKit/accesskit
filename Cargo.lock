@@ -71,6 +71,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "accesskit_multi_tree"
+version = "0.1.0"
+dependencies = [
+ "accesskit",
+ "accesskit_winit",
+]
+
+[[package]]
 name = "accesskit_unix"
 version = "0.17.1"
 dependencies = [
