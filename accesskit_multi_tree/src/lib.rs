@@ -2,6 +2,11 @@ use std::{collections::HashMap, sync::atomic::AtomicUsize};
 
 use accesskit::{NodeId, TreeUpdate};
 
+#[cfg(not(test))]
+type InnerAdapter = accesskit_winit::Adapter;
+#[cfg(test)]
+type InnerAdapter = self::test::InnerAdapter;
+
 const ROOT_SUBTREE_ID: SubtreeId = SubtreeId(0);
 
 /// Adapter that combines a root subtree with any number of other subtrees.
@@ -9,8 +14,9 @@ const ROOT_SUBTREE_ID: SubtreeId = SubtreeId(0);
 /// The root subtree is always defined, and has id [`Self::root_subtree_id`]. To define additional
 /// subtrees, call [`Self::register_new_subtree`].
 pub struct Adapter {
-    // TODO: servoshell on Android and OpenHarmony do not use winit
-    inner: accesskit_winit::Adapter,
+    // TODO: servoshell on Android and OpenHarmony do not use winit.
+    // Allow switching to non-winit inner Adapter, maybe using conditional compilation?
+    inner: InnerAdapter,
 
     next_subtree_id: SubtreeId,
     child_subtrees: HashMap<SubtreeId, SubtreeInfo>,
@@ -28,7 +34,11 @@ pub struct SubtreeInfo {
 pub struct SubtreeId(u64);
 
 impl Adapter {
-    pub fn new(inner: accesskit_winit::Adapter) -> Self {
+    // TODO: ensure that the ActivationHandler in `inner` is well-behaved (pushes updates to this adapter).
+    // We suspect we can only guarantee this if *we* set the handler, which means *we* create the InnerAdapter.
+    // Same goes for ActionHandler, we can intercept the caller’s handler and rewrite the target id.
+    // TODO: if using a winit inner Adapter, expose the two winit-specific constructors.
+    pub fn new(inner: InnerAdapter) -> Self {
         let mut result = Self {
             inner,
             next_subtree_id: SubtreeId(1),
@@ -44,11 +54,12 @@ impl Adapter {
         ROOT_SUBTREE_ID
     }
 
-    pub fn register_child_subtree(&mut self, parent_subtree_id: SubtreeId, parent_node_id: NodeId) {
+    pub fn register_child_subtree(&mut self, parent_subtree_id: SubtreeId, parent_node_id: NodeId) -> SubtreeId {
         let subtree_id = self.next_subtree_id();
         assert!(self.subtree_is_registered(parent_subtree_id));
         assert!(self.child_subtrees.insert(subtree_id, SubtreeInfo { parent_subtree_id, parent_node_id }).is_none());
         assert!(self.id_map.insert(subtree_id, HashMap::default()).is_none());
+        subtree_id
     }
 
     pub fn unregister_subtree(&mut self, subtree_id: SubtreeId) {
@@ -71,6 +82,11 @@ impl Adapter {
         //     - Hard way: we plumb through the lower-level Adapters and expose the one in
         //       atspi common / android / windows? macOS has one too, but maybe used differently?
         let mut subtree_update = updater();
+        // TODO: rewrite the focus correctly.
+        // We think the model is something like: every subtree has its local idea of the focused
+        // node, but that node may not end up being the focused node globally. The globally focused
+        // node is the focused node of the root subtree, unless that node is a graft node, in which
+        // case it’s the focused node of the child subtree being grafted there (recursively).
         subtree_update.focus = self.map_id(subtree_id, subtree_update.focus);
         // TODO: rewrite the root correctly
         if let Some(tree) = subtree_update.tree.as_mut() {
@@ -114,11 +130,20 @@ impl Adapter {
     }
 
     fn map_node_id_vec_property(&mut self, subtree_id: SubtreeId, node_ids: Vec<NodeId>, setter: impl FnOnce(Vec<NodeId>)) {
-        let mut children = node_ids;
-        for node_id in children.iter_mut() {
+        // If node id vec properties return an empty slice from their getters, don’t bother
+        // calling the setters. This may be slightly more efficient, and also works around a
+        // potentially busted derived impl PartialEq for Properties where PropertyId::Unset in
+        // indices is considered unequal to PropertyValue::NodeIdVec(vec![]). It should be
+        // equal, because all properties currently default to empty by definition:
+        // <https://github.com/AccessKit/accesskit/blob/accesskit-v0.21.1/common/src/lib.rs#L1035>
+        if node_ids.is_empty() {
+            return;
+        }
+        let mut node_ids = node_ids;
+        for node_id in node_ids.iter_mut() {
             *node_id = self.map_id(subtree_id, *node_id);
         }
-        setter(children);
+        setter(node_ids);
     }
 
     fn next_subtree_id(&mut self) -> SubtreeId {
@@ -137,5 +162,100 @@ impl Adapter {
 
     fn subtree_is_registered(&self, subtree_id: SubtreeId) -> bool {
         subtree_id == self.root_subtree_id() || self.child_subtrees.contains_key(&subtree_id)
+    }
+
+    #[cfg(test)]
+    fn take_tree_updates(&mut self) -> Vec<TreeUpdate> {
+        self.inner.take_tree_updates()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
+
+    use crate::Adapter;
+
+    #[derive(Default)]
+    pub struct InnerAdapter {
+        tree_updates: Vec<TreeUpdate>,
+    }
+
+    impl InnerAdapter {
+        pub fn update_if_active(&mut self, updater: impl FnOnce() -> TreeUpdate) {
+            self.tree_updates.push(updater());
+        }
+        pub fn take_tree_updates(&mut self) -> Vec<TreeUpdate> {
+            std::mem::take(&mut self.tree_updates)
+        }
+    }
+
+    fn node(children: impl Into<Vec<NodeId>>) -> Node {
+        let mut result = Node::new(Role::Unknown);
+        result.set_children(children.into());
+        result
+    }
+
+    #[test]
+    fn test_update() {
+        let mut adapter = Adapter::new(InnerAdapter::default());
+        adapter.update_if_active(adapter.root_subtree_id(), || TreeUpdate {
+            nodes: vec![
+                (NodeId(13), node([NodeId(15), NodeId(14)])),
+                (NodeId(15), node([])),
+                (NodeId(14), node([])),
+            ],
+            tree: Some(Tree {
+                root: NodeId(13),
+                toolkit_name: None,
+                toolkit_version: None,
+            }),
+            focus: NodeId(13),
+        });
+        let child_subtree_id = adapter.register_child_subtree(adapter.root_subtree_id(), NodeId(15));
+        adapter.update_if_active(child_subtree_id, || TreeUpdate {
+            nodes: vec![
+                (NodeId(25), node([NodeId(27), NodeId(26)])),
+                (NodeId(27), node([])),
+                (NodeId(26), node([])),
+            ],
+            tree: Some(Tree {
+                root: NodeId(25),
+                toolkit_name: None,
+                toolkit_version: None,
+            }),
+            focus: NodeId(25),
+        });
+        let actual_updates = adapter.take_tree_updates();
+        assert_eq!(actual_updates, vec![
+            TreeUpdate {
+                nodes: vec![
+                    (NodeId(0), node([NodeId(1), NodeId(2)])),
+                    (NodeId(1), node([])),
+                    (NodeId(2), node([])),
+                ],
+                tree: Some(Tree {
+                    root: NodeId(0),
+                    toolkit_name: None,
+                    toolkit_version: None,
+                }),
+                focus: NodeId(0),
+            },
+            TreeUpdate {
+                nodes: vec![
+                    (NodeId(3), node([NodeId(4), NodeId(5)])),
+                    (NodeId(4), node([])),
+                    (NodeId(5), node([])),
+                ],
+                tree: Some(Tree {
+                    // FIXME: this is incorrect
+                    root: NodeId(3),
+                    toolkit_name: None,
+                    toolkit_version: None,
+                }),
+                // FIXME: this is incorrect
+                focus: NodeId(3),
+            },
+        ]);
     }
 }
