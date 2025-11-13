@@ -707,8 +707,6 @@ impl<'a> Node<'a> {
             Role::Article
                 | Role::Definition
                 | Role::DescriptionList
-                | Role::DescriptionListTerm
-                | Role::Directory
                 | Role::Document
                 | Role::GraphicsDocument
                 | Role::Image
@@ -752,7 +750,6 @@ impl<'a> Node<'a> {
                 | Role::ListBoxOption
                 | Role::MenuListOption
                 | Role::RadioButton
-                | Role::DescriptionListTerm
                 | Role::Term
         )
     }

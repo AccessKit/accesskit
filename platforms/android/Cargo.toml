@@ -19,4 +19,3 @@ accesskit = { version = "0.21.1", path = "../../common" }
 accesskit_consumer = { version = "0.31.0", path = "../../consumer" }
 jni = "0.21.1"
 log = "0.4.17"
-
