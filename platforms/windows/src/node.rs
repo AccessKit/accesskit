@@ -389,7 +389,7 @@ impl NodeWrapper<'_> {
 
         if let Some(level) = self.0.level() {
             properties
-                .write_property("level", &*level.to_string())
+                .write_property("level", &level.to_string())
                 .unwrap();
         }
 
@@ -415,7 +415,7 @@ impl NodeWrapper<'_> {
 
         if let Some(posinset) = self.0.position_in_set() {
             properties
-                .write_property("posinset", &*posinset.to_string())
+                .write_property("posinset", &posinset.to_string())
                 .unwrap();
         }
 
@@ -435,29 +435,29 @@ impl NodeWrapper<'_> {
 
         if let Some(setsize) = self.0.size_of_set() {
             properties
-                .write_property("setsize", &*setsize.to_string())
+                .write_property("setsize", &setsize.to_string())
                 .unwrap();
         }
 
         if let Some(valuemax) = self.0.max_numeric_value() {
             properties
-                .write_property("valuemax", &*valuemax.to_string())
+                .write_property("valuemax", &valuemax.to_string())
                 .unwrap();
         }
 
         if let Some(valuemin) = self.0.min_numeric_value() {
             properties
-                .write_property("valuemin", &*valuemin.to_string())
+                .write_property("valuemin", &valuemin.to_string())
                 .unwrap();
         }
 
         if let Some(valuenow) = self.0.numeric_value() {
             properties
-                .write_property("valuenow", &*valuenow.to_string())
+                .write_property("valuenow", &valuenow.to_string())
                 .unwrap();
 
             if let Some(valuetext) = self.0.value() {
-                properties.write_property("valuetext", &*valuetext).unwrap();
+                properties.write_property("valuetext", &valuetext).unwrap();
             }
         }
 
