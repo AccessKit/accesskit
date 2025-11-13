@@ -46,9 +46,9 @@ impl Adapter {
 
     pub fn register_child_subtree(&mut self, parent_subtree_id: SubtreeId, parent_node_id: NodeId) {
         let subtree_id = self.next_subtree_id();
+        assert!(self.subtree_is_registered(parent_subtree_id));
         assert!(self.child_subtrees.insert(subtree_id, SubtreeInfo { parent_subtree_id, parent_node_id }).is_none());
         assert!(self.id_map.insert(subtree_id, HashMap::default()).is_none());
-        // TODO: assert that the parent subtree is already registered (or is the root)
     }
 
     pub fn unregister_subtree(&mut self, subtree_id: SubtreeId) {
@@ -133,5 +133,9 @@ impl Adapter {
         // TODO handle wrapping? Seems unnecessary for sequential usize = u64
         self.next_node_id = NodeId(node_id.0.checked_add(1).expect("NodeId overflow"));
         node_id
+    }
+
+    fn subtree_is_registered(&self, subtree_id: SubtreeId) -> bool {
+        subtree_id == self.root_subtree_id() || self.child_subtrees.contains_key(&subtree_id)
     }
 }
