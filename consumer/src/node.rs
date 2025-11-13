@@ -9,8 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, Affine, Live, Node as NodeData, NodeId, Orientation, Point, Rect, Role, TextSelection,
-    Toggled,
+    Action, Affine, HasPopup, Invalid, Live, Node as NodeData, NodeId, Orientation, Point, Rect,
+    Role, TextSelection, Toggled,
 };
 use alloc::{
     string::{String, ToString},
@@ -333,6 +333,14 @@ impl<'a> Node<'a> {
         self.data().role_description().is_some()
     }
 
+    pub fn is_live_atomic(&self) -> bool {
+        self.data().is_live_atomic()
+    }
+
+    pub fn is_busy(&self) -> bool {
+        self.data().is_busy()
+    }
+
     pub fn braille_label(&self) -> Option<&str> {
         self.data().braille_label()
     }
@@ -349,12 +357,28 @@ impl<'a> Node<'a> {
         self.data().braille_role_description().is_some()
     }
 
+    pub fn has_popup(&self) -> Option<HasPopup> {
+        self.data().has_popup()
+    }
+
     pub fn is_hidden(&self) -> bool {
         self.data().is_hidden()
     }
 
+    pub fn invalid(&self) -> Option<Invalid> {
+        self.data().invalid()
+    }
+
+    pub fn level(&self) -> Option<usize> {
+        self.data().level()
+    }
+
     pub fn is_disabled(&self) -> bool {
         self.data().is_disabled()
+    }
+
+    pub fn is_expanded(&self) -> Option<bool> {
+        self.data().is_expanded()
     }
 
     pub fn is_read_only(&self) -> bool {
