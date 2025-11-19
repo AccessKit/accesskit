@@ -211,6 +211,9 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                 fill::cleanup_window(&window.window);
                 self.window = None;
             }
+            WindowEvent::Resized(_) => {
+                window.window.request_redraw();
+            }
             WindowEvent::RedrawRequested => {
                 fill::fill_window(&window.window);
             }
@@ -231,11 +234,13 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                         BUTTON_1_ID
                     };
                     state.set_focus(adapter, new_focus);
+                    window.window.request_redraw();
                 }
                 Key::Named(winit::keyboard::NamedKey::Space) => {
                     let mut state = state.lock().unwrap();
                     let id = state.focus;
                     state.press_button(adapter, id);
+                    window.window.request_redraw();
                 }
                 _ => (),
             },
@@ -266,6 +271,7 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                         _ => (),
                     }
                 }
+                window.window.request_redraw();
             }
             AccessKitWindowEvent::AccessibilityDeactivated => (),
         }
@@ -274,12 +280,13 @@ impl ApplicationHandler<AccessKitEvent> for Application {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         self.create_window(event_loop)
             .expect("failed to create initial window");
+        if let Some(window) = self.window.as_ref() {
+            window.window.request_redraw();
+        }
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        if let Some(window) = self.window.as_ref() {
-            window.window.request_redraw();
-        } else {
+        if self.window.is_none() {
             event_loop.exit();
         }
     }
