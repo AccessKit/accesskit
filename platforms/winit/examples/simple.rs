@@ -247,6 +247,7 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                         _ => (),
                     }
                 }
+                window.window.request_redraw();
             }
             AccessKitWindowEvent::AccessibilityDeactivated => (),
         }
