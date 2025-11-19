@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_macos"
-version = "0.22.2"
+version = "0.23.0"
 authors.workspace = true
 license.workspace = true
 description = "AccessKit UI accessibility infrastructure: macOS adapter"
@@ -15,8 +15,8 @@ rust-version.workspace = true
 default-target = "x86_64-apple-darwin"
 
 [dependencies]
-accesskit = { version = "0.21.1", path = "../../common" }
-accesskit_consumer = { version = "0.31.0", path = "../../consumer" }
+accesskit = { version = "0.22.0", path = "../../common" }
+accesskit_consumer = { version = "0.32.0", path = "../../consumer" }
 hashbrown = { version = "0.15", default-features = false, features = ["default-hasher"] }
 objc2 = "0.5.1"
 objc2-foundation = { version = "0.2.0", features = [

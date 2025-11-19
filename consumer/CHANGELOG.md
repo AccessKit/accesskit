@@ -24,6 +24,35 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.32.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.31.0...accesskit_consumer-v0.32.0) (2025-11-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop deprecated roles ([#642](https://github.com/AccessKit/accesskit/issues/642))
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626))
+* Support properties on text ranges ([#627](https://github.com/AccessKit/accesskit/issues/627))
+
+### Features
+
+* Add `map` function to `TextRangePropertyValue<Option<T>>` ([#632](https://github.com/AccessKit/accesskit/issues/632)) ([555617a](https://github.com/AccessKit/accesskit/commit/555617a004c1d57c7ed114a4fd38c0c48ac2d149))
+* Implement BrailleLabel and BrailleRoleDescription roles ([#638](https://github.com/AccessKit/accesskit/issues/638)) ([0fdcebb](https://github.com/AccessKit/accesskit/commit/0fdcebb55e308e039ec99fbc31e94e8087a69f2d))
+* Support dialogs in the consumer crate ([028f611](https://github.com/AccessKit/accesskit/commit/028f611b7324bf4bcc121e1e047c426075c34982))
+* Support properties on text ranges ([#627](https://github.com/AccessKit/accesskit/issues/627)) ([b854ad8](https://github.com/AccessKit/accesskit/commit/b854ad8dbd54eeb38105c9b39c9e76310a753570))
+
+
+### Code Refactoring
+
+* Drop deprecated roles ([#642](https://github.com/AccessKit/accesskit/issues/642)) ([4d46c27](https://github.com/AccessKit/accesskit/commit/4d46c2740631c5fe4f057707b949d12b26931d0b))
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626)) ([ea23ec4](https://github.com/AccessKit/accesskit/commit/ea23ec424c7dbb8841e03d71b6a15b74264850a9))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.1 to 0.22.0
+
 ## [0.31.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.30.1...accesskit_consumer-v0.31.0) (2025-10-20)
 
 
