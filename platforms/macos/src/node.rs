@@ -39,7 +39,7 @@ fn ns_role(node: &Node) -> &'static NSAccessibilityRole {
         match role {
             Role::Unknown => NSAccessibilityUnknownRole,
             Role::TextRun => NSAccessibilityUnknownRole,
-            Role::Cell => NSAccessibilityCellRole,
+            Role::Cell | Role::GridCell => NSAccessibilityCellRole,
             Role::Label => NSAccessibilityStaticTextRole,
             Role::Image => NSAccessibilityImageRole,
             Role::Link => NSAccessibilityLinkRole,

@@ -87,7 +87,7 @@ impl NodeWrapper<'_> {
             Role::DefaultButton => AtspiRole::Button,
             Role::Canvas => AtspiRole::Canvas,
             Role::Caption => AtspiRole::Caption,
-            Role::Cell => AtspiRole::TableCell,
+            Role::Cell | Role::GridCell => AtspiRole::TableCell,
             Role::CheckBox => AtspiRole::CheckBox,
             Role::Switch => AtspiRole::ToggleButton,
             Role::ColorWell => AtspiRole::Button,

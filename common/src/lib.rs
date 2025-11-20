@@ -141,6 +141,7 @@ pub enum Role {
     Footer,
     Form,
     Grid,
+    GridCell,
     Group,
     Header,
     Heading,

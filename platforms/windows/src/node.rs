@@ -53,7 +53,7 @@ impl NodeWrapper<'_> {
         match role {
             Role::Unknown => UIA_CustomControlTypeId,
             Role::TextRun => UIA_CustomControlTypeId,
-            Role::Cell => UIA_DataItemControlTypeId,
+            Role::Cell | Role::GridCell => UIA_DataItemControlTypeId,
             Role::Label => UIA_TextControlTypeId,
             Role::Image => UIA_ImageControlTypeId,
             Role::Link => UIA_HyperlinkControlTypeId,
@@ -436,6 +436,7 @@ impl NodeWrapper<'_> {
             | Role::MenuListOption
             | Role::Tab
             | Role::TreeItem => self.0.is_selected().is_some(),
+            Role::GridCell => true,
             _ => false,
         }
     }
