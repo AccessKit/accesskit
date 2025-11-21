@@ -321,6 +321,12 @@ impl NodeWrapper<'_> {
             properties.write_bool_property("busy", true).unwrap();
         }
 
+        if let Some(colindextext) = self.0.column_index_text() {
+            properties
+                .write_property("colindextext", colindextext)
+                .unwrap();
+        }
+
         if let Some(current) = self.0.aria_current() {
             if current != AriaCurrent::False {
                 fn val(c: AriaCurrent) -> &'static str {
@@ -368,6 +374,12 @@ impl NodeWrapper<'_> {
         if let Some(posinset) = self.0.position_in_set() {
             properties
                 .write_property("posinset", &posinset.to_string())
+                .unwrap();
+        }
+
+        if let Some(rowindextext) = self.0.row_index_text() {
+            properties
+                .write_property("rowindextext", rowindextext)
                 .unwrap();
         }
 

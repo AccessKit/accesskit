@@ -341,6 +341,14 @@ impl<'a> Node<'a> {
         self.data().is_busy()
     }
 
+    pub fn column_index_text(&self) -> Option<&str> {
+        self.data().column_index_text()
+    }
+
+    pub fn row_index_text(&self) -> Option<&str> {
+        self.data().row_index_text()
+    }
+
     pub fn braille_label(&self) -> Option<&str> {
         self.data().braille_label()
     }
