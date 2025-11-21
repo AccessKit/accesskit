@@ -11,8 +11,8 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit::{
-    Action, ActionData, ActionRequest, Live, NodeId, NodeIdContent, Orientation, Point, Role,
-    Toggled,
+    Action, ActionData, ActionRequest, AriaCurrent, HasPopup, Live, NodeId, NodeIdContent,
+    Orientation, Point, Role, SortDirection, Toggled,
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
 use std::sync::{atomic::Ordering, Arc, Weak};
@@ -302,6 +302,11 @@ impl NodeWrapper<'_> {
         let mut result = WideString::default();
         let mut properties = AriaProperties::new(&mut result);
 
+        // TODO: Atomic, and busy flags should include false when explicitly set to that
+        if self.0.is_live_atomic() {
+            properties.write_bool_property("atomic", true).unwrap();
+        }
+
         if let Some(label) = self.0.braille_label() {
             properties.write_property("braillelabel", label).unwrap();
         }
@@ -309,6 +314,92 @@ impl NodeWrapper<'_> {
         if let Some(description) = self.0.braille_role_description() {
             properties
                 .write_property("brailleroledescription", description)
+                .unwrap();
+        }
+
+        if self.0.is_busy() {
+            properties.write_bool_property("busy", true).unwrap();
+        }
+
+        if let Some(colindextext) = self.0.column_index_text() {
+            properties
+                .write_property("colindextext", colindextext)
+                .unwrap();
+        }
+
+        if let Some(current) = self.0.aria_current() {
+            if current != AriaCurrent::False {
+                fn val(c: AriaCurrent) -> &'static str {
+                    match c {
+                        AriaCurrent::True => "true",
+                        AriaCurrent::Page => "page",
+                        AriaCurrent::Step => "step",
+                        AriaCurrent::Location => "location",
+                        AriaCurrent::Date => "date",
+                        AriaCurrent::Time => "time",
+                        AriaCurrent::False => unreachable!(),
+                    }
+                }
+
+                properties.write_property("current", val(current)).unwrap();
+            }
+        }
+
+        if let Some(has_popup) = self.0.has_popup() {
+            fn val(h: HasPopup) -> &'static str {
+                match h {
+                    HasPopup::Menu => "menu",
+                    HasPopup::Listbox => "listbox",
+                    HasPopup::Tree => "tree",
+                    HasPopup::Grid => "grid",
+                    HasPopup::Dialog => "dialog",
+                }
+            }
+
+            properties
+                .write_property("haspopup", val(has_popup))
+                .unwrap();
+        }
+
+        if let Some(level) = self.0.level() {
+            properties
+                .write_property("level", &level.to_string())
+                .unwrap();
+        }
+
+        if self.0.is_multiline() {
+            properties.write_bool_property("multiline", true).unwrap();
+        }
+
+        if let Some(posinset) = self.0.position_in_set() {
+            properties
+                .write_property("posinset", &posinset.to_string())
+                .unwrap();
+        }
+
+        if let Some(rowindextext) = self.0.row_index_text() {
+            properties
+                .write_property("rowindextext", rowindextext)
+                .unwrap();
+        }
+
+        if let Some(setsize) = self.0.size_of_set() {
+            properties
+                .write_property("setsize", &setsize.to_string())
+                .unwrap();
+        }
+
+        if let Some(sort_direction) = self.0.sort_direction() {
+            fn val(s: SortDirection) -> &'static str {
+                match s {
+                    SortDirection::Ascending => "ascending",
+                    SortDirection::Descending => "descending",
+                    SortDirection::Other => "other",
+                }
+            }
+
+            properties
+                .write_property("sort", val(sort_direction))
                 .unwrap();
         }
 
