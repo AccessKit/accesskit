@@ -9,8 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, Affine, HasPopup, Invalid, Live, Node as NodeData, NodeId, Orientation, Point, Rect,
-    Role, TextSelection, Toggled,
+    Action, Affine, AriaCurrent, HasPopup, Invalid, Live, Node as NodeData, NodeId, Orientation,
+    Point, Rect, Role, SortDirection, TextSelection, Toggled,
 };
 use alloc::{
     string::{String, ToString},
@@ -357,6 +357,10 @@ impl<'a> Node<'a> {
         self.data().braille_role_description().is_some()
     }
 
+    pub fn aria_current(&self) -> Option<AriaCurrent> {
+        self.data().aria_current()
+    }
+
     pub fn has_popup(&self) -> Option<HasPopup> {
         self.data().has_popup()
     }
@@ -543,6 +547,10 @@ impl<'a> Node<'a> {
     pub fn position_in_set(&self) -> Option<usize> {
         // TODO: compute this if it is not provided (#9).
         self.data().position_in_set()
+    }
+
+    pub fn sort_direction(&self) -> Option<SortDirection> {
+        self.data().sort_direction()
     }
 
     pub fn supports_toggle(&self) -> bool {

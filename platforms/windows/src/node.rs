@@ -11,8 +11,8 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit::{
-    Action, ActionData, ActionRequest, HasPopup, Live, NodeId, NodeIdContent, Orientation, Point,
-    Role, Toggled,
+    Action, ActionData, ActionRequest, AriaCurrent, HasPopup, Live, NodeId, NodeIdContent,
+    Orientation, Point, Role, SortDirection, Toggled,
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
 use std::sync::{atomic::Ordering, Arc, Weak};
@@ -302,9 +302,9 @@ impl NodeWrapper<'_> {
         let mut result = WideString::default();
         let mut properties = AriaProperties::new(&mut result);
 
-        // TODO: Atomic, busy, and required flags should include false when explicitly set to that
+        // TODO: Atomic, and busy flags should include false when explicitly set to that
         if self.0.is_live_atomic() {
-            properties.write_property("atomic", "true").unwrap()
+            properties.write_bool_property("atomic", true).unwrap();
         }
 
         if let Some(label) = self.0.braille_label() {
@@ -318,48 +318,25 @@ impl NodeWrapper<'_> {
         }
 
         if self.0.is_busy() {
-            properties.write_property("busy", "true").unwrap()
+            properties.write_bool_property("busy", true).unwrap();
         }
 
-        if let Some(toggled) = self.0.toggled() {
-            let role = self.0.role();
-
-            fn val(t: Toggled) -> &'static str {
-                match t {
-                    Toggled::False => "false",
-                    Toggled::True => "true",
-                    Toggled::Mixed => "mixed",
-                }
-            }
-
-            match role {
-                Role::Button => {
-                    properties.write_property("pressed", val(toggled)).unwrap();
-                }
-                Role::Switch => {
-                    // Switches don't support the mixed state
-                    if let Toggled::True | Toggled::False = toggled {
-                        let s = val(toggled);
-                        // UIA treats switches as toggle buttons, but for maximum compatability
-                        // we set both pressed and checked states.
-                        properties.write_property("pressed", s).unwrap();
-                        properties.write_property("checked", s).unwrap();
+        if let Some(current) = self.0.aria_current() {
+            if current != AriaCurrent::False {
+                fn val(c: AriaCurrent) -> &'static str {
+                    match c {
+                        AriaCurrent::True => "true",
+                        AriaCurrent::Page => "page",
+                        AriaCurrent::Step => "step",
+                        AriaCurrent::Location => "location",
+                        AriaCurrent::Date => "date",
+                        AriaCurrent::Time => "time",
+                        AriaCurrent::False => unreachable!(),
                     }
                 }
-                _ => {
-                    properties.write_property("checked", val(toggled)).unwrap();
-                }
+
+                properties.write_property("current", val(current)).unwrap();
             }
-        }
-
-        if self.0.is_disabled() {
-            properties.write_property("disabled", "true").unwrap()
-        }
-
-        if let Some(is_expanded) = self.0.is_expanded() {
-            properties
-                .write_property("expanded", if is_expanded { "true" } else { "false" })
-                .unwrap()
         }
 
         if let Some(has_popup) = self.0.has_popup() {
@@ -378,39 +355,14 @@ impl NodeWrapper<'_> {
                 .unwrap();
         }
 
-        if self.0.is_hidden() {
-            properties.write_property("hidden", "true").unwrap()
-        }
-
-        if self.0.invalid().is_some() {
-            // We don't need to distinguish between actual values here.
-            properties.write_property("invalid", "true").unwrap();
-        }
-
         if let Some(level) = self.0.level() {
             properties
                 .write_property("level", &level.to_string())
                 .unwrap();
         }
 
-        match self.0.live() {
-            Live::Polite => {
-                properties.write_property("live", "polite").unwrap();
-            }
-            Live::Assertive => {
-                properties.write_property("live", "assertive").unwrap();
-            }
-            Live::Off => {}
-        }
-
         if self.0.is_multiline() {
-            properties.write_property("multiline", "true").unwrap();
-        }
-
-        if self.is_multiselectable() {
-            properties
-                .write_property("multiselectable", "true")
-                .unwrap();
+            properties.write_bool_property("multiline", true).unwrap();
         }
 
         if let Some(posinset) = self.0.position_in_set() {
@@ -419,46 +371,24 @@ impl NodeWrapper<'_> {
                 .unwrap();
         }
 
-        if self.is_read_only() {
-            properties.write_property("readonly", "true").unwrap();
-        }
-
-        if self.is_required() {
-            properties.write_property("required", "true").unwrap();
-        }
-
-        if let Some(selected) = self.0.is_selected() {
-            properties
-                .write_property("selected", if selected { "true" } else { "false" })
-                .unwrap()
-        }
-
         if let Some(setsize) = self.0.size_of_set() {
             properties
                 .write_property("setsize", &setsize.to_string())
                 .unwrap();
         }
 
-        if let Some(valuemax) = self.0.max_numeric_value() {
-            properties
-                .write_property("valuemax", &valuemax.to_string())
-                .unwrap();
-        }
-
-        if let Some(valuemin) = self.0.min_numeric_value() {
-            properties
-                .write_property("valuemin", &valuemin.to_string())
-                .unwrap();
-        }
-
-        if let Some(valuenow) = self.0.numeric_value() {
-            properties
-                .write_property("valuenow", &valuenow.to_string())
-                .unwrap();
-
-            if let Some(valuetext) = self.0.value() {
-                properties.write_property("valuetext", &valuetext).unwrap();
+        if let Some(sort_direction) = self.0.sort_direction() {
+            fn val(s: SortDirection) -> &'static str {
+                match s {
+                    SortDirection::Ascending => "ascending",
+                    SortDirection::Descending => "descending",
+                    SortDirection::Other => "other",
+                }
             }
+
+            properties
+                .write_property("sort", val(sort_direction))
+                .unwrap();
         }
 
         if properties.has_properties() {
