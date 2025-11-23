@@ -9,8 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, Affine, Live, Node as NodeData, NodeId, Orientation, Point, Rect, Role, TextSelection,
-    Toggled,
+    Action, Affine, AriaCurrent, HasPopup, Live, Node as NodeData, NodeId, Orientation, Point,
+    Rect, Role, SortDirection, TextSelection, Toggled,
 };
 use alloc::{
     string::{String, ToString},
@@ -333,6 +333,22 @@ impl<'a> Node<'a> {
         self.data().role_description().is_some()
     }
 
+    pub fn is_live_atomic(&self) -> bool {
+        self.data().is_live_atomic()
+    }
+
+    pub fn is_busy(&self) -> bool {
+        self.data().is_busy()
+    }
+
+    pub fn column_index_text(&self) -> Option<&str> {
+        self.data().column_index_text()
+    }
+
+    pub fn row_index_text(&self) -> Option<&str> {
+        self.data().row_index_text()
+    }
+
     pub fn braille_label(&self) -> Option<&str> {
         self.data().braille_label()
     }
@@ -349,8 +365,20 @@ impl<'a> Node<'a> {
         self.data().braille_role_description().is_some()
     }
 
+    pub fn aria_current(&self) -> Option<AriaCurrent> {
+        self.data().aria_current()
+    }
+
+    pub fn has_popup(&self) -> Option<HasPopup> {
+        self.data().has_popup()
+    }
+
     pub fn is_hidden(&self) -> bool {
         self.data().is_hidden()
+    }
+
+    pub fn level(&self) -> Option<usize> {
+        self.data().level()
     }
 
     pub fn is_disabled(&self) -> bool {
@@ -519,6 +547,10 @@ impl<'a> Node<'a> {
     pub fn position_in_set(&self) -> Option<usize> {
         // TODO: compute this if it is not provided (#9).
         self.data().position_in_set()
+    }
+
+    pub fn sort_direction(&self) -> Option<SortDirection> {
+        self.data().sort_direction()
     }
 
     pub fn supports_toggle(&self) -> bool {
