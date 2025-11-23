@@ -278,6 +278,7 @@ impl NodeWrapper<'_> {
             Role::Document => Some("document"),
             Role::Form => Some("form"),
             Role::Grid => Some("grid"),
+            Role::GridCell => Some("gridcell"),
             Role::Group => Some("group"),
             Role::Heading => Some("heading"),
             Role::Image => Some("img"),
