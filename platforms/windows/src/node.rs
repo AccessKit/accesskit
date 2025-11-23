@@ -266,53 +266,117 @@ impl NodeWrapper<'_> {
             Role::AlertDialog => Some("alertdialog"),
             Role::Application => Some("application"),
             Role::Article => Some("article"),
-            Role::Banner => Some("banner"),
+            Role::Banner | Role::Header => Some("banner"),
             Role::Button | Role::DefaultButton => Some("button"),
+            Role::Blockquote => Some("blockquote"),
+            Role::Caption | Role::FigureCaption => Some("caption"),
+            Role::Cell => Some("cell"),
             Role::CheckBox => Some("checkbox"),
+            Role::Code => Some("code"),
             Role::ColumnHeader => Some("columnheader"),
-            Role::ComboBox => Some("combobox"),
+            Role::ComboBox | Role::EditableComboBox => Some("combobox"),
+            Role::Comment => Some("comment"),
             Role::Complementary => Some("complementary"),
-            Role::ContentInfo => Some("contentinfo"),
+            Role::ContentInfo | Role::Footer => Some("contentinfo"),
             Role::Definition => Some("definition"),
+            Role::ContentDeletion => Some("deletion"),
             Role::Dialog => Some("dialog"),
-            Role::Document => Some("document"),
+            Role::Document
+            | Role::Iframe
+            | Role::WebView
+            | Role::RootWebArea
+            | Role::Terminal
+            | Role::PdfRoot => Some("document"),
+            Role::Emphasis => Some("emphasis"),
+            Role::Feed => Some("feed"),
+            Role::Figure => Some("figure"),
             Role::Form => Some("form"),
-            Role::Grid => Some("grid"),
+            Role::GenericContainer => Some("generic"),
+            Role::GraphicsDocument => Some("graphics-document"),
+            Role::GraphicsObject => Some("graphics-object"),
+            Role::GraphicsSymbol => Some("graphics-symbol"),
+            Role::Grid | Role::ListGrid => Some("grid"),
             Role::GridCell => Some("gridcell"),
-            Role::Group => Some("group"),
+            Role::Group
+            | Role::Details
+            | Role::IframePresentational
+            | Role::TitleBar
+            | Role::LayoutTable
+            | Role::LayoutTableCell
+            | Role::LayoutTableRow
+            | Role::Audio
+            | Role::Video
+            | Role::ListMarker
+            | Role::EmbeddedObject
+            | Role::ImeCandidate => Some("group"),
             Role::Heading => Some("heading"),
-            Role::Image => Some("img"),
+            Role::Image | Role::Canvas => Some("img"),
+            Role::ContentInsertion => Some("insertion"),
             Role::Link => Some("link"),
-            Role::List => Some("list"),
+            Role::List | Role::DescriptionList | Role::MenuListPopup => Some("list"),
             Role::ListBox => Some("listbox"),
             Role::ListItem => Some("listitem"),
             Role::Log => Some("log"),
             Role::Main => Some("main"),
+            Role::Mark => Some("marker"),
             Role::Marquee => Some("marquee"),
+            Role::Math => Some("math"),
             Role::Menu => Some("menu"),
             Role::MenuBar => Some("menubar"),
             Role::MenuItem => Some("menuitem"),
             Role::MenuItemCheckBox => Some("menuitemcheckbox"),
             Role::MenuItemRadio => Some("menuitemradio"),
+            Role::Meter => Some("meter"),
             Role::Navigation => Some("navigation"),
             Role::Note => Some("note"),
             Role::ListBoxOption | Role::MenuListOption => Some("option"),
-            Role::GenericContainer => Some("presentation"),
+            Role::Paragraph => Some("paragraph"),
             Role::ProgressIndicator => Some("progressbar"),
             Role::RadioButton => Some("radio"),
             Role::RadioGroup => Some("radiogroup"),
-            Role::Region => Some("region"),
+            Role::Region
+            | Role::Pane
+            | Role::Window
+            | Role::Keyboard
+            | Role::Unknown
+            | Role::ScrollView
+            | Role::Caret => Some("region"),
+            Role::Row => Some("row"),
+            Role::RowGroup => Some("rowgroup"),
             Role::RowHeader => Some("rowheader"),
             Role::ScrollBar => Some("scrollbar"),
             Role::Search => Some("search"),
-            Role::Section => Some("section"),
+            Role::SearchInput => Some("searchbox"),
+            Role::SectionFooter => Some("sectionfooter"),
+            Role::SectionHeader => Some("sectionheader"),
+            Role::Splitter => Some("separator"),
             Role::Slider => Some("slider"),
             Role::SpinButton => Some("spinbutton"),
             Role::Status => Some("status"),
+            Role::Strong => Some("strong"),
+            // subscript
+            Role::Suggestion => Some("suggestion"),
+            // superscript
+            Role::Switch => Some("switch"),
             Role::Tab => Some("tab"),
+            Role::Table => Some("table"),
             Role::TabList => Some("tablist"),
             Role::TabPanel => Some("tabpanel"),
-            Role::TextInput | Role::MultilineTextInput => Some("textbox"),
+            Role::Term => Some("term"),
+            Role::TextInput
+            | Role::MultilineTextInput
+            | Role::DateInput
+            | Role::DateTimeInput
+            | Role::WeekInput
+            | Role::MonthInput
+            | Role::TimeInput
+            | Role::EmailInput
+            | Role::NumberInput
+            | Role::PasswordInput
+            | Role::PhoneNumberInput
+            | Role::UrlInput
+            | Role::ColorWell => Some("textbox"),
+            Role::Time => Some("time"),
             Role::Timer => Some("timer"),
             Role::Toolbar => Some("toolbar"),
             Role::Tooltip => Some("tooltip"),
