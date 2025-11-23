@@ -11,8 +11,8 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit::{
-    Action, ActionData, ActionRequest, Live, NodeId, NodeIdContent, Orientation, Point, Role,
-    Toggled,
+    Action, ActionData, ActionRequest, AriaCurrent, HasPopup, Live, NodeId, NodeIdContent,
+    Orientation, Point, Role, SortDirection, Toggled,
 };
 use accesskit_consumer::{FilterResult, Node, TreeState};
 use std::sync::{atomic::Ordering, Arc, Weak};
@@ -302,6 +302,11 @@ impl NodeWrapper<'_> {
         let mut result = WideString::default();
         let mut properties = AriaProperties::new(&mut result);
 
+        // TODO: Atomic, and busy flags should include false when explicitly set to that
+        if self.0.is_live_atomic() {
+            properties.write_bool_property("atomic", true).unwrap();
+        }
+
         if let Some(label) = self.0.braille_label() {
             properties.write_property("braillelabel", label).unwrap();
         }
@@ -309,6 +314,77 @@ impl NodeWrapper<'_> {
         if let Some(description) = self.0.braille_role_description() {
             properties
                 .write_property("brailleroledescription", description)
+                .unwrap();
+        }
+
+        if self.0.is_busy() {
+            properties.write_bool_property("busy", true).unwrap();
+        }
+
+        if let Some(colindextext) = self.0.column_index_text() {
+            properties
+                .write_property("colindextext", colindextext)
+                .unwrap();
+        }
+
+        if let Some(current) = self.0.aria_current() {
+            if current != AriaCurrent::False {
+                properties
+                    .write_property(
+                        "current",
+                        match current {
+                            AriaCurrent::True => "true",
+                            AriaCurrent::Page => "page",
+                            AriaCurrent::Step => "step",
+                            AriaCurrent::Location => "location",
+                            AriaCurrent::Date => "date",
+                            AriaCurrent::Time => "time",
+                            AriaCurrent::False => unreachable!(),
+                        },
+                    )
+                    .unwrap();
+            }
+        }
+
+        if let Some(has_popup) = self.0.has_popup() {
+            properties
+                .write_property(
+                    "haspopup",
+                    match has_popup {
+                        HasPopup::Menu => "menu",
+                        HasPopup::Listbox => "listbox",
+                        HasPopup::Tree => "tree",
+                        HasPopup::Grid => "grid",
+                        HasPopup::Dialog => "dialog",
+                    },
+                )
+                .unwrap();
+        }
+
+        if let Some(level) = self.0.level() {
+            properties.write_usize_property("level", level).unwrap();
+        }
+
+        if self.0.is_multiline() {
+            properties.write_bool_property("multiline", true).unwrap();
+        }
+
+        if let Some(rowindextext) = self.0.row_index_text() {
+            properties
+                .write_property("rowindextext", rowindextext)
+                .unwrap();
+        }
+
+        if let Some(sort_direction) = self.0.sort_direction() {
+            properties
+                .write_property(
+                    "sort",
+                    match sort_direction {
+                        SortDirection::Ascending => "ascending",
+                        SortDirection::Descending => "descending",
+                        SortDirection::Other => "other",
+                    },
+                )
                 .unwrap();
         }
 

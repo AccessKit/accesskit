@@ -332,6 +332,14 @@ impl<W: Write> AriaProperties<W> {
         Ok(())
     }
 
+    pub(crate) fn write_bool_property(&mut self, name: &str, value: bool) -> fmt::Result {
+        self.write_property(name, if value { "true" } else { "false" })
+    }
+
+    pub(crate) fn write_usize_property(&mut self, name: &str, value: usize) -> fmt::Result {
+        self.write_property(name, &value.to_string())
+    }
+
     pub(crate) fn has_properties(&self) -> bool {
         self.need_separator
     }
