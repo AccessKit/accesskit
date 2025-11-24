@@ -1,6 +1,7 @@
-use accesskit::{ActionHandler, ActionRequest, ActivationHandler, DeactivationHandler, NodeId, TreeUpdate};
+use accesskit::{ActionData, ActionHandler, ActionRequest, ActivationHandler, DeactivationHandler, NodeId, TreeUpdate};
 use accesskit_winit::{Event, WindowEvent};
 use std::collections::HashMap;
+use std::ptr::NonNull;
 use winit::event_loop::{ActiveEventLoop, EventLoopProxy};
 use winit::window::{Window, WindowId};
 
@@ -55,11 +56,12 @@ struct WinitDeactivationHandler<T: From<Event> + Send + 'static> {
 pub struct Adapter {
     // TODO: servoshell on Android and OpenHarmony do not use winit.
     // Allow switching to non-winit inner Adapter, maybe using conditional compilation?
-    inner: InnerAdapter,
+    inner: Option<InnerAdapter>,
 
     next_subtree_id: SubtreeId,
     child_subtrees: HashMap<SubtreeId, SubtreeInfo>,
     id_map: HashMap<SubtreeId, HashMap<NodeId, NodeId>>,
+    reverse_id_map: HashMap<NodeId, (SubtreeId, NodeId)>,
     next_node_id: NodeId,
 }
 
@@ -118,21 +120,73 @@ impl Adapter {
         action_handler: impl 'static + ActionHandler + Send,
         deactivation_handler: impl 'static + DeactivationHandler + Send,
     ) -> Self {
-        let inner = InnerAdapter::with_direct_handlers(
-            event_loop,
-            window,
-            activation_handler,
-            action_handler,
-            deactivation_handler,
-        );
-
         let mut result = Adapter {
-            inner,
+            inner: None,
             next_subtree_id: SubtreeId(1),
             child_subtrees: HashMap::new(),
             id_map: HashMap::new(),
+            reverse_id_map: HashMap::new(),
             next_node_id: NodeId(0),
         };
+
+        let adapter_ptr = NonNull::from(&mut result);
+
+        struct ActivationHandlerWrapper<H> {
+            inner: H,
+            adapter: NonNull<Adapter>
+        }
+        unsafe impl<H: ActivationHandler> Send for ActivationHandlerWrapper<H> {}
+        impl<H: ActivationHandler> ActivationHandler for ActivationHandlerWrapper<H> {
+            fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
+                // TODO for now we just require users of this adapter to send updates via update_if_active.
+                None
+            }
+        }
+
+        struct ActionHandlerWrapper<H> {
+            inner: H,
+            adapter: NonNull<Adapter>
+        }
+        unsafe impl<H: ActionHandler> Send for ActionHandlerWrapper<H> {}
+        impl<H: ActionHandler> ActionHandler for ActionHandlerWrapper<H> {
+            fn do_action(&mut self, mut request: ActionRequest) {
+                let adapter = unsafe { self.adapter.as_mut() };
+                // Map from the global node id to the local node id and forward to the provided handlers
+                request.target = adapter.reverse_map_id(request.target).1;
+                if let Some(data) = request.data.as_mut() {
+                    match data {
+                        ActionData::SetTextSelection(selection) => {
+                            let new_anchor = adapter.reverse_map_id(selection.anchor.node).1;
+                            selection.anchor.node = new_anchor;
+                            let new_focus = adapter.reverse_map_id(selection.focus.node).1;
+                            selection.focus.node = new_focus;
+                        }
+                        _ => {}
+                    }
+                }
+                self.inner.do_action(request)
+            }
+        }
+
+        let activation_wrapper = ActivationHandlerWrapper {
+            inner: activation_handler,
+            adapter: adapter_ptr
+        };
+
+        let action_wrapper = ActionHandlerWrapper {
+            inner: action_handler,
+            adapter: adapter_ptr,
+        };
+
+        let inner = InnerAdapter::with_direct_handlers(
+            event_loop,
+            window,
+            activation_wrapper,
+            action_wrapper,
+            deactivation_handler,
+        );
+
+        result.inner = Some(inner);
 
         assert!(result.id_map.insert(result.root_subtree_id(), HashMap::default()).is_none());
         result
@@ -156,6 +210,10 @@ impl Adapter {
         // Remove from subtrees
         // Remove from id map
         // No need to send a TreeUpdate, the provider of the parent subtree will do it
+    }
+
+    fn inner(&mut self) -> &mut InnerAdapter {
+        self.inner.as_mut().expect("Adapter.inner used before initialisation")
     }
 
     pub fn update_if_active(&mut self, subtree_id: SubtreeId, updater: impl FnOnce() -> TreeUpdate) {
@@ -204,7 +262,7 @@ impl Adapter {
             node.popup_for().map(|node_id| node.set_popup_for(self.map_id(subtree_id, node_id)));
             // TODO: what do we do about .level()?
         }
-        self.inner.update_if_active(|| subtree_update);
+        self.inner().update_if_active(|| subtree_update);
     }
 
     fn map_id(&mut self, subtree_id: SubtreeId, node_id: NodeId) -> NodeId {
@@ -215,7 +273,12 @@ impl Adapter {
         let result = self.next_node_id();
         let map = self.id_map.get_mut(&subtree_id).expect("Subtree not registered");
         assert!(map.insert(node_id, result).is_none());
+        assert!(self.reverse_id_map.insert(result, (subtree_id, node_id)).is_none());
         result
+    }
+
+    fn reverse_map_id(&self, global_node_id: NodeId) -> (SubtreeId, NodeId) {
+        *self.reverse_id_map.get(&global_node_id).expect("Node not registered")
     }
 
     fn map_node_id_vec_property(&mut self, subtree_id: SubtreeId, node_ids: Vec<NodeId>, setter: impl FnOnce(Vec<NodeId>)) {
