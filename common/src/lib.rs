@@ -12,22 +12,22 @@
 
 extern crate alloc;
 
+#[cfg(feature = "schemars")]
+use alloc::borrow::Cow;
 use alloc::{boxed::Box, string::String, vec::Vec};
 use core::fmt;
 #[cfg(feature = "pyo3")]
 use pyo3::pyclass;
 #[cfg(feature = "schemars")]
-use schemars::{
-    gen::SchemaGenerator,
-    schema::{InstanceType, ObjectValidation, Schema, SchemaObject},
-    JsonSchema, Map as SchemaMap,
-};
+use schemars::{json_schema, JsonSchema, Schema, SchemaGenerator};
 #[cfg(feature = "serde")]
 use serde::{
     de::{Deserializer, IgnoredAny, MapAccess, Visitor},
     ser::{SerializeMap, Serializer},
     Deserialize, Serialize,
 };
+#[cfg(feature = "schemars")]
+use serde_json::{Map as SchemaMap, Value as SchemaValue};
 
 mod geometry;
 pub use geometry::{Affine, Point, Rect, Size, Vec2};
@@ -2428,7 +2428,7 @@ macro_rules! add_schema_property {
         let name = format!("{:?}", $enum_value);
         let name = name[..1].to_ascii_lowercase() + &name[1..];
         let subschema = $gen.subschema_for::<$type>();
-        $properties.insert(name, subschema);
+        $properties.insert(name, SchemaValue::from(subschema));
     }};
 }
 
@@ -2442,12 +2442,12 @@ macro_rules! add_properties_to_schema {
 #[cfg(feature = "schemars")]
 impl JsonSchema for Properties {
     #[inline]
-    fn schema_name() -> String {
+    fn schema_name() -> Cow<'static, str> {
         "Properties".into()
     }
 
     fn json_schema(gen: &mut SchemaGenerator) -> Schema {
-        let mut properties = SchemaMap::<String, Schema>::new();
+        let mut properties = SchemaMap::<String, SchemaValue>::new();
         add_properties_to_schema!(gen, properties, {
             Vec<NodeId> {
                 Children,
@@ -2555,18 +2555,10 @@ impl JsonSchema for Properties {
             TextSelection { TextSelection },
             Vec<CustomAction> { CustomActions }
         });
-        SchemaObject {
-            instance_type: Some(InstanceType::Object.into()),
-            object: Some(
-                ObjectValidation {
-                    properties,
-                    ..Default::default()
-                }
-                .into(),
-            ),
-            ..Default::default()
-        }
-        .into()
+        json_schema!({
+            "type": "object",
+            "properties": properties
+        })
     }
 }
 
