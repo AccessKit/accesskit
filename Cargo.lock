@@ -46,7 +46,6 @@ dependencies = [
  "accesskit_consumer",
  "atspi-common",
  "serde",
- "thiserror",
  "zvariant",
 ]
 
