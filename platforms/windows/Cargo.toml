@@ -18,7 +18,7 @@ targets = []
 [dependencies]
 accesskit = { version = "0.21.1", path = "../../common" }
 accesskit_consumer = { version = "0.31.0", path = "../../consumer" }
-hashbrown = { version = "0.15", default-features = false, features = ["default-hasher"] }
+hashbrown = { version = "0.16", default-features = false, features = ["default-hasher"] }
 static_assertions = "1.1.0"
 windows-core = "0.61.0"
 
