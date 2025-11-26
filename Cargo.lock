@@ -26,6 +26,7 @@ dependencies = [
  "pyo3",
  "schemars",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
