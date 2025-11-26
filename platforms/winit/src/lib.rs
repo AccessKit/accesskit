@@ -62,6 +62,7 @@ use rwh_05 as raw_window_handle;
 #[cfg(feature = "rwh_06")]
 #[allow(unused)]
 use rwh_06 as raw_window_handle;
+use accesskit_multitree::{MultiTreeAdapterState, SubtreeId};
 
 mod platform_impl;
 
@@ -109,9 +110,9 @@ impl<T: From<Event> + Send + 'static> ActionHandler for WinitActionHandler<T> {
     }
 }
 
-struct WinitDeactivationHandler<T: From<Event> + Send + 'static> {
-    window_id: WindowId,
-    proxy: EventLoopProxy<T>,
+pub struct WinitDeactivationHandler<T: From<Event> + Send + 'static> {
+    pub window_id: WindowId,
+    pub proxy: EventLoopProxy<T>,
 }
 
 impl<T: From<Event> + Send + 'static> DeactivationHandler for WinitDeactivationHandler<T> {
@@ -126,6 +127,7 @@ impl<T: From<Event> + Send + 'static> DeactivationHandler for WinitDeactivationH
 
 pub struct Adapter {
     inner: platform_impl::Adapter,
+    pub multi_tree_state: MultiTreeAdapterState
 }
 
 impl Adapter {
@@ -198,14 +200,16 @@ impl Adapter {
             panic!("The AccessKit winit adapter must be created before the window is shown (made visible) for the first time.");
         }
 
+        let mut multi_tree_adapter_state = MultiTreeAdapterState::new();
+
         let inner = platform_impl::Adapter::new(
             event_loop,
             window,
-            activation_handler,
-            action_handler,
+            multi_tree_adapter_state.wrap_activation_handler(activation_handler),
+            multi_tree_adapter_state.wrap_action_handler(action_handler),
             deactivation_handler,
         );
-        Self { inner }
+        Self { inner, multi_tree_state: multi_tree_adapter_state }
     }
 
     /// Creates a new AccessKit adapter for a winit window. This must be done
@@ -259,7 +263,12 @@ impl Adapter {
     /// or if the caller created the adapter using [`EventLoopProxy`], then
     /// the [`TreeUpdate`] returned by the provided function must contain
     /// a full tree.
+    // TODO choose between the following two implementations based on whether the multitree feature is enabled
     pub fn update_if_active(&mut self, updater: impl FnOnce() -> TreeUpdate) {
         self.inner.update_if_active(updater);
+    }
+
+    pub fn update_subtree_if_active(&mut self, subtree_id: SubtreeId, updater: impl FnOnce() -> TreeUpdate) {
+        self.inner.update_if_active(self.multi_tree_state.rewrite_tree_update(subtree_id, updater));
     }
 }
