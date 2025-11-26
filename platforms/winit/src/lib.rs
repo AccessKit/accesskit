@@ -127,6 +127,7 @@ impl<T: From<Event> + Send + 'static> DeactivationHandler for WinitDeactivationH
 
 pub struct Adapter {
     inner: platform_impl::Adapter,
+    #[cfg(feature = "multitree")]
     pub multi_tree_state: MultiTreeAdapterState
 }
 
@@ -200,16 +201,35 @@ impl Adapter {
             panic!("The AccessKit winit adapter must be created before the window is shown (made visible) for the first time.");
         }
 
+        #[cfg(feature = "multitree")]
         let mut multi_tree_adapter_state = MultiTreeAdapterState::new();
+
+        let activation = {
+            #[cfg(feature = "multitree")]
+            { multi_tree_adapter_state.wrap_activation_handler(activation_handler) }
+            #[cfg(not(feature = "multitree"))]
+            { activation_handler }
+        };
+
+        let action = {
+            #[cfg(feature = "multitree")]
+            { multi_tree_adapter_state.wrap_action_handler(action_handler) }
+            #[cfg(not(feature = "multitree"))]
+            { action_handler }
+        };
 
         let inner = platform_impl::Adapter::new(
             event_loop,
             window,
-            multi_tree_adapter_state.wrap_activation_handler(activation_handler),
-            multi_tree_adapter_state.wrap_action_handler(action_handler),
+            activation,
+            action,
             deactivation_handler,
         );
-        Self { inner, multi_tree_state: multi_tree_adapter_state }
+        Self {
+            inner,
+            #[cfg(feature = "multitree")]
+            multi_tree_state: multi_tree_adapter_state
+        }
     }
 
     /// Creates a new AccessKit adapter for a winit window. This must be done
@@ -263,11 +283,12 @@ impl Adapter {
     /// or if the caller created the adapter using [`EventLoopProxy`], then
     /// the [`TreeUpdate`] returned by the provided function must contain
     /// a full tree.
-    // TODO choose between the following two implementations based on whether the multitree feature is enabled
+    // TODO  #[cfg(not(feature = "multitree"))]
     pub fn update_if_active(&mut self, updater: impl FnOnce() -> TreeUpdate) {
         self.inner.update_if_active(updater);
     }
 
+    #[cfg(feature = "multitree")]
     pub fn update_subtree_if_active(&mut self, subtree_id: SubtreeId, updater: impl FnOnce() -> TreeUpdate) {
         self.inner.update_if_active(self.multi_tree_state.rewrite_tree_update(subtree_id, updater));
     }
