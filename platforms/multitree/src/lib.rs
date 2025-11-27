@@ -41,16 +41,24 @@ impl MultiTreeAdapterState {
     ) -> impl 'static + ActivationHandler + Send {
         struct ActivationHandlerWrapper<H> {
             inner: H,
+            // is this actually safe?
+            adapter_state: NonNull<MultiTreeAdapterState>
         }
         unsafe impl<H: ActivationHandler> Send for ActivationHandlerWrapper<H> {}
         impl<H: ActivationHandler> ActivationHandler for ActivationHandlerWrapper<H> {
             fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
-                // TODO for now we just require users of this adapter to send updates via update_if_active.
+                let tree_update = self.inner.request_initial_tree();
+                if let Some(tree_update) = tree_update {
+                    let adapter_state = unsafe { self.adapter_state.as_mut() };
+                    // TODO for now only the root subtree is allowed to use request_initial_tree
+                    return Some(adapter_state.rewrite_tree_update(adapter_state.root_subtree_id(), tree_update))
+                }
                 None
             }
         }
+        let adapter_state_ptr = NonNull::from(self);
 
-        ActivationHandlerWrapper { inner: activation_handler }
+        ActivationHandlerWrapper { inner: activation_handler, adapter_state: adapter_state_ptr }
     }
 
     pub fn wrap_action_handler(
@@ -107,7 +115,7 @@ impl MultiTreeAdapterState {
         // No need to send a TreeUpdate, the provider of the parent subtree will do it
     }
 
-    pub fn rewrite_tree_update(&mut self, subtree_id: SubtreeId, updater: impl FnOnce() -> TreeUpdate) -> impl FnOnce() -> TreeUpdate {
+    pub fn rewrite_tree_update(&mut self, subtree_id: SubtreeId, mut subtree_update: TreeUpdate) -> TreeUpdate {
         // Q: what happens if the graft node (`parent_node_id`) gets removed by the parent subtree?
         // If we keep the registration, then we need to detect when the graft node gets readded
         // (if ever), and resend the subtree in full, which requires caching the subtree or telling
@@ -119,8 +127,6 @@ impl MultiTreeAdapterState {
         //     - Easy way: we set up our own accesskit_consumer::Tree and ChangeHandler
         //     - Hard way: we plumb through the lower-level Adapters and expose the one in
         //       atspi common / android / windows? macOS has one too, but maybe used differently?
-        // TODO possibly we don't want to call updater until our return FnOnce is invoked?
-        let mut subtree_update = updater();
         // TODO: rewrite the focus correctly.
         // We think the model is something like: every subtree has its local idea of the focused
         // node, but that node may not end up being the focused node globally. The globally focused
@@ -154,7 +160,7 @@ impl MultiTreeAdapterState {
             node.popup_for().map(|node_id| node.set_popup_for(self.map_id(subtree_id, node_id)));
             // TODO: what do we do about .level()?
         }
-        || subtree_update
+        subtree_update
     }
 
     fn map_id(&mut self, subtree_id: SubtreeId, node_id: NodeId) -> NodeId {

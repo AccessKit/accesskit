@@ -290,6 +290,6 @@ impl Adapter {
 
     #[cfg(feature = "multitree")]
     pub fn update_subtree_if_active(&mut self, subtree_id: SubtreeId, updater: impl FnOnce() -> TreeUpdate) {
-        self.inner.update_if_active(self.multi_tree_state.rewrite_tree_update(subtree_id, updater));
+        self.inner.update_if_active(|| self.multi_tree_state.rewrite_tree_update(subtree_id, updater()));
     }
 }
