@@ -29,6 +29,8 @@ use serde::{
 #[cfg(feature = "schemars")]
 use serde_json::{Map as SchemaMap, Value as SchemaValue};
 
+pub use uuid::Uuid;
+
 mod geometry;
 pub use geometry::{Affine, Point, Rect, Size, Vec2};
 
@@ -650,6 +652,18 @@ impl fmt::Debug for NodeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "#{}", self.0)
     }
+}
+
+/// The stable identity of a [`Tree`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[repr(transparent)]
+pub struct TreeId(pub Uuid);
+
+impl TreeId {
+    /// A reserved tree ID for the root tree. This uses a nil UUID.
+    pub const ROOT: Self = Self(Uuid::nil());
 }
 
 /// Defines a custom action for a UI element.
@@ -2633,6 +2647,9 @@ pub struct TreeUpdate {
     /// information again is also allowed. This is required when initializing
     /// a tree.
     pub tree: Option<Tree>,
+
+    /// The identifier of the tree.
+    pub tree_id: TreeId,
 
     /// The node within this tree that has keyboard focus when the native
     /// host (e.g. window) has focus. If no specific node within the tree

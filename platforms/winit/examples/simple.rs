@@ -1,7 +1,7 @@
 #[path = "util/fill.rs"]
 mod fill;
 
-use accesskit::{Action, ActionRequest, Live, Node, NodeId, Rect, Role, Tree, TreeUpdate};
+use accesskit::{Action, ActionRequest, Live, Node, NodeId, Rect, Role, Tree, TreeId, TreeUpdate};
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
 use std::error::Error;
 use winit::{
@@ -92,6 +92,7 @@ impl UiState {
             ],
             tree: Some(tree),
             focus: self.focus,
+            tree_id: TreeId::ROOT,
         };
         if let Some(announcement) = &self.announcement {
             result
@@ -107,6 +108,7 @@ impl UiState {
             nodes: vec![],
             tree: None,
             focus,
+            tree_id: TreeId::ROOT,
         });
     }
 
@@ -124,6 +126,7 @@ impl UiState {
                 nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],
                 tree: None,
                 focus: self.focus,
+                tree_id: TreeId::ROOT,
             }
         });
     }

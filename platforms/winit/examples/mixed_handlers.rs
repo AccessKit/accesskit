@@ -2,7 +2,8 @@
 mod fill;
 
 use accesskit::{
-    Action, ActionRequest, ActivationHandler, Live, Node, NodeId, Rect, Role, Tree, TreeUpdate,
+    Action, ActionRequest, ActivationHandler, Live, Node, NodeId, Rect, Role, Tree, TreeId,
+    TreeUpdate,
 };
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
 use std::{
@@ -97,6 +98,7 @@ impl UiState {
             ],
             tree: Some(tree),
             focus: self.focus,
+            tree_id: TreeId::ROOT,
         };
         if let Some(announcement) = &self.announcement {
             result
@@ -112,6 +114,7 @@ impl UiState {
             nodes: vec![],
             tree: None,
             focus,
+            tree_id: TreeId::ROOT,
         });
     }
 
@@ -129,6 +132,7 @@ impl UiState {
                 nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],
                 tree: None,
                 focus: self.focus,
+                tree_id: TreeId::ROOT,
             }
         });
     }
