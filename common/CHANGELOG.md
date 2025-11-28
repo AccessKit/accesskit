@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.22.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.21.1...accesskit-v0.22.0) (2025-11-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop deprecated roles ([#642](https://github.com/AccessKit/accesskit/issues/642))
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626))
+
+### Features
+
+* Add GridCell role ([#643](https://github.com/AccessKit/accesskit/issues/643)) ([1e5abca](https://github.com/AccessKit/accesskit/commit/1e5abca737d1ee942c0804fec2c06d3cb08faa94))
+* Implement BrailleLabel and BrailleRoleDescription roles ([#638](https://github.com/AccessKit/accesskit/issues/638)) ([0fdcebb](https://github.com/AccessKit/accesskit/commit/0fdcebb55e308e039ec99fbc31e94e8087a69f2d))
+* Rename HeaderAsNonLandmark to SectionHeader, FooterAsNonLandmark to SectionFooter ([#635](https://github.com/AccessKit/accesskit/issues/635)) ([dd69526](https://github.com/AccessKit/accesskit/commit/dd695260877cb862ece4c2b7d8607308f5fed608))
+
+
+### Bug Fixes
+
+* Actually update schemars to version 1 ([#650](https://github.com/AccessKit/accesskit/issues/650)) ([329cadb](https://github.com/AccessKit/accesskit/commit/329cadba6647d9b8d694033affb19b8bd616aa8b))
+* Update schemars dependency to version 1 ([#647](https://github.com/AccessKit/accesskit/issues/647)) ([0efca17](https://github.com/AccessKit/accesskit/commit/0efca176ef892b04edbdf19a12594f9cbcbe9ab3))
+
+
+### Code Refactoring
+
+* Drop deprecated roles ([#642](https://github.com/AccessKit/accesskit/issues/642)) ([4d46c27](https://github.com/AccessKit/accesskit/commit/4d46c2740631c5fe4f057707b949d12b26931d0b))
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626)) ([ea23ec4](https://github.com/AccessKit/accesskit/commit/ea23ec424c7dbb8841e03d71b6a15b74264850a9))
+
 ## [0.21.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.21.0...accesskit-v0.21.1) (2025-10-02)
 
 
