@@ -7,7 +7,7 @@ use atspi::ObjectRef;
 use serde::{Deserialize, Serialize};
 use zbus::{
     names::UniqueName,
-    zvariant::{ObjectPath, OwnedObjectPath, OwnedValue, Str, Type, Value},
+    zvariant::{ObjectPath, OwnedObjectPath, OwnedValue, Type, Value},
 };
 
 // https://gnome.pages.gitlab.gnome.org/at-spi2-core/libatspi/const.DBUS_PATH_NULL.html
@@ -35,11 +35,11 @@ impl OwnedObjectAddress {
     }
 }
 
-impl From<ObjectRef> for OwnedObjectAddress {
-    fn from(object: ObjectRef) -> Self {
+impl<'a> From<ObjectRef<'a>> for OwnedObjectAddress {
+    fn from(object: ObjectRef<'a>) -> Self {
         Self {
-            bus_name: Str::from(object.name).into(),
-            path: object.path,
+            bus_name: object.name().map(|s| s.to_string()).unwrap_or_default(),
+            path: object.path().to_owned().into(),
         }
     }
 }
