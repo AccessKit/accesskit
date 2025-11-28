@@ -1,4 +1,4 @@
-use accesskit::{ActionData, ActionHandler, ActionRequest, ActivationHandler, NodeId, TreeUpdate};
+use accesskit::{ActionData, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, TreeUpdate};
 use std::collections::HashMap;
 use std::ptr::NonNull;
 
@@ -7,6 +7,7 @@ const ROOT_SUBTREE_ID: SubtreeId = SubtreeId(0);
 pub struct MultiTreeAdapterState {
     next_subtree_id: SubtreeId,
     child_subtrees: HashMap<SubtreeId, SubtreeInfo>,
+    grafts: HashMap<SubtreeId, HashMap<NodeId, SubtreeId>>,
     id_map: HashMap<SubtreeId, HashMap<NodeId, NodeId>>,
     reverse_id_map: HashMap<NodeId, (SubtreeId, NodeId)>,
     next_node_id: NodeId,
@@ -14,7 +15,10 @@ pub struct MultiTreeAdapterState {
 
 pub struct SubtreeInfo {
     parent_subtree_id: SubtreeId,
+    // Local Id to the parent tree
     parent_node_id: NodeId,
+    // Global id of the root of the child subtree
+    root_node_id: Option<NodeId>
 }
 
 #[repr(transparent)]
@@ -26,6 +30,7 @@ impl MultiTreeAdapterState {
         let mut result = MultiTreeAdapterState {
             next_subtree_id: SubtreeId(1),
             child_subtrees: HashMap::new(),
+            grafts: HashMap::new(),
             id_map: HashMap::new(),
             reverse_id_map: HashMap::new(),
             next_node_id: NodeId(0),
@@ -99,12 +104,35 @@ impl MultiTreeAdapterState {
         ROOT_SUBTREE_ID
     }
 
-    pub fn register_child_subtree(&mut self, parent_subtree_id: SubtreeId, parent_node_id: NodeId) -> SubtreeId {
+    pub fn register_child_subtree(&mut self, parent_subtree_id: SubtreeId, parent_node_id: NodeId, child_id: NodeId, parent_node: &mut Node) -> (SubtreeId, TreeUpdate) {
         let subtree_id = self.next_subtree_id();
         assert!(self.subtree_is_registered(parent_subtree_id));
-        assert!(self.child_subtrees.insert(subtree_id, SubtreeInfo { parent_subtree_id, parent_node_id }).is_none());
+        let grafts_map = self.grafts.get_mut(&parent_subtree_id);
+        if grafts_map.is_none() {
+            let map = HashMap::new();
+            self.grafts.insert(parent_subtree_id, map);
+        }
+        let grafts_map = self.grafts.get_mut(&parent_subtree_id).expect("Must be registered");
+        // Maybe store the global id for parent_node?
+        grafts_map.insert(parent_node_id, subtree_id);
+
+        assert!(self.child_subtrees.insert(subtree_id, SubtreeInfo { parent_subtree_id, parent_node_id, root_node_id: None }).is_none());
         assert!(self.id_map.insert(subtree_id, HashMap::default()).is_none());
-        subtree_id
+        let global_id_for_child = self.map_id(subtree_id, child_id);
+
+        let parent_node_global_id = self.rewrite_node(parent_subtree_id, parent_node_id, parent_node);
+
+        let mut nodes: Vec<(NodeId, Node)> = Vec::new();
+        parent_node.push_child(global_id_for_child);
+        nodes.insert(0, (parent_node_global_id, parent_node.clone()));
+        nodes.insert(1, (global_id_for_child, Node::default()));
+        let tree_update = TreeUpdate {
+            nodes,
+            tree: None,
+            // Absolutely not correct whatsoever
+            focus: global_id_for_child
+        };
+        (subtree_id, tree_update)
     }
 
     #[expect(unused)]
@@ -116,6 +144,16 @@ impl MultiTreeAdapterState {
     }
 
     pub fn rewrite_tree_update(&mut self, subtree_id: SubtreeId, mut subtree_update: TreeUpdate) -> TreeUpdate {
+        if let Some(tree) = subtree_update.tree.as_mut() {
+            let global_id_of_root_of_subtree = self.map_id(subtree_id, tree.root);
+            tree.root = global_id_of_root_of_subtree;
+            if subtree_id != self.root_subtree_id() {
+                let child_subtree_info = self.child_subtrees.get_mut(&subtree_id).expect("Must be registered");
+                child_subtree_info.root_node_id = Some(global_id_of_root_of_subtree);
+                subtree_update.tree = None;
+            }
+        }
+
         // Q: what happens if the graft node (`parent_node_id`) gets removed by the parent subtree?
         // If we keep the registration, then we need to detect when the graft node gets readded
         // (if ever), and resend the subtree in full, which requires caching the subtree or telling
@@ -134,33 +172,43 @@ impl MultiTreeAdapterState {
         // case it’s the focused node of the child subtree being grafted there (recursively).
         subtree_update.focus = self.map_id(subtree_id, subtree_update.focus);
         // TODO: rewrite the root correctly
-        if let Some(tree) = subtree_update.tree.as_mut() {
-            tree.root = self.map_id(subtree_id, tree.root);
-        }
         for (node_id, node) in subtree_update.nodes.iter_mut() {
-            *node_id = self.map_id(subtree_id, *node_id);
-            // Map ids of all node references.
-            // These correspond to the `node_id_vec_property_methods` and `node_id_property_methods`
-            // lists in `accesskit/src/lib.rs`.
-            // TODO: could we make the vec rewrites avoid allocation?
-            self.map_node_id_vec_property(subtree_id, node.children().to_owned(), |new| node.set_children(new));
-            self.map_node_id_vec_property(subtree_id, node.controls().to_owned(), |new| node.set_controls(new));
-            self.map_node_id_vec_property(subtree_id, node.details().to_owned(), |new| node.set_details(new));
-            self.map_node_id_vec_property(subtree_id, node.described_by().to_owned(), |new| node.set_described_by(new));
-            self.map_node_id_vec_property(subtree_id, node.flow_to().to_owned(), |new| node.set_flow_to(new));
-            self.map_node_id_vec_property(subtree_id, node.labelled_by().to_owned(), |new| node.set_labelled_by(new));
-            self.map_node_id_vec_property(subtree_id, node.owns().to_owned(), |new| node.set_owns(new));
-            self.map_node_id_vec_property(subtree_id, node.radio_group().to_owned(), |new| node.set_radio_group(new));
-            node.active_descendant().map(|node_id| node.set_active_descendant(self.map_id(subtree_id, node_id)));
-            node.error_message().map(|node_id| node.set_error_message(self.map_id(subtree_id, node_id)));
-            node.in_page_link_target().map(|node_id| node.set_in_page_link_target(self.map_id(subtree_id, node_id)));
-            node.member_of().map(|node_id| node.set_member_of(self.map_id(subtree_id, node_id)));
-            node.next_on_line().map(|node_id| node.set_next_on_line(self.map_id(subtree_id, node_id)));
-            node.previous_on_line().map(|node_id| node.set_previous_on_line(self.map_id(subtree_id, node_id)));
-            node.popup_for().map(|node_id| node.set_popup_for(self.map_id(subtree_id, node_id)));
-            // TODO: what do we do about .level()?
+            *node_id = self.rewrite_node(subtree_id, *node_id, node);
         }
+
+        // TODO We need to ensure that we put the subtree root node id as a child of the parent node id.
+
         subtree_update
+    }
+
+    pub fn rewrite_node(&mut self, subtree_id: SubtreeId, node_id: NodeId, node: &mut Node) -> NodeId {
+        let grafted_node_id: Option<NodeId> = self.get_root_id_for_grafted_subtree(subtree_id, node_id);
+        let global_node_id = self.map_id(subtree_id, node_id);
+        // Map ids of all node references.
+        // These correspond to the `node_id_vec_property_methods` and `node_id_property_methods`
+        // lists in `accesskit/src/lib.rs`.
+        // TODO: could we make the vec rewrites avoid allocation?
+        self.map_node_id_vec_property(subtree_id, node.children().to_owned(), |new| node.set_children(new));
+        self.map_node_id_vec_property(subtree_id, node.controls().to_owned(), |new| node.set_controls(new));
+        self.map_node_id_vec_property(subtree_id, node.details().to_owned(), |new| node.set_details(new));
+        self.map_node_id_vec_property(subtree_id, node.described_by().to_owned(), |new| node.set_described_by(new));
+        self.map_node_id_vec_property(subtree_id, node.flow_to().to_owned(), |new| node.set_flow_to(new));
+        self.map_node_id_vec_property(subtree_id, node.labelled_by().to_owned(), |new| node.set_labelled_by(new));
+        self.map_node_id_vec_property(subtree_id, node.owns().to_owned(), |new| node.set_owns(new));
+        self.map_node_id_vec_property(subtree_id, node.radio_group().to_owned(), |new| node.set_radio_group(new));
+        node.active_descendant().map(|node_id| node.set_active_descendant(self.map_id(subtree_id, node_id)));
+        node.error_message().map(|node_id| node.set_error_message(self.map_id(subtree_id, node_id)));
+        node.in_page_link_target().map(|node_id| node.set_in_page_link_target(self.map_id(subtree_id, node_id)));
+        node.member_of().map(|node_id| node.set_member_of(self.map_id(subtree_id, node_id)));
+        node.next_on_line().map(|node_id| node.set_next_on_line(self.map_id(subtree_id, node_id)));
+        node.previous_on_line().map(|node_id| node.set_previous_on_line(self.map_id(subtree_id, node_id)));
+        node.popup_for().map(|node_id| node.set_popup_for(self.map_id(subtree_id, node_id)));
+        // TODO: what do we do about .level()?
+
+        if let Some(grafted_node_id) = grafted_node_id {
+            node.push_child(grafted_node_id);
+        }
+        global_node_id
     }
 
     fn map_id(&mut self, subtree_id: SubtreeId, node_id: NodeId) -> NodeId {
@@ -212,5 +260,17 @@ impl MultiTreeAdapterState {
 
     fn subtree_is_registered(&self, subtree_id: SubtreeId) -> bool {
         subtree_id == self.root_subtree_id() || self.child_subtrees.contains_key(&subtree_id)
+    }
+
+    fn get_root_id_for_grafted_subtree(&mut self, subtree_id: SubtreeId, local_node_id: NodeId) -> Option<NodeId> {
+        if let Some(graft_map) = self.grafts.get_mut(&subtree_id) {
+            if let Some(local_nodes_subtree_id) = graft_map.get_mut(&local_node_id) {
+                let child_subtree_info = self.child_subtrees.get(&local_nodes_subtree_id).expect("must be registered");
+                if let Some(root_node_id) = child_subtree_info.root_node_id {
+                    Some(root_node_id);
+                }
+            }
+        }
+        None
     }
 }
