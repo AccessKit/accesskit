@@ -23,6 +23,11 @@ fn common_filter_base(node: &Node) -> Option<FilterResult> {
         return Some(FilterResult::ExcludeSubtree);
     }
 
+    // Graft nodes are structural and should be excluded
+    if node.is_graft() {
+        return Some(FilterResult::ExcludeNode);
+    }
+
     let role = node.role();
     if role == Role::GenericContainer || role == Role::TextRun {
         return Some(FilterResult::ExcludeNode);
@@ -95,7 +100,7 @@ pub fn common_filter_with_root_exception(node: &Node) -> FilterResult {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Rect, Role, Tree, TreeUpdate};
+    use accesskit::{Node, NodeId as SchemaNodeId, Rect, Role, Tree, TreeId, TreeUpdate, Uuid};
     use alloc::vec;
 
     use super::{
@@ -103,11 +108,19 @@ mod tests {
         FilterResult::{self, *},
     };
 
+    fn tree_id() -> TreeId {
+        TreeId(Uuid::nil())
+    }
+
+    fn node_id(n: u64) -> crate::node::NodeId {
+        crate::node::NodeId::new(SchemaNodeId(n), crate::tree::TreeIndex(0))
+    }
+
     #[track_caller]
-    fn assert_filter_result(expected: FilterResult, tree: &crate::Tree, id: NodeId) {
+    fn assert_filter_result(expected: FilterResult, tree: &crate::Tree, id: SchemaNodeId) {
         assert_eq!(
             expected,
-            common_filter(&tree.state().node_by_id(id).unwrap())
+            common_filter(&tree.state().node_by_id(node_id(id.0)).unwrap())
         );
     }
 
@@ -115,225 +128,233 @@ mod tests {
     fn normal() {
         let update = TreeUpdate {
             nodes: vec![
-                (NodeId(0), {
+                (SchemaNodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(vec![SchemaNodeId(1)]);
                     node
                 }),
-                (NodeId(1), Node::new(Role::Button)),
+                (SchemaNodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
+            tree: Some(Tree::new(SchemaNodeId(0))),
+            tree_id: tree_id(),
+            focus: SchemaNodeId(0),
         };
         let tree = crate::Tree::new(update, false);
-        assert_filter_result(Include, &tree, NodeId(1));
+        assert_filter_result(Include, &tree, SchemaNodeId(1));
     }
 
     #[test]
     fn hidden() {
         let update = TreeUpdate {
             nodes: vec![
-                (NodeId(0), {
+                (SchemaNodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(vec![SchemaNodeId(1)]);
                     node
                 }),
-                (NodeId(1), {
+                (SchemaNodeId(1), {
                     let mut node = Node::new(Role::Button);
                     node.set_hidden();
                     node
                 }),
             ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
+            tree: Some(Tree::new(SchemaNodeId(0))),
+            tree_id: tree_id(),
+            focus: SchemaNodeId(0),
         };
         let tree = crate::Tree::new(update, false);
-        assert_filter_result(ExcludeSubtree, &tree, NodeId(1));
+        assert_filter_result(ExcludeSubtree, &tree, SchemaNodeId(1));
     }
 
     #[test]
     fn hidden_but_focused() {
         let update = TreeUpdate {
             nodes: vec![
-                (NodeId(0), {
+                (SchemaNodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(vec![SchemaNodeId(1)]);
                     node
                 }),
-                (NodeId(1), {
+                (SchemaNodeId(1), {
                     let mut node = Node::new(Role::Button);
                     node.set_hidden();
                     node
                 }),
             ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(1),
+            tree: Some(Tree::new(SchemaNodeId(0))),
+            tree_id: tree_id(),
+            focus: SchemaNodeId(1),
         };
         let tree = crate::Tree::new(update, true);
-        assert_filter_result(Include, &tree, NodeId(1));
+        assert_filter_result(Include, &tree, SchemaNodeId(1));
     }
 
     #[test]
     fn generic_container() {
         let update = TreeUpdate {
             nodes: vec![
-                (NodeId(0), {
+                (SchemaNodeId(0), {
                     let mut node = Node::new(Role::GenericContainer);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(vec![SchemaNodeId(1)]);
                     node
                 }),
-                (NodeId(1), Node::new(Role::Button)),
+                (SchemaNodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
+            tree: Some(Tree::new(SchemaNodeId(0))),
+            tree_id: tree_id(),
+            focus: SchemaNodeId(0),
         };
         let tree = crate::Tree::new(update, false);
-        assert_filter_result(ExcludeNode, &tree, NodeId(0));
+        assert_filter_result(ExcludeNode, &tree, SchemaNodeId(0));
         assert_eq!(
             Include,
-            common_filter_with_root_exception(&tree.state().node_by_id(NodeId(0)).unwrap())
+            common_filter_with_root_exception(&tree.state().node_by_id(node_id(0)).unwrap())
         );
-        assert_filter_result(Include, &tree, NodeId(1));
+        assert_filter_result(Include, &tree, SchemaNodeId(1));
     }
 
     #[test]
     fn hidden_parent() {
         let update = TreeUpdate {
             nodes: vec![
-                (NodeId(0), {
+                (SchemaNodeId(0), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_hidden();
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(vec![SchemaNodeId(1)]);
                     node
                 }),
-                (NodeId(1), Node::new(Role::Button)),
+                (SchemaNodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
+            tree: Some(Tree::new(SchemaNodeId(0))),
+            tree_id: tree_id(),
+            focus: SchemaNodeId(0),
         };
         let tree = crate::Tree::new(update, false);
-        assert_filter_result(ExcludeSubtree, &tree, NodeId(0));
-        assert_filter_result(ExcludeSubtree, &tree, NodeId(1));
+        assert_filter_result(ExcludeSubtree, &tree, SchemaNodeId(0));
+        assert_filter_result(ExcludeSubtree, &tree, SchemaNodeId(1));
     }
 
     #[test]
     fn hidden_parent_but_focused() {
         let update = TreeUpdate {
             nodes: vec![
-                (NodeId(0), {
+                (SchemaNodeId(0), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_hidden();
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(vec![SchemaNodeId(1)]);
                     node
                 }),
-                (NodeId(1), Node::new(Role::Button)),
+                (SchemaNodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(1),
+            tree: Some(Tree::new(SchemaNodeId(0))),
+            tree_id: tree_id(),
+            focus: SchemaNodeId(1),
         };
         let tree = crate::Tree::new(update, true);
-        assert_filter_result(ExcludeSubtree, &tree, NodeId(0));
-        assert_filter_result(Include, &tree, NodeId(1));
+        assert_filter_result(ExcludeSubtree, &tree, SchemaNodeId(0));
+        assert_filter_result(Include, &tree, SchemaNodeId(1));
     }
 
     #[test]
     fn text_run() {
         let update = TreeUpdate {
             nodes: vec![
-                (NodeId(0), {
+                (SchemaNodeId(0), {
                     let mut node = Node::new(Role::TextInput);
-                    node.set_children(vec![NodeId(1)]);
+                    node.set_children(vec![SchemaNodeId(1)]);
                     node
                 }),
-                (NodeId(1), Node::new(Role::TextRun)),
+                (SchemaNodeId(1), Node::new(Role::TextRun)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
+            tree: Some(Tree::new(SchemaNodeId(0))),
+            tree_id: tree_id(),
+            focus: SchemaNodeId(0),
         };
         let tree = crate::Tree::new(update, false);
-        assert_filter_result(ExcludeNode, &tree, NodeId(1));
+        assert_filter_result(ExcludeNode, &tree, SchemaNodeId(1));
     }
 
     fn clipped_children_test_tree() -> crate::Tree {
         let update = TreeUpdate {
             nodes: vec![
-                (NodeId(0), {
+                (SchemaNodeId(0), {
                     let mut node = Node::new(Role::ScrollView);
                     node.set_clips_children();
                     node.set_bounds(Rect::new(0.0, 0.0, 30.0, 30.0));
                     node.set_children(vec![
-                        NodeId(1),
-                        NodeId(2),
-                        NodeId(3),
-                        NodeId(4),
-                        NodeId(5),
-                        NodeId(6),
-                        NodeId(7),
-                        NodeId(8),
-                        NodeId(9),
-                        NodeId(10),
-                        NodeId(11),
+                        SchemaNodeId(1),
+                        SchemaNodeId(2),
+                        SchemaNodeId(3),
+                        SchemaNodeId(4),
+                        SchemaNodeId(5),
+                        SchemaNodeId(6),
+                        SchemaNodeId(7),
+                        SchemaNodeId(8),
+                        SchemaNodeId(9),
+                        SchemaNodeId(10),
+                        SchemaNodeId(11),
                     ]);
                     node
                 }),
-                (NodeId(1), {
+                (SchemaNodeId(1), {
                     let mut node = Node::new(Role::Unknown);
                     node.set_bounds(Rect::new(0.0, -30.0, 30.0, -20.0));
                     node
                 }),
-                (NodeId(2), {
+                (SchemaNodeId(2), {
                     let mut node = Node::new(Role::Unknown);
                     node.set_bounds(Rect::new(0.0, -20.0, 30.0, -10.0));
                     node
                 }),
-                (NodeId(3), {
+                (SchemaNodeId(3), {
                     let mut node = Node::new(Role::Unknown);
                     node.set_bounds(Rect::new(0.0, -10.0, 30.0, 0.0));
                     node
                 }),
-                (NodeId(4), {
+                (SchemaNodeId(4), {
                     let mut node = Node::new(Role::Unknown);
                     node.set_hidden();
                     node
                 }),
-                (NodeId(5), {
+                (SchemaNodeId(5), {
                     let mut node = Node::new(Role::Unknown);
                     node.set_bounds(Rect::new(0.0, 0.0, 30.0, 10.0));
                     node
                 }),
-                (NodeId(6), {
+                (SchemaNodeId(6), {
                     let mut node = Node::new(Role::Unknown);
                     node.set_bounds(Rect::new(0.0, 10.0, 30.0, 20.0));
                     node
                 }),
-                (NodeId(7), {
+                (SchemaNodeId(7), {
                     let mut node = Node::new(Role::Unknown);
                     node.set_bounds(Rect::new(0.0, 20.0, 30.0, 30.0));
                     node
                 }),
-                (NodeId(8), {
+                (SchemaNodeId(8), {
                     let mut node = Node::new(Role::Unknown);
                     node.set_hidden();
                     node
                 }),
-                (NodeId(9), {
+                (SchemaNodeId(9), {
                     let mut node = Node::new(Role::Unknown);
                     node.set_bounds(Rect::new(0.0, 30.0, 30.0, 40.0));
                     node
                 }),
-                (NodeId(10), {
+                (SchemaNodeId(10), {
                     let mut node = Node::new(Role::Unknown);
                     node.set_bounds(Rect::new(0.0, 40.0, 30.0, 50.0));
                     node
                 }),
-                (NodeId(11), {
+                (SchemaNodeId(11), {
                     let mut node = Node::new(Role::Unknown);
                     node.set_bounds(Rect::new(0.0, 50.0, 30.0, 60.0));
                     node
                 }),
             ],
-            tree: Some(Tree::new(NodeId(0))),
-            focus: NodeId(0),
+            tree: Some(Tree::new(SchemaNodeId(0))),
+            tree_id: tree_id(),
+            focus: SchemaNodeId(0),
         };
         crate::Tree::new(update, false)
     }
@@ -341,41 +362,41 @@ mod tests {
     #[test]
     fn clipped_children_excluded_above() {
         let tree = clipped_children_test_tree();
-        assert_filter_result(ExcludeSubtree, &tree, NodeId(1));
-        assert_filter_result(ExcludeSubtree, &tree, NodeId(2));
+        assert_filter_result(ExcludeSubtree, &tree, SchemaNodeId(1));
+        assert_filter_result(ExcludeSubtree, &tree, SchemaNodeId(2));
     }
 
     #[test]
     fn clipped_children_included_above() {
         let tree = clipped_children_test_tree();
-        assert_filter_result(Include, &tree, NodeId(3));
+        assert_filter_result(Include, &tree, SchemaNodeId(3));
     }
 
     #[test]
     fn clipped_children_hidden() {
         let tree = clipped_children_test_tree();
-        assert_filter_result(ExcludeSubtree, &tree, NodeId(4));
-        assert_filter_result(ExcludeSubtree, &tree, NodeId(8));
+        assert_filter_result(ExcludeSubtree, &tree, SchemaNodeId(4));
+        assert_filter_result(ExcludeSubtree, &tree, SchemaNodeId(8));
     }
 
     #[test]
     fn clipped_children_visible() {
         let tree = clipped_children_test_tree();
-        assert_filter_result(Include, &tree, NodeId(5));
-        assert_filter_result(Include, &tree, NodeId(6));
-        assert_filter_result(Include, &tree, NodeId(7));
+        assert_filter_result(Include, &tree, SchemaNodeId(5));
+        assert_filter_result(Include, &tree, SchemaNodeId(6));
+        assert_filter_result(Include, &tree, SchemaNodeId(7));
     }
 
     #[test]
     fn clipped_children_included_below() {
         let tree = clipped_children_test_tree();
-        assert_filter_result(Include, &tree, NodeId(9));
+        assert_filter_result(Include, &tree, SchemaNodeId(9));
     }
 
     #[test]
     fn clipped_children_excluded_below() {
         let tree = clipped_children_test_tree();
-        assert_filter_result(ExcludeSubtree, &tree, NodeId(10));
-        assert_filter_result(ExcludeSubtree, &tree, NodeId(11));
+        assert_filter_result(ExcludeSubtree, &tree, SchemaNodeId(10));
+        assert_filter_result(ExcludeSubtree, &tree, SchemaNodeId(11));
     }
 }

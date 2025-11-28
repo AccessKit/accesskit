@@ -775,6 +775,7 @@ enum PropertyValue {
     Rect(Rect),
     TextSelection(Box<TextSelection>),
     CustomActionVec(Vec<CustomAction>),
+    TreeId(TreeId),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -891,6 +892,7 @@ enum PropertyId {
     Bounds,
     TextSelection,
     CustomActions,
+    TreeId,
 
     // This MUST be last.
     Unset,
@@ -1692,7 +1694,8 @@ copy_type_getters! {
     (get_usize_property, usize, Usize),
     (get_color_property, u32, Color),
     (get_text_decoration_property, TextDecoration, TextDecoration),
-    (get_bool_property, bool, Bool)
+    (get_bool_property, bool, Bool),
+    (get_tree_id_property, TreeId, TreeId)
 }
 
 box_type_setters! {
@@ -1710,7 +1713,8 @@ copy_type_setters! {
     (set_usize_property, usize, Usize),
     (set_color_property, u32, Color),
     (set_text_decoration_property, TextDecoration, TextDecoration),
-    (set_bool_property, bool, Bool)
+    (set_bool_property, bool, Bool),
+    (set_tree_id_property, TreeId, TreeId)
 }
 
 vec_type_methods! {
@@ -2011,11 +2015,14 @@ property_methods! {
     /// [`transform`]: Node::transform
     (Bounds, bounds, get_rect_property, Option<Rect>, set_bounds, set_rect_property, Rect, clear_bounds),
 
-    (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, impl Into<Box<TextSelection>>, clear_text_selection)
+    (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, impl Into<Box<TextSelection>>, clear_text_selection),
+
+    /// The tree that this node belongs to.
+    (TreeId, tree_id, get_tree_id_property, Option<TreeId>, set_tree_id, set_tree_id_property, TreeId, clear_tree_id)
 }
 
 impl Node {
-    option_properties_debug_method! { debug_option_properties, [transform, bounds, text_selection,] }
+    option_properties_debug_method! { debug_option_properties, [transform, bounds, text_selection, tree_id,] }
 }
 
 #[cfg(test)]
@@ -2117,6 +2124,31 @@ mod text_selection {
         });
         node.clear_text_selection();
         assert!(node.text_selection().is_none());
+    }
+}
+
+#[cfg(test)]
+mod tree_id {
+    use super::{Node, Role, TreeId, Uuid};
+
+    #[test]
+    fn getter_should_return_default_value() {
+        let node = Node::new(Role::GenericContainer);
+        assert!(node.tree_id().is_none());
+    }
+    #[test]
+    fn setter_should_update_the_property() {
+        let mut node = Node::new(Role::GenericContainer);
+        let value = TreeId(Uuid::nil());
+        node.set_tree_id(value);
+        assert_eq!(node.tree_id(), Some(value));
+    }
+    #[test]
+    fn clearer_should_reset_the_property() {
+        let mut node = Node::new(Role::GenericContainer);
+        node.set_tree_id(TreeId(Uuid::nil()));
+        node.clear_tree_id();
+        assert!(node.tree_id().is_none());
     }
 }
 
@@ -2288,7 +2320,8 @@ impl Serialize for Properties {
                 Affine,
                 Rect,
                 TextSelection,
-                CustomActionVec
+                CustomActionVec,
+                TreeId
             });
         }
         map.end()
@@ -2418,7 +2451,8 @@ impl<'de> Visitor<'de> for PropertiesVisitor {
                 Affine { Transform },
                 Rect { Bounds },
                 TextSelection { TextSelection },
-                CustomActionVec { CustomActions }
+                CustomActionVec { CustomActions },
+                TreeId { TreeId }
             });
         }
 
@@ -2729,7 +2763,8 @@ pub enum ActionData {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct ActionRequest {
     pub action: Action,
-    pub target: NodeId,
+    pub target_tree: TreeId,
+    pub target_node: NodeId,
     pub data: Option<ActionData>,
 }
 

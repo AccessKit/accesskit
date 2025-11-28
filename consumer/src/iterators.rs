@@ -10,9 +10,66 @@
 
 use core::iter::FusedIterator;
 
-use accesskit::NodeId;
+use accesskit::NodeId as NodeIdContent;
 
-use crate::{filters::FilterResult, node::Node, tree::State as TreeState};
+use crate::{
+    filters::FilterResult,
+    node::{Node, NodeId},
+    tree::State as TreeState,
+};
+
+/// Iterator over child NodeIds, handling both normal nodes and graft nodes.
+pub enum ChildIds<'a> {
+    Normal {
+        parent_id: NodeId,
+        children: core::slice::Iter<'a, NodeIdContent>,
+    },
+    Graft(Option<NodeId>),
+}
+
+impl Iterator for ChildIds<'_> {
+    type Item = NodeId;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Normal {
+                parent_id,
+                children,
+            } => children.next().map(|child| parent_id.with_node_id(*child)),
+            Self::Graft(id) => id.take(),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+}
+
+impl DoubleEndedIterator for ChildIds<'_> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Normal {
+                parent_id,
+                children,
+            } => children
+                .next_back()
+                .map(|child| parent_id.with_node_id(*child)),
+            Self::Graft(id) => id.take(),
+        }
+    }
+}
+
+impl ExactSizeIterator for ChildIds<'_> {
+    fn len(&self) -> usize {
+        match self {
+            Self::Normal { children, .. } => children.len(),
+            Self::Graft(id) => usize::from(id.is_some()),
+        }
+    }
+}
+
+impl FusedIterator for ChildIds<'_> {}
 
 /// An iterator that yields following siblings of a node.
 ///
@@ -56,14 +113,10 @@ impl Iterator for FollowingSiblings<'_> {
             None
         } else {
             self.done = self.front_position == self.back_position;
-            let child = self
-                .parent
-                .as_ref()?
-                .data()
-                .children()
-                .get(self.front_position)?;
+            let parent = self.parent.as_ref()?;
+            let child = parent.data().children().get(self.front_position)?;
             self.front_position += 1;
-            Some(*child)
+            Some(parent.id.with_node_id(*child))
         }
     }
 
@@ -82,14 +135,10 @@ impl DoubleEndedIterator for FollowingSiblings<'_> {
             None
         } else {
             self.done = self.back_position == self.front_position;
-            let child = self
-                .parent
-                .as_ref()?
-                .data()
-                .children()
-                .get(self.back_position)?;
+            let parent = self.parent.as_ref()?;
+            let child = parent.data().children().get(self.back_position)?;
             self.back_position -= 1;
-            Some(*child)
+            Some(parent.id.with_node_id(*child))
         }
     }
 }
@@ -134,16 +183,12 @@ impl Iterator for PrecedingSiblings<'_> {
             None
         } else {
             self.done = self.front_position == self.back_position;
-            let child = self
-                .parent
-                .as_ref()?
-                .data()
-                .children()
-                .get(self.front_position)?;
+            let parent = self.parent.as_ref()?;
+            let child = parent.data().children().get(self.front_position)?;
             if !self.done {
                 self.front_position -= 1;
             }
-            Some(*child)
+            Some(parent.id.with_node_id(*child))
         }
     }
 
@@ -162,14 +207,10 @@ impl DoubleEndedIterator for PrecedingSiblings<'_> {
             None
         } else {
             self.done = self.back_position == self.front_position;
-            let child = self
-                .parent
-                .as_ref()?
-                .data()
-                .children()
-                .get(self.back_position)?;
+            let parent = self.parent.as_ref()?;
+            let child = parent.data().children().get(self.back_position)?;
             self.back_position += 1;
-            Some(*child)
+            Some(parent.id.with_node_id(*child))
         }
     }
 }
@@ -459,8 +500,9 @@ impl<Filter: Fn(&Node) -> FilterResult> FusedIterator for FilteredChildren<'_, F
 pub(crate) enum LabelledBy<'a, Filter: Fn(&Node) -> FilterResult> {
     FromDescendants(FilteredChildren<'a, Filter>),
     Explicit {
-        ids: core::slice::Iter<'a, NodeId>,
+        ids: core::slice::Iter<'a, NodeIdContent>,
         tree_state: &'a TreeState,
+        node_id: NodeId,
     },
 }
 
@@ -470,9 +512,13 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> Iterator for LabelledBy<'a, Filter> 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::FromDescendants(iter) => iter.next(),
-            Self::Explicit { ids, tree_state } => {
-                ids.next().map(|id| tree_state.node_by_id(*id).unwrap())
-            }
+            Self::Explicit {
+                ids,
+                tree_state,
+                node_id,
+            } => ids
+                .next()
+                .map(|id| tree_state.node_by_id(node_id.with_node_id(*id)).unwrap()),
         }
     }
 
@@ -488,9 +534,13 @@ impl<Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator for LabelledBy<'_, F
     fn next_back(&mut self) -> Option<Self::Item> {
         match self {
             Self::FromDescendants(iter) => iter.next_back(),
-            Self::Explicit { ids, tree_state } => ids
+            Self::Explicit {
+                ids,
+                tree_state,
+                node_id,
+            } => ids
                 .next_back()
-                .map(|id| tree_state.node_by_id(*id).unwrap()),
+                .map(|id| tree_state.node_by_id(node_id.with_node_id(*id)).unwrap()),
         }
     }
 }
@@ -499,8 +549,8 @@ impl<Filter: Fn(&Node) -> FilterResult> FusedIterator for LabelledBy<'_, Filter>
 
 #[cfg(test)]
 mod tests {
+    use crate::node::NodeId;
     use crate::tests::*;
-    use accesskit::NodeId;
     use alloc::vec::Vec;
 
     #[test]
@@ -510,12 +560,12 @@ mod tests {
         assert_eq!(0, tree.state().root().following_siblings().len());
         assert_eq!(
             [
-                PARAGRAPH_1_IGNORED_ID,
-                PARAGRAPH_2_ID,
-                PARAGRAPH_3_IGNORED_ID
+                nid(PARAGRAPH_1_IGNORED_ID),
+                nid(PARAGRAPH_2_ID),
+                nid(PARAGRAPH_3_IGNORED_ID)
             ],
             tree.state()
-                .node_by_id(PARAGRAPH_0_ID)
+                .node_by_id(nid(PARAGRAPH_0_ID))
                 .unwrap()
                 .following_siblings()
                 .map(|node| node.id())
@@ -524,14 +574,14 @@ mod tests {
         assert_eq!(
             3,
             tree.state()
-                .node_by_id(PARAGRAPH_0_ID)
+                .node_by_id(nid(PARAGRAPH_0_ID))
                 .unwrap()
                 .following_siblings()
                 .len()
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_3_IGNORED_ID)
+            .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
             .unwrap()
             .following_siblings()
             .next()
@@ -539,7 +589,7 @@ mod tests {
         assert_eq!(
             0,
             tree.state()
-                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
                 .unwrap()
                 .following_siblings()
                 .len()
@@ -557,12 +607,12 @@ mod tests {
             .is_none());
         assert_eq!(
             [
-                PARAGRAPH_3_IGNORED_ID,
-                PARAGRAPH_2_ID,
-                PARAGRAPH_1_IGNORED_ID
+                nid(PARAGRAPH_3_IGNORED_ID),
+                nid(PARAGRAPH_2_ID),
+                nid(PARAGRAPH_1_IGNORED_ID)
             ],
             tree.state()
-                .node_by_id(PARAGRAPH_0_ID)
+                .node_by_id(nid(PARAGRAPH_0_ID))
                 .unwrap()
                 .following_siblings()
                 .rev()
@@ -571,7 +621,7 @@ mod tests {
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_3_IGNORED_ID)
+            .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
             .unwrap()
             .following_siblings()
             .next_back()
@@ -584,9 +634,13 @@ mod tests {
         assert!(tree.state().root().preceding_siblings().next().is_none());
         assert_eq!(0, tree.state().root().preceding_siblings().len());
         assert_eq!(
-            [PARAGRAPH_2_ID, PARAGRAPH_1_IGNORED_ID, PARAGRAPH_0_ID],
+            [
+                nid(PARAGRAPH_2_ID),
+                nid(PARAGRAPH_1_IGNORED_ID),
+                nid(PARAGRAPH_0_ID)
+            ],
             tree.state()
-                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
                 .unwrap()
                 .preceding_siblings()
                 .map(|node| node.id())
@@ -595,14 +649,14 @@ mod tests {
         assert_eq!(
             3,
             tree.state()
-                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
                 .unwrap()
                 .preceding_siblings()
                 .len()
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .preceding_siblings()
             .next()
@@ -610,7 +664,7 @@ mod tests {
         assert_eq!(
             0,
             tree.state()
-                .node_by_id(PARAGRAPH_0_ID)
+                .node_by_id(nid(PARAGRAPH_0_ID))
                 .unwrap()
                 .preceding_siblings()
                 .len()
@@ -627,9 +681,13 @@ mod tests {
             .next_back()
             .is_none());
         assert_eq!(
-            [PARAGRAPH_0_ID, PARAGRAPH_1_IGNORED_ID, PARAGRAPH_2_ID],
+            [
+                nid(PARAGRAPH_0_ID),
+                nid(PARAGRAPH_1_IGNORED_ID),
+                nid(PARAGRAPH_2_ID)
+            ],
             tree.state()
-                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
                 .unwrap()
                 .preceding_siblings()
                 .rev()
@@ -638,7 +696,7 @@ mod tests {
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .preceding_siblings()
             .next_back()
@@ -655,18 +713,23 @@ mod tests {
             .next()
             .is_none());
         assert_eq!(
-            [LABEL_1_1_ID, PARAGRAPH_2_ID, LABEL_3_1_0_ID, BUTTON_3_2_ID],
+            [
+                nid(LABEL_1_1_ID),
+                nid(PARAGRAPH_2_ID),
+                nid(LABEL_3_1_0_ID),
+                nid(BUTTON_3_2_ID)
+            ],
             tree.state()
-                .node_by_id(PARAGRAPH_0_ID)
+                .node_by_id(nid(PARAGRAPH_0_ID))
                 .unwrap()
                 .following_filtered_siblings(test_tree_filter)
                 .map(|node| node.id())
                 .collect::<Vec<NodeId>>()[..]
         );
         assert_eq!(
-            [BUTTON_3_2_ID],
+            [nid(BUTTON_3_2_ID)],
             tree.state()
-                .node_by_id(LABEL_3_1_0_ID)
+                .node_by_id(nid(LABEL_3_1_0_ID))
                 .unwrap()
                 .following_filtered_siblings(test_tree_filter)
                 .map(|node| node.id())
@@ -674,7 +737,7 @@ mod tests {
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_3_IGNORED_ID)
+            .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
             .unwrap()
             .following_filtered_siblings(test_tree_filter)
             .next()
@@ -691,9 +754,14 @@ mod tests {
             .next_back()
             .is_none());
         assert_eq!(
-            [BUTTON_3_2_ID, LABEL_3_1_0_ID, PARAGRAPH_2_ID, LABEL_1_1_ID],
+            [
+                nid(BUTTON_3_2_ID),
+                nid(LABEL_3_1_0_ID),
+                nid(PARAGRAPH_2_ID),
+                nid(LABEL_1_1_ID)
+            ],
             tree.state()
-                .node_by_id(PARAGRAPH_0_ID)
+                .node_by_id(nid(PARAGRAPH_0_ID))
                 .unwrap()
                 .following_filtered_siblings(test_tree_filter)
                 .rev()
@@ -701,9 +769,9 @@ mod tests {
                 .collect::<Vec<NodeId>>()[..]
         );
         assert_eq!(
-            [BUTTON_3_2_ID,],
+            [nid(BUTTON_3_2_ID),],
             tree.state()
-                .node_by_id(LABEL_3_1_0_ID)
+                .node_by_id(nid(LABEL_3_1_0_ID))
                 .unwrap()
                 .following_filtered_siblings(test_tree_filter)
                 .rev()
@@ -712,7 +780,7 @@ mod tests {
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_3_IGNORED_ID)
+            .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
             .unwrap()
             .following_filtered_siblings(test_tree_filter)
             .next_back()
@@ -729,18 +797,18 @@ mod tests {
             .next()
             .is_none());
         assert_eq!(
-            [PARAGRAPH_2_ID, LABEL_1_1_ID, PARAGRAPH_0_ID],
+            [nid(PARAGRAPH_2_ID), nid(LABEL_1_1_ID), nid(PARAGRAPH_0_ID)],
             tree.state()
-                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
                 .unwrap()
                 .preceding_filtered_siblings(test_tree_filter)
                 .map(|node| node.id())
                 .collect::<Vec<NodeId>>()[..]
         );
         assert_eq!(
-            [PARAGRAPH_2_ID, LABEL_1_1_ID, PARAGRAPH_0_ID],
+            [nid(PARAGRAPH_2_ID), nid(LABEL_1_1_ID), nid(PARAGRAPH_0_ID)],
             tree.state()
-                .node_by_id(LABEL_3_1_0_ID)
+                .node_by_id(nid(LABEL_3_1_0_ID))
                 .unwrap()
                 .preceding_filtered_siblings(test_tree_filter)
                 .map(|node| node.id())
@@ -748,7 +816,7 @@ mod tests {
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .preceding_filtered_siblings(test_tree_filter)
             .next()
@@ -765,9 +833,9 @@ mod tests {
             .next_back()
             .is_none());
         assert_eq!(
-            [PARAGRAPH_0_ID, LABEL_1_1_ID, PARAGRAPH_2_ID],
+            [nid(PARAGRAPH_0_ID), nid(LABEL_1_1_ID), nid(PARAGRAPH_2_ID)],
             tree.state()
-                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
                 .unwrap()
                 .preceding_filtered_siblings(test_tree_filter)
                 .rev()
@@ -775,9 +843,9 @@ mod tests {
                 .collect::<Vec<NodeId>>()[..]
         );
         assert_eq!(
-            [PARAGRAPH_0_ID, LABEL_1_1_ID, PARAGRAPH_2_ID],
+            [nid(PARAGRAPH_0_ID), nid(LABEL_1_1_ID), nid(PARAGRAPH_2_ID)],
             tree.state()
-                .node_by_id(LABEL_3_1_0_ID)
+                .node_by_id(nid(LABEL_3_1_0_ID))
                 .unwrap()
                 .preceding_filtered_siblings(test_tree_filter)
                 .rev()
@@ -786,7 +854,7 @@ mod tests {
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .preceding_filtered_siblings(test_tree_filter)
             .next_back()
@@ -798,11 +866,11 @@ mod tests {
         let tree = test_tree();
         assert_eq!(
             [
-                PARAGRAPH_0_ID,
-                LABEL_1_1_ID,
-                PARAGRAPH_2_ID,
-                LABEL_3_1_0_ID,
-                BUTTON_3_2_ID
+                nid(PARAGRAPH_0_ID),
+                nid(LABEL_1_1_ID),
+                nid(PARAGRAPH_2_ID),
+                nid(LABEL_3_1_0_ID),
+                nid(BUTTON_3_2_ID)
             ],
             tree.state()
                 .root()
@@ -812,14 +880,14 @@ mod tests {
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .filtered_children(test_tree_filter)
             .next()
             .is_none());
         assert!(tree
             .state()
-            .node_by_id(LABEL_0_0_IGNORED_ID)
+            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
             .unwrap()
             .filtered_children(test_tree_filter)
             .next()
@@ -831,11 +899,11 @@ mod tests {
         let tree = test_tree();
         assert_eq!(
             [
-                BUTTON_3_2_ID,
-                LABEL_3_1_0_ID,
-                PARAGRAPH_2_ID,
-                LABEL_1_1_ID,
-                PARAGRAPH_0_ID
+                nid(BUTTON_3_2_ID),
+                nid(LABEL_3_1_0_ID),
+                nid(PARAGRAPH_2_ID),
+                nid(LABEL_1_1_ID),
+                nid(PARAGRAPH_0_ID)
             ],
             tree.state()
                 .root()
@@ -846,14 +914,14 @@ mod tests {
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .filtered_children(test_tree_filter)
             .next_back()
             .is_none());
         assert!(tree
             .state()
-            .node_by_id(LABEL_0_0_IGNORED_ID)
+            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
             .unwrap()
             .filtered_children(test_tree_filter)
             .next_back()
