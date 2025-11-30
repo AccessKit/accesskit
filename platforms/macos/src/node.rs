@@ -553,20 +553,22 @@ declare_class!(
         fn set_value(&self, value: &NSObject) {
             if let Some(string) = downcast_ref::<NSString>(value) {
                 self.resolve_with_context(|node, tree, context| {
-                    if let Some((target, _)) = tree.locate_node(node.id()) {
+                    if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
                         context.do_action(ActionRequest {
                             action: Action::SetValue,
-                            target,
+                            target_tree,
+                            target_node,
                             data: Some(ActionData::Value(string.to_string().into())),
                         });
                     }
                 });
             } else if let Some(number) = downcast_ref::<NSNumber>(value) {
                 self.resolve_with_context(|node, tree, context| {
-                    if let Some((target, _)) = tree.locate_node(node.id()) {
+                    if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
                         context.do_action(ActionRequest {
                             action: Action::SetValue,
-                            target,
+                            target_tree,
+                            target_node,
                             data: Some(ActionData::NumericValue(number.doubleValue())),
                         });
                     }
@@ -624,10 +626,11 @@ declare_class!(
             self.resolve_with_context(|node, tree, context| {
                 if focused {
                     if node.is_focusable(&filter) {
-                        if let Some((target, _)) = tree.locate_node(node.id()) {
+                        if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
                             context.do_action(ActionRequest {
                                 action: Action::Focus,
-                                target,
+                                target_tree,
+                                target_node,
                                 data: None,
                             });
                         }
@@ -635,10 +638,11 @@ declare_class!(
                 } else {
                     let root = tree.state().root();
                     if root.is_focusable(&filter) {
-                        if let Some((target, _)) = tree.locate_node(root.id()) {
+                        if let Some((target_node, target_tree)) = tree.locate_node(root.id()) {
                             context.do_action(ActionRequest {
                                 action: Action::Focus,
-                                target,
+                                target_tree,
+                                target_node,
                                 data: None,
                             });
                         }
@@ -652,10 +656,11 @@ declare_class!(
             self.resolve_with_context(|node, tree, context| {
                 let clickable = node.is_clickable(&filter);
                 if clickable {
-                    if let Some((target, _)) = tree.locate_node(node.id()) {
+                    if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
                         context.do_action(ActionRequest {
                             action: Action::Click,
-                            target,
+                            target_tree,
+                            target_node,
                             data: None,
                         });
                     }
@@ -670,10 +675,11 @@ declare_class!(
             self.resolve_with_context(|node, tree, context| {
                 let supports_increment = node.supports_increment(&filter);
                 if supports_increment {
-                    if let Some((target, _)) = tree.locate_node(node.id()) {
+                    if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
                         context.do_action(ActionRequest {
                             action: Action::Increment,
-                            target,
+                            target_tree,
+                            target_node,
                             data: None,
                         });
                     }
@@ -688,10 +694,11 @@ declare_class!(
             self.resolve_with_context(|node, tree, context| {
                 let supports_decrement = node.supports_decrement(&filter);
                 if supports_decrement {
-                    if let Some((target, _)) = tree.locate_node(node.id()) {
+                    if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
                         context.do_action(ActionRequest {
                             action: Action::Decrement,
-                            target,
+                            target_tree,
+                            target_node,
                             data: None,
                         });
                     }
@@ -861,10 +868,11 @@ declare_class!(
             self.resolve_with_context(|node, tree, context| {
                 if node.supports_text_ranges() {
                     if let Some(range) = from_ns_range(node, range) {
-                        if let Some((target, _)) = tree.locate_node(node.id()) {
+                        if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
                             context.do_action(ActionRequest {
                                 action: Action::SetTextSelection,
-                                target,
+                                target_tree,
+                                target_node,
                                 data: Some(ActionData::SetTextSelection(range.to_text_selection())),
                             });
                         }
@@ -903,10 +911,11 @@ declare_class!(
                 if node.is_selected() == Some(selected) {
                     return;
                 }
-                if let Some((target, _)) = tree.locate_node(node.id()) {
+                if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
                     context.do_action(ActionRequest {
                         action: Action::Click,
-                        target,
+                        target_tree,
+                        target_node,
                         data: None,
                     });
                 }
@@ -968,10 +977,11 @@ declare_class!(
                     && wrapper.is_item_like()
                     && node.is_selectable();
                 if selectable {
-                    if let Some((target, _)) = tree.locate_node(node.id()) {
+                    if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
                         context.do_action(ActionRequest {
                             action: Action::Click,
-                            target,
+                            target_tree,
+                            target_node,
                             data: None,
                         });
                     }
@@ -1042,10 +1052,11 @@ declare_class!(
         fn perform_action(&self, action: &NSString) {
             self.resolve_with_context(|node, tree, context| {
                 if action == ns_string!(SCROLL_TO_VISIBLE_ACTION) {
-                    if let Some((target, _)) = tree.locate_node(node.id()) {
+                    if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
                         context.do_action(ActionRequest {
                             action: Action::ScrollIntoView,
-                            target,
+                            target_tree,
+                            target_node,
                             data: None,
                         });
                     }

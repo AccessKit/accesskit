@@ -238,14 +238,18 @@ impl ApplicationHandler<AccessKitEvent> for Application {
             AccessKitWindowEvent::InitialTreeRequested => {
                 adapter.update_if_active(|| state.build_initial_tree());
             }
-            AccessKitWindowEvent::ActionRequested(ActionRequest { action, target, .. }) => {
-                if target == BUTTON_1_ID || target == BUTTON_2_ID {
+            AccessKitWindowEvent::ActionRequested(ActionRequest {
+                action,
+                target_node,
+                ..
+            }) => {
+                if target_node == BUTTON_1_ID || target_node == BUTTON_2_ID {
                     match action {
                         Action::Focus => {
-                            state.set_focus(adapter, target);
+                            state.set_focus(adapter, target_node);
                         }
                         Action::Click => {
-                            state.press_button(adapter, target);
+                            state.press_button(adapter, target_node);
                         }
                         _ => (),
                     }

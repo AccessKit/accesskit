@@ -570,10 +570,11 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
 
     fn Select(&self) -> Result<()> {
         self.do_action(|range, tree| {
-            let (target, _) = tree.locate_node(range.node().id()).unwrap();
+            let (target_node, target_tree) = tree.locate_node(range.node().id()).unwrap();
             ActionRequest {
                 action: Action::SetTextSelection,
-                target,
+                target_tree,
+                target_node,
                 data: Some(ActionData::SetTextSelection(range.to_text_selection())),
             }
         })
@@ -596,10 +597,11 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
             } else {
                 range.end()
             };
-            let (target, _) = tree.locate_node(position.inner_node().id()).unwrap();
+            let (target_node, target_tree) = tree.locate_node(position.inner_node().id()).unwrap();
             ActionRequest {
                 action: Action::ScrollIntoView,
-                target,
+                target_tree,
+                target_node,
                 data: Some(ActionData::ScrollHint(if align_to_top.into() {
                     ScrollHint::TopEdge
                 } else {

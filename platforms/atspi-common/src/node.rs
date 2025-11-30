@@ -10,7 +10,7 @@
 
 use accesskit::{
     Action, ActionData, ActionRequest, Affine, Live, NodeId as LocalNodeId, Orientation, Point,
-    Rect, Role, Toggled,
+    Rect, Role, Toggled, TreeId,
 };
 use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeState};
 use atspi_common::{
@@ -735,12 +735,12 @@ impl PlatformNode {
 
     fn do_action_internal<F>(&self, target: NodeId, f: F) -> Result<()>
     where
-        F: FnOnce(&TreeState, &Context, LocalNodeId) -> ActionRequest,
+        F: FnOnce(&TreeState, &Context, LocalNodeId, TreeId) -> ActionRequest,
     {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
-        if let Some((target_node, _)) = tree.locate_node(target) {
-            let request = f(tree.state(), &context, target_node);
+        if let Some((target_node, target_tree)) = tree.locate_node(target) {
+            let request = f(tree.state(), &context, target_node, target_tree);
             drop(tree);
             context.do_action(request);
             Ok(())
@@ -970,9 +970,10 @@ impl PlatformNode {
         if index != 0 {
             return Ok(false);
         }
-        self.do_action_internal(self.id, |_, _, target| ActionRequest {
+        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
             action: Action::Click,
-            target,
+            target_tree,
+            target_node,
             data: None,
         })?;
         Ok(true)
@@ -1030,18 +1031,20 @@ impl PlatformNode {
     }
 
     pub fn grab_focus(&self) -> Result<bool> {
-        self.do_action_internal(self.id, |_, _, target| ActionRequest {
+        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
             action: Action::Focus,
-            target,
+            target_tree,
+            target_node,
             data: None,
         })?;
         Ok(true)
     }
 
     pub fn scroll_to(&self, scroll_type: ScrollType) -> Result<bool> {
-        self.do_action_internal(self.id, |_, _, target| ActionRequest {
+        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
             action: Action::ScrollIntoView,
-            target,
+            target_tree,
+            target_node,
             data: atspi_scroll_type_to_scroll_hint(scroll_type).map(ActionData::ScrollHint),
         })?;
         Ok(true)
@@ -1055,10 +1058,11 @@ impl PlatformNode {
                 node.filtered_parent(&filter),
                 coord_type,
             );
-            let (target, _) = tree.locate_node(self.id).ok_or(Error::Defunct)?;
+            let (target_node, target_tree) = tree.locate_node(self.id).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::ScrollToPoint,
-                target,
+                target_tree,
+                target_node,
                 data: Some(ActionData::ScrollToPoint(point)),
             });
             Ok(())
@@ -1092,10 +1096,12 @@ impl PlatformNode {
                 if let Some(true) = child.is_selected() {
                     Ok(true)
                 } else if child.is_selectable() && child.is_clickable(&filter) {
-                    let (target, _) = tree.locate_node(child.id()).ok_or(Error::Defunct)?;
+                    let (target_node, target_tree) =
+                        tree.locate_node(child.id()).ok_or(Error::Defunct)?;
                     context.do_action(ActionRequest {
                         action: Action::Click,
-                        target,
+                        target_tree,
+                        target_node,
                         data: None,
                     });
                     Ok(true)
@@ -1116,10 +1122,12 @@ impl PlatformNode {
                 .nth(selected_child_index)
             {
                 if child.is_clickable(&filter) {
-                    let (target, _) = tree.locate_node(child.id()).ok_or(Error::Defunct)?;
+                    let (target_node, target_tree) =
+                        tree.locate_node(child.id()).ok_or(Error::Defunct)?;
                     context.do_action(ActionRequest {
                         action: Action::Click,
-                        target,
+                        target_tree,
+                        target_node,
                         data: None,
                     });
                     Ok(true)
@@ -1157,10 +1165,12 @@ impl PlatformNode {
                 if let Some(false) = child.is_selected() {
                     Ok(true)
                 } else if child.is_selectable() && child.is_clickable(&filter) {
-                    let (target, _) = tree.locate_node(child.id()).ok_or(Error::Defunct)?;
+                    let (target_node, target_tree) =
+                        tree.locate_node(child.id()).ok_or(Error::Defunct)?;
                     context.do_action(ActionRequest {
                         action: Action::Click,
-                        target,
+                        target_tree,
+                        target_node,
                         data: None,
                     });
                     Ok(true)
@@ -1228,10 +1238,11 @@ impl PlatformNode {
     pub fn set_caret_offset(&self, offset: i32) -> Result<bool> {
         self.resolve_for_text_with_context(|node, tree, context| {
             let offset = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
-            let (target, _) = tree.locate_node(node.id()).ok_or(Error::Defunct)?;
+            let (target_node, target_tree) = tree.locate_node(node.id()).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::SetTextSelection,
-                target,
+                target_tree,
+                target_node,
                 data: Some(ActionData::SetTextSelection(
                     offset.to_degenerate_range().to_text_selection(),
                 )),
@@ -1338,10 +1349,11 @@ impl PlatformNode {
             let selection_end = node
                 .text_selection_focus()
                 .unwrap_or_else(|| node.document_range().start());
-            let (target, _) = tree.locate_node(node.id()).ok_or(Error::Defunct)?;
+            let (target_node, target_tree) = tree.locate_node(node.id()).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::SetTextSelection,
-                target,
+                target_tree,
+                target_node,
                 data: Some(ActionData::SetTextSelection(
                     selection_end.to_degenerate_range().to_text_selection(),
                 )),
@@ -1363,10 +1375,11 @@ impl PlatformNode {
         self.resolve_for_text_with_context(|node, tree, context| {
             let range = text_range_from_offsets(&node, start_offset, end_offset)
                 .ok_or(Error::IndexOutOfRange)?;
-            let (target, _) = tree.locate_node(node.id()).ok_or(Error::Defunct)?;
+            let (target_node, target_tree) = tree.locate_node(node.id()).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::SetTextSelection,
-                target,
+                target_tree,
+                target_node,
                 data: Some(ActionData::SetTextSelection(range.to_text_selection())),
             });
             Ok(true)
@@ -1422,12 +1435,13 @@ impl PlatformNode {
                 } else {
                     range.start()
                 };
-                let (target, _) = tree
+                let (target_node, target_tree) = tree
                     .locate_node(position.inner_node().id())
                     .ok_or(Error::Defunct)?;
                 context.do_action(ActionRequest {
                     action: Action::ScrollIntoView,
-                    target,
+                    target_tree,
+                    target_node,
                     data: atspi_scroll_type_to_scroll_hint(scroll_type).map(ActionData::ScrollHint),
                 });
                 Ok(true)
@@ -1455,10 +1469,12 @@ impl PlatformNode {
 
             if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
                 let point = Point::new(target_point.x - rect.x0, target_point.y - rect.y0);
-                let (target, _) = tree.locate_node(node.id()).ok_or(Error::Defunct)?;
+                let (target_node, target_tree) =
+                    tree.locate_node(node.id()).ok_or(Error::Defunct)?;
                 context.do_action(ActionRequest {
                     action: Action::ScrollToPoint,
-                    target,
+                    target_tree,
+                    target_node,
                     data: Some(ActionData::ScrollToPoint(point)),
                 });
                 return Ok(true);
@@ -1487,9 +1503,10 @@ impl PlatformNode {
     }
 
     pub fn set_current_value(&self, value: f64) -> Result<()> {
-        self.do_action_internal(self.id, |_, _, target| ActionRequest {
+        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
             action: Action::SetValue,
-            target,
+            target_tree,
+            target_node,
             data: Some(ActionData::NumericValue(value)),
         })
     }

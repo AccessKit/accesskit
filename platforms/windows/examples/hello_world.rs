@@ -204,7 +204,7 @@ impl ActionHandler for SimpleActionHandler {
                         Some(self.window),
                         SET_FOCUS_MSG,
                         WPARAM(0),
-                        LPARAM(request.target.0 as _),
+                        LPARAM(request.target_node.0 as _),
                     )
                 }
                 .unwrap();
@@ -215,7 +215,7 @@ impl ActionHandler for SimpleActionHandler {
                         Some(self.window),
                         CLICK_MSG,
                         WPARAM(0),
-                        LPARAM(request.target.0 as _),
+                        LPARAM(request.target_node.0 as _),
                     )
                 }
                 .unwrap();

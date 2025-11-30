@@ -2792,7 +2792,8 @@ pub enum ActionData {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct ActionRequest {
     pub action: Action,
-    pub target: NodeId,
+    pub target_tree: TreeId,
+    pub target_node: NodeId,
     pub data: Option<ActionData>,
 }
 

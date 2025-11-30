@@ -872,15 +872,15 @@ impl PlatformNode {
 
     fn do_complex_action<F>(&self, f: F) -> Result<()>
     where
-        for<'a> F: FnOnce(Node<'a>, LocalNodeId) -> Result<Option<ActionRequest>>,
+        for<'a> F: FnOnce(Node<'a>, LocalNodeId, TreeId) -> Result<Option<ActionRequest>>,
     {
         let context = self.upgrade_context()?;
         if context.is_placeholder.load(Ordering::SeqCst) {
             return Err(element_not_enabled());
         }
         let tree = context.read_tree();
-        let (node, local_id, _) = self.node_with_location(&tree)?;
-        if let Some(request) = f(node, local_id)? {
+        let (node, target_node, target_tree) = self.node_with_location(&tree)?;
+        if let Some(request) = f(node, target_node, target_tree)? {
             drop(tree);
             context.do_action(request);
         }
@@ -891,14 +891,15 @@ impl PlatformNode {
     where
         F: FnOnce() -> (Action, Option<ActionData>),
     {
-        self.do_complex_action(|node, target| {
+        self.do_complex_action(|node, target_node, target_tree| {
             if node.is_disabled() {
                 return Err(element_not_enabled());
             }
             let (action, data) = f();
             Ok(Some(ActionRequest {
-                target,
                 action,
+                target_tree,
+                target_node,
                 data,
             }))
         })
@@ -909,7 +910,7 @@ impl PlatformNode {
     }
 
     fn set_selected(&self, selected: bool) -> Result<()> {
-        self.do_complex_action(|node, target| {
+        self.do_complex_action(|node, target_node, target_tree| {
             if node.is_disabled() {
                 return Err(element_not_enabled());
             }
@@ -919,7 +920,8 @@ impl PlatformNode {
             }
             Ok(Some(ActionRequest {
                 action: Action::Click,
-                target,
+                target_tree,
+                target_node,
                 data: None,
             }))
         })
@@ -1283,10 +1285,11 @@ patterns! {
     )),
     (UIA_ScrollItemPatternId, IScrollItemProvider, IScrollItemProvider_Impl, is_scroll_item_pattern_supported, (), (
         fn ScrollIntoView(&self) -> Result<()> {
-            self.do_complex_action(|_node, target| {
+            self.do_complex_action(|_node, target_node, target_tree| {
                 Ok(Some(ActionRequest {
-                    target,
                     action: Action::ScrollIntoView,
+                    target_tree,
+                    target_node,
                     data: None,
                 }))
             })
