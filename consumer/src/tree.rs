@@ -10,6 +10,32 @@ use hashbrown::{HashMap, HashSet};
 
 use crate::node::{Node, NodeState, ParentAndIndex};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+pub(crate) struct TreeIndex(pub(crate) u32);
+
+#[derive(Debug, Default)]
+struct TreeIndexMap {
+    id_to_index: HashMap<TreeId, TreeIndex>,
+    index_to_id: HashMap<TreeIndex, TreeId>,
+    next: u32,
+}
+
+impl TreeIndexMap {
+    fn get_index(&mut self, id: TreeId) -> TreeIndex {
+        *self.id_to_index.entry(id).or_insert_with(|| {
+            let tree_index = TreeIndex(self.next);
+            self.next += 1;
+            self.index_to_id.insert(tree_index, id);
+            tree_index
+        })
+    }
+
+    fn get_id(&self, index: TreeIndex) -> Option<TreeId> {
+        self.index_to_id.get(&index).copied()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct State {
     pub(crate) nodes: HashMap<NodeId, NodeState>,
@@ -253,6 +279,7 @@ pub trait ChangeHandler {
 pub struct Tree {
     state: State,
     next_state: State,
+    tree_index_map: TreeIndexMap,
 }
 
 impl Tree {
@@ -263,6 +290,8 @@ impl Tree {
         if initial_state.tree_id != TreeId::ROOT {
             panic!("Cannot initialize with a subtree. TreeUpdate::tree_id must be TreeId::ROOT.");
         }
+        let mut tree_index_map = TreeIndexMap::default();
+        tree_index_map.get_index(initial_state.tree_id);
         let mut state = State {
             nodes: HashMap::new(),
             data: tree,
@@ -273,6 +302,7 @@ impl Tree {
         Self {
             next_state: state.clone(),
             state,
+            tree_index_map,
         }
     }
 
@@ -389,6 +419,55 @@ impl<T> fmt::Display for ShortNodeList<'_, T> {
 mod tests {
     use accesskit::{Node, NodeId, Role, Tree, TreeId, TreeUpdate, Uuid};
     use alloc::{vec, vec::Vec};
+
+    use super::{TreeIndex, TreeIndexMap};
+
+    #[test]
+    fn tree_index_map_assigns_sequential_indices() {
+        let mut map = TreeIndexMap::default();
+        let id1 = TreeId::ROOT;
+        let id2 = TreeId(Uuid::from_u128(1));
+        let id3 = TreeId(Uuid::from_u128(2));
+
+        let index1 = map.get_index(id1);
+        let index2 = map.get_index(id2);
+        let index3 = map.get_index(id3);
+
+        assert_eq!(index1, TreeIndex(0));
+        assert_eq!(index2, TreeIndex(1));
+        assert_eq!(index3, TreeIndex(2));
+    }
+
+    #[test]
+    fn tree_index_map_returns_same_index_for_same_id() {
+        let mut map = TreeIndexMap::default();
+        let id = TreeId::ROOT;
+
+        let index1 = map.get_index(id);
+        let index2 = map.get_index(id);
+
+        assert_eq!(index1, index2);
+    }
+
+    #[test]
+    fn tree_index_map_get_id_returns_correct_id() {
+        let mut map = TreeIndexMap::default();
+        let id1 = TreeId::ROOT;
+        let id2 = TreeId(Uuid::from_u128(1));
+
+        let index1 = map.get_index(id1);
+        let index2 = map.get_index(id2);
+
+        assert_eq!(map.get_id(index1), Some(id1));
+        assert_eq!(map.get_id(index2), Some(id2));
+    }
+
+    #[test]
+    fn tree_index_map_get_id_returns_none_for_unknown_index() {
+        let map = TreeIndexMap::default();
+        assert_eq!(map.get_id(TreeIndex(0)), None);
+        assert_eq!(map.get_id(TreeIndex(999)), None);
+    }
 
     #[test]
     fn init_tree_with_root_node() {
