@@ -102,12 +102,13 @@ mod tests {
         common_filter, common_filter_with_root_exception,
         FilterResult::{self, *},
     };
+    use crate::tests::nid;
 
     #[track_caller]
     fn assert_filter_result(expected: FilterResult, tree: &crate::Tree, id: NodeId) {
         assert_eq!(
             expected,
-            common_filter(&tree.state().node_by_id(id).unwrap())
+            common_filter(&tree.state().node_by_id(nid(id)).unwrap())
         );
     }
 
@@ -195,7 +196,7 @@ mod tests {
         assert_filter_result(ExcludeNode, &tree, NodeId(0));
         assert_eq!(
             Include,
-            common_filter_with_root_exception(&tree.state().node_by_id(NodeId(0)).unwrap())
+            common_filter_with_root_exception(&tree.state().node_by_id(nid(NodeId(0))).unwrap())
         );
         assert_filter_result(Include, &tree, NodeId(1));
     }

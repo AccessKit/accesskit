@@ -11,10 +11,10 @@
 #![allow(non_upper_case_globals)]
 
 use accesskit::{
-    Action, ActionData, ActionRequest, AriaCurrent, HasPopup, Live, NodeId, NodeIdContent,
-    Orientation, Point, Role, SortDirection, Toggled,
+    Action, ActionData, ActionRequest, AriaCurrent, HasPopup, Live, NodeId as LocalNodeId,
+    Orientation, Point, Role, SortDirection, Toggled, TreeId,
 };
-use accesskit_consumer::{FilterResult, Node, TreeState};
+use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeState};
 use std::sync::{atomic::Ordering, Arc, Weak};
 use windows::{
     core::*,
@@ -32,13 +32,15 @@ use crate::{
     util::*,
 };
 
-const RUNTIME_ID_SIZE: usize = 3;
+const RUNTIME_ID_SIZE: usize = 5;
 
 fn runtime_id_from_node_id(id: NodeId) -> [i32; RUNTIME_ID_SIZE] {
-    static_assertions::assert_eq_size!(NodeIdContent, u64);
-    let id = id.0;
+    static_assertions::assert_eq_size!(NodeId, u128);
+    let id: u128 = id.into();
     [
         UiaAppendRuntimeId as _,
+        ((id >> 96) & 0xFFFFFFFF) as _,
+        ((id >> 64) & 0xFFFFFFFF) as _,
         ((id >> 32) & 0xFFFFFFFF) as _,
         (id & 0xFFFFFFFF) as _,
     ]
@@ -780,9 +782,16 @@ impl PlatformNode {
     where
         F: FnOnce(&TreeState, &Context) -> Result<T>,
     {
+        self.with_tree_and_context(|tree, context| f(tree.state(), context))
+    }
+
+    fn with_tree_and_context<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(&Tree, &Context) -> Result<T>,
+    {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
-        f(tree.state(), &context)
+        f(&tree, &context)
     }
 
     fn with_tree_state<F, T>(&self, f: F) -> Result<T>
@@ -792,7 +801,8 @@ impl PlatformNode {
         self.with_tree_state_and_context(|state, _| f(state))
     }
 
-    fn node<'a>(&self, state: &'a TreeState) -> Result<Node<'a>> {
+    fn node<'a>(&self, tree: &'a Tree) -> Result<Node<'a>> {
+        let state = tree.state();
         if let Some(id) = self.node_id {
             if let Some(node) = state.node_by_id(id) {
                 Ok(node)
@@ -804,12 +814,20 @@ impl PlatformNode {
         }
     }
 
+    fn node_with_location<'a>(&self, tree: &'a Tree) -> Result<(Node<'a>, LocalNodeId, TreeId)> {
+        let node = self.node(tree)?;
+        let (local_id, tree_id) = tree
+            .locate_node(node.id())
+            .ok_or_else(element_not_available)?;
+        Ok((node, local_id, tree_id))
+    }
+
     fn resolve_with_context<F, T>(&self, f: F) -> Result<T>
     where
         for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
     {
-        self.with_tree_state_and_context(|state, context| {
-            let node = self.node(state)?;
+        self.with_tree_and_context(|tree, context| {
+            let node = self.node(tree)?;
             f(node, context)
         })
     }
@@ -818,9 +836,9 @@ impl PlatformNode {
     where
         for<'a> F: FnOnce(Node<'a>, &TreeState, &Context) -> Result<T>,
     {
-        self.with_tree_state_and_context(|state, context| {
-            let node = self.node(state)?;
-            f(node, state, context)
+        self.with_tree_and_context(|tree, context| {
+            let node = self.node(tree)?;
+            f(node, tree.state(), context)
         })
     }
 
@@ -835,8 +853,8 @@ impl PlatformNode {
     where
         for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
     {
-        self.with_tree_state_and_context(|state, context| {
-            let node = self.node(state)?;
+        self.with_tree_and_context(|tree, context| {
+            let node = self.node(tree)?;
             if node.supports_text_ranges() {
                 f(node, context)
             } else {
@@ -854,16 +872,15 @@ impl PlatformNode {
 
     fn do_complex_action<F>(&self, f: F) -> Result<()>
     where
-        for<'a> F: FnOnce(Node<'a>) -> Result<Option<ActionRequest>>,
+        for<'a> F: FnOnce(Node<'a>, LocalNodeId) -> Result<Option<ActionRequest>>,
     {
         let context = self.upgrade_context()?;
         if context.is_placeholder.load(Ordering::SeqCst) {
             return Err(element_not_enabled());
         }
         let tree = context.read_tree();
-        let state = tree.state();
-        let node = self.node(state)?;
-        if let Some(request) = f(node)? {
+        let (node, local_id, _) = self.node_with_location(&tree)?;
+        if let Some(request) = f(node, local_id)? {
             drop(tree);
             context.do_action(request);
         }
@@ -874,13 +891,13 @@ impl PlatformNode {
     where
         F: FnOnce() -> (Action, Option<ActionData>),
     {
-        self.do_complex_action(|node| {
+        self.do_complex_action(|node, target| {
             if node.is_disabled() {
                 return Err(element_not_enabled());
             }
             let (action, data) = f();
             Ok(Some(ActionRequest {
-                target: node.id(),
+                target,
                 action,
                 data,
             }))
@@ -892,7 +909,7 @@ impl PlatformNode {
     }
 
     fn set_selected(&self, selected: bool) -> Result<()> {
-        self.do_complex_action(|node| {
+        self.do_complex_action(|node, target| {
             if node.is_disabled() {
                 return Err(element_not_enabled());
             }
@@ -902,7 +919,7 @@ impl PlatformNode {
             }
             Ok(Some(ActionRequest {
                 action: Action::Click,
-                target: node.id(),
+                target,
                 data: None,
             }))
         })
@@ -1266,9 +1283,9 @@ patterns! {
     )),
     (UIA_ScrollItemPatternId, IScrollItemProvider, IScrollItemProvider_Impl, is_scroll_item_pattern_supported, (), (
         fn ScrollIntoView(&self) -> Result<()> {
-            self.do_complex_action(|node| {
+            self.do_complex_action(|_node, target| {
                 Ok(Some(ActionRequest {
-                    target: node.id(),
+                    target,
                     action: Action::ScrollIntoView,
                     data: None,
                 }))

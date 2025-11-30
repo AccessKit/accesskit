@@ -9,8 +9,9 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node as NodeData, NodeId,
-    Orientation, Point, Role, ScrollUnit, TextSelection, Tree as TreeData, TreeId, TreeUpdate,
+    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node as NodeData,
+    NodeId as LocalNodeId, Orientation, Point, Role, ScrollUnit, TextSelection, Tree as TreeData,
+    TreeId, TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Node, TextPosition, Tree, TreeChangeHandler};
 use jni::{
@@ -156,7 +157,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
     }
 }
 
-const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
+const PLACEHOLDER_ROOT_ID: LocalNodeId = LocalNodeId(0);
 
 #[derive(Debug, Default)]
 enum State {
@@ -383,6 +384,7 @@ impl Adapter {
         } else {
             self.node_id_map.get_accesskit_id(virtual_view_id)?
         };
+        let (target_node, _) = tree.locate_node(target)?;
         let mut events = Vec::new();
         let request = match action {
             ACTION_CLICK => ActionRequest {
@@ -397,12 +399,12 @@ impl Adapter {
                         Action::Click
                     }
                 },
-                target,
+                target: target_node,
                 data: None,
             },
             ACTION_FOCUS => ActionRequest {
                 action: Action::Focus,
-                target,
+                target: target_node,
                 data: None,
             },
             ACTION_SCROLL_BACKWARD | ACTION_SCROLL_FORWARD => ActionRequest {
@@ -437,7 +439,7 @@ impl Adapter {
                         Action::ScrollRight
                     }
                 },
-                target,
+                target: target_node,
                 data: Some(ActionData::ScrollUnit(ScrollUnit::Page)),
             },
             ACTION_ACCESSIBILITY_FOCUS => {
@@ -492,7 +494,8 @@ impl Adapter {
             let id = self.node_id_map.get_accesskit_id(virtual_view_id)?;
             tree_state.node_by_id(id).unwrap()
         };
-        let target = node.id();
+        let (node_id, tree_id) = tree.locate_node(node.id())?;
+        let (focus_id, _) = tree.locate_node(tree_state.focus_id_in_tree())?;
         // TalkBack expects the text selection change to take effect
         // immediately, so we optimistically update the node.
         // But don't be *too* optimistic.
@@ -507,14 +510,14 @@ impl Adapter {
         let mut new_node = node.data().clone();
         new_node.set_text_selection(selection);
         let update = TreeUpdate {
-            nodes: vec![(node.id(), new_node)],
+            nodes: vec![(node_id, new_node)],
             tree: None,
-            tree_id: TreeId::ROOT,
-            focus: tree_state.focus_id_in_tree(),
+            tree_id,
+            focus: focus_id,
         };
         update_tree(events, &mut self.node_id_map, tree, update);
         let request = ActionRequest {
-            target,
+            target: node_id,
             action: Action::SetTextSelection,
             data: Some(ActionData::SetTextSelection(selection)),
         };

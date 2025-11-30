@@ -10,10 +10,8 @@
 
 #![allow(non_upper_case_globals)]
 
-use accesskit::{
-    Action, ActionData, ActionRequest, NodeId, Orientation, Role, TextSelection, Toggled,
-};
-use accesskit_consumer::{FilterResult, Node};
+use accesskit::{Action, ActionData, ActionRequest, Orientation, Role, TextSelection, Toggled};
+use accesskit_consumer::{FilterResult, Node, NodeId, Tree};
 use objc2::{
     declare_class, msg_send_id,
     mutability::InteriorMutable,
@@ -384,7 +382,7 @@ declare_class!(
     unsafe impl PlatformNode {
         #[method_id(accessibilityParent)]
         fn parent(&self) -> Option<Id<AnyObject>> {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, _, context| {
                 if let Some(parent) = node.filtered_parent(&filter) {
                     Some(Id::into_super(Id::into_super(Id::into_super(context.get_or_create_platform_node(parent.id())))))
                 } else {
@@ -399,7 +397,7 @@ declare_class!(
 
         #[method_id(accessibilityWindow)]
         fn window(&self) -> Option<Id<AnyObject>> {
-            self.resolve_with_context(|_, context| {
+            self.resolve_with_context(|_, _, context| {
                 context
                     .view
                     .load()
@@ -410,7 +408,7 @@ declare_class!(
 
         #[method_id(accessibilityTopLevelUIElement)]
         fn top_level(&self) -> Option<Id<AnyObject>> {
-            self.resolve_with_context(|_, context| {
+            self.resolve_with_context(|_, _, context| {
                 context
                     .view
                     .load()
@@ -432,7 +430,7 @@ declare_class!(
 
         #[method_id(accessibilitySelectedChildren)]
         fn selected_children(&self) -> Option<Id<NSArray<PlatformNode>>> {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, _, context| {
                 let wrapper = NodeWrapper(node);
                 if !wrapper.is_container_with_selectable_children() {
                     return None;
@@ -449,7 +447,7 @@ declare_class!(
 
         #[method(accessibilityFrame)]
         fn frame(&self) -> NSRect {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, _, context| {
                 let view = match context.view.load() {
                     Some(view) => view,
                     None => {
@@ -554,20 +552,24 @@ declare_class!(
         #[method(setAccessibilityValue:)]
         fn set_value(&self, value: &NSObject) {
             if let Some(string) = downcast_ref::<NSString>(value) {
-                self.resolve_with_context(|node, context| {
-                    context.do_action(ActionRequest {
-                        action: Action::SetValue,
-                        target: node.id(),
-                        data: Some(ActionData::Value(string.to_string().into())),
-                    });
+                self.resolve_with_context(|node, tree, context| {
+                    if let Some((target, _)) = tree.locate_node(node.id()) {
+                        context.do_action(ActionRequest {
+                            action: Action::SetValue,
+                            target,
+                            data: Some(ActionData::Value(string.to_string().into())),
+                        });
+                    }
                 });
             } else if let Some(number) = downcast_ref::<NSNumber>(value) {
-                self.resolve_with_context(|node, context| {
-                    context.do_action(ActionRequest {
-                        action: Action::SetValue,
-                        target: node.id(),
-                        data: Some(ActionData::NumericValue(number.doubleValue())),
-                    });
+                self.resolve_with_context(|node, tree, context| {
+                    if let Some((target, _)) = tree.locate_node(node.id()) {
+                        context.do_action(ActionRequest {
+                            action: Action::SetValue,
+                            target,
+                            data: Some(ActionData::NumericValue(number.doubleValue())),
+                        });
+                    }
                 });
             }
         }
@@ -619,23 +621,27 @@ declare_class!(
 
         #[method(setAccessibilityFocused:)]
         fn set_focused(&self, focused: bool) {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, tree, context| {
                 if focused {
                     if node.is_focusable(&filter) {
-                        context.do_action(ActionRequest {
-                            action: Action::Focus,
-                            target: node.id(),
-                            data: None,
-                        });
+                        if let Some((target, _)) = tree.locate_node(node.id()) {
+                            context.do_action(ActionRequest {
+                                action: Action::Focus,
+                                target,
+                                data: None,
+                            });
+                        }
                     }
                 } else {
-                    let root = node.tree_state.root();
+                    let root = tree.state().root();
                     if root.is_focusable(&filter) {
-                        context.do_action(ActionRequest {
-                            action: Action::Focus,
-                            target: root.id(),
-                            data: None,
-                        });
+                        if let Some((target, _)) = tree.locate_node(root.id()) {
+                            context.do_action(ActionRequest {
+                                action: Action::Focus,
+                                target,
+                                data: None,
+                            });
+                        }
                     }
                 }
             });
@@ -643,14 +649,16 @@ declare_class!(
 
         #[method(accessibilityPerformPress)]
         fn press(&self) -> bool {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, tree, context| {
                 let clickable = node.is_clickable(&filter);
                 if clickable {
-                    context.do_action(ActionRequest {
-                        action: Action::Click,
-                        target: node.id(),
-                        data: None,
-                    });
+                    if let Some((target, _)) = tree.locate_node(node.id()) {
+                        context.do_action(ActionRequest {
+                            action: Action::Click,
+                            target,
+                            data: None,
+                        });
+                    }
                 }
                 clickable
             })
@@ -659,14 +667,16 @@ declare_class!(
 
         #[method(accessibilityPerformIncrement)]
         fn increment(&self) -> bool {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, tree, context| {
                 let supports_increment = node.supports_increment(&filter);
                 if supports_increment {
-                    context.do_action(ActionRequest {
-                        action: Action::Increment,
-                        target: node.id(),
-                        data: None,
-                    });
+                    if let Some((target, _)) = tree.locate_node(node.id()) {
+                        context.do_action(ActionRequest {
+                            action: Action::Increment,
+                            target,
+                            data: None,
+                        });
+                    }
                 }
                 supports_increment
             })
@@ -675,14 +685,16 @@ declare_class!(
 
         #[method(accessibilityPerformDecrement)]
         fn decrement(&self) -> bool {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, tree, context| {
                 let supports_decrement = node.supports_decrement(&filter);
                 if supports_decrement {
-                    context.do_action(ActionRequest {
-                        action: Action::Decrement,
-                        target: node.id(),
-                        data: None,
-                    });
+                    if let Some((target, _)) = tree.locate_node(node.id()) {
+                        context.do_action(ActionRequest {
+                            action: Action::Decrement,
+                            target,
+                            data: None,
+                        });
+                    }
                 }
                 supports_decrement
             })
@@ -761,7 +773,7 @@ declare_class!(
 
         #[method(accessibilityRangeForPosition:)]
         fn range_for_position(&self, point: NSPoint) -> NSRange {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, _, context| {
                 let view = match context.view.load() {
                     Some(view) => view,
                     None => {
@@ -795,7 +807,7 @@ declare_class!(
 
         #[method(accessibilityFrameForRange:)]
         fn frame_for_range(&self, range: NSRange) -> NSRect {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, _, context| {
                 let view = match context.view.load() {
                     Some(view) => view,
                     None => {
@@ -846,14 +858,16 @@ declare_class!(
 
         #[method(setAccessibilitySelectedTextRange:)]
         fn set_selected_text_range(&self, range: NSRange) {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, tree, context| {
                 if node.supports_text_ranges() {
                     if let Some(range) = from_ns_range(node, range) {
-                        context.do_action(ActionRequest {
-                            action: Action::SetTextSelection,
-                            target: node.id(),
-                            data: Some(ActionData::SetTextSelection(range.to_text_selection())),
-                        });
+                        if let Some((target, _)) = tree.locate_node(node.id()) {
+                            context.do_action(ActionRequest {
+                                action: Action::SetTextSelection,
+                                target,
+                                data: Some(ActionData::SetTextSelection(range.to_text_selection())),
+                            });
+                        }
                     }
                 }
             });
@@ -878,7 +892,7 @@ declare_class!(
 
         #[method(setAccessibilitySelected:)]
         fn set_selected(&self, selected: bool) {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, tree, context| {
                 let wrapper = NodeWrapper(node);
                 if !node.is_clickable(&filter)
                     || !wrapper.is_item_like()
@@ -889,11 +903,13 @@ declare_class!(
                 if node.is_selected() == Some(selected) {
                     return;
                 }
-                context.do_action(ActionRequest {
-                    action: Action::Click,
-                    target: node.id(),
-                    data: None,
-                });
+                if let Some((target, _)) = tree.locate_node(node.id()) {
+                    context.do_action(ActionRequest {
+                        action: Action::Click,
+                        target,
+                        data: None,
+                    });
+                }
             });
         }
 
@@ -913,7 +929,7 @@ declare_class!(
 
         #[method_id(accessibilityRows)]
         fn rows(&self) -> Option<Id<NSArray<PlatformNode>>> {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, _, context| {
                 let wrapper = NodeWrapper(node);
                 if !wrapper.is_container_with_selectable_children() {
                     return None;
@@ -929,7 +945,7 @@ declare_class!(
 
         #[method_id(accessibilitySelectedRows)]
         fn selected_rows(&self) -> Option<Id<NSArray<PlatformNode>>> {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, _, context| {
                 let wrapper = NodeWrapper(node);
                 if !wrapper.is_container_with_selectable_children() {
                     return None;
@@ -946,17 +962,19 @@ declare_class!(
 
         #[method(accessibilityPerformPick)]
         fn pick(&self) -> bool {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, tree, context| {
                 let wrapper = NodeWrapper(node);
                 let selectable = node.is_clickable(&filter)
                     && wrapper.is_item_like()
                     && node.is_selectable();
                 if selectable {
-                    context.do_action(ActionRequest {
-                        action: Action::Click,
-                        target: node.id(),
-                        data: None,
-                    });
+                    if let Some((target, _)) = tree.locate_node(node.id()) {
+                        context.do_action(ActionRequest {
+                            action: Action::Click,
+                            target,
+                            data: None,
+                        });
+                    }
                 }
                 selectable
             })
@@ -965,7 +983,7 @@ declare_class!(
 
         #[method_id(accessibilityLinkedUIElements)]
         fn linked_ui_elements(&self) -> Option<Id<NSArray<PlatformNode>>> {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, _, context| {
                 let platform_nodes: Vec<Id<PlatformNode>> = node
                     .controls()
                     .filter(|controlled| filter(controlled) == FilterResult::Include)
@@ -982,7 +1000,7 @@ declare_class!(
 
         #[method_id(accessibilityTabs)]
         fn tabs(&self) -> Option<Id<NSArray<PlatformNode>>> {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, _, context| {
                 if node.role() != Role::TabList {
                     return None;
                 }
@@ -1022,13 +1040,15 @@ declare_class!(
 
         #[method(accessibilityPerformAction:)]
         fn perform_action(&self, action: &NSString) {
-            self.resolve_with_context(|node, context| {
+            self.resolve_with_context(|node, tree, context| {
                 if action == ns_string!(SCROLL_TO_VISIBLE_ACTION) {
-                    context.do_action(ActionRequest {
-                        action: Action::ScrollIntoView,
-                        target: node.id(),
-                        data: None,
-                    });
+                    if let Some((target, _)) = tree.locate_node(node.id()) {
+                        context.do_action(ActionRequest {
+                            action: Action::ScrollIntoView,
+                            target,
+                            data: None,
+                        });
+                    }
                 }
             });
         }
@@ -1134,24 +1154,24 @@ impl PlatformNode {
 
     fn resolve_with_context<F, T>(&self, f: F) -> Option<T>
     where
-        F: FnOnce(&Node, &Rc<Context>) -> T,
+        F: FnOnce(&Node, &Tree, &Rc<Context>) -> T,
     {
         let context = self.ivars().context.upgrade()?;
         let tree = context.tree.borrow();
         let state = tree.state();
         let node = state.node_by_id(self.ivars().node_id)?;
-        Some(f(&node, &context))
+        Some(f(&node, &tree, &context))
     }
 
     fn resolve<F, T>(&self, f: F) -> Option<T>
     where
         F: FnOnce(&Node) -> T,
     {
-        self.resolve_with_context(|node, _| f(node))
+        self.resolve_with_context(|node, _, _| f(node))
     }
 
     fn children_internal(&self) -> Option<Id<NSArray<PlatformNode>>> {
-        self.resolve_with_context(|node, context| {
+        self.resolve_with_context(|node, _, context| {
             let platform_nodes = node
                 .filtered_children(filter)
                 .map(|child| context.get_or_create_platform_node(child.id()))

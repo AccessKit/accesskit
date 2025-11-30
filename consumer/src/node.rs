@@ -9,8 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, Affine, AriaCurrent, HasPopup, Live, Node as NodeData, NodeId, Orientation, Point,
-    Rect, Role, SortDirection, TextSelection, Toggled,
+    Action, Affine, AriaCurrent, HasPopup, Live, Node as NodeData, NodeId as LocalNodeId,
+    Orientation, Point, Rect, Role, SortDirection, TextSelection, Toggled,
 };
 use alloc::{
     string::{String, ToString},
@@ -23,7 +23,32 @@ use crate::iterators::{
     FilteredChildren, FollowingFilteredSiblings, FollowingSiblings, LabelledBy,
     PrecedingFilteredSiblings, PrecedingSiblings,
 };
-use crate::tree::State as TreeState;
+use crate::tree::{State as TreeState, TreeIndex};
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct NodeId(TreeIndex, LocalNodeId);
+
+impl NodeId {
+    pub(crate) fn new(local_id: LocalNodeId, tree_index: TreeIndex) -> Self {
+        Self(tree_index, local_id)
+    }
+
+    pub(crate) fn with_same_tree(&self, local_id: LocalNodeId) -> Self {
+        Self(self.0, local_id)
+    }
+
+    pub(crate) fn to_components(self) -> (LocalNodeId, TreeIndex) {
+        (self.1, self.0)
+    }
+}
+
+impl From<NodeId> for u128 {
+    fn from(id: NodeId) -> Self {
+        let tree_index = id.0 .0 as u128;
+        let local_id = id.1 .0 as u128;
+        (local_id << 64) | tree_index
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
@@ -101,8 +126,11 @@ impl<'a> Node<'a> {
            + ExactSizeIterator<Item = NodeId>
            + FusedIterator<Item = NodeId>
            + '_ {
+        let id = self.id;
         let data = &self.state.data;
-        data.children().iter().copied()
+        data.children()
+            .iter()
+            .map(move |child_id| id.with_same_tree(*child_id))
     }
 
     pub fn children(
@@ -112,10 +140,11 @@ impl<'a> Node<'a> {
            + FusedIterator<Item = Node<'a>>
            + 'a {
         let state = self.tree_state;
+        let id = self.id;
         let data = &self.state.data;
         data.children()
             .iter()
-            .map(move |id| state.node_by_id(*id).unwrap())
+            .map(move |child_id| state.node_by_id(id.with_same_tree(*child_id)).unwrap())
     }
 
     pub fn filtered_children(
@@ -646,6 +675,7 @@ impl<'a> Node<'a> {
             LabelledBy::Explicit {
                 ids: explicit.iter(),
                 tree_state: self.tree_state,
+                node_id: self.id,
             }
         }
     }
@@ -831,10 +861,11 @@ impl<'a> Node<'a> {
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
         let state = self.tree_state;
+        let id = self.id;
         let data = &self.state.data;
         data.controls()
             .iter()
-            .map(move |id| state.node_by_id(*id).unwrap())
+            .map(move |control_id| state.node_by_id(id.with_same_tree(*control_id)).unwrap())
     }
 
     pub fn raw_text_selection(&self) -> Option<&TextSelection> {
@@ -971,26 +1002,26 @@ mod tests {
         assert_eq!(
             Some((ROOT_ID, 0)),
             tree.state()
-                .node_by_id(PARAGRAPH_0_ID)
+                .node_by_id(nid(PARAGRAPH_0_ID))
                 .unwrap()
                 .parent_and_index()
-                .map(|(parent, index)| (parent.id(), index))
+                .map(|(parent, index)| (parent.id().to_components().0, index))
         );
         assert_eq!(
             Some((PARAGRAPH_0_ID, 0)),
             tree.state()
-                .node_by_id(LABEL_0_0_IGNORED_ID)
+                .node_by_id(nid(LABEL_0_0_IGNORED_ID))
                 .unwrap()
                 .parent_and_index()
-                .map(|(parent, index)| (parent.id(), index))
+                .map(|(parent, index)| (parent.id().to_components().0, index))
         );
         assert_eq!(
             Some((ROOT_ID, 1)),
             tree.state()
-                .node_by_id(PARAGRAPH_1_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_1_IGNORED_ID))
                 .unwrap()
                 .parent_and_index()
-                .map(|(parent, index)| (parent.id(), index))
+                .map(|(parent, index)| (parent.id().to_components().0, index))
         );
     }
 
@@ -999,20 +1030,28 @@ mod tests {
         let tree = test_tree();
         assert_eq!(
             LABEL_0_0_IGNORED_ID,
-            tree.state().root().deepest_first_child().unwrap().id()
+            tree.state()
+                .root()
+                .deepest_first_child()
+                .unwrap()
+                .id()
+                .to_components()
+                .0
         );
         assert_eq!(
             LABEL_0_0_IGNORED_ID,
             tree.state()
-                .node_by_id(PARAGRAPH_0_ID)
+                .node_by_id(nid(PARAGRAPH_0_ID))
                 .unwrap()
                 .deepest_first_child()
                 .unwrap()
                 .id()
+                .to_components()
+                .0
         );
         assert!(tree
             .state()
-            .node_by_id(LABEL_0_0_IGNORED_ID)
+            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
             .unwrap()
             .deepest_first_child()
             .is_none());
@@ -1024,11 +1063,13 @@ mod tests {
         assert_eq!(
             ROOT_ID,
             tree.state()
-                .node_by_id(LABEL_1_1_ID)
+                .node_by_id(nid(LABEL_1_1_ID))
                 .unwrap()
                 .filtered_parent(&test_tree_filter)
                 .unwrap()
                 .id()
+                .to_components()
+                .0
         );
         assert!(tree
             .state()
@@ -1047,16 +1088,18 @@ mod tests {
                 .deepest_first_filtered_child(&test_tree_filter)
                 .unwrap()
                 .id()
+                .to_components()
+                .0
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .deepest_first_filtered_child(&test_tree_filter)
             .is_none());
         assert!(tree
             .state()
-            .node_by_id(LABEL_0_0_IGNORED_ID)
+            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
             .unwrap()
             .deepest_first_filtered_child(&test_tree_filter)
             .is_none());
@@ -1067,20 +1110,28 @@ mod tests {
         let tree = test_tree();
         assert_eq!(
             EMPTY_CONTAINER_3_3_IGNORED_ID,
-            tree.state().root().deepest_last_child().unwrap().id()
+            tree.state()
+                .root()
+                .deepest_last_child()
+                .unwrap()
+                .id()
+                .to_components()
+                .0
         );
         assert_eq!(
             EMPTY_CONTAINER_3_3_IGNORED_ID,
             tree.state()
-                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
                 .unwrap()
                 .deepest_last_child()
                 .unwrap()
                 .id()
+                .to_components()
+                .0
         );
         assert!(tree
             .state()
-            .node_by_id(BUTTON_3_2_ID)
+            .node_by_id(nid(BUTTON_3_2_ID))
             .unwrap()
             .deepest_last_child()
             .is_none());
@@ -1096,25 +1147,29 @@ mod tests {
                 .deepest_last_filtered_child(&test_tree_filter)
                 .unwrap()
                 .id()
+                .to_components()
+                .0
         );
         assert_eq!(
             BUTTON_3_2_ID,
             tree.state()
-                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
                 .unwrap()
                 .deepest_last_filtered_child(&test_tree_filter)
                 .unwrap()
                 .id()
+                .to_components()
+                .0
         );
         assert!(tree
             .state()
-            .node_by_id(BUTTON_3_2_ID)
+            .node_by_id(nid(BUTTON_3_2_ID))
             .unwrap()
             .deepest_last_filtered_child(&test_tree_filter)
             .is_none());
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .deepest_last_filtered_child(&test_tree_filter)
             .is_none());
@@ -1125,36 +1180,40 @@ mod tests {
         let tree = test_tree();
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .is_descendant_of(&tree.state().root()));
         assert!(tree
             .state()
-            .node_by_id(LABEL_0_0_IGNORED_ID)
+            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
             .unwrap()
             .is_descendant_of(&tree.state().root()));
         assert!(tree
             .state()
-            .node_by_id(LABEL_0_0_IGNORED_ID)
+            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
             .unwrap()
-            .is_descendant_of(&tree.state().node_by_id(PARAGRAPH_0_ID).unwrap()));
+            .is_descendant_of(&tree.state().node_by_id(nid(PARAGRAPH_0_ID)).unwrap()));
         assert!(!tree
             .state()
-            .node_by_id(LABEL_0_0_IGNORED_ID)
+            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
             .unwrap()
-            .is_descendant_of(&tree.state().node_by_id(PARAGRAPH_2_ID).unwrap()));
+            .is_descendant_of(&tree.state().node_by_id(nid(PARAGRAPH_2_ID)).unwrap()));
         assert!(!tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
-            .is_descendant_of(&tree.state().node_by_id(PARAGRAPH_2_ID).unwrap()));
+            .is_descendant_of(&tree.state().node_by_id(nid(PARAGRAPH_2_ID)).unwrap()));
     }
 
     #[test]
     fn is_root() {
         let tree = test_tree();
-        assert!(tree.state().node_by_id(ROOT_ID).unwrap().is_root());
-        assert!(!tree.state().node_by_id(PARAGRAPH_0_ID).unwrap().is_root());
+        assert!(tree.state().node_by_id(nid(ROOT_ID)).unwrap().is_root());
+        assert!(!tree
+            .state()
+            .node_by_id(nid(PARAGRAPH_0_ID))
+            .unwrap()
+            .is_root());
     }
 
     #[test]
@@ -1162,7 +1221,7 @@ mod tests {
         let tree = test_tree();
         assert!(tree
             .state()
-            .node_by_id(ROOT_ID)
+            .node_by_id(nid(ROOT_ID))
             .unwrap()
             .bounding_box()
             .is_none());
@@ -1174,7 +1233,7 @@ mod tests {
                 y1: 80.0,
             }),
             tree.state()
-                .node_by_id(PARAGRAPH_1_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_1_IGNORED_ID))
                 .unwrap()
                 .bounding_box()
         );
@@ -1186,7 +1245,7 @@ mod tests {
                 y1: 70.0,
             }),
             tree.state()
-                .node_by_id(LABEL_1_1_ID)
+                .node_by_id(nid(LABEL_1_1_ID))
                 .unwrap()
                 .bounding_box()
         );
@@ -1201,14 +1260,14 @@ mod tests {
             .node_at_point(Point::new(10.0, 40.0), &test_tree_filter)
             .is_none());
         assert_eq!(
-            Some(LABEL_1_1_ID),
+            Some(nid(LABEL_1_1_ID)),
             tree.state()
                 .root()
                 .node_at_point(Point::new(20.0, 50.0), &test_tree_filter)
                 .map(|node| node.id())
         );
         assert_eq!(
-            Some(LABEL_1_1_ID),
+            Some(nid(LABEL_1_1_ID)),
             tree.state()
                 .root()
                 .node_at_point(Point::new(50.0, 60.0), &test_tree_filter)
@@ -1237,7 +1296,10 @@ mod tests {
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
-        assert_eq!(None, tree.state().node_by_id(NodeId(1)).unwrap().label());
+        assert_eq!(
+            None,
+            tree.state().node_by_id(nid(NodeId(1))).unwrap().label()
+        );
     }
 
     #[test]
@@ -1282,11 +1344,11 @@ mod tests {
         let tree = crate::Tree::new(update, false);
         assert_eq!(
             Some([LABEL_1, LABEL_2].join(" ")),
-            tree.state().node_by_id(NodeId(1)).unwrap().label()
+            tree.state().node_by_id(nid(NodeId(1))).unwrap().label()
         );
         assert_eq!(
             Some(LABEL_2.into()),
-            tree.state().node_by_id(NodeId(3)).unwrap().label()
+            tree.state().node_by_id(nid(NodeId(3))).unwrap().label()
         );
     }
 
@@ -1433,38 +1495,50 @@ mod tests {
         let tree = crate::Tree::new(update, false);
         assert_eq!(
             Some(DEFAULT_BUTTON_LABEL.into()),
-            tree.state().node_by_id(DEFAULT_BUTTON_ID).unwrap().label()
+            tree.state()
+                .node_by_id(nid(DEFAULT_BUTTON_ID))
+                .unwrap()
+                .label()
         );
         assert_eq!(
             Some(LINK_LABEL.into()),
-            tree.state().node_by_id(LINK_ID).unwrap().label()
+            tree.state().node_by_id(nid(LINK_ID)).unwrap().label()
         );
         assert_eq!(
             Some(CHECKBOX_LABEL.into()),
-            tree.state().node_by_id(CHECKBOX_ID).unwrap().label()
+            tree.state().node_by_id(nid(CHECKBOX_ID)).unwrap().label()
         );
         assert_eq!(
             Some(RADIO_BUTTON_LABEL.into()),
-            tree.state().node_by_id(RADIO_BUTTON_ID).unwrap().label()
+            tree.state()
+                .node_by_id(nid(RADIO_BUTTON_ID))
+                .unwrap()
+                .label()
         );
         assert_eq!(
             Some(MENU_BUTTON_LABEL.into()),
-            tree.state().node_by_id(MENU_BUTTON_ID).unwrap().label()
+            tree.state()
+                .node_by_id(nid(MENU_BUTTON_ID))
+                .unwrap()
+                .label()
         );
         assert_eq!(
             Some(MENU_ITEM_LABEL.into()),
-            tree.state().node_by_id(MENU_ITEM_ID).unwrap().label()
+            tree.state().node_by_id(nid(MENU_ITEM_ID)).unwrap().label()
         );
         assert_eq!(
             Some(MENU_ITEM_CHECKBOX_LABEL.into()),
             tree.state()
-                .node_by_id(MENU_ITEM_CHECKBOX_ID)
+                .node_by_id(nid(MENU_ITEM_CHECKBOX_ID))
                 .unwrap()
                 .label()
         );
         assert_eq!(
             Some(MENU_ITEM_RADIO_LABEL.into()),
-            tree.state().node_by_id(MENU_ITEM_RADIO_ID).unwrap().label()
+            tree.state()
+                .node_by_id(nid(MENU_ITEM_RADIO_ID))
+                .unwrap()
+                .label()
         );
     }
 
@@ -1530,7 +1604,7 @@ mod tests {
         assert_eq!(
             Some(PLACEHOLDER),
             tree.state()
-                .node_by_id(TEXT_INPUT_ID)
+                .node_by_id(nid(TEXT_INPUT_ID))
                 .unwrap()
                 .placeholder()
         );
@@ -1599,7 +1673,7 @@ mod tests {
         assert_eq!(
             None,
             tree.state()
-                .node_by_id(TEXT_INPUT_ID)
+                .node_by_id(nid(TEXT_INPUT_ID))
                 .unwrap()
                 .placeholder()
         );
@@ -1635,6 +1709,58 @@ mod tests {
             focus: ROOT_ID,
         };
         let tree = crate::Tree::new(update, false);
-        assert!(tree.state().node_by_id(LEAF_ID).unwrap().is_hidden());
+        assert!(tree.state().node_by_id(nid(LEAF_ID)).unwrap().is_hidden());
+    }
+
+    mod node_id {
+        use super::NodeId as LocalNodeId;
+        use crate::node::NodeId;
+        use crate::tree::TreeIndex;
+
+        #[test]
+        fn new_and_to_components_round_trip() {
+            let node_id = LocalNodeId(42);
+            let tree_index = TreeIndex(7);
+            let id = NodeId::new(node_id, tree_index);
+            let (extracted_node_id, extracted_tree_index) = id.to_components();
+            assert_eq!(node_id, extracted_node_id);
+            assert_eq!(tree_index, extracted_tree_index);
+        }
+
+        #[test]
+        fn with_same_tree_preserves_tree_index() {
+            let original_node_id = LocalNodeId(100);
+            let tree_index = TreeIndex(5);
+            let id = NodeId::new(original_node_id, tree_index);
+
+            let new_node_id = LocalNodeId(200);
+            let new_id = id.with_same_tree(new_node_id);
+
+            let (extracted_node_id, extracted_tree_index) = new_id.to_components();
+            assert_eq!(new_node_id, extracted_node_id);
+            assert_eq!(tree_index, extracted_tree_index);
+        }
+
+        #[test]
+        fn into_u128() {
+            let node_id = LocalNodeId(12345);
+            let tree_index = TreeIndex(67);
+            let id = NodeId::new(node_id, tree_index);
+            let (extracted_node_id, extracted_tree_index) = id.to_components();
+            assert_eq!(node_id, extracted_node_id);
+            assert_eq!(tree_index, extracted_tree_index);
+        }
+
+        #[test]
+        fn equality() {
+            let id1 = NodeId::new(LocalNodeId(1), TreeIndex(2));
+            let id2 = NodeId::new(LocalNodeId(1), TreeIndex(2));
+            let id3 = NodeId::new(LocalNodeId(1), TreeIndex(3));
+            let id4 = NodeId::new(LocalNodeId(2), TreeIndex(2));
+
+            assert_eq!(id1, id2);
+            assert_ne!(id1, id3);
+            assert_ne!(id1, id4);
+        }
     }
 }

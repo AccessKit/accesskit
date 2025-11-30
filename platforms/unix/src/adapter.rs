@@ -3,10 +3,10 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, NodeId, Rect, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, Rect, TreeUpdate};
 use accesskit_atspi_common::{
     next_adapter_id, ActionHandlerNoMut, ActionHandlerWrapper, Adapter as AdapterImpl,
-    AdapterCallback, Event, PlatformNode, WindowBounds,
+    AdapterCallback, Event, NodeId, PlatformNode, WindowBounds,
 };
 #[cfg(not(feature = "tokio"))]
 use async_channel::Sender;

@@ -4,8 +4,8 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::node::PlatformNode;
-use accesskit::{ActionHandler, ActionRequest, NodeId};
-use accesskit_consumer::Tree;
+use accesskit::{ActionHandler, ActionRequest};
+use accesskit_consumer::{NodeId, Tree};
 use hashbrown::HashMap;
 use objc2::rc::{Id, WeakId};
 use objc2_app_kit::*;
