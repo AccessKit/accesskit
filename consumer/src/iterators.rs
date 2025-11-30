@@ -18,6 +18,57 @@ use crate::{
     tree::State as TreeState,
 };
 
+/// Iterator over child NodeIds.
+pub enum ChildIds<'a> {
+    Normal {
+        parent_id: NodeId,
+        children: core::slice::Iter<'a, LocalNodeId>,
+    },
+}
+
+impl Iterator for ChildIds<'_> {
+    type Item = NodeId;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Normal {
+                parent_id,
+                children,
+            } => children
+                .next()
+                .map(|child| parent_id.with_same_tree(*child)),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+}
+
+impl DoubleEndedIterator for ChildIds<'_> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Normal {
+                parent_id,
+                children,
+            } => children
+                .next_back()
+                .map(|child| parent_id.with_same_tree(*child)),
+        }
+    }
+}
+
+impl ExactSizeIterator for ChildIds<'_> {
+    fn len(&self) -> usize {
+        match self {
+            Self::Normal { children, .. } => children.len(),
+        }
+    }
+}
+
+impl FusedIterator for ChildIds<'_> {}
+
 /// An iterator that yields following siblings of a node.
 ///
 /// This struct is created by the [`following_siblings`](Node::following_siblings) method on [`Node`].
