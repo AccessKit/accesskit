@@ -29,6 +29,8 @@ use serde::{
 #[cfg(feature = "schemars")]
 use serde_json::{Map as SchemaMap, Value as SchemaValue};
 
+pub use uuid::Uuid;
+
 mod geometry;
 pub use geometry::{Affine, Point, Rect, Size, Vec2};
 
