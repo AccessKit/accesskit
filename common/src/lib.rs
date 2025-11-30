@@ -628,6 +628,11 @@ pub enum TextDecoration {
 pub type NodeIdContent = u64;
 
 /// The stable identity of a [`Node`], unique within the node's tree.
+///
+/// Each tree (root or subtree) has its own independent ID space. The same
+/// `NodeId` value can exist in different trees without conflict. When working
+/// with multiple trees, the combination of `NodeId` and [`TreeId`] uniquely
+/// identifies a node.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
@@ -791,6 +796,7 @@ enum PropertyValue {
     Rect(Rect),
     TextSelection(Box<TextSelection>),
     CustomActionVec(Vec<CustomAction>),
+    TreeId(TreeId),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -909,6 +915,7 @@ enum PropertyId {
     Bounds,
     TextSelection,
     CustomActions,
+    TreeId,
 
     // This MUST be last.
     Unset,
@@ -1745,7 +1752,8 @@ copy_type_getters! {
     (get_usize_property, usize, Usize),
     (get_color_property, Color, Color),
     (get_text_decoration_property, TextDecoration, TextDecoration),
-    (get_bool_property, bool, Bool)
+    (get_bool_property, bool, Bool),
+    (get_tree_id_property, TreeId, TreeId)
 }
 
 box_type_setters! {
@@ -1764,7 +1772,8 @@ copy_type_setters! {
     (set_usize_property, usize, Usize),
     (set_color_property, Color, Color),
     (set_text_decoration_property, TextDecoration, TextDecoration),
-    (set_bool_property, bool, Bool)
+    (set_bool_property, bool, Bool),
+    (set_tree_id_property, TreeId, TreeId)
 }
 
 vec_type_methods! {
@@ -2068,11 +2077,20 @@ property_methods! {
     /// [`transform`]: Node::transform
     (Bounds, bounds, get_rect_property, Option<Rect>, set_bounds, set_rect_property, Rect, clear_bounds),
 
-    (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, impl Into<Box<TextSelection>>, clear_text_selection)
+    (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, impl Into<Box<TextSelection>>, clear_text_selection),
+
+    /// The tree that this node grafts. When set, this node acts as a graft
+    /// point, and its child is the root of the specified subtree.
+    ///
+    /// A graft node must be created before its subtree is pushed.
+    ///
+    /// Removing a graft node or clearing this property removes its subtree,
+    /// unless a new graft node is provided in the same update.
+    (TreeId, tree_id, get_tree_id_property, Option<TreeId>, set_tree_id, set_tree_id_property, TreeId, clear_tree_id)
 }
 
 impl Node {
-    option_properties_debug_method! { debug_option_properties, [transform, bounds, text_selection,] }
+    option_properties_debug_method! { debug_option_properties, [transform, bounds, text_selection, tree_id,] }
 }
 
 #[cfg(test)]
@@ -2174,6 +2192,31 @@ mod text_selection {
         });
         node.clear_text_selection();
         assert!(node.text_selection().is_none());
+    }
+}
+
+#[cfg(test)]
+mod tree_id {
+    use super::{Node, Role, TreeId, Uuid};
+
+    #[test]
+    fn getter_should_return_default_value() {
+        let node = Node::new(Role::GenericContainer);
+        assert!(node.tree_id().is_none());
+    }
+    #[test]
+    fn setter_should_update_the_property() {
+        let mut node = Node::new(Role::GenericContainer);
+        let value = TreeId(Uuid::nil());
+        node.set_tree_id(value);
+        assert_eq!(node.tree_id(), Some(value));
+    }
+    #[test]
+    fn clearer_should_reset_the_property() {
+        let mut node = Node::new(Role::GenericContainer);
+        node.set_tree_id(TreeId(Uuid::nil()));
+        node.clear_tree_id();
+        assert!(node.tree_id().is_none());
     }
 }
 
@@ -2347,7 +2390,8 @@ impl Serialize for Properties {
                 Affine,
                 Rect,
                 TextSelection,
-                CustomActionVec
+                CustomActionVec,
+                TreeId
             });
         }
         map.end()
@@ -2479,7 +2523,8 @@ impl<'de> Visitor<'de> for PropertiesVisitor {
                 Affine { Transform },
                 Rect { Bounds },
                 TextSelection { TextSelection },
-                CustomActionVec { CustomActions }
+                CustomActionVec { CustomActions },
+                TreeId { TreeId }
             });
         }
 
@@ -2711,7 +2756,15 @@ pub struct TreeUpdate {
     /// a tree.
     pub tree: Option<Tree>,
 
-    /// The identifier of the tree.
+    /// The identifier of the tree that this update applies to.
+    ///
+    /// Use [`TreeId::ROOT`] for the main/root tree. For subtrees, use a unique
+    /// [`TreeId`] that identifies the subtree.
+    ///
+    /// When updating a subtree (non-ROOT tree_id):
+    /// - A graft node with [`Node::tree_id`] set to this tree's ID must already
+    ///   exist in the parent tree before the first subtree update.
+    /// - The first update for a subtree must include [`tree`](Self::tree) data.
     pub tree_id: TreeId,
 
     /// The node within this tree that has keyboard focus when the native
@@ -2719,6 +2772,10 @@ pub struct TreeUpdate {
     /// has keyboard focus, this must be set to the root. The latest focus state
     /// must be provided with every tree update, even if the focus state
     /// didn't change in a given update.
+    ///
+    /// For subtrees, this specifies which node has focus when the subtree
+    /// itself is focused (i.e., when focus is on the graft node in the parent
+    /// tree).
     pub focus: NodeId,
 }
 

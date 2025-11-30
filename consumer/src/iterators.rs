@@ -18,12 +18,13 @@ use crate::{
     tree::State as TreeState,
 };
 
-/// Iterator over child NodeIds.
+/// Iterator over child NodeIds, handling both normal nodes and graft nodes.
 pub enum ChildIds<'a> {
     Normal {
         parent_id: NodeId,
         children: core::slice::Iter<'a, LocalNodeId>,
     },
+    Graft(Option<NodeId>),
 }
 
 impl Iterator for ChildIds<'_> {
@@ -37,6 +38,7 @@ impl Iterator for ChildIds<'_> {
             } => children
                 .next()
                 .map(|child| parent_id.with_same_tree(*child)),
+            Self::Graft(id) => id.take(),
         }
     }
 
@@ -55,6 +57,7 @@ impl DoubleEndedIterator for ChildIds<'_> {
             } => children
                 .next_back()
                 .map(|child| parent_id.with_same_tree(*child)),
+            Self::Graft(id) => id.take(),
         }
     }
 }
@@ -63,6 +66,7 @@ impl ExactSizeIterator for ChildIds<'_> {
     fn len(&self) -> usize {
         match self {
             Self::Normal { children, .. } => children.len(),
+            Self::Graft(id) => usize::from(id.is_some()),
         }
     }
 }
@@ -85,13 +89,18 @@ impl<'a> FollowingSiblings<'a> {
         let parent_and_index = node.parent_and_index();
         let (back_position, front_position, done) =
             if let Some((ref parent, index)) = parent_and_index {
-                let back_position = parent.data().children().len() - 1;
-                let front_position = index + 1;
-                (
-                    back_position,
-                    front_position,
-                    front_position > back_position,
-                )
+                // Graft nodes have only one child (the subtree root)
+                if parent.is_graft() {
+                    (0, 0, true)
+                } else {
+                    let back_position = parent.data().children().len() - 1;
+                    let front_position = index + 1;
+                    (
+                        back_position,
+                        front_position,
+                        front_position > back_position,
+                    )
+                }
             } else {
                 (0, 0, true)
             };
@@ -169,12 +178,18 @@ pub struct PrecedingSiblings<'a> {
 impl<'a> PrecedingSiblings<'a> {
     pub(crate) fn new(node: Node<'a>) -> Self {
         let parent_and_index = node.parent_and_index();
-        let (back_position, front_position, done) = if let Some((_, index)) = parent_and_index {
-            let front_position = index.saturating_sub(1);
-            (0, front_position, index == 0)
-        } else {
-            (0, 0, true)
-        };
+        let (back_position, front_position, done) =
+            if let Some((ref parent, index)) = parent_and_index {
+                // Graft nodes have only one child (the subtree root)
+                if parent.is_graft() {
+                    (0, 0, true)
+                } else {
+                    let front_position = index.saturating_sub(1);
+                    (0, front_position, index == 0)
+                }
+            } else {
+                (0, 0, true)
+            };
         Self {
             back_position,
             done,
@@ -567,9 +582,14 @@ impl<Filter: Fn(&Node) -> FilterResult> FusedIterator for LabelledBy<'_, Filter>
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::*;
-    use accesskit::NodeId as LocalNodeId;
-    use alloc::vec::Vec;
+    use crate::{
+        filters::common_filter,
+        tests::*,
+        tree::{ChangeHandler, TreeIndex},
+        NodeId,
+    };
+    use accesskit::{Node, NodeId as LocalNodeId, Role, Tree, TreeId, TreeUpdate, Uuid};
+    use alloc::{vec, vec::Vec};
 
     #[test]
     fn following_siblings() {
@@ -926,5 +946,93 @@ mod tests {
             .filtered_children(test_tree_filter)
             .next_back()
             .is_none());
+    }
+
+    #[test]
+    fn graft_node_without_subtree_has_no_filtered_children() {
+        let subtree_id = TreeId(Uuid::from_u128(1));
+
+        let update = TreeUpdate {
+            nodes: vec![
+                (LocalNodeId(0), {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![LocalNodeId(1)]);
+                    node
+                }),
+                (LocalNodeId(1), {
+                    let mut node = Node::new(Role::GenericContainer);
+                    node.set_tree_id(subtree_id);
+                    node
+                }),
+            ],
+            tree: Some(Tree::new(LocalNodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: LocalNodeId(0),
+        };
+        let tree = crate::Tree::new(update, false);
+
+        let graft_node_id = NodeId::new(LocalNodeId(1), TreeIndex(0));
+        let graft_node = tree.state().node_by_id(graft_node_id).unwrap();
+        assert!(graft_node.filtered_children(common_filter).next().is_none());
+    }
+
+    #[test]
+    fn filtered_children_crosses_subtree_boundary() {
+        struct NoOpHandler;
+        impl ChangeHandler for NoOpHandler {
+            fn node_added(&mut self, _: &crate::Node) {}
+            fn node_updated(&mut self, _: &crate::Node, _: &crate::Node) {}
+            fn focus_moved(&mut self, _: Option<&crate::Node>, _: Option<&crate::Node>) {}
+            fn node_removed(&mut self, _: &crate::Node) {}
+        }
+
+        let subtree_id = TreeId(Uuid::from_u128(1));
+
+        let update = TreeUpdate {
+            nodes: vec![
+                (LocalNodeId(0), {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![LocalNodeId(1)]);
+                    node
+                }),
+                (LocalNodeId(1), {
+                    let mut node = Node::new(Role::GenericContainer);
+                    node.set_tree_id(subtree_id);
+                    node
+                }),
+            ],
+            tree: Some(Tree::new(LocalNodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: LocalNodeId(0),
+        };
+        let mut tree = crate::Tree::new(update, false);
+
+        let subtree_update = TreeUpdate {
+            nodes: vec![
+                (LocalNodeId(0), {
+                    let mut node = Node::new(Role::Document);
+                    node.set_children(vec![LocalNodeId(1)]);
+                    node
+                }),
+                (LocalNodeId(1), Node::new(Role::Button)),
+            ],
+            tree: Some(Tree::new(LocalNodeId(0))),
+            tree_id: subtree_id,
+            focus: LocalNodeId(0),
+        };
+        tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
+
+        let root = tree.state().root();
+        let filtered_children: Vec<_> = root.filtered_children(common_filter).collect();
+
+        assert_eq!(1, filtered_children.len());
+        let subtree_root_id = NodeId::new(LocalNodeId(0), TreeIndex(1));
+        assert_eq!(subtree_root_id, filtered_children[0].id());
+
+        let document = &filtered_children[0];
+        let doc_children: Vec<_> = document.filtered_children(common_filter).collect();
+        assert_eq!(1, doc_children.len());
+        let button_id = NodeId::new(LocalNodeId(1), TreeIndex(1));
+        assert_eq!(button_id, doc_children[0].id());
     }
 }
