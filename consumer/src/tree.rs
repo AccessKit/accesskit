@@ -14,10 +14,6 @@ use crate::node::{Node, NodeId, NodeState, ParentAndIndex};
 #[repr(transparent)]
 pub(crate) struct TreeIndex(pub(crate) u32);
 
-fn nid(id: LocalNodeId) -> NodeId {
-    NodeId::new(id, TreeIndex(0))
-}
-
 #[derive(Debug, Default)]
 struct TreeIndexMap {
     id_to_index: HashMap<TreeId, TreeIndex>,
@@ -40,12 +36,22 @@ impl TreeIndexMap {
     }
 }
 
+/// State for a subtree, including its root node and current focus.
+#[derive(Clone, Debug)]
+pub(crate) struct SubtreeState {
+    pub(crate) root: NodeId,
+    pub(crate) focus: NodeId,
+}
+
 #[derive(Clone, Debug)]
 pub struct State {
     pub(crate) nodes: HashMap<NodeId, NodeState>,
     pub(crate) data: TreeData,
+    pub(crate) root: NodeId,
     pub(crate) focus: NodeId,
     is_host_focused: bool,
+    /// Maps TreeId to the state of each subtree (root and focus).
+    pub(crate) subtrees: HashMap<TreeId, SubtreeState>,
 }
 
 #[derive(Default)]
@@ -57,7 +63,7 @@ struct InternalChanges {
 
 impl State {
     fn validate_global(&self) {
-        if !self.nodes.contains_key(&nid(self.data.root)) {
+        if !self.nodes.contains_key(&self.root) {
             panic!("Root ID {:?} is not in the node list", self.data.root);
         }
         if !self.nodes.contains_key(&self.focus) {
@@ -73,18 +79,39 @@ impl State {
         update: TreeUpdate,
         is_host_focused: bool,
         mut changes: Option<&mut InternalChanges>,
+        tree_index: TreeIndex,
     ) {
-        let mut unreachable = HashSet::new();
-        let mut seen_child_ids = HashSet::new();
+        let map_id = |id: LocalNodeId| NodeId::new(id, tree_index);
 
-        if let Some(tree) = update.tree {
-            if tree.root != self.data.root {
-                unreachable.insert(nid(self.data.root));
+        let mut unreachable: HashSet<NodeId> = HashSet::new();
+        let mut seen_child_ids: HashSet<NodeId> = HashSet::new();
+
+        let tree_id = update.tree_id;
+
+        let new_tree_root = if let Some(tree) = update.tree {
+            let new_root = map_id(tree.root);
+            if tree_id == TreeId::ROOT {
+                // Only update main tree root/data for ROOT tree
+                if tree.root != self.data.root {
+                    unreachable.insert(self.root);
+                }
+                self.root = new_root;
+                self.data = tree;
             }
-            self.data = tree;
-        }
+            Some(new_root)
+        } else {
+            None
+        };
 
-        let root = self.data.root;
+        // Use the tree's root from the update, or fallback to existing subtree/main tree root
+        let root = new_tree_root
+            .map(|r| r.to_components().0)
+            .unwrap_or_else(|| {
+                self.subtrees
+                    .get(&tree_id)
+                    .map(|s| s.root.to_components().0)
+                    .unwrap_or(self.data.root)
+            });
         let mut pending_nodes: HashMap<NodeId, _> = HashMap::new();
         let mut pending_children = HashMap::new();
 
@@ -106,33 +133,34 @@ impl State {
         }
 
         for (local_node_id, node_data) in update.nodes {
-            let node_id = nid(local_node_id);
+            let node_id = map_id(local_node_id);
             unreachable.remove(&node_id);
 
             for (child_index, child_id) in node_data.children().iter().enumerate() {
-                if seen_child_ids.contains(child_id) {
+                let mapped_child_id = map_id(*child_id);
+                if seen_child_ids.contains(&mapped_child_id) {
                     panic!("TreeUpdate includes duplicate child {:?}", child_id);
                 }
-                seen_child_ids.insert(*child_id);
-                unreachable.remove(&nid(*child_id));
+                seen_child_ids.insert(mapped_child_id);
+                unreachable.remove(&mapped_child_id);
                 let parent_and_index = ParentAndIndex(node_id, child_index);
-                if let Some(child_state) = self.nodes.get_mut(&nid(*child_id)) {
+                if let Some(child_state) = self.nodes.get_mut(&mapped_child_id) {
                     if child_state.parent_and_index != Some(parent_and_index) {
                         child_state.parent_and_index = Some(parent_and_index);
                         if let Some(changes) = &mut changes {
-                            changes.updated_node_ids.insert(nid(*child_id));
+                            changes.updated_node_ids.insert(mapped_child_id);
                         }
                     }
-                } else if let Some(child_data) = pending_nodes.remove(&nid(*child_id)) {
+                } else if let Some(child_data) = pending_nodes.remove(&mapped_child_id) {
                     add_node(
                         &mut self.nodes,
                         &mut changes,
                         Some(parent_and_index),
-                        nid(*child_id),
+                        mapped_child_id,
                         child_data,
                     );
                 } else {
-                    pending_children.insert(nid(*child_id), parent_and_index);
+                    pending_children.insert(mapped_child_id, parent_and_index);
                 }
             }
 
@@ -141,8 +169,9 @@ impl State {
                     node_state.parent_and_index = None;
                 }
                 for child_id in node_state.data.children().iter() {
-                    if !seen_child_ids.contains(child_id) {
-                        unreachable.insert(nid(*child_id));
+                    let mapped_existing_child_id = map_id(*child_id);
+                    if !seen_child_ids.contains(&mapped_existing_child_id) {
+                        unreachable.insert(mapped_existing_child_id);
                     }
                 }
                 if node_state.data != node_data {
@@ -181,29 +210,63 @@ impl State {
             );
         }
 
-        self.focus = nid(update.focus);
+        // Store subtree state (root and focus) per tree
+        let tree_focus = map_id(update.focus);
+        if let Some(new_root) = new_tree_root {
+            // New tree: insert both root and focus
+            self.subtrees.insert(
+                tree_id,
+                SubtreeState {
+                    root: new_root,
+                    focus: tree_focus,
+                },
+            );
+        } else if let Some(subtree) = self.subtrees.get_mut(&tree_id) {
+            // Existing tree: just update focus
+            subtree.focus = tree_focus;
+        } else if tree_id == TreeId::ROOT {
+            // ROOT tree focus update without tree change (e.g., during Tree::new after take())
+            // Use the main tree's root for the subtree state
+            self.subtrees.insert(
+                tree_id,
+                SubtreeState {
+                    root: self.root,
+                    focus: tree_focus,
+                },
+            );
+        }
+
+        self.focus = tree_focus;
         self.is_host_focused = is_host_focused;
 
         if !unreachable.is_empty() {
             fn traverse_unreachable(
                 nodes: &mut HashMap<NodeId, NodeState>,
                 changes: &mut Option<&mut InternalChanges>,
-                seen_child_ids: &HashSet<LocalNodeId>,
+                seen_child_ids: &HashSet<NodeId>,
                 id: NodeId,
+                map_id: impl Fn(LocalNodeId) -> NodeId + Copy,
             ) {
                 if let Some(changes) = changes {
                     changes.removed_node_ids.insert(id);
                 }
                 let node = nodes.remove(&id).unwrap();
                 for child_id in node.data.children().iter() {
-                    if !seen_child_ids.contains(child_id) {
-                        traverse_unreachable(nodes, changes, seen_child_ids, nid(*child_id));
+                    let mapped_child_id = map_id(*child_id);
+                    if !seen_child_ids.contains(&mapped_child_id) {
+                        traverse_unreachable(
+                            nodes,
+                            changes,
+                            seen_child_ids,
+                            mapped_child_id,
+                            map_id,
+                        );
                     }
                 }
             }
 
             for id in unreachable {
-                traverse_unreachable(&mut self.nodes, &mut changes, &seen_child_ids, id);
+                traverse_unreachable(&mut self.nodes, &mut changes, &seen_child_ids, id, map_id);
             }
         }
 
@@ -222,7 +285,7 @@ impl State {
             tree_id: TreeId::ROOT,
             focus,
         };
-        self.update(update, is_host_focused, changes);
+        self.update(update, is_host_focused, changes, TreeIndex(0));
     }
 
     pub fn has_node(&self, id: NodeId) -> bool {
@@ -238,7 +301,7 @@ impl State {
     }
 
     pub fn root_id(&self) -> NodeId {
-        nid(self.data.root)
+        self.root
     }
 
     pub fn root(&self) -> Node<'_> {
@@ -310,14 +373,16 @@ impl Tree {
             panic!("Cannot initialize with a subtree. TreeUpdate::tree_id must be TreeId::ROOT.");
         }
         let mut tree_index_map = TreeIndexMap::default();
-        tree_index_map.get_index(initial_state.tree_id);
+        let tree_index = tree_index_map.get_index(initial_state.tree_id);
         let mut state = State {
             nodes: HashMap::new(),
+            root: NodeId::new(tree.root, tree_index),
             data: tree,
-            focus: nid(initial_state.focus),
+            focus: NodeId::new(initial_state.focus, tree_index),
             is_host_focused,
+            subtrees: HashMap::new(),
         };
-        state.update(initial_state, is_host_focused, None);
+        state.update(initial_state, is_host_focused, None, tree_index);
         Self {
             next_state: state.clone(),
             state,
@@ -330,9 +395,14 @@ impl Tree {
         update: TreeUpdate,
         handler: &mut impl ChangeHandler,
     ) {
+        let tree_index = self.tree_index_map.get_index(update.tree_id);
         let mut changes = InternalChanges::default();
-        self.next_state
-            .update(update, self.state.is_host_focused, Some(&mut changes));
+        self.next_state.update(
+            update,
+            self.state.is_host_focused,
+            Some(&mut changes),
+            tree_index,
+        );
         self.process_changes(changes, handler);
     }
 
@@ -403,8 +473,10 @@ impl Tree {
         if self.state.data != self.next_state.data {
             self.state.data.clone_from(&self.next_state.data);
         }
+        self.state.root = self.next_state.root;
         self.state.focus = self.next_state.focus;
         self.state.is_host_focused = self.next_state.is_host_focused;
+        self.state.subtrees.clone_from(&self.next_state.subtrees);
     }
 
     pub fn state(&self) -> &State {
