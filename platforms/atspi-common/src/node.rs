@@ -9,10 +9,10 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionRequest, Affine, Live, NodeId, Orientation, Point, Rect, Role,
-    Toggled,
+    Action, ActionData, ActionRequest, Affine, Live, NodeId as LocalNodeId, Orientation, Point,
+    Rect, Role, Toggled,
 };
-use accesskit_consumer::{FilterResult, Node, TreeState};
+use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeState};
 use atspi_common::{
     CoordType, Granularity, Interface, InterfaceSet, Layer, Politeness, RelationType,
     Role as AtspiRole, ScrollType, State, StateSet,
@@ -655,22 +655,22 @@ impl PlatformNode {
         f(tree.state())
     }
 
-    fn with_tree_state_and_context<F, T>(&self, f: F) -> Result<T>
+    fn with_tree_and_context<F, T>(&self, f: F) -> Result<T>
     where
-        F: FnOnce(&TreeState, &Context) -> Result<T>,
+        F: FnOnce(&Tree, &Context) -> Result<T>,
     {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
-        f(tree.state(), &context)
+        f(&tree, &context)
     }
 
     fn resolve_with_context<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
+        for<'a> F: FnOnce(Node<'a>, &'a Tree, &Context) -> Result<T>,
     {
-        self.with_tree_state_and_context(|state, context| {
-            if let Some(node) = state.node_by_id(self.id) {
-                f(node, context)
+        self.with_tree_and_context(|tree, context| {
+            if let Some(node) = tree.state().node_by_id(self.id) {
+                f(node, tree, context)
             } else {
                 Err(Error::Defunct)
             }
@@ -679,12 +679,12 @@ impl PlatformNode {
 
     fn resolve_for_selection_with_context<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
+        for<'a> F: FnOnce(Node<'a>, &'a Tree, &Context) -> Result<T>,
     {
-        self.resolve_with_context(|node, context| {
+        self.resolve_with_context(|node, tree, context| {
             let wrapper = NodeWrapper(&node);
             if wrapper.supports_selection() {
-                f(node, context)
+                f(node, tree, context)
             } else {
                 Err(Error::UnsupportedInterface)
             }
@@ -693,12 +693,12 @@ impl PlatformNode {
 
     fn resolve_for_text_with_context<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
+        for<'a> F: FnOnce(Node<'a>, &'a Tree, &Context) -> Result<T>,
     {
-        self.resolve_with_context(|node, context| {
+        self.resolve_with_context(|node, tree, context| {
             let wrapper = NodeWrapper(&node);
             if wrapper.supports_text() {
-                f(node, context)
+                f(node, tree, context)
             } else {
                 Err(Error::UnsupportedInterface)
             }
@@ -709,7 +709,7 @@ impl PlatformNode {
     where
         for<'a> F: FnOnce(Node<'a>) -> Result<T>,
     {
-        self.resolve_with_context(|node, _| f(node))
+        self.resolve_with_context(|node, _, _| f(node))
     }
 
     fn resolve_for_selection<F, T>(&self, f: F) -> Result<T>
@@ -730,17 +730,17 @@ impl PlatformNode {
     where
         for<'a> F: FnOnce(Node<'a>) -> Result<T>,
     {
-        self.resolve_for_text_with_context(|node, _| f(node))
+        self.resolve_for_text_with_context(|node, _, _| f(node))
     }
 
-    fn do_action_internal<F>(&self, f: F) -> Result<()>
+    fn do_action_internal<F>(&self, target: NodeId, f: F) -> Result<()>
     where
-        F: FnOnce(&TreeState, &Context) -> ActionRequest,
+        F: FnOnce(&TreeState, &Context, LocalNodeId) -> ActionRequest,
     {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
-        if tree.state().has_node(self.id) {
-            let request = f(tree.state(), &context);
+        if let Some((target_node, _)) = tree.locate_node(target) {
+            let request = f(tree.state(), &context, target_node);
             drop(tree);
             context.do_action(request);
             Ok(())
@@ -880,9 +880,9 @@ impl PlatformNode {
     }
 
     pub fn state(&self) -> StateSet {
-        self.resolve_with_context(|node, context| {
+        self.resolve_with_context(|node, tree, _| {
             let wrapper = NodeWrapper(&node);
-            Ok(wrapper.state(context.read_tree().state().focus_id().is_some()))
+            Ok(wrapper.state(tree.state().focus_id().is_some()))
         })
         .unwrap_or(State::Defunct.into())
     }
@@ -970,16 +970,16 @@ impl PlatformNode {
         if index != 0 {
             return Ok(false);
         }
-        self.do_action_internal(|_, _| ActionRequest {
+        self.do_action_internal(self.id, |_, _, target| ActionRequest {
             action: Action::Click,
-            target: self.id,
+            target,
             data: None,
         })?;
         Ok(true)
     }
 
     pub fn contains(&self, x: i32, y: i32, coord_type: CoordType) -> Result<bool> {
-        self.resolve_with_context(|node, context| {
+        self.resolve_with_context(|node, _, context| {
             let window_bounds = context.read_root_window_bounds();
             let wrapper = NodeWrapper(&node);
             if let Some(extents) = wrapper.extents(&window_bounds, coord_type) {
@@ -996,7 +996,7 @@ impl PlatformNode {
         y: i32,
         coord_type: CoordType,
     ) -> Result<Option<NodeId>> {
-        self.resolve_with_context(|node, context| {
+        self.resolve_with_context(|node, _, context| {
             let window_bounds = context.read_root_window_bounds();
             let point = window_bounds.atspi_point_to_accesskit_point(
                 Point::new(x.into(), y.into()),
@@ -1009,7 +1009,7 @@ impl PlatformNode {
     }
 
     pub fn extents(&self, coord_type: CoordType) -> Result<AtspiRect> {
-        self.resolve_with_context(|node, context| {
+        self.resolve_with_context(|node, _, context| {
             let window_bounds = context.read_root_window_bounds();
             let wrapper = NodeWrapper(&node);
             Ok(wrapper
@@ -1030,34 +1030,35 @@ impl PlatformNode {
     }
 
     pub fn grab_focus(&self) -> Result<bool> {
-        self.do_action_internal(|_, _| ActionRequest {
+        self.do_action_internal(self.id, |_, _, target| ActionRequest {
             action: Action::Focus,
-            target: self.id,
+            target,
             data: None,
         })?;
         Ok(true)
     }
 
     pub fn scroll_to(&self, scroll_type: ScrollType) -> Result<bool> {
-        self.do_action_internal(|_, _| ActionRequest {
+        self.do_action_internal(self.id, |_, _, target| ActionRequest {
             action: Action::ScrollIntoView,
-            target: self.id,
+            target,
             data: atspi_scroll_type_to_scroll_hint(scroll_type).map(ActionData::ScrollHint),
         })?;
         Ok(true)
     }
 
     pub fn scroll_to_point(&self, coord_type: CoordType, x: i32, y: i32) -> Result<bool> {
-        self.resolve_with_context(|node, context| {
+        self.resolve_with_context(|node, tree, context| {
             let window_bounds = context.read_root_window_bounds();
             let point = window_bounds.atspi_point_to_accesskit_point(
                 Point::new(x.into(), y.into()),
                 node.filtered_parent(&filter),
                 coord_type,
             );
+            let (target, _) = tree.locate_node(self.id).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::ScrollToPoint,
-                target: self.id,
+                target,
                 data: Some(ActionData::ScrollToPoint(point)),
             });
             Ok(())
@@ -1086,14 +1087,15 @@ impl PlatformNode {
     }
 
     pub fn select_child(&self, child_index: usize) -> Result<bool> {
-        self.resolve_for_selection_with_context(|node, context| {
+        self.resolve_for_selection_with_context(|node, tree, context| {
             if let Some(child) = node.filtered_children(filter).nth(child_index) {
                 if let Some(true) = child.is_selected() {
                     Ok(true)
                 } else if child.is_selectable() && child.is_clickable(&filter) {
+                    let (target, _) = tree.locate_node(child.id()).ok_or(Error::Defunct)?;
                     context.do_action(ActionRequest {
                         action: Action::Click,
-                        target: child.id(),
+                        target,
                         data: None,
                     });
                     Ok(true)
@@ -1107,16 +1109,17 @@ impl PlatformNode {
     }
 
     pub fn deselect_selected_child(&self, selected_child_index: usize) -> Result<bool> {
-        self.resolve_for_selection_with_context(|node, context| {
+        self.resolve_for_selection_with_context(|node, tree, context| {
             if let Some(child) = node
                 .items(filter)
                 .filter(|c| c.is_selected() == Some(true))
                 .nth(selected_child_index)
             {
                 if child.is_clickable(&filter) {
+                    let (target, _) = tree.locate_node(child.id()).ok_or(Error::Defunct)?;
                     context.do_action(ActionRequest {
                         action: Action::Click,
-                        target: child.id(),
+                        target,
                         data: None,
                     });
                     Ok(true)
@@ -1149,14 +1152,15 @@ impl PlatformNode {
     }
 
     pub fn deselect_child(&self, child_index: usize) -> Result<bool> {
-        self.resolve_for_selection_with_context(|node, context| {
+        self.resolve_for_selection_with_context(|node, tree, context| {
             if let Some(child) = node.filtered_children(filter).nth(child_index) {
                 if let Some(false) = child.is_selected() {
                     Ok(true)
                 } else if child.is_selectable() && child.is_clickable(&filter) {
+                    let (target, _) = tree.locate_node(child.id()).ok_or(Error::Defunct)?;
                     context.do_action(ActionRequest {
                         action: Action::Click,
-                        target: child.id(),
+                        target,
                         data: None,
                     });
                     Ok(true)
@@ -1222,11 +1226,12 @@ impl PlatformNode {
     }
 
     pub fn set_caret_offset(&self, offset: i32) -> Result<bool> {
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, tree, context| {
             let offset = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
+            let (target, _) = tree.locate_node(node.id()).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::SetTextSelection,
-                target: node.id(),
+                target,
                 data: Some(ActionData::SetTextSelection(
                     offset.to_degenerate_range().to_text_selection(),
                 )),
@@ -1251,7 +1256,7 @@ impl PlatformNode {
     }
 
     pub fn character_extents(&self, offset: i32, coord_type: CoordType) -> Result<AtspiRect> {
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, _, context| {
             let range = text_range_from_offset(&node, offset, Granularity::Char)?;
             if let Some(bounds) = range.bounding_boxes().first() {
                 let window_bounds = context.read_root_window_bounds();
@@ -1268,7 +1273,7 @@ impl PlatformNode {
     }
 
     pub fn offset_at_point(&self, x: i32, y: i32, coord_type: CoordType) -> Result<i32> {
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, _, context| {
             let window_bounds = context.read_root_window_bounds();
             let point = window_bounds.atspi_point_to_accesskit_point(
                 Point::new(x.into(), y.into()),
@@ -1327,15 +1332,16 @@ impl PlatformNode {
             return Ok(false);
         }
 
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, tree, context| {
             // Simply collapse the selection to the position of the caret if a caret is
             // visible, otherwise set the selection to 0.
             let selection_end = node
                 .text_selection_focus()
                 .unwrap_or_else(|| node.document_range().start());
+            let (target, _) = tree.locate_node(node.id()).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::SetTextSelection,
-                target: node.id(),
+                target,
                 data: Some(ActionData::SetTextSelection(
                     selection_end.to_degenerate_range().to_text_selection(),
                 )),
@@ -1354,12 +1360,13 @@ impl PlatformNode {
             return Ok(false);
         }
 
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, tree, context| {
             let range = text_range_from_offsets(&node, start_offset, end_offset)
                 .ok_or(Error::IndexOutOfRange)?;
+            let (target, _) = tree.locate_node(node.id()).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::SetTextSelection,
-                target: node.id(),
+                target,
                 data: Some(ActionData::SetTextSelection(range.to_text_selection())),
             });
             Ok(true)
@@ -1372,7 +1379,7 @@ impl PlatformNode {
         end_offset: i32,
         coord_type: CoordType,
     ) -> Result<AtspiRect> {
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, _, context| {
             if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
                 let window_bounds = context.read_root_window_bounds();
                 let new_origin = window_bounds.accesskit_point_to_atspi_point(
@@ -1405,7 +1412,7 @@ impl PlatformNode {
         end_offset: i32,
         scroll_type: ScrollType,
     ) -> Result<bool> {
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, tree, context| {
             if let Some(range) = text_range_from_offsets(&node, start_offset, end_offset) {
                 let position = if matches!(
                     scroll_type,
@@ -1415,9 +1422,12 @@ impl PlatformNode {
                 } else {
                     range.start()
                 };
+                let (target, _) = tree
+                    .locate_node(position.inner_node().id())
+                    .ok_or(Error::Defunct)?;
                 context.do_action(ActionRequest {
                     action: Action::ScrollIntoView,
-                    target: position.inner_node().id(),
+                    target,
                     data: atspi_scroll_type_to_scroll_hint(scroll_type).map(ActionData::ScrollHint),
                 });
                 Ok(true)
@@ -1435,7 +1445,7 @@ impl PlatformNode {
         x: i32,
         y: i32,
     ) -> Result<bool> {
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, tree, context| {
             let window_bounds = context.read_root_window_bounds();
             let target_point = window_bounds.atspi_point_to_accesskit_point(
                 Point::new(x.into(), y.into()),
@@ -1445,9 +1455,10 @@ impl PlatformNode {
 
             if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
                 let point = Point::new(target_point.x - rect.x0, target_point.y - rect.y0);
+                let (target, _) = tree.locate_node(node.id()).ok_or(Error::Defunct)?;
                 context.do_action(ActionRequest {
                     action: Action::ScrollToPoint,
-                    target: node.id(),
+                    target,
                     data: Some(ActionData::ScrollToPoint(point)),
                 });
                 return Ok(true);
@@ -1476,9 +1487,9 @@ impl PlatformNode {
     }
 
     pub fn set_current_value(&self, value: f64) -> Result<()> {
-        self.do_action_internal(|_, _| ActionRequest {
+        self.do_action_internal(self.id, |_, _, target| ActionRequest {
             action: Action::SetValue,
-            target: self.id,
+            target,
             data: Some(ActionData::NumericValue(value)),
         })
     }

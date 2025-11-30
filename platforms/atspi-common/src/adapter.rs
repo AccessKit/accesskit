@@ -15,8 +15,8 @@ use crate::{
     util::WindowBounds,
     AdapterCallback, Event, ObjectEvent, WindowEvent,
 };
-use accesskit::{ActionHandler, NodeId, Role, TreeUpdate};
-use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler, TreeState};
+use accesskit::{ActionHandler, Role, TreeUpdate};
+use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeChangeHandler, TreeState};
 use atspi_common::{InterfaceSet, Politeness, State};
 use std::fmt::{Debug, Formatter};
 use std::{

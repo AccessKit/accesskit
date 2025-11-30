@@ -10,9 +10,13 @@
 
 use core::iter::FusedIterator;
 
-use accesskit::NodeId;
+use accesskit::NodeId as LocalNodeId;
 
-use crate::{filters::FilterResult, node::Node, tree::State as TreeState};
+use crate::{
+    filters::FilterResult,
+    node::{Node, NodeId},
+    tree::State as TreeState,
+};
 
 /// An iterator that yields following siblings of a node.
 ///
@@ -22,6 +26,7 @@ pub struct FollowingSiblings<'a> {
     done: bool,
     front_position: usize,
     parent: Option<Node<'a>>,
+    node_id: NodeId,
 }
 
 impl<'a> FollowingSiblings<'a> {
@@ -44,6 +49,7 @@ impl<'a> FollowingSiblings<'a> {
             done,
             front_position,
             parent: parent_and_index.map(|(parent, _)| parent),
+            node_id: node.id,
         }
     }
 }
@@ -63,7 +69,7 @@ impl Iterator for FollowingSiblings<'_> {
                 .children()
                 .get(self.front_position)?;
             self.front_position += 1;
-            Some(*child)
+            Some(self.node_id.with_same_tree(*child))
         }
     }
 
@@ -89,7 +95,7 @@ impl DoubleEndedIterator for FollowingSiblings<'_> {
                 .children()
                 .get(self.back_position)?;
             self.back_position -= 1;
-            Some(*child)
+            Some(self.node_id.with_same_tree(*child))
         }
     }
 }
@@ -106,6 +112,7 @@ pub struct PrecedingSiblings<'a> {
     done: bool,
     front_position: usize,
     parent: Option<Node<'a>>,
+    node_id: NodeId,
 }
 
 impl<'a> PrecedingSiblings<'a> {
@@ -122,6 +129,7 @@ impl<'a> PrecedingSiblings<'a> {
             done,
             front_position,
             parent: parent_and_index.map(|(parent, _)| parent),
+            node_id: node.id,
         }
     }
 }
@@ -143,7 +151,7 @@ impl Iterator for PrecedingSiblings<'_> {
             if !self.done {
                 self.front_position -= 1;
             }
-            Some(*child)
+            Some(self.node_id.with_same_tree(*child))
         }
     }
 
@@ -169,7 +177,7 @@ impl DoubleEndedIterator for PrecedingSiblings<'_> {
                 .children()
                 .get(self.back_position)?;
             self.back_position += 1;
-            Some(*child)
+            Some(self.node_id.with_same_tree(*child))
         }
     }
 }
@@ -459,8 +467,9 @@ impl<Filter: Fn(&Node) -> FilterResult> FusedIterator for FilteredChildren<'_, F
 pub(crate) enum LabelledBy<'a, Filter: Fn(&Node) -> FilterResult> {
     FromDescendants(FilteredChildren<'a, Filter>),
     Explicit {
-        ids: core::slice::Iter<'a, NodeId>,
+        ids: core::slice::Iter<'a, LocalNodeId>,
         tree_state: &'a TreeState,
+        node_id: NodeId,
     },
 }
 
@@ -470,9 +479,13 @@ impl<'a, Filter: Fn(&Node) -> FilterResult> Iterator for LabelledBy<'a, Filter> 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::FromDescendants(iter) => iter.next(),
-            Self::Explicit { ids, tree_state } => {
-                ids.next().map(|id| tree_state.node_by_id(*id).unwrap())
-            }
+            Self::Explicit {
+                ids,
+                tree_state,
+                node_id,
+            } => ids
+                .next()
+                .map(|id| tree_state.node_by_id(node_id.with_same_tree(*id)).unwrap()),
         }
     }
 
@@ -488,9 +501,13 @@ impl<Filter: Fn(&Node) -> FilterResult> DoubleEndedIterator for LabelledBy<'_, F
     fn next_back(&mut self) -> Option<Self::Item> {
         match self {
             Self::FromDescendants(iter) => iter.next_back(),
-            Self::Explicit { ids, tree_state } => ids
+            Self::Explicit {
+                ids,
+                tree_state,
+                node_id,
+            } => ids
                 .next_back()
-                .map(|id| tree_state.node_by_id(*id).unwrap()),
+                .map(|id| tree_state.node_by_id(node_id.with_same_tree(*id)).unwrap()),
         }
     }
 }
@@ -500,7 +517,7 @@ impl<Filter: Fn(&Node) -> FilterResult> FusedIterator for LabelledBy<'_, Filter>
 #[cfg(test)]
 mod tests {
     use crate::tests::*;
-    use accesskit::NodeId;
+    use accesskit::NodeId as LocalNodeId;
     use alloc::vec::Vec;
 
     #[test]
@@ -515,23 +532,23 @@ mod tests {
                 PARAGRAPH_3_IGNORED_ID
             ],
             tree.state()
-                .node_by_id(PARAGRAPH_0_ID)
+                .node_by_id(nid(PARAGRAPH_0_ID))
                 .unwrap()
-                .following_siblings()
-                .map(|node| node.id())
-                .collect::<Vec<NodeId>>()[..]
+                .following_sibling_ids()
+                .map(|id| id.to_components().0)
+                .collect::<Vec<LocalNodeId>>()[..]
         );
         assert_eq!(
             3,
             tree.state()
-                .node_by_id(PARAGRAPH_0_ID)
+                .node_by_id(nid(PARAGRAPH_0_ID))
                 .unwrap()
                 .following_siblings()
                 .len()
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_3_IGNORED_ID)
+            .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
             .unwrap()
             .following_siblings()
             .next()
@@ -539,7 +556,7 @@ mod tests {
         assert_eq!(
             0,
             tree.state()
-                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
                 .unwrap()
                 .following_siblings()
                 .len()
@@ -562,16 +579,16 @@ mod tests {
                 PARAGRAPH_1_IGNORED_ID
             ],
             tree.state()
-                .node_by_id(PARAGRAPH_0_ID)
+                .node_by_id(nid(PARAGRAPH_0_ID))
                 .unwrap()
-                .following_siblings()
+                .following_sibling_ids()
                 .rev()
-                .map(|node| node.id())
-                .collect::<Vec<NodeId>>()[..]
+                .map(|id| id.to_components().0)
+                .collect::<Vec<LocalNodeId>>()[..]
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_3_IGNORED_ID)
+            .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
             .unwrap()
             .following_siblings()
             .next_back()
@@ -586,23 +603,23 @@ mod tests {
         assert_eq!(
             [PARAGRAPH_2_ID, PARAGRAPH_1_IGNORED_ID, PARAGRAPH_0_ID],
             tree.state()
-                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
                 .unwrap()
-                .preceding_siblings()
-                .map(|node| node.id())
-                .collect::<Vec<NodeId>>()[..]
+                .preceding_sibling_ids()
+                .map(|id| id.to_components().0)
+                .collect::<Vec<LocalNodeId>>()[..]
         );
         assert_eq!(
             3,
             tree.state()
-                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
                 .unwrap()
                 .preceding_siblings()
                 .len()
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .preceding_siblings()
             .next()
@@ -610,7 +627,7 @@ mod tests {
         assert_eq!(
             0,
             tree.state()
-                .node_by_id(PARAGRAPH_0_ID)
+                .node_by_id(nid(PARAGRAPH_0_ID))
                 .unwrap()
                 .preceding_siblings()
                 .len()
@@ -629,16 +646,16 @@ mod tests {
         assert_eq!(
             [PARAGRAPH_0_ID, PARAGRAPH_1_IGNORED_ID, PARAGRAPH_2_ID],
             tree.state()
-                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
                 .unwrap()
-                .preceding_siblings()
+                .preceding_sibling_ids()
                 .rev()
-                .map(|node| node.id())
-                .collect::<Vec<NodeId>>()[..]
+                .map(|id| id.to_components().0)
+                .collect::<Vec<LocalNodeId>>()[..]
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .preceding_siblings()
             .next_back()
@@ -657,24 +674,24 @@ mod tests {
         assert_eq!(
             [LABEL_1_1_ID, PARAGRAPH_2_ID, LABEL_3_1_0_ID, BUTTON_3_2_ID],
             tree.state()
-                .node_by_id(PARAGRAPH_0_ID)
+                .node_by_id(nid(PARAGRAPH_0_ID))
                 .unwrap()
                 .following_filtered_siblings(test_tree_filter)
-                .map(|node| node.id())
-                .collect::<Vec<NodeId>>()[..]
+                .map(|node| node.id().to_components().0)
+                .collect::<Vec<LocalNodeId>>()[..]
         );
         assert_eq!(
             [BUTTON_3_2_ID],
             tree.state()
-                .node_by_id(LABEL_3_1_0_ID)
+                .node_by_id(nid(LABEL_3_1_0_ID))
                 .unwrap()
                 .following_filtered_siblings(test_tree_filter)
-                .map(|node| node.id())
-                .collect::<Vec<NodeId>>()[..]
+                .map(|node| node.id().to_components().0)
+                .collect::<Vec<LocalNodeId>>()[..]
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_3_IGNORED_ID)
+            .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
             .unwrap()
             .following_filtered_siblings(test_tree_filter)
             .next()
@@ -693,26 +710,26 @@ mod tests {
         assert_eq!(
             [BUTTON_3_2_ID, LABEL_3_1_0_ID, PARAGRAPH_2_ID, LABEL_1_1_ID],
             tree.state()
-                .node_by_id(PARAGRAPH_0_ID)
+                .node_by_id(nid(PARAGRAPH_0_ID))
                 .unwrap()
                 .following_filtered_siblings(test_tree_filter)
                 .rev()
-                .map(|node| node.id())
-                .collect::<Vec<NodeId>>()[..]
+                .map(|node| node.id().to_components().0)
+                .collect::<Vec<LocalNodeId>>()[..]
         );
         assert_eq!(
             [BUTTON_3_2_ID,],
             tree.state()
-                .node_by_id(LABEL_3_1_0_ID)
+                .node_by_id(nid(LABEL_3_1_0_ID))
                 .unwrap()
                 .following_filtered_siblings(test_tree_filter)
                 .rev()
-                .map(|node| node.id())
-                .collect::<Vec<NodeId>>()[..]
+                .map(|node| node.id().to_components().0)
+                .collect::<Vec<LocalNodeId>>()[..]
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_3_IGNORED_ID)
+            .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
             .unwrap()
             .following_filtered_siblings(test_tree_filter)
             .next_back()
@@ -731,24 +748,24 @@ mod tests {
         assert_eq!(
             [PARAGRAPH_2_ID, LABEL_1_1_ID, PARAGRAPH_0_ID],
             tree.state()
-                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
                 .unwrap()
                 .preceding_filtered_siblings(test_tree_filter)
-                .map(|node| node.id())
-                .collect::<Vec<NodeId>>()[..]
+                .map(|node| node.id().to_components().0)
+                .collect::<Vec<LocalNodeId>>()[..]
         );
         assert_eq!(
             [PARAGRAPH_2_ID, LABEL_1_1_ID, PARAGRAPH_0_ID],
             tree.state()
-                .node_by_id(LABEL_3_1_0_ID)
+                .node_by_id(nid(LABEL_3_1_0_ID))
                 .unwrap()
                 .preceding_filtered_siblings(test_tree_filter)
-                .map(|node| node.id())
-                .collect::<Vec<NodeId>>()[..]
+                .map(|node| node.id().to_components().0)
+                .collect::<Vec<LocalNodeId>>()[..]
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .preceding_filtered_siblings(test_tree_filter)
             .next()
@@ -767,26 +784,26 @@ mod tests {
         assert_eq!(
             [PARAGRAPH_0_ID, LABEL_1_1_ID, PARAGRAPH_2_ID],
             tree.state()
-                .node_by_id(PARAGRAPH_3_IGNORED_ID)
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
                 .unwrap()
                 .preceding_filtered_siblings(test_tree_filter)
                 .rev()
-                .map(|node| node.id())
-                .collect::<Vec<NodeId>>()[..]
+                .map(|node| node.id().to_components().0)
+                .collect::<Vec<LocalNodeId>>()[..]
         );
         assert_eq!(
             [PARAGRAPH_0_ID, LABEL_1_1_ID, PARAGRAPH_2_ID],
             tree.state()
-                .node_by_id(LABEL_3_1_0_ID)
+                .node_by_id(nid(LABEL_3_1_0_ID))
                 .unwrap()
                 .preceding_filtered_siblings(test_tree_filter)
                 .rev()
-                .map(|node| node.id())
-                .collect::<Vec<NodeId>>()[..]
+                .map(|node| node.id().to_components().0)
+                .collect::<Vec<LocalNodeId>>()[..]
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .preceding_filtered_siblings(test_tree_filter)
             .next_back()
@@ -807,19 +824,19 @@ mod tests {
             tree.state()
                 .root()
                 .filtered_children(test_tree_filter)
-                .map(|node| node.id())
-                .collect::<Vec<NodeId>>()[..]
+                .map(|node| node.id().to_components().0)
+                .collect::<Vec<LocalNodeId>>()[..]
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .filtered_children(test_tree_filter)
             .next()
             .is_none());
         assert!(tree
             .state()
-            .node_by_id(LABEL_0_0_IGNORED_ID)
+            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
             .unwrap()
             .filtered_children(test_tree_filter)
             .next()
@@ -841,19 +858,19 @@ mod tests {
                 .root()
                 .filtered_children(test_tree_filter)
                 .rev()
-                .map(|node| node.id())
-                .collect::<Vec<NodeId>>()[..]
+                .map(|node| node.id().to_components().0)
+                .collect::<Vec<LocalNodeId>>()[..]
         );
         assert!(tree
             .state()
-            .node_by_id(PARAGRAPH_0_ID)
+            .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .filtered_children(test_tree_filter)
             .next_back()
             .is_none());
         assert!(tree
             .state()
-            .node_by_id(LABEL_0_0_IGNORED_ID)
+            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
             .unwrap()
             .filtered_children(test_tree_filter)
             .next_back()

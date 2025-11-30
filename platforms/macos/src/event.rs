@@ -3,8 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{Live, NodeId, Role};
-use accesskit_consumer::{FilterResult, Node, TreeChangeHandler};
+use accesskit::{Live, Role};
+use accesskit_consumer::{FilterResult, Node, NodeId, TreeChangeHandler};
 use hashbrown::HashSet;
 use objc2::runtime::{AnyObject, ProtocolObject};
 use objc2_app_kit::*;
