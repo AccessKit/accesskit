@@ -2,7 +2,7 @@
 
 use accesskit::{
     Action, ActionHandler, ActionRequest, ActivationHandler, Live, Node, NodeId, Rect, Role, Tree,
-    TreeUpdate,
+    TreeId, TreeUpdate,
 };
 use accesskit_windows::Adapter;
 use once_cell::sync::Lazy;
@@ -115,6 +115,7 @@ impl ActivationHandler for InnerWindowState {
                 (BUTTON_2_ID, button_2),
             ],
             tree: Some(tree),
+            tree_id: TreeId::ROOT,
             focus: self.focus,
         };
         if let Some(announcement) = &self.announcement {
@@ -138,6 +139,7 @@ impl WindowState {
         if let Some(events) = adapter.update_if_active(|| TreeUpdate {
             nodes: vec![],
             tree: None,
+            tree_id: TreeId::ROOT,
             focus,
         }) {
             drop(adapter);
@@ -160,6 +162,7 @@ impl WindowState {
             TreeUpdate {
                 nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],
                 tree: None,
+                tree_id: TreeId::ROOT,
                 focus: inner_state.focus,
             }
         }) {

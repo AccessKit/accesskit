@@ -26,7 +26,7 @@ pub use text::{
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Affine, Node, NodeId, Rect, Role, Tree, TreeUpdate, Vec2};
+    use accesskit::{Affine, Node, NodeId, Rect, Role, Tree, TreeId, TreeUpdate, Vec2};
     use alloc::vec;
 
     use crate::FilterResult;
@@ -179,6 +179,7 @@ mod tests {
                 (EMPTY_CONTAINER_3_3_IGNORED_ID, empty_container_3_3_ignored),
             ],
             tree: Some(Tree::new(ROOT_ID)),
+            tree_id: TreeId::ROOT,
             focus: ROOT_ID,
         };
         crate::tree::Tree::new(initial_update, false)

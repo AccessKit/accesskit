@@ -2711,6 +2711,9 @@ pub struct TreeUpdate {
     /// a tree.
     pub tree: Option<Tree>,
 
+    /// The identifier of the tree.
+    pub tree_id: TreeId,
+
     /// The node within this tree that has keyboard focus when the native
     /// host (e.g. window) has focus. If no specific node within the tree
     /// has keyboard focus, this must be set to the root. The latest focus state
