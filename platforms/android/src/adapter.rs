@@ -384,7 +384,7 @@ impl Adapter {
         } else {
             self.node_id_map.get_accesskit_id(virtual_view_id)?
         };
-        let (target_node, _) = tree.locate_node(target)?;
+        let (target_node, target_tree) = tree.locate_node(target)?;
         let mut events = Vec::new();
         let request = match action {
             ACTION_CLICK => ActionRequest {
@@ -399,12 +399,14 @@ impl Adapter {
                         Action::Click
                     }
                 },
-                target: target_node,
+                target_tree,
+                target_node,
                 data: None,
             },
             ACTION_FOCUS => ActionRequest {
                 action: Action::Focus,
-                target: target_node,
+                target_tree,
+                target_node,
                 data: None,
             },
             ACTION_SCROLL_BACKWARD | ACTION_SCROLL_FORWARD => ActionRequest {
@@ -439,7 +441,8 @@ impl Adapter {
                         Action::ScrollRight
                     }
                 },
-                target: target_node,
+                target_tree,
+                target_node,
                 data: Some(ActionData::ScrollUnit(ScrollUnit::Page)),
             },
             ACTION_ACCESSIBILITY_FOCUS => {
@@ -517,8 +520,9 @@ impl Adapter {
         };
         update_tree(events, &mut self.node_id_map, tree, update);
         let request = ActionRequest {
-            target: node_id,
             action: Action::SetTextSelection,
+            target_tree: tree_id,
+            target_node: node_id,
             data: Some(ActionData::SetTextSelection(selection)),
         };
         action_handler.do_action(request);
