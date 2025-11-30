@@ -654,6 +654,21 @@ impl fmt::Debug for NodeId {
     }
 }
 
+/// The stable identity of a [`Tree`].
+///
+/// Use [`TreeId::ROOT`] for the main/root tree. For subtrees, use a random
+/// UUID (version 4) to avoid collisions between independently created trees.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[repr(transparent)]
+pub struct TreeId(pub Uuid);
+
+impl TreeId {
+    /// A reserved tree ID for the root tree. This uses a nil UUID.
+    pub const ROOT: Self = Self(Uuid::nil());
+}
+
 /// Defines a custom action for a UI element.
 ///
 /// For example, a list UI can allow a user to reorder items in the list by dragging the
