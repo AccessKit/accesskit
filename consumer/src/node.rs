@@ -944,7 +944,7 @@ impl<W: fmt::Write> fmt::Write for SpacePrefixingWriter<W> {
 mod tests {
     use accesskit::{
         Action, Node, NodeId, Point, Rect, Role, TextDirection, TextPosition, TextSelection, Tree,
-        TreeUpdate,
+        TreeId, TreeUpdate,
     };
     use alloc::vec;
 
@@ -1219,6 +1219,7 @@ mod tests {
                 (NodeId(1), Node::new(Role::Button)),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
@@ -1261,6 +1262,7 @@ mod tests {
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
@@ -1411,6 +1413,7 @@ mod tests {
                 }),
             ],
             tree: Some(Tree::new(ROOT_ID)),
+            tree_id: TreeId::ROOT,
             focus: ROOT_ID,
         };
         let tree = crate::Tree::new(update, false);
@@ -1506,6 +1509,7 @@ mod tests {
                 }),
             ],
             tree: Some(Tree::new(ROOT_ID)),
+            tree_id: TreeId::ROOT,
             focus: TEXT_INPUT_ID,
         };
         let tree = crate::Tree::new(update, false);
@@ -1574,6 +1578,7 @@ mod tests {
                 }),
             ],
             tree: Some(Tree::new(ROOT_ID)),
+            tree_id: TreeId::ROOT,
             focus: TEXT_INPUT_ID,
         };
         let tree = crate::Tree::new(update, false);

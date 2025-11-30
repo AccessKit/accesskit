@@ -95,7 +95,7 @@ pub fn common_filter_with_root_exception(node: &Node) -> FilterResult {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Rect, Role, Tree, TreeUpdate};
+    use accesskit::{Node, NodeId, Rect, Role, Tree, TreeId, TreeUpdate};
     use alloc::vec;
 
     use super::{
@@ -123,6 +123,7 @@ mod tests {
                 (NodeId(1), Node::new(Role::Button)),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
@@ -145,6 +146,7 @@ mod tests {
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
@@ -167,6 +169,7 @@ mod tests {
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(1),
         };
         let tree = crate::Tree::new(update, true);
@@ -185,6 +188,7 @@ mod tests {
                 (NodeId(1), Node::new(Role::Button)),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
@@ -209,6 +213,7 @@ mod tests {
                 (NodeId(1), Node::new(Role::Button)),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
@@ -229,6 +234,7 @@ mod tests {
                 (NodeId(1), Node::new(Role::Button)),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(1),
         };
         let tree = crate::Tree::new(update, true);
@@ -248,6 +254,7 @@ mod tests {
                 (NodeId(1), Node::new(Role::TextRun)),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
@@ -333,6 +340,7 @@ mod tests {
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         crate::Tree::new(update, false)

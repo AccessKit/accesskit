@@ -10,7 +10,7 @@
 
 use accesskit::{
     Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node as NodeData, NodeId,
-    Orientation, Point, Role, ScrollUnit, TextSelection, Tree as TreeData, TreeUpdate,
+    Orientation, Point, Role, ScrollUnit, TextSelection, Tree as TreeData, TreeId, TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Node, TextPosition, Tree, TreeChangeHandler};
 use jni::{
@@ -179,6 +179,7 @@ impl State {
                         let placeholder_update = TreeUpdate {
                             nodes: vec![(PLACEHOLDER_ROOT_ID, NodeData::new(Role::Window))],
                             tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
+                            tree_id: TreeId::ROOT,
                             focus: PLACEHOLDER_ROOT_ID,
                         };
                         Self::Placeholder(Tree::new(placeholder_update, true))
@@ -508,6 +509,7 @@ impl Adapter {
         let update = TreeUpdate {
             nodes: vec![(node.id(), new_node)],
             tree: None,
+            tree_id: TreeId::ROOT,
             focus: tree_state.focus_id_in_tree(),
         };
         update_tree(events, &mut self.node_id_map, tree, update);

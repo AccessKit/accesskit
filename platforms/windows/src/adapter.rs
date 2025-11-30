@@ -5,7 +5,7 @@
 
 use accesskit::{
     ActionHandler, ActivationHandler, Live, Node as NodeProvider, NodeId, Role, Tree as TreeData,
-    TreeUpdate,
+    TreeId, TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler};
 use hashbrown::{HashMap, HashSet};
@@ -518,6 +518,7 @@ impl Adapter {
                     let placeholder_update = TreeUpdate {
                         nodes: vec![(PLACEHOLDER_ROOT_ID, NodeProvider::new(Role::Window))],
                         tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
+                        tree_id: TreeId::ROOT,
                         focus: PLACEHOLDER_ROOT_ID,
                     };
                     let placeholder_tree = Tree::new(placeholder_update, *is_window_focused);

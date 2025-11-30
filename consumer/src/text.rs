@@ -978,7 +978,7 @@ macro_rules! inherited_properties {
         }
         $(#[cfg(test)]
         mod $getter {
-            use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
+            use accesskit::{Node, NodeId, Role, Tree, TreeId, TreeUpdate};
             use alloc::vec;
             use super::RangePropertyValue;
             #[test]
@@ -999,6 +999,7 @@ macro_rules! inherited_properties {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
@@ -1027,6 +1028,7 @@ macro_rules! inherited_properties {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
@@ -1056,6 +1058,7 @@ macro_rules! inherited_properties {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
@@ -1084,6 +1087,7 @@ macro_rules! inherited_properties {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
@@ -1118,6 +1122,7 @@ macro_rules! inherited_properties {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
@@ -1151,6 +1156,7 @@ macro_rules! inherited_properties {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
@@ -1475,7 +1481,7 @@ mod tests {
     // This was originally based on an actual tree produced by egui but
     // has since been heavily modified by hand to cover various test cases.
     fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {
-        use accesskit::{Action, Affine, Node, Role, TextDirection, Tree, TreeUpdate};
+        use accesskit::{Action, Affine, Node, Role, TextDirection, Tree, TreeId, TreeUpdate};
 
         let update = TreeUpdate {
             nodes: vec![
@@ -1686,6 +1692,7 @@ mod tests {
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(1),
         };
 

@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{Node as NodeData, NodeId, Tree as TreeData, TreeUpdate};
+use accesskit::{Node as NodeData, NodeId, Tree as TreeData, TreeId, TreeUpdate};
 use alloc::vec;
 use core::fmt;
 use hashbrown::{HashMap, HashSet};
@@ -176,6 +176,7 @@ impl State {
         let update = TreeUpdate {
             nodes: vec![],
             tree: None,
+            tree_id: TreeId::ROOT,
             focus: self.focus,
         };
         self.update(update, is_host_focused, changes);
@@ -259,6 +260,9 @@ impl Tree {
         let Some(tree) = initial_state.tree.take() else {
             panic!("Tried to initialize the accessibility tree without a root tree. TreeUpdate::tree must be Some.");
         };
+        if initial_state.tree_id != TreeId::ROOT {
+            panic!("Cannot initialize with a subtree. TreeUpdate::tree_id must be TreeId::ROOT.");
+        }
         let mut state = State {
             nodes: HashMap::new(),
             data: tree,
@@ -383,7 +387,7 @@ impl<T> fmt::Display for ShortNodeList<'_, T> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
+    use accesskit::{Node, NodeId, Role, Tree, TreeId, TreeUpdate, Uuid};
     use alloc::{vec, vec::Vec};
 
     #[test]
@@ -391,12 +395,27 @@ mod tests {
         let update = TreeUpdate {
             nodes: vec![(NodeId(0), Node::new(Role::Window))],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let tree = super::Tree::new(update, false);
         assert_eq!(NodeId(0), tree.state().root().id());
         assert_eq!(Role::Window, tree.state().root().role());
         assert!(tree.state().root().parent().is_none());
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot initialize with a subtree. TreeUpdate::tree_id must be TreeId::ROOT."
+    )]
+    fn init_tree_with_non_root_tree_id_panics() {
+        let update = TreeUpdate {
+            nodes: vec![(NodeId(0), Node::new(Role::Window))],
+            tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId(Uuid::from_u128(1)),
+            focus: NodeId(0),
+        };
+        let _ = super::Tree::new(update, false);
     }
 
     #[test]
@@ -412,6 +431,7 @@ mod tests {
                 (NodeId(2), Node::new(Role::Button)),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let tree = super::Tree::new(update, false);
@@ -433,6 +453,7 @@ mod tests {
         let first_update = TreeUpdate {
             nodes: vec![(NodeId(0), root_node.clone())],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let mut tree = super::Tree::new(first_update, false);
@@ -447,6 +468,7 @@ mod tests {
                 (NodeId(1), Node::new(Role::RootWebArea)),
             ],
             tree: None,
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         struct Handler {
@@ -514,6 +536,7 @@ mod tests {
                 (NodeId(1), Node::new(Role::RootWebArea)),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let mut tree = super::Tree::new(first_update, false);
@@ -521,6 +544,7 @@ mod tests {
         let second_update = TreeUpdate {
             nodes: vec![(NodeId(0), root_node)],
             tree: None,
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         struct Handler {
@@ -583,6 +607,7 @@ mod tests {
                 (NodeId(2), Node::new(Role::Button)),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(1),
         };
         let mut tree = super::Tree::new(first_update, true);
@@ -590,6 +615,7 @@ mod tests {
         let second_update = TreeUpdate {
             nodes: vec![],
             tree: None,
+            tree_id: TreeId::ROOT,
             focus: NodeId(2),
         };
         struct Handler {
@@ -670,6 +696,7 @@ mod tests {
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let mut tree = super::Tree::new(first_update, false);
@@ -684,6 +711,7 @@ mod tests {
                 node
             })],
             tree: None,
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         struct Handler {
@@ -748,6 +776,7 @@ mod tests {
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update.clone(), false);
@@ -837,6 +866,7 @@ mod tests {
                 (NodeId(2), Node::new(Role::Button)),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let mut tree = crate::Tree::new(update, false);
@@ -850,6 +880,7 @@ mod tests {
             TreeUpdate {
                 nodes: vec![(NodeId(0), root)],
                 tree: None,
+                tree_id: TreeId::ROOT,
                 focus: NodeId(0),
             },
             &mut handler,
