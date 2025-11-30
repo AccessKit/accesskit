@@ -89,6 +89,11 @@ impl<'a> Node<'a> {
         self.id() == self.tree_state.root_id()
     }
 
+    /// Returns true if this node is a graft node (has a tree_id property set).
+    pub fn is_graft(&self) -> bool {
+        self.state.data.tree_id().is_some()
+    }
+
     pub fn parent_id(&self) -> Option<NodeId> {
         self.state
             .parent_and_index
@@ -120,15 +125,27 @@ impl<'a> Node<'a> {
             })
     }
 
+    /// Returns the single child of a graft node (the subtree root), if available.
+    fn graft_child_id(&self) -> Option<NodeId> {
+        self.state
+            .data
+            .tree_id()
+            .and_then(|tree_id| self.tree_state.subtree_root(tree_id))
+    }
+
     pub fn child_ids(
         &self,
     ) -> impl DoubleEndedIterator<Item = NodeId>
            + ExactSizeIterator<Item = NodeId>
            + FusedIterator<Item = NodeId>
            + 'a {
-        ChildIds::Normal {
-            parent_id: self.id,
-            children: self.state.data.children().iter(),
+        if self.is_graft() {
+            ChildIds::Graft(self.graft_child_id())
+        } else {
+            ChildIds::Normal {
+                parent_id: self.id,
+                children: self.state.data.children().iter(),
+            }
         }
     }
 
