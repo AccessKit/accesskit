@@ -20,7 +20,7 @@ use core::{fmt, iter::FusedIterator};
 
 use crate::filters::FilterResult;
 use crate::iterators::{
-    FilteredChildren, FollowingFilteredSiblings, FollowingSiblings, LabelledBy,
+    ChildIds, FilteredChildren, FollowingFilteredSiblings, FollowingSiblings, LabelledBy,
     PrecedingFilteredSiblings, PrecedingSiblings,
 };
 use crate::tree::{State as TreeState, TreeIndex};
@@ -125,12 +125,11 @@ impl<'a> Node<'a> {
     ) -> impl DoubleEndedIterator<Item = NodeId>
            + ExactSizeIterator<Item = NodeId>
            + FusedIterator<Item = NodeId>
-           + '_ {
-        let id = self.id;
-        let data = &self.state.data;
-        data.children()
-            .iter()
-            .map(move |child_id| id.with_same_tree(*child_id))
+           + 'a {
+        ChildIds::Normal {
+            parent_id: self.id,
+            children: self.state.data.children().iter(),
+        }
     }
 
     pub fn children(
@@ -140,11 +139,8 @@ impl<'a> Node<'a> {
            + FusedIterator<Item = Node<'a>>
            + 'a {
         let state = self.tree_state;
-        let id = self.id;
-        let data = &self.state.data;
-        data.children()
-            .iter()
-            .map(move |child_id| state.node_by_id(id.with_same_tree(*child_id)).unwrap())
+        self.child_ids()
+            .map(move |id| state.node_by_id(id).unwrap())
     }
 
     pub fn filtered_children(
