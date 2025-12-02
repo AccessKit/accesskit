@@ -18,7 +18,7 @@ pub struct SubtreeInfo {
     // Local Id to the parent tree
     parent_node_id: NodeId,
     // Global id of the root of the child subtree
-    root_node_id: Option<NodeId>
+    root_node_id: NodeId
 }
 
 #[repr(transparent)]
@@ -117,7 +117,7 @@ impl MultiTreeAdapterState {
         grafts_map.insert(parent_node_id, subtree_id);
         assert!(self.id_map.insert(subtree_id, HashMap::default()).is_none());
         let global_id_for_child = self.map_id(subtree_id, child_id);
-        assert!(self.child_subtrees.insert(subtree_id, SubtreeInfo { parent_subtree_id, parent_node_id, root_node_id: Some(global_id_for_child) }).is_none());
+        assert!(self.child_subtrees.insert(subtree_id, SubtreeInfo { parent_subtree_id, parent_node_id, root_node_id: global_id_for_child }).is_none());
         let parent_node_global_id = self.rewrite_node(parent_subtree_id, parent_node_id, &mut parent_node);
 
         let mut nodes: Vec<(NodeId, Node)> = Vec::new();
@@ -147,7 +147,7 @@ impl MultiTreeAdapterState {
             tree.root = global_id_of_root_of_subtree;
             if subtree_id != self.root_subtree_id() {
                 let child_subtree_info = self.child_subtrees.get_mut(&subtree_id).expect("Must be registered");
-                child_subtree_info.root_node_id = Some(global_id_of_root_of_subtree);
+                child_subtree_info.root_node_id = global_id_of_root_of_subtree;
                 subtree_update.tree = None;
             }
         }
@@ -264,9 +264,7 @@ impl MultiTreeAdapterState {
         if let Some(graft_map) = self.grafts.get_mut(&subtree_id) {
             if let Some(local_nodes_subtree_id) = graft_map.get_mut(&local_node_id) {
                 let child_subtree_info = self.child_subtrees.get(&local_nodes_subtree_id).expect("must be registered");
-                if let Some(root_node_id) = child_subtree_info.root_node_id {
-                    return Some(root_node_id);
-                }
+                return Some(child_subtree_info.root_node_id);
             }
         }
         None
