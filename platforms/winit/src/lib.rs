@@ -285,6 +285,9 @@ impl Adapter {
     /// a full tree.
     // TODO  #[cfg(not(feature = "multitree"))]
     pub fn update_if_active(&mut self, updater: impl FnOnce() -> TreeUpdate) {
+        #[cfg(feature = "multitree")]
+        self.update_subtree_if_active(self.multi_tree_state.root_subtree_id(), updater);
+        #[cfg(not(feature = "multitree"))]
         self.inner.update_if_active(updater);
     }
 
@@ -294,7 +297,7 @@ impl Adapter {
     }
 
     #[cfg(feature = "multitree")]
-    pub fn register_child_subtree(&mut self, parent_subtree_id: SubtreeId, parent_node_id: NodeId, child_id: NodeId, parent_node: &mut Node) -> SubtreeId {
+    pub fn register_child_subtree(&mut self, parent_subtree_id: SubtreeId, parent_node_id: NodeId, child_id: NodeId, parent_node: Node) -> SubtreeId {
         let (subtree_id, tree_update) = self.multi_tree_state.register_child_subtree(parent_subtree_id, parent_node_id, child_id, parent_node);
         self.inner.update_if_active(|| tree_update);
 

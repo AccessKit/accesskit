@@ -104,7 +104,7 @@ impl MultiTreeAdapterState {
         ROOT_SUBTREE_ID
     }
 
-    pub fn register_child_subtree(&mut self, parent_subtree_id: SubtreeId, parent_node_id: NodeId, child_id: NodeId, parent_node: &mut Node) -> (SubtreeId, TreeUpdate) {
+    pub fn register_child_subtree(&mut self, parent_subtree_id: SubtreeId, parent_node_id: NodeId, child_id: NodeId, mut parent_node: Node) -> (SubtreeId, TreeUpdate) {
         let subtree_id = self.next_subtree_id();
         assert!(self.subtree_is_registered(parent_subtree_id));
         let grafts_map = self.grafts.get_mut(&parent_subtree_id);
@@ -115,15 +115,13 @@ impl MultiTreeAdapterState {
         let grafts_map = self.grafts.get_mut(&parent_subtree_id).expect("Must be registered");
         // Maybe store the global id for parent_node?
         grafts_map.insert(parent_node_id, subtree_id);
-
-        assert!(self.child_subtrees.insert(subtree_id, SubtreeInfo { parent_subtree_id, parent_node_id, root_node_id: None }).is_none());
         assert!(self.id_map.insert(subtree_id, HashMap::default()).is_none());
         let global_id_for_child = self.map_id(subtree_id, child_id);
-
-        let parent_node_global_id = self.rewrite_node(parent_subtree_id, parent_node_id, parent_node);
+        assert!(self.child_subtrees.insert(subtree_id, SubtreeInfo { parent_subtree_id, parent_node_id, root_node_id: Some(global_id_for_child) }).is_none());
+        let parent_node_global_id = self.rewrite_node(parent_subtree_id, parent_node_id, &mut parent_node);
 
         let mut nodes: Vec<(NodeId, Node)> = Vec::new();
-        parent_node.push_child(global_id_for_child);
+        // parent_node.push_child(global_id_for_child);
         nodes.insert(0, (parent_node_global_id, parent_node.clone()));
         nodes.insert(1, (global_id_for_child, Node::default()));
         let tree_update = TreeUpdate {
@@ -267,7 +265,7 @@ impl MultiTreeAdapterState {
             if let Some(local_nodes_subtree_id) = graft_map.get_mut(&local_node_id) {
                 let child_subtree_info = self.child_subtrees.get(&local_nodes_subtree_id).expect("must be registered");
                 if let Some(root_node_id) = child_subtree_info.root_node_id {
-                    Some(root_node_id);
+                    return Some(root_node_id);
                 }
             }
         }
