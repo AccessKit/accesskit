@@ -1,20 +1,24 @@
 use accesskit::{ActionData, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, TreeUpdate};
-use std::collections::HashMap;
 use std::ptr::NonNull;
 
 const ROOT_SUBTREE_ID: SubtreeId = SubtreeId(0);
+
+#[cfg(test)]
+type Map<K, V> = std::collections::BTreeMap<K, V>;
+#[cfg(not(test))]
+type Map<K, V> = std::collections::HashMap<K, V>;
 
 #[derive(Debug, PartialEq)]
 pub struct MultiTreeAdapterState {
     next_subtree_id: SubtreeId,
     /// [`SubtreeId`] → [`SubtreeInfo`] (or None if the root is not yet known)
-    subtrees: HashMap<SubtreeId, Option<SubtreeInfo>>,
+    subtrees: Map<SubtreeId, Option<SubtreeInfo>>,
     /// (parent subtree [`SubtreeId`], parent-subtree-local [`NodeId`]) → child subtree [`SubtreeId`]
-    grafts: HashMap<(SubtreeId, NodeId), SubtreeId>,
+    grafts: Map<(SubtreeId, NodeId), SubtreeId>,
     /// ([`SubtreeId`], local [`NodeId`]) → global [`NodeId`]
-    id_map: HashMap<(SubtreeId, NodeId), NodeId>,
+    id_map: Map<(SubtreeId, NodeId), NodeId>,
     /// global [`NodeId`] → [`NodeInfo`]
-    node_info: HashMap<NodeId, NodeInfo>,
+    node_info: Map<NodeId, NodeInfo>,
     next_node_id: NodeId,
 }
 
@@ -49,9 +53,9 @@ impl MultiTreeAdapterState {
         Self {
             next_subtree_id: SubtreeId(1),
             subtrees: [(ROOT_SUBTREE_ID, None)].into(),
-            grafts: HashMap::new(),
-            id_map: HashMap::new(),
-            node_info: HashMap::new(),
+            grafts: Map::new(),
+            id_map: Map::new(),
+            node_info: Map::new(),
             next_node_id: NodeId(0),
         }
     }
@@ -284,11 +288,9 @@ impl MultiTreeAdapterState {
 
 #[cfg(test)]
 mod test {
-    use std::{collections::HashMap, hash::Hash};
-
     use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
 
-    use crate::{MultiTreeAdapterState, NodeInfo, ROOT_SUBTREE_ID, SubtreeId, SubtreeInfo};
+    use crate::{Map, MultiTreeAdapterState, NodeInfo, ROOT_SUBTREE_ID, SubtreeId, SubtreeInfo};
 
     fn node(children: impl Into<Vec<NodeId>>) -> Node {
         let children = children.into();
@@ -299,7 +301,7 @@ mod test {
         result
     }
 
-    fn map<K: Eq + Hash, V>(entries: impl Into<HashMap<K, V>>) -> HashMap<K, V> {
+    fn map<K, V>(entries: impl Into<Map<K, V>>) -> Map<K, V> {
         entries.into()
     }
 
