@@ -7,6 +7,7 @@ const ROOT_SUBTREE_ID: SubtreeId = SubtreeId(0);
 pub struct MultiTreeAdapterState {
     next_subtree_id: SubtreeId,
     child_subtrees: HashMap<SubtreeId, SubtreeInfo>,
+    /// parent [`SubtreeId`] → parent local [`NodeId`] → child [`SubtreeId`]
     grafts: HashMap<SubtreeId, HashMap<NodeId, SubtreeId>>,
     id_map: HashMap<SubtreeId, HashMap<NodeId, NodeId>>,
     reverse_id_map: HashMap<NodeId, (SubtreeId, NodeId)>,
@@ -107,14 +108,8 @@ impl MultiTreeAdapterState {
     pub fn register_child_subtree(&mut self, parent_subtree_id: SubtreeId, parent_node_id: NodeId, child_id: NodeId, mut parent_node: Node) -> (SubtreeId, TreeUpdate) {
         let subtree_id = self.next_subtree_id();
         assert!(self.subtree_is_registered(parent_subtree_id));
-        let grafts_map = self.grafts.get_mut(&parent_subtree_id);
-        if grafts_map.is_none() {
-            let map = HashMap::new();
-            self.grafts.insert(parent_subtree_id, map);
-        }
-        let grafts_map = self.grafts.get_mut(&parent_subtree_id).expect("Must be registered");
         // Maybe store the global id for parent_node?
-        grafts_map.insert(parent_node_id, subtree_id);
+        assert!(self.grafts.entry(parent_subtree_id).or_default().insert(parent_node_id, subtree_id).is_none());
         assert!(self.id_map.insert(subtree_id, HashMap::default()).is_none());
         let global_id_for_child = self.map_id(subtree_id, child_id);
         assert!(self.child_subtrees.insert(subtree_id, SubtreeInfo { parent_subtree_id, parent_node_id, root_node_id: global_id_for_child }).is_none());
