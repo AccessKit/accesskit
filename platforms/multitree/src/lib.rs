@@ -13,8 +13,8 @@ pub struct MultiTreeAdapterState {
     grafts: HashMap<(SubtreeId, NodeId), SubtreeId>,
     /// ([`SubtreeId`], local [`NodeId`]) → global [`NodeId`]
     id_map: HashMap<(SubtreeId, NodeId), NodeId>,
-    /// global [`NodeId`] → ([`SubtreeId`], local [`NodeId`])
-    reverse_id_map: HashMap<NodeId, (SubtreeId, NodeId)>,
+    /// global [`NodeId`] → [`NodeInfo`]
+    node_info: HashMap<NodeId, NodeInfo>,
     next_node_id: NodeId,
 }
 
@@ -22,6 +22,22 @@ pub struct MultiTreeAdapterState {
 pub struct SubtreeInfo {
     /// global [`NodeId`] of root node in child subtree
     root_node_id: NodeId,
+}
+
+#[derive(Debug, PartialEq)]
+struct NodeInfo {
+    /// reverse mapping: [`SubtreeId`]
+    subtree_id: SubtreeId,
+    /// reverse mapping: local [`NodeId`]
+    local_node_id: NodeId,
+}
+impl NodeInfo {
+    fn new(subtree_id: SubtreeId, local_node_id: NodeId) -> Self {
+        Self {
+            subtree_id,
+            local_node_id,
+        }
+    }
 }
 
 #[repr(transparent)]
@@ -35,7 +51,7 @@ impl MultiTreeAdapterState {
             child_subtrees: HashMap::new(),
             grafts: HashMap::new(),
             id_map: HashMap::new(),
-            reverse_id_map: HashMap::new(),
+            node_info: HashMap::new(),
             next_node_id: NodeId(0),
         }
     }
@@ -80,14 +96,12 @@ impl MultiTreeAdapterState {
             fn do_action(&mut self, mut request: ActionRequest) {
                 let adapter_state = unsafe { self.adapter_state.as_ref() };
                 // Map from the global node id to the local node id and forward to the provided handlers
-                request.target = adapter_state.reverse_map_id(request.target).1;
+                request.target = adapter_state.node_info(request.target).local_node_id;
                 if let Some(data) = request.data.as_mut() {
                     match data {
                         ActionData::SetTextSelection(selection) => {
-                            let new_anchor = adapter_state.reverse_map_id(selection.anchor.node).1;
-                            selection.anchor.node = new_anchor;
-                            let new_focus = adapter_state.reverse_map_id(selection.focus.node).1;
-                            selection.focus.node = new_focus;
+                            selection.anchor.node = adapter_state.node_info(selection.anchor.node).local_node_id;
+                            selection.focus.node = adapter_state.node_info(selection.focus.node).local_node_id;
                         }
                         _ => {}
                     }
@@ -207,12 +221,17 @@ impl MultiTreeAdapterState {
         }
         let result = self.next_node_id();
         assert!(self.id_map.insert((subtree_id, node_id), result).is_none());
-        assert!(self.reverse_id_map.insert(result, (subtree_id, node_id)).is_none());
+        assert!(self.node_info.insert(result, NodeInfo::new(subtree_id, node_id)).is_none());
         result
     }
 
-    fn reverse_map_id(&self, global_node_id: NodeId) -> (SubtreeId, NodeId) {
-        *self.reverse_id_map.get(&global_node_id).expect("Node not registered")
+    fn node_info(&self, global_node_id: NodeId) -> &NodeInfo {
+        self.node_info.get(&global_node_id).expect("Node not registered")
+    }
+
+    #[expect(unused)]
+    fn node_info_mut(&mut self, global_node_id: NodeId) -> &mut NodeInfo {
+        self.node_info.get_mut(&global_node_id).expect("Node not registered")
     }
 
     fn map_node_id_vec_property(&mut self, subtree_id: SubtreeId, node_ids: Vec<NodeId>, setter: impl FnOnce(Vec<NodeId>)) {
@@ -265,7 +284,7 @@ mod test {
 
     use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
 
-    use crate::{MultiTreeAdapterState, ROOT_SUBTREE_ID, SubtreeId, SubtreeInfo};
+    use crate::{MultiTreeAdapterState, NodeInfo, ROOT_SUBTREE_ID, SubtreeId, SubtreeInfo};
 
     fn node(children: impl Into<Vec<NodeId>>) -> Node {
         let children = children.into();
@@ -372,13 +391,13 @@ mod test {
                     ((child_subtree_id, NodeId(27)), NodeId(4)),
                     ((child_subtree_id, NodeId(26)), NodeId(5)),
                 ]),
-                reverse_id_map: map([
-                    (NodeId(0), (ROOT_SUBTREE_ID, NodeId(13))),
-                    (NodeId(1), (ROOT_SUBTREE_ID, NodeId(15))),
-                    (NodeId(2), (ROOT_SUBTREE_ID, NodeId(14))),
-                    (NodeId(3), (child_subtree_id, NodeId(25))),
-                    (NodeId(4), (child_subtree_id, NodeId(27))),
-                    (NodeId(5), (child_subtree_id, NodeId(26))),
+                node_info: map([
+                    (NodeId(0), NodeInfo::new(ROOT_SUBTREE_ID, NodeId(13))),
+                    (NodeId(1), NodeInfo::new(ROOT_SUBTREE_ID, NodeId(15))),
+                    (NodeId(2), NodeInfo::new(ROOT_SUBTREE_ID, NodeId(14))),
+                    (NodeId(3), NodeInfo::new(child_subtree_id, NodeId(25))),
+                    (NodeId(4), NodeInfo::new(child_subtree_id, NodeId(27))),
+                    (NodeId(5), NodeInfo::new(child_subtree_id, NodeId(26))),
                 ]),
                 next_node_id: NodeId(6),
             },
