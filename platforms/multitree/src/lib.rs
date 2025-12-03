@@ -5,8 +5,12 @@ const ROOT_SUBTREE_ID: SubtreeId = SubtreeId(0);
 
 #[cfg(test)]
 type Map<K, V> = std::collections::BTreeMap<K, V>;
+#[cfg(test)]
+type Set<V> = std::collections::BTreeSet<V>;
 #[cfg(not(test))]
 type Map<K, V> = std::collections::HashMap<K, V>;
+#[cfg(not(test))]
+type Set<V> = std::collections::HashSet<V>;
 
 #[derive(Debug, PartialEq)]
 pub struct MultiTreeAdapterState {
@@ -34,12 +38,23 @@ struct NodeInfo {
     subtree_id: SubtreeId,
     /// reverse mapping: local [`NodeId`]
     local_node_id: NodeId,
+    /// global [`NodeId`] of children
+    children: Vec<NodeId>,
 }
 impl NodeInfo {
     fn new(subtree_id: SubtreeId, local_node_id: NodeId) -> Self {
         Self {
             subtree_id,
             local_node_id,
+            children: vec![],
+        }
+    }
+    #[cfg(test)]
+    fn with_children(subtree_id: SubtreeId, local_node_id: NodeId, children: impl Into<Vec<NodeId>>) -> Self {
+        Self {
+            subtree_id,
+            local_node_id,
+            children: children.into(),
         }
     }
 }
@@ -152,14 +167,34 @@ impl MultiTreeAdapterState {
     }
 
     pub fn rewrite_tree_update(&mut self, subtree_id: SubtreeId, mut subtree_update: TreeUpdate) -> TreeUpdate {
+        // global [`NodeId`] of nodes that are no longer referenced.
+        // initially this is all of the nodes that were previously in the subtree.
+        // then we remove nodes, as we prove that they are still referenced.
+        let mut garbage = if let Some(old_root_node_global_id) = self
+            .subtrees
+            .get(&subtree_id)
+            .expect("Must be registered")
+            .as_ref()
+            .map(|info| info.root_node_id)
+        {
+            Set::from_iter(self.descendants(old_root_node_global_id))
+        } else {
+            Set::new()
+        };
+
         if let Some(tree) = subtree_update.tree.as_mut() {
-            let global_id_of_root_of_subtree = self.map_id(subtree_id, tree.root);
-            tree.root = global_id_of_root_of_subtree;
+            let new_root_node_global_id = self.map_id(subtree_id, tree.root);
+            tree.root = new_root_node_global_id;
             let subtree_info = self.subtrees.get_mut(&subtree_id).expect("Must be registered");
             if let Some(subtree_info) = subtree_info {
-                subtree_info.root_node_id = global_id_of_root_of_subtree;
+                let old_root_node_global_id = subtree_info.root_node_id;
+                if new_root_node_global_id != old_root_node_global_id {
+                    subtree_info.root_node_id = new_root_node_global_id;
+                    // FIXME we also need to update the parent of the root node we were grafted into,
+                    // but this means we need to retain the parent node in its entirety :(
+                }
             } else {
-                *subtree_info = Some(SubtreeInfo { root_node_id: global_id_of_root_of_subtree });
+                *subtree_info = Some(SubtreeInfo { root_node_id: new_root_node_global_id });
             }
             if subtree_id != self.root_subtree_id() {
                 subtree_update.tree = None;
@@ -184,16 +219,32 @@ impl MultiTreeAdapterState {
         // case it’s the focused node of the child subtree being grafted there (recursively).
         subtree_update.focus = self.map_id(subtree_id, subtree_update.focus);
         // TODO: rewrite the root correctly
+        // TODO We need to ensure that we put the subtree root node id as a child of the parent node id.
         for (node_id, node) in subtree_update.nodes.iter_mut() {
             *node_id = self.rewrite_node(subtree_id, *node_id, node);
         }
 
-        // TODO We need to ensure that we put the subtree root node id as a child of the parent node id.
+        // Now compute the final set of garbage [`NodeId`], and destroy those nodes.
+        if let Some(root_node_global_id) = self
+            .subtrees
+            .get(&subtree_id)
+            .expect("Must be registered")
+            .as_ref()
+            .map(|info| info.root_node_id)
+        {
+            for child_node_global_id in self.descendants(root_node_global_id) {
+                garbage.remove(&child_node_global_id);
+            }
+        }
+        for garbage_node_global_id in dbg!(garbage) {
+            let node_info = self.node_info.remove(&garbage_node_global_id).expect("Node must have info");
+            self.id_map.remove(&(node_info.subtree_id, node_info.local_node_id));
+        }
 
         subtree_update
     }
 
-    pub fn rewrite_node(&mut self, subtree_id: SubtreeId, node_id: NodeId, node: &mut Node) -> NodeId {
+    fn rewrite_node(&mut self, subtree_id: SubtreeId, node_id: NodeId, node: &mut Node) -> NodeId {
         let grafted_node_id: Option<NodeId> = self.get_root_id_for_grafted_subtree(subtree_id, node_id);
         let global_node_id = self.map_id(subtree_id, node_id);
         // Map ids of all node references.
@@ -220,6 +271,7 @@ impl MultiTreeAdapterState {
         if let Some(grafted_node_id) = grafted_node_id {
             node.push_child(grafted_node_id);
         }
+        self.node_info_mut(global_node_id).children = node.children().to_owned();
         global_node_id
     }
 
@@ -237,9 +289,12 @@ impl MultiTreeAdapterState {
         self.node_info.get(&global_node_id).expect("Node not registered")
     }
 
-    #[expect(unused)]
     fn node_info_mut(&mut self, global_node_id: NodeId) -> &mut NodeInfo {
         self.node_info.get_mut(&global_node_id).expect("Node not registered")
+    }
+
+    fn descendants(&self, global_node_id: NodeId) -> Descendants<'_> {
+        Descendants { state: self, stack: vec![global_node_id] }
     }
 
     fn map_node_id_vec_property(&mut self, subtree_id: SubtreeId, node_ids: Vec<NodeId>, setter: impl FnOnce(Vec<NodeId>)) {
@@ -286,6 +341,21 @@ impl MultiTreeAdapterState {
     }
 }
 
+/// Iterator over global [`NodeId`] of descendants.
+struct Descendants<'state> {
+    state: &'state MultiTreeAdapterState,
+    /// next global [`NodeId`] to explore
+    stack: Vec<NodeId>,
+}
+impl Iterator for Descendants<'_> {
+    type Item = NodeId;
+    fn next(&mut self) -> Option<Self::Item> {
+        let Some(result) = self.stack.pop() else { return None };
+        self.stack.extend_from_slice(&self.state.node_info(result).children);
+        Some(result)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
@@ -313,6 +383,7 @@ mod test {
     fn test_update() {
         let mut multitree = MultiTreeAdapterState::new();
         let graft_node = node([]);
+        // Check the initial root subtree update.
         assert_eq!(
             multitree.rewrite_tree_update(ROOT_SUBTREE_ID, TreeUpdate {
                 nodes: vec![
@@ -341,6 +412,7 @@ mod test {
                 focus: NodeId(0),
             },
         );
+        // Register the child subtree, and check the implicit update.
         let (child_subtree_id, tree_update) = multitree.register_child_subtree(ROOT_SUBTREE_ID, NodeId(15), NodeId(25), graft_node);
         assert_eq!(child_subtree_id, SubtreeId(1));
         assert_eq!(
@@ -355,6 +427,7 @@ mod test {
                 focus: NodeId(3),
             },
         );
+        // Check the initial child subtree update.
         assert_eq!(
             multitree.rewrite_tree_update(child_subtree_id, TreeUpdate {
                 nodes: vec![
@@ -379,13 +452,39 @@ mod test {
                 focus: NodeId(3),
             },
         );
+        // Check a subsequent child subtree update that entirely replaces the tree.
+        assert_eq!(
+            multitree.rewrite_tree_update(child_subtree_id, TreeUpdate {
+                nodes: vec![
+                    (NodeId(35), node([NodeId(37), NodeId(36)])),
+                    (NodeId(37), node([])),
+                    (NodeId(36), node([])),
+                ],
+                tree: Some(Tree {
+                    root: NodeId(35),
+                    toolkit_name: None,
+                    toolkit_version: None,
+                }),
+                focus: NodeId(35),
+            }),
+            TreeUpdate {
+                nodes: vec![
+                    (NodeId(6), node([NodeId(7), NodeId(8)])),
+                    (NodeId(7), node([])),
+                    (NodeId(8), node([])),
+                ],
+                tree: None,
+                focus: NodeId(6),
+            },
+        );
+        // Check the final state of the instance.
         assert_eq!(
             multitree,
             MultiTreeAdapterState {
                 next_subtree_id: SubtreeId(2),
                 subtrees: map([
                     (ROOT_SUBTREE_ID, Some(subtree_info(NodeId(0)))),
-                    (child_subtree_id, Some(subtree_info(NodeId(3)))),
+                    (child_subtree_id, Some(subtree_info(NodeId(6)))),
                 ]),
                 grafts: map([
                     ((ROOT_SUBTREE_ID, NodeId(15)), child_subtree_id),
@@ -394,19 +493,21 @@ mod test {
                     ((ROOT_SUBTREE_ID, NodeId(13)), NodeId(0)),
                     ((ROOT_SUBTREE_ID, NodeId(15)), NodeId(1)),
                     ((ROOT_SUBTREE_ID, NodeId(14)), NodeId(2)),
-                    ((child_subtree_id, NodeId(25)), NodeId(3)),
-                    ((child_subtree_id, NodeId(27)), NodeId(4)),
-                    ((child_subtree_id, NodeId(26)), NodeId(5)),
+                    ((child_subtree_id, NodeId(35)), NodeId(6)),
+                    ((child_subtree_id, NodeId(37)), NodeId(7)),
+                    ((child_subtree_id, NodeId(36)), NodeId(8)),
                 ]),
                 node_info: map([
-                    (NodeId(0), NodeInfo::new(ROOT_SUBTREE_ID, NodeId(13))),
-                    (NodeId(1), NodeInfo::new(ROOT_SUBTREE_ID, NodeId(15))),
+                    (NodeId(0), NodeInfo::with_children(ROOT_SUBTREE_ID, NodeId(13), [NodeId(1), NodeId(2)])),
+                    // FIXME this should have child NodeId(6), not NodeId(3),
+                    // but we don’t emit an update for the parent of a changed graft node yet
+                    (NodeId(1), NodeInfo::with_children(ROOT_SUBTREE_ID, NodeId(15), [NodeId(3)])),
                     (NodeId(2), NodeInfo::new(ROOT_SUBTREE_ID, NodeId(14))),
-                    (NodeId(3), NodeInfo::new(child_subtree_id, NodeId(25))),
-                    (NodeId(4), NodeInfo::new(child_subtree_id, NodeId(27))),
-                    (NodeId(5), NodeInfo::new(child_subtree_id, NodeId(26))),
+                    (NodeId(6), NodeInfo::with_children(child_subtree_id, NodeId(35), [NodeId(7), NodeId(8)])),
+                    (NodeId(7), NodeInfo::new(child_subtree_id, NodeId(37))),
+                    (NodeId(8), NodeInfo::new(child_subtree_id, NodeId(36))),
                 ]),
-                next_node_id: NodeId(6),
+                next_node_id: NodeId(9),
             },
         );
     }
