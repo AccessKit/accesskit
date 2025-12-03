@@ -9,7 +9,9 @@ pub struct MultiTreeAdapterState {
     child_subtrees: HashMap<SubtreeId, SubtreeInfo>,
     /// parent [`SubtreeId`] → parent local [`NodeId`] → child [`SubtreeId`]
     grafts: HashMap<SubtreeId, HashMap<NodeId, SubtreeId>>,
+    /// [`SubtreeId`] → local [`NodeId`] → global [`NodeId`]
     id_map: HashMap<SubtreeId, HashMap<NodeId, NodeId>>,
+    /// global [`NodeId`] → ([`SubtreeId`], local [`NodeId`])
     reverse_id_map: HashMap<NodeId, (SubtreeId, NodeId)>,
     next_node_id: NodeId,
 }
