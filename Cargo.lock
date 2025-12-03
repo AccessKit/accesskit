@@ -71,7 +71,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "accesskit_multi_tree"
+name = "accesskit_multitree"
 version = "0.1.0"
 dependencies = [
  "accesskit",

@@ -1,12 +1,12 @@
 [workspace]
 resolver = "2"
 members = [
-    "accesskit_multi_tree",
     "common",
     "consumer",
     "platforms/android",
     "platforms/atspi-common",
     "platforms/macos",
+    "platforms/multitree",
     "platforms/unix",
     "platforms/windows",
     "platforms/winit",
