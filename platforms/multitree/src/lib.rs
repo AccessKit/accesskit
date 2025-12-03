@@ -7,11 +7,12 @@ const ROOT_SUBTREE_ID: SubtreeId = SubtreeId(0);
 #[derive(Debug, PartialEq)]
 pub struct MultiTreeAdapterState {
     next_subtree_id: SubtreeId,
+    /// child subtree [`SubtreeId`] → child subtree [`SubtreeInfo`]
     child_subtrees: HashMap<SubtreeId, SubtreeInfo>,
-    /// parent [`SubtreeId`] → parent local [`NodeId`] → child [`SubtreeId`]
-    grafts: HashMap<SubtreeId, HashMap<NodeId, SubtreeId>>,
-    /// [`SubtreeId`] → local [`NodeId`] → global [`NodeId`]
-    id_map: HashMap<SubtreeId, HashMap<NodeId, NodeId>>,
+    /// (parent subtree [`SubtreeId`], parent-subtree-local [`NodeId`]) → child subtree [`SubtreeId`]
+    grafts: HashMap<(SubtreeId, NodeId), SubtreeId>,
+    /// ([`SubtreeId`], local [`NodeId`]) → global [`NodeId`]
+    id_map: HashMap<(SubtreeId, NodeId), NodeId>,
     /// global [`NodeId`] → ([`SubtreeId`], local [`NodeId`])
     reverse_id_map: HashMap<NodeId, (SubtreeId, NodeId)>,
     next_node_id: NodeId,
@@ -19,11 +20,8 @@ pub struct MultiTreeAdapterState {
 
 #[derive(Debug, PartialEq)]
 pub struct SubtreeInfo {
-    parent_subtree_id: SubtreeId,
-    // Local Id to the parent tree
-    parent_node_id: NodeId,
-    // Global id of the root of the child subtree
-    root_node_id: NodeId
+    /// global [`NodeId`] of root node in child subtree
+    root_node_id: NodeId,
 }
 
 #[repr(transparent)]
@@ -32,17 +30,14 @@ pub struct SubtreeId(u64);
 
 impl MultiTreeAdapterState {
     pub fn new() -> Self {
-        let mut result = MultiTreeAdapterState {
+        Self {
             next_subtree_id: SubtreeId(1),
             child_subtrees: HashMap::new(),
             grafts: HashMap::new(),
             id_map: HashMap::new(),
             reverse_id_map: HashMap::new(),
             next_node_id: NodeId(0),
-        };
-
-        assert!(result.id_map.insert(result.root_subtree_id(), HashMap::default()).is_none());
-        result
+        }
     }
 
     pub fn wrap_activation_handler(
@@ -113,10 +108,9 @@ impl MultiTreeAdapterState {
         let subtree_id = self.next_subtree_id();
         assert!(self.subtree_is_registered(parent_subtree_id));
         // Maybe store the global id for parent_node?
-        assert!(self.grafts.entry(parent_subtree_id).or_default().insert(parent_node_id, subtree_id).is_none());
-        assert!(self.id_map.insert(subtree_id, HashMap::default()).is_none());
+        assert!(self.grafts.insert((parent_subtree_id, parent_node_id), subtree_id).is_none());
         let global_id_for_child = self.map_id(subtree_id, child_id);
-        assert!(self.child_subtrees.insert(subtree_id, SubtreeInfo { parent_subtree_id, parent_node_id, root_node_id: global_id_for_child }).is_none());
+        assert!(self.child_subtrees.insert(subtree_id, SubtreeInfo { root_node_id: global_id_for_child }).is_none());
         let parent_node_global_id = self.rewrite_node(parent_subtree_id, parent_node_id, &mut parent_node);
 
         let mut nodes: Vec<(NodeId, Node)> = Vec::new();
@@ -208,13 +202,11 @@ impl MultiTreeAdapterState {
     }
 
     fn map_id(&mut self, subtree_id: SubtreeId, node_id: NodeId) -> NodeId {
-        let map = self.id_map.get_mut(&subtree_id).expect("Subtree not registered");
-        if let Some(result) = map.get(&node_id) {
+        if let Some(result) = self.id_map.get(&(subtree_id, node_id)) {
             return *result;
         }
         let result = self.next_node_id();
-        let map = self.id_map.get_mut(&subtree_id).expect("Subtree not registered");
-        assert!(map.insert(node_id, result).is_none());
+        assert!(self.id_map.insert((subtree_id, node_id), result).is_none());
         assert!(self.reverse_id_map.insert(result, (subtree_id, node_id)).is_none());
         result
     }
@@ -259,11 +251,9 @@ impl MultiTreeAdapterState {
     }
 
     fn get_root_id_for_grafted_subtree(&mut self, subtree_id: SubtreeId, local_node_id: NodeId) -> Option<NodeId> {
-        if let Some(graft_map) = self.grafts.get_mut(&subtree_id) {
-            if let Some(local_nodes_subtree_id) = graft_map.get_mut(&local_node_id) {
-                let child_subtree_info = self.child_subtrees.get(&local_nodes_subtree_id).expect("must be registered");
-                return Some(child_subtree_info.root_node_id);
-            }
+        if let Some(local_nodes_subtree_id) = self.grafts.get(&(subtree_id, local_node_id)) {
+            let child_subtree_info = self.child_subtrees.get(&local_nodes_subtree_id).expect("must be registered");
+            return Some(child_subtree_info.root_node_id);
         }
         None
     }
@@ -290,8 +280,8 @@ mod test {
         entries.into()
     }
 
-    fn subtree_info(parent_subtree_id: SubtreeId, parent_node_id: NodeId, root_node_id: NodeId) -> SubtreeInfo {
-        SubtreeInfo { parent_subtree_id, parent_node_id, root_node_id }
+    fn subtree_info(root_node_id: NodeId) -> SubtreeInfo {
+        SubtreeInfo { root_node_id }
     }
 
     #[test]
@@ -369,24 +359,18 @@ mod test {
             MultiTreeAdapterState {
                 next_subtree_id: SubtreeId(2),
                 child_subtrees: map([
-                    (child_subtree_id, subtree_info(ROOT_SUBTREE_ID, NodeId(15), NodeId(3))),
+                    (child_subtree_id, subtree_info(NodeId(3))),
                 ]),
                 grafts: map([
-                    (ROOT_SUBTREE_ID, map([
-                        (NodeId(15), child_subtree_id),
-                    ])),
+                    ((ROOT_SUBTREE_ID, NodeId(15)), child_subtree_id),
                 ]),
                 id_map: map([
-                    (ROOT_SUBTREE_ID, map([
-                        (NodeId(13), NodeId(0)),
-                        (NodeId(15), NodeId(1)),
-                        (NodeId(14), NodeId(2)),
-                    ])),
-                    (child_subtree_id, map([
-                        (NodeId(25), NodeId(3)),
-                        (NodeId(27), NodeId(4)),
-                        (NodeId(26), NodeId(5)),
-                    ])),
+                    ((ROOT_SUBTREE_ID, NodeId(13)), NodeId(0)),
+                    ((ROOT_SUBTREE_ID, NodeId(15)), NodeId(1)),
+                    ((ROOT_SUBTREE_ID, NodeId(14)), NodeId(2)),
+                    ((child_subtree_id, NodeId(25)), NodeId(3)),
+                    ((child_subtree_id, NodeId(27)), NodeId(4)),
+                    ((child_subtree_id, NodeId(26)), NodeId(5)),
                 ]),
                 reverse_id_map: map([
                     (NodeId(0), (ROOT_SUBTREE_ID, NodeId(13))),
