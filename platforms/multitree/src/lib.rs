@@ -121,7 +121,6 @@ impl MultiTreeAdapterState {
         let parent_node_global_id = self.rewrite_node(parent_subtree_id, parent_node_id, &mut parent_node);
 
         let mut nodes: Vec<(NodeId, Node)> = Vec::new();
-        // parent_node.push_child(global_id_for_child);
         nodes.insert(0, (parent_node_global_id, parent_node.clone()));
         nodes.insert(1, (global_id_for_child, Node::default()));
         let tree_update = TreeUpdate {
@@ -268,5 +267,93 @@ impl MultiTreeAdapterState {
             }
         }
         None
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
+
+    use crate::{MultiTreeAdapterState, ROOT_SUBTREE_ID, SubtreeId};
+
+    fn node(children: impl Into<Vec<NodeId>>) -> Node {
+        let children = children.into();
+        let mut result = Node::new(Role::Unknown);
+        if !children.is_empty() {
+            result.set_children(children);
+        }
+        result
+    }
+
+    #[test]
+    fn test_update() {
+        let mut multitree = MultiTreeAdapterState::new();
+        let graft_node = node([]);
+        assert_eq!(
+            multitree.rewrite_tree_update(ROOT_SUBTREE_ID, TreeUpdate {
+                nodes: vec![
+                    (NodeId(13), node([NodeId(15), NodeId(14)])),
+                    (NodeId(15), graft_node.clone()),
+                    (NodeId(14), node([])),
+                ],
+                tree: Some(Tree {
+                    root: NodeId(13),
+                    toolkit_name: None,
+                    toolkit_version: None,
+                }),
+                focus: NodeId(13),
+            }),
+            TreeUpdate {
+                nodes: vec![
+                    (NodeId(0), node([NodeId(1), NodeId(2)])),
+                    (NodeId(1), node([])),
+                    (NodeId(2), node([])),
+                ],
+                tree: Some(Tree {
+                    root: NodeId(0),
+                    toolkit_name: None,
+                    toolkit_version: None,
+                }),
+                focus: NodeId(0),
+            },
+        );
+        let (subtree_id, tree_update) = multitree.register_child_subtree(ROOT_SUBTREE_ID, NodeId(15), NodeId(25), graft_node);
+        assert_eq!(subtree_id, SubtreeId(1));
+        assert_eq!(
+            tree_update,
+            TreeUpdate {
+                nodes: vec![
+                    (NodeId(1), node([NodeId(3)])),
+                    (NodeId(3), node([])),
+                ],
+                tree: None,
+                // FIXME: assertion failed: actual #3, expected #0
+                focus: NodeId(3),
+            },
+        );
+        assert_eq!(
+            multitree.rewrite_tree_update(subtree_id, TreeUpdate {
+                nodes: vec![
+                    (NodeId(25), node([NodeId(27), NodeId(26)])),
+                    (NodeId(27), node([])),
+                    (NodeId(26), node([])),
+                ],
+                tree: Some(Tree {
+                    root: NodeId(25),
+                    toolkit_name: None,
+                    toolkit_version: None,
+                }),
+                focus: NodeId(25),
+            }),
+            TreeUpdate {
+                nodes: vec![
+                    (NodeId(3), node([NodeId(4), NodeId(5)])),
+                    (NodeId(4), node([])),
+                    (NodeId(5), node([])),
+                ],
+                tree: None,
+                focus: NodeId(3),
+            },
+        );
     }
 }
