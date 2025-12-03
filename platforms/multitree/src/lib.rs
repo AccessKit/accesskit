@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::atomic::AtomicUsize};
+use std::collections::HashMap;
 
 use accesskit::{NodeId, TreeUpdate};
 
@@ -62,6 +62,7 @@ impl Adapter {
         subtree_id
     }
 
+    #[expect(unused)]
     pub fn unregister_subtree(&mut self, subtree_id: SubtreeId) {
         // Assert not root subtree id
         // Remove from subtrees
