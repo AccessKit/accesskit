@@ -4,6 +4,7 @@ use std::ptr::NonNull;
 
 const ROOT_SUBTREE_ID: SubtreeId = SubtreeId(0);
 
+#[derive(Debug, PartialEq)]
 pub struct MultiTreeAdapterState {
     next_subtree_id: SubtreeId,
     child_subtrees: HashMap<SubtreeId, SubtreeInfo>,
@@ -16,6 +17,7 @@ pub struct MultiTreeAdapterState {
     next_node_id: NodeId,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct SubtreeInfo {
     parent_subtree_id: SubtreeId,
     // Local Id to the parent tree
@@ -269,9 +271,11 @@ impl MultiTreeAdapterState {
 
 #[cfg(test)]
 mod test {
+    use std::{collections::HashMap, hash::Hash};
+
     use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
 
-    use crate::{MultiTreeAdapterState, ROOT_SUBTREE_ID, SubtreeId};
+    use crate::{MultiTreeAdapterState, ROOT_SUBTREE_ID, SubtreeId, SubtreeInfo};
 
     fn node(children: impl Into<Vec<NodeId>>) -> Node {
         let children = children.into();
@@ -280,6 +284,14 @@ mod test {
             result.set_children(children);
         }
         result
+    }
+
+    fn map<K: Eq + Hash, V>(entries: impl Into<HashMap<K, V>>) -> HashMap<K, V> {
+        entries.into()
+    }
+
+    fn subtree_info(parent_subtree_id: SubtreeId, parent_node_id: NodeId, root_node_id: NodeId) -> SubtreeInfo {
+        SubtreeInfo { parent_subtree_id, parent_node_id, root_node_id }
     }
 
     #[test]
@@ -314,8 +326,8 @@ mod test {
                 focus: NodeId(0),
             },
         );
-        let (subtree_id, tree_update) = multitree.register_child_subtree(ROOT_SUBTREE_ID, NodeId(15), NodeId(25), graft_node);
-        assert_eq!(subtree_id, SubtreeId(1));
+        let (child_subtree_id, tree_update) = multitree.register_child_subtree(ROOT_SUBTREE_ID, NodeId(15), NodeId(25), graft_node);
+        assert_eq!(child_subtree_id, SubtreeId(1));
         assert_eq!(
             tree_update,
             TreeUpdate {
@@ -329,7 +341,7 @@ mod test {
             },
         );
         assert_eq!(
-            multitree.rewrite_tree_update(subtree_id, TreeUpdate {
+            multitree.rewrite_tree_update(child_subtree_id, TreeUpdate {
                 nodes: vec![
                     (NodeId(25), node([NodeId(27), NodeId(26)])),
                     (NodeId(27), node([])),
@@ -350,6 +362,41 @@ mod test {
                 ],
                 tree: None,
                 focus: NodeId(3),
+            },
+        );
+        assert_eq!(
+            multitree,
+            MultiTreeAdapterState {
+                next_subtree_id: SubtreeId(2),
+                child_subtrees: map([
+                    (child_subtree_id, subtree_info(ROOT_SUBTREE_ID, NodeId(15), NodeId(3))),
+                ]),
+                grafts: map([
+                    (ROOT_SUBTREE_ID, map([
+                        (NodeId(15), child_subtree_id),
+                    ])),
+                ]),
+                id_map: map([
+                    (ROOT_SUBTREE_ID, map([
+                        (NodeId(13), NodeId(0)),
+                        (NodeId(15), NodeId(1)),
+                        (NodeId(14), NodeId(2)),
+                    ])),
+                    (child_subtree_id, map([
+                        (NodeId(25), NodeId(3)),
+                        (NodeId(27), NodeId(4)),
+                        (NodeId(26), NodeId(5)),
+                    ])),
+                ]),
+                reverse_id_map: map([
+                    (NodeId(0), (ROOT_SUBTREE_ID, NodeId(13))),
+                    (NodeId(1), (ROOT_SUBTREE_ID, NodeId(15))),
+                    (NodeId(2), (ROOT_SUBTREE_ID, NodeId(14))),
+                    (NodeId(3), (child_subtree_id, NodeId(25))),
+                    (NodeId(4), (child_subtree_id, NodeId(27))),
+                    (NodeId(5), (child_subtree_id, NodeId(26))),
+                ]),
+                next_node_id: NodeId(6),
             },
         );
     }
