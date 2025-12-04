@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "common",
     "consumer",
+    "platforms/adapter",
     "platforms/android",
     "platforms/atspi-common",
     "platforms/macos",
