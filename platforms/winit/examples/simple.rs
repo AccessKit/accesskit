@@ -1,7 +1,7 @@
 #[path = "util/fill.rs"]
 mod fill;
 
-use accesskit::{Action, ActionRequest, Live, Node, NodeId, Rect, Role, Tree, TreeUpdate};
+use accesskit::{Action, ActionRequest, Live, Node, NodeId, Rect, Role, Tree, TreeId, TreeUpdate};
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
 use std::error::Error;
 use winit::{
@@ -91,6 +91,7 @@ impl UiState {
                 (BUTTON_2_ID, button_2),
             ],
             tree: Some(tree),
+            tree_id: TreeId::ROOT,
             focus: self.focus,
         };
         if let Some(announcement) = &self.announcement {
@@ -106,6 +107,7 @@ impl UiState {
         adapter.update_if_active(|| TreeUpdate {
             nodes: vec![],
             tree: None,
+            tree_id: TreeId::ROOT,
             focus,
         });
     }
@@ -123,6 +125,7 @@ impl UiState {
             TreeUpdate {
                 nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],
                 tree: None,
+                tree_id: TreeId::ROOT,
                 focus: self.focus,
             }
         });
@@ -235,14 +238,18 @@ impl ApplicationHandler<AccessKitEvent> for Application {
             AccessKitWindowEvent::InitialTreeRequested => {
                 adapter.update_if_active(|| state.build_initial_tree());
             }
-            AccessKitWindowEvent::ActionRequested(ActionRequest { action, target, .. }) => {
-                if target == BUTTON_1_ID || target == BUTTON_2_ID {
+            AccessKitWindowEvent::ActionRequested(ActionRequest {
+                action,
+                target_node,
+                ..
+            }) => {
+                if target_node == BUTTON_1_ID || target_node == BUTTON_2_ID {
                     match action {
                         Action::Focus => {
-                            state.set_focus(adapter, target);
+                            state.set_focus(adapter, target_node);
                         }
                         Action::Click => {
-                            state.press_button(adapter, target);
+                            state.press_button(adapter, target_node);
                         }
                         _ => (),
                     }

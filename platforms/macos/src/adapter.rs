@@ -11,8 +11,8 @@ use crate::{
     util::*,
 };
 use accesskit::{
-    ActionHandler, ActionRequest, ActivationHandler, Node as NodeProvider, NodeId, Role,
-    Tree as TreeData, TreeUpdate,
+    ActionHandler, ActionRequest, ActivationHandler, Node as NodeProvider, NodeId as LocalNodeId,
+    Role, Tree as TreeData, TreeId, TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Tree};
 use objc2::rc::{Id, WeakId};
@@ -21,7 +21,7 @@ use objc2_foundation::{MainThreadMarker, NSArray, NSObject, NSPoint};
 use std::fmt::{Debug, Formatter};
 use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
-const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
+const PLACEHOLDER_ROOT_ID: LocalNodeId = LocalNodeId(0);
 
 enum State {
     Inactive {
@@ -196,6 +196,7 @@ impl Adapter {
                     let placeholder_update = TreeUpdate {
                         nodes: vec![(PLACEHOLDER_ROOT_ID, NodeProvider::new(Role::Window))],
                         tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
+                        tree_id: TreeId::ROOT,
                         focus: PLACEHOLDER_ROOT_ID,
                     };
                     let placeholder_tree = Tree::new(placeholder_update, false);

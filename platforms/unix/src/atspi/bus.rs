@@ -8,9 +8,8 @@ use crate::{
     context::get_or_init_app_context,
     executor::{Executor, Task},
 };
-use accesskit::NodeId;
 use accesskit_atspi_common::{
-    NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot, Property, WindowEvent,
+    NodeId, NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot, Property, WindowEvent,
 };
 use atspi::{
     events::EventBodyBorrowed,
