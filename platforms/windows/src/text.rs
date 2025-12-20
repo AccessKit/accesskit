@@ -446,6 +446,18 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
                 }
                 Ok(value.0.into())
             }),
+            UIA_CultureAttributeId => {
+                self.read(|range| Ok(Variant::from(range.language().map(LocaleName)).into()))
+            }
+            UIA_FontNameAttributeId => {
+                self.read(|range| Ok(Variant::from(range.font_family()).into()))
+            }
+            UIA_FontSizeAttributeId => {
+                self.read(|range| Ok(Variant::from(range.font_size()).into()))
+            }
+            UIA_FontWeightAttributeId => self.read(|range| {
+                Ok(Variant::from(range.font_weight().map(|value| value as i32)).into())
+            }),
             // TODO: implement more attributes
             _ => {
                 let value = unsafe { UiaGetReservedNotSupportedValue() }.unwrap();

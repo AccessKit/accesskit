@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::Point;
-use accesskit_consumer::TreeState;
+use accesskit_consumer::{TextRangePropertyValue, TreeState};
 use std::{
     fmt::{self, Write},
     mem::ManuallyDrop,
@@ -155,6 +155,17 @@ impl From<bool> for Variant {
 impl<T: Into<Variant>> From<Option<T>> for Variant {
     fn from(value: Option<T>) -> Self {
         value.map_or_else(Self::empty, T::into)
+    }
+}
+
+impl<T: Into<Variant> + std::fmt::Debug + PartialEq> From<TextRangePropertyValue<T>> for Variant {
+    fn from(value: TextRangePropertyValue<T>) -> Self {
+        match value {
+            TextRangePropertyValue::Single(value) => value.into(),
+            TextRangePropertyValue::Mixed => unsafe { UiaGetReservedMixedAttributeValue() }
+                .unwrap()
+                .into(),
+        }
     }
 }
 
