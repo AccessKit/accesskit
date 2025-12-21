@@ -739,6 +739,7 @@ enum PropertyValue {
     NodeId(NodeId),
     String(Box<str>),
     F64(f64),
+    F32(f32),
     Usize(usize),
     Color(u32),
     TextDecoration(TextDecoration),
@@ -822,6 +823,8 @@ enum PropertyId {
     MaxNumericValue,
     NumericValueStep,
     NumericValueJump,
+
+    // f32
     FontSize,
     FontWeight,
 
@@ -1298,6 +1301,41 @@ macro_rules! f64_property_methods {
     }
 }
 
+macro_rules! f32_property_methods {
+    ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
+        $(property_methods! {
+            $(#[$doc])*
+            ($id, $getter, get_f32_property, Option<f32>, $setter, set_f32_property, f32, $clearer)
+        })*
+        impl Node {
+            option_properties_debug_method! { debug_f32_properties, [$($getter,)*] }
+        }
+        $(#[cfg(test)]
+        mod $getter {
+            use super::{Node, Role};
+
+            #[test]
+            fn getter_should_return_default_value() {
+                let node = Node::new(Role::Unknown);
+                assert!(node.$getter().is_none());
+            }
+            #[test]
+            fn setter_should_update_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter(1.0);
+                assert_eq!(node.$getter(), Some(1.0));
+            }
+            #[test]
+            fn clearer_should_reset_the_property() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter(1.0);
+                node.$clearer();
+                assert!(node.$getter().is_none());
+            }
+        })*
+    }
+}
+
 macro_rules! usize_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
@@ -1675,6 +1713,7 @@ copy_type_getters! {
     (get_rect_property, Rect, Rect),
     (get_node_id_property, NodeId, NodeId),
     (get_f64_property, f64, F64),
+    (get_f32_property, f32, F32),
     (get_usize_property, usize, Usize),
     (get_color_property, u32, Color),
     (get_text_decoration_property, TextDecoration, TextDecoration),
@@ -1693,6 +1732,7 @@ copy_type_setters! {
     (set_rect_property, Rect, Rect),
     (set_node_id_property, NodeId, NodeId),
     (set_f64_property, f64, F64),
+    (set_f32_property, f32, F32),
     (set_usize_property, usize, Usize),
     (set_color_property, u32, Color),
     (set_text_decoration_property, TextDecoration, TextDecoration),
@@ -1802,7 +1842,10 @@ f64_property_methods! {
     (MinNumericValue, min_numeric_value, set_min_numeric_value, clear_min_numeric_value),
     (MaxNumericValue, max_numeric_value, set_max_numeric_value, clear_max_numeric_value),
     (NumericValueStep, numeric_value_step, set_numeric_value_step, clear_numeric_value_step),
-    (NumericValueJump, numeric_value_jump, set_numeric_value_jump, clear_numeric_value_jump),
+    (NumericValueJump, numeric_value_jump, set_numeric_value_jump, clear_numeric_value_jump)
+}
+
+f32_property_methods! {
     /// Font size is in pixels.
     (FontSize, font_size, set_font_size, clear_font_size),
     /// Font weight can take on any arbitrary numeric value. Increments of 100 in
@@ -2185,6 +2228,7 @@ impl fmt::Debug for Node {
         self.debug_node_id_properties(&mut fmt);
         self.debug_string_properties(&mut fmt);
         self.debug_f64_properties(&mut fmt);
+        self.debug_f32_properties(&mut fmt);
         self.debug_usize_properties(&mut fmt);
         self.debug_color_properties(&mut fmt);
         self.debug_text_decoration_properties(&mut fmt);
@@ -2253,6 +2297,7 @@ impl Serialize for Properties {
                 NodeId,
                 String,
                 F64,
+                F32,
                 Usize,
                 Color,
                 TextDecoration,
@@ -2352,7 +2397,9 @@ impl<'de> Visitor<'de> for PropertiesVisitor {
                     MinNumericValue,
                     MaxNumericValue,
                     NumericValueStep,
-                    NumericValueJump,
+                    NumericValueJump
+                },
+                F32 {
                     FontSize,
                     FontWeight
                 },
@@ -2501,7 +2548,9 @@ impl JsonSchema for Properties {
                 MinNumericValue,
                 MaxNumericValue,
                 NumericValueStep,
-                NumericValueJump,
+                NumericValueJump
+            },
+            f32 {
                 FontSize,
                 FontWeight
             },
