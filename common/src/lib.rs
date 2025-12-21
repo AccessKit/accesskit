@@ -712,7 +712,6 @@ enum Flag {
     TouchTransparent,
     ReadOnly,
     Disabled,
-    Bold,
     Italic,
     ClipsChildren,
     IsLineBreakingObject,
@@ -1644,7 +1643,6 @@ flag_methods! {
     (ReadOnly, is_read_only, set_read_only, clear_read_only),
     /// Use for a control or group of controls that disallows input.
     (Disabled, is_disabled, set_disabled, clear_disabled),
-    (Bold, is_bold, set_bold, clear_bold),
     (Italic, is_italic, set_italic, clear_italic),
     /// Indicates that this node clips its children, i.e. may have
     /// `overflow: hidden` or clip children by default.
