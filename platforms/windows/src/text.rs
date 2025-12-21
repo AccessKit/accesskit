@@ -452,9 +452,9 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
             UIA_FontNameAttributeId => {
                 self.read(|range| Ok(Variant::from(range.font_family()).into()))
             }
-            UIA_FontSizeAttributeId => {
-                self.read(|range| Ok(Variant::from(range.font_size()).into()))
-            }
+            UIA_FontSizeAttributeId => self.read(|range| {
+                Ok(Variant::from(range.font_size().map(|value| value as f64)).into())
+            }),
             UIA_FontWeightAttributeId => self.read(|range| {
                 Ok(Variant::from(range.font_weight().map(|value| value as i32)).into())
             }),
