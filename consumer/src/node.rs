@@ -464,6 +464,20 @@ impl<'a> Node<'a> {
         }
     }
 
+    pub(crate) fn fetch_inherited_flag(&self, getter: fn(&'a NodeData) -> bool) -> bool {
+        let mut node = *self;
+        loop {
+            if getter(node.data()) {
+                return true;
+            }
+            if let Some(parent) = node.parent() {
+                node = parent;
+            } else {
+                return false;
+            }
+        }
+    }
+
     pub fn is_text_input(&self) -> bool {
         matches!(
             self.role(),
