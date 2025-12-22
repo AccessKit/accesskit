@@ -374,7 +374,7 @@ impl<'a> Node<'a> {
     }
 
     pub fn is_hidden(&self) -> bool {
-        self.data().is_hidden()
+        self.fetch_inherited_flag(NodeData::is_hidden)
     }
 
     pub fn level(&self) -> Option<usize> {
@@ -461,6 +461,20 @@ impl<'a> Node<'a> {
                 return value;
             }
             node = node.parent()?;
+        }
+    }
+
+    pub(crate) fn fetch_inherited_flag(&self, getter: fn(&'a NodeData) -> bool) -> bool {
+        let mut node = *self;
+        loop {
+            if getter(node.data()) {
+                return true;
+            }
+            if let Some(parent) = node.parent() {
+                node = parent;
+            } else {
+                return false;
+            }
         }
     }
 
@@ -1584,5 +1598,37 @@ mod tests {
                 .unwrap()
                 .placeholder()
         );
+    }
+
+    #[test]
+    fn hidden_flag_should_be_inherited() {
+        const ROOT_ID: NodeId = NodeId(0);
+        const CONTAINER_ID: NodeId = NodeId(1);
+        const LEAF_ID: NodeId = NodeId(2);
+
+        let update = TreeUpdate {
+            nodes: vec![
+                (ROOT_ID, {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![CONTAINER_ID]);
+                    node
+                }),
+                (CONTAINER_ID, {
+                    let mut node = Node::new(Role::GenericContainer);
+                    node.set_hidden();
+                    node.push_child(LEAF_ID);
+                    node
+                }),
+                (LEAF_ID, {
+                    let mut node = Node::new(Role::Button);
+                    node.set_label("OK");
+                    node
+                }),
+            ],
+            tree: Some(Tree::new(ROOT_ID)),
+            focus: ROOT_ID,
+        };
+        let tree = crate::Tree::new(update, false);
+        assert!(tree.state().node_by_id(LEAF_ID).unwrap().is_hidden());
     }
 }

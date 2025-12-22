@@ -1187,6 +1187,151 @@ inherited_properties! {
     (vertical_offset, VerticalOffset, set_vertical_offset, accesskit::VerticalOffset::Subscript, accesskit::VerticalOffset::Superscript)
 }
 
+macro_rules! inherited_flags {
+    ($(($getter:ident, $setter:ident)),+) => {
+        impl<'a> Node<'a> {
+            $(pub fn $getter(&self) -> bool {
+                self.fetch_inherited_flag(NodeData::$getter)
+            })*
+        }
+        impl<'a> Position<'a> {
+            $(pub fn $getter(&self) -> bool {
+                self.inner.node.$getter()
+            })*
+        }
+        impl<'a> Range<'a> {
+            $(pub fn $getter(&self) -> RangePropertyValue<bool> {
+                self.fetch_property(Node::$getter)
+            })*
+        }
+        $(#[cfg(test)]
+        mod $getter {
+            use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
+            use alloc::vec;
+            use super::RangePropertyValue;
+            #[test]
+            fn directly_set() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1)]);
+                            node
+                        }),
+                        (NodeId(1), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text");
+                            node.set_character_lengths([1, 1, 1, 1]);
+                            node.$setter();
+                            node
+                        }),
+                    ],
+                    tree: Some(Tree::new(NodeId(0))),
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                let state = tree.state();
+                let node = state.node_by_id(NodeId(0)).unwrap();
+                let pos = node.document_start();
+                assert!(pos.$getter());
+                let range = node.document_range();
+                assert_eq!(range.$getter(), RangePropertyValue::Single(true));
+            }
+            #[test]
+            fn set_on_parent() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1)]);
+                            node.$setter();
+                            node
+                        }),
+                        (NodeId(1), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text");
+                            node.set_character_lengths([1, 1, 1, 1]);
+                            node
+                        }),
+                    ],
+                    tree: Some(Tree::new(NodeId(0))),
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                let state = tree.state();
+                let node = state.node_by_id(NodeId(0)).unwrap();
+                let pos = node.document_start();
+                assert!(pos.$getter());
+                let range = node.document_range();
+                assert_eq!(range.$getter(), RangePropertyValue::Single(true));
+            }
+            #[test]
+            fn unset() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1)]);
+                            node
+                        }),
+                        (NodeId(1), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text");
+                            node.set_character_lengths([1, 1, 1, 1]);
+                            node
+                        }),
+                    ],
+                    tree: Some(Tree::new(NodeId(0))),
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                let state = tree.state();
+                let node = state.node_by_id(NodeId(0)).unwrap();
+                let pos = node.document_start();
+                assert!(!pos.$getter());
+                let range = node.document_range();
+                assert_eq!(range.$getter(), RangePropertyValue::Single(false));
+            }
+            #[test]
+            fn mixed() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1), NodeId(2)]);
+                            node
+                        }),
+                        (NodeId(1), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text 1\n");
+                            node.set_character_lengths([1, 1, 1, 1, 1, 1, 1]);
+                            node.$setter();
+                            node
+                        }),
+                        (NodeId(2), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text 2");
+                            node.set_character_lengths([1, 1, 1, 1, 1, 1]);
+                            node
+                        }),
+                    ],
+                    tree: Some(Tree::new(NodeId(0))),
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                let state = tree.state();
+                let node = state.node_by_id(NodeId(0)).unwrap();
+                let range = node.document_range();
+                assert_eq!(range.$getter(), RangePropertyValue::Mixed);
+            }
+        })*
+    }
+}
+
+inherited_flags! {
+    (is_italic, set_italic)
+}
+
 impl<'a> Node<'a> {
     fn text_attributes_differ(&self, other: &Self) -> bool {
         self.font_family() != other.font_family()
