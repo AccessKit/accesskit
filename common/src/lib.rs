@@ -736,10 +736,10 @@ impl Flag {
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[repr(C)]
 pub struct Color {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
-    pub a: u8,
+    pub red: u8,
+    pub green: u8,
+    pub blue: u8,
+    pub alpha: u8,
 }
 
 // The following is based on the technique described here:
@@ -1405,13 +1405,13 @@ macro_rules! color_property_methods {
             #[test]
             fn setter_should_update_the_property() {
                 let mut node = Node::new(Role::Unknown);
-                node.$setter(Color { r: 255, g: 255, b: 255, a: 255 });
-                assert_eq!(node.$getter(), Some(Color { r: 255, g: 255, b: 255, a: 255 }));
+                node.$setter(Color { red: 255, green: 255, blue: 255, alpha: 255 });
+                assert_eq!(node.$getter(), Some(Color { red: 255, green: 255, blue: 255, alpha: 255 }));
             }
             #[test]
             fn clearer_should_reset_the_property() {
                 let mut node = Node::new(Role::Unknown);
-                node.$setter(Color { r: 255, g: 255, b: 255, a: 255 });
+                node.$setter(Color { red: 255, green: 255, blue: 255, alpha: 255 });
                 node.$clearer();
                 assert!(node.$getter().is_none());
             }
