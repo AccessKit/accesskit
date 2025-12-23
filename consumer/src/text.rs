@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    Node as NodeData, NodeId, Point, Rect, Role, TextAlign, TextDecoration, TextDirection,
+    Color, Node as NodeData, NodeId, Point, Rect, Role, TextAlign, TextDecoration, TextDirection,
     TextPosition as WeakPosition, TextSelection, VerticalOffset,
 };
 use alloc::{string::String, vec::Vec};
@@ -1178,8 +1178,8 @@ inherited_properties! {
     (language, &'a str, set_language, "en", "fr"),
     (font_size, f32, set_font_size, 12.0, 24.0),
     (font_weight, f32, set_font_weight, 400.0, 700.0),
-    (background_color, u32, set_background_color, 0xffffff, 0xff),
-    (foreground_color, u32, set_foreground_color, 0x0, 0xff00),
+    (background_color, Color, set_background_color, accesskit::Color { red: 255, green: 255, blue: 255, alpha: 255 }, accesskit::Color { red: 255, green: 0, blue: 0, alpha: 255 }),
+    (foreground_color, Color, set_foreground_color, accesskit::Color { red: 0, green: 0, blue: 0, alpha: 255 }, accesskit::Color { red: 0, green: 0, blue: 255, alpha: 255 }),
     (overline, TextDecoration, set_overline, accesskit::TextDecoration::Solid, accesskit::TextDecoration::Dotted),
     (strikethrough, TextDecoration, set_strikethrough, accesskit::TextDecoration::Dotted, accesskit::TextDecoration::Dashed),
     (underline, TextDecoration, set_underline, accesskit::TextDecoration::Dashed, accesskit::TextDecoration::Double),

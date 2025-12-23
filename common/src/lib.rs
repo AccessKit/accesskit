@@ -729,6 +729,19 @@ impl Flag {
     }
 }
 
+/// A color represented in 8-bit sRGB plus alpha.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[repr(C)]
+pub struct Color {
+    pub red: u8,
+    pub green: u8,
+    pub blue: u8,
+    pub alpha: u8,
+}
+
 // The following is based on the technique described here:
 // https://viruta.org/reducing-memory-consumption-in-librsvg-2.html
 
@@ -741,7 +754,7 @@ enum PropertyValue {
     F64(f64),
     F32(f32),
     Usize(usize),
-    Color(u32),
+    Color(Color),
     TextDecoration(TextDecoration),
     LengthSlice(Box<[u8]>),
     CoordSlice(Box<[f32]>),
@@ -1375,14 +1388,14 @@ macro_rules! color_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_color_property, Option<u32>, $setter, set_color_property, u32, $clearer)
+            ($id, $getter, get_color_property, Option<Color>, $setter, set_color_property, Color, $clearer)
         })*
         impl Node {
             option_properties_debug_method! { debug_color_properties, [$($getter,)*] }
         }
         $(#[cfg(test)]
         mod $getter {
-            use super::{Node, Role};
+            use super::{Color, Node, Role};
 
             #[test]
             fn getter_should_return_default_value() {
@@ -1392,13 +1405,13 @@ macro_rules! color_property_methods {
             #[test]
             fn setter_should_update_the_property() {
                 let mut node = Node::new(Role::Unknown);
-                node.$setter(1);
-                assert_eq!(node.$getter(), Some(1));
+                node.$setter(Color { red: 255, green: 255, blue: 255, alpha: 255 });
+                assert_eq!(node.$getter(), Some(Color { red: 255, green: 255, blue: 255, alpha: 255 }));
             }
             #[test]
             fn clearer_should_reset_the_property() {
                 let mut node = Node::new(Role::Unknown);
-                node.$setter(1);
+                node.$setter(Color { red: 255, green: 255, blue: 255, alpha: 255 });
                 node.$clearer();
                 assert!(node.$getter().is_none());
             }
@@ -1715,7 +1728,7 @@ copy_type_getters! {
     (get_f64_property, f64, F64),
     (get_f32_property, f32, F32),
     (get_usize_property, usize, Usize),
-    (get_color_property, u32, Color),
+    (get_color_property, Color, Color),
     (get_text_decoration_property, TextDecoration, TextDecoration),
     (get_bool_property, bool, Bool)
 }
@@ -1734,7 +1747,7 @@ copy_type_setters! {
     (set_f64_property, f64, F64),
     (set_f32_property, f32, F32),
     (set_usize_property, usize, Usize),
-    (set_color_property, u32, Color),
+    (set_color_property, Color, Color),
     (set_text_decoration_property, TextDecoration, TextDecoration),
     (set_bool_property, bool, Bool)
 }
@@ -1871,11 +1884,11 @@ usize_property_methods! {
 }
 
 color_property_methods! {
-    /// For [`Role::ColorWell`], specifies the selected color in RGBA.
+    /// For [`Role::ColorWell`], specifies the selected color.
     (ColorValue, color_value, set_color_value, clear_color_value),
-    /// Background color in RGBA.
+    /// Background color.
     (BackgroundColor, background_color, set_background_color, clear_background_color),
-    /// Foreground color in RGBA.
+    /// Foreground color.
     (ForegroundColor, foreground_color, set_foreground_color, clear_foreground_color)
 }
 
@@ -2565,7 +2578,7 @@ impl JsonSchema for Properties {
                 SizeOfSet,
                 PositionInSet
             },
-            u32 {
+            Color {
                 ColorValue,
                 BackgroundColor,
                 ForegroundColor
