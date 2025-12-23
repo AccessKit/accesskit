@@ -24,6 +24,46 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.32.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.31.0...accesskit_consumer-v0.32.0) (2025-12-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* Use a proper `Color` struct for the color properties ([#663](https://github.com/AccessKit/accesskit/issues/663))
+* Change font size and weight to `f32` ([#662](https://github.com/AccessKit/accesskit/issues/662))
+* Drop deprecated roles ([#642](https://github.com/AccessKit/accesskit/issues/642))
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626))
+* Support properties on text ranges ([#627](https://github.com/AccessKit/accesskit/issues/627))
+
+### Features
+
+* Add `map` function to `TextRangePropertyValue<Option<T>>` ([#632](https://github.com/AccessKit/accesskit/issues/632)) ([555617a](https://github.com/AccessKit/accesskit/commit/555617a004c1d57c7ed114a4fd38c0c48ac2d149))
+* expose more data on Node ([3d0d873](https://github.com/AccessKit/accesskit/commit/3d0d8739ef53214ea6da2fcfbc7fc29d01f53a40))
+* Implement BrailleLabel and BrailleRoleDescription roles ([#638](https://github.com/AccessKit/accesskit/issues/638)) ([0fdcebb](https://github.com/AccessKit/accesskit/commit/0fdcebb55e308e039ec99fbc31e94e8087a69f2d))
+* Support dialogs in the consumer crate ([028f611](https://github.com/AccessKit/accesskit/commit/028f611b7324bf4bcc121e1e047c426075c34982))
+* Support inherited flags ([#661](https://github.com/AccessKit/accesskit/issues/661)) ([176c90c](https://github.com/AccessKit/accesskit/commit/176c90cac8f93447a7ac354efca853a394a25e33))
+* Support properties on text ranges ([#627](https://github.com/AccessKit/accesskit/issues/627)) ([b854ad8](https://github.com/AccessKit/accesskit/commit/b854ad8dbd54eeb38105c9b39c9e76310a753570))
+
+
+### Bug Fixes
+
+* Upgrade hashbrown, indexmap ([#653](https://github.com/AccessKit/accesskit/issues/653)) ([fd73a85](https://github.com/AccessKit/accesskit/commit/fd73a85e57a6591a449b0a1880025fb940873c66))
+
+
+### Code Refactoring
+
+* Change font size and weight to `f32` ([#662](https://github.com/AccessKit/accesskit/issues/662)) ([ae0ead8](https://github.com/AccessKit/accesskit/commit/ae0ead825298539f08140b3775f0fdbfc17acd13))
+* Drop deprecated roles ([#642](https://github.com/AccessKit/accesskit/issues/642)) ([4d46c27](https://github.com/AccessKit/accesskit/commit/4d46c2740631c5fe4f057707b949d12b26931d0b))
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626)) ([ea23ec4](https://github.com/AccessKit/accesskit/commit/ea23ec424c7dbb8841e03d71b6a15b74264850a9))
+* Use a proper `Color` struct for the color properties ([#663](https://github.com/AccessKit/accesskit/issues/663)) ([922e882](https://github.com/AccessKit/accesskit/commit/922e882a8cd9aa372038fb9c66ff57a557e7888d))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.1 to 0.22.0
+
 ## [0.31.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.30.1...accesskit_consumer-v0.31.0) (2025-10-20)
 
 
