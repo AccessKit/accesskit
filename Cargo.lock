@@ -71,6 +71,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "accesskit_multitree"
+version = "0.1.0"
+dependencies = [
+ "accesskit",
+]
+
+[[package]]
 name = "accesskit_unix"
 version = "0.17.2"
 dependencies = [
@@ -111,6 +118,7 @@ dependencies = [
  "accesskit",
  "accesskit_android",
  "accesskit_macos",
+ "accesskit_multitree",
  "accesskit_unix",
  "accesskit_windows",
  "raw-window-handle 0.5.2",
