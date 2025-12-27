@@ -357,6 +357,15 @@ impl NodeWrapper<'_> {
             atspi_state.insert(State::Focused);
         }
 
+        if let Some(expanded) = state.data().is_expanded() {
+            atspi_state.insert(State::Expandable);
+            if expanded {
+                atspi_state.insert(State::Expanded);
+            } else {
+                atspi_state.insert(State::Collapsed);
+            }
+        }
+
         atspi_state
     }
 
@@ -398,6 +407,9 @@ impl NodeWrapper<'_> {
         }
         if let Some(role_description) = self.braille_role_description() {
             attributes.insert("brailleroledescription", role_description.to_string());
+        }
+        if let Some(level) = self.0.level() {
+            attributes.insert("level", level.to_string());
         }
 
         attributes
