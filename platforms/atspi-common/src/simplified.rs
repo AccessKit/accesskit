@@ -238,6 +238,57 @@ impl Accessible {
         }
     }
 
+    pub fn supports_hyperlink(&self) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.supports_hyperlink(),
+            Self::Root(_) => Ok(false),
+        }
+    }
+
+    pub fn n_anchors(&self) -> Result<i32> {
+        match self {
+            Self::Node(node) => node.n_anchors(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn hyperlink_start_index(&self) -> Result<i32> {
+        match self {
+            Self::Node(node) => node.hyperlink_start_index(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn hyperlink_end_index(&self) -> Result<i32> {
+        match self {
+            Self::Node(node) => node.hyperlink_end_index(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn hyperlink_object(&self, index: i32) -> Result<Option<Self>> {
+        match self {
+            Self::Node(node) => node
+                .hyperlink_object(index)
+                .map(|id| id.map(|id| Self::Node(node.relative(id)))),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn uri(&self, index: i32) -> Result<String> {
+        match self {
+            Self::Node(node) => node.uri(index),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn hyperlink_is_valid(&self) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.hyperlink_is_valid(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
     pub fn supports_selection(&self) -> Result<bool> {
         match self {
             Self::Node(node) => node.supports_selection(),

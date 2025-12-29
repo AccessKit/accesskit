@@ -118,20 +118,27 @@ impl Bus {
             )
             .await?;
         }
-        if new_interfaces.contains(Interface::Selection) {
+        if new_interfaces.contains(Interface::Hyperlink) {
             self.register_interface(
                 &path,
-                SelectionInterface::new(bus_name.clone(), node.clone()),
+                HyperlinkInterface::new(bus_name.clone(), node.clone()),
             )
             .await?;
-        }
-        if new_interfaces.contains(Interface::Text) {
-            self.register_interface(&path, TextInterface::new(node.clone()))
+            if new_interfaces.contains(Interface::Selection) {
+                self.register_interface(
+                    &path,
+                    SelectionInterface::new(bus_name.clone(), node.clone()),
+                )
                 .await?;
-        }
-        if new_interfaces.contains(Interface::Value) {
-            self.register_interface(&path, ValueInterface::new(node.clone()))
-                .await?;
+            }
+            if new_interfaces.contains(Interface::Text) {
+                self.register_interface(&path, TextInterface::new(node.clone()))
+                    .await?;
+            }
+            if new_interfaces.contains(Interface::Value) {
+                self.register_interface(&path, ValueInterface::new(node.clone()))
+                    .await?;
+            }
         }
 
         Ok(())
@@ -168,6 +175,10 @@ impl Bus {
         }
         if old_interfaces.contains(Interface::Component) {
             self.unregister_interface::<ComponentInterface>(&path)
+                .await?;
+        }
+        if old_interfaces.contains(Interface::Hyperlink) {
+            self.unregister_interface::<HyperlinkInterface>(&path)
                 .await?;
         }
         if old_interfaces.contains(Interface::Selection) {

@@ -738,6 +738,21 @@ impl<'a> Node<'a> {
             .map(|description| description.to_string())
     }
 
+    pub fn url(&self) -> Option<&str> {
+        self.data().url()
+    }
+
+    pub fn supports_url(&self) -> bool {
+        matches!(
+            self.role(),
+            Role::Link
+                | Role::DocBackLink
+                | Role::DocBiblioRef
+                | Role::DocGlossRef
+                | Role::DocNoteRef
+        ) && self.url().is_some()
+    }
+
     fn is_empty_text_input(&self) -> bool {
         let mut text_runs = self.text_runs();
         if let Some(first_text_run) = text_runs.next() {

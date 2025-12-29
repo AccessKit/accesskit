@@ -83,6 +83,14 @@ impl NodeWrapper<'_> {
         self.0.label()
     }
 
+    fn url(&self) -> Option<&str> {
+        if self.0.supports_url() || self.0.role() == Role::Image {
+            self.0.url()
+        } else {
+            None
+        }
+    }
+
     pub(crate) fn text(&self) -> Option<String> {
         self.0.value().or_else(|| {
             self.0
@@ -317,6 +325,23 @@ impl NodeWrapper<'_> {
                 "setTextSelection",
                 "(II)V",
                 &[(start as jint).into(), (end as jint).into()],
+            )
+            .unwrap();
+        }
+
+        if let Some(url) = self.url() {
+            let extras = env
+                .call_method(node_info, "getExtras", "()Landroid/os/Bundle;", &[])
+                .unwrap()
+                .l()
+                .unwrap();
+            let key = env.new_string("url").unwrap();
+            let value = env.new_string(url).unwrap();
+            env.call_method(
+                &extras,
+                "putString",
+                "(Ljava/lang/String;Ljava/lang/String;)V",
+                &[(&key).into(), (&value).into()],
             )
             .unwrap();
         }
