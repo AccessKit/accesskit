@@ -701,7 +701,7 @@ impl<'a> Node<'a> {
             first_text_run
                 .data()
                 .value()
-                .map_or(true, |value| value.is_empty())
+                .is_none_or(|value| value.is_empty())
                 && text_runs.next().is_none()
         } else {
             true
