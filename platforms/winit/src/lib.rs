@@ -5,7 +5,7 @@
 use accesskit::{
     ActionHandler, ActionRequest, ActivationHandler, DeactivationHandler, Rect, TreeUpdate,
 };
-use accesskit_adapter::{Adapter, WindowEvent};
+use accesskit_adapter::Adapter;
 use raw_window_handle::HasWindowHandle as _;
 use std::sync::Arc;
 use winit_core::event_loop::ActiveEventLoop;
@@ -13,6 +13,8 @@ use winit_core::{
     event::WindowEvent as WinitWindowEvent,
     window::{Window, WindowId},
 };
+
+pub use accesskit_adapter::WindowEvent;
 
 #[cfg(target_os = "android")]
 use winit_android::EventLoopExtAndroid as _;
@@ -68,7 +70,7 @@ impl WinitAdapter {
     /// # Panics
     ///
     /// Panics if the window is already visible.
-    pub fn with_event_loop_proxy<T: From<Event> + Send + 'static>(
+    pub fn new(
         event_loop: &dyn ActiveEventLoop,
         window: &dyn Window,
         callback: impl Fn(WindowId, WindowEvent) + Send + Sync + 'static,
