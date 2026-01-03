@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_winit"
-version = "0.29.2"
+version = "0.30.0"
 authors.workspace = true
 license = "Apache-2.0"
 description = "AccessKit UI accessibility infrastructure: winit adapter"
@@ -19,22 +19,22 @@ async-io = ["accesskit_unix/async-io"]
 tokio = ["accesskit_unix/tokio"]
 
 [dependencies]
-accesskit = { version = "0.21.1", path = "../../common" }
+accesskit = { version = "0.22.0", path = "../../common" }
 winit = { version = "0.30.5", default-features = false }
 rwh_05 = { package = "raw-window-handle", version = "0.5", features = ["std"], optional = true }
 rwh_06 = { package = "raw-window-handle", version = "0.6.2", features = ["std"], optional = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-accesskit_windows = { version = "0.29.2", path = "../windows" }
+accesskit_windows = { version = "0.30.0", path = "../windows" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-accesskit_macos = { version = "0.22.2", path = "../macos" }
+accesskit_macos = { version = "0.23.0", path = "../macos" }
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
-accesskit_unix = { version = "0.17.2", path = "../unix", optional = true, default-features = false }
+accesskit_unix = { version = "0.18.0", path = "../unix", optional = true, default-features = false }
 
 [target.'cfg(target_os = "android")'.dependencies]
-accesskit_android = { version = "0.4.2", path = "../android", optional = true, features = ["embedded-dex"] }
+accesskit_android = { version = "0.5.0", path = "../android", optional = true, features = ["embedded-dex"] }
 
 [dev-dependencies.winit]
 version = "0.30.5"
