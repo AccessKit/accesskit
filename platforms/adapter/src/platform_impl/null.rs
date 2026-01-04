@@ -3,14 +3,12 @@
 // the LICENSE-APACHE file).
 
 use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, TreeUpdate};
-use winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::Window};
 
 pub struct Adapter;
 
 impl Adapter {
     pub fn new(
-        _event_loop: &ActiveEventLoop,
-        _window: &Window,
+        _window_handle: &RawWindowHandle,
         _activation_handler: impl 'static + ActivationHandler,
         _action_handler: impl 'static + ActionHandler,
         _deactivation_handler: impl 'static + DeactivationHandler,
@@ -20,5 +18,7 @@ impl Adapter {
 
     pub fn update_if_active(&mut self, _updater: impl FnOnce() -> TreeUpdate) {}
 
-    pub fn process_event(&mut self, _window: &Window, _event: &WindowEvent) {}
+    pub fn set_focus(&mut self, is_focused: bool) {}
+
+    pub fn set_window_bounds(&mut self, outer_bounds: Rect, inner_bounds: Rect) {}
 }

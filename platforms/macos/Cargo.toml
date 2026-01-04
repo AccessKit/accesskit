@@ -18,14 +18,14 @@ default-target = "x86_64-apple-darwin"
 accesskit = { version = "0.22.0", path = "../../common" }
 accesskit_consumer = { version = "0.32.0", path = "../../consumer" }
 hashbrown.workspace = true
-objc2 = "0.5.1"
-objc2-foundation = { version = "0.2.0", features = [
+objc2 = "0.6.3"
+objc2-foundation = { version = "0.3.0", features = [
     "NSArray",
     "NSDictionary",
     "NSValue",
     "NSThread",
 ] }
-objc2-app-kit = { version = "0.2.0", features = [
+objc2-app-kit = { version = "0.3.0", features = [
     "NSAccessibility",
     "NSAccessibilityConstants",
     "NSAccessibilityElement",

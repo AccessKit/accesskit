@@ -7,10 +7,7 @@ use accesskit_android::{
     jni::{objects::JObject, JavaVM},
     InjectingAdapter,
 };
-use winit::{
-    event::WindowEvent, event_loop::ActiveEventLoop, platform::android::ActiveEventLoopExtAndroid,
-    window::Window,
-};
+use android_activity::AndroidApp;
 
 pub struct Adapter {
     adapter: InjectingAdapter,
@@ -18,16 +15,14 @@ pub struct Adapter {
 
 impl Adapter {
     pub fn new(
-        event_loop: &ActiveEventLoop,
-        _window: &Window,
+        android_app: &AndroidApp,
         activation_handler: impl 'static + ActivationHandler + Send,
         action_handler: impl 'static + ActionHandler + Send,
         _deactivation_handler: impl 'static + DeactivationHandler,
     ) -> Self {
-        let app = event_loop.android_app();
-        let vm = unsafe { JavaVM::from_raw(app.vm_as_ptr() as *mut _) }.unwrap();
+        let vm = unsafe { JavaVM::from_raw(android_app.vm_as_ptr() as *mut _) }.unwrap();
         let mut env = vm.get_env().unwrap();
-        let activity = unsafe { JObject::from_raw(app.activity_as_ptr() as *mut _) };
+        let activity = unsafe { JObject::from_raw(android_app.activity_as_ptr() as *mut _) };
         let view = env
             .get_field(
                 &activity,
@@ -45,5 +40,7 @@ impl Adapter {
         self.adapter.update_if_active(updater);
     }
 
-    pub fn process_event(&mut self, _window: &Window, _event: &WindowEvent) {}
+    pub fn set_focus(&mut self, is_focused: bool) {}
+
+    pub fn set_window_bounds(&mut self, outer_bounds: Rect, inner_bounds: Rect) {}
 }
