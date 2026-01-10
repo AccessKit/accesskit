@@ -4,10 +4,10 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    ActionHandler, ActivationHandler, Live, Node as NodeProvider, NodeId, Role, Tree as TreeData,
-    TreeUpdate,
+    ActionHandler, ActivationHandler, Live, Node as NodeProvider, NodeId as LocalNodeId, Role,
+    Tree as TreeData, TreeId, TreeUpdate,
 };
-use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler};
+use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeChangeHandler};
 use hashbrown::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::sync::{atomic::Ordering, Arc};
@@ -323,7 +323,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
     // TODO: handle other events (#20)
 }
 
-const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
+const PLACEHOLDER_ROOT_ID: LocalNodeId = LocalNodeId(0);
 
 enum State {
     Inactive {
@@ -518,6 +518,7 @@ impl Adapter {
                     let placeholder_update = TreeUpdate {
                         nodes: vec![(PLACEHOLDER_ROOT_ID, NodeProvider::new(Role::Window))],
                         tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
+                        tree_id: TreeId::ROOT,
                         focus: PLACEHOLDER_ROOT_ID,
                     };
                     let placeholder_tree = Tree::new(placeholder_update, *is_window_focused);

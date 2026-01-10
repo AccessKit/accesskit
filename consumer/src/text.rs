@@ -4,13 +4,13 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    Color, Node as NodeData, NodeId, Point, Rect, Role, TextAlign, TextDecoration, TextDirection,
+    Color, Node as NodeData, Point, Rect, Role, TextAlign, TextDecoration, TextDirection,
     TextPosition as WeakPosition, TextSelection, VerticalOffset,
 };
 use alloc::{string::String, vec::Vec};
 use core::{cmp::Ordering, fmt, iter::FusedIterator};
 
-use crate::{FilterResult, Node, TreeState};
+use crate::{node::NodeId, FilterResult, Node, TreeState};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct InnerPosition<'a> {
@@ -19,8 +19,8 @@ pub(crate) struct InnerPosition<'a> {
 }
 
 impl<'a> InnerPosition<'a> {
-    fn upgrade(tree_state: &'a TreeState, weak: WeakPosition) -> Option<Self> {
-        let node = tree_state.node_by_id(weak.node)?;
+    fn upgrade(tree_state: &'a TreeState, weak: WeakPosition, node_id: NodeId) -> Option<Self> {
+        let node = tree_state.node_by_id(node_id.with_same_tree(weak.node))?;
         if node.role() != Role::TextRun {
             return None;
         }
@@ -34,8 +34,12 @@ impl<'a> InnerPosition<'a> {
         })
     }
 
-    fn clamped_upgrade(tree_state: &'a TreeState, weak: WeakPosition) -> Option<Self> {
-        let node = tree_state.node_by_id(weak.node)?;
+    fn clamped_upgrade(
+        tree_state: &'a TreeState,
+        weak: WeakPosition,
+        node_id: NodeId,
+    ) -> Option<Self> {
+        let node = tree_state.node_by_id(node_id.with_same_tree(weak.node))?;
         if node.role() != Role::TextRun {
             return None;
         }
@@ -111,7 +115,10 @@ impl<'a> InnerPosition<'a> {
     fn line_start(&self) -> Self {
         let mut node = self.node;
         while let Some(id) = node.data().previous_on_line() {
-            node = node.tree_state.node_by_id(id).unwrap();
+            node = node
+                .tree_state
+                .node_by_id(node.id.with_same_tree(id))
+                .unwrap();
         }
         Self {
             node,
@@ -122,7 +129,10 @@ impl<'a> InnerPosition<'a> {
     fn line_end(&self) -> Self {
         let mut node = self.node;
         while let Some(id) = node.data().next_on_line() {
-            node = node.tree_state.node_by_id(id).unwrap();
+            node = node
+                .tree_state
+                .node_by_id(node.id.with_same_tree(id))
+                .unwrap();
         }
         Self {
             node,
@@ -131,8 +141,9 @@ impl<'a> InnerPosition<'a> {
     }
 
     pub(crate) fn downgrade(&self) -> WeakPosition {
+        let (local_node_id, _) = self.node.id.to_components();
         WeakPosition {
-            node: self.node.id(),
+            node: local_node_id,
             character_index: self.character_index,
         }
     }
@@ -905,8 +916,8 @@ impl WeakRange {
 
     pub fn upgrade<'a>(&self, tree_state: &'a TreeState) -> Option<Range<'a>> {
         let node = self.upgrade_node(tree_state)?;
-        let start = InnerPosition::upgrade(tree_state, self.start)?;
-        let end = InnerPosition::upgrade(tree_state, self.end)?;
+        let start = InnerPosition::upgrade(tree_state, self.start, self.node_id)?;
+        let end = InnerPosition::upgrade(tree_state, self.end, self.node_id)?;
         Some(Range { node, start, end })
     }
 }
@@ -978,9 +989,10 @@ macro_rules! inherited_properties {
         }
         $(#[cfg(test)]
         mod $getter {
-            use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
+            use accesskit::{Node, NodeId, Role, Tree, TreeId, TreeUpdate};
             use alloc::vec;
             use super::RangePropertyValue;
+            use crate::tests::nid;
             #[test]
             fn directly_set() {
                 let update = TreeUpdate {
@@ -999,11 +1011,12 @@ macro_rules! inherited_properties {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
                 let state = tree.state();
-                let node = state.node_by_id(NodeId(0)).unwrap();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let pos = node.document_start();
                 assert_eq!(pos.$getter(), Some($test_value_1));
                 let range = node.document_range();
@@ -1027,11 +1040,12 @@ macro_rules! inherited_properties {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
                 let state = tree.state();
-                let node = state.node_by_id(NodeId(0)).unwrap();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let pos = node.document_start();
                 assert_eq!(pos.$getter(), Some($test_value_1));
                 let range = node.document_range();
@@ -1056,11 +1070,12 @@ macro_rules! inherited_properties {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
                 let state = tree.state();
-                let node = state.node_by_id(NodeId(0)).unwrap();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 assert_eq!(node.$getter(), Some($test_value_1));
                 let pos = node.document_start();
                 assert_eq!(pos.$getter(), Some($test_value_2));
@@ -1084,11 +1099,12 @@ macro_rules! inherited_properties {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
                 let state = tree.state();
-                let node = state.node_by_id(NodeId(0)).unwrap();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let pos = node.document_start();
                 assert_eq!(pos.$getter(), None);
                 let range = node.document_range();
@@ -1118,11 +1134,12 @@ macro_rules! inherited_properties {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
                 let state = tree.state();
-                let node = state.node_by_id(NodeId(0)).unwrap();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let range = node.document_range();
                 assert_eq!(range.$getter(), RangePropertyValue::Mixed);
             }
@@ -1151,11 +1168,12 @@ macro_rules! inherited_properties {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
                 let state = tree.state();
-                let node = state.node_by_id(NodeId(0)).unwrap();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 assert_eq!(node.$getter(), Some($test_value_1));
                 let start = node.document_start();
                 assert_eq!(start.$getter(), Some($test_value_2));
@@ -1206,9 +1224,10 @@ macro_rules! inherited_flags {
         }
         $(#[cfg(test)]
         mod $getter {
-            use accesskit::{Node, NodeId, Role, Tree, TreeUpdate};
+            use accesskit::{Node, NodeId, Role, Tree, TreeId, TreeUpdate};
             use alloc::vec;
             use super::RangePropertyValue;
+            use crate::tests::nid;
             #[test]
             fn directly_set() {
                 let update = TreeUpdate {
@@ -1227,11 +1246,12 @@ macro_rules! inherited_flags {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
                 let state = tree.state();
-                let node = state.node_by_id(NodeId(0)).unwrap();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let pos = node.document_start();
                 assert!(pos.$getter());
                 let range = node.document_range();
@@ -1255,11 +1275,12 @@ macro_rules! inherited_flags {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
                 let state = tree.state();
-                let node = state.node_by_id(NodeId(0)).unwrap();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let pos = node.document_start();
                 assert!(pos.$getter());
                 let range = node.document_range();
@@ -1282,11 +1303,12 @@ macro_rules! inherited_flags {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
                 let state = tree.state();
-                let node = state.node_by_id(NodeId(0)).unwrap();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let pos = node.document_start();
                 assert!(!pos.$getter());
                 let range = node.document_range();
@@ -1316,11 +1338,12 @@ macro_rules! inherited_flags {
                         }),
                     ],
                     tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
                 let tree = crate::Tree::new(update, false);
                 let state = tree.state();
-                let node = state.node_by_id(NodeId(0)).unwrap();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
                 let range = node.document_range();
                 assert_eq!(range.$getter(), RangePropertyValue::Mixed);
             }
@@ -1418,16 +1441,21 @@ impl<'a> Node<'a> {
     }
 
     pub fn text_selection(&self) -> Option<Range<'_>> {
+        let id = self.id;
         self.data().text_selection().map(|selection| {
-            let anchor = InnerPosition::clamped_upgrade(self.tree_state, selection.anchor).unwrap();
-            let focus = InnerPosition::clamped_upgrade(self.tree_state, selection.focus).unwrap();
+            let anchor =
+                InnerPosition::clamped_upgrade(self.tree_state, selection.anchor, id).unwrap();
+            let focus =
+                InnerPosition::clamped_upgrade(self.tree_state, selection.focus, id).unwrap();
             Range::new(*self, anchor, focus)
         })
     }
 
     pub fn text_selection_anchor(&self) -> Option<Position<'_>> {
+        let id = self.id;
         self.data().text_selection().map(|selection| {
-            let anchor = InnerPosition::clamped_upgrade(self.tree_state, selection.anchor).unwrap();
+            let anchor =
+                InnerPosition::clamped_upgrade(self.tree_state, selection.anchor, id).unwrap();
             Position {
                 root_node: *self,
                 inner: anchor,
@@ -1436,8 +1464,10 @@ impl<'a> Node<'a> {
     }
 
     pub fn text_selection_focus(&self) -> Option<Position<'_>> {
+        let id = self.id;
         self.data().text_selection().map(|selection| {
-            let focus = InnerPosition::clamped_upgrade(self.tree_state, selection.focus).unwrap();
+            let focus =
+                InnerPosition::clamped_upgrade(self.tree_state, selection.focus, id).unwrap();
             Position {
                 root_node: *self,
                 inner: focus,
@@ -1614,13 +1644,14 @@ impl<'a> Node<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::tests::nid;
     use accesskit::{NodeId, Point, Rect, TextDecoration, TextSelection};
     use alloc::vec;
 
     // This was originally based on an actual tree produced by egui but
     // has since been heavily modified by hand to cover various test cases.
     fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {
-        use accesskit::{Action, Affine, Node, Role, TextDirection, Tree, TreeUpdate};
+        use accesskit::{Action, Affine, Node, Role, TextDirection, Tree, TreeId, TreeUpdate};
 
         let update = TreeUpdate {
             nodes: vec![
@@ -1831,6 +1862,7 @@ mod tests {
                 }),
             ],
             tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(1),
         };
 
@@ -1916,15 +1948,21 @@ mod tests {
     fn supports_text_ranges() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        assert!(!state.node_by_id(NodeId(0)).unwrap().supports_text_ranges());
-        assert!(state.node_by_id(NodeId(1)).unwrap().supports_text_ranges());
+        assert!(!state
+            .node_by_id(nid(NodeId(0)))
+            .unwrap()
+            .supports_text_ranges());
+        assert!(state
+            .node_by_id(nid(NodeId(1)))
+            .unwrap()
+            .supports_text_ranges());
     }
 
     #[test]
     fn multiline_document_range() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let range = node.document_range();
         let start = range.start();
         assert!(start.is_word_start());
@@ -1995,7 +2033,7 @@ mod tests {
     fn multiline_document_range_to_first_format_change() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let mut range = node.document_range();
         range.set_end(range.start().forward_to_format_end());
         assert_eq!(
@@ -2025,7 +2063,7 @@ mod tests {
     fn multiline_document_range_from_last_format_change() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let mut range = node.document_range();
         range.set_start(range.end().backward_to_format_start());
         assert_eq!(
@@ -2067,7 +2105,7 @@ mod tests {
     fn multiline_end_degenerate_range() {
         let tree = main_multiline_tree(Some(multiline_end_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -2093,7 +2131,7 @@ mod tests {
     fn multiline_wrapped_line_end_range() {
         let tree = main_multiline_tree(Some(multiline_wrapped_line_end_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -2155,7 +2193,7 @@ mod tests {
     fn multiline_find_line_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -2201,7 +2239,7 @@ mod tests {
     fn multiline_find_wrapped_line_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_first_line_middle_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -2233,7 +2271,7 @@ mod tests {
     fn multiline_find_paragraph_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -2289,7 +2327,7 @@ mod tests {
     fn multiline_find_format_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -2317,7 +2355,7 @@ mod tests {
     fn multiline_find_word_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -2357,7 +2395,7 @@ mod tests {
     fn text_position_at_point() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
 
         {
             let pos = node.text_position_at_point(Point::new(8.0, 31.666664123535156));
@@ -2449,7 +2487,7 @@ mod tests {
     fn to_global_usv_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
 
         {
             let range = node.document_range();
@@ -2474,7 +2512,7 @@ mod tests {
     fn to_global_utf16_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
 
         {
             let range = node.document_range();
@@ -2499,7 +2537,7 @@ mod tests {
     fn to_line_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
 
         {
             let range = node.document_range();
@@ -2525,7 +2563,7 @@ mod tests {
     fn line_range_from_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
 
         {
             let range = node.line_range_from_index(0).unwrap();
@@ -2564,7 +2602,7 @@ mod tests {
     fn text_position_from_global_usv_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
 
         {
             let pos = node.text_position_from_global_usv_index(0).unwrap();
@@ -2643,7 +2681,7 @@ mod tests {
     fn text_position_from_global_utf16_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
 
         {
             let pos = node.text_position_from_global_utf16_index(0).unwrap();
@@ -2722,7 +2760,7 @@ mod tests {
     fn multiline_selection_clamping() {
         let tree = main_multiline_tree(Some(multiline_past_end_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let _ = node.text_selection().unwrap();
     }
 

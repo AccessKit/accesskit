@@ -11,7 +11,7 @@ pub(crate) mod tree;
 pub use tree::{ChangeHandler as TreeChangeHandler, State as TreeState, Tree};
 
 pub(crate) mod node;
-pub use node::Node;
+pub use node::{Node, NodeId};
 
 pub(crate) mod filters;
 pub use filters::{common_filter, common_filter_with_root_exception, FilterResult};
@@ -26,28 +26,36 @@ pub use text::{
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Affine, Node, NodeId, Rect, Role, Tree, TreeUpdate, Vec2};
+    use accesskit::{
+        Affine, Node, NodeId as LocalNodeId, Rect, Role, Tree, TreeId, TreeUpdate, Vec2,
+    };
     use alloc::vec;
 
+    use crate::node::NodeId;
+    use crate::tree::TreeIndex;
     use crate::FilterResult;
 
-    pub const ROOT_ID: NodeId = NodeId(0);
-    pub const PARAGRAPH_0_ID: NodeId = NodeId(1);
-    pub const LABEL_0_0_IGNORED_ID: NodeId = NodeId(2);
-    pub const PARAGRAPH_1_IGNORED_ID: NodeId = NodeId(3);
-    pub const BUTTON_1_0_HIDDEN_ID: NodeId = NodeId(4);
-    pub const CONTAINER_1_0_0_HIDDEN_ID: NodeId = NodeId(5);
-    pub const LABEL_1_1_ID: NodeId = NodeId(6);
-    pub const BUTTON_1_2_HIDDEN_ID: NodeId = NodeId(7);
-    pub const CONTAINER_1_2_0_HIDDEN_ID: NodeId = NodeId(8);
-    pub const PARAGRAPH_2_ID: NodeId = NodeId(9);
-    pub const LABEL_2_0_ID: NodeId = NodeId(10);
-    pub const PARAGRAPH_3_IGNORED_ID: NodeId = NodeId(11);
-    pub const EMPTY_CONTAINER_3_0_IGNORED_ID: NodeId = NodeId(12);
-    pub const LINK_3_1_IGNORED_ID: NodeId = NodeId(13);
-    pub const LABEL_3_1_0_ID: NodeId = NodeId(14);
-    pub const BUTTON_3_2_ID: NodeId = NodeId(15);
-    pub const EMPTY_CONTAINER_3_3_IGNORED_ID: NodeId = NodeId(16);
+    pub fn nid(id: LocalNodeId) -> NodeId {
+        NodeId::new(id, TreeIndex(0))
+    }
+
+    pub const ROOT_ID: LocalNodeId = LocalNodeId(0);
+    pub const PARAGRAPH_0_ID: LocalNodeId = LocalNodeId(1);
+    pub const LABEL_0_0_IGNORED_ID: LocalNodeId = LocalNodeId(2);
+    pub const PARAGRAPH_1_IGNORED_ID: LocalNodeId = LocalNodeId(3);
+    pub const BUTTON_1_0_HIDDEN_ID: LocalNodeId = LocalNodeId(4);
+    pub const CONTAINER_1_0_0_HIDDEN_ID: LocalNodeId = LocalNodeId(5);
+    pub const LABEL_1_1_ID: LocalNodeId = LocalNodeId(6);
+    pub const BUTTON_1_2_HIDDEN_ID: LocalNodeId = LocalNodeId(7);
+    pub const CONTAINER_1_2_0_HIDDEN_ID: LocalNodeId = LocalNodeId(8);
+    pub const PARAGRAPH_2_ID: LocalNodeId = LocalNodeId(9);
+    pub const LABEL_2_0_ID: LocalNodeId = LocalNodeId(10);
+    pub const PARAGRAPH_3_IGNORED_ID: LocalNodeId = LocalNodeId(11);
+    pub const EMPTY_CONTAINER_3_0_IGNORED_ID: LocalNodeId = LocalNodeId(12);
+    pub const LINK_3_1_IGNORED_ID: LocalNodeId = LocalNodeId(13);
+    pub const LABEL_3_1_0_ID: LocalNodeId = LocalNodeId(14);
+    pub const BUTTON_3_2_ID: LocalNodeId = LocalNodeId(15);
+    pub const EMPTY_CONTAINER_3_3_IGNORED_ID: LocalNodeId = LocalNodeId(16);
 
     pub fn test_tree() -> crate::tree::Tree {
         let root = {
@@ -179,6 +187,7 @@ mod tests {
                 (EMPTY_CONTAINER_3_3_IGNORED_ID, empty_container_3_3_ignored),
             ],
             tree: Some(Tree::new(ROOT_ID)),
+            tree_id: TreeId::ROOT,
             focus: ROOT_ID,
         };
         crate::tree::Tree::new(initial_update, false)
@@ -188,12 +197,12 @@ mod tests {
         let id = node.id();
         if node.is_hidden() {
             FilterResult::ExcludeSubtree
-        } else if id == LABEL_0_0_IGNORED_ID
-            || id == PARAGRAPH_1_IGNORED_ID
-            || id == PARAGRAPH_3_IGNORED_ID
-            || id == EMPTY_CONTAINER_3_0_IGNORED_ID
-            || id == LINK_3_1_IGNORED_ID
-            || id == EMPTY_CONTAINER_3_3_IGNORED_ID
+        } else if id == nid(LABEL_0_0_IGNORED_ID)
+            || id == nid(PARAGRAPH_1_IGNORED_ID)
+            || id == nid(PARAGRAPH_3_IGNORED_ID)
+            || id == nid(EMPTY_CONTAINER_3_0_IGNORED_ID)
+            || id == nid(LINK_3_1_IGNORED_ID)
+            || id == nid(EMPTY_CONTAINER_3_3_IGNORED_ID)
         {
             FilterResult::ExcludeNode
         } else {

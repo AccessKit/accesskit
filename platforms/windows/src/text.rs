@@ -7,7 +7,7 @@
 
 use accesskit::{Action, ActionData, ActionRequest, ScrollHint};
 use accesskit_consumer::{
-    Node, TextPosition as Position, TextRange as Range, TreeState, WeakTextRange as WeakRange,
+    Node, TextPosition as Position, TextRange as Range, Tree, TreeState, WeakTextRange as WeakRange,
 };
 use std::sync::{Arc, RwLock, Weak};
 use windows::{
@@ -291,12 +291,12 @@ impl PlatformRange {
 
     fn do_action<F>(&self, f: F) -> Result<()>
     where
-        for<'a> F: FnOnce(Range<'a>) -> ActionRequest,
+        for<'a> F: FnOnce(Range<'a>, &Tree) -> ActionRequest,
     {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
         let range = self.upgrade_for_read(tree.state())?;
-        let request = f(range);
+        let request = f(range, &tree);
         drop(tree);
         context.do_action(request);
         Ok(())
@@ -569,10 +569,14 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
     }
 
     fn Select(&self) -> Result<()> {
-        self.do_action(|range| ActionRequest {
-            action: Action::SetTextSelection,
-            target: range.node().id(),
-            data: Some(ActionData::SetTextSelection(range.to_text_selection())),
+        self.do_action(|range, tree| {
+            let (target_node, target_tree) = tree.locate_node(range.node().id()).unwrap();
+            ActionRequest {
+                action: Action::SetTextSelection,
+                target_tree,
+                target_node,
+                data: Some(ActionData::SetTextSelection(range.to_text_selection())),
+            }
         })
     }
 
@@ -587,15 +591,17 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
     }
 
     fn ScrollIntoView(&self, align_to_top: BOOL) -> Result<()> {
-        self.do_action(|range| {
+        self.do_action(|range, tree| {
             let position = if align_to_top.into() {
                 range.start()
             } else {
                 range.end()
             };
+            let (target_node, target_tree) = tree.locate_node(position.inner_node().id()).unwrap();
             ActionRequest {
-                target: position.inner_node().id(),
                 action: Action::ScrollIntoView,
+                target_tree,
+                target_node,
                 data: Some(ActionData::ScrollHint(if align_to_top.into() {
                     ScrollHint::TopEdge
                 } else {

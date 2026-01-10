@@ -16,6 +16,7 @@ mod rect;
 pub mod simplified;
 mod util;
 
+pub use accesskit_consumer::NodeId;
 pub use atspi_common::{
     CoordType, Granularity, InterfaceSet, Layer, RelationType, Role, ScrollType, State, StateSet,
 };
