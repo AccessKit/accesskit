@@ -5,7 +5,7 @@
 
 #![allow(non_upper_case_globals)]
 
-use accesskit::{Action, ActionData, ActionRequest, ScrollHint};
+use accesskit::{Action, ActionData, ActionRequest, ScrollHint, VerticalOffset};
 use accesskit_consumer::{
     Node, TextPosition as Position, TextRange as Range, Tree, TreeState, WeakTextRange as WeakRange,
 };
@@ -457,6 +457,52 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
             }),
             UIA_FontWeightAttributeId => self.read(|range| {
                 Ok(Variant::from(range.font_weight().map(|value| value as i32)).into())
+            }),
+            UIA_IsItalicAttributeId => {
+                self.read(|range| Ok(Variant::from(range.is_italic()).into()))
+            }
+            UIA_BackgroundColorAttributeId => {
+                self.read(|range| Ok(Variant::from(range.background_color()).into()))
+            }
+            UIA_ForegroundColorAttributeId => {
+                self.read(|range| Ok(Variant::from(range.foreground_color()).into()))
+            }
+            UIA_OverlineStyleAttributeId => {
+                self.read(|range| Ok(Variant::from(range.overline().map(|d| d.style)).into()))
+            }
+            UIA_OverlineColorAttributeId => {
+                self.read(|range| Ok(Variant::from(range.overline().map(|d| d.color)).into()))
+            }
+            UIA_StrikethroughStyleAttributeId => {
+                self.read(|range| Ok(Variant::from(range.strikethrough().map(|d| d.style)).into()))
+            }
+            UIA_StrikethroughColorAttributeId => {
+                self.read(|range| Ok(Variant::from(range.strikethrough().map(|d| d.color)).into()))
+            }
+            UIA_UnderlineStyleAttributeId => {
+                self.read(|range| Ok(Variant::from(range.underline().map(|d| d.style)).into()))
+            }
+            UIA_UnderlineColorAttributeId => {
+                self.read(|range| Ok(Variant::from(range.underline().map(|d| d.color)).into()))
+            }
+            UIA_HorizontalTextAlignmentAttributeId => {
+                self.read(|range| Ok(Variant::from(range.text_align()).into()))
+            }
+            UIA_IsSubscriptAttributeId => self.read(|range| {
+                Ok(Variant::from(
+                    range
+                        .vertical_offset()
+                        .map(|o| o == VerticalOffset::Subscript),
+                )
+                .into())
+            }),
+            UIA_IsSuperscriptAttributeId => self.read(|range| {
+                Ok(Variant::from(
+                    range
+                        .vertical_offset()
+                        .map(|o| o == VerticalOffset::Superscript),
+                )
+                .into())
             }),
             // TODO: implement more attributes
             _ => {
