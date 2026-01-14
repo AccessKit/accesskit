@@ -1198,9 +1198,9 @@ inherited_properties! {
     (font_weight, f32, set_font_weight, 400.0, 700.0),
     (background_color, Color, set_background_color, accesskit::Color { red: 255, green: 255, blue: 255, alpha: 255 }, accesskit::Color { red: 255, green: 0, blue: 0, alpha: 255 }),
     (foreground_color, Color, set_foreground_color, accesskit::Color { red: 0, green: 0, blue: 0, alpha: 255 }, accesskit::Color { red: 0, green: 0, blue: 255, alpha: 255 }),
-    (overline, TextDecoration, set_overline, accesskit::TextDecoration::Solid, accesskit::TextDecoration::Dotted),
-    (strikethrough, TextDecoration, set_strikethrough, accesskit::TextDecoration::Dotted, accesskit::TextDecoration::Dashed),
-    (underline, TextDecoration, set_underline, accesskit::TextDecoration::Dashed, accesskit::TextDecoration::Double),
+    (overline, TextDecoration, set_overline, crate::text::tests::TEST_TEXT_DECORATION_1, crate::text::tests::TEST_TEXT_DECORATION_2),
+    (strikethrough, TextDecoration, set_strikethrough, crate::text::tests::TEST_TEXT_DECORATION_2, crate::text::tests::TEST_TEXT_DECORATION_3),
+    (underline, TextDecoration, set_underline, crate::text::tests::TEST_TEXT_DECORATION_3, crate::text::tests::TEST_TEXT_DECORATION_4),
     (text_align, TextAlign, set_text_align, accesskit::TextAlign::Left, accesskit::TextAlign::Justify),
     (vertical_offset, VerticalOffset, set_vertical_offset, accesskit::VerticalOffset::Subscript, accesskit::VerticalOffset::Superscript)
 }
@@ -1645,8 +1645,47 @@ impl<'a> Node<'a> {
 #[cfg(test)]
 mod tests {
     use crate::tests::nid;
-    use accesskit::{NodeId, Point, Rect, TextDecoration, TextSelection};
+    use accesskit::{
+        Color, NodeId, Point, Rect, TextDecoration, TextDecorationStyle, TextSelection,
+    };
     use alloc::vec;
+
+    pub(crate) const TEST_TEXT_DECORATION_1: TextDecoration = TextDecoration {
+        style: TextDecorationStyle::Solid,
+        color: Color {
+            red: 0,
+            green: 0,
+            blue: 0,
+            alpha: 255,
+        },
+    };
+    pub(crate) const TEST_TEXT_DECORATION_2: TextDecoration = TextDecoration {
+        style: TextDecorationStyle::Dotted,
+        color: Color {
+            red: 255,
+            green: 0,
+            blue: 0,
+            alpha: 255,
+        },
+    };
+    pub(crate) const TEST_TEXT_DECORATION_3: TextDecoration = TextDecoration {
+        style: TextDecorationStyle::Dashed,
+        color: Color {
+            red: 0,
+            green: 255,
+            blue: 0,
+            alpha: 255,
+        },
+    };
+    pub(crate) const TEST_TEXT_DECORATION_4: TextDecoration = TextDecoration {
+        style: TextDecorationStyle::Double,
+        color: Color {
+            red: 0,
+            green: 0,
+            blue: 255,
+            alpha: 255,
+        },
+    };
 
     // This was originally based on an actual tree produced by egui but
     // has since been heavily modified by hand to cover various test cases.
@@ -1753,7 +1792,7 @@ mod tests {
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                     ]);
                     node.set_word_starts([0]);
-                    node.set_underline(TextDecoration::Solid);
+                    node.set_underline(TEST_TEXT_DECORATION_1);
                     node.set_previous_on_line(NodeId(3));
                     node.set_next_on_line(NodeId(5));
                     node

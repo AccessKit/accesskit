@@ -617,7 +617,7 @@ pub enum VerticalOffset {
     pyclass(module = "accesskit", rename_all = "SCREAMING_SNAKE_CASE", eq)
 )]
 #[repr(u8)]
-pub enum TextDecoration {
+pub enum TextDecorationStyle {
     Solid,
     Dotted,
     Dashed,
@@ -761,6 +761,17 @@ pub struct Color {
     pub green: u8,
     pub blue: u8,
     pub alpha: u8,
+}
+
+/// The style and color for a type of text decoration.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "schemars", derive(JsonSchema))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[repr(C)]
+pub struct TextDecoration {
+    pub style: TextDecorationStyle,
+    pub color: Color,
 }
 
 // The following is based on the technique described here:
@@ -1453,7 +1464,17 @@ macro_rules! text_decoration_property_methods {
         }
         $(#[cfg(test)]
         mod $getter {
-            use super::{Node, Role, TextDecoration};
+            use super::{Color, Node, Role, TextDecoration, TextDecorationStyle};
+
+            const TEST_TEXT_DECORATION: TextDecoration = TextDecoration {
+                style: TextDecorationStyle::Dotted,
+                color: Color {
+                    red: 0,
+                    green: 0,
+                    blue: 0,
+                    alpha: 255,
+                },
+            };
 
             #[test]
             fn getter_should_return_default_value() {
@@ -1463,13 +1484,13 @@ macro_rules! text_decoration_property_methods {
             #[test]
             fn setter_should_update_the_property() {
                 let mut node = Node::new(Role::Unknown);
-                node.$setter(TextDecoration::Dotted);
-                assert_eq!(node.$getter(), Some(TextDecoration::Dotted));
+                node.$setter(TEST_TEXT_DECORATION);
+                assert_eq!(node.$getter(), Some(TEST_TEXT_DECORATION));
             }
             #[test]
             fn clearer_should_reset_the_property() {
                 let mut node = Node::new(Role::Unknown);
-                node.$setter(TextDecoration::Dotted);
+                node.$setter(TEST_TEXT_DECORATION);
                 node.$clearer();
                 assert!(node.$getter().is_none());
             }
