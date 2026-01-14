@@ -538,7 +538,10 @@ impl State {
     }
 
     pub fn focus(&self) -> Option<Node<'_>> {
-        self.focus_id().map(|id| self.node_by_id(id).unwrap())
+        self.focus_id().map(|id| {
+            let focused = self.node_by_id(id).unwrap();
+            focused.active_descendant().unwrap_or(focused)
+        })
     }
 
     pub fn active_dialog(&self) -> Option<Node<'_>> {
@@ -641,9 +644,10 @@ impl Tree {
             let new_node = self.next_state.node_by_id(*id).unwrap();
             handler.node_updated(&old_node, &new_node);
         }
-        if self.state.focus_id() != self.next_state.focus_id() {
-            let old_node = self.state.focus();
-            if let Some(old_node) = &old_node {
+        let old_focus = self.state.focus();
+        let new_focus = self.next_state.focus();
+        if old_focus.as_ref().map(|n| n.id()) != new_focus.as_ref().map(|n| n.id()) {
+            if let Some(old_node) = &old_focus {
                 let id = old_node.id();
                 if !changes.updated_node_ids.contains(&id)
                     && !changes.removed_node_ids.contains(&id)
@@ -653,8 +657,7 @@ impl Tree {
                     }
                 }
             }
-            let new_node = self.next_state.focus();
-            if let Some(new_node) = &new_node {
+            if let Some(new_node) = &new_focus {
                 let id = new_node.id();
                 if !changes.added_node_ids.contains(&id) && !changes.updated_node_ids.contains(&id)
                 {
@@ -663,7 +666,7 @@ impl Tree {
                     }
                 }
             }
-            handler.focus_moved(old_node.as_ref(), new_node.as_ref());
+            handler.focus_moved(old_focus.as_ref(), new_focus.as_ref());
         }
         for id in &changes.removed_node_ids {
             let node = self.state.node_by_id(*id).unwrap();
@@ -2866,5 +2869,113 @@ mod tests {
         assert!(handler.added_nodes.is_empty());
         assert!(handler.updated_nodes.contains(&subtree_node_id(1)),);
         assert!(!handler.updated_nodes.contains(&subtree_node_id(0)),);
+    }
+
+    #[test]
+    fn focus_returns_focused_node() {
+        let update = TreeUpdate {
+            nodes: vec![
+                (LocalNodeId(0), {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![LocalNodeId(1)]);
+                    node
+                }),
+                (LocalNodeId(1), Node::new(Role::Button)),
+            ],
+            tree: Some(Tree::new(LocalNodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: LocalNodeId(1),
+        };
+        let tree = super::Tree::new(update, true);
+        assert_eq!(tree.state().focus().unwrap().id(), node_id(1));
+    }
+
+    #[test]
+    fn focus_returns_active_descendant() {
+        let update = TreeUpdate {
+            nodes: vec![
+                (LocalNodeId(0), {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![LocalNodeId(1)]);
+                    node
+                }),
+                (LocalNodeId(1), {
+                    let mut node = Node::new(Role::ListBox);
+                    node.set_children(vec![LocalNodeId(2)]);
+                    node.set_active_descendant(LocalNodeId(2));
+                    node
+                }),
+                (LocalNodeId(2), Node::new(Role::ListBoxOption)),
+            ],
+            tree: Some(Tree::new(LocalNodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: LocalNodeId(1),
+        };
+        let tree = super::Tree::new(update, true);
+        assert_eq!(tree.state().focus().unwrap().id(), node_id(2));
+    }
+
+    #[test]
+    fn focus_moved_when_active_descendant_changes() {
+        let update = TreeUpdate {
+            nodes: vec![
+                (LocalNodeId(0), {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![LocalNodeId(1)]);
+                    node
+                }),
+                (LocalNodeId(1), {
+                    let mut node = Node::new(Role::ListBox);
+                    node.set_children(vec![LocalNodeId(2), LocalNodeId(3)]);
+                    node.set_active_descendant(LocalNodeId(2));
+                    node
+                }),
+                (LocalNodeId(2), Node::new(Role::ListBoxOption)),
+                (LocalNodeId(3), Node::new(Role::ListBoxOption)),
+            ],
+            tree: Some(Tree::new(LocalNodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: LocalNodeId(1),
+        };
+        let mut tree = super::Tree::new(update, true);
+
+        struct Handler {
+            focus_moved_called: bool,
+            old_focus: Option<NodeId>,
+            new_focus: Option<NodeId>,
+        }
+        impl super::ChangeHandler for Handler {
+            fn node_added(&mut self, _: &crate::Node) {}
+            fn node_updated(&mut self, _: &crate::Node, _: &crate::Node) {}
+            fn focus_moved(&mut self, old: Option<&crate::Node>, new: Option<&crate::Node>) {
+                self.focus_moved_called = true;
+                self.old_focus = old.map(|n| n.id());
+                self.new_focus = new.map(|n| n.id());
+            }
+            fn node_removed(&mut self, _: &crate::Node) {}
+        }
+
+        let mut handler = Handler {
+            focus_moved_called: false,
+            old_focus: None,
+            new_focus: None,
+        };
+
+        let update = TreeUpdate {
+            nodes: vec![(LocalNodeId(1), {
+                let mut node = Node::new(Role::ListBox);
+                node.set_children(vec![LocalNodeId(2), LocalNodeId(3)]);
+                node.set_active_descendant(LocalNodeId(3));
+                node
+            })],
+            tree: None,
+            tree_id: TreeId::ROOT,
+            focus: LocalNodeId(1),
+        };
+        tree.update_and_process_changes(update, &mut handler);
+
+        assert!(handler.focus_moved_called);
+        assert_eq!(handler.old_focus, Some(node_id(2)));
+        assert_eq!(handler.new_focus, Some(node_id(3)));
     }
 }
