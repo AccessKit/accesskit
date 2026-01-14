@@ -415,6 +415,10 @@ impl NodeWrapper<'_> {
         self.0.raw_bounds().is_some() || self.is_root()
     }
 
+    fn supports_hyperlink(&self) -> bool {
+        self.0.supports_url()
+    }
+
     fn supports_selection(&self) -> bool {
         self.0.is_container_with_selectable_children()
     }
@@ -434,6 +438,9 @@ impl NodeWrapper<'_> {
         }
         if self.supports_component() {
             interfaces.insert(Interface::Component);
+        }
+        if self.supports_hyperlink() {
+            interfaces.insert(Interface::Hyperlink);
         }
         if self.supports_selection() {
             interfaces.insert(Interface::Selection);
@@ -908,6 +915,13 @@ impl PlatformNode {
         })
     }
 
+    pub fn supports_hyperlink(&self) -> Result<bool> {
+        self.resolve(|node| {
+            let wrapper = NodeWrapper(&node);
+            Ok(wrapper.supports_hyperlink())
+        })
+    }
+
     pub fn supports_selection(&self) -> Result<bool> {
         self.resolve(|node| {
             let wrapper = NodeWrapper(&node);
@@ -1068,6 +1082,48 @@ impl PlatformNode {
             Ok(())
         })?;
         Ok(true)
+    }
+
+    pub fn n_anchors(&self) -> Result<i32> {
+        self.resolve(|node| if node.url().is_some() { Ok(1) } else { Ok(0) })
+    }
+
+    pub fn hyperlink_start_index(&self) -> Result<i32> {
+        self.resolve(|_| {
+            // TODO: Support rich text
+            Ok(-1)
+        })
+    }
+
+    pub fn hyperlink_end_index(&self) -> Result<i32> {
+        self.resolve(|_| {
+            // TODO: Support rich text
+            Ok(-1)
+        })
+    }
+
+    pub fn hyperlink_object(&self, index: i32) -> Result<Option<NodeId>> {
+        self.resolve(|_| {
+            if index == 0 {
+                Ok(Some(self.id))
+            } else {
+                Ok(None)
+            }
+        })
+    }
+
+    pub fn uri(&self, index: i32) -> Result<String> {
+        self.resolve(|node| {
+            if index == 0 {
+                Ok(node.url().map(|s| s.to_string()).unwrap_or_default())
+            } else {
+                Ok(String::new())
+            }
+        })
+    }
+
+    pub fn hyperlink_is_valid(&self) -> Result<bool> {
+        self.resolve(|node| Ok(node.url().is_some()))
     }
 
     pub fn n_selected_children(&self) -> Result<i32> {

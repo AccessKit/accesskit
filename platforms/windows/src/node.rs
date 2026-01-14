@@ -15,7 +15,10 @@ use accesskit::{
     Orientation, Point, Role, SortDirection, Toggled, TreeId,
 };
 use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeState};
-use std::sync::{atomic::Ordering, Arc, Weak};
+use std::{
+    fmt::Write,
+    sync::{atomic::Ordering, Arc, Weak},
+};
 use windows::{
     core::*,
     Win32::{
@@ -570,6 +573,9 @@ impl NodeWrapper<'_> {
     }
 
     fn is_value_pattern_supported(&self) -> bool {
+        if self.0.supports_url() {
+            return true;
+        }
         self.0.has_value() && !self.0.label_comes_from_value()
     }
 
@@ -578,6 +584,11 @@ impl NodeWrapper<'_> {
     }
 
     fn value(&self) -> WideString {
+        if let Some(url) = self.0.supports_url().then(|| self.0.url()).flatten() {
+            let mut result = WideString::default();
+            result.write_str(url).unwrap();
+            return result;
+        }
         let mut result = WideString::default();
         self.0.write_value(&mut result).unwrap();
         result

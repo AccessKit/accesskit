@@ -22,7 +22,7 @@ use objc2::{
 use objc2_app_kit::*;
 use objc2_foundation::{
     ns_string, NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSObjectProtocol, NSPoint,
-    NSRange, NSRect, NSString,
+    NSRange, NSRect, NSString, NSURL,
 };
 use std::rc::{Rc, Weak};
 
@@ -592,6 +592,17 @@ declare_class!(
             .flatten()
         }
 
+        #[method_id(accessibilityURL)]
+        fn url(&self) -> Option<Id<NSURL>> {
+            self.resolve(|node| {
+                node.supports_url().then(|| node.url()).flatten().and_then(|url| {
+                    let ns_string = NSString::from_str(url);
+                    unsafe { NSURL::URLWithString(&ns_string) }
+                })
+            })
+            .flatten()
+        }
+
         #[method(accessibilityOrientation)]
         fn orientation(&self) -> NSAccessibilityOrientation {
             self.resolve(|node| {
@@ -1122,6 +1133,9 @@ declare_class!(
                 }
                 if selector == sel!(accessibilityAttributeValue:) {
                     return node.has_braille_label() || node.has_braille_role_description()
+                }
+                if selector == sel!(accessibilityURL) {
+                    return node.supports_url();
                 }
                 selector == sel!(accessibilityParent)
                     || selector == sel!(accessibilityChildren)
