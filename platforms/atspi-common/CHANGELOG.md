@@ -24,6 +24,26 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_consumer bumped from 0.25.0 to 0.26.0
 
+## [0.16.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.15.0...accesskit_atspi_common-v0.16.0) (2026-01-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655))
+
+### Features
+
+* Implement the `url` property ([#669](https://github.com/AccessKit/accesskit/issues/669)) ([6202e63](https://github.com/AccessKit/accesskit/commit/6202e63c667e73216a306b3dd45ff25c364a4f45))
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655)) ([c16eb80](https://github.com/AccessKit/accesskit/commit/c16eb80c49d14f39e8a7defb1694bf22b8ceed6f))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.22.0 to 0.23.0
+    * accesskit_consumer bumped from 0.32.0 to 0.33.0
+
 ## [0.15.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.14.2...accesskit_atspi_common-v0.15.0) (2025-12-23)
 
 

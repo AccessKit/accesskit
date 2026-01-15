@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_consumer"
-version = "0.32.0"
+version = "0.33.0"
 authors.workspace = true
 license.workspace = true
 description = "AccessKit consumer library (internal)"
@@ -12,5 +12,5 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-accesskit = { version = "0.22.0", path = "../common" }
+accesskit = { version = "0.23.0", path = "../common" }
 hashbrown.workspace = true

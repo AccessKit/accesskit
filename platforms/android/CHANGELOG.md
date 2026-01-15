@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.6.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.5.0...accesskit_android-v0.6.0) (2026-01-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655))
+
+### Features
+
+* Implement the `url` property ([#669](https://github.com/AccessKit/accesskit/issues/669)) ([6202e63](https://github.com/AccessKit/accesskit/commit/6202e63c667e73216a306b3dd45ff25c364a4f45))
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655)) ([c16eb80](https://github.com/AccessKit/accesskit/commit/c16eb80c49d14f39e8a7defb1694bf22b8ceed6f))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.22.0 to 0.23.0
+    * accesskit_consumer bumped from 0.32.0 to 0.33.0
+
 ## [0.5.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.4.2...accesskit_android-v0.5.0) (2025-12-23)
 
 
