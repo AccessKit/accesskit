@@ -426,15 +426,13 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
     }
 
     fn GetAttributeValue(&self, id: UIA_TEXTATTRIBUTE_ID) -> Result<VARIANT> {
-        match id {
+        self.read(|range| match id {
             UIA_IsReadOnlyAttributeId => {
                 // TBD: do we ever want to support mixed read-only/editable text?
-                self.with_node(|node| {
-                    let value = node.is_read_only();
-                    Ok(value.into())
-                })
+                let value = range.node().is_read_only();
+                Ok(value.into())
             }
-            UIA_CaretPositionAttributeId => self.read(|range| {
+            UIA_CaretPositionAttributeId => {
                 let mut value = CaretPosition_Unknown;
                 if range.is_degenerate() {
                     let pos = range.start();
@@ -445,71 +443,55 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
                     }
                 }
                 Ok(value.0.into())
-            }),
-            UIA_CultureAttributeId => {
-                self.read(|range| Ok(Variant::from(range.language().map(LocaleName)).into()))
             }
-            UIA_FontNameAttributeId => {
-                self.read(|range| Ok(Variant::from(range.font_family()).into()))
-            }
-            UIA_FontSizeAttributeId => self.read(|range| {
+            UIA_CultureAttributeId => Ok(Variant::from(range.language().map(LocaleName)).into()),
+            UIA_FontNameAttributeId => Ok(Variant::from(range.font_family()).into()),
+            UIA_FontSizeAttributeId => {
                 Ok(Variant::from(range.font_size().map(|value| value as f64)).into())
-            }),
-            UIA_FontWeightAttributeId => self.read(|range| {
+            }
+            UIA_FontWeightAttributeId => {
                 Ok(Variant::from(range.font_weight().map(|value| value as i32)).into())
-            }),
-            UIA_IsItalicAttributeId => {
-                self.read(|range| Ok(Variant::from(range.is_italic()).into()))
             }
-            UIA_BackgroundColorAttributeId => {
-                self.read(|range| Ok(Variant::from(range.background_color()).into()))
-            }
-            UIA_ForegroundColorAttributeId => {
-                self.read(|range| Ok(Variant::from(range.foreground_color()).into()))
-            }
+            UIA_IsItalicAttributeId => Ok(Variant::from(range.is_italic()).into()),
+            UIA_BackgroundColorAttributeId => Ok(Variant::from(range.background_color()).into()),
+            UIA_ForegroundColorAttributeId => Ok(Variant::from(range.foreground_color()).into()),
             UIA_OverlineStyleAttributeId => {
-                self.read(|range| Ok(Variant::from(range.overline().map(|d| d.style)).into()))
+                Ok(Variant::from(range.overline().map(|d| d.style)).into())
             }
             UIA_OverlineColorAttributeId => {
-                self.read(|range| Ok(Variant::from(range.overline().map(|d| d.color)).into()))
+                Ok(Variant::from(range.overline().map(|d| d.color)).into())
             }
             UIA_StrikethroughStyleAttributeId => {
-                self.read(|range| Ok(Variant::from(range.strikethrough().map(|d| d.style)).into()))
+                Ok(Variant::from(range.strikethrough().map(|d| d.style)).into())
             }
             UIA_StrikethroughColorAttributeId => {
-                self.read(|range| Ok(Variant::from(range.strikethrough().map(|d| d.color)).into()))
+                Ok(Variant::from(range.strikethrough().map(|d| d.color)).into())
             }
             UIA_UnderlineStyleAttributeId => {
-                self.read(|range| Ok(Variant::from(range.underline().map(|d| d.style)).into()))
+                Ok(Variant::from(range.underline().map(|d| d.style)).into())
             }
             UIA_UnderlineColorAttributeId => {
-                self.read(|range| Ok(Variant::from(range.underline().map(|d| d.color)).into()))
+                Ok(Variant::from(range.underline().map(|d| d.color)).into())
             }
-            UIA_HorizontalTextAlignmentAttributeId => {
-                self.read(|range| Ok(Variant::from(range.text_align()).into()))
-            }
-            UIA_IsSubscriptAttributeId => self.read(|range| {
-                Ok(Variant::from(
-                    range
-                        .vertical_offset()
-                        .map(|o| o == VerticalOffset::Subscript),
-                )
-                .into())
-            }),
-            UIA_IsSuperscriptAttributeId => self.read(|range| {
-                Ok(Variant::from(
-                    range
-                        .vertical_offset()
-                        .map(|o| o == VerticalOffset::Superscript),
-                )
-                .into())
-            }),
+            UIA_HorizontalTextAlignmentAttributeId => Ok(Variant::from(range.text_align()).into()),
+            UIA_IsSubscriptAttributeId => Ok(Variant::from(
+                range
+                    .vertical_offset()
+                    .map(|o| o == VerticalOffset::Subscript),
+            )
+            .into()),
+            UIA_IsSuperscriptAttributeId => Ok(Variant::from(
+                range
+                    .vertical_offset()
+                    .map(|o| o == VerticalOffset::Superscript),
+            )
+            .into()),
             // TODO: implement more attributes
             _ => {
                 let value = unsafe { UiaGetReservedNotSupportedValue() }.unwrap();
                 Ok(value.into())
             }
-        }
+        })
     }
 
     fn GetBoundingRectangles(&self) -> Result<*mut SAFEARRAY> {
