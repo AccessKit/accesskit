@@ -72,7 +72,21 @@ impl<'a> Node<'a> {
     }
 
     pub fn is_focused(&self) -> bool {
-        self.tree_state.focus_id() == Some(self.id())
+        let dominated_by_active_descendant = |node_id| {
+            self.tree_state
+                .node_by_id(node_id)
+                .and_then(|node| node.active_descendant())
+                .is_some()
+        };
+        match self.tree_state.focus_id() {
+            Some(focus_id) if focus_id == self.id() => !dominated_by_active_descendant(focus_id),
+            Some(focus_id) => self
+                .tree_state
+                .node_by_id(focus_id)
+                .and_then(|focused| focused.active_descendant())
+                .is_some_and(|active_descendant| active_descendant.id() == self.id()),
+            None => false,
+        }
     }
 
     pub fn is_focused_in_tree(&self) -> bool {
@@ -894,6 +908,13 @@ impl<'a> Node<'a> {
         data.controls()
             .iter()
             .map(move |control_id| state.node_by_id(id.with_same_tree(*control_id)).unwrap())
+    }
+
+    pub fn active_descendant(&self) -> Option<Node<'a>> {
+        self.state
+            .data
+            .active_descendant()
+            .and_then(|id| self.tree_state.node_by_id(self.id.with_same_tree(id)))
     }
 
     pub fn raw_text_selection(&self) -> Option<&TextSelection> {
@@ -1790,5 +1811,119 @@ mod tests {
             assert_ne!(id1, id3);
             assert_ne!(id1, id4);
         }
+    }
+
+    #[test]
+    fn is_focused_when_node_has_focus() {
+        const ROOT_ID: NodeId = NodeId(0);
+        const BUTTON_ID: NodeId = NodeId(1);
+
+        let update = TreeUpdate {
+            nodes: vec![
+                (ROOT_ID, {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![BUTTON_ID]);
+                    node
+                }),
+                (BUTTON_ID, Node::new(Role::Button)),
+            ],
+            tree: Some(Tree::new(ROOT_ID)),
+            tree_id: TreeId::ROOT,
+            focus: BUTTON_ID,
+        };
+        let tree = crate::Tree::new(update, true);
+        assert!(tree
+            .state()
+            .node_by_id(nid(BUTTON_ID))
+            .unwrap()
+            .is_focused());
+    }
+
+    #[test]
+    fn is_focused_when_node_does_not_have_focus() {
+        const ROOT_ID: NodeId = NodeId(0);
+        const BUTTON_ID: NodeId = NodeId(1);
+
+        let update = TreeUpdate {
+            nodes: vec![
+                (ROOT_ID, {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![BUTTON_ID]);
+                    node
+                }),
+                (BUTTON_ID, Node::new(Role::Button)),
+            ],
+            tree: Some(Tree::new(ROOT_ID)),
+            tree_id: TreeId::ROOT,
+            focus: ROOT_ID,
+        };
+        let tree = crate::Tree::new(update, true);
+        assert!(!tree
+            .state()
+            .node_by_id(nid(BUTTON_ID))
+            .unwrap()
+            .is_focused());
+    }
+
+    #[test]
+    fn is_focused_active_descendant_is_focused() {
+        const ROOT_ID: NodeId = NodeId(0);
+        const LISTBOX_ID: NodeId = NodeId(1);
+        const ITEM_ID: NodeId = NodeId(2);
+
+        let update = TreeUpdate {
+            nodes: vec![
+                (ROOT_ID, {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![LISTBOX_ID]);
+                    node
+                }),
+                (LISTBOX_ID, {
+                    let mut node = Node::new(Role::ListBox);
+                    node.set_children(vec![ITEM_ID]);
+                    node.set_active_descendant(ITEM_ID);
+                    node
+                }),
+                (ITEM_ID, Node::new(Role::ListBoxOption)),
+            ],
+            tree: Some(Tree::new(ROOT_ID)),
+            tree_id: TreeId::ROOT,
+            focus: LISTBOX_ID,
+        };
+        let tree = crate::Tree::new(update, true);
+        assert!(tree.state().node_by_id(nid(ITEM_ID)).unwrap().is_focused());
+    }
+
+    #[test]
+    fn is_focused_node_with_active_descendant_is_not_focused() {
+        const ROOT_ID: NodeId = NodeId(0);
+        const LISTBOX_ID: NodeId = NodeId(1);
+        const ITEM_ID: NodeId = NodeId(2);
+
+        let update = TreeUpdate {
+            nodes: vec![
+                (ROOT_ID, {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![LISTBOX_ID]);
+                    node
+                }),
+                (LISTBOX_ID, {
+                    let mut node = Node::new(Role::ListBox);
+                    node.set_children(vec![ITEM_ID]);
+                    node.set_active_descendant(ITEM_ID);
+                    node
+                }),
+                (ITEM_ID, Node::new(Role::ListBoxOption)),
+            ],
+            tree: Some(Tree::new(ROOT_ID)),
+            tree_id: TreeId::ROOT,
+            focus: LISTBOX_ID,
+        };
+        let tree = crate::Tree::new(update, true);
+        assert!(!tree
+            .state()
+            .node_by_id(nid(LISTBOX_ID))
+            .unwrap()
+            .is_focused());
     }
 }

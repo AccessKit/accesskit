@@ -1821,6 +1821,9 @@ node_id_vec_property_methods! {
 }
 
 node_id_property_methods! {
+    /// For a composite widget such as a listbox, tree, or grid, identifies
+    /// the currently active descendant. Used when focus remains on the container
+    /// while the active item changes.
     (ActiveDescendant, active_descendant, set_active_descendant, clear_active_descendant),
     (ErrorMessage, error_message, set_error_message, clear_error_message),
     (InPageLinkTarget, in_page_link_target, set_in_page_link_target, clear_in_page_link_target),
