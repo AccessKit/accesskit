@@ -11,6 +11,7 @@
 
 pub use platform::cleanup_window;
 pub use platform::fill_window;
+pub use platform::draw_button;
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod platform {
@@ -20,6 +21,7 @@ mod platform {
     use std::mem::ManuallyDrop;
     use std::num::NonZeroU32;
 
+    use accesskit::Rect;
     use softbuffer::{Context, Surface};
     use winit::window::{Window, WindowId};
 
@@ -69,7 +71,96 @@ mod platform {
         }
     }
 
-    pub fn fill_window(window: &Window) {
+    #[derive(Debug, Clone, Copy)]
+    pub struct FrameSize {
+        pub width: u32,
+        pub height: u32
+    }
+    pub fn draw_button(
+        buffer: &mut [u32],
+        size: FrameSize,
+        rect: &Rect,
+        focused: bool,
+    ) {
+        // Colors (ARGB format: 0xAARRGGBB)
+        const BUTTON_COLOR: u32 = 0xff3366aa;       // Blue button
+        const BUTTON_FOCUSED: u32 = 0xff66aaff;     // Lighter blue when focused
+        const BORDER_COLOR: u32 = 0xffffffff;       // White border
+        const FOCUS_BORDER: u32 = 0xffffcc00;       // Yellow focus ring
+
+        let x0 = rect.x0 as usize;
+        let y0 = rect.y0 as usize;
+        let x1 = rect.x1 as usize;
+        let y1 = rect.y1 as usize;
+
+        let fill_color = if focused { BUTTON_FOCUSED } else { BUTTON_COLOR };
+        let border_color = if focused { FOCUS_BORDER } else { BORDER_COLOR };
+
+        // Uses FrameSize.width for jumping to start of scan lines
+        let stride: usize = size.width as usize;
+
+        // Draw the button fill
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let idx = y * stride + x;
+                if idx < buffer.len() {
+                    // Check if we're on the border (2px border)
+                    let on_border = x < x0 + 2 || x >= x1 - 2 || y < y0 + 2 || y >= y1 - 2;
+                    buffer[idx] = if on_border { border_color } else { fill_color };
+                }
+            }
+        }
+
+        // Draw focus ring (additional 2px outside border if focused)
+        if focused {
+            let ring_x0 = x0.saturating_sub(2);
+            let ring_y0 = y0.saturating_sub(2);
+            let ring_x1 = x1 + 2;
+            let ring_y1 = y1 + 2;
+
+            // Top edge
+            for y in ring_y0..y0 {
+                for x in ring_x0..ring_x1 {
+                    let idx = y * stride + x;
+                    if idx < buffer.len() {
+                        buffer[idx] = FOCUS_BORDER;
+                    }
+                }
+            }
+            // Bottom edge
+            for y in y1..ring_y1 {
+                for x in ring_x0..ring_x1 {
+                    let idx = y * stride + x;
+                    if idx < buffer.len() {
+                        buffer[idx] = FOCUS_BORDER;
+                    }
+                }
+            }
+            // Left edge
+            for y in y0..y1 {
+                for x in ring_x0..x0 {
+                    let idx = y * stride + x;
+                    if idx < buffer.len() {
+                        buffer[idx] = FOCUS_BORDER;
+                    }
+                }
+            }
+            // Right edge
+            for y in y0..y1 {
+                for x in x1..ring_x1 {
+                    let idx = y * stride + x;
+                    if idx < buffer.len() {
+                        buffer[idx] = FOCUS_BORDER;
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn fill_window<F>(window: &Window, udf_draw: F)
+    where
+        F: FnOnce(&mut [u32], FrameSize),
+    {
         GC.with(|gc| {
             let size = window.inner_size();
             let (Some(width), Some(height)) =
@@ -84,9 +175,6 @@ mod platform {
                 .get_or_insert_with(|| GraphicsContext::new(window))
                 .create_surface(window);
 
-            // Fill a buffer with a solid color.
-            const DARK_GRAY: u32 = 0xff181818;
-
             surface
                 .resize(width, height)
                 .expect("Failed to resize the softbuffer surface");
@@ -94,7 +182,12 @@ mod platform {
             let mut buffer = surface
                 .buffer_mut()
                 .expect("Failed to get the softbuffer buffer");
+
+            const DARK_GRAY: u32 = 0xff181818;
             buffer.fill(DARK_GRAY);
+
+            udf_draw(&mut buffer, FrameSize { width: size.width, height: size.height });
+
             buffer
                 .present()
                 .expect("Failed to present the softbuffer buffer");
