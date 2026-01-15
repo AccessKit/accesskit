@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::Point;
+use accesskit::{Color, Point, TextAlign, TextDecorationStyle};
 use accesskit_consumer::{TextRangePropertyValue, TreeState};
 use std::{
     fmt::{self, Write},
@@ -143,6 +143,39 @@ impl From<UIA_CONTROLTYPE_ID> for Variant {
 impl From<OrientationType> for Variant {
     fn from(value: OrientationType) -> Self {
         Self(value.0.into())
+    }
+}
+
+impl From<Color> for Variant {
+    fn from(value: Color) -> Self {
+        let rgb: i32 =
+            (value.red as i32) | ((value.green as i32) << 8) | ((value.blue as i32) << 16);
+        Self(rgb.into())
+    }
+}
+
+impl From<TextDecorationStyle> for Variant {
+    fn from(value: TextDecorationStyle) -> Self {
+        let value = match value {
+            TextDecorationStyle::Solid => TextDecorationLineStyle_Single,
+            TextDecorationStyle::Dotted => TextDecorationLineStyle_Dot,
+            TextDecorationStyle::Dashed => TextDecorationLineStyle_Dash,
+            TextDecorationStyle::Double => TextDecorationLineStyle_Double,
+            TextDecorationStyle::Wavy => TextDecorationLineStyle_Wavy,
+        };
+        Self::from(value.0)
+    }
+}
+
+impl From<TextAlign> for Variant {
+    fn from(value: TextAlign) -> Self {
+        let value = match value {
+            TextAlign::Left => HorizontalTextAlignment_Left,
+            TextAlign::Right => HorizontalTextAlignment_Right,
+            TextAlign::Center => HorizontalTextAlignment_Centered,
+            TextAlign::Justify => HorizontalTextAlignment_Justified,
+        };
+        Self::from(value.0)
     }
 }
 
