@@ -147,6 +147,28 @@
     * accesskit_macos bumped from 0.18.0 to 0.18.1
     * accesskit_unix bumped from 0.13.0 to 0.13.1
 
+## [0.31.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.30.0...accesskit_winit-v0.31.0) (2026-01-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655))
+
+### Features
+
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655)) ([c16eb80](https://github.com/AccessKit/accesskit/commit/c16eb80c49d14f39e8a7defb1694bf22b8ceed6f))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.22.0 to 0.23.0
+    * accesskit_windows bumped from 0.30.0 to 0.31.0
+    * accesskit_macos bumped from 0.23.0 to 0.24.0
+    * accesskit_unix bumped from 0.18.0 to 0.19.0
+    * accesskit_android bumped from 0.5.0 to 0.6.0
+
 ## [0.30.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.29.2...accesskit_winit-v0.30.0) (2025-12-23)
 
 

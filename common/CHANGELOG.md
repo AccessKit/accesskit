@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.23.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.22.0...accesskit-v0.23.0) (2026-01-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* Store text decoration style and color in a struct ([#674](https://github.com/AccessKit/accesskit/issues/674))
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655))
+
+### Features
+
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655)) ([c16eb80](https://github.com/AccessKit/accesskit/commit/c16eb80c49d14f39e8a7defb1694bf22b8ceed6f))
+
+
+### Bug Fixes
+
+* Implement the `active_descendant` property ([#675](https://github.com/AccessKit/accesskit/issues/675)) ([863755d](https://github.com/AccessKit/accesskit/commit/863755d6898c7006a5f49c3661a26cb62d837d1b))
+
+
+### Code Refactoring
+
+* Store text decoration style and color in a struct ([#674](https://github.com/AccessKit/accesskit/issues/674)) ([c2e8487](https://github.com/AccessKit/accesskit/commit/c2e8487d0a243da0d1c996887fb4c9a7e3beacc7))
+
 ## [0.22.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.21.1...accesskit-v0.22.0) (2025-12-23)
 
 
