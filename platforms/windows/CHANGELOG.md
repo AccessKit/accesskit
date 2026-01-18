@@ -38,6 +38,20 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.31.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.31.0...accesskit_windows-v0.31.1) (2026-01-18)
+
+
+### Bug Fixes
+
+* Emit initial focus event for active descendant node ([#681](https://github.com/AccessKit/accesskit/issues/681)) ([13a37d1](https://github.com/AccessKit/accesskit/commit/13a37d144e2fafceaf26e7645f6acc679ccb2f34))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.33.0 to 0.33.1
+
 ## [0.31.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.30.0...accesskit_windows-v0.31.0) (2026-01-15)
 
 
