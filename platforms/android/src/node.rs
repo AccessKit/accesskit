@@ -10,7 +10,7 @@
 
 use accesskit::{Action, Live, Role, Toggled};
 use accesskit_consumer::Node;
-use jni::{objects::JObject, sys::jint, JNIEnv};
+use jni::{JNIEnv, objects::JObject, sys::jint};
 
 use crate::{filters::filter, util::*};
 
@@ -335,7 +335,7 @@ impl NodeWrapper<'_> {
                 .unwrap()
                 .l()
                 .unwrap();
-            let key = env.new_string("url").unwrap();
+            let key = env.new_string("AccessibilityNodeInfo.targetUrl").unwrap();
             let value = env.new_string(url).unwrap();
             env.call_method(
                 &extras,
