@@ -129,12 +129,9 @@ impl Adapter {
                     Rc::clone(action_handler),
                     placeholder_context.mtm,
                 );
-                let result = context
-                    .tree
-                    .borrow()
-                    .state()
-                    .focus_id()
-                    .map(|id| QueuedEvents::new(Rc::clone(&context), vec![focus_event(id)]));
+                let result = context.tree.borrow().state().focus().map(|node| {
+                    QueuedEvents::new(Rc::clone(&context), vec![focus_event(node.id())])
+                });
                 self.state = State::Active(context);
                 result
             }
