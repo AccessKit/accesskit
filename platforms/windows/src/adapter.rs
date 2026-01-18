@@ -426,8 +426,8 @@ impl Adapter {
                 let result = context
                     .read_tree()
                     .state()
-                    .focus_id()
-                    .map(|id| QueuedEvents(vec![focus_event(context, id)]));
+                    .focus()
+                    .map(|node| QueuedEvents(vec![focus_event(context, node.id())]));
                 self.state = State::Active(Arc::clone(context));
                 result
             }

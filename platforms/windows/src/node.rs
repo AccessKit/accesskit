@@ -1094,14 +1094,14 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode_Impl {
 
     fn GetFocus(&self) -> Result<IRawElementProviderFragment> {
         self.with_tree_state(|state| {
-            if let Some(id) = state.focus_id() {
+            if let Some(node) = state.focus() {
                 let self_id = if let Some(id) = self.node_id {
                     id
                 } else {
                     state.root_id()
                 };
-                if id != self_id {
-                    return Ok(self.relative(id).into());
+                if node.id() != self_id {
+                    return Ok(self.relative(node.id()).into());
                 }
             }
             Err(Error::empty())

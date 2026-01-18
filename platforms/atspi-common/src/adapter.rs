@@ -424,7 +424,7 @@ impl Adapter {
         action_handler: Arc<dyn ActionHandlerNoMut + Send + Sync>,
     ) -> Self {
         let tree = Tree::new(initial_state, is_window_focused);
-        let focus_id = tree.state().focus_id();
+        let focus_id = tree.state().focus().map(|node| node.id());
         let context = Context::new(app_context, tree, action_handler, root_window_bounds);
         context.write_app_context().push_adapter(id, &context);
         let adapter = Self {
