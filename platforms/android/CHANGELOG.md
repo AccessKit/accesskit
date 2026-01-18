@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.1](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.6.0...accesskit_android-v0.6.1) (2026-01-18)
+
+
+### Bug Fixes
+
+* Use proper bundle key for Android URL property ([#679](https://github.com/AccessKit/accesskit/issues/679)) ([98f9342](https://github.com/AccessKit/accesskit/commit/98f9342a420df32c18d567dc7c4ea2522b241ec9))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.33.0 to 0.33.1
+
 ## [0.6.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.5.0...accesskit_android-v0.6.0) (2026-01-15)
 
 

@@ -24,6 +24,13 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.33.1](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.33.0...accesskit_consumer-v0.33.1) (2026-01-18)
+
+
+### Bug Fixes
+
+* Fix next word and line at the end of text runs ([#678](https://github.com/AccessKit/accesskit/issues/678)) ([828979e](https://github.com/AccessKit/accesskit/commit/828979e5f668bc8c4ceba018d417956a5c69b2bd))
+
 ## [0.33.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.32.0...accesskit_consumer-v0.33.0) (2026-01-15)
 
 
