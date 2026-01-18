@@ -388,11 +388,12 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_to_word_start(&self) -> Self {
+        let pos = self.inner.biased_to_start(&self.root_node);
         // Wrap the following in a scope to make sure we can't misuse the
         // `word_starts` local later.
         {
-            let word_starts = self.inner.node.data().word_starts();
-            let index = match word_starts.binary_search(&(self.inner.character_index as u8)) {
+            let word_starts = pos.node.data().word_starts();
+            let index = match word_starts.binary_search(&(pos.character_index as u8)) {
                 Ok(index) => index + 1,
                 Err(index) => index,
             };
@@ -400,13 +401,13 @@ impl<'a> Position<'a> {
                 return Self {
                     root_node: self.root_node,
                     inner: InnerPosition {
-                        node: self.inner.node,
+                        node: pos.node,
                         character_index: *start as usize,
                     },
                 };
             }
         }
-        for node in self.inner.node.following_text_runs(&self.root_node) {
+        for node in pos.node.following_text_runs(&self.root_node) {
             let start_pos = Self {
                 root_node: self.root_node,
                 inner: InnerPosition {
@@ -490,10 +491,9 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_to_line_start(&self) -> Self {
-        let pos = self.inner.biased_to_start(&self.root_node);
         Self {
             root_node: self.root_node,
-            inner: pos.line_end().biased_to_start(&self.root_node),
+            inner: self.inner.line_end().biased_to_start(&self.root_node),
         }
     }
 
