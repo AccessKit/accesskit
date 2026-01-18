@@ -335,7 +335,7 @@ impl NodeWrapper<'_> {
                 .unwrap()
                 .l()
                 .unwrap();
-            let key = env.new_string("url").unwrap();
+            let key = env.new_string("AccessibilityNodeInfo.targetUrl").unwrap();
             let value = env.new_string(url).unwrap();
             env.call_method(
                 &extras,
