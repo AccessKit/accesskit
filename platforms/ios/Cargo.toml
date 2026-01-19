@@ -1,0 +1,35 @@
+[package]
+name = "accesskit_ios"
+version = "0.1.0"
+authors.workspace = true
+license.workspace = true
+description = "AccessKit UI accessibility infrastructure: iOS adapter"
+categories.workspace = true
+keywords = ["gui", "ui", "accessibility"]
+repository.workspace = true
+readme = "README.md"
+edition.workspace = true
+rust-version.workspace = true
+
+[package.metadata.docs.rs]
+default-target = "aarch64-apple-ios"
+
+[dependencies]
+accesskit = { version = "0.23.0", path = "../../common" }
+accesskit_consumer = { version = "0.33.1", path = "../../consumer" }
+hashbrown.workspace = true
+objc2 = "0.5.1"
+objc2-foundation = { version = "0.2.0", features = [
+    "NSArray",
+    "NSDictionary",
+    "NSValue",
+    "NSThread",
+] }
+objc2-ui-kit = { version = "0.2.0", features = [
+    "UIAccessibility",
+    "UIAccessibilityConstants",
+    "UIAccessibilityContainer",
+    "UIResponder",
+    "UIView",
+    "UIWindow",
+] }
