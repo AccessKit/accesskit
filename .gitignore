@@ -16,5 +16,8 @@ target
 #gedit
 *~
 
+# macOS
+.DS_Store
+
 #KDE
 .directory
