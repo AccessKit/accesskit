@@ -74,10 +74,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Create adapter and activate accessibility
     let mut adapter = Adapter::new(MyActivationHandler, MyActionHandler, MyDeactivationHandler);
-    // At the start of the application we give the window focus;
-    // this is not needed for Orca to speak an announcement and
-    // could be skipped if you don't want to change the focus
-    adapter.update_window_focus_state(true);
 
     adapter.update_if_active(|| MyActivationHandler.request_initial_tree().unwrap());
 
