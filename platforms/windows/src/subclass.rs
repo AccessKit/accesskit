@@ -17,7 +17,7 @@ use windows::{
 use crate::{Adapter, QueuedEvents};
 
 fn win32_error() -> ! {
-    panic!("{}", Error::from_win32())
+    panic!("{}", Error::from_thread())
 }
 
 // Work around a difference between the SetWindowLongPtrW API definition

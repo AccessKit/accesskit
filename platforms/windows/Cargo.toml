@@ -20,10 +20,10 @@ accesskit = { version = "0.23.0", path = "../../common" }
 accesskit_consumer = { version = "0.33.1", path = "../../consumer" }
 hashbrown.workspace = true
 static_assertions = "1.1.0"
-windows-core = "0.61.0"
+windows-core = "0.62.0"
 
 [dependencies.windows]
-version = "0.61.1"
+version = "0.62.0"
 features = [
     "Win32_Foundation",
     "Win32_Globalization",

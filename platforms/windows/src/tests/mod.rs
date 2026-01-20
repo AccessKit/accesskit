@@ -45,7 +45,7 @@ static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
 
     let atom = unsafe { RegisterClassW(&wc) };
     if atom == 0 {
-        panic!("{}", Error::from_win32());
+        panic!("{}", Error::from_thread());
     }
     atom
 });
@@ -161,7 +161,7 @@ fn create_window(
         )?
     };
     if window.is_invalid() {
-        return Err(Error::from_win32());
+        return Err(Error::from_thread());
     }
 
     Ok(window)
