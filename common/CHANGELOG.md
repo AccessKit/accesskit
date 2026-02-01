@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.24.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.23.0...accesskit-v0.24.0) (2026-02-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* Update minimum supported Rust version to 1.85 ([#683](https://github.com/AccessKit/accesskit/issues/683))
+
+### Bug Fixes
+
+* Update minimum supported Rust version to 1.85 ([#683](https://github.com/AccessKit/accesskit/issues/683)) ([f8c22cb](https://github.com/AccessKit/accesskit/commit/f8c22cbb53ce6b1859adeff3c0b7154ad9e1f25e))
+
 ## [0.23.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.22.0...accesskit-v0.23.0) (2026-01-15)
 
 
