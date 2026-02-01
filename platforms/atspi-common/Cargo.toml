@@ -20,4 +20,3 @@ accesskit_consumer = { version = "0.33.1", path = "../../consumer" }
 atspi-common = { version = "0.13", default-features = false }
 serde = "1.0"
 zvariant = { version = "5.4", default-features = false }
-
