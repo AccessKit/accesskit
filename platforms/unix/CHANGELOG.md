@@ -68,6 +68,25 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_atspi_common bumped from 0.10.0 to 0.10.1
 
+## [0.20.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.19.1...accesskit_unix-v0.20.0) (2026-02-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* Update minimum supported Rust version to 1.85 ([#683](https://github.com/AccessKit/accesskit/issues/683))
+
+### Bug Fixes
+
+* Update minimum supported Rust version to 1.85 ([#683](https://github.com/AccessKit/accesskit/issues/683)) ([f8c22cb](https://github.com/AccessKit/accesskit/commit/f8c22cbb53ce6b1859adeff3c0b7154ad9e1f25e))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.23.0 to 0.24.0
+    * accesskit_atspi_common bumped from 0.16.1 to 0.17.0
+
 ## [0.19.1](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.19.0...accesskit_unix-v0.19.1) (2026-01-18)
 
 

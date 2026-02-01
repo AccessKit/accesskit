@@ -24,6 +24,24 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.34.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.33.1...accesskit_consumer-v0.34.0) (2026-02-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* Update minimum supported Rust version to 1.85 ([#683](https://github.com/AccessKit/accesskit/issues/683))
+
+### Bug Fixes
+
+* Update minimum supported Rust version to 1.85 ([#683](https://github.com/AccessKit/accesskit/issues/683)) ([f8c22cb](https://github.com/AccessKit/accesskit/commit/f8c22cbb53ce6b1859adeff3c0b7154ad9e1f25e))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.23.0 to 0.24.0
+
 ## [0.33.1](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.33.0...accesskit_consumer-v0.33.1) (2026-01-18)
 
 

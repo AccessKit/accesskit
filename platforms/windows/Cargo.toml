@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_windows"
-version = "0.31.1"
+version = "0.32.0"
 authors.workspace = true
 license.workspace = true
 description = "AccessKit UI accessibility infrastructure: Windows adapter"
@@ -16,8 +16,8 @@ default-target = "x86_64-pc-windows-msvc"
 targets = []
 
 [dependencies]
-accesskit = { version = "0.23.0", path = "../../common" }
-accesskit_consumer = { version = "0.33.1", path = "../../consumer" }
+accesskit = { version = "0.24.0", path = "../../common" }
+accesskit_consumer = { version = "0.34.0", path = "../../consumer" }
 hashbrown.workspace = true
 static_assertions = "1.1.0"
 windows-core = "0.61.0"
