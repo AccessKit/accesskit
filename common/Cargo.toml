@@ -27,3 +27,4 @@ enumn = ["dep:enumn"]
 pyo3 = ["dep:pyo3"]
 serde = ["dep:serde", "enumn", "uuid/serde"]
 schemars = ["dep:schemars", "dep:serde_json", "serde", "schemars/uuid1"]
+

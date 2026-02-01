@@ -11,7 +11,7 @@ When reporting an issue, in order to help the maintainers understand what the pr
 
 When making a code contribution to AccessKit, before opening your pull request please make sure that:
 
-- your patch builds with AccessKit's minimal supported Rust version (currently Rust 1.77.2)
+- your patch builds with AccessKit's minimal supported Rust version (currently Rust 1.85)
 - you added tests where applicable
 - you tested your modifications on all impacted platforms (see below)
 - you updated any relevant documentation
