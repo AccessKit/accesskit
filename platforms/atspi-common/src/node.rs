@@ -382,6 +382,10 @@ impl NodeWrapper<'_> {
         self.0.braille_role_description()
     }
 
+    fn keyboard_shortcut(&self) -> Option<&str> {
+        self.0.data().keyboard_shortcut()
+    }
+
     fn attributes(&self) -> HashMap<&'static str, String> {
         let mut attributes = HashMap::new();
         if let Some(placeholder) = self.placeholder() {
@@ -398,6 +402,9 @@ impl NodeWrapper<'_> {
         }
         if let Some(role_description) = self.braille_role_description() {
             attributes.insert("brailleroledescription", role_description.to_string());
+        }
+        if let Some(shortcut) = self.keyboard_shortcut() {
+            attributes.insert("keyshortcuts", shortcut.to_string());
         }
 
         attributes
@@ -973,7 +980,12 @@ impl PlatformNode {
                 actions.push(AtspiAction {
                     localized_name: wrapper.get_action_name(i as i32),
                     description: "".into(),
-                    key_binding: "".into(),
+                    // The keyboard shortcut is for the default action (index 0)
+                    key_binding: if i == 0 {
+                        wrapper.keyboard_shortcut().unwrap_or_default().into()
+                    } else {
+                        "".into()
+                    },
                 });
             }
             Ok(actions)
