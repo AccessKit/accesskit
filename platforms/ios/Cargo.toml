@@ -22,6 +22,7 @@ objc2 = "0.5.1"
 objc2-foundation = { version = "0.2.0", features = [
     "NSArray",
     "NSDictionary",
+    "NSString",
     "NSValue",
     "NSThread",
 ] }
@@ -29,6 +30,8 @@ objc2-ui-kit = { version = "0.2.0", features = [
     "UIAccessibility",
     "UIAccessibilityConstants",
     "UIAccessibilityContainer",
+    "UIAccessibilityElement",
+    "UIGeometry",
     "UIResponder",
     "UIView",
     "UIWindow",
