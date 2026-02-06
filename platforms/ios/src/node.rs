@@ -16,10 +16,10 @@ use objc2::{
 };
 use objc2_foundation::{CGRect, NSArray, NSObject, NSObjectProtocol, NSString};
 use objc2_ui_kit::{
-    UIAccessibilityElement, UIAccessibilityTraitAdjustable, UIAccessibilityTraitButton,
-    UIAccessibilityTraitHeader, UIAccessibilityTraitImage, UIAccessibilityTraitLink,
-    UIAccessibilityTraitNone, UIAccessibilityTraitNotEnabled, UIAccessibilityTraitSelected,
-    UIAccessibilityTraitStaticText, UIAccessibilityTraits,
+    UIAccessibilityContainerType, UIAccessibilityElement, UIAccessibilityTraitAdjustable,
+    UIAccessibilityTraitButton, UIAccessibilityTraitHeader, UIAccessibilityTraitImage,
+    UIAccessibilityTraitLink, UIAccessibilityTraitNone, UIAccessibilityTraitNotEnabled,
+    UIAccessibilityTraitSelected, UIAccessibilityTraitStaticText, UIAccessibilityTraits,
 };
 use std::rc::{Rc, Weak};
 
@@ -132,6 +132,29 @@ impl NodeWrapper<'_> {
         }
 
         traits
+    }
+
+    fn container_type(&self) -> UIAccessibilityContainerType {
+        match self.0.role() {
+            Role::Table | Role::Grid | Role::TreeGrid | Role::ListGrid => {
+                UIAccessibilityContainerType::DataTable
+            }
+            Role::List | Role::ListBox | Role::DescriptionList | Role::Tree => {
+                UIAccessibilityContainerType::List
+            }
+            Role::Article
+            | Role::Banner
+            | Role::Complementary
+            | Role::ContentInfo
+            | Role::Footer
+            | Role::Form
+            | Role::Main
+            | Role::Navigation
+            | Role::Region
+            | Role::Search => UIAccessibilityContainerType::Landmark,
+            Role::Group => UIAccessibilityContainerType::SemanticGroup,
+            _ => UIAccessibilityContainerType::None,
+        }
     }
 }
 
@@ -252,6 +275,15 @@ declare_class!(
                     .collect();
                 NSArray::from_vec(children)
             })
+        }
+
+        #[method(accessibilityContainerType)]
+        fn container_type(&self) -> UIAccessibilityContainerType {
+            self.resolve(|node| {
+                let wrapper = NodeWrapper(node);
+                wrapper.container_type()
+            })
+            .unwrap_or(UIAccessibilityContainerType::None)
         }
 
         #[method(accessibilityElementDidBecomeFocused)]
@@ -383,6 +415,10 @@ mod tests {
 
     fn node_traits(node: &NodeBuilder) -> UIAccessibilityTraits {
         with_single(node, |n| NodeWrapper(n).traits())
+    }
+
+    fn node_container_type(node: &NodeBuilder) -> UIAccessibilityContainerType {
+        with_single(node, |n| NodeWrapper(n).container_type())
     }
 
     fn node_can_be_focused(nodes: Vec<(NodeId, NodeBuilder)>, target: NodeId) -> bool {
@@ -621,6 +657,73 @@ mod tests {
     fn traits_none_for_group() {
         let node = NodeBuilder::new(Role::Group);
         assert_eq!(node_traits(&node), unsafe { UIAccessibilityTraitNone });
+    }
+
+    // ---- container_type ----
+
+    #[test]
+    fn container_type_data_table_roles() {
+        for role in [Role::Table, Role::Grid, Role::TreeGrid, Role::ListGrid] {
+            let node = NodeBuilder::new(role);
+            assert_eq!(
+                node_container_type(&node),
+                UIAccessibilityContainerType::DataTable,
+                "role {role:?}",
+            );
+        }
+    }
+
+    #[test]
+    fn container_type_list_roles() {
+        for role in [Role::List, Role::ListBox, Role::DescriptionList, Role::Tree] {
+            let node = NodeBuilder::new(role);
+            assert_eq!(
+                node_container_type(&node),
+                UIAccessibilityContainerType::List,
+                "role {role:?}",
+            );
+        }
+    }
+
+    #[test]
+    fn container_type_landmark_roles() {
+        for role in [
+            Role::Article,
+            Role::Banner,
+            Role::Complementary,
+            Role::ContentInfo,
+            Role::Footer,
+            Role::Form,
+            Role::Main,
+            Role::Navigation,
+            Role::Region,
+            Role::Search,
+        ] {
+            let node = NodeBuilder::new(role);
+            assert_eq!(
+                node_container_type(&node),
+                UIAccessibilityContainerType::Landmark,
+                "role {role:?}",
+            );
+        }
+    }
+
+    #[test]
+    fn container_type_semantic_group_for_group() {
+        let node = NodeBuilder::new(Role::Group);
+        assert_eq!(
+            node_container_type(&node),
+            UIAccessibilityContainerType::SemanticGroup,
+        );
+    }
+
+    #[test]
+    fn container_type_none_for_button() {
+        let node = NodeBuilder::new(Role::Button);
+        assert_eq!(
+            node_container_type(&node),
+            UIAccessibilityContainerType::None,
+        );
     }
 
     // ---- frame_source ----
