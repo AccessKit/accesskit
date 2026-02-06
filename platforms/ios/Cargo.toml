@@ -31,6 +31,7 @@ objc2-ui-kit = { version = "0.2.0", features = [
     "UIAccessibilityConstants",
     "UIAccessibilityContainer",
     "UIAccessibilityElement",
+    "UIAccessibilityIdentification",
     "UIGeometry",
     "UIResponder",
     "UIView",

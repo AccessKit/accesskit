@@ -311,6 +311,14 @@ declare_class!(
                 }
             });
         }
+
+        #[method_id(accessibilityIdentifier)]
+        fn identifier(&self) -> Option<Retained<NSString>> {
+            self.resolve(|node| {
+                node.author_id().map(NSString::from_str)
+            })
+            .flatten()
+        }
     }
 );
 
