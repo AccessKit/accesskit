@@ -5,8 +5,29 @@
 
 use accesskit::Point;
 use accesskit_consumer::Node;
-use objc2_foundation::{CGPoint, CGRect, CGSize};
+use objc2::encode::{Encode, Encoding, RefEncode};
+use objc2_foundation::{CGPoint, CGRect, CGSize, NSInteger};
 use objc2_ui_kit::UIView;
+
+// TODO: Remove once we update to objc2 0.6
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub(crate) struct UIAccessibilityExpandedStatus(pub NSInteger);
+
+#[allow(non_upper_case_globals)]
+impl UIAccessibilityExpandedStatus {
+    pub(crate) const Unsupported: Self = Self(0);
+    pub(crate) const Expanded: Self = Self(1);
+    pub(crate) const Collapsed: Self = Self(2);
+}
+
+unsafe impl Encode for UIAccessibilityExpandedStatus {
+    const ENCODING: Encoding = NSInteger::ENCODING;
+}
+
+unsafe impl RefEncode for UIAccessibilityExpandedStatus {
+    const ENCODING_REF: Encoding = Encoding::Pointer(&Self::ENCODING);
+}
 
 pub(crate) fn from_cg_point(view: &UIView, node: &Node, point: CGPoint) -> Point {
     let local_point = unsafe { view.convertPoint_fromView(point, None) };

@@ -26,7 +26,7 @@ use std::rc::{Rc, Weak};
 use crate::{
     context::Context,
     filters::{filter, filter_for_is_accessibility_element},
-    util::to_cg_rect,
+    util::{UIAccessibilityExpandedStatus, to_cg_rect},
 };
 
 #[derive(Debug, PartialEq)]
@@ -257,6 +257,16 @@ declare_class!(
         fn language(&self) -> Option<Retained<NSString>> {
             self.resolve(|node| node.language().map(NSString::from_str))
                 .flatten()
+        }
+
+        #[method(accessibilityExpandedStatus)]
+        fn expanded_status(&self) -> UIAccessibilityExpandedStatus {
+            self.resolve(|node| match node.data().is_expanded() {
+                Some(true) => UIAccessibilityExpandedStatus::Expanded,
+                Some(false) => UIAccessibilityExpandedStatus::Collapsed,
+                None => UIAccessibilityExpandedStatus::Unsupported,
+            })
+            .unwrap_or(UIAccessibilityExpandedStatus::Unsupported)
         }
 
         #[method_id(accessibilityElements)]
