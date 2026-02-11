@@ -47,10 +47,6 @@ impl NodeWrapper<'_> {
         self.0.description()
     }
 
-    pub(crate) fn parent_id(&self) -> Option<NodeId> {
-        self.0.parent_id()
-    }
-
     pub(crate) fn id(&self) -> NodeId {
         self.0.id()
     }
@@ -567,17 +563,7 @@ impl NodeWrapper<'_> {
                 )),
             );
         }
-        let parent_id = self.parent_id();
-        if parent_id != old.parent_id() {
-            let parent = self
-                .0
-                .filtered_parent(&filter)
-                .map_or(NodeIdOrRoot::Root, |node| NodeIdOrRoot::Node(node.id()));
-            adapter.emit_object_event(
-                self.id(),
-                ObjectEvent::PropertyChanged(Property::Parent(parent)),
-            );
-        }
+        self.notify_parent_change(adapter, old);
         let role = self.role();
         if role != old.role() {
             adapter.emit_object_event(
@@ -595,6 +581,17 @@ impl NodeWrapper<'_> {
         }
     }
 
+    pub(crate) fn notify_parent_change(&self, adapter: &Adapter, old: &NodeWrapper) {
+        let parent = self.0.filtered_parent(&filter);
+        if parent.map(|p| p.id()) != old.0.filtered_parent(&filter).map(|p| p.id()) {
+            let parent = parent.map_or(NodeIdOrRoot::Root, |node| NodeIdOrRoot::Node(node.id()));
+            adapter.emit_object_event(
+                self.id(),
+                ObjectEvent::PropertyChanged(Property::Parent(parent)),
+            );
+        }
+    }
+
     fn notify_bounds_changes(
         &self,
         window_bounds: &WindowBounds,
@@ -608,7 +605,7 @@ impl NodeWrapper<'_> {
         }
     }
 
-    fn notify_children_changes(&self, adapter: &Adapter, old: &NodeWrapper<'_>) {
+    pub(crate) fn notify_children_changes(&self, adapter: &Adapter, old: &NodeWrapper<'_>) {
         let old_filtered_children = old.filtered_child_ids().collect::<Vec<NodeId>>();
         let new_filtered_children = self.filtered_child_ids().collect::<Vec<NodeId>>();
         for (index, child) in new_filtered_children.iter().enumerate() {
