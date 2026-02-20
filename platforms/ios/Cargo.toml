@@ -35,5 +35,6 @@ objc2-ui-kit = { version = "0.2.0", features = [
     "UIGeometry",
     "UIResponder",
     "UIView",
+    "UIViewController",
     "UIWindow",
 ] }
