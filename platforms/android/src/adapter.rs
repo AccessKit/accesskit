@@ -351,8 +351,9 @@ impl Adapter {
         )
         .unwrap();
 
+        let locale = accesskit_l10n::LocaleId::new(&get_locale(env));
         let wrapper = NodeWrapper(&node);
-        wrapper.populate_node_info(env, host, &mut self.node_id_map, &node_info);
+        wrapper.populate_node_info(env, host, &mut self.node_id_map, &node_info, locale);
 
         let is_accessibility_focus = self.accessibility_focus == Some(virtual_view_id);
         env.call_method(

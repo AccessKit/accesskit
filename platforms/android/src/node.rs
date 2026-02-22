@@ -180,6 +180,7 @@ impl NodeWrapper<'_> {
         host: &JObject,
         id_map: &mut NodeIdMap,
         node_info: &JObject,
+        locale: accesskit_l10n::LocaleId,
     ) {
         for child in self.0.filtered_children(&filter) {
             env.call_method(
@@ -332,6 +333,44 @@ impl NodeWrapper<'_> {
                 &extras,
                 "putString",
                 "(Ljava/lang/String;Ljava/lang/String;)V",
+                &[(&key).into(), (&value).into()],
+            )
+            .unwrap();
+        }
+
+        let role = self.0.role();
+        let description = if let Some(app_desc) = self.0.role_description() {
+            Some(app_desc.to_string())
+        } else if role == Role::Heading {
+            if let Some(level) = self.0.level() {
+                let level = level.to_string();
+                let mut description = String::new();
+                let _ = accesskit_l10n::write_interpolated_string(
+                    locale,
+                    accesskit_l10n::InterpolatedString::HeadingWithLevel(&level),
+                    &mut description,
+                );
+                Some(description)
+            } else {
+                accesskit_l10n::role_description(locale, role).map(str::to_string)
+            }
+        } else {
+            accesskit_l10n::role_description(locale, role).map(str::to_string)
+        };
+        if let Some(desc) = description {
+            let extras = env
+                .call_method(node_info, "getExtras", "()Landroid/os/Bundle;", &[])
+                .unwrap()
+                .l()
+                .unwrap();
+            let key = env
+                .new_string("AccessibilityNodeInfo.roleDescription")
+                .unwrap();
+            let value = env.new_string(desc).unwrap();
+            env.call_method(
+                &extras,
+                "putCharSequence",
+                "(Ljava/lang/String;Ljava/lang/CharSequence;)V",
                 &[(&key).into(), (&value).into()],
             )
             .unwrap();

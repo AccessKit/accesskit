@@ -36,6 +36,7 @@ version = "0.7.5"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
+ "accesskit_l10n",
  "jni",
  "log",
 ]

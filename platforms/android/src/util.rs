@@ -121,6 +121,21 @@ pub(crate) fn bundle_get_bool(env: &mut JNIEnv, bundle: &JObject, key: &str) -> 
     .unwrap()
 }
 
+pub(crate) fn get_locale(env: &mut JNIEnv) -> String {
+    let locale_class = env.find_class("java/util/Locale").unwrap();
+    let locale = env
+        .call_static_method(&locale_class, "getDefault", "()Ljava/util/Locale;", &[])
+        .unwrap()
+        .l()
+        .unwrap();
+    let tag = env
+        .call_method(&locale, "toLanguageTag", "()Ljava/lang/String;", &[])
+        .unwrap()
+        .l()
+        .unwrap();
+    env.get_string((&tag).into()).unwrap().into()
+}
+
 pub(crate) fn get_package_name<'local>(
     env: &mut JNIEnv<'local>,
     view: &JObject,
