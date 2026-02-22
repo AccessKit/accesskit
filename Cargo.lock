@@ -73,6 +73,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "accesskit_l10n"
+version = "0.1.0"
+dependencies = [
+ "accesskit",
+]
+
+[[package]]
+name = "accesskit_l10n_build"
+version = "0.1.0"
+dependencies = [
+ "heck",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "accesskit_macos"
 version = "0.26.3"
 dependencies = [
@@ -1578,6 +1596,16 @@ name = "portable-atomic"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc9c68a3f6da06753e9335d63e27f6b9754dd1920d941135b7ea8224f141adb2"
+
+[[package]]
+name = "prettyplease"
+version = "0.2.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64d1ec885c64d0457d564db4ec299b2dae3f9c02808b8ad9c3a089c591b18033"
+dependencies = [
+ "proc-macro2",
+ "syn",
+]
 
 [[package]]
 name = "proc-macro-crate"

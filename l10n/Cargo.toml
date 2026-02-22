@@ -1,0 +1,15 @@
+[package]
+name = "accesskit_l10n"
+version = "0.1.0"
+authors.workspace = true
+license.workspace = true
+description = "Localized accessibility strings for AccessKit"
+categories.workspace = true
+keywords = ["gui", "ui", "accessibility"]
+repository.workspace = true
+readme = "README.md"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+accesskit = { version = "0.24.0", path = "../common" }

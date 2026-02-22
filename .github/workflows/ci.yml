@@ -216,3 +216,26 @@ jobs:
       - run: cp platforms/android/classes.dex platforms/android/classes.dex.orig
       - run: ./platforms/android/build-dex.sh
       - run: cmp platforms/android/classes.dex.orig platforms/android/classes.dex
+
+  check-l10n:
+    runs-on: ubuntu-latest
+    name: Check generated l10n code
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: restore cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: test the l10n crates
+        run: cargo test -p accesskit_l10n_build -p accesskit_l10n
+
+      - name: clippy the l10n code generator
+        run: cargo clippy -p accesskit_l10n_build --all-targets -- -D warnings
+
+      - name: check generated l10n code is up to date
+        run: cargo run -p accesskit_l10n_build -- --check

@@ -6,6 +6,8 @@
   "packages": {
     "common": {},
     "consumer": {},
+    "l10n": {},
+    "l10n_build": {},
     "platforms/android": {},
     "platforms/atspi-common": {},
     "platforms/ios": {},

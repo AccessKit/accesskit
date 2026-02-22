@@ -1,1 +1,1 @@
-{"common":"0.24.1","consumer":"0.38.0","platforms/macos":"0.26.3","platforms/windows":"0.34.0","platforms/winit":"0.33.2","platforms/unix":"0.22.1","platforms/atspi-common":"0.19.1","platforms/android":"0.7.5","platforms/ios":"0.1.2"}
+{"common":"0.24.1","consumer":"0.38.0","l10n":"0.1.0","l10n_build":"0.1.0","platforms/macos":"0.26.3","platforms/windows":"0.34.0","platforms/winit":"0.33.2","platforms/unix":"0.22.1","platforms/atspi-common":"0.19.1","platforms/android":"0.7.5","platforms/ios":"0.1.2"}

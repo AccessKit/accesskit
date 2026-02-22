@@ -1,0 +1,88 @@
+# AccessKit English accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banner
+role.complementary = complementary
+role.content_info = content information
+role.main = main
+role.navigation = navigation
+role.region = region
+role.search = search
+
+# Headings
+role.heading = heading
+heading_with_level = heading level {0}
+
+# Other roles
+role.alert = alert
+role.alert_dialog = alert dialog
+role.article = article
+role.feed = feed
+role.figure = figure
+role.log = log
+role.status = status
+role.tab = tab
+role.timer = timer
+
+# DPUB roles
+role.doc_abstract = abstract
+role.doc_acknowledgements = acknowledgements
+role.doc_afterword = afterword
+role.doc_appendix = appendix
+role.doc_back_link = back link
+role.doc_biblio_entry = bibliography entry
+role.doc_bibliography = bibliography
+role.doc_biblio_ref = bibliography reference
+role.doc_chapter = chapter
+role.doc_colophon = colophon
+role.doc_conclusion = conclusion
+role.doc_cover = cover
+role.doc_credit = credit
+role.doc_credits = credits
+role.doc_dedication = dedication
+role.doc_endnote = endnote
+role.doc_endnotes = endnotes
+role.doc_epigraph = epigraph
+role.doc_epilogue = epilogue
+role.doc_errata = errata
+role.doc_example = example
+role.doc_footnote = footnote
+role.doc_foreword = foreword
+role.doc_glossary = glossary
+role.doc_gloss_ref = glossary reference
+role.doc_index = index
+role.doc_introduction = introduction
+role.doc_note_ref = note reference
+role.doc_notice = notice
+role.doc_page_break = page break
+role.doc_page_footer = page footer
+role.doc_page_header = page header
+role.doc_page_list = page list
+role.doc_part = part
+role.doc_preface = preface
+role.doc_prologue = prologue
+role.doc_pullquote = pullquote
+role.doc_qna = question and answer
+role.doc_subtitle = subtitle
+role.doc_tip = tip
+role.doc_toc = table of contents
+
+# State descriptions (used on Android)
+state.toggle_button_on = On
+state.toggle_button_off = Off
+state.aria_current_page = current page
+state.aria_current_step = current step
+state.aria_current_location = current location
+state.aria_current_date = current date
+state.aria_current_time = current time
+state.aria_current_true = current item
+state.link_visited = visited
+state.invalid_true = Invalid entry
+state.invalid_spelling = Invalid spelling
+state.invalid_grammar = Invalid grammar
+state.multiselectable = multiselectable, {0} of {1} selected.
+state.multiselectable_none = multiselectable, none selected.
+state.radio_checked = Checked. In group, option {0} of {1}
+state.radio_unchecked = Not checked. In group, option {0} of {1}

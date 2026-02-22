@@ -3,6 +3,8 @@ resolver = "2"
 members = [
     "common",
     "consumer",
+    "l10n",
+    "l10n_build",
     "platforms/android",
     "platforms/atspi-common",
     "platforms/ios",
@@ -14,6 +16,8 @@ members = [
 default-members = [
     "common",
     "consumer",
+    "l10n",
+    "l10n_build",
     "platforms/winit",
 ]
 
