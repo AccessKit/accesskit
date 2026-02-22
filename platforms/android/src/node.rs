@@ -389,6 +389,40 @@ impl NodeWrapper<'_> {
             add_action(env, node_info, ACTION_SCROLL_FORWARD);
         }
 
+        if self.0.data().value().is_none() {
+            if let (Some(current), Some(min), Some(max)) = (
+                self.0.numeric_value(),
+                self.0.min_numeric_value(),
+                self.0.max_numeric_value(),
+            ) {
+                let range_info_class = env
+                    .find_class("android/view/accessibility/AccessibilityNodeInfo$RangeInfo")
+                    .unwrap();
+                let range_info = env
+                    .call_static_method(
+                        &range_info_class,
+                        "obtain",
+                        "(IFFF)Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;",
+                        &[
+                            RANGE_TYPE_FLOAT.into(),
+                            (min as f32).into(),
+                            (max as f32).into(),
+                            (current as f32).into(),
+                        ],
+                    )
+                    .unwrap()
+                    .l()
+                    .unwrap();
+                env.call_method(
+                    node_info,
+                    "setRangeInfo",
+                    "(Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;)V",
+                    &[(&range_info).into()],
+                )
+                .unwrap();
+            }
+        }
+
         let live = match self.0.live() {
             Live::Off => LIVE_REGION_NONE,
             Live::Polite => LIVE_REGION_POLITE,

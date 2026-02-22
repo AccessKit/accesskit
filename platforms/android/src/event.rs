@@ -233,6 +233,28 @@ pub(crate) struct ScrollDimension {
     pub(crate) max: Option<jint>,
 }
 
+fn send_range_value_changed(
+    env: &mut JNIEnv,
+    host: &JObject,
+    virtual_view_id: jint,
+    event_type: jint,
+    current: f64,
+    min: f64,
+    max: f64,
+) {
+    let event = new_event(env, host, virtual_view_id, event_type);
+    let item_index = if max > min && current >= min && current <= max {
+        ((current - min) * 100.0 / (max - min)) as jint
+    } else {
+        0
+    };
+    env.call_method(&event, "setItemCount", "(I)V", &[100i32.into()])
+        .unwrap();
+    env.call_method(&event, "setCurrentItemIndex", "(I)V", &[item_index.into()])
+        .unwrap();
+    send_completed_event(env, host, event);
+}
+
 fn send_scrolled(
     env: &mut JNIEnv,
     host: &JObject,
@@ -296,6 +318,13 @@ pub(crate) enum QueuedEvent {
         virtual_view_id: jint,
         x: Option<ScrollDimension>,
         y: Option<ScrollDimension>,
+    },
+    RangeValueChanged {
+        virtual_view_id: jint,
+        event_type: jint,
+        current: f64,
+        min: f64,
+        max: f64,
     },
     InvalidateHost,
 }
@@ -364,6 +393,23 @@ impl QueuedEvents {
                     y,
                 } => {
                     send_scrolled(env, host, virtual_view_id, x, y);
+                }
+                QueuedEvent::RangeValueChanged {
+                    virtual_view_id,
+                    event_type,
+                    current,
+                    min,
+                    max,
+                } => {
+                    send_range_value_changed(
+                        env,
+                        host,
+                        virtual_view_id,
+                        event_type,
+                        current,
+                        min,
+                        max,
+                    );
                 }
                 QueuedEvent::InvalidateHost => {
                     env.call_method(host, "invalidate", "()V", &[]).unwrap();

@@ -27,6 +27,7 @@ pub(crate) const ACTION_ARGUMENT_SELECTION_END_INT: &str = "ACTION_ARGUMENT_SELE
 pub(crate) const CONTENT_CHANGE_TYPE_SUBTREE: jint = 1 << 0;
 
 pub(crate) const EVENT_VIEW_CLICKED: jint = 1;
+pub(crate) const EVENT_VIEW_SELECTED: jint = 1 << 2;
 pub(crate) const EVENT_VIEW_FOCUSED: jint = 1 << 3;
 pub(crate) const EVENT_VIEW_TEXT_CHANGED: jint = 1 << 4;
 pub(crate) const EVENT_VIEW_HOVER_ENTER: jint = 1 << 7;
@@ -55,6 +56,8 @@ pub(crate) const MOVEMENT_GRANULARITY_CHARACTER: jint = 1 << 0;
 pub(crate) const MOVEMENT_GRANULARITY_WORD: jint = 1 << 1;
 pub(crate) const MOVEMENT_GRANULARITY_LINE: jint = 1 << 2;
 pub(crate) const MOVEMENT_GRANULARITY_PARAGRAPH: jint = 1 << 3;
+
+pub(crate) const RANGE_TYPE_FLOAT: jint = 1;
 
 #[derive(Debug, Default)]
 pub(crate) struct NodeIdMap {

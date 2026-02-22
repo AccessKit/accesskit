@@ -52,14 +52,20 @@ fn enqueue_focus_event_if_applicable(
 struct AdapterChangeHandler<'a> {
     events: &'a mut Vec<QueuedEvent>,
     node_id_map: &'a mut NodeIdMap,
+    accessibility_focus: Option<jint>,
     enqueued_window_content_changed: bool,
 }
 
 impl<'a> AdapterChangeHandler<'a> {
-    fn new(events: &'a mut Vec<QueuedEvent>, node_id_map: &'a mut NodeIdMap) -> Self {
+    fn new(
+        events: &'a mut Vec<QueuedEvent>,
+        node_id_map: &'a mut NodeIdMap,
+        accessibility_focus: Option<jint>,
+    ) -> Self {
         Self {
             events,
             node_id_map,
+            accessibility_focus,
             enqueued_window_content_changed: false,
         }
     }
@@ -142,6 +148,28 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 y: scroll_y,
             });
         }
+        if old_node.numeric_value() != new_node.numeric_value() && new_node.data().value().is_none()
+        {
+            if let (Some(current), Some(min), Some(max)) = (
+                new_node.numeric_value(),
+                new_node.min_numeric_value(),
+                new_node.max_numeric_value(),
+            ) {
+                let id = self.node_id_map.get_or_create_java_id(new_node);
+                let event_type = if self.accessibility_focus == Some(id) {
+                    EVENT_VIEW_SELECTED
+                } else {
+                    EVENT_VIEW_SCROLLED
+                };
+                self.events.push(QueuedEvent::RangeValueChanged {
+                    virtual_view_id: id,
+                    event_type,
+                    current,
+                    min,
+                    max,
+                });
+            }
+        }
         // TODO: other events
     }
 
@@ -205,10 +233,11 @@ impl State {
 fn update_tree(
     events: &mut Vec<QueuedEvent>,
     node_id_map: &mut NodeIdMap,
+    accessibility_focus: Option<jint>,
     tree: &mut Tree,
     update: TreeUpdate,
 ) {
-    let mut handler = AdapterChangeHandler::new(events, node_id_map);
+    let mut handler = AdapterChangeHandler::new(events, node_id_map, accessibility_focus);
     tree.update_and_process_changes(update, &mut handler);
 }
 
@@ -261,7 +290,13 @@ impl Adapter {
             }
             State::Active(tree) => {
                 let mut events = Vec::new();
-                update_tree(&mut events, &mut self.node_id_map, tree, update_factory());
+                update_tree(
+                    &mut events,
+                    &mut self.node_id_map,
+                    self.accessibility_focus,
+                    tree,
+                    update_factory(),
+                );
                 Some(QueuedEvents(events))
             }
         }
@@ -518,7 +553,13 @@ impl Adapter {
             tree_id,
             focus: focus_id,
         };
-        update_tree(events, &mut self.node_id_map, tree, update);
+        update_tree(
+            events,
+            &mut self.node_id_map,
+            self.accessibility_focus,
+            tree,
+            update,
+        );
         let request = ActionRequest {
             action: Action::SetTextSelection,
             target_tree: tree_id,
