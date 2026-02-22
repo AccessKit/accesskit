@@ -67,16 +67,7 @@ impl NodeWrapper<'_> {
     }
 
     fn is_selected(&self) -> bool {
-        match self.0.role() {
-            // https://www.w3.org/TR/core-aam-1.1/#mapping_state-property_table
-            // SelectionItem.IsSelected is set according to the True or False
-            // value of aria-checked for 'radio' and 'menuitemradio' roles.
-            Role::RadioButton | Role::MenuItemRadio => self.0.toggled() == Some(Toggled::True),
-            // https://www.w3.org/TR/wai-aria-1.1/#aria-selected
-            // SelectionItem.IsSelected is set according to the True or False
-            // value of aria-selected.
-            _ => self.0.is_selected().unwrap_or(false),
-        }
+        self.0.is_selected().unwrap_or(false)
     }
 
     fn content_description(&self) -> Option<String> {
