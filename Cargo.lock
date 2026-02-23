@@ -47,6 +47,7 @@ version = "0.19.1"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
+ "accesskit_l10n",
  "atspi-common",
  "phf",
  "serde",

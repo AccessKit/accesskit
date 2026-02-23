@@ -934,7 +934,21 @@ impl PlatformNode {
     }
 
     pub fn localized_role_name(&self) -> Result<String> {
-        self.resolve(|node| Ok(node.role_description().unwrap_or_default().to_string()))
+        self.resolve(|node| {
+            if let Some(desc) = node.role_description() {
+                return Ok(desc.to_string());
+            }
+            if matches!(
+                NodeWrapper(&node).role(),
+                AtspiRole::Landmark | AtspiRole::Section | AtspiRole::Panel
+            ) {
+                let locale = crate::util::get_locale();
+                if let Some(desc) = accesskit_l10n::role_description(locale, node.role()) {
+                    return Ok(desc.to_string());
+                }
+            }
+            Ok(String::new())
+        })
     }
 
     pub fn state(&self) -> StateSet {

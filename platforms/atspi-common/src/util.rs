@@ -121,6 +121,18 @@ pub(crate) fn text_range_bounds_from_offsets(
         .reduce(|rect1, rect2| rect1.union(rect2))
 }
 
+pub(crate) fn get_locale() -> accesskit_l10n::LocaleId {
+    use std::sync::OnceLock;
+    static LOCALE: OnceLock<accesskit_l10n::LocaleId> = OnceLock::new();
+    *LOCALE.get_or_init(|| {
+        let tag = std::env::var("LC_ALL")
+            .or_else(|_| std::env::var("LC_MESSAGES"))
+            .or_else(|_| std::env::var("LANG"))
+            .unwrap_or_default();
+        accesskit_l10n::LocaleId::new(&tag)
+    })
+}
+
 pub(crate) fn atspi_scroll_type_to_scroll_hint(scroll_type: ScrollType) -> Option<ScrollHint> {
     match scroll_type {
         ScrollType::TopLeft => Some(ScrollHint::TopLeft),
