@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.1](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.7.0...accesskit_android-v0.7.1) (2026-02-25)
+
+
+### Bug Fixes
+
+* Don't report selected state when toggled on Android ([#689](https://github.com/AccessKit/accesskit/issues/689)) ([8392850](https://github.com/AccessKit/accesskit/commit/8392850941d0ca9e4d38b23e7fc7a1cb281efaae))
+* Populate range info on Android ([#686](https://github.com/AccessKit/accesskit/issues/686)) ([6146089](https://github.com/AccessKit/accesskit/commit/61460894044b0ad85a3028b12b756be4ab99ec5a))
+
 ## [0.7.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.6.1...accesskit_android-v0.7.0) (2026-02-01)
 
 
