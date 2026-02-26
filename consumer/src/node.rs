@@ -40,6 +40,11 @@ impl NodeId {
     pub(crate) fn to_components(self) -> (LocalNodeId, TreeIndex) {
         (self.1, self.0)
     }
+
+    /// Returns the local node ID, i.e. the [`accesskit::NodeId`].
+    pub fn local_id(self) -> LocalNodeId {
+        self.1
+    }
 }
 
 impl From<NodeId> for u128 {
