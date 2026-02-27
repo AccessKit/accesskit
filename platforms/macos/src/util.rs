@@ -3,8 +3,9 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{Point, Rect};
+use accesskit::{Color, Point, Rect};
 use accesskit_consumer::{Node, TextPosition, TextRange};
+use objc2::{msg_send_id, rc::Id, runtime::AnyObject};
 use objc2_app_kit::*;
 use objc2_foundation::{NSPoint, NSRange, NSRect, NSSize};
 
@@ -76,4 +77,20 @@ pub(crate) fn to_ns_rect(view: &NSView, rect: Rect) -> NSRect {
     let rect = view.convertRect_toView(rect, None);
     let window = view.window().unwrap();
     window.convertRectToScreen(rect)
+}
+
+fn color_channel_to_f64(channel: u8) -> f64 {
+    (channel as f64) / 255.0
+}
+
+pub(crate) fn to_color_attribute(color: Color) -> Id<AnyObject> {
+    let ns_color = unsafe {
+        NSColor::colorWithSRGBRed_green_blue_alpha(
+            color_channel_to_f64(color.red),
+            color_channel_to_f64(color.green),
+            color_channel_to_f64(color.blue),
+            color_channel_to_f64(color.alpha),
+        )
+    };
+    unsafe { msg_send_id![&ns_color, CGColor] }
 }

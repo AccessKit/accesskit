@@ -10,7 +10,9 @@
 
 #![allow(non_upper_case_globals)]
 
-use accesskit::{Action, ActionData, ActionRequest, Orientation, Role, TextSelection, Toggled};
+use accesskit::{
+    Action, ActionData, ActionRequest, Orientation, Role, TextAlign, TextSelection, Toggled,
+};
 use accesskit_consumer::{FilterResult, Node, NodeId, Tree};
 use objc2::{
     declare_class, msg_send_id,
@@ -21,8 +23,9 @@ use objc2::{
 };
 use objc2_app_kit::*;
 use objc2_foundation::{
-    ns_string, NSArray, NSCopying, NSInteger, NSNumber, NSObject, NSObjectProtocol, NSPoint,
-    NSRange, NSRect, NSString, NSURL,
+    ns_string, NSArray, NSAttributedString, NSCopying, NSInteger, NSMutableAttributedString,
+    NSMutableDictionary, NSNumber, NSObject, NSObjectProtocol, NSPoint, NSRange, NSRect, NSString,
+    NSURL,
 };
 use std::rc::{Rc, Weak};
 
@@ -823,6 +826,112 @@ declare_class!(
             .flatten()
         }
 
+        #[method_id(accessibilityAttributedStringForRange:)]
+        fn attributed_string_for_range(&self, range: NSRange) -> Option<Id<NSAttributedString>> {
+            self.resolve(|node| {
+                if node.supports_text_ranges() {
+                    if let Some(range) = from_ns_range(node, range) {
+                        let mut result = NSMutableAttributedString::new();
+                        unsafe { result.beginEditing() };
+                        range.traverse_text::<_, ()>(|node, text| {
+                            let ns_text = NSString::from_str(text);
+                            let mut attrs = NSMutableDictionary::new();
+                            if let Some(color) = node.background_color() {
+                                attrs.insert_id(
+                                    unsafe { NSAccessibilityBackgroundColorTextAttribute },
+                                    to_color_attribute(color)
+                                );
+                            }
+                            if let Some(color) = node.foreground_color() {
+                                attrs.insert_id(
+                                    unsafe { NSAccessibilityForegroundColorTextAttribute },
+                                    to_color_attribute(color)
+                                );
+                            }
+                            let mut font_attrs = NSMutableDictionary::<NSAccessibilityFontAttributeKey, AnyObject>::new();
+                            if let Some(family) = node.font_family() {
+                                font_attrs.insert_id(
+                                    unsafe { NSAccessibilityFontFamilyKey },
+                                    Id::into_super(Id::into_super(NSString::from_str(family)))
+                                );
+                            }
+                            if let Some(size) = node.font_size() {
+                                font_attrs.insert_id(
+                                    unsafe { NSAccessibilityFontSizeKey },
+                                    Id::into_super(Id::into_super(Id::into_super(NSNumber::new_f32(size))))
+                                );
+                            }
+                            if let Some(weight) = node.font_weight() {
+                                if weight >= 700.0 {
+                                    font_attrs.insert_id(
+                                        ns_string!("AXFontBold"),
+                                        Id::into_super(Id::into_super(Id::into_super(NSNumber::new_bool(true))))
+                                    );
+                                }
+                            }
+                            if node.is_italic() {
+                                font_attrs.insert_id(
+                                    ns_string!("AXFontItalic"),
+                                    Id::into_super(Id::into_super(Id::into_super(NSNumber::new_bool(true))))
+                                );
+                            }
+                            if !font_attrs.is_empty() {
+                                attrs.insert_id(
+                                    unsafe { NSAccessibilityFontTextAttribute },
+                                    Id::into_super(Id::into_super(Id::into_super(font_attrs)))
+                                );
+                            }
+                            if let Some(deco) = node.underline() {
+                                attrs.insert_id(
+                                    unsafe { NSAccessibilityUnderlineTextAttribute },
+                                    Id::into_super(Id::into_super(Id::into_super(NSNumber::new_bool(true))))
+                                );
+                                attrs.insert_id(
+                                    unsafe { NSAccessibilityUnderlineColorTextAttribute },
+                                    to_color_attribute(deco.color)
+                                );
+                            }
+                            if let Some(deco) = node.strikethrough() {
+                                attrs.insert_id(
+                                    unsafe { NSAccessibilityStrikethroughTextAttribute },
+                                    Id::into_super(Id::into_super(Id::into_super(NSNumber::new_bool(true))))
+                                );
+                                attrs.insert_id(
+                                    unsafe { NSAccessibilityStrikethroughColorTextAttribute },
+                                    to_color_attribute(deco.color)
+                                );
+                            }
+                            if let Some(language) = node.language() {
+                                attrs.insert_id(
+                                    unsafe { NSAccessibilityLanguageTextAttribute },
+                                    Id::into_super(Id::into_super(NSString::from_str(language)))
+                                );
+                            }
+                            if let Some(align) = node.text_align() {
+                                let ns_align = match align {
+                                    TextAlign::Left => NSTextAlignment::Left,
+                                    TextAlign::Center => NSTextAlignment::Center,
+                                    TextAlign::Right => NSTextAlignment::Right,
+                                    TextAlign::Justify => NSTextAlignment::Justified,
+                                };
+                                attrs.insert_id(
+                                    unsafe { NSAccessibilityTextAlignmentAttribute },
+                                    Id::into_super(Id::into_super(Id::into_super(NSNumber::new_isize(ns_align.0))))
+                                );
+                            }
+                            let part = unsafe { NSAttributedString::new_with_attributes(&ns_text, &attrs) };
+                            unsafe { result.appendAttributedString(&part) };
+                            None
+                        });
+                        unsafe { result.endEditing() };
+                        return Some(Id::into_super(result));
+                    }
+                }
+                None
+            })
+            .flatten()
+        }
+
         #[method(accessibilityFrameForRange:)]
         fn frame_for_range(&self, range: NSRange) -> NSRect {
             self.resolve_with_context(|node, _, context| {
@@ -867,6 +976,26 @@ declare_class!(
                 if node.supports_text_ranges() && index >= 0 {
                     if let Some(pos) = node.text_position_from_global_utf16_index(index as _) {
                         return to_ns_range_for_character(&pos);
+                    }
+                }
+                NSRange::new(0, 0)
+            })
+            .unwrap_or_else(|| NSRange::new(0, 0))
+        }
+
+        #[method(accessibilityStyleRangeForIndex:)]
+        fn style_range_for_index(&self, index: NSInteger) -> NSRange {
+            self.resolve(|node| {
+                if node.supports_text_ranges() && index >= 0 {
+                    if let Some(pos) = node.text_position_from_global_utf16_index(index as _) {
+                        let start = if pos.is_format_start() {
+                            pos
+                        } else {
+                            pos.backward_to_format_start()
+                        };
+                        let mut range = start.to_degenerate_range();
+                        range.set_end(pos.forward_to_format_end());
+                        return to_ns_range(&range);
                     }
                 }
                 NSRange::new(0, 0)
@@ -1097,9 +1226,11 @@ declare_class!(
                     || selector == sel!(accessibilityRangeForLine:)
                     || selector == sel!(accessibilityRangeForPosition:)
                     || selector == sel!(accessibilityStringForRange:)
+                    || selector == sel!(accessibilityAttributedStringForRange:)
                     || selector == sel!(accessibilityFrameForRange:)
                     || selector == sel!(accessibilityLineForIndex:)
                     || selector == sel!(accessibilityRangeForIndex:)
+                    || selector == sel!(accessibilityStyleRangeForIndex:)
                     || selector == sel!(setAccessibilitySelectedTextRange:)
                 {
                     return node.supports_text_ranges();

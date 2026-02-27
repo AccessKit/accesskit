@@ -677,14 +677,11 @@ impl<'a> Range<'a> {
         None
     }
 
-    pub fn text(&self) -> String {
-        let mut result = String::new();
-        self.write_text(&mut result).unwrap();
-        result
-    }
-
-    pub fn write_text<W: fmt::Write>(&self, mut writer: W) -> fmt::Result {
-        if let Some(err) = self.walk(|node| {
+    pub fn traverse_text<F, T>(&self, mut f: F) -> Option<T>
+    where
+        F: FnMut(&Node<'a>, &str) -> Option<T>,
+    {
+        self.walk(|node| {
             let character_lengths = node.data().character_lengths();
             let start_index = if node.id() == self.start.node.id() {
                 self.start.character_index
@@ -715,12 +712,22 @@ impl<'a> Range<'a> {
                         .sum::<usize>();
                 &value[slice_start..slice_end]
             };
-            writer.write_str(s).err()
-        }) {
+            f(node, s)
+        })
+    }
+
+    pub fn write_text<W: fmt::Write>(&self, mut writer: W) -> fmt::Result {
+        if let Some(err) = self.traverse_text(|_, s| writer.write_str(s).err()) {
             Err(err)
         } else {
             Ok(())
         }
+    }
+
+    pub fn text(&self) -> String {
+        let mut result = String::new();
+        self.write_text(&mut result).unwrap();
+        result
     }
 
     /// Returns the range's transformed bounding boxes relative to the tree's
