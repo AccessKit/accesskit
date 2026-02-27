@@ -36,12 +36,15 @@ accesskit_unix = { version = "0.21.0", path = "../unix", optional = true, defaul
 [target.'cfg(target_os = "android")'.dependencies]
 accesskit_android = { version = "0.7.2", path = "../android", optional = true, features = ["embedded-dex"] }
 
+[target.'cfg(any(target_os = "ios", target_os = "tvos", target_os = "visionos"))'.dependencies]
+accesskit_ios = { version = "0.1.0", path = "../ios" }
+
 [dev-dependencies.winit]
 version = "0.30.5"
 default-features = false
 features = ["x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita"]
 
-[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dev-dependencies]
+[target.'cfg(not(target_os = "android"))'.dev-dependencies]
 softbuffer = { version = "0.4.0", default-features = false, features = [
     "x11",
     "x11-dlopen",

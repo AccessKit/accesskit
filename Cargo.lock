@@ -124,6 +124,7 @@ version = "0.32.2"
 dependencies = [
  "accesskit",
  "accesskit_android",
+ "accesskit_ios",
  "accesskit_macos",
  "accesskit_unix",
  "accesskit_windows",
