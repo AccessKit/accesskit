@@ -1329,7 +1329,7 @@ impl PlatformNode {
 
     pub fn default_text_attributes(&self) -> Result<HashMap<&'static str, String>> {
         self.resolve_for_text(|node| {
-            let mut result = HashMap::new();
+            let mut result = HashMap::with_capacity(ATTRIBUTE_GETTERS.len());
             for (name, getter) in ATTRIBUTE_GETTERS.entries() {
                 if let Some(value) = (*getter)(&node) {
                     result.insert(*name, value);
@@ -1489,7 +1489,7 @@ impl PlatformNode {
     ) -> Result<(HashMap<&'static str, String>, i32, i32)> {
         self.resolve_for_text(|node| {
             let pos = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
-            let mut result = HashMap::new();
+            let mut result = HashMap::with_capacity(ATTRIBUTE_GETTERS.len());
             for (name, getter) in ATTRIBUTE_GETTERS.entries() {
                 if let Some(value) = (*getter)(pos.inner_node()) {
                     if !include_defaults {
