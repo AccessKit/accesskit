@@ -28,6 +28,7 @@ use crate::{
     adapter::Adapter,
     context::{AppContext, Context},
     filters::filter,
+    text_attributes::ATTRIBUTE_GETTERS,
     util::*,
     Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
 };
@@ -1309,9 +1310,14 @@ impl PlatformNode {
         })
     }
 
-    pub fn text_attribute_value(&self, _offset: i32, _attribute_name: &str) -> Result<String> {
-        // TODO: Implement rich text.
-        Err(Error::UnsupportedInterface)
+    pub fn text_attribute_value(&self, offset: i32, attribute_name: &str) -> Result<String> {
+        self.resolve_for_text(|node| {
+            let pos = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
+            Ok(ATTRIBUTE_GETTERS
+                .get(attribute_name)
+                .and_then(|getter| (*getter)(pos.inner_node()))
+                .unwrap_or_default())
+        })
     }
 
     pub fn text_attributes(&self, _offset: i32) -> Result<(HashMap<String, String>, i32, i32)> {

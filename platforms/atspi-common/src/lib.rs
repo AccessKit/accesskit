@@ -14,6 +14,7 @@ mod node;
 mod rect;
 #[cfg(feature = "simplified-api")]
 pub mod simplified;
+mod text_attributes;
 mod util;
 
 pub use accesskit_consumer::NodeId;
