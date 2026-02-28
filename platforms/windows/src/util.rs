@@ -430,6 +430,21 @@ pub(crate) fn upgrade<T>(weak: &Weak<T>) -> Result<Arc<T>> {
     }
 }
 
+pub(crate) fn get_locale() -> accesskit_l10n::LocaleId {
+    use std::sync::OnceLock;
+    static LOCALE: OnceLock<accesskit_l10n::LocaleId> = OnceLock::new();
+    *LOCALE.get_or_init(|| {
+        let mut buf = [0u16; 85]; // LOCALE_NAME_MAX_LENGTH
+        let len = unsafe { GetUserDefaultLocaleName(&mut buf) };
+        let tag = if len > 0 {
+            String::from_utf16_lossy(&buf[..(len as usize - 1)])
+        } else {
+            String::new()
+        };
+        accesskit_l10n::LocaleId::new(&tag)
+    })
+}
+
 pub(crate) struct AriaProperties<W: Write> {
     inner: W,
     need_separator: bool,

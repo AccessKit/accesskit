@@ -128,6 +128,7 @@ version = "0.34.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
+ "accesskit_l10n",
  "hashbrown",
  "once_cell",
  "parking_lot",

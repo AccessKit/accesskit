@@ -265,9 +265,26 @@ impl NodeWrapper<'_> {
     }
 
     fn localized_control_type(&mut self) -> Option<StrWrapper<'_>> {
-        self.node
-            .role_description()
-            .map(|s| StrWrapper::new(s, self.string_buffer))
+        if let Some(desc) = self.node.role_description() {
+            return Some(StrWrapper::new(desc, self.string_buffer));
+        }
+        if matches!(
+            self.node.role(),
+            Role::Alert
+                | Role::Article
+                | Role::Complementary
+                | Role::Heading
+                | Role::Log
+                | Role::Main
+                | Role::Status
+                | Role::Tab
+                | Role::Timer
+        ) {
+            return None;
+        }
+        let locale = crate::util::get_locale();
+        accesskit_l10n::role_description(locale, self.node.role())
+            .map(|desc| StrWrapper::new(desc, self.string_buffer))
     }
 
     fn aria_role(&mut self) -> Option<StrWrapper<'_>> {
