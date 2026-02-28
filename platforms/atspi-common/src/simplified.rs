@@ -407,14 +407,17 @@ impl Accessible {
         }
     }
 
-    pub fn text_attributes(&self, offset: i32) -> Result<(HashMap<String, String>, i32, i32)> {
+    pub fn text_attributes(
+        &self,
+        offset: i32,
+    ) -> Result<(HashMap<&'static str, String>, i32, i32)> {
         match self {
             Self::Node(node) => node.text_attributes(offset),
             Self::Root(_) => Err(Error::UnsupportedInterface),
         }
     }
 
-    pub fn default_text_attributes(&self) -> Result<HashMap<String, String>> {
+    pub fn default_text_attributes(&self) -> Result<HashMap<&'static str, String>> {
         match self {
             Self::Node(node) => node.default_text_attributes(),
             Self::Root(_) => Err(Error::UnsupportedInterface),
@@ -491,7 +494,7 @@ impl Accessible {
         &self,
         offset: i32,
         include_defaults: bool,
-    ) -> Result<(HashMap<String, String>, i32, i32)> {
+    ) -> Result<(HashMap<&'static str, String>, i32, i32)> {
         match self {
             Self::Node(node) => node.text_attribute_run(offset, include_defaults),
             Self::Root(_) => Err(Error::UnsupportedInterface),
