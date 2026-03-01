@@ -1,0 +1,70 @@
+# AccessKit lt accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = reklamjuostė
+role.complementary = papildomas
+role.content_info = turinio informacija
+role.main = main
+role.navigation = naršymas
+role.region = regionas
+role.search = ieškoti
+
+# Headings
+role.heading = antraštė
+heading_with_level = {0}-ojo lygio antraštė
+
+# Other roles
+role.alert = įspėjimas
+role.alert_dialog = įspėjimo dialogo langas
+role.article = artikelis
+role.feed = sklaidos kanalas
+role.figure = iliustracija
+role.log = log
+role.status = būsena
+role.tab = skirtukas
+role.timer = laikmatis
+
+# DPUB roles
+role.doc_abstract = santrauka
+role.doc_acknowledgements = padėka
+role.doc_afterword = baigiamasis žodis
+role.doc_appendix = priedas
+role.doc_back_link = atgalinė nuoroda
+role.doc_biblio_entry = bibliografijos įrašas
+role.doc_biblio_ref = bibliografijos nuoroda
+role.doc_bibliography = bibliografija
+role.doc_chapter = skyrius
+role.doc_colophon = informacija apie leidimą
+role.doc_conclusion = išvada
+role.doc_cover = viršelis
+role.doc_credit = padėka
+role.doc_credits = titrai
+role.doc_dedication = dedikacija
+role.doc_endnote = išnaša
+role.doc_endnotes = išnašos
+role.doc_epigraph = epigrafas
+role.doc_epilogue = epilogas
+role.doc_errata = spaudos klaidų sąrašas
+role.doc_example = pavyzdys
+role.doc_footnote = išnaša
+role.doc_foreword = pratarmė
+role.doc_gloss_ref = aiškinamojo terminų žodyno nuoroda
+role.doc_glossary = aiškinamasis terminų žodynas
+role.doc_index = rodyklė
+role.doc_introduction = įžanga
+role.doc_note_ref = pastabos nuoroda
+role.doc_notice = pranešimas
+role.doc_page_break = puslapio lūžis
+role.doc_page_footer = puslapio poraštė
+role.doc_page_header = puslapio antraštė
+role.doc_page_list = puslapių sąrašas
+role.doc_part = dalis
+role.doc_preface = įvadas
+role.doc_prologue = prologas
+role.doc_pullquote = citata
+role.doc_qna = Klausimai ir atsakymai
+role.doc_subtitle = paantraštė
+role.doc_tip = patarimas
+role.doc_toc = turinys

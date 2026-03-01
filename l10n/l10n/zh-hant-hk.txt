@@ -1,0 +1,70 @@
+# AccessKit zh-hk accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = 橫額
+role.complementary = 補充
+role.content_info = 內容資料
+role.main = 主要元素
+role.navigation = 瀏覽
+role.region = 區域
+role.search = 搜尋
+
+# Headings
+role.heading = 標題
+heading_with_level = 第 {0} 級標題
+
+# Other roles
+role.alert = 警示
+role.alert_dialog = 警示對話框
+role.article = 文章
+role.feed = 資訊提供
+role.figure = 圖表
+role.log = 記錄
+role.status = 狀態
+role.tab = 分頁
+role.timer = 計時器
+
+# DPUB roles
+role.doc_abstract = 摘要
+role.doc_acknowledgements = 鳴謝
+role.doc_afterword = 後記
+role.doc_appendix = 附錄
+role.doc_back_link = 反向連結
+role.doc_biblio_entry = 參考書目資料
+role.doc_biblio_ref = 參考書目
+role.doc_bibliography = 參考書目
+role.doc_chapter = 章節
+role.doc_colophon = 版權頁
+role.doc_conclusion = 結論
+role.doc_cover = 封面
+role.doc_credit = 參與名單
+role.doc_credits = 參與名單
+role.doc_dedication = 獻辭
+role.doc_endnote = 尾註
+role.doc_endnotes = 尾註
+role.doc_epigraph = 題詞
+role.doc_epilogue = 結語
+role.doc_errata = 勘誤表
+role.doc_example = 例子
+role.doc_footnote = 腳註
+role.doc_foreword = 前言
+role.doc_gloss_ref = 詞彙表參考資料
+role.doc_glossary = 詞彙表
+role.doc_index = 索引
+role.doc_introduction = 簡介
+role.doc_note_ref = 備註參考資料
+role.doc_notice = 聲明
+role.doc_page_break = 分頁
+role.doc_page_footer = 頁尾
+role.doc_page_header = 頁面標題
+role.doc_page_list = 頁面清單
+role.doc_part = 部分
+role.doc_preface = 前言
+role.doc_prologue = 序言
+role.doc_pullquote = 重要引述
+role.doc_qna = 問答
+role.doc_subtitle = 副標題
+role.doc_tip = 提示
+role.doc_toc = 目錄

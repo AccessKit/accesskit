@@ -1,0 +1,70 @@
+# AccessKit en-gb accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banner
+role.complementary = complementary
+role.content_info = content information
+role.main = main
+role.navigation = navigation
+role.region = region
+role.search = search
+
+# Headings
+role.heading = heading
+heading_with_level = heading {0}
+
+# Other roles
+role.alert = alert
+role.alert_dialog = alert dialogue
+role.article = article
+role.feed = feed
+role.figure = figure
+role.log = log
+role.status = status
+role.tab = tab
+role.timer = timer
+
+# DPUB roles
+role.doc_abstract = abstract
+role.doc_acknowledgements = acknowledgements
+role.doc_afterword = afterword
+role.doc_appendix = appendix
+role.doc_back_link = back link
+role.doc_biblio_entry = bibliography entry
+role.doc_biblio_ref = bibliography reference
+role.doc_bibliography = bibliography
+role.doc_chapter = chapter
+role.doc_colophon = colophon
+role.doc_conclusion = conclusion
+role.doc_cover = cover
+role.doc_credit = credit
+role.doc_credits = credits
+role.doc_dedication = dedication
+role.doc_endnote = endnote
+role.doc_endnotes = endnotes
+role.doc_epigraph = epigraph
+role.doc_epilogue = epilogue
+role.doc_errata = errata
+role.doc_example = example
+role.doc_footnote = footnote
+role.doc_foreword = foreword
+role.doc_gloss_ref = glossary reference
+role.doc_glossary = glossary
+role.doc_index = index
+role.doc_introduction = introduction
+role.doc_note_ref = note reference
+role.doc_notice = notice
+role.doc_page_break = page break
+role.doc_page_footer = page footer
+role.doc_page_header = page header
+role.doc_page_list = page list
+role.doc_part = part
+role.doc_preface = preface
+role.doc_prologue = prologue
+role.doc_pullquote = pullquote
+role.doc_qna = Q&A
+role.doc_subtitle = subtitle
+role.doc_tip = tip
+role.doc_toc = table of contents

@@ -1,0 +1,70 @@
+# AccessKit he accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = מודעת באנר
+role.complementary = משלים
+role.content_info = פרטי תוכן
+role.main = main
+role.navigation = ניווט
+role.region = אזור
+role.search = Search
+
+# Headings
+role.heading = כותרת
+heading_with_level = אין כותרת נוספת ברמה {0}
+
+# Other roles
+role.alert = התראה
+role.alert_dialog = תיבת דו-שיח של התראה
+role.article = article
+role.feed = פיד
+role.figure = ספרה
+role.log = log
+role.status = מצב
+role.tab = מקש Tab
+role.timer = טיימר
+
+# DPUB roles
+role.doc_abstract = תקציר
+role.doc_acknowledgements = תודות
+role.doc_afterword = אחרית דבר
+role.doc_appendix = נספח
+role.doc_back_link = קישור לאחור
+role.doc_biblio_entry = ערך ביבליוגרפי
+role.doc_biblio_ref = הפניה לביבליוגרפיה
+role.doc_bibliography = ביבליוגרפיה
+role.doc_chapter = פרק
+role.doc_colophon = קולופון
+role.doc_conclusion = סיכום
+role.doc_cover = שער
+role.doc_credit = קרדיט
+role.doc_credits = קרדיטים
+role.doc_dedication = הקדשה
+role.doc_endnote = הערת סיום
+role.doc_endnotes = הערות סיום
+role.doc_epigraph = ציטוט בראש ספר
+role.doc_epilogue = אפילוג
+role.doc_errata = שגיאת דפוס
+role.doc_example = דוגמה
+role.doc_footnote = הערת שוליים
+role.doc_foreword = מבוא
+role.doc_gloss_ref = הפניה למילון מונחים
+role.doc_glossary = מילון מונחים
+role.doc_index = אינדקס
+role.doc_introduction = מבוא
+role.doc_note_ref = הפניה להערה
+role.doc_notice = הודעה
+role.doc_page_break = מעבר דף
+role.doc_page_footer = הכותרת התחתונה של הדף
+role.doc_page_header = הכותרת העליונה של הדף
+role.doc_page_list = רשימת דפים
+role.doc_part = חלק
+role.doc_preface = הקדמה
+role.doc_prologue = פרולוג
+role.doc_pullquote = ציטוט
+role.doc_qna = שאלות ותשובות
+role.doc_subtitle = כותרת משנה
+role.doc_tip = טיפ
+role.doc_toc = תוכן העניינים

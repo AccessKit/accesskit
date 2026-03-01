@@ -1,0 +1,70 @@
+# AccessKit fa accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = برنما
+role.complementary = تکمیلی
+role.content_info = اطلاعات محتوا
+role.main = اصلی
+role.navigation = پیمایش
+role.region = منطقه
+role.search = جستجو
+
+# Headings
+role.heading = عنوان
+heading_with_level = سرنوشتارِ سطحِ {0}
+
+# Other roles
+role.alert = هشدار
+role.alert_dialog = کادر گفتگوی هشدار
+role.article = article
+role.feed = خبرمایه
+role.figure = شکل
+role.log = log
+role.status = وضعیت
+role.tab = زبانه
+role.timer = تایمر
+
+# DPUB roles
+role.doc_abstract = انتزاعی
+role.doc_acknowledgements = قدردانی
+role.doc_afterword = سخن پایانی
+role.doc_appendix = ضمیمه
+role.doc_back_link = پیوند برگشت
+role.doc_biblio_entry = ورودی فهرست منابع
+role.doc_biblio_ref = مرجع فهرست منابع
+role.doc_bibliography = فهرست منابع
+role.doc_chapter = فصل
+role.doc_colophon = انجامه
+role.doc_conclusion = نتیجه‌گیری
+role.doc_cover = جلد
+role.doc_credit = تأیید اعتبار
+role.doc_credits = دست‌اندرکاران
+role.doc_dedication = تقدیم‌نامه
+role.doc_endnote = ته‌نویس
+role.doc_endnotes = ته‌نویس‌ها
+role.doc_epigraph = نقل‌قول آغازین
+role.doc_epilogue = گفتار پایانی
+role.doc_errata = فهرست اشتباهات
+role.doc_example = مثال
+role.doc_footnote = پانویس
+role.doc_foreword = پیش‌گفتار
+role.doc_gloss_ref = مرجع واژه‌نامه
+role.doc_glossary = واژه‌نامه
+role.doc_index = فهرست موضوعی
+role.doc_introduction = مقدمه
+role.doc_note_ref = مرجع یادداشت
+role.doc_notice = اطلاعیه
+role.doc_page_break = جداساز صفحه
+role.doc_page_footer = پاصفحه
+role.doc_page_header = سرصفحه
+role.doc_page_list = فهرست صفحه
+role.doc_part = بخش
+role.doc_preface = پیش‌گفتار
+role.doc_prologue = گفتار آغازین
+role.doc_pullquote = نقل‌قول
+role.doc_qna = پرسش و پاسخ
+role.doc_subtitle = زیرنویس
+role.doc_tip = نکته
+role.doc_toc = فهرست مطالب

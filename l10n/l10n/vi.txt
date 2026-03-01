@@ -1,0 +1,70 @@
+# AccessKit vi accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = biểu ngữ
+role.complementary = bổ sung
+role.content_info = thông tin về nội dung
+role.main = chính
+role.navigation = điều hướng
+role.region = khu vực
+role.search = search
+
+# Headings
+role.heading = đầu đề
+heading_with_level = tiêu đề cấp {0}
+
+# Other roles
+role.alert = thông báo
+role.alert_dialog = hộp thoại cảnh báo
+role.article = bài viết
+role.feed = nguồn cấp dữ liệu
+role.figure = hình dáng
+role.log = nhật ký
+role.status = trạng thái
+role.tab = thẻ
+role.timer = bộ tính giờ
+
+# DPUB roles
+role.doc_abstract = bản tóm tắt
+role.doc_acknowledgements = lời cảm ơn
+role.doc_afterword = lời bạt
+role.doc_appendix = phụ lục
+role.doc_back_link = liên kết ngược
+role.doc_biblio_entry = mục nhập danh mục
+role.doc_biblio_ref = tham chiếu danh mục
+role.doc_bibliography = danh mục
+role.doc_chapter = chương
+role.doc_colophon = lời ghi cuối sách
+role.doc_conclusion = kết luận
+role.doc_cover = trang bìa
+role.doc_credit = ghi nhận tác giả
+role.doc_credits = ghi nhận tác giả
+role.doc_dedication = lời đề tặng
+role.doc_endnote = chú thích cuối
+role.doc_endnotes = chú thích cuối
+role.doc_epigraph = lời đề từ
+role.doc_epilogue = lời kết
+role.doc_errata = bản đính chính
+role.doc_example = ví dụ
+role.doc_footnote = chú thích cuối trang
+role.doc_foreword = lời tựa
+role.doc_gloss_ref = tham chiếu bảng thuật ngữ
+role.doc_glossary = bảng thuật ngữ
+role.doc_index = chú dẫn
+role.doc_introduction = giới thiệu
+role.doc_note_ref = tham chiếu chú thích
+role.doc_notice = lưu ý
+role.doc_page_break = ngắt trang
+role.doc_page_footer = chân trang
+role.doc_page_header = đầu đề trang
+role.doc_page_list = danh sách trang
+role.doc_part = phần
+role.doc_preface = lời nói đầu
+role.doc_prologue = phần mở đầu
+role.doc_pullquote = đoạn trích dẫn
+role.doc_qna = Hỏi và đáp
+role.doc_subtitle = phụ đề
+role.doc_tip = mẹo
+role.doc_toc = mục lục

@@ -1,0 +1,70 @@
+# AccessKit tr accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banner
+role.complementary = tamamlayıcı
+role.content_info = içerik bilgisi
+role.main = main
+role.navigation = gezinme
+role.region = bölge
+role.search = ara
+
+# Headings
+role.heading = başlık
+heading_with_level = başlık seviyesi {0}
+
+# Other roles
+role.alert = uyarı
+role.alert_dialog = uyarı iletişim kutusu
+role.article = article
+role.feed = kartlar
+role.figure = figür
+role.log = log
+role.status = durum
+role.tab = sekme
+role.timer = zamanlayıcı
+
+# DPUB roles
+role.doc_abstract = özet
+role.doc_acknowledgements = teşekkür
+role.doc_afterword = sonsöz
+role.doc_appendix = ek
+role.doc_back_link = geri bağlantı
+role.doc_biblio_entry = kaynakça girişi
+role.doc_biblio_ref = kaynakça referansı
+role.doc_bibliography = kaynakça
+role.doc_chapter = bölüm
+role.doc_colophon = künye
+role.doc_conclusion = sonuç
+role.doc_cover = kapak
+role.doc_credit = katkıda bulunan
+role.doc_credits = katkıda bulunanlar
+role.doc_dedication = ithaf
+role.doc_endnote = son not
+role.doc_endnotes = son notlar
+role.doc_epigraph = yazıt
+role.doc_epilogue = son söz
+role.doc_errata = yazım hataları
+role.doc_example = örnek
+role.doc_footnote = dipnot
+role.doc_foreword = önsöz
+role.doc_gloss_ref = terimler sözlüğü referansı
+role.doc_glossary = terimler sözlüğü
+role.doc_index = dizin
+role.doc_introduction = giriş
+role.doc_note_ref = not referansı
+role.doc_notice = bildirim
+role.doc_page_break = sayfa sonu
+role.doc_page_footer = sayfa alt bilgisi
+role.doc_page_header = sayfa üstbilgisi
+role.doc_page_list = sayfa listesi
+role.doc_part = bölüm
+role.doc_preface = önsöz
+role.doc_prologue = prolog
+role.doc_pullquote = alıntı
+role.doc_qna = Soru-Cevap
+role.doc_subtitle = alt başlık
+role.doc_tip = ipucu
+role.doc_toc = içindekiler

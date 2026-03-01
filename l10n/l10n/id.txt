@@ -1,0 +1,70 @@
+# AccessKit id accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = spanduk
+role.complementary = komplementer
+role.content_info = informasi konten
+role.main = main
+role.navigation = navigasi
+role.region = wilayah
+role.search = search
+
+# Headings
+role.heading = kepala
+heading_with_level = judul {0}
+
+# Other roles
+role.alert = notifikasi
+role.alert_dialog = dialog pemberitahuan
+role.article = article
+role.feed = feed
+role.figure = sosok
+role.log = log
+role.status = status
+role.tab = tab
+role.timer = timer
+
+# DPUB roles
+role.doc_abstract = abstrak
+role.doc_acknowledgements = ucapan terima kasih
+role.doc_afterword = penutup
+role.doc_appendix = lampiran
+role.doc_back_link = back link
+role.doc_biblio_entry = entri bibliografi
+role.doc_biblio_ref = referensi bibliografi
+role.doc_bibliography = bibliografi
+role.doc_chapter = bab
+role.doc_colophon = kolofon
+role.doc_conclusion = kesimpulan
+role.doc_cover = sampul
+role.doc_credit = daftar penghargaan
+role.doc_credits = daftar penghargaan
+role.doc_dedication = persembahan
+role.doc_endnote = catatan akhir
+role.doc_endnotes = catatan akhir
+role.doc_epigraph = epigraf
+role.doc_epilogue = epilog
+role.doc_errata = erratum
+role.doc_example = contoh
+role.doc_footnote = catatan kaki
+role.doc_foreword = kata pengantar
+role.doc_gloss_ref = referensi glosarium
+role.doc_glossary = glosarium
+role.doc_index = indeks
+role.doc_introduction = pendahuluan
+role.doc_note_ref = referensi catatan
+role.doc_notice = pemberitahuan
+role.doc_page_break = batas halaman
+role.doc_page_footer = footer halaman
+role.doc_page_header = header halaman
+role.doc_page_list = daftar halaman
+role.doc_part = bagian
+role.doc_preface = kata pengantar
+role.doc_prologue = prolog
+role.doc_pullquote = pullquote
+role.doc_qna = Tanya Jawab
+role.doc_subtitle = subjudul
+role.doc_tip = tips
+role.doc_toc = daftar isi

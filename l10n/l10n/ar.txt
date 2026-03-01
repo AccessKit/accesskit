@@ -1,0 +1,70 @@
+# AccessKit ar accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = إعلان بانر
+role.complementary = تكميلي
+role.content_info = معلومات المحتوى
+role.main = main
+role.navigation = تنقل
+role.region = منطقة
+role.search = بحث
+
+# Headings
+role.heading = العنوان
+heading_with_level = مستوى رأس الموضوع {0}
+
+# Other roles
+role.alert = تنبيه
+role.alert_dialog = مربّع حوار لتنبيه
+role.article = article
+role.feed = البطاقات
+role.figure = شكل
+role.log = log
+role.status = الحالة
+role.tab = علامة تبويب
+role.timer = الموقّت
+
+# DPUB roles
+role.doc_abstract = نبذة مختصرة
+role.doc_acknowledgements = شكر وتقدير
+role.doc_afterword = كلمة ختامية
+role.doc_appendix = ملحق
+role.doc_back_link = رابط رجوع
+role.doc_biblio_entry = إدخال قائمة مراجع
+role.doc_biblio_ref = مرجع قائمة مراجع
+role.doc_bibliography = قائمة مراجع
+role.doc_chapter = فصل
+role.doc_colophon = إشارة ناشر
+role.doc_conclusion = خاتمة
+role.doc_cover = غلاف
+role.doc_credit = إسهام
+role.doc_credits = إسهامات
+role.doc_dedication = إهداء
+role.doc_endnote = تعليق ختامي
+role.doc_endnotes = تعليقات ختامية
+role.doc_epigraph = عبارة مقتبسة
+role.doc_epilogue = تتِّمة
+role.doc_errata = قائمة بالأخطاء
+role.doc_example = مثال
+role.doc_footnote = حاشية سُفلية
+role.doc_foreword = مقدمة
+role.doc_gloss_ref = مرجع مسرد مصطلحات
+role.doc_glossary = مسرد مصطلحات
+role.doc_index = فهرس
+role.doc_introduction = مقدمة
+role.doc_note_ref = ملاحظة مرجعية
+role.doc_notice = ملاحظة
+role.doc_page_break = فاصل صفحة
+role.doc_page_footer = تذييل الصفحة
+role.doc_page_header = رأس الصفحة
+role.doc_page_list = قائمة صفحات
+role.doc_part = جزء
+role.doc_preface = تمهيد
+role.doc_prologue = فاتحة
+role.doc_pullquote = اقتباس مستمد
+role.doc_qna = سين وجيم
+role.doc_subtitle = ترجمة مصاحِبة
+role.doc_tip = نصيحة
+role.doc_toc = جدول المحتويات

@@ -1,0 +1,70 @@
+# AccessKit bg accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = банер
+role.complementary = допълнение
+role.content_info = информация за съдържанието
+role.main = основен елемент
+role.navigation = навигация
+role.region = регион
+role.search = search
+
+# Headings
+role.heading = заглавие
+heading_with_level = Заглавие от {0} ниво
+
+# Other roles
+role.alert = сигнал
+role.alert_dialog = диалогов прозорец със сигнал
+role.article = статия
+role.feed = емисия
+role.figure = фигура
+role.log = регистрационен файл
+role.status = състояние
+role.tab = раздел
+role.timer = таймер
+
+# DPUB roles
+role.doc_abstract = резюме
+role.doc_acknowledgements = признания
+role.doc_afterword = послеслов
+role.doc_appendix = приложение
+role.doc_back_link = препратка
+role.doc_biblio_entry = библиографски запис
+role.doc_biblio_ref = препратка към библиографски запис
+role.doc_bibliography = библиография
+role.doc_chapter = глава
+role.doc_colophon = колофон
+role.doc_conclusion = заключение
+role.doc_cover = корица
+role.doc_credit = признание за източника
+role.doc_credits = признания за източника
+role.doc_dedication = посвещение
+role.doc_endnote = бележка в края
+role.doc_endnotes = бележки в края
+role.doc_epigraph = епиграф
+role.doc_epilogue = епилог
+role.doc_errata = списък с печатните грешки
+role.doc_example = пример
+role.doc_footnote = бележка под линия
+role.doc_foreword = предговор
+role.doc_gloss_ref = препратка към определение в терминологичния речник
+role.doc_glossary = терминологичен речник
+role.doc_index = показалец
+role.doc_introduction = въведение
+role.doc_note_ref = препратка към бележка
+role.doc_notice = известие
+role.doc_page_break = разделител на страници
+role.doc_page_footer = долен колонтитул на страницата
+role.doc_page_header = горен колонтитул на страницата
+role.doc_page_list = списък със страниците
+role.doc_part = част
+role.doc_preface = предисловие
+role.doc_prologue = пролог
+role.doc_pullquote = изнесен цитат
+role.doc_qna = Въпроси и отговори
+role.doc_subtitle = подзаглавие
+role.doc_tip = съвет
+role.doc_toc = съдържание

@@ -1,0 +1,70 @@
+# AccessKit lo accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = ປ້າຍ​ໂຄ​ສະ​ນາ
+role.complementary = ເສີມ​ເຕີມ
+role.content_info = ຂໍ້ມູນເນື້ອຫາ
+role.main = ຕົ້ນ​ຕໍ
+role.navigation = ການນໍາ​ທາງ
+role.region = ພາກພື້ນ
+role.search = ຄົ້ນ​ຫາ
+
+# Headings
+role.heading = ຫົວ​ຂໍ້​
+heading_with_level = ຫົວຂໍ້ {0}
+
+# Other roles
+role.alert = ການເຕືອນ
+role.alert_dialog = ກ່ອງໂຕ້​ຕອບແຈ້ງເຕືອນ
+role.article = ບົດ​ຄວາມ
+role.feed = ຟີດ
+role.figure = ຮູບ
+role.log = ປື້​ມບັນທຶກ
+role.status = ສະ​ຖາ​ນະ​
+role.tab = ແຖບ
+role.timer = ໂມງນັບຖອຍຫຼັງ
+
+# DPUB roles
+role.doc_abstract = ບົດຄັດຫຍໍ້
+role.doc_acknowledgements = ຄຳສະແດງຄວາມຂອບໃຈ
+role.doc_afterword = ຄຳກ່າວທ້າຍບົດ
+role.doc_appendix = ພາກຄັດຕິດ
+role.doc_back_link = ລິ້ງກັບຄືນ
+role.doc_biblio_entry = ລາຍການບັນນານຸກົມ
+role.doc_biblio_ref = ການອ້າງອີງບັນນານຸກົມ
+role.doc_bibliography = ບັນນານຸກົມ
+role.doc_chapter = ພາກ
+role.doc_colophon = ຂໍ້ມູນບັນນານຸກົມ
+role.doc_conclusion = ຂໍ້ສະຫຼຸບ
+role.doc_cover = ໜ້າປົກ
+role.doc_credit = ເຄຣດິດ
+role.doc_credits = ເຄຣດິດ
+role.doc_dedication = ຄຳອຸທິດ
+role.doc_endnote = ໝາຍເຫດທ້າຍເລື່ອງ
+role.doc_endnotes = ບັນທຶກທ້າຍເລື່ອງ
+role.doc_epigraph = ຄຳກ່າວນຳໜ້າ
+role.doc_epilogue = ຄຳກ່າວສົ່ງທ້າຍ
+role.doc_errata = ຂໍ້ຜິດພາດ
+role.doc_example = ຕົວຢ່າງ
+role.doc_footnote = ໝາຍເຫດຕີນເຈ້ຍ
+role.doc_foreword = ຄຳນຳ
+role.doc_gloss_ref = ການອ້າງອີງປະມວນຄຳສັບ
+role.doc_glossary = ປະມວນຄຳສັບ
+role.doc_index = ດັດຊະນີ
+role.doc_introduction = ການນຳສະເໜີ
+role.doc_note_ref = ການອ້າງອີງບັນທຶກ
+role.doc_notice = ແຈ້ງການ
+role.doc_page_break = ແບ່ງໜ້າ
+role.doc_page_footer = ສ່ວນທ້າຍຂອງໜ້າ
+role.doc_page_header = ສ່ວນຫົວຂອງໜ້າ
+role.doc_page_list = ລາຍການໜ້າ
+role.doc_part = ສ່ວນ
+role.doc_preface = ຄຳນຳ
+role.doc_prologue = ບົດນຳ
+role.doc_pullquote = ການອ້າງອີງ
+role.doc_qna = ຖາມ-ຕອບ
+role.doc_subtitle = ຄຳແປ
+role.doc_tip = ເຄັດລັບ
+role.doc_toc = ສາລະບານ

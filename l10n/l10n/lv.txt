@@ -1,0 +1,70 @@
+# AccessKit lv accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = reklāmkarogs
+role.complementary = papildu
+role.content_info = informācija par saturu
+role.main = galvenais
+role.navigation = navigācija
+role.region = reģions
+role.search = meklēt
+
+# Headings
+role.heading = Virsraksts
+heading_with_level = {0}. virsraksts
+
+# Other roles
+role.alert = brīdinājums
+role.alert_dialog = brīdinājuma dialoglodziņš
+role.article = raksts
+role.feed = plūsma
+role.figure = cipars
+role.log = žurnāls
+role.status = statuss
+role.tab = cilne
+role.timer = taimeris
+
+# DPUB roles
+role.doc_abstract = kopsavilkums
+role.doc_acknowledgements = pateicības
+role.doc_afterword = pēcvārds
+role.doc_appendix = pielikums
+role.doc_back_link = atpakaļsaite
+role.doc_biblio_entry = bibliogrāfijas ieraksts
+role.doc_biblio_ref = bibliogrāfiskā atsauce
+role.doc_bibliography = bibliogrāfija
+role.doc_chapter = nodaļa
+role.doc_colophon = izdošanas ziņas
+role.doc_conclusion = nobeigums
+role.doc_cover = vāks
+role.doc_credit = pateicība
+role.doc_credits = pateicības
+role.doc_dedication = veltījums
+role.doc_endnote = beigu vēre
+role.doc_endnotes = beigu vēres
+role.doc_epigraph = epigrāfs
+role.doc_epilogue = epilogs
+role.doc_errata = iespiedkļūdu saraksts
+role.doc_example = piemērs
+role.doc_footnote = vēre
+role.doc_foreword = priekšvārds
+role.doc_gloss_ref = atsauce uz glosāriju
+role.doc_glossary = glosārijs
+role.doc_index = rādītājs
+role.doc_introduction = ievads
+role.doc_note_ref = vēres atsauce
+role.doc_notice = paziņojums
+role.doc_page_break = lappuses pārtraukums
+role.doc_page_footer = lapas kājene
+role.doc_page_header = lapas galvene
+role.doc_page_list = lapu saraksts
+role.doc_part = daļa
+role.doc_preface = ievadraksts
+role.doc_prologue = prologs
+role.doc_pullquote = izvilkuma citāts
+role.doc_qna = Jautājumi un atbildes
+role.doc_subtitle = apakšvirsraksts
+role.doc_tip = padoms
+role.doc_toc = satura rādītājs

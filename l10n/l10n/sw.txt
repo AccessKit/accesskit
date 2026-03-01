@@ -1,0 +1,70 @@
+# AccessKit sw accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = bango
+role.complementary = nyongeza
+role.content_info = maelezo ya maudhui
+role.main = kuu
+role.navigation = kuvinjari
+role.region = eneo
+role.search = tafuta
+
+# Headings
+role.heading = kichwa
+heading_with_level = kichwa cha {0}
+
+# Other roles
+role.alert = arifa
+role.alert_dialog = kidirisha cha arifa
+role.article = makala
+role.feed = mipasho
+role.figure = umbo
+role.log = kumbukumbu
+role.status = hali
+role.tab = kichupo
+role.timer = kipima muda
+
+# DPUB roles
+role.doc_abstract = ikisiri
+role.doc_acknowledgements = shukrani
+role.doc_afterword = maelezo kuhusu kitabu
+role.doc_appendix = kiambatisho
+role.doc_back_link = kiungo rejeshi
+role.doc_biblio_entry = maelezo ya bibliografia
+role.doc_biblio_ref = marejeleo ya bibliografia
+role.doc_bibliography = bibliografia
+role.doc_chapter = sura
+role.doc_colophon = kolofoni
+role.doc_conclusion = hitimisho
+role.doc_cover = jalada
+role.doc_credit = aliyeshiriki
+role.doc_credits = walioshiriki
+role.doc_dedication = tabaruku
+role.doc_endnote = maelezo ya mwisho wa kitabu
+role.doc_endnotes = maelezo ya mwisho wa kitabu
+role.doc_epigraph = epigrafu
+role.doc_epilogue = hitimisho
+role.doc_errata = hitilafu katika uchapishaji
+role.doc_example = mfano
+role.doc_footnote = tanbihi
+role.doc_foreword = dibaji
+role.doc_gloss_ref = marejeleo ya farahasa
+role.doc_glossary = faharasa
+role.doc_index = faharasa
+role.doc_introduction = utangulizi
+role.doc_note_ref = marejeleo ya dokezo
+role.doc_notice = ilani
+role.doc_page_break = nafasi ya kugawa kurasa
+role.doc_page_footer = kijachini cha ukurasa
+role.doc_page_header = kijajuu cha ukurasa
+role.doc_page_list = orodha ya kurasa
+role.doc_part = sehemu
+role.doc_preface = dibaji
+role.doc_prologue = shairi la utangulizi
+role.doc_pullquote = nukuu muhimu
+role.doc_qna = Maswali na Majibu
+role.doc_subtitle = kichwa kidogo
+role.doc_tip = kidokezo
+role.doc_toc = jedwali la yaliyomo

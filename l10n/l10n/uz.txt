@@ -1,0 +1,70 @@
+# AccessKit uz accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banner
+role.complementary = qo‘shimcha
+role.content_info = kontent axboroti
+role.main = main
+role.navigation = navigatsiya
+role.region = hudud
+role.search = qidiruv
+
+# Headings
+role.heading = sarlavha
+heading_with_level = sarlavha {0}
+
+# Other roles
+role.alert = ogohlantirish
+role.alert_dialog = ogohlantiruvchi bildirgi
+role.article = article
+role.feed = tasma
+role.figure = shakl
+role.log = log
+role.status = holat
+role.tab = tab : Varaq
+role.timer = taymer
+
+# DPUB roles
+role.doc_abstract = annotatsiya
+role.doc_acknowledgements = tashakkurnoma
+role.doc_afterword = xotima
+role.doc_appendix = ilova
+role.doc_back_link = qayta havola
+role.doc_biblio_entry = bibliografiya yozuvi
+role.doc_biblio_ref = bibliografiya havolasi
+role.doc_bibliography = bibliografiya
+role.doc_chapter = bob
+role.doc_colophon = nashriyot ramzi
+role.doc_conclusion = xulosa
+role.doc_cover = muqova
+role.doc_credit = hissa
+role.doc_credits = mualliflar
+role.doc_dedication = bag‘ishlov
+role.doc_endnote = yakuniy izoh
+role.doc_endnotes = yakuniy izohlar
+role.doc_epigraph = epigraf
+role.doc_epilogue = epilog
+role.doc_errata = xatolar
+role.doc_example = namuna
+role.doc_footnote = quyi izoh
+role.doc_foreword = taqriz
+role.doc_gloss_ref = lug‘at havolasi
+role.doc_glossary = lug‘at
+role.doc_index = indeks
+role.doc_introduction = kirish
+role.doc_note_ref = qayd havolasi
+role.doc_notice = eslatma
+role.doc_page_break = sahifa oxiri
+role.doc_page_footer = sahifa kolontituli
+role.doc_page_header = sahifa sarlavhasi
+role.doc_page_list = sahifalar ro‘yxati
+role.doc_part = qism
+role.doc_preface = so‘zboshi
+role.doc_prologue = muqaddima
+role.doc_pullquote = iqtibos
+role.doc_qna = Savol-javoblar
+role.doc_subtitle = taglavha
+role.doc_tip = maslahat
+role.doc_toc = mundarija

@@ -1,0 +1,70 @@
+# AccessKit nb accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banner
+role.complementary = komplementær
+role.content_info = innholdsinformasjon
+role.main = main
+role.navigation = navigasjon
+role.region = område
+role.search = søk
+
+# Headings
+role.heading = overskrift
+heading_with_level = overskriftsnivå {0}
+
+# Other roles
+role.alert = varsel
+role.alert_dialog = varseldialog
+role.article = article
+role.feed = feed
+role.figure = figur
+role.log = logg
+role.status = status
+role.tab = fane
+role.timer = nedtelling
+
+# DPUB roles
+role.doc_abstract = abstrakt
+role.doc_acknowledgements = omtale
+role.doc_afterword = etterord
+role.doc_appendix = vedlegg
+role.doc_back_link = tilbakelink
+role.doc_biblio_entry = bibliografioppføring
+role.doc_biblio_ref = bibliografireferanse
+role.doc_bibliography = bibliografi
+role.doc_chapter = kapittel
+role.doc_colophon = kolofon
+role.doc_conclusion = konklusjon
+role.doc_cover = omslag
+role.doc_credit = anerkjennelse
+role.doc_credits = anerkjennelser
+role.doc_dedication = dedikasjon
+role.doc_endnote = sluttnote
+role.doc_endnotes = sluttnoter
+role.doc_epigraph = epigraf
+role.doc_epilogue = epilog
+role.doc_errata = errata
+role.doc_example = eksempel
+role.doc_footnote = fotnote
+role.doc_foreword = forord
+role.doc_gloss_ref = ordlistereferanse
+role.doc_glossary = ordliste
+role.doc_index = stikkordregister
+role.doc_introduction = innledning
+role.doc_note_ref = kommentarreferanse
+role.doc_notice = merknad
+role.doc_page_break = sideskift
+role.doc_page_footer = bunntekst
+role.doc_page_header = sideoverskrift
+role.doc_page_list = sideliste
+role.doc_part = del
+role.doc_preface = forord
+role.doc_prologue = prolog
+role.doc_pullquote = sitat
+role.doc_qna = Spørsmål og svar
+role.doc_subtitle = undertittel
+role.doc_tip = tips
+role.doc_toc = innholdsfortegnelse

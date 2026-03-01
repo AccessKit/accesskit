@@ -1,0 +1,70 @@
+# AccessKit sq accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banderolë
+role.complementary = plotësues
+role.content_info = informacione për përmbajtjen
+role.main = kryesor
+role.navigation = lundrimi
+role.region = rajoni
+role.search = kërko
+
+# Headings
+role.heading = titulli
+heading_with_level = titulli {0}
+
+# Other roles
+role.alert = sinjalizim
+role.alert_dialog = dialogu i sinjalizimit
+role.article = artikull
+role.feed = përmbajtja ime
+role.figure = figura
+role.log = ditari
+role.status = statusi
+role.tab = tab
+role.timer = kohëmatës
+
+# DPUB roles
+role.doc_abstract = abstrakt
+role.doc_acknowledgements = falënderime
+role.doc_afterword = pasthënie
+role.doc_appendix = shtojcë
+role.doc_back_link = lidhje referencë
+role.doc_biblio_entry = hyrje bibliografike
+role.doc_biblio_ref = referencë bibliografike
+role.doc_bibliography = bibliografi
+role.doc_chapter = kapitull
+role.doc_colophon = kolofon
+role.doc_conclusion = konkluzion
+role.doc_cover = kapak
+role.doc_credit = mirënjohje
+role.doc_credits = kredite
+role.doc_dedication = dedikim
+role.doc_endnote = shënim fundor
+role.doc_endnotes = shënime përfundimtare
+role.doc_epigraph = epigraf
+role.doc_epilogue = epilog
+role.doc_errata = gabime shtypi
+role.doc_example = shembull
+role.doc_footnote = fusnotë
+role.doc_foreword = parathënie
+role.doc_gloss_ref = referencë fjalorthi
+role.doc_glossary = fjalorth
+role.doc_index = indeks
+role.doc_introduction = hyrje
+role.doc_note_ref = referencë shënim
+role.doc_notice = njoftim
+role.doc_page_break = thyerje faqeje
+role.doc_page_footer = fundi i faqes
+role.doc_page_header = koka e faqes
+role.doc_page_list = listë faqeje
+role.doc_part = pjesë
+role.doc_preface = parathënie
+role.doc_prologue = prolog
+role.doc_pullquote = citim i theksuar
+role.doc_qna = Pyetje dhe përgjigje
+role.doc_subtitle = nëntitull
+role.doc_tip = këshillë
+role.doc_toc = tabela e përmbajtjes

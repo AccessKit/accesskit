@@ -1,0 +1,70 @@
+# AccessKit ro accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banner
+role.complementary = complementar
+role.content_info = informații despre conținut
+role.main = principal
+role.navigation = navigare
+role.region = regiune
+role.search = căutați
+
+# Headings
+role.heading = antet
+heading_with_level = rubrică nivel {0}
+
+# Other roles
+role.alert = alertă
+role.alert_dialog = casetă de dialog de tip alertă
+role.article = articol
+role.feed = feed
+role.figure = cifră
+role.log = jurnal
+role.status = stare
+role.tab = filă
+role.timer = temporizator
+
+# DPUB roles
+role.doc_abstract = rezumat
+role.doc_acknowledgements = lista colaboratorilor
+role.doc_afterword = postfață
+role.doc_appendix = anexă
+role.doc_back_link = backlink
+role.doc_biblio_entry = intrare bibliografică
+role.doc_biblio_ref = referință bibliografică
+role.doc_bibliography = bibliografie
+role.doc_chapter = capitol
+role.doc_colophon = colofon
+role.doc_conclusion = concluzie
+role.doc_cover = copertă
+role.doc_credit = mulțumire
+role.doc_credits = mulțumiri
+role.doc_dedication = dedicație
+role.doc_endnote = notă de final
+role.doc_endnotes = note de final
+role.doc_epigraph = epigraf
+role.doc_epilogue = epilog
+role.doc_errata = erată
+role.doc_example = exemplu
+role.doc_footnote = notă de subsol
+role.doc_foreword = cuvânt înainte
+role.doc_gloss_ref = trimitere la glosar
+role.doc_glossary = glosar
+role.doc_index = index
+role.doc_introduction = introducere
+role.doc_note_ref = trimitere la notă
+role.doc_notice = anunț
+role.doc_page_break = sfârșit de pagină
+role.doc_page_footer = subsolul paginii
+role.doc_page_header = antetul paginii
+role.doc_page_list = listă de pagini
+role.doc_part = parte
+role.doc_preface = prefață
+role.doc_prologue = prolog
+role.doc_pullquote = citat
+role.doc_qna = Întrebări și răspunsuri
+role.doc_subtitle = subtitlu
+role.doc_tip = sfat
+role.doc_toc = cuprins

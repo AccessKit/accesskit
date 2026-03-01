@@ -1,0 +1,70 @@
+# AccessKit tl accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banner
+role.complementary = complementary
+role.content_info = impormasyon ng content
+role.main = main
+role.navigation = navigation
+role.region = rehiyon
+role.search = search
+
+# Headings
+role.heading = heading
+heading_with_level = heading {0}
+
+# Other roles
+role.alert = alerto
+role.alert_dialog = dialog ng alerto
+role.article = article
+role.feed = feed
+role.figure = anyo
+role.log = log
+role.status = katayuan
+role.tab = tab
+role.timer = timer
+
+# DPUB roles
+role.doc_abstract = abstract
+role.doc_acknowledgements = mga pagkilala
+role.doc_afterword = afterword
+role.doc_appendix = appendix
+role.doc_back_link = back link
+role.doc_biblio_entry = entry sa bibliograpiya
+role.doc_biblio_ref = sanggunian sa bibliograpiya
+role.doc_bibliography = bibliograpiya
+role.doc_chapter = kabanata
+role.doc_colophon = colophon
+role.doc_conclusion = konklusyon
+role.doc_cover = cover
+role.doc_credit = credit
+role.doc_credits = mga credit
+role.doc_dedication = dedikasyon
+role.doc_endnote = endnote
+role.doc_endnotes = mga endnote
+role.doc_epigraph = epigraph
+role.doc_epilogue = epilogue
+role.doc_errata = mga erratum
+role.doc_example = halimbawa
+role.doc_footnote = footnote
+role.doc_foreword = foreword
+role.doc_gloss_ref = sanggunian sa glosaryo
+role.doc_glossary = glosaryo
+role.doc_index = index
+role.doc_introduction = panimula
+role.doc_note_ref = sanggunian sa tala
+role.doc_notice = paunawa
+role.doc_page_break = page break
+role.doc_page_footer = footer ng page
+role.doc_page_header = header ng page
+role.doc_page_list = listahan ng page
+role.doc_part = bahagi
+role.doc_preface = preface
+role.doc_prologue = prologue
+role.doc_pullquote = pullquote
+role.doc_qna = Q&A
+role.doc_subtitle = subtitle
+role.doc_tip = tip
+role.doc_toc = talaan ng nilalaman

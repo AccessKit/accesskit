@@ -1,0 +1,70 @@
+# AccessKit fi accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banneri
+role.complementary = täydentävä
+role.content_info = sisältötiedot
+role.main = pää
+role.navigation = navigointi
+role.region = alue
+role.search = haku
+
+# Headings
+role.heading = otsikko
+heading_with_level = otsikkotaso {0}
+
+# Other roles
+role.alert = ilmoitus
+role.alert_dialog = Ilmoitusikkuna
+role.article = artikkeli
+role.feed = fiidi
+role.figure = kuva
+role.log = loki
+role.status = tila
+role.tab = välilehti
+role.timer = ajastin
+
+# DPUB roles
+role.doc_abstract = tiivistelmä
+role.doc_acknowledgements = kiitokset
+role.doc_afterword = jälkipuhe
+role.doc_appendix = liite
+role.doc_back_link = viittaajan linkki
+role.doc_biblio_entry = lähdeluettelomerkintä
+role.doc_biblio_ref = lähdeluetteloviittaus
+role.doc_bibliography = lähdeluettelo
+role.doc_chapter = luku
+role.doc_colophon = kolofoni
+role.doc_conclusion = johtopäätös
+role.doc_cover = kansi
+role.doc_credit = tunnustus
+role.doc_credits = tunnustukset
+role.doc_dedication = omistuskirjoitus
+role.doc_endnote = loppuhuomautus
+role.doc_endnotes = loppuhuomautukset
+role.doc_epigraph = epigrafi
+role.doc_epilogue = epilogi
+role.doc_errata = oikaisut
+role.doc_example = esimerkki
+role.doc_footnote = alaviite
+role.doc_foreword = esipuhe
+role.doc_gloss_ref = sanastoviittaus
+role.doc_glossary = sanasto
+role.doc_index = hakemisto
+role.doc_introduction = johdanto
+role.doc_note_ref = muistiinpanoviittaus
+role.doc_notice = ilmoitus
+role.doc_page_break = sivunvaihto
+role.doc_page_footer = sivun alatunniste
+role.doc_page_header = sivun ylätunniste
+role.doc_page_list = sivuluettelo
+role.doc_part = osa
+role.doc_preface = johdanto
+role.doc_prologue = prologi
+role.doc_pullquote = erotettu lainaus
+role.doc_qna = K & V
+role.doc_subtitle = alaotsikko
+role.doc_tip = vinkki
+role.doc_toc = sisällysluettelo

@@ -1,0 +1,70 @@
+# AccessKit kk accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = баннер
+role.complementary = қосымша
+role.content_info = контент туралы ақпарат
+role.main = басты
+role.navigation = навигация
+role.region = аймақ
+role.search = іздеу
+
+# Headings
+role.heading = тақырып
+heading_with_level = {0}-тақырып
+
+# Other roles
+role.alert = ескерту
+role.alert_dialog = Ескерту диалогтық терезесі
+role.article = мақала
+role.feed = арна
+role.figure = пішін
+role.log = журнал
+role.status = күй
+role.tab = қойынды
+role.timer = таймер
+
+# DPUB roles
+role.doc_abstract = аннотация
+role.doc_acknowledgements = автордың алғысы
+role.doc_afterword = соңғы сөз
+role.doc_appendix = қосымша
+role.doc_back_link = кері сілтеме
+role.doc_biblio_entry = әдебиет жазбасы
+role.doc_biblio_ref = пайдаланылған әдебиет сілтемесі
+role.doc_bibliography = пайдаланылған әдебиеттер
+role.doc_chapter = тарау
+role.doc_colophon = баспа белгісі
+role.doc_conclusion = қорытынды
+role.doc_cover = мұқаба
+role.doc_credit = алғыс сөз
+role.doc_credits = рұқсаттар
+role.doc_dedication = арнау
+role.doc_endnote = түсіндірме
+role.doc_endnotes = түсіндірмелер
+role.doc_epigraph = эпиграф
+role.doc_epilogue = эпилог
+role.doc_errata = емле қателері
+role.doc_example = мысал
+role.doc_footnote = төменгі түсіндірме
+role.doc_foreword = сөз басы
+role.doc_gloss_ref = глоссарий анықтамасы
+role.doc_glossary = глоссарий
+role.doc_index = индекс
+role.doc_introduction = кіріспе
+role.doc_note_ref = ескертпе сілтемесі
+role.doc_notice = ескерту
+role.doc_page_break = бетті үзу
+role.doc_page_footer = беттің төменгі деректемесі
+role.doc_page_header = беттің үстіңгі деректемесі
+role.doc_page_list = беттер тізімі
+role.doc_part = бөлім
+role.doc_preface = алғысөз
+role.doc_prologue = пролог
+role.doc_pullquote = ендірілген дәйексөз
+role.doc_qna = Сұрақ-жауап
+role.doc_subtitle = тақырыпша
+role.doc_tip = кеңес
+role.doc_toc = мазмұны

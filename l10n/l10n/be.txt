@@ -1,0 +1,70 @@
+# AccessKit be accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = банер
+role.complementary = дадатковае
+role.content_info = звесткі пра змесціва
+role.main = галоўны
+role.navigation = навігацыя
+role.region = рэгіён
+role.search = пошук
+
+# Headings
+role.heading = загаловак
+heading_with_level = загаловак {0}
+
+# Other roles
+role.alert = абвестка
+role.alert_dialog = дыялогавае акно абвесткі
+role.article = артыкул
+role.feed = стужка
+role.figure = фігура
+role.log = журнал
+role.status = стан
+role.tab = укладка
+role.timer = таймер
+
+# DPUB roles
+role.doc_abstract = абстракцыя
+role.doc_acknowledgements = пацвярджэнні
+role.doc_afterword = пасляслоўе
+role.doc_appendix = дадатак
+role.doc_back_link = спасылка вяртання
+role.doc_biblio_entry = бібліяграфічны запіс
+role.doc_biblio_ref = спасылка на бібліяграфію
+role.doc_bibliography = бібліяграфія
+role.doc_chapter = глава
+role.doc_colophon = калафон
+role.doc_conclusion = заключэнне
+role.doc_cover = вокладка
+role.doc_credit = падзяка
+role.doc_credits = падзякі
+role.doc_dedication = прысвячэнне
+role.doc_endnote = вынаска
+role.doc_endnotes = зноскі
+role.doc_epigraph = эпіграф
+role.doc_epilogue = эпілог
+role.doc_errata = памылкі
+role.doc_example = прыклад
+role.doc_footnote = зноска
+role.doc_foreword = уступ
+role.doc_gloss_ref = спасылка на гласарый
+role.doc_glossary = гласарый
+role.doc_index = індэкс
+role.doc_introduction = уводзіны
+role.doc_note_ref = спасылка на заўвагу
+role.doc_notice = паведамленне
+role.doc_page_break = разрыў старонкі
+role.doc_page_footer = ніжні калонтытул старонкі
+role.doc_page_header = верхні калонтытул старонкі
+role.doc_page_list = спіс старонак
+role.doc_part = частка
+role.doc_preface = прадмова
+role.doc_prologue = пралог
+role.doc_pullquote = яскравая цытата
+role.doc_qna = Пытанні і адказы
+role.doc_subtitle = субцітр
+role.doc_tip = парада
+role.doc_toc = змест

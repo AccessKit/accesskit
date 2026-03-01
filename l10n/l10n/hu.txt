@@ -1,0 +1,70 @@
+# AccessKit hu accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = szalaghirdetés
+role.complementary = kiegészítő
+role.content_info = tartalom adatai
+role.main = fő
+role.navigation = navigáció
+role.region = régió
+role.search = search
+
+# Headings
+role.heading = fejléc
+heading_with_level = {0} címsorszint
+
+# Other roles
+role.alert = értesítés
+role.alert_dialog = értesítés párbeszédpanele
+role.article = cikk
+role.feed = hírcsatorna
+role.figure = alak
+role.log = napló
+role.status = állapot
+role.tab = lap
+role.timer = időzítő
+
+# DPUB roles
+role.doc_abstract = absztrakt
+role.doc_acknowledgements = köszönetnyilvánítás
+role.doc_afterword = utószó
+role.doc_appendix = függelék
+role.doc_back_link = visszamutató link
+role.doc_biblio_entry = bibliográfiai bejegyzés
+role.doc_biblio_ref = bibliográfiai hivatkozás
+role.doc_bibliography = bibliográfia
+role.doc_chapter = fejezet
+role.doc_colophon = kolofon
+role.doc_conclusion = összefoglalás
+role.doc_cover = borító
+role.doc_credit = elismerés
+role.doc_credits = készítők
+role.doc_dedication = ajánlás
+role.doc_endnote = záró jegyzet
+role.doc_endnotes = záró jegyzetek
+role.doc_epigraph = mottó
+role.doc_epilogue = végszó
+role.doc_errata = hibajegyzék
+role.doc_example = példa
+role.doc_footnote = lábjegyzet
+role.doc_foreword = előszó
+role.doc_gloss_ref = szószedet-hivatkozás
+role.doc_glossary = szószedet
+role.doc_index = tárgymutató
+role.doc_introduction = bevezetés
+role.doc_note_ref = jegyzethivatkozás
+role.doc_notice = közlés
+role.doc_page_break = oldaltörés
+role.doc_page_footer = oldallábléc
+role.doc_page_header = oldalfejléc
+role.doc_page_list = oldallista
+role.doc_part = rész
+role.doc_preface = bevezető
+role.doc_prologue = prológus
+role.doc_pullquote = kiemelt idézet
+role.doc_qna = Kérdések és válaszok
+role.doc_subtitle = felirat
+role.doc_tip = tipp
+role.doc_toc = tartalomjegyzék

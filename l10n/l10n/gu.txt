@@ -1,0 +1,70 @@
+# AccessKit gu accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = બેનર
+role.complementary = પૂરક
+role.content_info = કન્ટેન્ટ વિશેની માહિતી
+role.main = મુખ્ય
+role.navigation = નૅવિગેશન
+role.region = પ્રદેશ
+role.search = શોધ
+
+# Headings
+role.heading = મથાળું
+heading_with_level = મથાળું {0}
+
+# Other roles
+role.alert = ચેતવણી
+role.alert_dialog = અલર્ટ માટેનો સંવાદ
+role.article = લેખ
+role.feed = ફીડ
+role.figure = આકૃતિ
+role.log = લૉગ
+role.status = સ્થિતિ
+role.tab = ટૅબ
+role.timer = ટાઇમર
+
+# DPUB roles
+role.doc_abstract = અમૂર્ત
+role.doc_acknowledgements = સ્વીકૃતિઓ
+role.doc_afterword = સમાપન ભાષણ
+role.doc_appendix = જોડાણ
+role.doc_back_link = પાછળ લઈ જતી લિંક
+role.doc_biblio_entry = ગ્રંથસૂચિની એન્ટ્રી
+role.doc_biblio_ref = ગ્રંથસૂચિનો સંદર્ભ
+role.doc_bibliography = ગ્રંથસૂચિ
+role.doc_chapter = પ્રકરણ
+role.doc_colophon = પ્રકાશકની માહિતી
+role.doc_conclusion = સારાંશ
+role.doc_cover = કવર
+role.doc_credit = ક્રેડિટ
+role.doc_credits = ક્રેડિટ
+role.doc_dedication = સમર્પણ
+role.doc_endnote = અંતિમ નોંધ
+role.doc_endnotes = અંતિમ નોંધ
+role.doc_epigraph = શિલાલેખ
+role.doc_epilogue = ઉપસંહાર
+role.doc_errata = ભૂલ સુધારાની સૂચિ
+role.doc_example = ઉદાહરણ
+role.doc_footnote = ફૂટનોટ
+role.doc_foreword = આમુખ
+role.doc_gloss_ref = શબ્દાવલીનો સંદર્ભ
+role.doc_glossary = શબ્દાવલી
+role.doc_index = અનુક્રમણિકા
+role.doc_introduction = પ્રસ્તાવના
+role.doc_note_ref = નોંધ સંદર્ભ
+role.doc_notice = સૂચના
+role.doc_page_break = પેજ વિભાજન
+role.doc_page_footer = પેજ ફૂટર
+role.doc_page_header = પેજ હેડર
+role.doc_page_list = પેજ સૂચિ
+role.doc_part = ભાગ
+role.doc_preface = પ્રસ્તાવના
+role.doc_prologue = પ્રસ્તાવના
+role.doc_pullquote = પુલક્વોટ
+role.doc_qna = પ્રશ્ન અને જવાબ
+role.doc_subtitle = (સબટાઇટલ)
+role.doc_tip = ટિપ
+role.doc_toc = અનુક્રમણિકા

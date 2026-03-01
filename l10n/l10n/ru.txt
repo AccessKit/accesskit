@@ -1,0 +1,70 @@
+# AccessKit ru accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = баннер
+role.complementary = дополнительно
+role.content_info = информация о содержании
+role.main = main
+role.navigation = навигация
+role.region = регион
+role.search = поиск
+
+# Headings
+role.heading = заголовок
+heading_with_level = заголовок уровня {0}
+
+# Other roles
+role.alert = оповещение
+role.alert_dialog = диалоговое окно с оповещением
+role.article = article
+role.feed = лента
+role.figure = фигура
+role.log = log
+role.status = статус
+role.tab = вкладка
+role.timer = таймер
+
+# DPUB roles
+role.doc_abstract = аннотация
+role.doc_acknowledgements = благодарности
+role.doc_afterword = послесловие
+role.doc_appendix = приложение
+role.doc_back_link = обратная ссылка
+role.doc_biblio_entry = запись в библиографии
+role.doc_biblio_ref = ссылка на библиографию
+role.doc_bibliography = библиография
+role.doc_chapter = глава
+role.doc_colophon = выпускные данные
+role.doc_conclusion = заключение
+role.doc_cover = обложка
+role.doc_credit = упоминание
+role.doc_credits = выходные сведения
+role.doc_dedication = посвящение
+role.doc_endnote = концевая сноска
+role.doc_endnotes = концевые сноски
+role.doc_epigraph = эпиграф
+role.doc_epilogue = эпилог
+role.doc_errata = список опечаток
+role.doc_example = пример
+role.doc_footnote = сноска
+role.doc_foreword = предисловие
+role.doc_gloss_ref = ссылка на словарную статью
+role.doc_glossary = словарь
+role.doc_index = указатель
+role.doc_introduction = введение
+role.doc_note_ref = ссылка на примечание
+role.doc_notice = примечание
+role.doc_page_break = разрыв страницы
+role.doc_page_footer = нижний колонтитул страницы
+role.doc_page_header = заголовок страницы
+role.doc_page_list = список страниц
+role.doc_part = часть
+role.doc_preface = вступление
+role.doc_prologue = пролог
+role.doc_pullquote = цитата в виде врезки
+role.doc_qna = Вопросы и ответы
+role.doc_subtitle = подзаголовок
+role.doc_tip = совет
+role.doc_toc = оглавление

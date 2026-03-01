@@ -1,0 +1,70 @@
+# AccessKit hy accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = ազդերիզ
+role.complementary = լրացուցիչ
+role.content_info = տեղեկություններ բովանդակության մասին
+role.main = main
+role.navigation = նավիգացիա
+role.region = մարզ
+role.search = search
+
+# Headings
+role.heading = վերնագիր
+heading_with_level = վերնագիր {0}
+
+# Other roles
+role.alert = ծանուցում
+role.alert_dialog = զգուշացման պատուհան
+role.article = article
+role.feed = լրահոս
+role.figure = պատկեր
+role.log = log
+role.status = կարգավիճակ
+role.tab = ներդիր
+role.timer = ժամաչափ
+
+# DPUB roles
+role.doc_abstract = համառոտ շարադրանք
+role.doc_acknowledgements = երախտագրեր
+role.doc_afterword = հետգրություն
+role.doc_appendix = հավելված
+role.doc_back_link = հետադարձ հղում
+role.doc_biblio_entry = բիբլիոգրաֆիական գրառում
+role.doc_biblio_ref = բիբլիոգրաֆիական հղում
+role.doc_bibliography = բիբլիոգրաֆիա
+role.doc_chapter = գլուխ
+role.doc_colophon = հիշատակարան
+role.doc_conclusion = եզրակացություն
+role.doc_cover = շապիկ
+role.doc_credit = երախտիքի խոսք
+role.doc_credits = երախտիքի խոսքեր
+role.doc_dedication = ձոն
+role.doc_endnote = ավարտական ծանոթագրություն
+role.doc_endnotes = ավարտական ծանոթագրություններ
+role.doc_epigraph = բնաբան
+role.doc_epilogue = վերջաբան
+role.doc_errata = վրիպակների ցանկ
+role.doc_example = օրինակ
+role.doc_footnote = ծանոթագրություն
+role.doc_foreword = ներածություն
+role.doc_gloss_ref = մեջբերում բառացանկից
+role.doc_glossary = բառացանկ
+role.doc_index = այբբենական ցանկ
+role.doc_introduction = ներածություն
+role.doc_note_ref = ծանոթագրության հղում
+role.doc_notice = ծանոթագրություն
+role.doc_page_break = էջի ընդհատում
+role.doc_page_footer = էջատակ
+role.doc_page_header = էջագլուխ
+role.doc_page_list = էջացանկ
+role.doc_part = մաս
+role.doc_preface = ներածական
+role.doc_prologue = նախաբան
+role.doc_pullquote = մեջբերում
+role.doc_qna = Հարց ու պատասխան
+role.doc_subtitle = ենթավերնագիր
+role.doc_tip = խորհուրդ
+role.doc_toc = բովանդակություն

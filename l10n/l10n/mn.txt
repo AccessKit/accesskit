@@ -1,0 +1,70 @@
+# AccessKit mn accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = баннер
+role.complementary = нэмэлт
+role.content_info = контентын мэдээлэл
+role.main = Гол
+role.navigation = удирдлага
+role.region = хамрах бүс
+role.search = хайлт
+
+# Headings
+role.heading = гарчиг
+heading_with_level = гарчгийн хэмжээ {0}
+
+# Other roles
+role.alert = дохиолол
+role.alert_dialog = сэрэмжлүүлгийн харилцах цонх
+role.article = Гарчиг
+role.feed = хангамж
+role.figure = дүрслэл
+role.log = нэвтрэх
+role.status = статус
+role.tab = таб
+role.timer = хугацаа хэмжигч
+
+# DPUB roles
+role.doc_abstract = хураангуй
+role.doc_acknowledgements = талархал
+role.doc_afterword = төгсгөлийн үг
+role.doc_appendix = хавсралт
+role.doc_back_link = арын холбоос
+role.doc_biblio_entry = ном зүйн хэсэг
+role.doc_biblio_ref = ном зүйн лавлагаа
+role.doc_bibliography = ном зүй
+role.doc_chapter = бүлэг
+role.doc_colophon = колофон
+role.doc_conclusion = дүгнэлт
+role.doc_cover = ковер
+role.doc_credit = оролцогч
+role.doc_credits = оролцогчид
+role.doc_dedication = дурсгалын үг
+role.doc_endnote = нэмэлт тэмдэглэл
+role.doc_endnotes = нэмэлт тэмдэглэл
+role.doc_epigraph = эпиграф
+role.doc_epilogue = төгсгөлийн үг
+role.doc_errata = хэвлэлийн алдаа
+role.doc_example = жишээ
+role.doc_footnote = зүүлт тайлбар
+role.doc_foreword = өмнөх үг
+role.doc_gloss_ref = тайлбар толины лавлагаа
+role.doc_glossary = тайлбар толь
+role.doc_index = индекс
+role.doc_introduction = оршил
+role.doc_note_ref = тэмдэглэлийн лавлагаа
+role.doc_notice = мэдэгдэл
+role.doc_page_break = хуудас тусгаарлагч
+role.doc_page_footer = хуудасны хөл хэсэг
+role.doc_page_header = хуудасны толгой хэсэг
+role.doc_page_list = хуудасны жагсаалт
+role.doc_part = хэсэг
+role.doc_preface = удиртгал
+role.doc_prologue = эхлэл
+role.doc_pullquote = ишлэл
+role.doc_qna = Асуулт, хариулт
+role.doc_subtitle = дэд гарчиг
+role.doc_tip = зөвлөгөө
+role.doc_toc = агуулга

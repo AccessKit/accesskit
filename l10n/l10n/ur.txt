@@ -1,0 +1,70 @@
+# AccessKit ur accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = بینر
+role.complementary = اعزازی
+role.content_info = مواد کی معلومات
+role.main = اصل
+role.navigation = نیویگیشن
+role.region = علاقہ
+role.search = تلاش کریں
+
+# Headings
+role.heading = سرخی
+heading_with_level = سرخی {0}
+
+# Other roles
+role.alert = الرٹ
+role.alert_dialog = الرٹ ڈائیلاگ
+role.article = article
+role.feed = فیڈ
+role.figure = فیگر
+role.log = لاگ
+role.status = صورتحال
+role.tab = ٹیب
+role.timer = ٹائمر
+
+# DPUB roles
+role.doc_abstract = تجریدی
+role.doc_acknowledgements = اظہار تشکر
+role.doc_afterword = پسِ نوشت
+role.doc_appendix = ضمیمہ
+role.doc_back_link = بیک لنک
+role.doc_biblio_entry = کتابیات کا اندراج
+role.doc_biblio_ref = کتابیات کا حوالہ
+role.doc_bibliography = کتابیات
+role.doc_chapter = باب
+role.doc_colophon = خاتمہ کتاب
+role.doc_conclusion = اختتامیہ
+role.doc_cover = سر ورق
+role.doc_credit = کریڈٹ
+role.doc_credits = کریڈٹس
+role.doc_dedication = انتساب
+role.doc_endnote = اختتامی نوٹ
+role.doc_endnotes = اختتامی نوٹس
+role.doc_epigraph = کتبہ
+role.doc_epilogue = اختتامیہ
+role.doc_errata = غلط نامہ
+role.doc_example = مثال
+role.doc_footnote = فٹ نوٹ
+role.doc_foreword = پیش لفظ
+role.doc_gloss_ref = فرہنگ کا حوالہ
+role.doc_glossary = فرہنگ
+role.doc_index = فہرست مضامین
+role.doc_introduction = تعارف
+role.doc_note_ref = نوٹ کا حوالہ
+role.doc_notice = نوٹس
+role.doc_page_break = صفحہ کا انقطاع
+role.doc_page_footer = صفحے کا فٹر
+role.doc_page_header = صفحے کا ہیڈر
+role.doc_page_list = صفحے کی فہرست
+role.doc_part = حصہ
+role.doc_preface = دیباچہ
+role.doc_prologue = تمہید
+role.doc_pullquote = اقوال زریں
+role.doc_qna = سوال و جواب
+role.doc_subtitle = ذیلی عنوان
+role.doc_tip = تجویز
+role.doc_toc = فہرست مشمولات

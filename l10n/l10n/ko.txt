@@ -1,0 +1,70 @@
+# AccessKit ko accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = 배너
+role.complementary = 상호 보완
+role.content_info = 콘텐츠 정보
+role.main = main
+role.navigation = 탐색
+role.region = 지역
+role.search = 검색
+
+# Headings
+role.heading = 항목
+heading_with_level = 제목 수준 {0}
+
+# Other roles
+role.alert = 알림
+role.alert_dialog = 알림 대화상자
+role.article = article
+role.feed = 피드
+role.figure = 그림
+role.log = log
+role.status = 상태
+role.tab = 탭
+role.timer = 타이머
+
+# DPUB roles
+role.doc_abstract = 초록
+role.doc_acknowledgements = 감사의 말
+role.doc_afterword = 후기
+role.doc_appendix = 부록
+role.doc_back_link = 뒤로 링크
+role.doc_biblio_entry = 참고문헌 항목
+role.doc_biblio_ref = 참고문헌 참조
+role.doc_bibliography = 참고문헌
+role.doc_chapter = 장
+role.doc_colophon = 출판사 이름
+role.doc_conclusion = 결론
+role.doc_cover = 표지
+role.doc_credit = 크레딧
+role.doc_credits = 저작권 표시
+role.doc_dedication = 헌정사
+role.doc_endnote = 미주
+role.doc_endnotes = 미주
+role.doc_epigraph = 제명
+role.doc_epilogue = 에필로그
+role.doc_errata = 정오표
+role.doc_example = 예시
+role.doc_footnote = 각주
+role.doc_foreword = 서문
+role.doc_gloss_ref = 용어 참조
+role.doc_glossary = 용어설명
+role.doc_index = 색인
+role.doc_introduction = 소개
+role.doc_note_ref = 참고 자료
+role.doc_notice = 안내문
+role.doc_page_break = 페이지 나누기
+role.doc_page_footer = 페이지 바닥글
+role.doc_page_header = 페이지 헤더
+role.doc_page_list = 페이지 목록
+role.doc_part = 부
+role.doc_preface = 머리말
+role.doc_prologue = 프롤로그
+role.doc_pullquote = 인용문
+role.doc_qna = Q&A
+role.doc_subtitle = 부제
+role.doc_tip = 도움말
+role.doc_toc = 목차

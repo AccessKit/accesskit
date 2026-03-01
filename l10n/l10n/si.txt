@@ -1,0 +1,70 @@
+# AccessKit si accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = බැනරය
+role.complementary = ඌනපූරක
+role.content_info = අන්තර්ගත තොරතුරු
+role.main = ප්‍රධාන
+role.navigation = සංචාලනය
+role.region = කලාපය
+role.search = සොයන්න
+
+# Headings
+role.heading = ශීර්ෂය
+heading_with_level = ශීර්ෂය {0}
+
+# Other roles
+role.alert = ඇඟවීම
+role.alert_dialog = ඇඟවුම් සංවාදය
+role.article = ලිපිය
+role.feed = සංග්‍රහය
+role.figure = රූප සටහන
+role.log = ලොගය
+role.status = තත්වය
+role.tab = ටැබය
+role.timer = කාල ගණකය
+
+# DPUB roles
+role.doc_abstract = උද්ධෘතය
+role.doc_acknowledgements = පිළිගැනීම්
+role.doc_afterword = පසුවදන
+role.doc_appendix = උපග්‍රන්ථය
+role.doc_back_link = පසු සබැඳිය
+role.doc_biblio_entry = ග්‍රන්ථ නාමාවලිය ඇතුළත් කිරීම
+role.doc_biblio_ref = ග්‍රන්ථ නාමාවලි යොමුව
+role.doc_bibliography = ග්‍රන්ථ නාමාවලිය
+role.doc_chapter = පරිච්ඡේදය
+role.doc_colophon = ග්‍රන්ථවිස්තරය
+role.doc_conclusion = නිගමනය
+role.doc_cover = කවරය
+role.doc_credit = ස්තූතිය
+role.doc_credits = සම්මාන
+role.doc_dedication = කැපවීම
+role.doc_endnote = නිමි සටහන
+role.doc_endnotes = නිමි සටහන්
+role.doc_epigraph = ශිලාලේඛනය
+role.doc_epilogue = අපරකථනය
+role.doc_errata = ද්‍යෝෂ
+role.doc_example = උදාහරණය
+role.doc_footnote = පාදක සටහන
+role.doc_foreword = පෙරවදන
+role.doc_gloss_ref = ශබ්ද මාලා යොමුව
+role.doc_glossary = ශබ්ද මාලාව
+role.doc_index = සුචිය
+role.doc_introduction = හැඳින්වීම
+role.doc_note_ref = සටහන් යොමුව
+role.doc_notice = නිවේදනය
+role.doc_page_break = පිටු බිඳුම
+role.doc_page_footer = පිටු පාදකය
+role.doc_page_header = පිටු ශීර්ෂකය
+role.doc_page_list = පිටු ලැයිස්තුව
+role.doc_part = කොටස
+role.doc_preface = පූර්විකාව
+role.doc_prologue = උපන්‍යාසය
+role.doc_pullquote = අදින උද්ධරණය
+role.doc_qna = ප්‍රශ්න සහ පිළිතුරු
+role.doc_subtitle = උපසිරැසිය
+role.doc_tip = ඉඟිය
+role.doc_toc = පටුන

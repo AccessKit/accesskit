@@ -1,0 +1,70 @@
+# AccessKit kn accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = ಬ್ಯಾನರ್
+role.complementary = ಪೂರಕವಾಗಿ
+role.content_info = ವಿಷಯದ ಮಾಹಿತಿ
+role.main = ಮುಖ್ಯ
+role.navigation = ನ್ಯಾವಿಗೇಷನ್
+role.region = ಪ್ರದೇಶ
+role.search = ಹುಡುಕಾಡಿ
+
+# Headings
+role.heading = ಶೀರ್ಷಿಕೆ
+heading_with_level = {0}ನೆಯ ಶಿರೋನಾಮೆಯ ಹಂತ
+
+# Other roles
+role.alert = ಎಚ್ಚರಿಕೆ
+role.alert_dialog = ಎಚ್ಚರಿಕೆ ಸಂವಾದ
+role.article = ಲೇಖನ
+role.feed = ಫೀಡ್‌
+role.figure = ಆಕೃತಿ
+role.log = ಲಾಗ್
+role.status = ಸ್ಥಿತಿ
+role.tab = ಟ್ಯಾಬ್
+role.timer = ಟೈಮರ್
+
+# DPUB roles
+role.doc_abstract = ಸಾರಾಂಶ
+role.doc_acknowledgements = ಅಂಗೀಕಾರಗಳು
+role.doc_afterword = ನಂತರದ
+role.doc_appendix = ಅನುಬಂಧ
+role.doc_back_link = ಬ್ಯಾಕ್‌ಲಿಂಕ್
+role.doc_biblio_entry = ಗ್ರಂಥಸೂಚಿ ನಮೂದು
+role.doc_biblio_ref = ಗ್ರಂಥಸೂಚಿ ಉಲ್ಲೇಖ
+role.doc_bibliography = ಗ್ರಂಥಸೂಚಿ
+role.doc_chapter = ಅಧ್ಯಾಯ
+role.doc_colophon = ಕೊಲೊಫೋನ್
+role.doc_conclusion = ತೀರ್ಮಾನ
+role.doc_cover = ಕವರ್
+role.doc_credit = ಗೌರವ
+role.doc_credits = ಕ್ರೆಡಿಟ್‌ಗಳು
+role.doc_dedication = ಸಮರ್ಪಣೆ
+role.doc_endnote = ಮುಕ್ತಾಯ ಟಿಪ್ಪಣಿ
+role.doc_endnotes = ಅಂತಿಮ ಟಿಪ್ಪಣಿಗಳು
+role.doc_epigraph = ಶಿಲಾಶಾಸನ
+role.doc_epilogue = ಹಿನ್ನುಡಿ
+role.doc_errata = ಎರ್ರಾಟಾ
+role.doc_example = ಉದಾಹರಣೆ
+role.doc_footnote = ಅಡಿಟಿಪ್ಪಣಿ
+role.doc_foreword = ಮುನ್ನುಡಿ
+role.doc_gloss_ref = ಪದಕೋಶ ಉಲ್ಲೇಖ
+role.doc_glossary = ಪದಕೋಶ
+role.doc_index = ಸೂಚಿಕೆ
+role.doc_introduction = ಪರಿಚಯ
+role.doc_note_ref = ಸೂಚನೆ ಉಲ್ಲೇಖ
+role.doc_notice = ಸೂಚನೆ
+role.doc_page_break = ಪುಟ ವಿಭಜನೆ
+role.doc_page_footer = ಪುಟದ ಅಡಿಲೇಖ
+role.doc_page_header = ಪುಟದ ಶಿರೋಲೇಖ
+role.doc_page_list = ಪುಟ ಪಟ್ಟಿ
+role.doc_part = ಭಾಗ
+role.doc_preface = ಮುನ್ನುಡಿ
+role.doc_prologue = ಪೀಠಿಕೆ
+role.doc_pullquote = ಪ್ರಮುಖ ಉಲ್ಲೇಖ
+role.doc_qna = ಪ್ರಶ್ನೋತ್ತರ
+role.doc_subtitle = ಸಬ್‌ಟೈಟಲ್
+role.doc_tip = ಸಲಹೆ
+role.doc_toc = ಪರಿವಿಡಿ

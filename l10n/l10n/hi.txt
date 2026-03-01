@@ -1,0 +1,70 @@
+# AccessKit hi accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = बैनर
+role.complementary = पूरक
+role.content_info = सामग्री की जानकारी
+role.main = मुख्य
+role.navigation = मार्गदर्शक
+role.region = क्षेत्र
+role.search = search
+
+# Headings
+role.heading = हेडिंग
+heading_with_level = शीर्षक स्तर {0}
+
+# Other roles
+role.alert = सूचना
+role.alert_dialog = चेतावनी दिखाने वाला डायलॉग बॉक्स
+role.article = लेख
+role.feed = फ़ीड
+role.figure = आकृति
+role.log = लॉग
+role.status = स्थिति
+role.tab = टैब
+role.timer = टाइमर
+
+# DPUB roles
+role.doc_abstract = संक्षेप
+role.doc_acknowledgements = धन्यवाद
+role.doc_afterword = उपसंहार
+role.doc_appendix = परिशिष्ट
+role.doc_back_link = बैक लिंक
+role.doc_biblio_entry = संदर्भ सूची प्रविष्टि
+role.doc_biblio_ref = संदर्भ सूची का संदर्भ
+role.doc_bibliography = संदर्भ सूची
+role.doc_chapter = पाठ
+role.doc_colophon = कॉलफ़न
+role.doc_conclusion = निष्कर्ष
+role.doc_cover = कवर
+role.doc_credit = क्रेडिट
+role.doc_credits = क्रेडिट
+role.doc_dedication = लगन
+role.doc_endnote = एंड नोट
+role.doc_endnotes = एंडनोट
+role.doc_epigraph = इपिग्राफ़
+role.doc_epilogue = उपसंहार
+role.doc_errata = गलतियां
+role.doc_example = उदाहरण
+role.doc_footnote = फ़ुटनोट
+role.doc_foreword = भूमिका
+role.doc_gloss_ref = संदर्भ के लिए शब्दावली
+role.doc_glossary = शब्दावली
+role.doc_index = इंडेक्स
+role.doc_introduction = परिचय
+role.doc_note_ref = नोट संदर्भ
+role.doc_notice = सूचना
+role.doc_page_break = नया पेज
+role.doc_page_footer = पेज फ़ुटर
+role.doc_page_header = पेज हेडर
+role.doc_page_list = पेज सूची
+role.doc_part = भाग
+role.doc_preface = आमुख
+role.doc_prologue = प्रस्तावना
+role.doc_pullquote = पुलकोट
+role.doc_qna = सवाल और जवाब
+role.doc_subtitle = सबटाइटल
+role.doc_tip = सलाह
+role.doc_toc = विषय सूची

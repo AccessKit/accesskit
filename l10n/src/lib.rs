@@ -161,6 +161,32 @@ mod tests {
     }
 
     #[test]
+    fn resolve_english_region_variants() {
+        // The US (and bare `en`) use American English; every other region uses
+        // British.
+        let en = LocaleId::new("en");
+        let gb = LocaleId::new("en-GB");
+        assert_ne!(en, gb);
+        assert_eq!(LocaleId::new("en-US"), en);
+        assert_eq!(LocaleId::new("en-AU"), gb);
+        assert_eq!(LocaleId::new("en-NZ"), gb);
+        assert_eq!(LocaleId::new("en-IE"), gb);
+        assert_eq!(LocaleId::new("en-IN"), gb);
+    }
+
+    #[test]
+    fn resolve_spanish_region_variants() {
+        // Spain uses European Spanish; the Americas use Latin American Spanish.
+        let es = LocaleId::new("es");
+        let la = LocaleId::new("es-419");
+        assert_ne!(es, la);
+        assert_eq!(LocaleId::new("es-ES"), es);
+        assert_eq!(LocaleId::new("es-MX"), la);
+        assert_eq!(LocaleId::new("es-AR"), la);
+        assert_eq!(LocaleId::new("es-US"), la);
+    }
+
+    #[test]
     fn resolve_chinese_simplified() {
         // Bare `zh`, region tags, and explicit `Hans` all reach Simplified.
         let zh = LocaleId::new("zh");
@@ -168,6 +194,31 @@ mod tests {
         assert_eq!(LocaleId::new("zh-SG"), zh);
         assert_eq!(LocaleId::new("zh-Hans"), zh);
         assert_eq!(LocaleId::new("zh-Hans-CN"), zh);
+    }
+
+    #[test]
+    fn resolve_chinese_traditional() {
+        // Desktop region tags (`zh-TW`) and mobile script tags (`zh-Hant-TW`)
+        // both reach Traditional, distinct from Simplified.
+        let hant = LocaleId::new("zh-Hant");
+        assert_eq!(LocaleId::new("zh-TW"), hant);
+        assert_eq!(LocaleId::new("zh-Hant-TW"), hant);
+        assert_ne!(hant, LocaleId::new("zh"));
+
+        // Hong Kong Traditional is its own row.
+        let hk = LocaleId::new("zh-HK");
+        assert_eq!(LocaleId::new("zh-Hant-HK"), hk);
+        assert_ne!(hk, hant);
+    }
+
+    #[test]
+    fn resolve_serbian_script() {
+        // Latin is explicit; the default and region-only tags are Cyrillic.
+        let latin = LocaleId::new("sr-Latn");
+        assert_eq!(LocaleId::new("sr-Latn-RS"), latin);
+        let cyrillic = LocaleId::new("sr");
+        assert_eq!(LocaleId::new("sr-RS"), cyrillic);
+        assert_ne!(latin, cyrillic);
     }
 
     // --- Interpolated string tests ---

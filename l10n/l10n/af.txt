@@ -1,0 +1,70 @@
+# AccessKit af accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banier
+role.complementary = aanvullend
+role.content_info = inhoudinligting
+role.main = hoof
+role.navigation = navigasie
+role.region = streek
+role.search = deursoek
+
+# Headings
+role.heading = opskrif
+heading_with_level = opskrif {0}
+
+# Other roles
+role.alert = waarskuwing
+role.alert_dialog = waarskuwingdialoog
+role.article = artikel
+role.feed = stroom
+role.figure = figuur
+role.log = loglêer
+role.status = status
+role.tab = oortjie
+role.timer = afteller
+
+# DPUB roles
+role.doc_abstract = opsomming
+role.doc_acknowledgements = erkennings
+role.doc_afterword = nawoord
+role.doc_appendix = bylaag
+role.doc_back_link = terugskakel
+role.doc_biblio_entry = bibliografie-inskrywing
+role.doc_biblio_ref = bibliografieverwysing
+role.doc_bibliography = bibliografie
+role.doc_chapter = hoofstuk
+role.doc_colophon = eindtitel
+role.doc_conclusion = samevatting
+role.doc_cover = omslag
+role.doc_credit = erkenning
+role.doc_credits = erkennings
+role.doc_dedication = opdrag
+role.doc_endnote = eindnota
+role.doc_endnotes = eindnotas
+role.doc_epigraph = epigraaf
+role.doc_epilogue = epiloog
+role.doc_errata = errata
+role.doc_example = voorbeeld
+role.doc_footnote = voetnoot
+role.doc_foreword = voorwoord
+role.doc_gloss_ref = woordelysverwysing
+role.doc_glossary = woordelys
+role.doc_index = indeks
+role.doc_introduction = inleiding
+role.doc_note_ref = notaverwysing
+role.doc_notice = kennisgewing
+role.doc_page_break = bladsybreuk
+role.doc_page_footer = bladsyvoetreël
+role.doc_page_header = bladsykopreël
+role.doc_page_list = bladsylys
+role.doc_part = deel
+role.doc_preface = voorwoord
+role.doc_prologue = proloog
+role.doc_pullquote = uithaalaanhaling
+role.doc_qna = V&A
+role.doc_subtitle = subtitel
+role.doc_tip = wenk
+role.doc_toc = inhoudsopgawe

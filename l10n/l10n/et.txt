@@ -1,0 +1,70 @@
+# AccessKit et accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = bänner
+role.complementary = täiendav
+role.content_info = sisu teave
+role.main = pea
+role.navigation = navigeerimine
+role.region = piirkond
+role.search = otsing
+
+# Headings
+role.heading = pealkiri
+heading_with_level = päis {0}
+
+# Other roles
+role.alert = hoiatus
+role.alert_dialog = hoiatusdialoog
+role.article = artikkel
+role.feed = voog
+role.figure = joonis
+role.log = logi
+role.status = olek
+role.tab = vaheleht
+role.timer = taimer
+
+# DPUB roles
+role.doc_abstract = abstraktne
+role.doc_acknowledgements = tunnustused
+role.doc_afterword = järelsõna
+role.doc_appendix = lisa
+role.doc_back_link = tagasilink
+role.doc_biblio_entry = bibliograafia kirje
+role.doc_biblio_ref = kasutatud kirjandus
+role.doc_bibliography = bibliograafia
+role.doc_chapter = peatükk
+role.doc_colophon = kolofoon
+role.doc_conclusion = kokkuvõte
+role.doc_cover = kaas
+role.doc_credit = autor(id)
+role.doc_credits = tiitrid
+role.doc_dedication = pühendus
+role.doc_endnote = järelmärkus
+role.doc_endnotes = järelmärkused
+role.doc_epigraph = epigraaf
+role.doc_epilogue = epiloog
+role.doc_errata = veaparandused
+role.doc_example = näide
+role.doc_footnote = allmärkus
+role.doc_foreword = eessõna
+role.doc_gloss_ref = sõnastiku viide
+role.doc_glossary = sõnastik
+role.doc_index = register
+role.doc_introduction = sissejuhatus
+role.doc_note_ref = märkuse viide
+role.doc_notice = teatis
+role.doc_page_break = leheküljepiir
+role.doc_page_footer = lehe jalus
+role.doc_page_header = lehe päis
+role.doc_page_list = lehtede loend
+role.doc_part = osa
+role.doc_preface = eessõna
+role.doc_prologue = proloog
+role.doc_pullquote = tsitaat
+role.doc_qna = Küsimused ja vastused
+role.doc_subtitle = alapealkiri
+role.doc_tip = nõuanne
+role.doc_toc = sisukord

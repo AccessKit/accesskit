@@ -1,0 +1,70 @@
+# AccessKit uk accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = банер
+role.complementary = додатково
+role.content_info = інформація про контент
+role.main = головний
+role.navigation = навігація
+role.region = регіон
+role.search = пошук
+
+# Headings
+role.heading = заголовок
+heading_with_level = заголовок рівня {0}
+
+# Other roles
+role.alert = сповіщення
+role.alert_dialog = вікно сповіщення
+role.article = стаття
+role.feed = стрічка
+role.figure = фігура
+role.log = журнал
+role.status = статус
+role.tab = вкладка
+role.timer = таймер
+
+# DPUB roles
+role.doc_abstract = автореферат
+role.doc_acknowledgements = слова подяки
+role.doc_afterword = післямова
+role.doc_appendix = додаток
+role.doc_back_link = зворотне посилання
+role.doc_biblio_entry = бібліографічний запис
+role.doc_biblio_ref = посилання на бібліографію
+role.doc_bibliography = бібліографія
+role.doc_chapter = розділ
+role.doc_colophon = емблема видавництва
+role.doc_conclusion = висновок
+role.doc_cover = обкладинка
+role.doc_credit = подяка
+role.doc_credits = подяки
+role.doc_dedication = присвята
+role.doc_endnote = кінцева виноска
+role.doc_endnotes = кінцеві виноски
+role.doc_epigraph = епіграф
+role.doc_epilogue = епілог
+role.doc_errata = перелік описок
+role.doc_example = приклад
+role.doc_footnote = виноска
+role.doc_foreword = передмова
+role.doc_gloss_ref = посилання на глосарій
+role.doc_glossary = глосарій
+role.doc_index = покажчик
+role.doc_introduction = вступ
+role.doc_note_ref = посилання на примітку
+role.doc_notice = примітка
+role.doc_page_break = розрив сторінки
+role.doc_page_footer = нижній колонтитул
+role.doc_page_header = верхній колонтитул
+role.doc_page_list = список сторінок
+role.doc_part = частина
+role.doc_preface = передмова
+role.doc_prologue = пролог
+role.doc_pullquote = цитата
+role.doc_qna = Запитання
+role.doc_subtitle = підзаголовок
+role.doc_tip = порада
+role.doc_toc = зміст

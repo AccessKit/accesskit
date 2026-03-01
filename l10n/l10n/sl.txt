@@ -1,0 +1,70 @@
+# AccessKit sl accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = pasica
+role.complementary = dopolnilno
+role.content_info = podatki o vsebini
+role.main = glavn
+role.navigation = krmarjenje
+role.region = območje
+role.search = search
+
+# Headings
+role.heading = naslov
+heading_with_level = nivo naslova {0}
+
+# Other roles
+role.alert = opozorilo
+role.alert_dialog = opozorilno pogovorno okno
+role.article = člnk
+role.feed = vir
+role.figure = številka
+role.log = dnevn
+role.status = stanje
+role.tab = zavihek
+role.timer = merilnik časa
+
+# DPUB roles
+role.doc_abstract = izvleček
+role.doc_acknowledgements = zahvala
+role.doc_afterword = spremna beseda
+role.doc_appendix = dodatek
+role.doc_back_link = povratna povezava
+role.doc_biblio_entry = bibliografski vnos
+role.doc_biblio_ref = bibliografski viri
+role.doc_bibliography = bibliografija
+role.doc_chapter = poglavje
+role.doc_colophon = kolofon
+role.doc_conclusion = sklep
+role.doc_cover = naslovnica
+role.doc_credit = zasluga
+role.doc_credits = seznam sodelujočih
+role.doc_dedication = posvetilo
+role.doc_endnote = končna opomba
+role.doc_endnotes = končne opombe
+role.doc_epigraph = epigraf
+role.doc_epilogue = epilog
+role.doc_errata = popravki
+role.doc_example = primer
+role.doc_footnote = sprotna opomba
+role.doc_foreword = predgovor
+role.doc_gloss_ref = vnos v glosarju
+role.doc_glossary = glosar
+role.doc_index = kazalo
+role.doc_introduction = uvod
+role.doc_note_ref = sklicevanje na opombo
+role.doc_notice = kritika
+role.doc_page_break = prelom strani
+role.doc_page_footer = noga strani
+role.doc_page_header = glava strani
+role.doc_page_list = seznam strani
+role.doc_part = del
+role.doc_preface = predgovor
+role.doc_prologue = uvod
+role.doc_pullquote = pojavni citat
+role.doc_qna = Vprašanja
+role.doc_subtitle = podnaslov
+role.doc_tip = namig
+role.doc_toc = kazalo

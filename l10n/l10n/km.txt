@@ -1,0 +1,70 @@
+# AccessKit km accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = បដា
+role.complementary = បន្ថែម
+role.content_info = ព័ត៌មាន​អំពីខ្លឹមសារ
+role.main = ចម្បង
+role.navigation = ការរុករក
+role.region = តំបន់
+role.search = ស្វែងរក
+
+# Headings
+role.heading = ផ្នែកក្បាល
+heading_with_level = ចំណងជើងកម្រិត {0}
+
+# Other roles
+role.alert = ដាស់តឿន
+role.alert_dialog = ប្រអប់​ជូនដំណឹង
+role.article = អត្ថបទ
+role.feed = ព័ត៌មាន
+role.figure = តួលេខ
+role.log = កំណត់ត្រា
+role.status = ស្ថានភាព
+role.tab = ផ្ទាំង
+role.timer = កម្មវិធីកំណត់ពេល
+
+# DPUB roles
+role.doc_abstract = ចំណុច​សំខាន់
+role.doc_acknowledgements = ការថ្លែង​អំណរ​គុណ
+role.doc_afterword = សេចក្ដី​បញ្ចប់
+role.doc_appendix = ឧបសម្ពន្ធ
+role.doc_back_link = តំណ​ថយក្រោយ
+role.doc_biblio_entry = ធាតុគន្ថនិទ្ទេស
+role.doc_biblio_ref = ឯកសារ​យោងនៃ​គន្ថនិទ្ទេស
+role.doc_bibliography = គន្ថនិទ្ទេស
+role.doc_chapter = ជំពូក
+role.doc_colophon = ឈ្មោះ​ក្រុមហ៊ុន​បោះពុម្ព​ផ្សាយ
+role.doc_conclusion = សេចក្ដី​បញ្ចប់
+role.doc_cover = គម្រប
+role.doc_credit = ការថ្លែងអំណរគុណ
+role.doc_credits = ការថ្លែងអំណរគុណ
+role.doc_dedication = ការឧទ្ទិស
+role.doc_endnote = កំណត់​ចំណាំនៅ​ខាងចុង
+role.doc_endnotes = កំណត់​ចំណាំនៅ​ខាងចុង
+role.doc_epigraph = សម្រង់​ខ្លីៗ
+role.doc_epilogue = អវសាន​កថា
+role.doc_errata = បញ្ជី​កំណែ​កំហុស
+role.doc_example = ឧទាហរណ៍
+role.doc_footnote = កំណត់​ចំណាំនៅ​ជើងទំព័រ
+role.doc_foreword = កថាមុខ
+role.doc_gloss_ref = ឯកសារ​យោង​នៃ​សទ្ទានុក្រម
+role.doc_glossary = សទ្ទានុក្រម
+role.doc_index = សន្ទស្សន៍
+role.doc_introduction = សេចក្ដី​ផ្ដើម
+role.doc_note_ref = ឯកសារយោង​នៃចំណាំ
+role.doc_notice = ការជូន​ដំណឹង
+role.doc_page_break = បំបែក​ទំព័រ
+role.doc_page_footer = ជើងទំព័រ
+role.doc_page_header = ក្បាលទំព័រ
+role.doc_page_list = បញ្ជី​ទំព័រ
+role.doc_part = ផ្នែក
+role.doc_preface = អារម្ភកថា
+role.doc_prologue = បុរេកថា
+role.doc_pullquote = ​សម្រង់​អត្ថបទ​សំខាន់
+role.doc_qna = សំណួរ​ចម្លើយ
+role.doc_subtitle = ចំណង​ជើងរង
+role.doc_tip = គន្លឹះ
+role.doc_toc = តារាង​ខ្លឹមសារ

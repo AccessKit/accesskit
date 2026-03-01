@@ -1,0 +1,70 @@
+# AccessKit pa accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = ਬੈਨਰ
+role.complementary = ਪੂਰਕ
+role.content_info = ਸਮੱਗਰੀ ਦੀ ਜਾਣਕਾਰੀ
+role.main = ਮੁੱਖ
+role.navigation = ਨੈਵੀਗੇਸ਼ਨ
+role.region = ਖੇਤਰ
+role.search = ਖੋਜੋ
+
+# Headings
+role.heading = ਹੈਡਿੰਗ
+heading_with_level = ਹੈਡਿੰਗ ਪੱਧਰ {0}
+
+# Other roles
+role.alert = ਚਿਤਾਵਨੀ
+role.alert_dialog = ਅਲਰਟ ਵਿੰਡੋ
+role.article = ਲੇਖ
+role.feed = ਫ਼ੀਡ
+role.figure = ਅੰਕ
+role.log = ਲੌਗ
+role.status = ਸਥਿਤੀ
+role.tab = ਟੈਬ
+role.timer = ਟਾਈਮਰ
+
+# DPUB roles
+role.doc_abstract = ਸਾਰਾਂਸ਼
+role.doc_acknowledgements = ਕਦਰ
+role.doc_afterword = ਅੰਤ-ਕਥਨ
+role.doc_appendix = ਅੰਤਕਾ
+role.doc_back_link = ਬੈਕ-ਲਿੰਕ
+role.doc_biblio_entry = ਪੁਸਤਕ ਮਾਲਾ ਦਾ ਇੰਦਰਾਜ਼
+role.doc_biblio_ref = ਪੁਸਤਕ ਮਾਲਾ ਦਾ ਹਵਾਲਾ
+role.doc_bibliography = ਪੁਸਤਕ ਮਾਲਾ
+role.doc_chapter = ਕਾਂਡ
+role.doc_colophon = ਪੁਸਤਕ 'ਤੇ ਦਿੱਤਾ ਪ੍ਰਕਾਸ਼ਕ ਦਾ ਨਾਮ ਜਾਂ ਚਿੰਨ੍ਹ
+role.doc_conclusion = ਸਿੱਟਾ
+role.doc_cover = ਕਵਰ
+role.doc_credit = ਕ੍ਰੈਡਿਟ
+role.doc_credits = ਕ੍ਰੈਡਿਟ
+role.doc_dedication = ਸਮਰਪਣ
+role.doc_endnote = ਵਿਸ਼ੇਸ਼ ਜਾਣਕਾਰੀ
+role.doc_endnotes = ਵਿਸ਼ੇਸ਼ ਜਾਣਕਾਰੀ
+role.doc_epigraph = ਆਦਰਸ਼ ਵਾਕ
+role.doc_epilogue = ਸਾਹਿਤ ਰਚਨਾ ਦਾ ਅੰਤਿਮ ਭਾਗ
+role.doc_errata = ਅਸ਼ੁੱਧੀ ਪੱਤਰ
+role.doc_example = ਉਦਾਹਰਨ
+role.doc_footnote = ਪਗ ਟਿੱਪਣੀ
+role.doc_foreword = ਭੂਮਿਕਾ
+role.doc_gloss_ref = ਸ਼ਬਦਾਵਲੀ ਦਾ ਹਵਾਲਾ
+role.doc_glossary = ਸ਼ਬਦਾਵਲੀ
+role.doc_index = ਕ੍ਰਮ-ਸੂਚੀ
+role.doc_introduction = ਜਾਣ-ਪਛਾਣ
+role.doc_note_ref = ਨੋਟ ਦਾ ਹਵਾਲਾ
+role.doc_notice = ਸੂਚਨਾ
+role.doc_page_break = ਪੰਨਾ ਬ੍ਰੇਕ
+role.doc_page_footer = ਪੰਨੇ ਦਾ ਪਦਲੇਖ
+role.doc_page_header = ਪੰਨੇ ਦਾ ਸਿਰਲੇਖ
+role.doc_page_list = ਪੰਨਾ ਸੂਚੀ
+role.doc_part = ਭਾਗ
+role.doc_preface = ਪ੍ਰਸਤਾਵਨਾ
+role.doc_prologue = ਮੁੱਖਬੰਧ
+role.doc_pullquote = ਪੁਲਕੋਟ
+role.doc_qna = ਸਵਾਲ-ਜਵਾਬ
+role.doc_subtitle = ਉਪਸਿਰੇਲਖ
+role.doc_tip = ਨੁਕਤਾ
+role.doc_toc = ਵਿਸ਼ਾ ਸੂਚੀ

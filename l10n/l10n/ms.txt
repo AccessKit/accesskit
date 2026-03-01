@@ -1,0 +1,70 @@
+# AccessKit ms accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = sepanduk
+role.complementary = pelengkap
+role.content_info = maklumat kandungan
+role.main = utama
+role.navigation = navigasi
+role.region = wilayah
+role.search = search
+
+# Headings
+role.heading = tajuk
+heading_with_level = pengepala {0}
+
+# Other roles
+role.alert = makluman
+role.alert_dialog = dialog makluman
+role.article = artikel
+role.feed = suapan
+role.figure = angka
+role.log = log
+role.status = status
+role.tab = tab
+role.timer = pemasa
+
+# DPUB roles
+role.doc_abstract = abstrak
+role.doc_acknowledgements = perakuan
+role.doc_afterword = kata hujungan
+role.doc_appendix = lampiran
+role.doc_back_link = pautan balik
+role.doc_biblio_entry = masukan bibliografi
+role.doc_biblio_ref = rujukan bibliografi
+role.doc_bibliography = bibliografi
+role.doc_chapter = bab
+role.doc_colophon = kolofon
+role.doc_conclusion = kesimpulan
+role.doc_cover = muka depan
+role.doc_credit = kredit
+role.doc_credits = kredit
+role.doc_dedication = dedikasi
+role.doc_endnote = nota hujung
+role.doc_endnotes = nota hujung
+role.doc_epigraph = epigraf
+role.doc_epilogue = epilog
+role.doc_errata = ralat
+role.doc_example = contoh
+role.doc_footnote = nota kaki
+role.doc_foreword = kata pengantar
+role.doc_gloss_ref = rujukan glosari
+role.doc_glossary = glosari
+role.doc_index = indeks
+role.doc_introduction = pengenalan
+role.doc_note_ref = rujukan nota
+role.doc_notice = notis
+role.doc_page_break = pemisah halaman
+role.doc_page_footer = pengaki halaman
+role.doc_page_header = pengepala halaman
+role.doc_page_list = senarai halaman
+role.doc_part = bahagian
+role.doc_preface = kata penghantar
+role.doc_prologue = prolog
+role.doc_pullquote = petikan tarik keluar
+role.doc_qna = Soal Jawab
+role.doc_subtitle = sari kata
+role.doc_tip = petua
+role.doc_toc = isi kandungan

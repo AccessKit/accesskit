@@ -1,0 +1,70 @@
+# AccessKit as accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = বেনাৰ
+role.complementary = পৰিপূৰক
+role.content_info = সমলৰ তথ্য
+role.main = মুখ্য
+role.navigation = নেভিগেশ্বন
+role.region = অঞ্চল
+role.search = সন্ধান কৰক
+
+# Headings
+role.heading = শিৰোনাম
+heading_with_level = শিৰোনাম {0}
+
+# Other roles
+role.alert = সতর্কতা বার্তা
+role.alert_dialog = সতৰ্কতা সম্পৰ্কীয় ডায়লগ
+role.article = প্ৰৱন্ধ
+role.feed = ফীড
+role.figure = আকাৰ
+role.log = লগ
+role.status = স্থিতি
+role.tab = tab
+role.timer = টাইমাৰ
+
+# DPUB roles
+role.doc_abstract = সাৰাংশ
+role.doc_acknowledgements = কৃতজ্ঞতা
+role.doc_afterword = উত্তৰকথন
+role.doc_appendix = পৰিশিষ্ট
+role.doc_back_link = পূর্বৰ পৃষ্ঠালৈ যোৱা লিংক
+role.doc_biblio_entry = গ্ৰন্থপঞ্জীৰ অন্তৰ্ভুক্তি
+role.doc_biblio_ref = গ্ৰন্থপঞ্জীৰ প্ৰসংগ
+role.doc_bibliography = গ্ৰন্থপঞ্জী
+role.doc_chapter = অধ্যায়
+role.doc_colophon = ক'ল'ফ'ন
+role.doc_conclusion = উপসংহাৰ
+role.doc_cover = কভাৰ
+role.doc_credit = ক্ৰেডিট
+role.doc_credits = ক্ৰেডিট
+role.doc_dedication = নিষ্ঠা
+role.doc_endnote = এণ্ডন‘ট
+role.doc_endnotes = এণ্ডন‘ট
+role.doc_epigraph = এপিগ্ৰাফ
+role.doc_epilogue = উপসংহাৰ
+role.doc_errata = আসোঁৱাহ
+role.doc_example = উদাহৰণ
+role.doc_footnote = পাদটীকা
+role.doc_foreword = প্ৰস্তাৱনা
+role.doc_gloss_ref = শব্দাৱলীৰ প্ৰসংগ
+role.doc_glossary = পৰিভাষা
+role.doc_index = সূচক
+role.doc_introduction = পৰিচয়
+role.doc_note_ref = প্ৰসংগটোৰ টোকা বনাওক
+role.doc_notice = জাননী
+role.doc_page_break = পৃষ্ঠা বিচ্ছেদ
+role.doc_page_footer = পৃষ্ঠাৰ ফুটাৰ
+role.doc_page_header = পৃষ্ঠাৰ হে’ডাৰ
+role.doc_page_list = পৃষ্ঠাৰ তালিকা
+role.doc_part = খণ্ড
+role.doc_preface = পাতনি
+role.doc_prologue = প্ৰস্তাৱনা
+role.doc_pullquote = pullquote
+role.doc_qna = প্ৰশ্ন আৰু উত্তৰ
+role.doc_subtitle = ছাবটাইটেল
+role.doc_tip = দিহা
+role.doc_toc = বিষয়বস্তুৰ তালিকা

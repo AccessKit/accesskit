@@ -1,0 +1,70 @@
+# AccessKit am accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = ሰንደቅ
+role.complementary = ማሟያ
+role.content_info = የይዘት መረጃ
+role.main = main
+role.navigation = አሰሳ
+role.region = ክልል
+role.search = ፈልግ
+
+# Headings
+role.heading = ርዕስ
+heading_with_level = አርዕስት {0}
+
+# Other roles
+role.alert = ማንቂያ
+role.alert_dialog = የማንቂያ መገናኛ
+role.article = ጽሁፍ
+role.feed = ምግብ
+role.figure = ምስል
+role.log = የምዝግብ ማስታወሻ
+role.status = ሁኔታ
+role.tab = ትር
+role.timer = ሰዓት ቆጣሪ
+
+# DPUB roles
+role.doc_abstract = ረቂቅ
+role.doc_acknowledgements = ምስጋና
+role.doc_afterword = ድሕረ ቃል
+role.doc_appendix = ቅጥያዎች
+role.doc_back_link = የጀርባ አገናኝ
+role.doc_biblio_entry = የዋቢ መጽሐፍት ግቤት
+role.doc_biblio_ref = የዋቢ መጽሐፍት ማጣቀሻ
+role.doc_bibliography = ዋቢ መጽሐፍት
+role.doc_chapter = ምዕራፍ
+role.doc_colophon = ኮሎፎን
+role.doc_conclusion = ድምዳሜ
+role.doc_cover = ሽፋን
+role.doc_credit = ክሬዲት
+role.doc_credits = ክሬዲቶች
+role.doc_dedication = መታሰቢያነቱ
+role.doc_endnote = የግርጌ ማስታወሻ
+role.doc_endnotes = ግርጌ ማስታወሻዎች
+role.doc_epigraph = የተቀረጸ ጽሁፍ
+role.doc_epilogue = ድሕረ ታሪክ
+role.doc_errata = እርማት
+role.doc_example = ምሳሌ
+role.doc_footnote = የግርጌ ማስታወሻ
+role.doc_foreword = መቅድም
+role.doc_gloss_ref = የሙዳየ ቃላት ዋቢ
+role.doc_glossary = ሙዳየ ቃላት
+role.doc_index = መረጃ ጠቋሚ
+role.doc_introduction = መግቢያ
+role.doc_note_ref = ማስታወሻ ማጣቀሻ
+role.doc_notice = ማስታወቂያ
+role.doc_page_break = ገፅ ከፋይ
+role.doc_page_footer = ገፅ ግርጌ
+role.doc_page_header = የገጽ ራስጌ
+role.doc_page_list = የገጽ ዝርዝር
+role.doc_part = ክፍለ አካል
+role.doc_preface = መቅድም
+role.doc_prologue = ቅድመ-ታሪክ
+role.doc_pullquote = ጥቅስ
+role.doc_qna = ጥያቄ እና መልስ
+role.doc_subtitle = የግርጌ ጽሁፍ
+role.doc_tip = ጠቃሚ ምክር
+role.doc_toc = ማውጫ

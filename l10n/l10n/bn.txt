@@ -1,0 +1,70 @@
+# AccessKit bn accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = ব্যানার
+role.complementary = পরিপূরক
+role.content_info = কন্টেন্টের তথ্য
+role.main = প্রধান
+role.navigation = নেভিগেশন
+role.region = অঞ্চল
+role.search = search
+
+# Headings
+role.heading = শিরোনাম
+heading_with_level = শিরোনাম {0}
+
+# Other roles
+role.alert = সতর্কতা
+role.alert_dialog = সতর্কতা দেখায় এমন ডায়ালগ বক্স
+role.article = নিবন্ধ
+role.feed = ফিড
+role.figure = আকার
+role.log = লগ
+role.status = স্ট্যাটাস
+role.tab = ট্যাব
+role.timer = টাইমার
+
+# DPUB roles
+role.doc_abstract = বিমূর্ত
+role.doc_acknowledgements = কৃতজ্ঞতা স্বীকার
+role.doc_afterword = পরিশিষ্ট
+role.doc_appendix = পরিশিষ্ট
+role.doc_back_link = ফিরে যাওয়ার লিঙ্ক
+role.doc_biblio_entry = বিবলিওগ্রাফি এন্ট্রি
+role.doc_biblio_ref = বিবলিওগ্রাফি রেফারেন্স
+role.doc_bibliography = বিবলিওগ্রাফি
+role.doc_chapter = অধ্যায়
+role.doc_colophon = বইটির সম্পর্কে
+role.doc_conclusion = সিদ্ধান্ত
+role.doc_cover = কভার
+role.doc_credit = স্বীকৃতি
+role.doc_credits = ক্রেডিট
+role.doc_dedication = উৎসর্গ
+role.doc_endnote = এন্ডনোট
+role.doc_endnotes = এন্ডনোট
+role.doc_epigraph = এপিগ্রাফ
+role.doc_epilogue = উপসংহার
+role.doc_errata = ত্রুটি-বিচ্যুতি
+role.doc_example = উদাহরণ
+role.doc_footnote = ফুটনোট
+role.doc_foreword = মুখবন্ধ
+role.doc_gloss_ref = শব্দকোষের রেফারেন্স
+role.doc_glossary = শব্দকোষ
+role.doc_index = সূচি
+role.doc_introduction = পরিচয়
+role.doc_note_ref = নোটের রেফারেন্স
+role.doc_notice = বিজ্ঞপ্তি
+role.doc_page_break = পৃষ্ঠা বিরতি
+role.doc_page_footer = পৃষ্ঠার ফুটার
+role.doc_page_header = পৃষ্ঠার হেডার
+role.doc_page_list = পৃষ্ঠা তালিকা
+role.doc_part = অংশ
+role.doc_preface = মুখবন্ধ
+role.doc_prologue = ভূমিকা
+role.doc_pullquote = পুলকোট
+role.doc_qna = প্রশ্ন এবং উত্তর
+role.doc_subtitle = সাবটাইটেল
+role.doc_tip = পরামর্শ
+role.doc_toc = সূচিপত্র

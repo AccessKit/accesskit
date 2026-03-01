@@ -1,0 +1,70 @@
+# AccessKit gl accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banner
+role.complementary = complementario
+role.content_info = información sobre o contido
+role.main = principal
+role.navigation = navegación
+role.region = rexión
+role.search = search
+
+# Headings
+role.heading = título
+heading_with_level = nivel de cabeceira {0}
+
+# Other roles
+role.alert = alerta
+role.alert_dialog = cadro de diálogo de alerta
+role.article = artigo
+role.feed = feed
+role.figure = cifra
+role.log = rexistro
+role.status = estado
+role.tab = pestana
+role.timer = temporizador
+
+# DPUB roles
+role.doc_abstract = resumo
+role.doc_acknowledgements = agradecementos
+role.doc_afterword = epílogo
+role.doc_appendix = apéndice
+role.doc_back_link = ligazón de retroceso
+role.doc_biblio_entry = entrada bibliográfica
+role.doc_biblio_ref = referencia bibliográfica
+role.doc_bibliography = bibliografía
+role.doc_chapter = capítulo
+role.doc_colophon = colofón
+role.doc_conclusion = conclusión
+role.doc_cover = portada
+role.doc_credit = créditos
+role.doc_credits = créditos
+role.doc_dedication = dedicatoria
+role.doc_endnote = nota ao final
+role.doc_endnotes = notas finais
+role.doc_epigraph = epígrafe
+role.doc_epilogue = epílogo
+role.doc_errata = errata
+role.doc_example = exemplo
+role.doc_footnote = nota ao pé
+role.doc_foreword = limiar
+role.doc_gloss_ref = referencia do glosario
+role.doc_glossary = glosario
+role.doc_index = índice
+role.doc_introduction = introdución
+role.doc_note_ref = referencia de nota
+role.doc_notice = aviso
+role.doc_page_break = salto de páxina
+role.doc_page_footer = pé de páxina
+role.doc_page_header = cabeceira da páxina
+role.doc_page_list = lista de páxinas
+role.doc_part = parte
+role.doc_preface = prefacio
+role.doc_prologue = prólogo
+role.doc_pullquote = cita
+role.doc_qna = Preguntas
+role.doc_subtitle = subtítulo
+role.doc_tip = consello
+role.doc_toc = índice

@@ -1,0 +1,70 @@
+# AccessKit ca accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = bàner
+role.complementary = complementari
+role.content_info = informació sobre el contingut
+role.main = principal
+role.navigation = navegació
+role.region = regió
+role.search = cerca
+
+# Headings
+role.heading = capçalera
+heading_with_level = encapçalament de nivell {0}
+
+# Other roles
+role.alert = alerta
+role.alert_dialog = quadre de diàleg d'alerta
+role.article = article
+role.feed = El meu tauler
+role.figure = figura
+role.log = registre
+role.status = estat
+role.tab = tabulador
+role.timer = temporitzador
+
+# DPUB roles
+role.doc_abstract = resum
+role.doc_acknowledgements = agraïments
+role.doc_afterword = cloenda
+role.doc_appendix = apèndix
+role.doc_back_link = enllaç d'entrada
+role.doc_biblio_entry = entrada bibliogràfica
+role.doc_biblio_ref = referència bibliogràfica
+role.doc_bibliography = bibliografia
+role.doc_chapter = capítol
+role.doc_colophon = colofó
+role.doc_conclusion = conclusió
+role.doc_cover = portada
+role.doc_credit = crèdit
+role.doc_credits = crèdits
+role.doc_dedication = dedicatòria
+role.doc_endnote = nota final
+role.doc_endnotes = notes finals
+role.doc_epigraph = epígraf
+role.doc_epilogue = epíleg
+role.doc_errata = errata
+role.doc_example = exemple
+role.doc_footnote = nota al peu
+role.doc_foreword = preàmbul
+role.doc_gloss_ref = referència del glossari
+role.doc_glossary = glossari
+role.doc_index = índex
+role.doc_introduction = introducció
+role.doc_note_ref = referència de la nota
+role.doc_notice = avís
+role.doc_page_break = salt de pàgina
+role.doc_page_footer = peu de pàgina
+role.doc_page_header = capçalera de pàgina
+role.doc_page_list = llista de pàgines
+role.doc_part = part
+role.doc_preface = prefaci
+role.doc_prologue = pròleg
+role.doc_pullquote = citació extreta
+role.doc_qna = Preguntes i respostes
+role.doc_subtitle = subtítol
+role.doc_tip = consell
+role.doc_toc = taula de continguts

@@ -1,0 +1,70 @@
+# AccessKit ml accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = ബാനർ
+role.complementary = കോംപ്ലിമെന്ററി
+role.content_info = ഉള്ളടക്ക വിവരങ്ങൾ
+role.main = main
+role.navigation = നാവിഗേഷൻ
+role.region = പ്രദേശം
+role.search = തിരയുക
+
+# Headings
+role.heading = തലക്കെട്ട്
+heading_with_level = തലക്കെട്ട് {0}
+
+# Other roles
+role.alert = അലേർട്ട്
+role.alert_dialog = മുന്നറിയിപ്പ് ഡയലോഗ്
+role.article = ലേഖനം
+role.feed = ഫീഡ്
+role.figure = ആകാരം
+role.log = ലോഗ്
+role.status = നില
+role.tab = ടാബ്
+role.timer = ടൈമർ
+
+# DPUB roles
+role.doc_abstract = സംക്ഷേപം
+role.doc_acknowledgements = കടപ്പാട്
+role.doc_afterword = പിൻ കുറിപ്പ്
+role.doc_appendix = അനുബന്ധം
+role.doc_back_link = ബാക്ക്‌ ലിങ്ക്
+role.doc_biblio_entry = ഗ്രന്ഥസൂചി എൻട്രി
+role.doc_biblio_ref = ഗ്രന്ഥസൂചി റെഫറൻസ്
+role.doc_bibliography = ഗ്രന്ഥസൂചി
+role.doc_chapter = അധ്യായം
+role.doc_colophon = അച്ചടിമുദ്ര
+role.doc_conclusion = ഉപസംഹാരം
+role.doc_cover = കവർ
+role.doc_credit = ക്രെഡിറ്റ്
+role.doc_credits = ക്രെഡിറ്റുകൾ
+role.doc_dedication = സമർപ്പണം
+role.doc_endnote = അന്തിമ കുറിപ്പ്
+role.doc_endnotes = അന്തിമ കുറിപ്പുകൾ
+role.doc_epigraph = ശിലാലേഖ
+role.doc_epilogue = ഉപസംഹാരം
+role.doc_errata = സംശോധന പട്ടിക
+role.doc_example = ഉദാഹരണം
+role.doc_footnote = അടിക്കുറിപ്പ്
+role.doc_foreword = മുഖവുര
+role.doc_gloss_ref = പദസഞ്ചയ റെഫറൻസ്
+role.doc_glossary = പദസഞ്ചയം
+role.doc_index = സൂചിക
+role.doc_introduction = ആമുഖം
+role.doc_note_ref = കുറിപ്പ് റെഫറൻസ്
+role.doc_notice = അറിയിപ്പ്
+role.doc_page_break = പേജ് ബ്രേക്ക്
+role.doc_page_footer = പേജിന്റെ അടിക്കുറിപ്പ്
+role.doc_page_header = പേജിന്റെ തലക്കെട്ട്
+role.doc_page_list = പേജ് ലിസ്റ്റ്
+role.doc_part = ഭാഗം
+role.doc_preface = പീഠിക
+role.doc_prologue = ആമുഖം
+role.doc_pullquote = പുൾക്വോട്ട്
+role.doc_qna = ചോദ്യോത്തരം
+role.doc_subtitle = ഉപശീർഷകം
+role.doc_tip = നുറുങ്ങ്
+role.doc_toc = ഉള്ളടക്ക പട്ടിക

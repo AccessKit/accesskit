@@ -1,0 +1,70 @@
+# AccessKit da accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banner
+role.complementary = supplerende
+role.content_info = oplysninger om indholdet
+role.main = hovd
+role.navigation = navigation
+role.region = region
+role.search = søg
+
+# Headings
+role.heading = overskrift
+heading_with_level = overskrift niveau {0}
+
+# Other roles
+role.alert = underretning
+role.alert_dialog = dialogboks med underretning
+role.article = artikel
+role.feed = feed
+role.figure = tal
+role.log = log
+role.status = status
+role.tab = fane
+role.timer = timer
+
+# DPUB roles
+role.doc_abstract = abstrakt
+role.doc_acknowledgements = tak
+role.doc_afterword = efterskrift
+role.doc_appendix = bilag
+role.doc_back_link = backlink
+role.doc_biblio_entry = bibliografipost
+role.doc_biblio_ref = reference i bibliografi
+role.doc_bibliography = bibliografi
+role.doc_chapter = kapitel
+role.doc_colophon = slutskrift
+role.doc_conclusion = konklusion
+role.doc_cover = forside
+role.doc_credit = anerkendelse
+role.doc_credits = anerkendelser
+role.doc_dedication = dedikation
+role.doc_endnote = slutnote
+role.doc_endnotes = slutnoter
+role.doc_epigraph = motto
+role.doc_epilogue = epilog
+role.doc_errata = rettelser
+role.doc_example = eksempel
+role.doc_footnote = fodnote
+role.doc_foreword = forord
+role.doc_gloss_ref = reference på ordliste
+role.doc_glossary = ordliste
+role.doc_index = indeks
+role.doc_introduction = indledning
+role.doc_note_ref = reference i noter
+role.doc_notice = meddelelse
+role.doc_page_break = sideskift
+role.doc_page_footer = sidefod
+role.doc_page_header = sideoverskrift
+role.doc_page_list = sideliste
+role.doc_part = del
+role.doc_preface = forord
+role.doc_prologue = prolog
+role.doc_pullquote = opmærksomhedsskabende citat
+role.doc_qna = Spørgsmål og svar
+role.doc_subtitle = undertitel
+role.doc_tip = tip
+role.doc_toc = indholdsfortegnelse

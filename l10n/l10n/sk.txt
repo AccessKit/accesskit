@@ -1,0 +1,70 @@
+# AccessKit sk accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banner
+role.complementary = doplnkové
+role.content_info = informácie o obsahu
+role.main = hlavné
+role.navigation = navigácia
+role.region = oblasť
+role.search = search
+
+# Headings
+role.heading = nadpis
+heading_with_level = nadpis úrovne {0}
+
+# Other roles
+role.alert = upozornenie
+role.alert_dialog = dialógové okno upozornenia
+role.article = článok
+role.feed = informačný kanál
+role.figure = hodnota
+role.log = denník
+role.status = stav
+role.tab = tabulátor
+role.timer = časovač
+
+# DPUB roles
+role.doc_abstract = abstrakt
+role.doc_acknowledgements = poďakovanie
+role.doc_afterword = doslov
+role.doc_appendix = príloha
+role.doc_back_link = spätný odkaz
+role.doc_biblio_entry = bibliografický záznam
+role.doc_biblio_ref = bibliografický odkaz
+role.doc_bibliography = bibliografia
+role.doc_chapter = kapitola
+role.doc_colophon = kolofón
+role.doc_conclusion = záver
+role.doc_cover = titulná strana
+role.doc_credit = poďakovanie
+role.doc_credits = titulky
+role.doc_dedication = venovanie
+role.doc_endnote = vysvetlivka
+role.doc_endnotes = vysvetlivky
+role.doc_epigraph = epigraf
+role.doc_epilogue = epilóg
+role.doc_errata = erráta
+role.doc_example = príklad
+role.doc_footnote = poznámka pod čiarou
+role.doc_foreword = predhovor
+role.doc_gloss_ref = glosárový termín
+role.doc_glossary = glosár
+role.doc_index = index
+role.doc_introduction = úvod
+role.doc_note_ref = odkaz na poznámku
+role.doc_notice = upozornenie
+role.doc_page_break = zlom strany
+role.doc_page_footer = päta stránky
+role.doc_page_header = hlavička stránky
+role.doc_page_list = zoznam strán
+role.doc_part = časť
+role.doc_preface = predslov
+role.doc_prologue = prológ
+role.doc_pullquote = obsiahnutý citát
+role.doc_qna = Otázky a odpovede
+role.doc_subtitle = podnadpis
+role.doc_tip = tip
+role.doc_toc = obsah

@@ -1,0 +1,70 @@
+# AccessKit eu accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = iragarki-banda
+role.complementary = osagarria
+role.content_info = edukiari buruzko informazioa
+role.main = nagusia
+role.navigation = nabigazioa
+role.region = lurraldea
+role.search = bilaketa
+
+# Headings
+role.heading = goiburua
+heading_with_level = {0}. goiburua
+
+# Other roles
+role.alert = alerta
+role.alert_dialog = alerta-leihoa
+role.article = artikulua
+role.feed = jarioa
+role.figure = zenbakia
+role.log = log
+role.status = egoera
+role.tab = fitxa
+role.timer = tenporizadorea
+
+# DPUB roles
+role.doc_abstract = laburpena
+role.doc_acknowledgements = esker-emateak
+role.doc_afterword = hitzatzea
+role.doc_appendix = gehigarria
+role.doc_back_link = webgunerako esteka
+role.doc_biblio_entry = bibliografia-sarrera
+role.doc_biblio_ref = bibliografia-erreferentzia
+role.doc_bibliography = bibliografia
+role.doc_chapter = atala
+role.doc_colophon = azken oharra
+role.doc_conclusion = ondorioa
+role.doc_cover = azala
+role.doc_credit = adierazpena
+role.doc_credits = kredituak
+role.doc_dedication = eskaintza
+role.doc_endnote = amaierako oharra
+role.doc_endnotes = amaierako oharrak
+role.doc_epigraph = epigrafea
+role.doc_epilogue = epilogoa
+role.doc_errata = akatsa
+role.doc_example = adibidea
+role.doc_footnote = oin-oharra
+role.doc_foreword = aitzinsolasa
+role.doc_gloss_ref = glosarioaren erreferentzia
+role.doc_glossary = glosarioa
+role.doc_index = indizea
+role.doc_introduction = sarrera
+role.doc_note_ref = oharraren erreferentzia
+role.doc_notice = oharra
+role.doc_page_break = orri-jauzia
+role.doc_page_footer = orri-oina
+role.doc_page_header = orri-goiburua
+role.doc_page_list = orrien zerrenda
+role.doc_part = zatia
+role.doc_preface = atarikoa
+role.doc_prologue = hitzaurrea
+role.doc_pullquote = aipamena
+role.doc_qna = Galde-erantzunak
+role.doc_subtitle = azpititulua
+role.doc_tip = aholkua
+role.doc_toc = aurkibidea

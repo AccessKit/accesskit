@@ -1,0 +1,70 @@
+# AccessKit th accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = แบนเนอร์
+role.complementary = ส่วนเสริม
+role.content_info = ข้อมูลเกี่ยวกับเนื้อหา
+role.main = หลัก
+role.navigation = การนำทาง
+role.region = ภูมิภาค
+role.search = ค้นหา
+
+# Headings
+role.heading = ส่วนหัว
+heading_with_level = ส่วนหัว {0}
+
+# Other roles
+role.alert = การแจ้งเตือน
+role.alert_dialog = กล่องโต้ตอบการแจ้งเตือน
+role.article = บทความ
+role.feed = ฟีด
+role.figure = ตัวเลข
+role.log = บันทึก
+role.status = สถานะ
+role.tab = แท็บ
+role.timer = ตัวจับเวลา
+
+# DPUB roles
+role.doc_abstract = บทคัดย่อ
+role.doc_acknowledgements = กิตติกรรมประกาศ
+role.doc_afterword = คำแถลงท้ายเล่ม
+role.doc_appendix = ภาคผนวก
+role.doc_back_link = ลิงก์กลับมาที่หน้า
+role.doc_biblio_entry = รายการบรรณานุกรม
+role.doc_biblio_ref = ข้อมูลอ้างอิงทางบรรณานุกรม
+role.doc_bibliography = บรรณานุกรม
+role.doc_chapter = บท
+role.doc_colophon = ข้อมูลทางบรรณานุกรม
+role.doc_conclusion = บทสรุป
+role.doc_cover = หน้าปก
+role.doc_credit = เครดิต
+role.doc_credits = เครดิต
+role.doc_dedication = คำอุทิศ
+role.doc_endnote = อ้างอิงท้ายเรื่อง
+role.doc_endnotes = อ้างอิงท้ายเรื่อง
+role.doc_epigraph = คำจารึก
+role.doc_epilogue = ปัจฉิมบท
+role.doc_errata = ข้อผิดพลาด
+role.doc_example = ตัวอย่าง
+role.doc_footnote = เชิงอรรถ
+role.doc_foreword = คำนำ
+role.doc_gloss_ref = ข้อมูลอ้างอิงอภิธานศัพท์
+role.doc_glossary = อภิธานศัพท์
+role.doc_index = ดัชนี
+role.doc_introduction = บทนำ
+role.doc_note_ref = ข้อมูลอ้างอิงหมายเหตุ
+role.doc_notice = ประกาศ
+role.doc_page_break = ตัวแบ่งหน้า
+role.doc_page_footer = ส่วนท้ายของหน้า
+role.doc_page_header = ส่วนหัวของหน้า
+role.doc_page_list = รายการหน้า
+role.doc_part = ภาค
+role.doc_preface = ส่วนนำ
+role.doc_prologue = อารัมภบท
+role.doc_pullquote = การเน้นข้อความ
+role.doc_qna = ถามและตอบ
+role.doc_subtitle = คำบรรยาย
+role.doc_tip = เคล็ดลับ
+role.doc_toc = สารบัญ

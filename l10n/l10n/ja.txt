@@ -1,0 +1,70 @@
+# AccessKit ja accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = バナー
+role.complementary = 捕捉
+role.content_info = コンテンツの情報
+role.main = 本文
+role.navigation = ナビゲーション
+role.region = セクション
+role.search = 検索
+
+# Headings
+role.heading = 見出し
+heading_with_level = 見出しレベル {0}
+
+# Other roles
+role.alert = アラート
+role.alert_dialog = アラート ダイアログ
+role.article = 記事
+role.feed = フィード
+role.figure = 図
+role.log = ログ
+role.status = ステータス
+role.tab = タブ
+role.timer = タイマー
+
+# DPUB roles
+role.doc_abstract = 概要
+role.doc_acknowledgements = 謝辞
+role.doc_afterword = 後書き
+role.doc_appendix = 付録
+role.doc_back_link = 言及リンク
+role.doc_biblio_entry = 文献情報
+role.doc_biblio_ref = 文献参照
+role.doc_bibliography = 参考文献
+role.doc_chapter = 章
+role.doc_colophon = 奥付
+role.doc_conclusion = まとめ
+role.doc_cover = 表紙
+role.doc_credit = クレジット
+role.doc_credits = クレジット
+role.doc_dedication = 献辞
+role.doc_endnote = 巻末注
+role.doc_endnotes = 巻末注
+role.doc_epigraph = 題辞
+role.doc_epilogue = エピローグ
+role.doc_errata = 正誤表
+role.doc_example = 例
+role.doc_footnote = 脚注
+role.doc_foreword = 前書き
+role.doc_gloss_ref = 用語参照
+role.doc_glossary = 用語集
+role.doc_index = 索引
+role.doc_introduction = 序論
+role.doc_note_ref = 備考
+role.doc_notice = 注記
+role.doc_page_break = 改ページ
+role.doc_page_footer = ページフッター
+role.doc_page_header = ページヘッダー
+role.doc_page_list = ページリスト
+role.doc_part = 部
+role.doc_preface = 序文
+role.doc_prologue = プロローグ
+role.doc_pullquote = 引用
+role.doc_qna = Q＆A
+role.doc_subtitle = 副題
+role.doc_tip = ヒント
+role.doc_toc = 目次

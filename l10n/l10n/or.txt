@@ -1,0 +1,70 @@
+# AccessKit or accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = ବ୍ୟାନର୍
+role.complementary = କମ୍ପ୍ଲିମେଣ୍ଟାରୀ
+role.content_info = ବିଷୟବସ୍ତୁର ସୂଚନା
+role.main = ମୁଖ୍ୟ
+role.navigation = ନାଭିଗେସନ୍
+role.region = ଅଞ୍ଚଳ
+role.search = ଖୋଜନ୍ତୁ
+
+# Headings
+role.heading = ଶିରୋନାମା
+heading_with_level = ଶୀର୍ଷକ {0}
+
+# Other roles
+role.alert = ଆଲର୍ଟ
+role.alert_dialog = ଆଲର୍ଟ ଡାଏଲଗ
+role.article = ଆର୍ଟିକଲ୍‍
+role.feed = ଫିଡ୍
+role.figure = ଆକାର
+role.log = ଲଗ୍‌
+role.status = ସ୍ଥିତି
+role.tab = tab
+role.timer = ଟାଇମର୍‌
+
+# DPUB roles
+role.doc_abstract = ସାରାଂଶ
+role.doc_acknowledgements = ସ୍ୱୀକୃତିଗୁଡ଼ିକ
+role.doc_afterword = ଉପସଂହାର
+role.doc_appendix = ପରିଶିଷ୍ଟ
+role.doc_back_link = ବ୍ୟାକ୍‌ ଲିଙ୍କ୍
+role.doc_biblio_entry = ଗ୍ରନ୍ଥସୂଚୀ ଏଣ୍ଟ୍ରି
+role.doc_biblio_ref = ଗ୍ରନ୍ଥସୂଚୀର ସନ୍ଦର୍ଭ
+role.doc_bibliography = ଗ୍ରନ୍ଥସୂଚୀ
+role.doc_chapter = ଅଧ୍ୟାୟ
+role.doc_colophon = colophon
+role.doc_conclusion = ସମାପ୍ତି
+role.doc_cover = କଭର୍
+role.doc_credit = କ୍ରେଡିଟ୍
+role.doc_credits = କ୍ରେଡିଟ୍
+role.doc_dedication = ସମର୍ପଣ
+role.doc_endnote = ଶେଷ ଟିପ୍ପଣୀ
+role.doc_endnotes = ଶେଷନୋଟ୍
+role.doc_epigraph = ଖୋଦିତ ଲେଖା
+role.doc_epilogue = ଉପସଂହାର
+role.doc_errata = errata
+role.doc_example = ଉଦାହରଣ
+role.doc_footnote = ଫୁଟ୍‌ନୋଟ୍
+role.doc_foreword = ଭୂମିକା
+role.doc_gloss_ref = ଶବ୍ଦାବଳୀର ସନ୍ଦର୍ଭ
+role.doc_glossary = ଶଦ୍ଦକୋଷ
+role.doc_index = ସୂଚୀ
+role.doc_introduction = ପରିଚୟ
+role.doc_note_ref = ନୋଟ୍ ସନ୍ଦର୍ଭ
+role.doc_notice = ବିଜ୍ଞପ୍ତି
+role.doc_page_break = ପେଜ୍ ବ୍ରେକ୍
+role.doc_page_footer = ପୃଷ୍ଠାର ଫୁଟର୍
+role.doc_page_header = ପୃଷ୍ଠାର ହେଡର୍
+role.doc_page_list = ପୃଷ୍ଠା ତାଲିକା
+role.doc_part = ଭାଗ
+role.doc_preface = ଭୂମିକା
+role.doc_prologue = ଭୂମିକା
+role.doc_pullquote = ପୁଲ୍‌କୋଟ୍
+role.doc_qna = ପ୍ରଶ୍ନ&ଉତ୍ତର
+role.doc_subtitle = ଉପଶୀର୍ଷକ
+role.doc_tip = ସୂଚନା
+role.doc_toc = ବିଷୟବସ୍ତୁର ଟେବଲ୍

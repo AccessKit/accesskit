@@ -1,0 +1,70 @@
+# AccessKit ta accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = பேனர்
+role.complementary = ஈடுசெய்யக்கூடியது
+role.content_info = உள்ளடக்கத் தகவல்
+role.main = முதன்மை
+role.navigation = வழிசெலுத்தல்
+role.region = மண்டலம்
+role.search = தேடல்
+
+# Headings
+role.heading = தலைப்பு
+heading_with_level = {0}ம் மட்டத் தலைப்பு
+
+# Other roles
+role.alert = விழிப்பூட்டல்
+role.alert_dialog = விழிப்பூட்டல் உரையாடல்
+role.article = article
+role.feed = ஊட்டம்
+role.figure = உருவம்
+role.log = பதிவு
+role.status = நிலை
+role.tab = தாவல்
+role.timer = டைமர்
+
+# DPUB roles
+role.doc_abstract = சுருக்கம்
+role.doc_acknowledgements = அங்கீகாரங்கள்
+role.doc_afterword = பின்னுரை
+role.doc_appendix = பிற்சேர்க்கை
+role.doc_back_link = பின்னிணைப்பு
+role.doc_biblio_entry = நூல்விவர அட்டவணை உள்ளீடு
+role.doc_biblio_ref = நூல்விவர அட்டவணை மேற்கோள்
+role.doc_bibliography = நூல்விவர அட்டவணை
+role.doc_chapter = அத்தியாயம்
+role.doc_colophon = முத்திரை
+role.doc_conclusion = முடிவு
+role.doc_cover = அட்டை
+role.doc_credit = பங்களித்தவர்
+role.doc_credits = பங்களித்தவர்கள்
+role.doc_dedication = அர்ப்பணம்
+role.doc_endnote = முடிவுக்குறிப்பு
+role.doc_endnotes = முடிவுக்குறிப்புகள்
+role.doc_epigraph = கல்வெட்டு
+role.doc_epilogue = முடிவுரை
+role.doc_errata = பிழைகள்
+role.doc_example = உதாரணம்
+role.doc_footnote = அடிக்குறிப்பு
+role.doc_foreword = அறிமுகம்
+role.doc_gloss_ref = அருஞ்சொல் திரட்டு மேற்கோள்
+role.doc_glossary = அருஞ்சொல் திரட்டு
+role.doc_index = பொருளடக்கம்
+role.doc_introduction = அறிமுகம்
+role.doc_note_ref = குறிப்பு மேற்கோள்
+role.doc_notice = அறிவிப்பு
+role.doc_page_break = பக்க முறிப்பு
+role.doc_page_footer = பக்க அடிக்குறிப்பு
+role.doc_page_header = பக்க மேற்குறிப்பு
+role.doc_page_list = பக்கப் பட்டியல்
+role.doc_part = பகுதி
+role.doc_preface = முன்னுரை
+role.doc_prologue = முன்னுரை
+role.doc_pullquote = pullquote
+role.doc_qna = கேள்வி-பதில்
+role.doc_subtitle = துணை தலைப்பு
+role.doc_tip = உதவிக்குறிப்பு
+role.doc_toc = உள்ளடக்க அட்டவணை

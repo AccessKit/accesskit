@@ -1,0 +1,70 @@
+# AccessKit te accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = బ్యానర్
+role.complementary = బహుమానపూర్వకం
+role.content_info = కంటెంట్ సమాచారం
+role.main = main
+role.navigation = నావిగేషన్
+role.region = ప్రాంతం
+role.search = search
+
+# Headings
+role.heading = శీర్షిక
+heading_with_level = ముఖ్య శీర్షిక {0}
+
+# Other roles
+role.alert = హెచ్చరిక
+role.alert_dialog = హెచ్చరిక డైలాగ్
+role.article = కథనం
+role.feed = ఫీడ్
+role.figure = రూపం
+role.log = log
+role.status = స్టేటస్
+role.tab = ట్యాబ్
+role.timer = టైమర్
+
+# DPUB roles
+role.doc_abstract = సంక్షేపం
+role.doc_acknowledgements = గుర్తింపులు
+role.doc_afterword = చివరిమాట
+role.doc_appendix = అనుబంధం
+role.doc_back_link = వెనుకకు తీసుకువెళ్లే లింక్‌
+role.doc_biblio_entry = వివరణపట్టి నమోదు
+role.doc_biblio_ref = వివరణపట్టి సూచన
+role.doc_bibliography = వివరణపట్టి
+role.doc_chapter = అధ్యాయం
+role.doc_colophon = ఆఖరిమాట
+role.doc_conclusion = ముగింపు
+role.doc_cover = ముఖచిత్రం
+role.doc_credit = సహకారి
+role.doc_credits = సహకారులు
+role.doc_dedication = అంకితం
+role.doc_endnote = ఎండ్‌నోట్
+role.doc_endnotes = ఎండ్‌నోట్‌లు
+role.doc_epigraph = పరిచయ వాక్యం
+role.doc_epilogue = ఉపసంహారం
+role.doc_errata = తప్పొప్పుల పట్టిక
+role.doc_example = ఉదాహరణ
+role.doc_footnote = ఫుట్‌నోట్
+role.doc_foreword = ముందుమాట
+role.doc_gloss_ref = పదకోశ సూచన
+role.doc_glossary = పదకోశం
+role.doc_index = సూచిక
+role.doc_introduction = పరిచయం
+role.doc_note_ref = గమనిక సూచన
+role.doc_notice = గమనిక
+role.doc_page_break = పేజీ విభజన
+role.doc_page_footer = పేజీ ఫుటర్
+role.doc_page_header = పేజీ హెడర్
+role.doc_page_list = పేజీ లిస్ట్‌
+role.doc_part = భాగం
+role.doc_preface = ముందుమాట
+role.doc_prologue = ప్రారంభం
+role.doc_pullquote = పుల్‌కోట్
+role.doc_qna = Q&A
+role.doc_subtitle = ఉపశీర్షిక
+role.doc_tip = చిట్కా
+role.doc_toc = కంటెంట్‌ల‌ పట్టిక

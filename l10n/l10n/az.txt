@@ -1,0 +1,70 @@
+# AccessKit az accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banner
+role.complementary = əlavə
+role.content_info = kontent məlumatı
+role.main = əsas
+role.navigation = naviqasiya
+role.region = region
+role.search = axtarın
+
+# Headings
+role.heading = başlıq
+heading_with_level = başlıq {0}
+
+# Other roles
+role.alert = xəbərdarlıq
+role.alert_dialog = xəbərdarlıq dialoqu
+role.article = məqalə
+role.feed = lent
+role.figure = rəqəm
+role.log = log
+role.status = status
+role.tab = tab
+role.timer = taymer
+
+# DPUB roles
+role.doc_abstract = abstrakt
+role.doc_acknowledgements = təşəkkür
+role.doc_afterword = son söz
+role.doc_appendix = əlavə
+role.doc_back_link = geri link
+role.doc_biblio_entry = biblioqrafiya girişi
+role.doc_biblio_ref = biblioqrafiya istinadı
+role.doc_bibliography = biblioqrafiya
+role.doc_chapter = fəsil
+role.doc_colophon = kolofon
+role.doc_conclusion = nəticə
+role.doc_cover = üzlük
+role.doc_credit = kredit
+role.doc_credits = kreditlər
+role.doc_dedication = ithaf
+role.doc_endnote = son qeyd
+role.doc_endnotes = son qeyd
+role.doc_epigraph = epiqraf
+role.doc_epilogue = epiloq
+role.doc_errata = çap səhvi
+role.doc_example = məsələn
+role.doc_footnote = qeyd
+role.doc_foreword = önsöz
+role.doc_gloss_ref = lüğət istinadı
+role.doc_glossary = lüğət
+role.doc_index = indeks
+role.doc_introduction = giriş
+role.doc_note_ref = qeyd istinadı
+role.doc_notice = bildiriş
+role.doc_page_break = səhifə sonu
+role.doc_page_footer = səhifə altlığı
+role.doc_page_header = səhifə başlığı
+role.doc_page_list = səhifə siyahısı
+role.doc_part = hissə
+role.doc_preface = ön söz
+role.doc_prologue = proloq
+role.doc_pullquote = sitat
+role.doc_qna = Sual-Cavab
+role.doc_subtitle = alt başlıq
+role.doc_tip = ipucu
+role.doc_toc = mündəricat

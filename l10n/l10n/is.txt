@@ -1,0 +1,70 @@
+# AccessKit is accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = borði
+role.complementary = til viðbótar
+role.content_info = upplýsingar um efni
+role.main = aðal
+role.navigation = yfirlit
+role.region = svæði
+role.search = leita
+
+# Headings
+role.heading = fyrirsögn
+heading_with_level = fyrirsagnar stig {0}
+
+# Other roles
+role.alert = tilkynning
+role.alert_dialog = viðvörunargluggi
+role.article = grein
+role.feed = straumur
+role.figure = mynd
+role.log = annáll
+role.status = staða
+role.tab = flipi
+role.timer = teljari
+
+# DPUB roles
+role.doc_abstract = ágrip
+role.doc_acknowledgements = þakkir
+role.doc_afterword = eftirmáli
+role.doc_appendix = viðbætir
+role.doc_back_link = baktengill
+role.doc_biblio_entry = færsla í heimildaskrá
+role.doc_biblio_ref = tilvísun í heimildaskrá
+role.doc_bibliography = heimildaskrá
+role.doc_chapter = kafli
+role.doc_colophon = baktitill
+role.doc_conclusion = samantekt
+role.doc_cover = forsíða
+role.doc_credit = þakkir
+role.doc_credits = samstarfsaðilar
+role.doc_dedication = tileinkun
+role.doc_endnote = aftanmálsgrein
+role.doc_endnotes = aftanmálsgreinar
+role.doc_epigraph = upphafstilvitnun
+role.doc_epilogue = lokaorð
+role.doc_errata = leiðréttingar
+role.doc_example = dæmi
+role.doc_footnote = neðanmálsgrein
+role.doc_foreword = inngangsorð
+role.doc_gloss_ref = tilvísun í orðalista
+role.doc_glossary = orðalisti
+role.doc_index = atriðisorðaskrá
+role.doc_introduction = inngangur
+role.doc_note_ref = tilvísun í athugasemd
+role.doc_notice = tilkynning
+role.doc_page_break = síðuskil
+role.doc_page_footer = síðufótur
+role.doc_page_header = síðuhaus
+role.doc_page_list = síðulisti
+role.doc_part = hluti
+role.doc_preface = formáli
+role.doc_prologue = formáli
+role.doc_pullquote = útdregin tilvitnun
+role.doc_qna = Spurt og svarað
+role.doc_subtitle = undirtitill
+role.doc_tip = ábending
+role.doc_toc = efnisyfirlit

@@ -1,0 +1,70 @@
+# AccessKit ne accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = ब्यानर
+role.complementary = पूरक
+role.content_info = सामग्रीसम्बन्धी जानकारी
+role.main = मुख्य
+role.navigation = नेभिगेसन
+role.region = क्षेत्र
+role.search = खोज्नुहोस्
+
+# Headings
+role.heading = शीर्षक
+heading_with_level = शीर्षक तह {0}
+
+# Other roles
+role.alert = अलर्ट
+role.alert_dialog = अलर्ट डायलग
+role.article = लेख
+role.feed = फिड
+role.figure = आकृति
+role.log = लग
+role.status = स्थिति
+role.tab = ट्याब
+role.timer = टाइमर
+
+# DPUB roles
+role.doc_abstract = अमूर्त
+role.doc_acknowledgements = आभार
+role.doc_afterword = उपसंहार
+role.doc_appendix = परिशिष्ट
+role.doc_back_link = ब्याक लिंक
+role.doc_biblio_entry = ग्रन्थसूचीको प्रविष्टि
+role.doc_biblio_ref = ग्रन्थसूचीको सन्दर्भ
+role.doc_bibliography = ग्रन्थसूची
+role.doc_chapter = अध्याय
+role.doc_colophon = कोलोफन
+role.doc_conclusion = निष्कर्ष
+role.doc_cover = आवरण
+role.doc_credit = श्रेय
+role.doc_credits = श्रेय
+role.doc_dedication = समर्पण
+role.doc_endnote = एन्डनोट
+role.doc_endnotes = एन्डनोट
+role.doc_epigraph = शिलालेख
+role.doc_epilogue = उपसंहार
+role.doc_errata = शुद्धिपत्र
+role.doc_example = उदाहरण
+role.doc_footnote = फुटनोट
+role.doc_foreword = प्राक्कथन
+role.doc_gloss_ref = शब्दावलीको सन्दर्भ
+role.doc_glossary = शब्दावली
+role.doc_index = अनुक्रमणिका
+role.doc_introduction = परिचय
+role.doc_note_ref = टिपोटको सन्दर्भ
+role.doc_notice = सूचना
+role.doc_page_break = पृष्ठ विच्छेद
+role.doc_page_footer = पेज फुटर
+role.doc_page_header = पेज हेडर
+role.doc_page_list = पृष्ठ सूची
+role.doc_part = भाग
+role.doc_preface = भूमिका
+role.doc_prologue = प्रस्तावना
+role.doc_pullquote = उद्धरण
+role.doc_qna = प्रश्नोत्तर
+role.doc_subtitle = उपशीर्षक
+role.doc_tip = सुझाव
+role.doc_toc = विषय सूची

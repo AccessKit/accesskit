@@ -1,0 +1,70 @@
+# AccessKit el accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banner
+role.complementary = συμπληρωματικό
+role.content_info = πληροφορίες για το περιεχόμενο
+role.main = κύριο
+role.navigation = πλοήγηση
+role.region = περιοχή
+role.search = search
+
+# Headings
+role.heading = επικεφαλίδα
+heading_with_level = επίπεδο επικεφαλίδας {0}
+
+# Other roles
+role.alert = ειδοποίηση
+role.alert_dialog = παράθυρο διαλόγου ειδοποίησης
+role.article = άρθρο
+role.feed = ροή
+role.figure = αριθμός
+role.log = αρχείο καταγραφής
+role.status = κατάσταση
+role.tab = καρτέλα
+role.timer = χρονόμετρο
+
+# DPUB roles
+role.doc_abstract = περίληψη
+role.doc_acknowledgements = ευχαριστίες
+role.doc_afterword = επίλογος
+role.doc_appendix = παράρτημα
+role.doc_back_link = σύνδεσμος επιστροφής
+role.doc_biblio_entry = βιβλιογραφική καταχώριση
+role.doc_biblio_ref = βιβλιογραφική αναφορά
+role.doc_bibliography = βιβλιογραφία
+role.doc_chapter = κεφάλαιο
+role.doc_colophon = εκδοτικό σήμα
+role.doc_conclusion = συμπέρασμα
+role.doc_cover = εξώφυλλο
+role.doc_credit = εύσημα
+role.doc_credits = συντελεστές
+role.doc_dedication = αφιέρωση
+role.doc_endnote = σημείωση τέλους
+role.doc_endnotes = σημειώσεις τέλους
+role.doc_epigraph = επιγραφή
+role.doc_epilogue = επίλογος
+role.doc_errata = τυπογραφικά λάθη
+role.doc_example = παράδειγμα
+role.doc_footnote = υποσημείωση
+role.doc_foreword = εισαγωγή
+role.doc_gloss_ref = αναφορά στο γλωσσάρι
+role.doc_glossary = γλωσσάρι
+role.doc_index = ευρετήριο
+role.doc_introduction = εισαγωγή
+role.doc_note_ref = παραπομπή
+role.doc_notice = ειδοποίηση
+role.doc_page_break = αλλαγή σελίδας
+role.doc_page_footer = υποσέλιδο σελίδας
+role.doc_page_header = κεφαλίδα σελίδας
+role.doc_page_list = λίστα σελίδων
+role.doc_part = τμήμα
+role.doc_preface = πρόλογος
+role.doc_prologue = πρόλογος
+role.doc_pullquote = ελκυστική φράση
+role.doc_qna = Ερωτήσεις και απαντήσεις
+role.doc_subtitle = υπότιτλος
+role.doc_tip = συμβουλή
+role.doc_toc = πίνακας περιεχομένων

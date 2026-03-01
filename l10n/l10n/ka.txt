@@ -1,0 +1,70 @@
+# AccessKit ka accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = ბანერი
+role.complementary = დამატებითი
+role.content_info = ინფორმაცია კონტენტის შესახებ
+role.main = ძირითადი
+role.navigation = ნავიგაცია
+role.region = რეგიონი
+role.search = ძიება
+
+# Headings
+role.heading = სათაური
+heading_with_level = სათაური {0} დონე
+
+# Other roles
+role.alert = გაფრთხილება
+role.alert_dialog = გაფრთხილების დიალოგი
+role.article = არტიკლი
+role.feed = არხი
+role.figure = მონაცემი
+role.log = შესვლა
+role.status = სტატუსი
+role.tab = ჩანართი
+role.timer = ტაიმერი
+
+# DPUB roles
+role.doc_abstract = რეზიუმე
+role.doc_acknowledgements = მადლიერების გამოხატვა
+role.doc_afterword = ბოლოსიტყვაობა
+role.doc_appendix = დანართი
+role.doc_back_link = უკუბმული
+role.doc_biblio_entry = ბიბლიოგრაფიის ჩანაწერი
+role.doc_biblio_ref = მითითება ბიბლიოგრაფიაზე
+role.doc_bibliography = ბიბლიოგრაფია
+role.doc_chapter = თავი
+role.doc_colophon = კოლოფონი
+role.doc_conclusion = დასკვნა
+role.doc_cover = ყდა
+role.doc_credit = შემქმნელი
+role.doc_credits = შემქმნელები
+role.doc_dedication = მიძღვნა
+role.doc_endnote = საბოლოო შენიშვნა
+role.doc_endnotes = საბოლოო შენიშვნები
+role.doc_epigraph = ეპიგრაფი
+role.doc_epilogue = ეპილოგი
+role.doc_errata = კორექტურული შეცდომები
+role.doc_example = მაგალითი
+role.doc_footnote = სქოლიო
+role.doc_foreword = წინასიტყვაობა
+role.doc_gloss_ref = მითითება ტერმინების ლექსიკონზე
+role.doc_glossary = ტერმინების ლექსიკონი
+role.doc_index = ინდექსი
+role.doc_introduction = შესავალი
+role.doc_note_ref = მითითება შენიშვნაზე
+role.doc_notice = განცხადება
+role.doc_page_break = გვერდის წყვეტა
+role.doc_page_footer = გვერდის ქვედა კოლონტიტული
+role.doc_page_header = გვერდის ზედა კოლონტიტული
+role.doc_page_list = გვერდების სია
+role.doc_part = ნაწილი
+role.doc_preface = წინათქმა
+role.doc_prologue = პროლოგი
+role.doc_pullquote = მკვეთრი ციტატა
+role.doc_qna = კითხვა-პასუხი
+role.doc_subtitle = სუბტიტრი
+role.doc_tip = მინიშნება
+role.doc_toc = სარჩევი

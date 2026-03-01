@@ -1,0 +1,70 @@
+# AccessKit it accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = banner
+role.complementary = elementi complementari
+role.content_info = informazioni sui contenuti
+role.main = main
+role.navigation = navigazione
+role.region = regione
+role.search = ricerca
+
+# Headings
+role.heading = intestazione
+heading_with_level = Intestazione livello {0}
+
+# Other roles
+role.alert = avviso
+role.alert_dialog = Finestra di dialogo di avviso
+role.article = articolo
+role.feed = feed
+role.figure = figura
+role.log = log
+role.status = stato
+role.tab = scheda
+role.timer = timer
+
+# DPUB roles
+role.doc_abstract = abstract
+role.doc_acknowledgements = riconoscimenti
+role.doc_afterword = postfazione
+role.doc_appendix = appendice
+role.doc_back_link = backlink
+role.doc_biblio_entry = voce bibliografica
+role.doc_biblio_ref = riferimento bibliografico
+role.doc_bibliography = bibliografia
+role.doc_chapter = capitolo
+role.doc_colophon = colophon
+role.doc_conclusion = conclusioni
+role.doc_cover = copertina
+role.doc_credit = ringraziamento
+role.doc_credits = ringraziamenti
+role.doc_dedication = dedica
+role.doc_endnote = nota finale
+role.doc_endnotes = note finali
+role.doc_epigraph = epigrafe
+role.doc_epilogue = epilogo
+role.doc_errata = errata corrige
+role.doc_example = esempio
+role.doc_footnote = piè di pagina
+role.doc_foreword = premessa
+role.doc_gloss_ref = riferimento glossario
+role.doc_glossary = glossario
+role.doc_index = indice
+role.doc_introduction = introduzione
+role.doc_note_ref = riferimento note
+role.doc_notice = informativa
+role.doc_page_break = interruzione di pagina
+role.doc_page_footer = piè di pagina
+role.doc_page_header = intestazione della pagina
+role.doc_page_list = elenco pagine
+role.doc_part = parte
+role.doc_preface = prefazione
+role.doc_prologue = prologo
+role.doc_pullquote = citazione
+role.doc_qna = Domande e risposte
+role.doc_subtitle = sottotitolo
+role.doc_tip = suggerimento
+role.doc_toc = sommario

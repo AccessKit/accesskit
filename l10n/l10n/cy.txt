@@ -1,0 +1,70 @@
+# AccessKit cy accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = baner
+role.complementary = cyflenwol
+role.content_info = gwybodaeth cynnwys
+role.main = prif
+role.navigation = llywio
+role.region = ardal
+role.search = chwilio
+
+# Headings
+role.heading = pennawd
+heading_with_level = pennawd {0}
+
+# Other roles
+role.alert = rhybudd
+role.alert_dialog = deialog rhybudd
+role.article = erthygl
+role.feed = ffrwd
+role.figure = ffigur
+role.log = log
+role.status = statws
+role.tab = tab
+role.timer = amserydd
+
+# DPUB roles
+role.doc_abstract = crynodeb
+role.doc_acknowledgements = cydnabyddiaethau
+role.doc_afterword = ôl-eiriau
+role.doc_appendix = atodiad
+role.doc_back_link = dolen yn ôl
+role.doc_biblio_entry = cofnod llyfryddiaeth
+role.doc_biblio_ref = cyfeiriad llyfryddiaeth
+role.doc_bibliography = llyfryddiaeth
+role.doc_chapter = pennod
+role.doc_colophon = coloffon
+role.doc_conclusion = casgliad
+role.doc_cover = clawr
+role.doc_credit = credyd
+role.doc_credits = credydau
+role.doc_dedication = ymroddiad
+role.doc_endnote = ôl-nodyn
+role.doc_endnotes = ôl-nodion
+role.doc_epigraph = epigraff
+role.doc_epilogue = epliog
+role.doc_errata = errata
+role.doc_example = enghraifft
+role.doc_footnote = troednodyn
+role.doc_foreword = rhagair
+role.doc_gloss_ref = cyfeiriad Geirfa
+role.doc_glossary = geirfa
+role.doc_index = mynegai
+role.doc_introduction = Cyflwyniad
+role.doc_note_ref = cyfeirnod nodyn
+role.doc_notice = hysbysiad
+role.doc_page_break = toriad tudalen
+role.doc_page_footer = troedyn tudalen
+role.doc_page_header = pennawd tudalen
+role.doc_page_list = Rhestr tudalennau
+role.doc_part = rhan
+role.doc_preface = rhagair
+role.doc_prologue = rhagymadrodd
+role.doc_pullquote = dyfyniad a dynnwyd
+role.doc_qna = Holi ac Ateb
+role.doc_subtitle = is-deitl
+role.doc_tip = awgrym
+role.doc_toc = tabl cynnwys

@@ -1,0 +1,70 @@
+# AccessKit mk accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = банер
+role.complementary = комплементарно
+role.content_info = информации за содржините
+role.main = главно
+role.navigation = навигација
+role.region = регион
+role.search = search
+
+# Headings
+role.heading = заглавје
+heading_with_level = наслов од ниво {0}
+
+# Other roles
+role.alert = предупредување
+role.alert_dialog = дијалог за предупредување
+role.article = статија
+role.feed = активност
+role.figure = слика
+role.log = log
+role.status = статус
+role.tab = картичка
+role.timer = тајмер
+
+# DPUB roles
+role.doc_abstract = апстракт
+role.doc_acknowledgements = признанија
+role.doc_afterword = поговор
+role.doc_appendix = прилог
+role.doc_back_link = повратен линк
+role.doc_biblio_entry = библиографски запис
+role.doc_biblio_ref = референца за библиографија
+role.doc_bibliography = библиографија
+role.doc_chapter = поглавје
+role.doc_colophon = отпечаток
+role.doc_conclusion = заклучок
+role.doc_cover = корица
+role.doc_credit = благодарност
+role.doc_credits = благодарност
+role.doc_dedication = посвета
+role.doc_endnote = референца
+role.doc_endnotes = референци
+role.doc_epigraph = епиграф
+role.doc_epilogue = епилог
+role.doc_errata = исправки
+role.doc_example = пример
+role.doc_footnote = фуснота
+role.doc_foreword = предговор
+role.doc_gloss_ref = референца за поимник
+role.doc_glossary = поимник
+role.doc_index = индекс
+role.doc_introduction = вовед
+role.doc_note_ref = белешка за референца
+role.doc_notice = напомена
+role.doc_page_break = прелом на страница
+role.doc_page_footer = подножје на страницата
+role.doc_page_header = заглавје на страницата
+role.doc_page_list = список со страници
+role.doc_part = дел
+role.doc_preface = предговор
+role.doc_prologue = пролог
+role.doc_pullquote = цитат
+role.doc_qna = П и О
+role.doc_subtitle = поднаслов
+role.doc_tip = совет
+role.doc_toc = содржина

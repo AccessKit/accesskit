@@ -1,0 +1,70 @@
+# AccessKit zu accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = isibhengezo
+role.complementary = iyahambisana
+role.content_info = ulwazi lokuqukethwe
+role.main = enkulu
+role.navigation = ukuzulazula
+role.region = isifunda
+role.search = sesha
+
+# Headings
+role.heading = isihloko
+heading_with_level = isihloko se-{0}
+
+# Other roles
+role.alert = isaziso
+role.alert_dialog = ibhokisi lesexwayiso
+role.article = i-athikili
+role.feed = okuphakelayo
+role.figure = izibalo
+role.log = ilogu
+role.status = isimo
+role.tab = ithebhu
+role.timer = isibali sesikhathi
+
+# DPUB roles
+role.doc_abstract = i-abstract
+role.doc_acknowledgements = izivumo
+role.doc_afterword = amazwi angemuva
+role.doc_appendix = isithasiselo
+role.doc_back_link = isixhumanisi esingemuva
+role.doc_biblio_entry = ukufakwa kwe-bibliography
+role.doc_biblio_ref = ireferensi ye-bibliography
+role.doc_bibliography = i-bibliography
+role.doc_chapter = isahluko
+role.doc_colophon = i-colophon
+role.doc_conclusion = isiphetho
+role.doc_cover = ikhava
+role.doc_credit = ukutusa
+role.doc_credits = amakhredithi
+role.doc_dedication = ukuzinikela
+role.doc_endnote = inothi lokugcina
+role.doc_endnotes = amanothi okugcina
+role.doc_epigraph = i-epigraph
+role.doc_epilogue = i-epilogue
+role.doc_errata = i-errata
+role.doc_example = isibonelo
+role.doc_footnote = umbhalo waphansi
+role.doc_foreword = isibikezelo
+role.doc_gloss_ref = ireferensi yeglosari
+role.doc_glossary = iglosari
+role.doc_index = inkomba
+role.doc_introduction = isingeniso
+role.doc_note_ref = ireferensi yenothi
+role.doc_notice = isaziso
+role.doc_page_break = ukuhlukana kwekhasi
+role.doc_page_footer = phansi ekhasini
+role.doc_page_header = phezulu ekhasini
+role.doc_page_list = uhlu lwekhasi
+role.doc_part = ingxenye
+role.doc_preface = isingeniso
+role.doc_prologue = isandulela
+role.doc_pullquote = i-pullquote
+role.doc_qna = I-Q&A
+role.doc_subtitle = umbhalo ongezansi
+role.doc_tip = ithiphu
+role.doc_toc = ithebula yokuqukethwe

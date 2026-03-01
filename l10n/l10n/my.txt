@@ -1,0 +1,70 @@
+# AccessKit my accessibility strings
+# Format: key = value
+# Placeholders: {0}, {1}
+
+# ARIA landmarks
+role.banner = နဖူးစည်းစာတန်း
+role.complementary = ထည့်ပါလာသော
+role.content_info = အကြောင်းအရာ အချက်အလက်
+role.main = ပင်မ
+role.navigation = သွားလာမှု
+role.region = ဒေသ
+role.search = ရှာဖွေမှု
+
+# Headings
+role.heading = ခေါင်းစီး
+heading_with_level = ခေါင်းစဉ်အဆင့် {0}
+
+# Other roles
+role.alert = သတိပေးချက်
+role.alert_dialog = သတိပေး ဒိုင်ယာလော့
+role.article = ဆောင်းပါး
+role.feed = ဖိဒ်
+role.figure = ပုံပန်း
+role.log = မှတ်တမ်း
+role.status = အခြေအနေ
+role.tab = တဘ်
+role.timer = သံပတ်
+
+# DPUB roles
+role.doc_abstract = ကောက်နုတ်ချက်
+role.doc_acknowledgements = ကျေးဇူးတင်စကား
+role.doc_afterword = စာအုပ်ဖတ်ပြီးနောက် သုံးသပ်ချက်
+role.doc_appendix = နောက်ဆက်တွဲ
+role.doc_back_link = ပင်ရင်းလင့်ခ်
+role.doc_biblio_entry = ကျမ်းကိုးစာရင်း အကြောင်းအရာ
+role.doc_biblio_ref = ကျမ်းကိုးစာရင်း အညွှန်း
+role.doc_bibliography = ကျမ်းကိုးစာရင်း
+role.doc_chapter = အခန်း
+role.doc_colophon = အမှတ်တံဆိပ်
+role.doc_conclusion = နိဂုံး
+role.doc_cover = မျက်နှာဖုံး
+role.doc_credit = မှတ်တမ်းတင်ထိုက်သူ
+role.doc_credits = မှတ်တမ်းတင်ထိုက်သူများ စာရင်း
+role.doc_dedication = ရည်ညွှန်းဖော်ပြချက်
+role.doc_endnote = အဆုံးသတ် မှတ်ချက်
+role.doc_endnotes = အဆုံးသတ် မှတ်ချက်များ
+role.doc_epigraph = ကမ္ပည်းစာ
+role.doc_epilogue = နိဂုံး
+role.doc_errata = အမှားပြင်ဆင်ချက်
+role.doc_example = ဥပမာ
+role.doc_footnote = အောက်ခြေမှတ်ချက်
+role.doc_foreword = စကားချီး
+role.doc_gloss_ref = ခက်ဆစ်အညွှန်း
+role.doc_glossary = ခက်ဆစ်
+role.doc_index = အ​ညွှန်း​
+role.doc_introduction = နိဒါန်း
+role.doc_note_ref = မှတ်ချက် အညွှန်း
+role.doc_notice = သတိပေးချက်
+role.doc_page_break = စာမျက်နှာခြားခြင်း
+role.doc_page_footer = စာမျက်နှာ အောက်ခြေမှတ်စု
+role.doc_page_header = စာမျက်နှာ ခေါင်းစီး
+role.doc_page_list = စာမျက်နှာစာရင်း
+role.doc_part = အစိတ်အပိုင်း
+role.doc_preface = အမှာစကား
+role.doc_prologue = ပဏာမ
+role.doc_pullquote = ကောက်နုတ်ဖော်ပြချက်
+role.doc_qna = အမေးအဖြေ
+role.doc_subtitle = စာတန်း
+role.doc_tip = အကြံပြုချက်
+role.doc_toc = မာတိကာ
