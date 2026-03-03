@@ -10,7 +10,7 @@
 
 use accesskit::{
     Action, Affine, AriaCurrent, HasPopup, Live, Node as NodeData, NodeId as LocalNodeId,
-    Orientation, Point, Rect, Role, SortDirection, TextSelection, Toggled,
+    Orientation, Point, Rect, Role, SortDirection, TextSelection, Toggled, TreeId,
 };
 use alloc::{
     string::{String, ToString},
@@ -375,6 +375,10 @@ impl<'a> Node<'a> {
 
     pub fn id(&self) -> NodeId {
         self.id
+    }
+
+    pub fn locate(&self) -> (LocalNodeId, TreeId) {
+        self.tree_state.locate_node(self.id).unwrap()
     }
 
     pub fn role(&self) -> Role {
@@ -1263,6 +1267,15 @@ mod tests {
             .node_by_id(nid(PARAGRAPH_0_ID))
             .unwrap()
             .is_root());
+    }
+
+    #[test]
+    fn locate() {
+        let tree = test_tree();
+        let root = tree.state().root();
+        assert_eq!((ROOT_ID, TreeId::ROOT), root.locate());
+        let child = tree.state().node_by_id(nid(PARAGRAPH_0_ID)).unwrap();
+        assert_eq!((PARAGRAPH_0_ID, TreeId::ROOT), child.locate());
     }
 
     #[test]

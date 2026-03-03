@@ -14,7 +14,7 @@ use crate::node::{Node, NodeId, NodeState, ParentAndIndex};
 #[repr(transparent)]
 pub(crate) struct TreeIndex(pub(crate) u32);
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 struct TreeIndexMap {
     id_to_index: HashMap<TreeId, TreeIndex>,
     index_to_id: HashMap<TreeIndex, TreeId>,
@@ -52,6 +52,7 @@ pub struct State {
     is_host_focused: bool,
     pub(crate) subtrees: HashMap<TreeId, SubtreeState>,
     pub(crate) graft_parents: HashMap<TreeId, NodeId>,
+    tree_index_map: TreeIndexMap,
 }
 
 #[derive(Default)]
@@ -108,8 +109,8 @@ impl State {
         update: TreeUpdate,
         is_host_focused: bool,
         mut changes: Option<&mut InternalChanges>,
-        tree_index: TreeIndex,
     ) {
+        let tree_index = self.tree_index_map.get_index(update.tree_id);
         let map_id = |id: LocalNodeId| NodeId::new(id, tree_index);
 
         let mut unreachable = HashSet::new();
@@ -493,7 +494,7 @@ impl State {
             tree_id: TreeId::ROOT,
             focus,
         };
-        self.update(update, is_host_focused, changes, TreeIndex(0));
+        self.update(update, is_host_focused, changes);
     }
 
     pub fn has_node(&self, id: NodeId) -> bool {
@@ -562,6 +563,16 @@ impl State {
     pub fn toolkit_version(&self) -> Option<&str> {
         self.data.toolkit_version.as_deref()
     }
+
+    pub fn locate_node(&self, node_id: NodeId) -> Option<(LocalNodeId, TreeId)> {
+        if !self.has_node(node_id) {
+            return None;
+        }
+        let (local_id, tree_index) = node_id.to_components();
+        self.tree_index_map
+            .get_id(tree_index)
+            .map(|tree_id| (local_id, tree_id))
+    }
 }
 
 pub trait ChangeHandler {
@@ -575,7 +586,6 @@ pub trait ChangeHandler {
 pub struct Tree {
     state: State,
     next_state: State,
-    tree_index_map: TreeIndexMap,
 }
 
 impl Tree {
@@ -598,12 +608,12 @@ impl Tree {
             is_host_focused,
             subtrees: HashMap::new(),
             graft_parents: HashMap::new(),
+            tree_index_map,
         };
-        state.update(initial_state, is_host_focused, None, tree_index);
+        state.update(initial_state, is_host_focused, None);
         Self {
             next_state: state.clone(),
             state,
-            tree_index_map,
         }
     }
 
@@ -612,14 +622,9 @@ impl Tree {
         update: TreeUpdate,
         handler: &mut impl ChangeHandler,
     ) {
-        let tree_index = self.tree_index_map.get_index(update.tree_id);
         let mut changes = InternalChanges::default();
-        self.next_state.update(
-            update,
-            self.state.is_host_focused,
-            Some(&mut changes),
-            tree_index,
-        );
+        self.next_state
+            .update(update, self.state.is_host_focused, Some(&mut changes));
         self.process_changes(changes, handler);
     }
 
@@ -697,20 +702,13 @@ impl Tree {
         self.state
             .graft_parents
             .clone_from(&self.next_state.graft_parents);
+        self.state
+            .tree_index_map
+            .clone_from(&self.next_state.tree_index_map);
     }
 
     pub fn state(&self) -> &State {
         &self.state
-    }
-
-    pub fn locate_node(&self, node_id: NodeId) -> Option<(LocalNodeId, TreeId)> {
-        if !self.state.has_node(node_id) {
-            return None;
-        }
-        let (local_id, tree_index) = node_id.to_components();
-        self.tree_index_map
-            .get_id(tree_index)
-            .map(|tree_id| (local_id, tree_id))
     }
 }
 
