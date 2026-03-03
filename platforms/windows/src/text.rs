@@ -598,7 +598,7 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
 
     fn Select(&self) -> Result<()> {
         self.do_action(|range, tree| {
-            let (target_node, target_tree) = tree.locate_node(range.node().id()).unwrap();
+            let (target_node, target_tree) = tree.state().locate_node(range.node().id()).unwrap();
             ActionRequest {
                 action: Action::SetTextSelection,
                 target_tree,
@@ -625,7 +625,10 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
             } else {
                 range.end()
             };
-            let (target_node, target_tree) = tree.locate_node(position.inner_node().id()).unwrap();
+            let (target_node, target_tree) = tree
+                .state()
+                .locate_node(position.inner_node().id())
+                .unwrap();
             ActionRequest {
                 action: Action::ScrollIntoView,
                 target_tree,
