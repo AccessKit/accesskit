@@ -828,6 +828,7 @@ impl PlatformNode {
     fn node_with_location<'a>(&self, tree: &'a Tree) -> Result<(Node<'a>, LocalNodeId, TreeId)> {
         let node = self.node(tree)?;
         let (local_id, tree_id) = tree
+            .state()
             .locate_node(node.id())
             .ok_or_else(element_not_available)?;
         Ok((node, local_id, tree_id))

@@ -556,7 +556,7 @@ declare_class!(
         fn set_value(&self, value: &NSObject) {
             if let Some(string) = downcast_ref::<NSString>(value) {
                 self.resolve_with_context(|node, tree, context| {
-                    if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
+                    if let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) {
                         context.do_action(ActionRequest {
                             action: Action::SetValue,
                             target_tree,
@@ -567,7 +567,7 @@ declare_class!(
                 });
             } else if let Some(number) = downcast_ref::<NSNumber>(value) {
                 self.resolve_with_context(|node, tree, context| {
-                    if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
+                    if let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) {
                         context.do_action(ActionRequest {
                             action: Action::SetValue,
                             target_tree,
@@ -640,7 +640,7 @@ declare_class!(
             self.resolve_with_context(|node, tree, context| {
                 if focused {
                     if node.is_focusable(&filter) {
-                        if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
+                        if let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) {
                             context.do_action(ActionRequest {
                                 action: Action::Focus,
                                 target_tree,
@@ -652,7 +652,7 @@ declare_class!(
                 } else {
                     let root = tree.state().root();
                     if root.is_focusable(&filter) {
-                        if let Some((target_node, target_tree)) = tree.locate_node(root.id()) {
+                        if let Some((target_node, target_tree)) = tree.state().locate_node(root.id()) {
                             context.do_action(ActionRequest {
                                 action: Action::Focus,
                                 target_tree,
@@ -670,7 +670,7 @@ declare_class!(
             self.resolve_with_context(|node, tree, context| {
                 let clickable = node.is_clickable(&filter);
                 if clickable {
-                    if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
+                    if let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) {
                         context.do_action(ActionRequest {
                             action: Action::Click,
                             target_tree,
@@ -689,7 +689,7 @@ declare_class!(
             self.resolve_with_context(|node, tree, context| {
                 let supports_increment = node.supports_increment(&filter);
                 if supports_increment {
-                    if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
+                    if let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) {
                         context.do_action(ActionRequest {
                             action: Action::Increment,
                             target_tree,
@@ -708,7 +708,7 @@ declare_class!(
             self.resolve_with_context(|node, tree, context| {
                 let supports_decrement = node.supports_decrement(&filter);
                 if supports_decrement {
-                    if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
+                    if let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) {
                         context.do_action(ActionRequest {
                             action: Action::Decrement,
                             target_tree,
@@ -1008,7 +1008,7 @@ declare_class!(
             self.resolve_with_context(|node, tree, context| {
                 if node.supports_text_ranges() {
                     if let Some(range) = from_ns_range(node, range) {
-                        if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
+                        if let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) {
                             context.do_action(ActionRequest {
                                 action: Action::SetTextSelection,
                                 target_tree,
@@ -1051,7 +1051,7 @@ declare_class!(
                 if node.is_selected() == Some(selected) {
                     return;
                 }
-                if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
+                if let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) {
                     context.do_action(ActionRequest {
                         action: Action::Click,
                         target_tree,
@@ -1117,7 +1117,7 @@ declare_class!(
                     && wrapper.is_item_like()
                     && node.is_selectable();
                 if selectable {
-                    if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
+                    if let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) {
                         context.do_action(ActionRequest {
                             action: Action::Click,
                             target_tree,
@@ -1192,7 +1192,7 @@ declare_class!(
         fn perform_action(&self, action: &NSString) {
             self.resolve_with_context(|node, tree, context| {
                 if action == ns_string!(SCROLL_TO_VISIBLE_ACTION) {
-                    if let Some((target_node, target_tree)) = tree.locate_node(node.id()) {
+                    if let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) {
                         context.do_action(ActionRequest {
                             action: Action::ScrollIntoView,
                             target_tree,

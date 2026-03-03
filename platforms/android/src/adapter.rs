@@ -419,7 +419,7 @@ impl Adapter {
         } else {
             self.node_id_map.get_accesskit_id(virtual_view_id)?
         };
-        let (target_node, target_tree) = tree.locate_node(target)?;
+        let (target_node, target_tree) = tree_state.locate_node(target)?;
         let mut events = Vec::new();
         let request = match action {
             ACTION_CLICK => ActionRequest {
@@ -532,8 +532,8 @@ impl Adapter {
             let id = self.node_id_map.get_accesskit_id(virtual_view_id)?;
             tree_state.node_by_id(id).unwrap()
         };
-        let (node_id, tree_id) = tree.locate_node(node.id())?;
-        let (focus_id, _) = tree.locate_node(tree_state.focus_id_in_tree())?;
+        let (node_id, tree_id) = tree_state.locate_node(node.id())?;
+        let (focus_id, _) = tree_state.locate_node(tree_state.focus_id_in_tree())?;
         // TalkBack expects the text selection change to take effect
         // immediately, so we optimistically update the node.
         // But don't be *too* optimistic.

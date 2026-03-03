@@ -746,7 +746,7 @@ impl PlatformNode {
     {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
-        if let Some((target_node, target_tree)) = tree.locate_node(target) {
+        if let Some((target_node, target_tree)) = tree.state().locate_node(target) {
             let request = f(tree.state(), &context, target_node, target_tree);
             drop(tree);
             context.do_action(request);
@@ -1072,7 +1072,8 @@ impl PlatformNode {
                 node.filtered_parent(&filter),
                 coord_type,
             );
-            let (target_node, target_tree) = tree.locate_node(self.id).ok_or(Error::Defunct)?;
+            let (target_node, target_tree) =
+                tree.state().locate_node(self.id).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::ScrollToPoint,
                 target_tree,
@@ -1153,7 +1154,7 @@ impl PlatformNode {
                     Ok(true)
                 } else if child.is_selectable() && child.is_clickable(&filter) {
                     let (target_node, target_tree) =
-                        tree.locate_node(child.id()).ok_or(Error::Defunct)?;
+                        tree.state().locate_node(child.id()).ok_or(Error::Defunct)?;
                     context.do_action(ActionRequest {
                         action: Action::Click,
                         target_tree,
@@ -1179,7 +1180,7 @@ impl PlatformNode {
             {
                 if child.is_clickable(&filter) {
                     let (target_node, target_tree) =
-                        tree.locate_node(child.id()).ok_or(Error::Defunct)?;
+                        tree.state().locate_node(child.id()).ok_or(Error::Defunct)?;
                     context.do_action(ActionRequest {
                         action: Action::Click,
                         target_tree,
@@ -1222,7 +1223,7 @@ impl PlatformNode {
                     Ok(true)
                 } else if child.is_selectable() && child.is_clickable(&filter) {
                     let (target_node, target_tree) =
-                        tree.locate_node(child.id()).ok_or(Error::Defunct)?;
+                        tree.state().locate_node(child.id()).ok_or(Error::Defunct)?;
                     context.do_action(ActionRequest {
                         action: Action::Click,
                         target_tree,
@@ -1294,7 +1295,8 @@ impl PlatformNode {
     pub fn set_caret_offset(&self, offset: i32) -> Result<bool> {
         self.resolve_for_text_with_context(|node, tree, context| {
             let offset = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
-            let (target_node, target_tree) = tree.locate_node(node.id()).ok_or(Error::Defunct)?;
+            let (target_node, target_tree) =
+                tree.state().locate_node(node.id()).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::SetTextSelection,
                 target_tree,
@@ -1405,7 +1407,8 @@ impl PlatformNode {
             let selection_end = node
                 .text_selection_focus()
                 .unwrap_or_else(|| node.document_range().start());
-            let (target_node, target_tree) = tree.locate_node(node.id()).ok_or(Error::Defunct)?;
+            let (target_node, target_tree) =
+                tree.state().locate_node(node.id()).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::SetTextSelection,
                 target_tree,
@@ -1431,7 +1434,8 @@ impl PlatformNode {
         self.resolve_for_text_with_context(|node, tree, context| {
             let range = text_range_from_offsets(&node, start_offset, end_offset)
                 .ok_or(Error::IndexOutOfRange)?;
-            let (target_node, target_tree) = tree.locate_node(node.id()).ok_or(Error::Defunct)?;
+            let (target_node, target_tree) =
+                tree.state().locate_node(node.id()).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::SetTextSelection,
                 target_tree,
@@ -1492,6 +1496,7 @@ impl PlatformNode {
                     range.start()
                 };
                 let (target_node, target_tree) = tree
+                    .state()
                     .locate_node(position.inner_node().id())
                     .ok_or(Error::Defunct)?;
                 context.do_action(ActionRequest {
@@ -1526,7 +1531,7 @@ impl PlatformNode {
             if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
                 let point = Point::new(target_point.x - rect.x0, target_point.y - rect.y0);
                 let (target_node, target_tree) =
-                    tree.locate_node(node.id()).ok_or(Error::Defunct)?;
+                    tree.state().locate_node(node.id()).ok_or(Error::Defunct)?;
                 context.do_action(ActionRequest {
                     action: Action::ScrollToPoint,
                     target_tree,
