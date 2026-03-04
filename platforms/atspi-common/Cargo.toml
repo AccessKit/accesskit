@@ -18,5 +18,6 @@ simplified-api = []
 accesskit = { version = "0.24.0", path = "../../common" }
 accesskit_consumer = { version = "0.34.0", path = "../../consumer" }
 atspi-common = { version = "0.13", default-features = false }
+phf = { version = "0.13.1", features = ["macros"] }
 serde = "1.0"
 zvariant = { version = "5.4", default-features = false }

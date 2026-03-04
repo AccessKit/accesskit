@@ -28,6 +28,7 @@ use crate::{
     adapter::Adapter,
     context::{AppContext, Context},
     filters::filter,
+    text_attributes::ATTRIBUTE_GETTERS,
     util::*,
     Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
 };
@@ -1309,19 +1310,33 @@ impl PlatformNode {
         })
     }
 
-    pub fn text_attribute_value(&self, _offset: i32, _attribute_name: &str) -> Result<String> {
-        // TODO: Implement rich text.
-        Err(Error::UnsupportedInterface)
+    pub fn text_attribute_value(&self, offset: i32, attribute_name: &str) -> Result<String> {
+        self.resolve_for_text(|node| {
+            let pos = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
+            Ok(ATTRIBUTE_GETTERS
+                .get(attribute_name)
+                .and_then(|getter| (*getter)(pos.inner_node()))
+                .unwrap_or_default())
+        })
     }
 
-    pub fn text_attributes(&self, _offset: i32) -> Result<(HashMap<String, String>, i32, i32)> {
-        // TODO: Implement rich text.
-        Err(Error::UnsupportedInterface)
+    pub fn text_attributes(
+        &self,
+        offset: i32,
+    ) -> Result<(HashMap<&'static str, String>, i32, i32)> {
+        self.text_attribute_run(offset, false)
     }
 
-    pub fn default_text_attributes(&self) -> Result<HashMap<String, String>> {
-        // TODO: Implement rich text.
-        Err(Error::UnsupportedInterface)
+    pub fn default_text_attributes(&self) -> Result<HashMap<&'static str, String>> {
+        self.resolve_for_text(|node| {
+            let mut result = HashMap::with_capacity(ATTRIBUTE_GETTERS.len());
+            for (name, getter) in ATTRIBUTE_GETTERS.entries() {
+                if let Some(value) = (*getter)(&node) {
+                    result.insert(*name, value);
+                }
+            }
+            Ok(result)
+        })
     }
 
     pub fn character_extents(&self, offset: i32, coord_type: CoordType) -> Result<AtspiRect> {
@@ -1469,14 +1484,41 @@ impl PlatformNode {
 
     pub fn text_attribute_run(
         &self,
-        _offset: i32,
-        _include_defaults: bool,
-    ) -> Result<(HashMap<String, String>, i32, i32)> {
-        // TODO: Implement rich text.
-        // For now, just report a range spanning the entire text with no attributes,
-        // this is required by Orca to announce selection content and caret movements.
-        let character_count = self.character_count()?;
-        Ok((HashMap::new(), 0, character_count))
+        offset: i32,
+        include_defaults: bool,
+    ) -> Result<(HashMap<&'static str, String>, i32, i32)> {
+        self.resolve_for_text(|node| {
+            let pos = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
+            let mut result = HashMap::with_capacity(ATTRIBUTE_GETTERS.len());
+            for (name, getter) in ATTRIBUTE_GETTERS.entries() {
+                if let Some(value) = (*getter)(pos.inner_node()) {
+                    if !include_defaults {
+                        if let Some(default) = (*getter)(&node) {
+                            if value == default {
+                                continue;
+                            }
+                        }
+                    }
+                    result.insert(*name, value);
+                }
+            }
+            let start = if pos.is_format_start() {
+                pos
+            } else {
+                pos.backward_to_format_start()
+            };
+            let end = pos.forward_to_format_end();
+            Ok((
+                result,
+                start
+                    .to_global_usv_index()
+                    .try_into()
+                    .map_err(|_| Error::TooManyCharacters)?,
+                end.to_global_usv_index()
+                    .try_into()
+                    .map_err(|_| Error::TooManyCharacters)?,
+            ))
+        })
     }
 
     pub fn scroll_substring_to(
