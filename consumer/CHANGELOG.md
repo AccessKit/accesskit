@@ -24,6 +24,22 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.35.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.34.0...accesskit_consumer-v0.35.0) (2026-03-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* Allow locating nodes without Tree access
+
+### Features
+
+* Expose text attributes on macOS ([#691](https://github.com/AccessKit/accesskit/issues/691)) ([641b05b](https://github.com/AccessKit/accesskit/commit/641b05b10d3d55631a73d10a1f753111dde372e8))
+
+
+### Code Refactoring
+
+* Allow locating nodes without Tree access ([941a96d](https://github.com/AccessKit/accesskit/commit/941a96d161414ea6db448ecafdd11fa6e3f1680d))
+
 ## [0.34.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.33.1...accesskit_consumer-v0.34.0) (2026-02-01)
 
 

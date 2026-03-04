@@ -24,6 +24,20 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_consumer bumped from 0.25.0 to 0.26.0
 
+## [0.18.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.17.0...accesskit_atspi_common-v0.18.0) (2026-03-04)
+
+
+### Features
+
+* Implement text attributes for AT-SPI ([#695](https://github.com/AccessKit/accesskit/issues/695)) ([33fc4f0](https://github.com/AccessKit/accesskit/commit/33fc4f06699da335f9b2de3ab381cc940314e9c1))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.34.0 to 0.35.0
+
 ## [0.17.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.16.1...accesskit_atspi_common-v0.17.0) (2026-02-01)
 
 
