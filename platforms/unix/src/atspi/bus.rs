@@ -124,21 +124,21 @@ impl Bus {
                 HyperlinkInterface::new(bus_name.clone(), node.clone()),
             )
             .await?;
-            if new_interfaces.contains(Interface::Selection) {
-                self.register_interface(
-                    &path,
-                    SelectionInterface::new(bus_name.clone(), node.clone()),
-                )
+        }
+        if new_interfaces.contains(Interface::Selection) {
+            self.register_interface(
+                &path,
+                SelectionInterface::new(bus_name.clone(), node.clone()),
+            )
+            .await?;
+        }
+        if new_interfaces.contains(Interface::Text) {
+            self.register_interface(&path, TextInterface::new(node.clone()))
                 .await?;
-            }
-            if new_interfaces.contains(Interface::Text) {
-                self.register_interface(&path, TextInterface::new(node.clone()))
-                    .await?;
-            }
-            if new_interfaces.contains(Interface::Value) {
-                self.register_interface(&path, ValueInterface::new(node.clone()))
-                    .await?;
-            }
+        }
+        if new_interfaces.contains(Interface::Value) {
+            self.register_interface(&path, ValueInterface::new(node.clone()))
+                .await?;
         }
 
         Ok(())
