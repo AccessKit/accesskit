@@ -37,6 +37,20 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.26.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.25.0...accesskit_macos-v0.26.0) (2026-03-04)
+
+
+### Features
+
+* Expose text attributes on macOS ([#691](https://github.com/AccessKit/accesskit/issues/691)) ([641b05b](https://github.com/AccessKit/accesskit/commit/641b05b10d3d55631a73d10a1f753111dde372e8))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.34.0 to 0.35.0
+
 ## [0.25.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.24.1...accesskit_macos-v0.25.0) (2026-02-01)
 
 
