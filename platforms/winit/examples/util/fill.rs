@@ -12,7 +12,7 @@
 pub use platform::cleanup_window;
 pub use platform::fill_window;
 
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[cfg(not(target_os = "android"))]
 mod platform {
     use std::cell::RefCell;
     use std::collections::HashMap;
@@ -111,13 +111,13 @@ mod platform {
     }
 }
 
-#[cfg(any(target_os = "android", target_os = "ios"))]
+#[cfg(target_os = "android")]
 mod platform {
     pub fn fill_window(_window: &winit::window::Window) {
-        // No-op on mobile platforms.
+        // No-op on Android platform.
     }
 
     pub fn cleanup_window(_window: &winit::window::Window) {
-        // No-op on mobile platforms.
+        // No-op on Android platform.
     }
 }

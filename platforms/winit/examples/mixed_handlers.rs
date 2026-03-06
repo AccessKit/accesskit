@@ -26,18 +26,25 @@ const BUTTON_2_ID: NodeId = NodeId(2);
 const ANNOUNCEMENT_ID: NodeId = NodeId(3);
 const INITIAL_FOCUS: NodeId = BUTTON_1_ID;
 
+const WINDOW_RECT: Rect = Rect {
+    x0: 0.0,
+    y0: 0.0,
+    x1: 393.0,
+    y1: 759.0,
+};
+
 const BUTTON_1_RECT: Rect = Rect {
     x0: 20.0,
     y0: 20.0,
-    x1: 100.0,
-    y1: 60.0,
+    x1: 200.0,
+    y1: 64.0,
 };
 
 const BUTTON_2_RECT: Rect = Rect {
     x0: 20.0,
-    y0: 60.0,
-    x1: 100.0,
-    y1: 100.0,
+    y0: 84.0,
+    x1: 200.0,
+    y1: 128.0,
 };
 
 fn build_button(id: NodeId, label: &str) -> Node {
@@ -77,6 +84,7 @@ impl UiState {
 
     fn build_root(&mut self) -> Node {
         let mut node = Node::new(Role::Window);
+        node.set_bounds(WINDOW_RECT);
         node.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
         if self.announcement.is_some() {
             node.push_child(ANNOUNCEMENT_ID);
@@ -281,13 +289,15 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                 }
                 window.window.request_redraw();
             }
-            AccessKitWindowEvent::AccessibilityDeactivated => (),
+            AccessKitWindowEvent::AccessibilityDeactivated => {}
         }
     }
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        self.create_window(event_loop)
-            .expect("failed to create initial window");
+        if self.window.is_none() {
+            self.create_window(event_loop)
+                .expect("failed to create initial window");
+        }
         if let Some(window) = self.window.as_ref() {
             window.window.request_redraw();
         }
