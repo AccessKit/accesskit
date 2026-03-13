@@ -11,15 +11,18 @@
 use accesskit::{Action, ActionRequest, Rect, Role, Toggled};
 use accesskit_consumer::{FilterResult, Node, NodeId, Tree};
 use objc2::{
-    ClassType, DeclaredClass, declare_class, msg_send_id, mutability::MainThreadOnly, rc::Retained,
-    runtime::AnyObject,
+    ClassType, DeclaredClass, declare_class, msg_send_id,
+    mutability::MainThreadOnly,
+    rc::Retained,
+    runtime::{AnyObject, Bool},
 };
 use objc2_foundation::{CGRect, NSArray, NSObject, NSObjectProtocol, NSString};
 use objc2_ui_kit::{
-    UIAccessibilityContainerType, UIAccessibilityElement, UIAccessibilityTraitAdjustable,
-    UIAccessibilityTraitButton, UIAccessibilityTraitHeader, UIAccessibilityTraitImage,
-    UIAccessibilityTraitLink, UIAccessibilityTraitNone, UIAccessibilityTraitNotEnabled,
-    UIAccessibilityTraitSelected, UIAccessibilityTraitStaticText, UIAccessibilityTraits,
+    UIAccessibilityContainerType, UIAccessibilityElement, UIAccessibilityScrollDirection,
+    UIAccessibilityTraitAdjustable, UIAccessibilityTraitButton, UIAccessibilityTraitHeader,
+    UIAccessibilityTraitImage, UIAccessibilityTraitLink, UIAccessibilityTraitNone,
+    UIAccessibilityTraitNotEnabled, UIAccessibilityTraitSelected, UIAccessibilityTraitStaticText,
+    UIAccessibilityTraits,
 };
 use std::rc::{Rc, Weak};
 
@@ -267,6 +270,96 @@ declare_class!(
                 None => UIAccessibilityExpandedStatus::Unsupported,
             })
             .unwrap_or(UIAccessibilityExpandedStatus::Unsupported)
+        }
+
+        #[method(accessibilityActivate)]
+        fn activate(&self) -> bool {
+            self.resolve_with_context(|node, tree, context| {
+                if !node.is_clickable(&filter) {
+                    return false;
+                }
+                let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) else {
+                    return false;
+                };
+                context.do_action(ActionRequest {
+                    action: Action::Click,
+                    target_tree,
+                    target_node,
+                    data: None,
+                });
+                true
+            })
+            .unwrap_or(false)
+        }
+
+        #[method(accessibilityIncrement)]
+        fn increment(&self) {
+            self.resolve_with_context(|node, tree, context| {
+                if !node.supports_increment(&filter) {
+                    return;
+                }
+                let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) else {
+                    return;
+                };
+                context.do_action(ActionRequest {
+                    action: Action::Increment,
+                    target_tree,
+                    target_node,
+                    data: None,
+                });
+            });
+        }
+
+        #[method(accessibilityDecrement)]
+        fn decrement(&self) {
+            self.resolve_with_context(|node, tree, context| {
+                if !node.supports_decrement(&filter) {
+                    return;
+                }
+                let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) else {
+                    return;
+                };
+                context.do_action(ActionRequest {
+                    action: Action::Decrement,
+                    target_tree,
+                    target_node,
+                    data: None,
+                });
+            });
+        }
+
+        #[method(accessibilityScroll:)]
+        fn scroll(&self, direction: UIAccessibilityScrollDirection) -> Bool {
+            // `UIAccessibilityScrollDirection` describes the direction the
+            // scroll bar moves, while AccessKit's scroll actions describe the
+            // direction the content (finger) moves, so the vertical cases are
+            // inverted while the horizontal cases match directly.
+            let action = match direction {
+                UIAccessibilityScrollDirection::Right
+                | UIAccessibilityScrollDirection::Previous => Action::ScrollRight,
+                UIAccessibilityScrollDirection::Left | UIAccessibilityScrollDirection::Next => {
+                    Action::ScrollLeft
+                }
+                UIAccessibilityScrollDirection::Up => Action::ScrollDown,
+                UIAccessibilityScrollDirection::Down => Action::ScrollUp,
+                _ => return Bool::NO,
+            };
+            self.resolve_with_context(|node, tree, context| {
+                if !node.supports_action(action, &filter) {
+                    return Bool::NO;
+                }
+                let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) else {
+                    return Bool::NO;
+                };
+                context.do_action(ActionRequest {
+                    action,
+                    target_tree,
+                    target_node,
+                    data: None,
+                });
+                Bool::YES
+            })
+            .unwrap_or(Bool::NO)
         }
 
         #[method_id(accessibilityElements)]
