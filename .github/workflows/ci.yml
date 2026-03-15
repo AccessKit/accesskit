@@ -60,9 +60,23 @@ jobs:
   clippy:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [macOS-latest, windows-latest, ubuntu-latest]
-    name: cargo clippy
+        include:
+          - os: windows-latest
+            name: Windows
+            adapters: "-p accesskit_windows"
+          - os: macOS-latest
+            name: macOS
+            adapters: "-p accesskit_macos"
+          - os: ubuntu-latest
+            name: Linux
+            adapters: "-p accesskit_unix"
+            extra_adapter_clippy: "-p accesskit_atspi_common --all-features"
+          - os: ubuntu-latest
+            name: Android
+            adapters: "-p accesskit_android"
+    name: cargo clippy (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v6
 
@@ -74,12 +88,15 @@ jobs:
       - name: restore cache
         uses: Swatinem/rust-cache@v2
 
-      - name: cargo clippy
-        run: cargo clippy --all-targets -- -D warnings
+      - name: cargo clippy (common packages)
+        run: cargo clippy -p accesskit -p accesskit_consumer -p accesskit_winit --all-targets -- -D warnings
 
-      - name: cargo clippy -p accesskit_atspi_common
-        if: matrix.os == 'ubuntu-latest'
-        run: cargo clippy -p accesskit_atspi_common --all-features -- -D warnings
+      - name: cargo clippy (adapters)
+        run: cargo clippy ${{ matrix.adapters }} --all-targets -- -D warnings
+
+      - name: cargo clippy (extra adapters)
+        if: ${{ matrix.extra_adapter_clippy }}
+        run: cargo clippy ${{ matrix.extra_adapter_clippy }} --all-targets -- -D warnings
 
   find-msrv:
     runs-on: ubuntu-latest
@@ -94,9 +111,22 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: find-msrv
     strategy:
+      fail-fast: false
       matrix:
-        os: [macOS-latest, windows-latest, ubuntu-latest]
-    name: cargo test
+        include:
+          - os: windows-latest
+            name: Windows
+            adapters: "-p accesskit_windows"
+          - os: macOS-latest
+            name: macOS
+            adapters: "-p accesskit_macos"
+          - os: ubuntu-latest
+            name: Linux
+            adapters: "-p accesskit_atspi_common -p accesskit_unix"
+          - os: ubuntu-latest
+            name: Android
+            adapters: "-p accesskit_android"
+    name: cargo test (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v6
 
@@ -108,12 +138,11 @@ jobs:
       - name: restore cache
         uses: Swatinem/rust-cache@v2
 
-      - name: cargo test
-        run: cargo test
+      - name: cargo test (common packages)
+        run: cargo test -p accesskit -p accesskit_consumer -p accesskit_winit
 
-      - name: cargo test -p accesskit_windows
-        if: matrix.os == 'windows-latest'
-        run: cargo test -p accesskit_windows
+      - name: cargo test (adapters)
+        run: cargo test ${{ matrix.adapters }}
 
   check-android-dex:
     runs-on: ubuntu-latest
