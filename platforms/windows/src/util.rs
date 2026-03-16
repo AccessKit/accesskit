@@ -122,6 +122,12 @@ impl From<ToggleState> for Variant {
     }
 }
 
+impl From<ExpandCollapseState> for Variant {
+    fn from(value: ExpandCollapseState) -> Self {
+        Self(value.0.into())
+    }
+}
+
 impl From<LiveSetting> for Variant {
     fn from(value: LiveSetting) -> Self {
         Self(value.0.into())
