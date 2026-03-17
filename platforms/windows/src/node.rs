@@ -671,16 +671,15 @@ impl NodeWrapper<'_> {
 
     fn size_of_set(&self) -> Option<i32> {
         self.0
-            .size_of_set()
-            .or_else(|| self.0.size_of_set_from_container(&filter))
+            .size_of_set_from_container(&filter)
             .and_then(|s| s.try_into().ok())
     }
 
     fn level(&self) -> Option<i32> {
         self.0
             .level()
+            .and_then(|level| level.checked_add(1))
             .and_then(|level| level.try_into().ok())
-            .map(|level: i32| level + 1)
     }
 
     fn is_selection_pattern_supported(&self) -> bool {
@@ -696,13 +695,14 @@ impl NodeWrapper<'_> {
     }
 
     fn is_expand_collapse_pattern_supported(&self) -> bool {
-        self.0.role() == Role::TreeItem || self.0.supports_expand_collapse()
+        self.0.supports_expand_collapse()
     }
 
     fn expand_collapse_state(&self) -> ExpandCollapseState {
         match self.0.data().is_expanded() {
             Some(true) => ExpandCollapseState_Expanded,
             Some(false) => ExpandCollapseState_Collapsed,
+            // TODO: Handle the menu button case. (#27)
             None => ExpandCollapseState_LeafNode,
         }
     }
@@ -951,7 +951,7 @@ impl PlatformNode {
                 return Err(invalid_operation());
             };
             if current == expanded {
-                return Ok(None);
+                return Err(invalid_operation());
             }
             Ok(Some(ActionRequest {
                 action: if expanded {

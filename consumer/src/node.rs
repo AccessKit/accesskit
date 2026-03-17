@@ -632,7 +632,15 @@ impl<'a> Node<'a> {
     }
 
     pub fn supports_expand_collapse(&self) -> bool {
-        self.data().is_expanded().is_some()
+        self.has_popup().is_some()
+            || self.data().is_expanded().is_some()
+            || matches!(
+                self.role(),
+                Role::ComboBox
+                    | Role::EditableComboBox
+                    | Role::DisclosureTriangle
+                    | Role::TreeItem
+            )
     }
 
     pub fn is_invocable(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
