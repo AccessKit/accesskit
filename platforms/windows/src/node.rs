@@ -675,6 +675,13 @@ impl NodeWrapper<'_> {
             .and_then(|s| s.try_into().ok())
     }
 
+    fn level(&self) -> Option<i32> {
+        self.0
+            .level()
+            .and_then(|level| level.checked_add(1))
+            .and_then(|level| level.try_into().ok())
+    }
+
     fn is_selection_pattern_supported(&self) -> bool {
         self.0.is_container_with_selectable_children()
     }
@@ -685,6 +692,19 @@ impl NodeWrapper<'_> {
 
     fn is_text_pattern_supported(&self) -> bool {
         self.0.supports_text_ranges()
+    }
+
+    fn is_expand_collapse_pattern_supported(&self) -> bool {
+        self.0.supports_expand_collapse()
+    }
+
+    fn expand_collapse_state(&self) -> ExpandCollapseState {
+        match self.0.data().is_expanded() {
+            Some(true) => ExpandCollapseState_Expanded,
+            Some(false) => ExpandCollapseState_Collapsed,
+            // TODO: Handle the menu button case. (#27)
+            None => ExpandCollapseState_LeafNode,
+        }
     }
 
     fn is_password(&self) -> bool {
@@ -763,6 +783,7 @@ impl NodeWrapper<'_> {
     ISelectionItemProvider,
     ISelectionProvider,
     ITextProvider,
+    IExpandCollapseProvider,
     IWindowProvider
 )]
 pub(crate) struct PlatformNode {
@@ -919,6 +940,30 @@ impl PlatformNode {
 
     fn click(&self) -> Result<()> {
         self.do_action(|| (Action::Click, None))
+    }
+
+    fn set_expanded(&self, expanded: bool) -> Result<()> {
+        self.do_complex_action(|node, target_node, target_tree| {
+            if node.is_disabled() {
+                return Err(element_not_enabled());
+            }
+            let Some(current) = node.data().is_expanded() else {
+                return Err(invalid_operation());
+            };
+            if current == expanded {
+                return Err(invalid_operation());
+            }
+            Ok(Some(ActionRequest {
+                action: if expanded {
+                    Action::Expand
+                } else {
+                    Action::Collapse
+                },
+                target_tree,
+                target_node,
+                data: None,
+            }))
+        })
     }
 
     fn set_selected(&self, selected: bool) -> Result<()> {
@@ -1251,6 +1296,7 @@ properties! {
     (UIA_OrientationPropertyId, orientation),
     (UIA_IsRequiredForFormPropertyId, is_required),
     (UIA_IsPasswordPropertyId, is_password),
+    (UIA_LevelPropertyId, level),
     (UIA_PositionInSetPropertyId, position_in_set),
     (UIA_SizeOfSetPropertyId, size_of_set),
     (UIA_AriaPropertiesPropertyId, aria_properties),
@@ -1405,6 +1451,17 @@ patterns! {
                     Ok(SupportedTextSelection_None)
                 }
             })
+        }
+    )),
+    (UIA_ExpandCollapsePatternId, IExpandCollapseProvider, IExpandCollapseProvider_Impl, is_expand_collapse_pattern_supported, (
+        (UIA_ExpandCollapseExpandCollapseStatePropertyId, ExpandCollapseState, expand_collapse_state, ExpandCollapseState)
+    ), (
+        fn Expand(&self) -> Result<()> {
+            self.set_expanded(true)
+        },
+
+        fn Collapse(&self) -> Result<()> {
+            self.set_expanded(false)
         }
     )),
     (UIA_WindowPatternId, IWindowProvider, IWindowProvider_Impl, is_window_pattern_supported, (

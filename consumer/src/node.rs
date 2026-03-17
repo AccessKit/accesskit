@@ -609,8 +609,14 @@ impl<'a> Node<'a> {
         &self,
         filter: &impl Fn(&Node) -> FilterResult,
     ) -> Option<usize> {
-        self.selection_container(filter)
-            .and_then(|c| c.size_of_set())
+        let mut parent = self.filtered_parent(filter);
+        while let Some(node) = parent {
+            if let Some(size_of_set) = node.size_of_set() {
+                return Some(size_of_set);
+            }
+            parent = node.filtered_parent(filter);
+        }
+        None
     }
 
     pub fn size_of_set(&self) -> Option<usize> {
@@ -632,7 +638,12 @@ impl<'a> Node<'a> {
     }
 
     pub fn supports_expand_collapse(&self) -> bool {
-        self.data().is_expanded().is_some()
+        self.has_popup().is_some()
+            || self.data().is_expanded().is_some()
+            || matches!(
+                self.role(),
+                Role::ComboBox | Role::EditableComboBox | Role::DisclosureTriangle | Role::TreeItem
+            )
     }
 
     pub fn is_invocable(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
