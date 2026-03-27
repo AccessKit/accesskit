@@ -4,9 +4,11 @@ mod fill;
 use accesskit::{Action, ActionRequest, Live, Node, NodeId, Rect, Role, Tree, TreeId, TreeUpdate};
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
 use std::error::Error;
+use std::time::{Duration, Instant};
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, KeyEvent, WindowEvent},
+    event_loop::ControlFlow,
     event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
     keyboard::Key,
     window::{Window, WindowId},
@@ -63,9 +65,12 @@ fn build_announcement(text: &str) -> Node {
     node
 }
 
+const ANNOUNCEMENT_DELAY: Duration = Duration::from_millis(150);
+
 struct UiState {
     focus: NodeId,
     announcement: Option<String>,
+    pending_announcement: Option<(String, Instant)>,
 }
 
 impl UiState {
@@ -73,6 +78,7 @@ impl UiState {
         Self {
             focus: INITIAL_FOCUS,
             announcement: None,
+            pending_announcement: None,
         }
     }
 
@@ -120,23 +126,36 @@ impl UiState {
         });
     }
 
-    fn press_button(&mut self, adapter: &mut Adapter, id: NodeId) {
+    fn press_button(&mut self, id: NodeId) {
         let text = if id == BUTTON_1_ID {
             "You pressed button 1"
         } else {
             "You pressed button 2"
         };
-        self.announcement = Some(text.into());
-        adapter.update_if_active(|| {
-            let announcement = build_announcement(text);
-            let root = self.build_root();
-            TreeUpdate {
-                nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],
-                tree: None,
-                tree_id: TreeId::ROOT,
-                focus: self.focus,
-            }
-        });
+        self.pending_announcement = Some((text.into(), Instant::now()));
+    }
+
+    fn flush_announcement(&mut self, adapter: &mut Adapter) -> bool {
+        let Some((_, queued_at)) = &self.pending_announcement else {
+            return false;
+        };
+        if queued_at.elapsed() < ANNOUNCEMENT_DELAY {
+            return true;
+        }
+        if let Some((text, _)) = self.pending_announcement.take() {
+            self.announcement = Some(text.clone());
+            adapter.update_if_active(|| {
+                let announcement = build_announcement(&text);
+                let root = self.build_root();
+                TreeUpdate {
+                    nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],
+                    tree: None,
+                    tree_id: TreeId::ROOT,
+                    focus: self.focus,
+                }
+            });
+        }
+        false
     }
 }
 
@@ -225,7 +244,7 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                 }
                 Key::Named(winit::keyboard::NamedKey::Space) => {
                     let id = state.focus;
-                    state.press_button(adapter, id);
+                    state.press_button(id);
                     window.window.request_redraw();
                 }
                 _ => (),
@@ -257,7 +276,7 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                             state.set_focus(adapter, target_node);
                         }
                         Action::Click => {
-                            state.press_button(adapter, target_node);
+                            state.press_button(target_node);
                         }
                         _ => (),
                     }
@@ -279,7 +298,11 @@ impl ApplicationHandler<AccessKitEvent> for Application {
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        if self.window.is_none() {
+        if let Some(window) = &mut self.window {
+            if window.ui.flush_announcement(&mut window.adapter) {
+                event_loop.set_control_flow(ControlFlow::wait_duration(ANNOUNCEMENT_DELAY));
+            }
+        } else {
             event_loop.exit();
         }
     }

@@ -3,10 +3,18 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use accesskit::Live;
 use accesskit_consumer::{FilterResult, Node, NodeId, TreeChangeHandler};
+use objc2::runtime::{AnyObject, ProtocolObject};
+use objc2_foundation::{
+    NSAttributedString, NSAttributedStringKey, NSMutableDictionary, NSNumber, NSString,
+};
 use objc2_ui_kit::{
-    UIAccessibilityLayoutChangedNotification, UIAccessibilityNotifications,
-    UIAccessibilityPostNotification,
+    UIAccessibilityAnnouncementNotification, UIAccessibilityLayoutChangedNotification,
+    UIAccessibilityNotifications, UIAccessibilityPostNotification, UIAccessibilityPriority,
+    UIAccessibilityPriorityHigh, UIAccessibilityPriorityLow,
+    UIAccessibilityScreenChangedNotification, UIAccessibilitySpeechAttributeAnnouncementPriority,
+    UIAccessibilitySpeechAttributeQueueAnnouncement,
 };
 use std::collections::VecDeque;
 use std::rc::Rc;
@@ -19,9 +27,24 @@ pub(crate) enum QueuedEvent {
         notification: UIAccessibilityNotifications,
     },
     NodeDestroyed(NodeId),
+    Announcement {
+        text: String,
+        priority: &'static UIAccessibilityPriority,
+    },
 }
 
 impl QueuedEvent {
+    fn live_region_announcement(text: String, priority: Live) -> Self {
+        Self::Announcement {
+            text,
+            priority: if priority == Live::Assertive {
+                unsafe { UIAccessibilityPriorityHigh }
+            } else {
+                unsafe { UIAccessibilityPriorityLow }
+            },
+        }
+    }
+
     fn raise(self, context: &Rc<Context>) {
         match self {
             Self::Generic {
@@ -38,6 +61,32 @@ impl QueuedEvent {
             Self::NodeDestroyed(node_id) => {
                 context.remove_platform_node(node_id);
             }
+            Self::Announcement { text, priority } => {
+                Self::raise_announcement(&text, priority);
+            }
+        }
+    }
+
+    fn raise_announcement(text: &str, priority: &'static UIAccessibilityPriority) {
+        let text = NSString::from_str(text);
+        let mut attrs: objc2::rc::Retained<NSMutableDictionary<NSAttributedStringKey, AnyObject>> =
+            NSMutableDictionary::new();
+        unsafe {
+            attrs.setObject_forKey(
+                priority,
+                ProtocolObject::from_ref(UIAccessibilitySpeechAttributeAnnouncementPriority),
+            );
+            attrs.setObject_forKey(
+                &*NSNumber::new_bool(true),
+                ProtocolObject::from_ref(UIAccessibilitySpeechAttributeQueueAnnouncement),
+            );
+        }
+        let announcement = unsafe { NSAttributedString::new_with_attributes(&text, &attrs) };
+        unsafe {
+            UIAccessibilityPostNotification(
+                UIAccessibilityAnnouncementNotification,
+                Some(&announcement),
+            );
         }
     }
 }
@@ -54,7 +103,7 @@ impl QueuedEvents {
         Self { context, events }
     }
 
-    /// Raise all queued events synchronously.
+    /// Raise all queued events.
     ///
     /// It is unknown whether accessibility methods on the view may be
     /// called while events are being raised. This means that any locks
@@ -71,6 +120,13 @@ pub(crate) fn layout_event(node_id: Option<NodeId>) -> QueuedEvent {
     QueuedEvent::Generic {
         node_id,
         notification: unsafe { UIAccessibilityLayoutChangedNotification },
+    }
+}
+
+pub(crate) fn screen_changed_event(node_id: Option<NodeId>) -> QueuedEvent {
+    QueuedEvent::Generic {
+        node_id,
+        notification: unsafe { UIAccessibilityScreenChangedNotification },
     }
 }
 
@@ -115,11 +171,10 @@ impl EventGenerator {
     }
 
     pub(crate) fn into_result(self) -> QueuedEvents {
-        let mut events = self
-            .layout_event_focus
-            .map(|focus| vec![layout_event(focus)])
-            .unwrap_or_default();
-        events.extend(self.events);
+        let mut events = self.events;
+        if let Some(focus) = self.layout_event_focus {
+            events.push(layout_event(focus));
+        }
         QueuedEvents::new(self.context, events)
     }
 }
@@ -130,10 +185,17 @@ impl TreeChangeHandler for EventGenerator {
             return;
         }
         self.insert_layout_changed_event_if_needed();
+        if let Some(value) = node.value()
+            && node.live() != Live::Off
+        {
+            self.events
+                .push(QueuedEvent::live_region_announcement(value, node.live()));
+        }
     }
 
     fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
-        let old_included = filter(old_node) == FilterResult::Include;
+        let old_filter_result = filter(old_node);
+        let old_included = old_filter_result == FilterResult::Include;
         let new_filter_result = filter(new_node);
         let new_included = new_filter_result == FilterResult::Include;
 
@@ -149,6 +211,19 @@ impl TreeChangeHandler for EventGenerator {
 
         if new_included {
             self.insert_layout_changed_event_if_needed();
+        }
+
+        let was_filtered_out = old_filter_result != FilterResult::Include;
+        if let Some(value) = new_node.value()
+            && new_node.live() != Live::Off
+            && (Some(&value) != old_node.value().as_ref()
+                || new_node.live() != old_node.live()
+                || was_filtered_out)
+        {
+            self.events.push(QueuedEvent::live_region_announcement(
+                value,
+                new_node.live(),
+            ));
         }
     }
 

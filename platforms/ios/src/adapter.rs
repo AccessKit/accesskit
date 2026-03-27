@@ -23,7 +23,7 @@ use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
 use crate::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper, Context},
-    event::{EventGenerator, QueuedEvents, layout_event},
+    event::{EventGenerator, QueuedEvents, screen_changed_event},
     filters::filter,
     node::PlatformNode,
     util::from_cg_point,
@@ -151,7 +151,7 @@ impl Adapter {
                 );
                 let focus_id = context.tree.borrow().state().focus().map(|node| node.id());
                 let queued_events = focus_id.map(|id| {
-                    let events = vec![layout_event(Some(id))];
+                    let events = vec![screen_changed_event(Some(id))];
                     QueuedEvents::new(Rc::clone(&context), events)
                 });
                 self.state = State::Active(context);
