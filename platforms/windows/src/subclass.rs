@@ -156,18 +156,15 @@ impl SubclassingAdapter {
     /// handler will always be called on that thread. The action handler
     /// may or may not be called on that thread.
     ///
-    /// # Panics
+    /// # Note
     ///
-    /// Panics if the window is already visible.
+    /// Ideally, this should be called before the window is shown for the first
+    /// time, but it will still work if the window is already visible.
     pub fn new(
         hwnd: HWND,
         activation_handler: impl 'static + ActivationHandler,
         action_handler: impl 'static + ActionHandler + Send,
     ) -> Self {
-        if unsafe { IsWindowVisible(hwnd) }.into() {
-            panic!("The AccessKit Windows subclassing adapter must be created before the window is shown (made visible) for the first time.");
-        }
-
         let mut r#impl = SubclassImpl::new(hwnd, activation_handler, action_handler);
         r#impl.install();
         Self(r#impl)
@@ -194,6 +191,13 @@ impl SubclassingAdapter {
         state.adapter.update_if_active(update_factory)
     }
 }
+
+// SAFETY: SubclassingAdapter is always created and accessed on the UI thread.
+// The Send + Sync bounds are needed by frameworks (e.g. iced) whose event loops
+// wrap the adapter in a channel. Accessibility callbacks (WM_GETOBJECT, focus
+// changes) only ever fire on the window's thread.
+unsafe impl Send for SubclassingAdapter {}
+unsafe impl Sync for SubclassingAdapter {}
 
 impl Drop for SubclassingAdapter {
     fn drop(&mut self) {
