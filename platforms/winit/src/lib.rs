@@ -143,9 +143,10 @@ impl Adapter {
     /// consider using [`Adapter::with_direct_handlers`] or
     /// [`Adapter::with_mixed_handlers`] instead.
     ///
-    /// # Panics
+    /// # Note
     ///
-    /// Panics if the window is already visible.
+    /// Ideally, this should be called before the window is shown for the first
+    /// time, but it will still work if the window is already visible.
     pub fn with_event_loop_proxy<T: From<Event> + Send + 'static>(
         event_loop: &ActiveEventLoop,
         window: &Window,
@@ -184,9 +185,10 @@ impl Adapter {
     /// the first update. However, remember that each of these handlers may be
     /// called on any thread, depending on the underlying platform adapter.
     ///
-    /// # Panics
+    /// # Note
     ///
-    /// Panics if the window is already visible.
+    /// Ideally, this should be called before the window is shown for the first
+    /// time, but it will still work if the window is already visible.
     pub fn with_direct_handlers(
         event_loop: &ActiveEventLoop,
         window: &Window,
@@ -194,10 +196,6 @@ impl Adapter {
         action_handler: impl 'static + ActionHandler + Send,
         deactivation_handler: impl 'static + DeactivationHandler + Send,
     ) -> Self {
-        if window.is_visible() == Some(true) {
-            panic!("The AccessKit winit adapter must be created before the window is shown (made visible) for the first time.");
-        }
-
         let inner = platform_impl::Adapter::new(
             event_loop,
             window,
@@ -221,9 +219,10 @@ impl Adapter {
     /// return the initial tree synchronously. Remember that the thread on which
     /// the activation handler is called is platform-dependent.
     ///
-    /// # Panics
+    /// # Note
     ///
-    /// Panics if the window is already visible.
+    /// Ideally, this should be called before the window is shown for the first
+    /// time, but it will still work if the window is already visible.
     pub fn with_mixed_handlers<T: From<Event> + Send + 'static>(
         event_loop: &ActiveEventLoop,
         window: &Window,

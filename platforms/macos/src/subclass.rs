@@ -262,6 +262,13 @@ impl SubclassingAdapter {
 unsafe impl Send for SubclassingAdapter {}
 unsafe impl Sync for SubclassingAdapter {}
 
+const _: () = {
+    fn _assert_send_sync<T: Send + Sync>() {}
+    fn _assert_all() {
+        _assert_send_sync::<SubclassingAdapter>();
+    }
+};
+
 impl Drop for SubclassingAdapter {
     fn drop(&mut self) {
         let prev_class = self.associated.ivars().prev_class;
