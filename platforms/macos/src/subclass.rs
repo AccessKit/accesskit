@@ -255,6 +255,13 @@ impl SubclassingAdapter {
     }
 }
 
+// SAFETY: SubclassingAdapter is always created and accessed on the main thread.
+// The Send + Sync bounds are needed by frameworks (e.g. iced) whose event loops
+// wrap the adapter in a channel. Accessibility callbacks (NSAccessibility)
+// only ever fire on the main thread.
+unsafe impl Send for SubclassingAdapter {}
+unsafe impl Sync for SubclassingAdapter {}
+
 impl Drop for SubclassingAdapter {
     fn drop(&mut self) {
         let prev_class = self.associated.ivars().prev_class;
