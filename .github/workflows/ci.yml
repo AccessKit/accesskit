@@ -152,7 +152,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
       - run: sdkmanager "platforms;android-30"
       - run: sdkmanager "build-tools;33.0.2"
       - run: cp platforms/android/classes.dex platforms/android/classes.dex.orig
