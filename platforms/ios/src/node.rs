@@ -8,7 +8,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use accesskit::{Action, ActionRequest, Rect, Role, Toggled};
+use accesskit::{Action, ActionRequest, Live, Rect, Role, Toggled};
 use accesskit_consumer::{FilterResult, Node, NodeId, Tree};
 use objc2::{
     ClassType, DeclaredClass, declare_class, msg_send_id,
@@ -19,10 +19,11 @@ use objc2::{
 use objc2_foundation::{CGRect, NSArray, NSObject, NSObjectProtocol, NSString};
 use objc2_ui_kit::{
     UIAccessibilityContainerType, UIAccessibilityElement, UIAccessibilityScrollDirection,
-    UIAccessibilityTraitAdjustable, UIAccessibilityTraitButton, UIAccessibilityTraitHeader,
-    UIAccessibilityTraitImage, UIAccessibilityTraitLink, UIAccessibilityTraitNone,
-    UIAccessibilityTraitNotEnabled, UIAccessibilityTraitSelected, UIAccessibilityTraitStaticText,
-    UIAccessibilityTraits,
+    UIAccessibilityTraitAdjustable, UIAccessibilityTraitAllowsDirectInteraction,
+    UIAccessibilityTraitButton, UIAccessibilityTraitHeader, UIAccessibilityTraitImage,
+    UIAccessibilityTraitLink, UIAccessibilityTraitNone, UIAccessibilityTraitNotEnabled,
+    UIAccessibilityTraitSearchField, UIAccessibilityTraitSelected, UIAccessibilityTraitStaticText,
+    UIAccessibilityTraitToggleButton, UIAccessibilityTraitUpdatesFrequently, UIAccessibilityTraits,
 };
 use std::rc::{Rc, Weak};
 
@@ -115,14 +116,21 @@ impl NodeWrapper<'_> {
 
     fn traits(&self) -> UIAccessibilityTraits {
         let mut traits = match self.0.role() {
-            Role::Button | Role::DefaultButton | Role::DisclosureTriangle => unsafe {
-                UIAccessibilityTraitButton
-            },
+            Role::Button
+            | Role::DefaultButton
+            | Role::DisclosureTriangle
+            | Role::CheckBox
+            | Role::RadioButton
+            | Role::Switch
+            | Role::MenuItemCheckBox
+            | Role::MenuItemRadio
+            | Role::Tab => unsafe { UIAccessibilityTraitButton },
             Role::Link => unsafe { UIAccessibilityTraitLink },
             Role::Image => unsafe { UIAccessibilityTraitImage },
             Role::Label => unsafe { UIAccessibilityTraitStaticText },
             Role::Heading => unsafe { UIAccessibilityTraitHeader },
             Role::Slider | Role::SpinButton => unsafe { UIAccessibilityTraitAdjustable },
+            Role::SearchInput => unsafe { UIAccessibilityTraitSearchField },
             _ => unsafe { UIAccessibilityTraitNone },
         };
 
@@ -130,8 +138,20 @@ impl NodeWrapper<'_> {
             traits |= unsafe { UIAccessibilityTraitNotEnabled };
         }
 
+        if self.0.toggled().is_some() {
+            traits |= unsafe { UIAccessibilityTraitToggleButton };
+        }
+
         if self.0.is_selected() == Some(true) {
             traits |= unsafe { UIAccessibilityTraitSelected };
+        }
+
+        if self.0.role() == Role::ProgressIndicator || self.0.live() != Live::Off {
+            traits |= unsafe { UIAccessibilityTraitUpdatesFrequently };
+        }
+
+        if self.0.is_touch_transparent() {
+            traits |= unsafe { UIAccessibilityTraitAllowsDirectInteraction };
         }
 
         traits
@@ -688,6 +708,53 @@ mod tests {
     }
 
     #[test]
+    fn traits_checkbox_is_button_and_toggle() {
+        let mut node = NodeBuilder::new(Role::CheckBox);
+        node.set_toggled(Toggled::False);
+        let t = node_traits(&node);
+        assert!(t & unsafe { UIAccessibilityTraitButton } != 0);
+        assert!(t & unsafe { UIAccessibilityTraitToggleButton } != 0);
+    }
+
+    #[test]
+    fn traits_switch_is_button_and_toggle() {
+        let mut node = NodeBuilder::new(Role::Switch);
+        node.set_toggled(Toggled::True);
+        let t = node_traits(&node);
+        assert!(t & unsafe { UIAccessibilityTraitButton } != 0);
+        assert!(t & unsafe { UIAccessibilityTraitToggleButton } != 0);
+    }
+
+    #[test]
+    fn traits_button_mapped_roles() {
+        for role in [
+            Role::RadioButton,
+            Role::Switch,
+            Role::MenuItemCheckBox,
+            Role::MenuItemRadio,
+            Role::Tab,
+        ] {
+            let node = NodeBuilder::new(role);
+            assert!(
+                node_traits(&node) & unsafe { UIAccessibilityTraitButton } != 0,
+                "role {role:?}",
+            );
+        }
+    }
+
+    #[test]
+    fn traits_toggled_true_and_mixed_set_toggle_button() {
+        for toggled in [Toggled::True, Toggled::Mixed] {
+            let mut node = NodeBuilder::new(Role::CheckBox);
+            node.set_toggled(toggled);
+            assert!(
+                node_traits(&node) & unsafe { UIAccessibilityTraitToggleButton } != 0,
+                "toggled {toggled:?}",
+            );
+        }
+    }
+
+    #[test]
     fn traits_link() {
         let node = NodeBuilder::new(Role::Link);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitLink } != 0);
@@ -724,6 +791,12 @@ mod tests {
     }
 
     #[test]
+    fn traits_search_input() {
+        let node = NodeBuilder::new(Role::SearchInput);
+        assert!(node_traits(&node) & unsafe { UIAccessibilityTraitSearchField } != 0);
+    }
+
+    #[test]
     fn traits_disabled() {
         let mut node = NodeBuilder::new(Role::Button);
         node.set_disabled();
@@ -751,6 +824,9 @@ mod tests {
         assert!(t & unsafe { UIAccessibilityTraitButton } != 0);
         assert!(t & unsafe { UIAccessibilityTraitNotEnabled } == 0);
         assert!(t & unsafe { UIAccessibilityTraitSelected } == 0);
+        assert!(t & unsafe { UIAccessibilityTraitToggleButton } == 0);
+        assert!(t & unsafe { UIAccessibilityTraitUpdatesFrequently } == 0);
+        assert!(t & unsafe { UIAccessibilityTraitAllowsDirectInteraction } == 0);
     }
 
     #[test]
@@ -762,6 +838,44 @@ mod tests {
         assert!(t & unsafe { UIAccessibilityTraitButton } != 0);
         assert!(t & unsafe { UIAccessibilityTraitNotEnabled } != 0);
         assert!(t & unsafe { UIAccessibilityTraitSelected } != 0);
+    }
+
+    #[test]
+    fn traits_live_region() {
+        let mut node = NodeBuilder::new(Role::Label);
+        node.set_live(Live::Polite);
+        assert!(node_traits(&node) & unsafe { UIAccessibilityTraitUpdatesFrequently } != 0);
+    }
+
+    #[test]
+    fn traits_live_off_not_updating() {
+        let mut node = NodeBuilder::new(Role::Label);
+        node.set_live(Live::Off);
+        assert!(node_traits(&node) & unsafe { UIAccessibilityTraitUpdatesFrequently } == 0);
+    }
+
+    #[test]
+    fn traits_progress_indicator_updates_frequently() {
+        let node = NodeBuilder::new(Role::ProgressIndicator);
+        assert!(node_traits(&node) & unsafe { UIAccessibilityTraitUpdatesFrequently } != 0);
+    }
+
+    #[test]
+    fn traits_combined() {
+        let mut node = NodeBuilder::new(Role::CheckBox);
+        node.set_toggled(Toggled::False);
+        node.set_disabled();
+        let t = node_traits(&node);
+        assert!(t & unsafe { UIAccessibilityTraitButton } != 0);
+        assert!(t & unsafe { UIAccessibilityTraitToggleButton } != 0);
+        assert!(t & unsafe { UIAccessibilityTraitNotEnabled } != 0);
+    }
+
+    #[test]
+    fn traits_touch_transparent() {
+        let mut node = NodeBuilder::new(Role::Image);
+        node.set_touch_transparent();
+        assert!(node_traits(&node) & unsafe { UIAccessibilityTraitAllowsDirectInteraction } != 0);
     }
 
     #[test]

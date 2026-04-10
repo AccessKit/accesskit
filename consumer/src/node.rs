@@ -904,6 +904,10 @@ impl<'a> Node<'a> {
         self.data().is_selected()
     }
 
+    pub fn is_touch_transparent(&self) -> bool {
+        self.data().is_touch_transparent()
+    }
+
     pub fn is_item_like(&self) -> bool {
         matches!(
             self.role(),
