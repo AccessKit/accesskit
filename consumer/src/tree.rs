@@ -22,13 +22,17 @@ struct TreeIndexMap {
 }
 
 impl TreeIndexMap {
-    fn get_index(&mut self, id: TreeId) -> TreeIndex {
+    fn get_or_create_index(&mut self, id: TreeId) -> TreeIndex {
         *self.id_to_index.entry(id).or_insert_with(|| {
             let tree_index = TreeIndex(self.next);
             self.next += 1;
             self.index_to_id.insert(tree_index, id);
             tree_index
         })
+    }
+
+    fn get_index(&self, id: TreeId) -> Option<TreeIndex> {
+        self.id_to_index.get(&id).copied()
     }
 
     fn get_id(&self, index: TreeIndex) -> Option<TreeId> {
@@ -110,7 +114,7 @@ impl State {
         is_host_focused: bool,
         mut changes: Option<&mut InternalChanges>,
     ) {
-        let tree_index = self.tree_index_map.get_index(update.tree_id);
+        let tree_index = self.tree_index_map.get_or_create_index(update.tree_id);
         let map_id = |id: LocalNodeId| NodeId::new(id, tree_index);
 
         let mut unreachable = HashSet::new();
@@ -509,6 +513,15 @@ impl State {
         })
     }
 
+    pub fn node_by_tree_local_id(
+        &self,
+        local_node_id: LocalNodeId,
+        tree_id: TreeId,
+    ) -> Option<Node<'_>> {
+        let tree_index = self.tree_index_map.get_index(tree_id)?;
+        self.node_by_id(NodeId::new(local_node_id, tree_index))
+    }
+
     pub fn root_id(&self) -> NodeId {
         self.root
     }
@@ -599,7 +612,7 @@ impl Tree {
             panic!("Cannot initialize with a subtree. TreeUpdate::tree_id must be TreeId::ROOT.");
         }
         let mut tree_index_map = TreeIndexMap::default();
-        let tree_index = tree_index_map.get_index(initial_state.tree_id);
+        let tree_index = tree_index_map.get_or_create_index(initial_state.tree_id);
         let mut state = State {
             nodes: HashMap::new(),
             root: NodeId::new(tree.root, tree_index),
@@ -761,9 +774,9 @@ mod tests {
         let id2 = TreeId(Uuid::from_u128(1));
         let id3 = TreeId(Uuid::from_u128(2));
 
-        let index1 = map.get_index(id1);
-        let index2 = map.get_index(id2);
-        let index3 = map.get_index(id3);
+        let index1 = map.get_or_create_index(id1);
+        let index2 = map.get_or_create_index(id2);
+        let index3 = map.get_or_create_index(id3);
 
         assert_eq!(index1, TreeIndex(0));
         assert_eq!(index2, TreeIndex(1));
@@ -775,8 +788,8 @@ mod tests {
         let mut map = TreeIndexMap::default();
         let id = TreeId::ROOT;
 
-        let index1 = map.get_index(id);
-        let index2 = map.get_index(id);
+        let index1 = map.get_or_create_index(id);
+        let index2 = map.get_or_create_index(id);
 
         assert_eq!(index1, index2);
     }
@@ -787,8 +800,8 @@ mod tests {
         let id1 = TreeId::ROOT;
         let id2 = TreeId(Uuid::from_u128(1));
 
-        let index1 = map.get_index(id1);
-        let index2 = map.get_index(id2);
+        let index1 = map.get_or_create_index(id1);
+        let index2 = map.get_or_create_index(id2);
 
         assert_eq!(map.get_id(index1), Some(id1));
         assert_eq!(map.get_id(index2), Some(id2));
@@ -799,6 +812,38 @@ mod tests {
         let map = TreeIndexMap::default();
         assert_eq!(map.get_id(TreeIndex(0)), None);
         assert_eq!(map.get_id(TreeIndex(999)), None);
+    }
+
+    #[test]
+    fn tree_index_map_get_index_returns_existing_index() {
+        let mut map = TreeIndexMap::default();
+        let id1 = TreeId::ROOT;
+        let id2 = TreeId(Uuid::from_u128(1));
+
+        let created1 = map.get_or_create_index(id1);
+        let created2 = map.get_or_create_index(id2);
+
+        assert_eq!(map.get_index(id1), Some(created1));
+        assert_eq!(map.get_index(id2), Some(created2));
+    }
+
+    #[test]
+    fn tree_index_map_get_index_returns_none_for_unknown_id() {
+        let map = TreeIndexMap::default();
+        assert_eq!(map.get_index(TreeId::ROOT), None);
+        assert_eq!(map.get_index(TreeId(Uuid::from_u128(42))), None);
+    }
+
+    #[test]
+    fn tree_index_map_get_index_does_not_create_mapping() {
+        let mut map = TreeIndexMap::default();
+        let unknown = TreeId(Uuid::from_u128(7));
+
+        assert_eq!(map.get_index(unknown), None);
+
+        let first = map.get_or_create_index(TreeId::ROOT);
+        assert_eq!(first, TreeIndex(0));
+        assert_eq!(map.get_index(unknown), None);
     }
 
     #[test]
@@ -1560,6 +1605,128 @@ mod tests {
 
     fn subtree_node_id(id: u64) -> NodeId {
         NodeId::new(LocalNodeId(id), TreeIndex(1))
+    }
+
+    #[test]
+    fn node_by_tree_local_id_finds_root_tree_node() {
+        let update = TreeUpdate {
+            nodes: vec![
+                (LocalNodeId(0), {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![LocalNodeId(1)]);
+                    node
+                }),
+                (LocalNodeId(1), Node::new(Role::Button)),
+            ],
+            tree: Some(Tree::new(LocalNodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: LocalNodeId(0),
+        };
+        let tree = super::Tree::new(update, false);
+
+        let root = tree
+            .state()
+            .node_by_tree_local_id(LocalNodeId(0), TreeId::ROOT)
+            .unwrap();
+        assert_eq!(root.id(), node_id(0));
+        assert_eq!(root.role(), Role::Window);
+
+        let child = tree
+            .state()
+            .node_by_tree_local_id(LocalNodeId(1), TreeId::ROOT)
+            .unwrap();
+        assert_eq!(child.id(), node_id(1));
+        assert_eq!(child.role(), Role::Button);
+    }
+
+    #[test]
+    fn node_by_tree_local_id_finds_subtree_node() {
+        let update = TreeUpdate {
+            nodes: vec![
+                (LocalNodeId(0), {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![LocalNodeId(1)]);
+                    node
+                }),
+                (LocalNodeId(1), {
+                    let mut node = Node::new(Role::GenericContainer);
+                    node.set_tree_id(subtree_id());
+                    node
+                }),
+            ],
+            tree: Some(Tree::new(LocalNodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: LocalNodeId(0),
+        };
+        let mut tree = super::Tree::new(update, false);
+
+        let subtree_update = TreeUpdate {
+            nodes: vec![
+                (LocalNodeId(0), {
+                    let mut node = Node::new(Role::Document);
+                    node.set_children(vec![LocalNodeId(1)]);
+                    node
+                }),
+                (LocalNodeId(1), Node::new(Role::Paragraph)),
+            ],
+            tree: Some(Tree::new(LocalNodeId(0))),
+            tree_id: subtree_id(),
+            focus: LocalNodeId(0),
+        };
+        tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
+
+        let sub_root = tree
+            .state()
+            .node_by_tree_local_id(LocalNodeId(0), subtree_id())
+            .unwrap();
+        assert_eq!(sub_root.id(), subtree_node_id(0));
+        assert_eq!(sub_root.role(), Role::Document);
+
+        let sub_child = tree
+            .state()
+            .node_by_tree_local_id(LocalNodeId(1), subtree_id())
+            .unwrap();
+        assert_eq!(sub_child.id(), subtree_node_id(1));
+        assert_eq!(sub_child.role(), Role::Paragraph);
+
+        let graft = tree
+            .state()
+            .node_by_tree_local_id(LocalNodeId(1), TreeId::ROOT)
+            .unwrap();
+        assert_eq!(graft.id(), node_id(1));
+        assert_eq!(graft.role(), Role::GenericContainer);
+    }
+
+    #[test]
+    fn node_by_tree_local_id_returns_none_for_unknown_tree_id() {
+        let update = TreeUpdate {
+            nodes: vec![(LocalNodeId(0), Node::new(Role::Window))],
+            tree: Some(Tree::new(LocalNodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: LocalNodeId(0),
+        };
+        let tree = super::Tree::new(update, false);
+
+        assert!(tree
+            .state()
+            .node_by_tree_local_id(LocalNodeId(0), subtree_id())
+            .is_none());
+    }
+
+    #[test]
+    fn node_by_tree_local_id_returns_none_for_unknown_local_id() {
+        let update = TreeUpdate {
+            nodes: vec![(LocalNodeId(0), Node::new(Role::Window))],
+            tree: Some(Tree::new(LocalNodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: LocalNodeId(0),
+        };
+        let tree = super::Tree::new(update, false);
+
+        assert!(tree
+            .state()
+            .node_by_tree_local_id(LocalNodeId(999), TreeId::ROOT)
+            .is_none());
     }
 
     #[test]
