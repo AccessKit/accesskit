@@ -4,10 +4,13 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    Action, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Role, Tree, TreeId,
-    TreeUpdate,
+    Action, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Role, TextDirection,
+    TextPosition, TextSelection, Tree, TreeId, TreeUpdate,
 };
-use windows::{core::*, Win32::UI::Accessibility::*};
+use windows::{
+    core::*,
+    Win32::{System::Variant::VARIANT, UI::Accessibility::*},
+};
 
 use super::*;
 
@@ -195,4 +198,137 @@ fn focus() -> Result<()> {
 
         Ok(())
     })
+}
+
+const TEXT_INPUT_ID: NodeId = NodeId(10);
+const TEXT_RUN_0_ID: NodeId = NodeId(20);
+const TEXT_RUN_1_ID: NodeId = NodeId(21);
+
+fn make_text_run(value: &str, character_lengths: &[u8], word_starts: &[u8]) -> Node {
+    let mut node = Node::new(Role::TextRun);
+    node.set_value(value);
+    node.set_character_lengths(character_lengths.to_vec().into_boxed_slice());
+    node.set_character_widths(vec![7.0; character_lengths.len()].into_boxed_slice());
+    node.set_character_positions(
+        (0..character_lengths.len())
+            .map(|i| i as f32 * 7.0)
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
+    );
+    node.set_word_starts(word_starts.to_vec().into_boxed_slice());
+    node.set_text_direction(TextDirection::LeftToRight);
+    node
+}
+
+fn two_line_text_tree() -> TreeUpdate {
+    let mut root = Node::new(Role::Window);
+    root.set_children(vec![TEXT_INPUT_ID]);
+
+    let mut text_input = Node::new(Role::TextInput);
+    text_input.add_action(Action::Focus);
+    text_input.set_children(vec![TEXT_RUN_0_ID, TEXT_RUN_1_ID]);
+    text_input.set_text_selection(TextSelection {
+        anchor: TextPosition {
+            node: TEXT_RUN_1_ID,
+            character_index: 6,
+        },
+        focus: TextPosition {
+            node: TEXT_RUN_1_ID,
+            character_index: 6,
+        },
+    });
+
+    let run_0 = make_text_run("Hello ", &[1; 6], &[0]);
+    let run_1 = make_text_run("world!", &[1; 6], &[0]);
+
+    TreeUpdate {
+        nodes: vec![
+            (WINDOW_ID, root),
+            (TEXT_INPUT_ID, text_input),
+            (TEXT_RUN_0_ID, run_0),
+            (TEXT_RUN_1_ID, run_1),
+        ],
+        tree: Some(Tree::new(WINDOW_ID)),
+        tree_id: TreeId::ROOT,
+        focus: TEXT_INPUT_ID,
+    }
+}
+
+fn one_line_text_update() -> TreeUpdate {
+    let mut text_input = Node::new(Role::TextInput);
+    text_input.add_action(Action::Focus);
+    text_input.set_children(vec![TEXT_RUN_0_ID]);
+    text_input.set_text_selection(TextSelection {
+        anchor: TextPosition {
+            node: TEXT_RUN_0_ID,
+            character_index: 11,
+        },
+        focus: TextPosition {
+            node: TEXT_RUN_0_ID,
+            character_index: 11,
+        },
+    });
+
+    let run_0 = make_text_run("Hello world", &[1; 11], &[0, 6]);
+
+    TreeUpdate {
+        nodes: vec![(TEXT_INPUT_ID, text_input), (TEXT_RUN_0_ID, run_0)],
+        tree: None,
+        tree_id: TreeId::ROOT,
+        focus: TEXT_INPUT_ID,
+    }
+}
+
+struct TextActivationHandler;
+
+impl ActivationHandler for TextActivationHandler {
+    fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
+        Some(two_line_text_tree())
+    }
+}
+
+#[test]
+fn compare_endpoints_after_text_run_removed() -> Result<()> {
+    super::scope(
+        "Text reflow test",
+        TextActivationHandler {},
+        NullActionHandler {},
+        |s| {
+            s.show_and_focus_window();
+
+            let root = unsafe { s.uia.ElementFromHandle(s.window.0) }?;
+            let condition = unsafe {
+                s.uia.CreatePropertyCondition(
+                    UIA_ControlTypePropertyId,
+                    &VARIANT::from(UIA_EditControlTypeId.0),
+                )
+            }?;
+            let text_element = unsafe { root.FindFirst(TreeScope_Descendants, &condition) }?;
+
+            let pattern: IUIAutomationTextPattern =
+                unsafe { text_element.GetCurrentPatternAs(UIA_TextPatternId) }?;
+            let selection = unsafe { pattern.GetSelection() }?;
+            let old_range: IUIAutomationTextRange = unsafe { selection.GetElement(0) }?;
+
+            s.update_tree(one_line_text_update());
+
+            let new_selection = unsafe { pattern.GetSelection() }?;
+            let new_range: IUIAutomationTextRange = unsafe { new_selection.GetElement(0) }?;
+
+            let result = unsafe {
+                new_range.CompareEndpoints(
+                    TextPatternRangeEndpoint_Start,
+                    &old_range,
+                    TextPatternRangeEndpoint_Start,
+                )
+            };
+            assert!(
+                result.is_ok(),
+                "CompareEndpoints failed after text run removal: {:?}",
+                result.err()
+            );
+
+            Ok(())
+        },
+    )
 }

@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, ActivationHandler};
+use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
 use once_cell::sync::Lazy;
 use std::{
     cell::RefCell,
@@ -30,6 +30,8 @@ use super::{
 };
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
+
+const WM_TEST_UPDATE_TREE: u32 = WM_APP;
 
 static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
     let class_name = w!("AccessKitTest");
@@ -129,6 +131,15 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             update_window_focus_state(window, false);
             LRESULT(0)
         }
+        WM_TEST_UPDATE_TREE => {
+            let update = unsafe { Box::from_raw(lparam.0 as *mut TreeUpdate) };
+            let state = unsafe { &*get_window_state(window) };
+            let events = state.adapter.borrow_mut().update_if_active(|| *update);
+            if let Some(events) = events {
+                events.raise();
+            }
+            LRESULT(0)
+        }
         _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
     }
 }
@@ -176,6 +187,18 @@ impl Scope {
     pub(crate) fn show_and_focus_window(&self) {
         let _ = unsafe { ShowWindow(self.window.0, SW_SHOW) };
         let _ = unsafe { SetForegroundWindow(self.window.0) };
+    }
+
+    pub(crate) fn update_tree(&self, update: TreeUpdate) {
+        let boxed = Box::new(update);
+        unsafe {
+            SendMessageW(
+                self.window.0,
+                WM_TEST_UPDATE_TREE,
+                Some(WPARAM(0)),
+                Some(LPARAM(Box::into_raw(boxed) as _)),
+            )
+        };
     }
 }
 

@@ -24,25 +24,6 @@ impl<'a> InnerPosition<'a> {
         if node.role() != Role::TextRun {
             return None;
         }
-        let character_index = weak.character_index;
-        if character_index > node.data().character_lengths().len() {
-            return None;
-        }
-        Some(Self {
-            node,
-            character_index,
-        })
-    }
-
-    fn clamped_upgrade(
-        tree_state: &'a TreeState,
-        weak: WeakPosition,
-        node_id: NodeId,
-    ) -> Option<Self> {
-        let node = tree_state.node_by_id(node_id.with_same_tree(weak.node))?;
-        if node.role() != Role::TextRun {
-            return None;
-        }
         let character_index = weak
             .character_index
             .min(node.data().character_lengths().len());
@@ -1450,10 +1431,8 @@ impl<'a> Node<'a> {
     pub fn text_selection(&self) -> Option<Range<'_>> {
         let id = self.id;
         self.data().text_selection().map(|selection| {
-            let anchor =
-                InnerPosition::clamped_upgrade(self.tree_state, selection.anchor, id).unwrap();
-            let focus =
-                InnerPosition::clamped_upgrade(self.tree_state, selection.focus, id).unwrap();
+            let anchor = InnerPosition::upgrade(self.tree_state, selection.anchor, id).unwrap();
+            let focus = InnerPosition::upgrade(self.tree_state, selection.focus, id).unwrap();
             Range::new(*self, anchor, focus)
         })
     }
@@ -1461,8 +1440,7 @@ impl<'a> Node<'a> {
     pub fn text_selection_anchor(&self) -> Option<Position<'_>> {
         let id = self.id;
         self.data().text_selection().map(|selection| {
-            let anchor =
-                InnerPosition::clamped_upgrade(self.tree_state, selection.anchor, id).unwrap();
+            let anchor = InnerPosition::upgrade(self.tree_state, selection.anchor, id).unwrap();
             Position {
                 root_node: *self,
                 inner: anchor,
@@ -1473,8 +1451,7 @@ impl<'a> Node<'a> {
     pub fn text_selection_focus(&self) -> Option<Position<'_>> {
         let id = self.id;
         self.data().text_selection().map(|selection| {
-            let focus =
-                InnerPosition::clamped_upgrade(self.tree_state, selection.focus, id).unwrap();
+            let focus = InnerPosition::upgrade(self.tree_state, selection.focus, id).unwrap();
             Position {
                 root_node: *self,
                 inner: focus,
@@ -1926,21 +1903,6 @@ mod tests {
             focus: TextPosition {
                 node: NodeId(9),
                 character_index: 0,
-            },
-        }
-    }
-
-    fn multiline_past_end_selection() -> TextSelection {
-        use accesskit::TextPosition;
-
-        TextSelection {
-            anchor: TextPosition {
-                node: NodeId(9),
-                character_index: 3,
-            },
-            focus: TextPosition {
-                node: NodeId(9),
-                character_index: 3,
             },
         }
     }
@@ -2800,14 +2762,6 @@ mod tests {
         }
 
         assert!(node.text_position_from_global_utf16_index(100).is_none());
-    }
-
-    #[test]
-    fn multiline_selection_clamping() {
-        let tree = main_multiline_tree(Some(multiline_past_end_selection()));
-        let state = tree.state();
-        let node = state.node_by_id(nid(NodeId(1))).unwrap();
-        let _ = node.text_selection().unwrap();
     }
 
     #[test]
