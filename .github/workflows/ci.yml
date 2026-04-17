@@ -38,6 +38,7 @@ jobs:
       matrix:
         include:
           - target: aarch64-apple-darwin
+          - target: aarch64-apple-ios
           - target: aarch64-linux-android
           - target: i686-pc-windows-gnu
           - target: i686-pc-windows-msvc
@@ -76,6 +77,10 @@ jobs:
           - os: ubuntu-latest
             name: Android
             adapters: "-p accesskit_android"
+          - os: macOS-latest
+            name: iOS Simulator
+            target: "aarch64-apple-ios-sim"
+            adapters: "-p accesskit_ios"
     name: cargo clippy (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v6
@@ -84,15 +89,16 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+          targets: ${{ matrix.target }}
 
       - name: restore cache
         uses: Swatinem/rust-cache@v2
 
       - name: cargo clippy (common packages)
-        run: cargo clippy -p accesskit -p accesskit_consumer -p accesskit_winit --all-targets -- -D warnings
+        run: cargo clippy -p accesskit -p accesskit_consumer -p accesskit_winit ${{ matrix.target && format('--target {0}', matrix.target) }} --all-targets -- -D warnings
 
       - name: cargo clippy (adapters)
-        run: cargo clippy ${{ matrix.adapters }} --all-targets -- -D warnings
+        run: cargo clippy ${{ matrix.adapters }} ${{ matrix.target && format('--target {0}', matrix.target) }} --all-targets -- -D warnings
 
       - name: cargo clippy (extra adapters)
         if: ${{ matrix.extra_adapter_clippy }}
@@ -126,6 +132,10 @@ jobs:
           - os: ubuntu-latest
             name: Android
             adapters: "-p accesskit_android"
+          - os: macOS-latest
+            name: iOS Simulator
+            target: "aarch64-apple-ios-sim"
+            adapters: "-p accesskit_ios"
     name: cargo test (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v6
@@ -134,15 +144,16 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ needs.find-msrv.outputs.version }}
+          targets: ${{ matrix.target }}
 
       - name: restore cache
         uses: Swatinem/rust-cache@v2
 
       - name: cargo test (common packages)
-        run: cargo test -p accesskit -p accesskit_consumer -p accesskit_winit
+        run: cargo test -p accesskit -p accesskit_consumer -p accesskit_winit ${{ matrix.target && format('--target {0}', matrix.target) }}
 
       - name: cargo test (adapters)
-        run: cargo test ${{ matrix.adapters }}
+        run: cargo test ${{ matrix.adapters }} ${{ matrix.target && format('--target {0}', matrix.target) }}
 
   check-android-dex:
     runs-on: ubuntu-latest
