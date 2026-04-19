@@ -10,7 +10,7 @@ use accesskit::{
 use alloc::{string::String, vec::Vec};
 use core::{cmp::Ordering, fmt, iter::FusedIterator};
 
-use crate::{node::NodeId, FilterResult, Node, TreeState};
+use crate::{FilterResult, Node, TreeState, node::NodeId};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct InnerPosition<'a> {
@@ -978,7 +978,7 @@ fn character_index_at_point(node: &Node, point: Point) -> usize {
 }
 
 macro_rules! inherited_properties {
-    ($(($getter:ident, $type:ty, $setter:ident, $test_value_1:expr, $test_value_2:expr)),+) => {
+    ($(($getter:ident, $type:ty, $setter:ident, $test_value_1:expr_2021, $test_value_2:expr_2021)),+) => {
         impl<'a> Node<'a> {
             $(pub fn $getter(&self) -> Option<$type> {
                 self.fetch_inherited_property(NodeData::$getter)
@@ -1380,7 +1380,8 @@ impl<'a> Node<'a> {
 
     pub(crate) fn text_runs(
         &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a + use<'a>
+    {
         let id = self.id();
         self.filtered_children(move |node| text_node_filter(id, node))
     }
@@ -1388,7 +1389,8 @@ impl<'a> Node<'a> {
     fn following_text_runs(
         &self,
         root_node: &Node,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a + use<'a>
+    {
         let id = root_node.id();
         self.following_filtered_siblings(move |node| text_node_filter(id, node))
     }
@@ -1396,7 +1398,8 @@ impl<'a> Node<'a> {
     fn preceding_text_runs(
         &self,
         root_node: &Node,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a + use<'a>
+    {
         let id = root_node.id();
         self.preceding_filtered_siblings(move |node| text_node_filter(id, node))
     }
@@ -1994,14 +1997,18 @@ mod tests {
     fn supports_text_ranges() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        assert!(!state
-            .node_by_id(nid(NodeId(0)))
-            .unwrap()
-            .supports_text_ranges());
-        assert!(state
-            .node_by_id(nid(NodeId(1)))
-            .unwrap()
-            .supports_text_ranges());
+        assert!(
+            !state
+                .node_by_id(nid(NodeId(0)))
+                .unwrap()
+                .supports_text_ranges()
+        );
+        assert!(
+            state
+                .node_by_id(nid(NodeId(1)))
+                .unwrap()
+                .supports_text_ranges()
+        );
     }
 
     #[test]
@@ -2025,7 +2032,10 @@ mod tests {
         assert!(end.is_paragraph_start());
         assert!(!end.is_document_start());
         assert!(end.is_document_end());
-        assert_eq!(range.text(), "This paragraph is\u{a0}long enough to wrap to another line.\nAnother paragraph.\n\nLast non-blank line\u{1f44d}\u{1f3fb}\n");
+        assert_eq!(
+            range.text(),
+            "This paragraph is\u{a0}long enough to wrap to another line.\nAnother paragraph.\n\nLast non-blank line\u{1f44d}\u{1f3fb}\n"
+        );
         assert_eq!(
             range.bounding_boxes(),
             vec![
@@ -2364,9 +2374,11 @@ mod tests {
                 },
             ]
         );
-        assert!(paragraph_start
-            .forward_to_paragraph_start()
-            .is_paragraph_start());
+        assert!(
+            paragraph_start
+                .forward_to_paragraph_start()
+                .is_paragraph_start()
+        );
     }
 
     #[test]

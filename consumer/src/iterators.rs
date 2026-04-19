@@ -266,25 +266,30 @@ fn next_filtered_sibling<'a>(
                 return next;
             }
             consider_children = result == FilterResult::ExcludeNode;
-        } else if let Some(sibling) = current.following_siblings().next() {
-            let result = filter(&sibling);
-            next = Some(sibling);
-            if result == FilterResult::Include {
-                return next;
-            }
-            if result == FilterResult::ExcludeNode {
-                consider_children = true;
-            }
         } else {
-            let parent = current.parent();
-            next = parent;
-            if let Some(parent) = parent {
-                if filter(&parent) != FilterResult::ExcludeNode {
-                    return None;
+            match current.following_siblings().next() {
+                Some(sibling) => {
+                    let result = filter(&sibling);
+                    next = Some(sibling);
+                    if result == FilterResult::Include {
+                        return next;
+                    }
+                    if result == FilterResult::ExcludeNode {
+                        consider_children = true;
+                    }
                 }
-                consider_children = false;
-            } else {
-                return None;
+                _ => {
+                    let parent = current.parent();
+                    next = parent;
+                    if let Some(parent) = parent {
+                        if filter(&parent) != FilterResult::ExcludeNode {
+                            return None;
+                        }
+                        consider_children = false;
+                    } else {
+                        return None;
+                    }
+                }
             }
         }
     }
@@ -305,25 +310,30 @@ fn previous_filtered_sibling<'a>(
                 return previous;
             }
             consider_children = result == FilterResult::ExcludeNode;
-        } else if let Some(sibling) = current.preceding_siblings().next() {
-            let result = filter(&sibling);
-            previous = Some(sibling);
-            if result == FilterResult::Include {
-                return previous;
-            }
-            if result == FilterResult::ExcludeNode {
-                consider_children = true;
-            }
         } else {
-            let parent = current.parent();
-            previous = parent;
-            if let Some(parent) = parent {
-                if filter(&parent) != FilterResult::ExcludeNode {
-                    return None;
+            match current.preceding_siblings().next() {
+                Some(sibling) => {
+                    let result = filter(&sibling);
+                    previous = Some(sibling);
+                    if result == FilterResult::Include {
+                        return previous;
+                    }
+                    if result == FilterResult::ExcludeNode {
+                        consider_children = true;
+                    }
                 }
-                consider_children = false;
-            } else {
-                return None;
+                _ => {
+                    let parent = current.parent();
+                    previous = parent;
+                    if let Some(parent) = parent {
+                        if filter(&parent) != FilterResult::ExcludeNode {
+                            return None;
+                        }
+                        consider_children = false;
+                    } else {
+                        return None;
+                    }
+                }
             }
         }
     }
@@ -583,10 +593,10 @@ impl<Filter: Fn(&Node) -> FilterResult> FusedIterator for LabelledBy<'_, Filter>
 #[cfg(test)]
 mod tests {
     use crate::{
+        NodeId,
         filters::common_filter,
         tests::*,
         tree::{ChangeHandler, TreeIndex},
-        NodeId,
     };
     use accesskit::{Node, NodeId as LocalNodeId, Role, Tree, TreeId, TreeUpdate, Uuid};
     use alloc::{vec, vec::Vec};
@@ -617,13 +627,14 @@ mod tests {
                 .following_siblings()
                 .len()
         );
-        assert!(tree
-            .state()
-            .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
-            .unwrap()
-            .following_siblings()
-            .next()
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
+                .unwrap()
+                .following_siblings()
+                .next()
+                .is_none()
+        );
         assert_eq!(
             0,
             tree.state()
@@ -637,12 +648,13 @@ mod tests {
     #[test]
     fn following_siblings_reversed() {
         let tree = test_tree();
-        assert!(tree
-            .state()
-            .root()
-            .following_siblings()
-            .next_back()
-            .is_none());
+        assert!(
+            tree.state()
+                .root()
+                .following_siblings()
+                .next_back()
+                .is_none()
+        );
         assert_eq!(
             [
                 PARAGRAPH_3_IGNORED_ID,
@@ -657,13 +669,14 @@ mod tests {
                 .map(|id| id.to_components().0)
                 .collect::<Vec<LocalNodeId>>()[..]
         );
-        assert!(tree
-            .state()
-            .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
-            .unwrap()
-            .following_siblings()
-            .next_back()
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
+                .unwrap()
+                .following_siblings()
+                .next_back()
+                .is_none()
+        );
     }
 
     #[test]
@@ -688,13 +701,14 @@ mod tests {
                 .preceding_siblings()
                 .len()
         );
-        assert!(tree
-            .state()
-            .node_by_id(nid(PARAGRAPH_0_ID))
-            .unwrap()
-            .preceding_siblings()
-            .next()
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_0_ID))
+                .unwrap()
+                .preceding_siblings()
+                .next()
+                .is_none()
+        );
         assert_eq!(
             0,
             tree.state()
@@ -708,12 +722,13 @@ mod tests {
     #[test]
     fn preceding_siblings_reversed() {
         let tree = test_tree();
-        assert!(tree
-            .state()
-            .root()
-            .preceding_siblings()
-            .next_back()
-            .is_none());
+        assert!(
+            tree.state()
+                .root()
+                .preceding_siblings()
+                .next_back()
+                .is_none()
+        );
         assert_eq!(
             [PARAGRAPH_0_ID, PARAGRAPH_1_IGNORED_ID, PARAGRAPH_2_ID],
             tree.state()
@@ -724,24 +739,26 @@ mod tests {
                 .map(|id| id.to_components().0)
                 .collect::<Vec<LocalNodeId>>()[..]
         );
-        assert!(tree
-            .state()
-            .node_by_id(nid(PARAGRAPH_0_ID))
-            .unwrap()
-            .preceding_siblings()
-            .next_back()
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_0_ID))
+                .unwrap()
+                .preceding_siblings()
+                .next_back()
+                .is_none()
+        );
     }
 
     #[test]
     fn following_filtered_siblings() {
         let tree = test_tree();
-        assert!(tree
-            .state()
-            .root()
-            .following_filtered_siblings(test_tree_filter)
-            .next()
-            .is_none());
+        assert!(
+            tree.state()
+                .root()
+                .following_filtered_siblings(test_tree_filter)
+                .next()
+                .is_none()
+        );
         assert_eq!(
             [LABEL_1_1_ID, PARAGRAPH_2_ID, LABEL_3_1_0_ID, BUTTON_3_2_ID],
             tree.state()
@@ -760,24 +777,26 @@ mod tests {
                 .map(|node| node.id().to_components().0)
                 .collect::<Vec<LocalNodeId>>()[..]
         );
-        assert!(tree
-            .state()
-            .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
-            .unwrap()
-            .following_filtered_siblings(test_tree_filter)
-            .next()
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
+                .unwrap()
+                .following_filtered_siblings(test_tree_filter)
+                .next()
+                .is_none()
+        );
     }
 
     #[test]
     fn following_filtered_siblings_reversed() {
         let tree = test_tree();
-        assert!(tree
-            .state()
-            .root()
-            .following_filtered_siblings(test_tree_filter)
-            .next_back()
-            .is_none());
+        assert!(
+            tree.state()
+                .root()
+                .following_filtered_siblings(test_tree_filter)
+                .next_back()
+                .is_none()
+        );
         assert_eq!(
             [BUTTON_3_2_ID, LABEL_3_1_0_ID, PARAGRAPH_2_ID, LABEL_1_1_ID],
             tree.state()
@@ -798,24 +817,26 @@ mod tests {
                 .map(|node| node.id().to_components().0)
                 .collect::<Vec<LocalNodeId>>()[..]
         );
-        assert!(tree
-            .state()
-            .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
-            .unwrap()
-            .following_filtered_siblings(test_tree_filter)
-            .next_back()
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
+                .unwrap()
+                .following_filtered_siblings(test_tree_filter)
+                .next_back()
+                .is_none()
+        );
     }
 
     #[test]
     fn preceding_filtered_siblings() {
         let tree = test_tree();
-        assert!(tree
-            .state()
-            .root()
-            .preceding_filtered_siblings(test_tree_filter)
-            .next()
-            .is_none());
+        assert!(
+            tree.state()
+                .root()
+                .preceding_filtered_siblings(test_tree_filter)
+                .next()
+                .is_none()
+        );
         assert_eq!(
             [PARAGRAPH_2_ID, LABEL_1_1_ID, PARAGRAPH_0_ID],
             tree.state()
@@ -834,24 +855,26 @@ mod tests {
                 .map(|node| node.id().to_components().0)
                 .collect::<Vec<LocalNodeId>>()[..]
         );
-        assert!(tree
-            .state()
-            .node_by_id(nid(PARAGRAPH_0_ID))
-            .unwrap()
-            .preceding_filtered_siblings(test_tree_filter)
-            .next()
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_0_ID))
+                .unwrap()
+                .preceding_filtered_siblings(test_tree_filter)
+                .next()
+                .is_none()
+        );
     }
 
     #[test]
     fn preceding_filtered_siblings_reversed() {
         let tree = test_tree();
-        assert!(tree
-            .state()
-            .root()
-            .preceding_filtered_siblings(test_tree_filter)
-            .next_back()
-            .is_none());
+        assert!(
+            tree.state()
+                .root()
+                .preceding_filtered_siblings(test_tree_filter)
+                .next_back()
+                .is_none()
+        );
         assert_eq!(
             [PARAGRAPH_0_ID, LABEL_1_1_ID, PARAGRAPH_2_ID],
             tree.state()
@@ -872,13 +895,14 @@ mod tests {
                 .map(|node| node.id().to_components().0)
                 .collect::<Vec<LocalNodeId>>()[..]
         );
-        assert!(tree
-            .state()
-            .node_by_id(nid(PARAGRAPH_0_ID))
-            .unwrap()
-            .preceding_filtered_siblings(test_tree_filter)
-            .next_back()
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_0_ID))
+                .unwrap()
+                .preceding_filtered_siblings(test_tree_filter)
+                .next_back()
+                .is_none()
+        );
     }
 
     #[test]
@@ -898,20 +922,22 @@ mod tests {
                 .map(|node| node.id().to_components().0)
                 .collect::<Vec<LocalNodeId>>()[..]
         );
-        assert!(tree
-            .state()
-            .node_by_id(nid(PARAGRAPH_0_ID))
-            .unwrap()
-            .filtered_children(test_tree_filter)
-            .next()
-            .is_none());
-        assert!(tree
-            .state()
-            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
-            .unwrap()
-            .filtered_children(test_tree_filter)
-            .next()
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_0_ID))
+                .unwrap()
+                .filtered_children(test_tree_filter)
+                .next()
+                .is_none()
+        );
+        assert!(
+            tree.state()
+                .node_by_id(nid(LABEL_0_0_IGNORED_ID))
+                .unwrap()
+                .filtered_children(test_tree_filter)
+                .next()
+                .is_none()
+        );
     }
 
     #[test]
@@ -932,20 +958,22 @@ mod tests {
                 .map(|node| node.id().to_components().0)
                 .collect::<Vec<LocalNodeId>>()[..]
         );
-        assert!(tree
-            .state()
-            .node_by_id(nid(PARAGRAPH_0_ID))
-            .unwrap()
-            .filtered_children(test_tree_filter)
-            .next_back()
-            .is_none());
-        assert!(tree
-            .state()
-            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
-            .unwrap()
-            .filtered_children(test_tree_filter)
-            .next_back()
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_0_ID))
+                .unwrap()
+                .filtered_children(test_tree_filter)
+                .next_back()
+                .is_none()
+        );
+        assert!(
+            tree.state()
+                .node_by_id(nid(LABEL_0_0_IGNORED_ID))
+                .unwrap()
+                .filtered_children(test_tree_filter)
+                .next_back()
+                .is_none()
+        );
     }
 
     #[test]

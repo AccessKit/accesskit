@@ -6,7 +6,7 @@
 use accesskit::{ActionHandler, ActionRequest, Point};
 use accesskit_consumer::Tree;
 use std::fmt::{Debug, Formatter};
-use std::sync::{atomic::AtomicBool, Arc, Mutex, RwLock, RwLockReadGuard};
+use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, atomic::AtomicBool};
 
 use crate::{util::*, window_handle::WindowHandle};
 

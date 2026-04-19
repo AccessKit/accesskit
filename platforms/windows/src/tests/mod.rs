@@ -13,20 +13,20 @@ use std::{
 };
 use windows as Windows;
 use windows::{
-    core::*,
     Win32::{
         Foundation::*,
         Graphics::Gdi::ValidateRect,
         System::{Com::*, LibraryLoader::GetModuleHandleW},
         UI::{Accessibility::*, WindowsAndMessaging::*},
     },
+    core::*,
 };
 
 use crate::window_handle::WindowHandle;
 
 use super::{
-    context::{ActionHandlerNoMut, ActionHandlerWrapper},
     Adapter,
+    context::{ActionHandlerNoMut, ActionHandlerWrapper},
 };
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
@@ -56,13 +56,14 @@ struct WindowState {
 }
 
 unsafe fn get_window_state(window: HWND) -> *const WindowState {
-    GetWindowLongPtrW(window, GWLP_USERDATA) as _
+    unsafe { GetWindowLongPtrW(window, GWLP_USERDATA) as _ }
 }
 
 fn update_window_focus_state(window: HWND, is_focused: bool) {
     let state = unsafe { &*get_window_state(window) };
     let mut adapter = state.adapter.borrow_mut();
     if let Some(events) = adapter.update_window_focus_state(is_focused) {
+        drop(adapter);
         events.raise();
     }
 }

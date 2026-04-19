@@ -11,11 +11,11 @@ use accesskit_consumer::{
 };
 use std::sync::{Arc, RwLock, Weak};
 use windows::{
-    core::*,
     Win32::{
         System::{Com::*, Variant::*},
         UI::Accessibility::*,
     },
+    core::*,
 };
 
 use crate::{context::Context, node::PlatformNode, util::*};

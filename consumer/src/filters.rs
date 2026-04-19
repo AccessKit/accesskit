@@ -104,8 +104,8 @@ mod tests {
     use alloc::vec;
 
     use super::{
-        common_filter, common_filter_with_root_exception,
         FilterResult::{self, *},
+        common_filter, common_filter_with_root_exception,
     };
     use crate::tests::nid;
 

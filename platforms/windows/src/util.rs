@@ -11,7 +11,6 @@ use std::{
     sync::{Arc, Weak},
 };
 use windows::{
-    core::*,
     Win32::{
         Foundation::*,
         Globalization::*,
@@ -19,6 +18,7 @@ use windows::{
         System::{Com::*, Ole::*, Variant::*},
         UI::{Accessibility::*, WindowsAndMessaging::*},
     },
+    core::*,
 };
 
 use crate::window_handle::WindowHandle;
@@ -351,10 +351,9 @@ pub(crate) fn toolkit_description(state: &TreeState) -> Option<WideString> {
 }
 
 pub(crate) fn upgrade<T>(weak: &Weak<T>) -> Result<Arc<T>> {
-    if let Some(strong) = weak.upgrade() {
-        Ok(strong)
-    } else {
-        Err(element_not_available())
+    match weak.upgrade() {
+        Some(strong) => Ok(strong),
+        _ => Err(element_not_available()),
     }
 }
 

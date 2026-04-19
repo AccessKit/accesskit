@@ -44,8 +44,8 @@ impl NodeId {
 
 impl From<NodeId> for u128 {
     fn from(id: NodeId) -> Self {
-        let tree_index = id.0 .0 as u128;
-        let local_id = id.1 .0 as u128;
+        let tree_index = id.0.0 as u128;
+        let local_id = id.1.0 as u128;
         (local_id << 64) | tree_index
     }
 }
@@ -150,9 +150,10 @@ impl<'a> Node<'a> {
     pub fn child_ids(
         &self,
     ) -> impl DoubleEndedIterator<Item = NodeId>
-           + ExactSizeIterator<Item = NodeId>
-           + FusedIterator<Item = NodeId>
-           + 'a {
+    + ExactSizeIterator<Item = NodeId>
+    + FusedIterator<Item = NodeId>
+    + 'a
+    + use<'a> {
         if self.is_graft() {
             ChildIds::Graft(self.graft_child_id())
         } else {
@@ -166,72 +167,80 @@ impl<'a> Node<'a> {
     pub fn children(
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>>
-           + ExactSizeIterator<Item = Node<'a>>
-           + FusedIterator<Item = Node<'a>>
-           + 'a {
+    + ExactSizeIterator<Item = Node<'a>>
+    + FusedIterator<Item = Node<'a>>
+    + 'a
+    + use<'a> {
         let state = self.tree_state;
         self.child_ids()
             .map(move |id| state.node_by_id(id).unwrap())
     }
 
-    pub fn filtered_children(
+    pub fn filtered_children<F: Fn(&Node) -> FilterResult + 'a>(
         &self,
-        filter: impl Fn(&Node) -> FilterResult + 'a,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+        filter: F,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + use<'a, F>
+    {
         FilteredChildren::new(*self, filter)
     }
 
     pub fn following_sibling_ids(
         &self,
     ) -> impl DoubleEndedIterator<Item = NodeId>
-           + ExactSizeIterator<Item = NodeId>
-           + FusedIterator<Item = NodeId>
-           + 'a {
+    + ExactSizeIterator<Item = NodeId>
+    + FusedIterator<Item = NodeId>
+    + 'a
+    + use<'a> {
         FollowingSiblings::new(*self)
     }
 
     pub fn following_siblings(
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>>
-           + ExactSizeIterator<Item = Node<'a>>
-           + FusedIterator<Item = Node<'a>>
-           + 'a {
+    + ExactSizeIterator<Item = Node<'a>>
+    + FusedIterator<Item = Node<'a>>
+    + 'a
+    + use<'a> {
         let state = self.tree_state;
         self.following_sibling_ids()
             .map(move |id| state.node_by_id(id).unwrap())
     }
 
-    pub fn following_filtered_siblings(
+    pub fn following_filtered_siblings<F: Fn(&Node) -> FilterResult + 'a>(
         &self,
-        filter: impl Fn(&Node) -> FilterResult + 'a,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+        filter: F,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + use<'a, F>
+    {
         FollowingFilteredSiblings::new(*self, filter)
     }
 
     pub fn preceding_sibling_ids(
         &self,
     ) -> impl DoubleEndedIterator<Item = NodeId>
-           + ExactSizeIterator<Item = NodeId>
-           + FusedIterator<Item = NodeId>
-           + 'a {
+    + ExactSizeIterator<Item = NodeId>
+    + FusedIterator<Item = NodeId>
+    + 'a
+    + use<'a> {
         PrecedingSiblings::new(*self)
     }
 
     pub fn preceding_siblings(
         &self,
     ) -> impl DoubleEndedIterator<Item = Node<'a>>
-           + ExactSizeIterator<Item = Node<'a>>
-           + FusedIterator<Item = Node<'a>>
-           + 'a {
+    + ExactSizeIterator<Item = Node<'a>>
+    + FusedIterator<Item = Node<'a>>
+    + 'a
+    + use<'a> {
         let state = self.tree_state;
         self.preceding_sibling_ids()
             .map(move |id| state.node_by_id(id).unwrap())
     }
 
-    pub fn preceding_filtered_siblings(
+    pub fn preceding_filtered_siblings<F: Fn(&Node) -> FilterResult + 'a>(
         &self,
-        filter: impl Fn(&Node) -> FilterResult + 'a,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+        filter: F,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + use<'a, F>
+    {
         PrecedingFilteredSiblings::new(*self, filter)
     }
 
@@ -697,7 +706,8 @@ fn descendant_label_filter(node: &Node) -> FilterResult {
 impl<'a> Node<'a> {
     pub fn labelled_by(
         &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a + use<'a>
+    {
         let explicit = &self.state.data.labelled_by();
         if explicit.is_empty()
             && matches!(
@@ -916,7 +926,8 @@ impl<'a> Node<'a> {
 
     pub fn controls(
         &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a + use<'a>
+    {
         let state = self.tree_state;
         let id = self.id;
         let data = &self.state.data;
@@ -1010,10 +1021,11 @@ impl<'a> Node<'a> {
         })
     }
 
-    pub fn items(
+    pub fn items<F: Fn(&Node) -> FilterResult + 'a>(
         &self,
-        filter: impl Fn(&Node) -> FilterResult + 'a,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+        filter: F,
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + use<'a, F>
+    {
         self.filtered_children(move |child| match filter(child) {
             FilterResult::Include if child.is_item_like() => FilterResult::Include,
             FilterResult::Include => FilterResult::ExcludeNode,
@@ -1113,12 +1125,13 @@ mod tests {
                 .to_components()
                 .0
         );
-        assert!(tree
-            .state()
-            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
-            .unwrap()
-            .deepest_first_child()
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_id(nid(LABEL_0_0_IGNORED_ID))
+                .unwrap()
+                .deepest_first_child()
+                .is_none()
+        );
     }
 
     #[test]
@@ -1135,11 +1148,12 @@ mod tests {
                 .to_components()
                 .0
         );
-        assert!(tree
-            .state()
-            .root()
-            .filtered_parent(&test_tree_filter)
-            .is_none());
+        assert!(
+            tree.state()
+                .root()
+                .filtered_parent(&test_tree_filter)
+                .is_none()
+        );
     }
 
     #[test]
@@ -1155,18 +1169,20 @@ mod tests {
                 .to_components()
                 .0
         );
-        assert!(tree
-            .state()
-            .node_by_id(nid(PARAGRAPH_0_ID))
-            .unwrap()
-            .deepest_first_filtered_child(&test_tree_filter)
-            .is_none());
-        assert!(tree
-            .state()
-            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
-            .unwrap()
-            .deepest_first_filtered_child(&test_tree_filter)
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_0_ID))
+                .unwrap()
+                .deepest_first_filtered_child(&test_tree_filter)
+                .is_none()
+        );
+        assert!(
+            tree.state()
+                .node_by_id(nid(LABEL_0_0_IGNORED_ID))
+                .unwrap()
+                .deepest_first_filtered_child(&test_tree_filter)
+                .is_none()
+        );
     }
 
     #[test]
@@ -1193,12 +1209,13 @@ mod tests {
                 .to_components()
                 .0
         );
-        assert!(tree
-            .state()
-            .node_by_id(nid(BUTTON_3_2_ID))
-            .unwrap()
-            .deepest_last_child()
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_id(nid(BUTTON_3_2_ID))
+                .unwrap()
+                .deepest_last_child()
+                .is_none()
+        );
     }
 
     #[test]
@@ -1225,59 +1242,70 @@ mod tests {
                 .to_components()
                 .0
         );
-        assert!(tree
-            .state()
-            .node_by_id(nid(BUTTON_3_2_ID))
-            .unwrap()
-            .deepest_last_filtered_child(&test_tree_filter)
-            .is_none());
-        assert!(tree
-            .state()
-            .node_by_id(nid(PARAGRAPH_0_ID))
-            .unwrap()
-            .deepest_last_filtered_child(&test_tree_filter)
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_id(nid(BUTTON_3_2_ID))
+                .unwrap()
+                .deepest_last_filtered_child(&test_tree_filter)
+                .is_none()
+        );
+        assert!(
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_0_ID))
+                .unwrap()
+                .deepest_last_filtered_child(&test_tree_filter)
+                .is_none()
+        );
     }
 
     #[test]
     fn is_descendant_of() {
         let tree = test_tree();
-        assert!(tree
-            .state()
-            .node_by_id(nid(PARAGRAPH_0_ID))
-            .unwrap()
-            .is_descendant_of(&tree.state().root()));
-        assert!(tree
-            .state()
-            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
-            .unwrap()
-            .is_descendant_of(&tree.state().root()));
-        assert!(tree
-            .state()
-            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
-            .unwrap()
-            .is_descendant_of(&tree.state().node_by_id(nid(PARAGRAPH_0_ID)).unwrap()));
-        assert!(!tree
-            .state()
-            .node_by_id(nid(LABEL_0_0_IGNORED_ID))
-            .unwrap()
-            .is_descendant_of(&tree.state().node_by_id(nid(PARAGRAPH_2_ID)).unwrap()));
-        assert!(!tree
-            .state()
-            .node_by_id(nid(PARAGRAPH_0_ID))
-            .unwrap()
-            .is_descendant_of(&tree.state().node_by_id(nid(PARAGRAPH_2_ID)).unwrap()));
+        assert!(
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_0_ID))
+                .unwrap()
+                .is_descendant_of(&tree.state().root())
+        );
+        assert!(
+            tree.state()
+                .node_by_id(nid(LABEL_0_0_IGNORED_ID))
+                .unwrap()
+                .is_descendant_of(&tree.state().root())
+        );
+        assert!(
+            tree.state()
+                .node_by_id(nid(LABEL_0_0_IGNORED_ID))
+                .unwrap()
+                .is_descendant_of(&tree.state().node_by_id(nid(PARAGRAPH_0_ID)).unwrap())
+        );
+        assert!(
+            !tree
+                .state()
+                .node_by_id(nid(LABEL_0_0_IGNORED_ID))
+                .unwrap()
+                .is_descendant_of(&tree.state().node_by_id(nid(PARAGRAPH_2_ID)).unwrap())
+        );
+        assert!(
+            !tree
+                .state()
+                .node_by_id(nid(PARAGRAPH_0_ID))
+                .unwrap()
+                .is_descendant_of(&tree.state().node_by_id(nid(PARAGRAPH_2_ID)).unwrap())
+        );
     }
 
     #[test]
     fn is_root() {
         let tree = test_tree();
         assert!(tree.state().node_by_id(nid(ROOT_ID)).unwrap().is_root());
-        assert!(!tree
-            .state()
-            .node_by_id(nid(PARAGRAPH_0_ID))
-            .unwrap()
-            .is_root());
+        assert!(
+            !tree
+                .state()
+                .node_by_id(nid(PARAGRAPH_0_ID))
+                .unwrap()
+                .is_root()
+        );
     }
 
     #[test]
@@ -1292,12 +1320,13 @@ mod tests {
     #[test]
     fn bounding_box() {
         let tree = test_tree();
-        assert!(tree
-            .state()
-            .node_by_id(nid(ROOT_ID))
-            .unwrap()
-            .bounding_box()
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_id(nid(ROOT_ID))
+                .unwrap()
+                .bounding_box()
+                .is_none()
+        );
         assert_eq!(
             Some(Rect {
                 x0: 10.0,
@@ -1327,11 +1356,12 @@ mod tests {
     #[test]
     fn node_at_point() {
         let tree = test_tree();
-        assert!(tree
-            .state()
-            .root()
-            .node_at_point(Point::new(10.0, 40.0), &test_tree_filter)
-            .is_none());
+        assert!(
+            tree.state()
+                .root()
+                .node_at_point(Point::new(10.0, 40.0), &test_tree_filter)
+                .is_none()
+        );
         assert_eq!(
             Some(nid(LABEL_1_1_ID)),
             tree.state()
@@ -1346,11 +1376,12 @@ mod tests {
                 .node_at_point(Point::new(50.0, 60.0), &test_tree_filter)
                 .map(|node| node.id())
         );
-        assert!(tree
-            .state()
-            .root()
-            .node_at_point(Point::new(100.0, 70.0), &test_tree_filter)
-            .is_none());
+        assert!(
+            tree.state()
+                .root()
+                .node_at_point(Point::new(100.0, 70.0), &test_tree_filter)
+                .is_none()
+        );
     }
 
     #[test]
@@ -1856,11 +1887,12 @@ mod tests {
             focus: BUTTON_ID,
         };
         let tree = crate::Tree::new(update, true);
-        assert!(tree
-            .state()
-            .node_by_id(nid(BUTTON_ID))
-            .unwrap()
-            .is_focused());
+        assert!(
+            tree.state()
+                .node_by_id(nid(BUTTON_ID))
+                .unwrap()
+                .is_focused()
+        );
     }
 
     #[test]
@@ -1882,11 +1914,13 @@ mod tests {
             focus: ROOT_ID,
         };
         let tree = crate::Tree::new(update, true);
-        assert!(!tree
-            .state()
-            .node_by_id(nid(BUTTON_ID))
-            .unwrap()
-            .is_focused());
+        assert!(
+            !tree
+                .state()
+                .node_by_id(nid(BUTTON_ID))
+                .unwrap()
+                .is_focused()
+        );
     }
 
     #[test]
@@ -1944,10 +1978,12 @@ mod tests {
             focus: LISTBOX_ID,
         };
         let tree = crate::Tree::new(update, true);
-        assert!(!tree
-            .state()
-            .node_by_id(nid(LISTBOX_ID))
-            .unwrap()
-            .is_focused());
+        assert!(
+            !tree
+                .state()
+                .node_by_id(nid(LISTBOX_ID))
+                .unwrap()
+                .is_focused()
+        );
     }
 }

@@ -17,15 +17,15 @@ use accesskit::{
 use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeState};
 use std::{
     fmt::Write,
-    sync::{atomic::Ordering, Arc, Weak},
+    sync::{Arc, Weak, atomic::Ordering},
 };
 use windows::{
-    core::*,
     Win32::{
         Foundation::*,
         System::{Com::*, Variant::*},
         UI::Accessibility::*,
     },
+    core::*,
 };
 
 use crate::{
@@ -1017,7 +1017,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode_Impl {
                             result = window_title(context.hwnd).into();
                         }
                         UIA_NativeWindowHandlePropertyId => {
-                            result = (context.hwnd.0 .0 as i32).into();
+                            result = (context.hwnd.0.0 as i32).into();
                         }
                         _ => (),
                     }

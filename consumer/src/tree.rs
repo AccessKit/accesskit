@@ -1704,10 +1704,11 @@ mod tests {
         };
         let tree = super::Tree::new(update, false);
 
-        assert!(tree
-            .state()
-            .node_by_tree_local_id(LocalNodeId(0), subtree_id())
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_tree_local_id(LocalNodeId(0), subtree_id())
+                .is_none()
+        );
     }
 
     #[test]
@@ -1720,10 +1721,11 @@ mod tests {
         };
         let tree = super::Tree::new(update, false);
 
-        assert!(tree
-            .state()
-            .node_by_tree_local_id(LocalNodeId(999), TreeId::ROOT)
-            .is_none());
+        assert!(
+            tree.state()
+                .node_by_tree_local_id(LocalNodeId(999), TreeId::ROOT)
+                .is_none()
+        );
     }
 
     #[test]
