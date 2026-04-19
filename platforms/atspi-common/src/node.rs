@@ -25,12 +25,12 @@ use std::{
 };
 
 use crate::{
+    Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
     adapter::Adapter,
     context::{AppContext, Context},
     filters::filter,
     text_attributes::ATTRIBUTE_GETTERS,
     util::*,
-    Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
 };
 
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
@@ -465,11 +465,7 @@ impl NodeWrapper<'_> {
     }
 
     fn n_actions(&self) -> i32 {
-        if self.0.is_clickable(&filter) {
-            1
-        } else {
-            0
-        }
+        if self.0.is_clickable(&filter) { 1 } else { 0 }
     }
 
     fn get_action_name(&self, index: i32) -> String {

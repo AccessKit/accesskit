@@ -10,7 +10,7 @@
 
 use accesskit::{Action, Live, Role, Toggled};
 use accesskit_consumer::Node;
-use jni::{objects::JObject, sys::jint, JNIEnv};
+use jni::{JNIEnv, objects::JObject, sys::jint};
 
 use crate::{filters::filter, util::*};
 

@@ -15,16 +15,16 @@ use accesskit::{
 };
 use accesskit_consumer::{FilterResult, Node, TextPosition, Tree, TreeChangeHandler};
 use jni::{
+    JNIEnv,
     objects::JObject,
     sys::{jfloat, jint},
-    JNIEnv,
 };
 
 use crate::{
     action::{PlatformAction, PlatformActionInner},
     event::{QueuedEvent, QueuedEvents, ScrollDimension},
     filters::filter,
-    node::{add_action, NodeWrapper},
+    node::{NodeWrapper, add_action},
     util::*,
 };
 
@@ -613,11 +613,7 @@ impl Adapter {
             self.set_text_selection_common(action_handler, &mut events, virtual_view_id, |node| {
                 let current = node.text_selection_focus().unwrap_or_else(|| {
                     let range = node.document_range();
-                    if forward {
-                        range.start()
-                    } else {
-                        range.end()
-                    }
+                    if forward { range.start() } else { range.end() }
                 });
                 if (forward && current.is_document_end())
                     || (!forward && current.is_document_start())
@@ -724,12 +720,10 @@ impl Adapter {
                 }
                 let focus = if forward { segment_end } else { segment_start };
                 let anchor = if extend_selection {
-                    node.text_selection_anchor().unwrap_or({
-                        if forward {
-                            segment_start
-                        } else {
-                            segment_end
-                        }
+                    node.text_selection_anchor().unwrap_or(if forward {
+                        segment_start
+                    } else {
+                        segment_end
                     })
                 } else {
                     focus

@@ -9,7 +9,7 @@ use accesskit_atspi_common::{Adapter as AdapterImpl, AppContext, Event};
 use async_channel::{Receiver, Sender};
 use atspi::proxy::bus::StatusProxy;
 #[cfg(not(feature = "tokio"))]
-use futures_util::{pin_mut as pin, select, StreamExt};
+use futures_util::{StreamExt, pin_mut as pin, select};
 use std::{
     sync::{Arc, Mutex, OnceLock, RwLock},
     thread,
@@ -20,12 +20,12 @@ use tokio::{
     sync::mpsc::{UnboundedReceiver as Receiver, UnboundedSender as Sender},
 };
 #[cfg(feature = "tokio")]
-use tokio_stream::{wrappers::UnboundedReceiverStream, StreamExt};
-use zbus::{connection::Builder, Connection};
+use tokio_stream::{StreamExt, wrappers::UnboundedReceiverStream};
+use zbus::{Connection, connection::Builder};
 
 use crate::{
     adapter::{AdapterState, Callback, Message},
-    atspi::{map_or_ignoring_broken_pipe, Bus},
+    atspi::{Bus, map_or_ignoring_broken_pipe},
     executor::Executor,
     util::block_on,
 };

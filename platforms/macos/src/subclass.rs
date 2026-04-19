@@ -5,23 +5,24 @@
 
 use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
 use objc2::{
+    ClassType, DeclaredClass,
     declare::ClassBuilder,
     declare_class,
     ffi::{
-        objc_getAssociatedObject, objc_setAssociatedObject, object_setClass,
-        OBJC_ASSOCIATION_RETAIN_NONATOMIC,
+        OBJC_ASSOCIATION_RETAIN_NONATOMIC, objc_getAssociatedObject, objc_setAssociatedObject,
+        object_setClass,
     },
     msg_send_id,
     mutability::InteriorMutable,
     rc::Id,
     runtime::{AnyClass, Sel},
-    sel, ClassType, DeclaredClass,
+    sel,
 };
 use objc2_app_kit::{NSView, NSWindow};
 use objc2_foundation::{NSArray, NSObject, NSPoint};
 use std::{cell::RefCell, ffi::c_void, sync::Mutex};
 
-use crate::{event::QueuedEvents, Adapter};
+use crate::{Adapter, event::QueuedEvents};
 
 static SUBCLASSES: Mutex<Vec<(&'static AnyClass, &'static AnyClass)>> = Mutex::new(Vec::new());
 

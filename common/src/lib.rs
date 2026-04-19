@@ -19,12 +19,12 @@ use core::fmt;
 #[cfg(feature = "pyo3")]
 use pyo3::pyclass;
 #[cfg(feature = "schemars")]
-use schemars::{json_schema, JsonSchema, Schema, SchemaGenerator};
+use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 #[cfg(feature = "serde")]
 use serde::{
+    Deserialize, Serialize,
     de::{Deserializer, IgnoredAny, MapAccess, Visitor},
     ser::{SerializeMap, Serializer},
-    Deserialize, Serialize,
 };
 #[cfg(feature = "schemars")]
 use serde_json::{Map as SchemaMap, Value as SchemaValue};
@@ -2590,9 +2590,9 @@ impl JsonSchema for Properties {
         "Properties".into()
     }
 
-    fn json_schema(gen: &mut SchemaGenerator) -> Schema {
+    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
         let mut properties = SchemaMap::<String, SchemaValue>::new();
-        add_properties_to_schema!(gen, properties, {
+        add_properties_to_schema!(generator, properties, {
             Vec<NodeId> {
                 Children,
                 Controls,

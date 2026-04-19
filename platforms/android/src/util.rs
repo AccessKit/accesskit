@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit_consumer::{Node, NodeId};
-use jni::{objects::JObject, sys::jint, JNIEnv};
+use jni::{JNIEnv, objects::JObject, sys::jint};
 use std::collections::HashMap;
 
 pub(crate) const ACTION_FOCUS: jint = 1 << 0;

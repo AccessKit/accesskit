@@ -15,17 +15,17 @@ use accesskit::{
 };
 use accesskit_consumer::{FilterResult, Node, NodeId, Tree};
 use objc2::{
-    declare_class, msg_send_id,
+    ClassType, DeclaredClass, declare_class, msg_send_id,
     mutability::InteriorMutable,
     rc::Id,
     runtime::{AnyObject, Sel},
-    sel, ClassType, DeclaredClass,
+    sel,
 };
 use objc2_app_kit::*;
 use objc2_foundation::{
-    ns_string, NSArray, NSAttributedString, NSCopying, NSInteger, NSMutableAttributedString,
+    NSArray, NSAttributedString, NSCopying, NSInteger, NSMutableAttributedString,
     NSMutableDictionary, NSNumber, NSObject, NSObjectProtocol, NSPoint, NSRange, NSRect, NSString,
-    NSURL,
+    NSURL, ns_string,
 };
 use std::rc::{Rc, Weak};
 

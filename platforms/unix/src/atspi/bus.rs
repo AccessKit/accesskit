@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    atspi::{interfaces::*, ObjectId},
+    atspi::{ObjectId, interfaces::*},
     context::get_or_init_app_context,
     executor::{Executor, Task},
 };
@@ -12,16 +12,16 @@ use accesskit_atspi_common::{
     NodeId, NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot, Property, WindowEvent,
 };
 use atspi::{
+    Interface, InterfaceSet,
     events::EventBodyBorrowed,
     proxy::{bus::BusProxy, socket::SocketProxy},
-    Interface, InterfaceSet,
 };
 use std::{env::var, io};
 use zbus::{
+    Address, Connection, Result,
     connection::Builder,
     names::{BusName, InterfaceName, MemberName, OwnedUniqueName},
     zvariant::{Str, Value},
-    Address, Connection, Result,
 };
 
 pub(crate) struct Bus {

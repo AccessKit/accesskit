@@ -4,8 +4,8 @@
 
 use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, TreeUpdate};
 use accesskit_android::{
-    jni::{objects::JObject, JavaVM},
     InjectingAdapter,
+    jni::{JavaVM, objects::JObject},
 };
 use winit::{
     event::WindowEvent, event_loop::ActiveEventLoop, platform::android::ActiveEventLoopExtAndroid,

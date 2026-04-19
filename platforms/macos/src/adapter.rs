@@ -5,7 +5,7 @@
 
 use crate::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper, Context},
-    event::{focus_event, EventGenerator, QueuedEvents},
+    event::{EventGenerator, QueuedEvents, focus_event},
     filters::filter,
     node::can_be_focused,
     util::*,

@@ -11,10 +11,10 @@
 
 use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
 use jni::{
+    JNIEnv, JavaVM, NativeMethod,
     errors::Result,
     objects::{GlobalRef, JClass, JObject, WeakRef},
-    sys::{jboolean, jfloat, jint, jlong, JNI_FALSE, JNI_TRUE},
-    JNIEnv, JavaVM, NativeMethod,
+    sys::{JNI_FALSE, JNI_TRUE, jboolean, jfloat, jint, jlong},
 };
 use log::debug;
 use std::{
@@ -22,8 +22,8 @@ use std::{
     ffi::c_void,
     fmt::{Debug, Formatter},
     sync::{
-        atomic::{AtomicI64, Ordering},
         Arc, Mutex, OnceLock, Weak,
+        atomic::{AtomicI64, Ordering},
     },
 };
 
