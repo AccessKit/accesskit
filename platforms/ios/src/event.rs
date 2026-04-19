@@ -185,11 +185,11 @@ impl TreeChangeHandler for EventGenerator {
             return;
         }
         self.insert_layout_changed_event_if_needed();
-        if let Some(value) = node.value()
-            && node.live() != Live::Off
-        {
-            self.events
-                .push(QueuedEvent::live_region_announcement(value, node.live()));
+        if let Some(value) = node.value() {
+            if node.live() != Live::Off {
+                self.events
+                    .push(QueuedEvent::live_region_announcement(value, node.live()));
+            }
         }
     }
 
@@ -214,16 +214,17 @@ impl TreeChangeHandler for EventGenerator {
         }
 
         let was_filtered_out = old_filter_result != FilterResult::Include;
-        if let Some(value) = new_node.value()
-            && new_node.live() != Live::Off
-            && (Some(&value) != old_node.value().as_ref()
-                || new_node.live() != old_node.live()
-                || was_filtered_out)
-        {
-            self.events.push(QueuedEvent::live_region_announcement(
-                value,
-                new_node.live(),
-            ));
+        if let Some(value) = new_node.value() {
+            if new_node.live() != Live::Off
+                && (Some(&value) != old_node.value().as_ref()
+                    || new_node.live() != old_node.live()
+                    || was_filtered_out)
+            {
+                self.events.push(QueuedEvent::live_region_announcement(
+                    value,
+                    new_node.live(),
+                ));
+            }
         }
     }
 
