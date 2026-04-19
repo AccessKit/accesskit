@@ -5,8 +5,8 @@
 
 use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, Rect, TreeUpdate};
 use accesskit_atspi_common::{
-    next_adapter_id, ActionHandlerNoMut, ActionHandlerWrapper, Adapter as AdapterImpl,
-    AdapterCallback, Event, NodeId, PlatformNode, WindowBounds,
+    ActionHandlerNoMut, ActionHandlerWrapper, Adapter as AdapterImpl, AdapterCallback, Event,
+    NodeId, PlatformNode, WindowBounds, next_adapter_id,
 };
 #[cfg(not(feature = "tokio"))]
 use async_channel::Sender;

@@ -23,7 +23,7 @@ pub use atspi_common::{
 };
 
 pub use action::*;
-pub use adapter::{next_adapter_id, Adapter};
+pub use adapter::{Adapter, next_adapter_id};
 pub use callback::AdapterCallback;
 pub use context::{ActionHandlerNoMut, ActionHandlerWrapper, AppContext};
 pub use error::*;

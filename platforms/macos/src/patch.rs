@@ -4,11 +4,12 @@
 // the LICENSE-MIT file), at your option.
 
 use objc2::{
+    Message,
     encode::{Encode, EncodeArguments, EncodeReturn, Encoding},
     ffi::class_addMethod,
     msg_send,
     runtime::{AnyClass, AnyObject, Bool, MethodImplementation, Sel},
-    sel, Message,
+    sel,
 };
 use objc2_app_kit::NSWindow;
 use std::{ffi::CString, ptr::null_mut};

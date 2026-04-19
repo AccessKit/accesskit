@@ -9,11 +9,11 @@
 // found in the LICENSE.chromium file.
 
 use crate::{
+    AdapterCallback, Event, ObjectEvent, WindowEvent,
     context::{ActionHandlerNoMut, ActionHandlerWrapper, AppContext, Context},
     filters::filter,
     node::{NodeIdOrRoot, NodeWrapper, PlatformNode, PlatformRoot},
     util::WindowBounds,
-    AdapterCallback, Event, ObjectEvent, WindowEvent,
 };
 use accesskit::{ActionHandler, Role, TreeUpdate};
 use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeChangeHandler, TreeState};
@@ -22,8 +22,8 @@ use std::fmt::{Debug, Formatter};
 use std::{
     collections::HashSet,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc, RwLock,
+        atomic::{AtomicUsize, Ordering},
     },
 };
 
