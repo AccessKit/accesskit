@@ -14,7 +14,7 @@ pub(crate) mod node;
 pub use node::{Node, NodeId};
 
 pub(crate) mod filters;
-pub use filters::{common_filter, common_filter_with_root_exception, FilterResult};
+pub use filters::{FilterResult, common_filter, common_filter_with_root_exception};
 
 pub(crate) mod iterators;
 
@@ -31,9 +31,9 @@ mod tests {
     };
     use alloc::vec;
 
+    use crate::FilterResult;
     use crate::node::NodeId;
     use crate::tree::TreeIndex;
-    use crate::FilterResult;
 
     pub fn nid(id: LocalNodeId) -> NodeId {
         NodeId::new(id, TreeIndex(0))

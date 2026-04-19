@@ -10,7 +10,7 @@ use accesskit::{
 use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeChangeHandler};
 use hashbrown::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
-use std::sync::{atomic::Ordering, Arc};
+use std::sync::{Arc, atomic::Ordering};
 use windows::Win32::{
     Foundation::*,
     UI::{Accessibility::*, WindowsAndMessaging::*},
@@ -488,7 +488,7 @@ impl Adapter {
         wparam: WPARAM,
         lparam: LPARAM,
         activation_handler: &mut H,
-    ) -> Option<impl Into<LRESULT>> {
+    ) -> Option<impl Into<LRESULT> + use<H>> {
         // Don't bother with MSAA object IDs that are asking for something other
         // than the client area of the window. DefWindowProc can handle those.
         // First, cast the lparam to i32, to handle inconsistent conversion

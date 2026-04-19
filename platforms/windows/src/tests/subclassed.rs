@@ -9,12 +9,12 @@ use accesskit::{
 };
 use once_cell::sync::Lazy;
 use windows::{
-    core::*,
     Win32::{
         Foundation::*,
         System::LibraryLoader::GetModuleHandleW,
         UI::{Accessibility::*, WindowsAndMessaging::*},
     },
+    core::*,
 };
 use winit::{
     application::ApplicationHandler,

@@ -8,13 +8,13 @@ use accesskit_windows::Adapter;
 use once_cell::sync::Lazy;
 use std::cell::RefCell;
 use windows::{
-    core::*,
     Win32::{
         Foundation::*,
         Graphics::Gdi::ValidateRect,
         System::LibraryLoader::GetModuleHandleW,
         UI::{Input::KeyboardAndMouse::*, WindowsAndMessaging::*},
     },
+    core::*,
 };
 
 static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
@@ -174,7 +174,7 @@ impl WindowState {
 }
 
 unsafe fn get_window_state(window: HWND) -> *const WindowState {
-    GetWindowLongPtrW(window, GWLP_USERDATA) as _
+    unsafe { GetWindowLongPtrW(window, GWLP_USERDATA) as _ }
 }
 
 fn update_window_focus_state(window: HWND, is_focused: bool) {
@@ -353,8 +353,12 @@ fn create_window(title: &str, initial_focus: NodeId) -> Result<HWND> {
 fn main() -> Result<()> {
     println!("This example has no visible GUI, and a keyboard interface:");
     println!("- [Tab] switches focus between two logical buttons.");
-    println!("- [Space] 'presses' the button, adding static text in a live region announcing that it was pressed.");
-    println!("Enable Narrator with [Win]+[Ctrl]+[Enter] (or [Win]+[Enter] on older versions of Windows).");
+    println!(
+        "- [Space] 'presses' the button, adding static text in a live region announcing that it was pressed."
+    );
+    println!(
+        "Enable Narrator with [Win]+[Ctrl]+[Enter] (or [Win]+[Enter] on older versions of Windows)."
+    );
 
     let window = create_window(WINDOW_TITLE, INITIAL_FOCUS)?;
     let _ = unsafe { ShowWindow(window, SW_SHOW) };

@@ -7,7 +7,7 @@ use accesskit::{
     Action, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Role, Tree, TreeId,
     TreeUpdate,
 };
-use windows::{core::*, Win32::UI::Accessibility::*};
+use windows::{Win32::UI::Accessibility::*, core::*};
 
 use super::*;
 
