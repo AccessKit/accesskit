@@ -1228,11 +1228,9 @@ macro_rules! patterns {
                 self.resolve(|node| {
                     let wrapper = NodeWrapper(&node);
                     match pattern_id {
-                        $($pattern_id => {
-                            if wrapper.$is_supported() {
-                                let intermediate: $provider_interface = self.to_interface();
-                                return intermediate.cast();
-                            }
+                        $($pattern_id if wrapper.$is_supported() => {
+                            let intermediate: $provider_interface = self.to_interface();
+                            return intermediate.cast();
                         })*
                         _ => (),
                     }

@@ -88,10 +88,7 @@ impl State {
         };
 
         let mut current_focus = root_subtree.focus;
-        loop {
-            let Some(node_state) = self.nodes.get(&current_focus) else {
-                break;
-            };
+        while let Some(node_state) = self.nodes.get(&current_focus) {
             let Some(subtree_id) = node_state.data.tree_id() else {
                 break;
             };
