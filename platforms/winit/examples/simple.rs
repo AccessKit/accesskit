@@ -132,6 +132,8 @@ impl UiState {
         } else {
             "You pressed button 2"
         };
+        // On iOS, VoiceOver announces the label of the activated button.
+        // Postpone the live region update so the messages don't overlap.
         self.pending_announcement = Some((text.into(), Instant::now()));
     }
 
