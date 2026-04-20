@@ -132,21 +132,24 @@ pub(crate) fn screen_changed_event(node_id: Option<NodeId>) -> QueuedEvent {
 
 pub(crate) struct EventGenerator {
     context: Rc<Context>,
+    platform_focus: Option<NodeId>,
     layout_event_focus: Option<Option<NodeId>>,
     events: Vec<QueuedEvent>,
 }
 
 impl EventGenerator {
     pub(crate) fn new(context: Rc<Context>) -> Self {
+        let platform_focus = *context.platform_focus.borrow();
         Self {
             context,
+            platform_focus,
             layout_event_focus: None,
             events: Vec::new(),
         }
     }
 
     fn insert_focus_moved_event_if_needed(&mut self, focus: NodeId) {
-        if *self.context.platform_focus.borrow() != Some(focus) {
+        if self.platform_focus != Some(focus) {
             self.layout_event_focus = Some(Some(focus));
         }
     }
@@ -155,6 +158,15 @@ impl EventGenerator {
         if self.layout_event_focus.is_none() {
             self.layout_event_focus = Some(None);
         }
+    }
+
+    fn remove_node(&mut self, id: NodeId) {
+        self.insert_layout_changed_event_if_needed();
+        if self.platform_focus == Some(id) {
+            *self.context.platform_focus.borrow_mut() = None;
+            self.platform_focus = None;
+        }
+        self.events.push(QueuedEvent::NodeDestroyed(id));
     }
 
     fn remove_subtree(&mut self, node: &Node) {
@@ -166,7 +178,7 @@ impl EventGenerator {
                 to_remove.push_back(child);
             }
 
-            self.events.push(QueuedEvent::NodeDestroyed(node.id()));
+            self.remove_node(node.id());
         }
     }
 
@@ -200,11 +212,10 @@ impl TreeChangeHandler for EventGenerator {
         let new_included = new_filter_result == FilterResult::Include;
 
         if old_included && !new_included {
-            self.insert_layout_changed_event_if_needed();
             if new_filter_result == FilterResult::ExcludeSubtree {
                 self.remove_subtree(old_node);
             } else {
-                self.events.push(QueuedEvent::NodeDestroyed(new_node.id()));
+                self.remove_node(new_node.id());
             }
             return;
         }
@@ -241,7 +252,6 @@ impl TreeChangeHandler for EventGenerator {
         if filter(node) != FilterResult::Include {
             return;
         }
-        self.insert_layout_changed_event_if_needed();
-        self.events.push(QueuedEvent::NodeDestroyed(node.id()));
+        self.remove_node(node.id());
     }
 }
