@@ -7,7 +7,7 @@ use accesskit::Point;
 use accesskit_consumer::Node;
 use objc2::encode::{Encode, Encoding, RefEncode};
 use objc2_foundation::{CGPoint, CGRect, CGSize, NSInteger};
-use objc2_ui_kit::UIView;
+use objc2_ui_kit::{UIAccessibilityConvertFrameToScreenCoordinates, UICoordinateSpace, UIView};
 
 // TODO: Remove once we update to objc2 0.6
 #[repr(transparent)]
@@ -29,15 +29,21 @@ unsafe impl RefEncode for UIAccessibilityExpandedStatus {
     const ENCODING_REF: Encoding = Encoding::Pointer(&Self::ENCODING);
 }
 
-pub(crate) fn from_cg_point(view: &UIView, node: &Node, point: CGPoint) -> Point {
-    let local_point = unsafe { view.convertPoint_fromView(point, None) };
+pub(crate) fn from_cg_point(view: &UIView, node: &Node, point: CGPoint) -> Option<Point> {
+    let window = view.window()?;
+    let screen_space = window.screen().coordinateSpace();
+    let local_point = view.convertPoint_fromCoordinateSpace(point, &screen_space);
     let insets = view.safeAreaInsets();
     let factor = view.contentScaleFactor();
     let point = Point::new(
         (local_point.x - insets.left) * factor,
         (local_point.y - insets.top) * factor,
     );
-    node.transform().inverse() * point
+    Some(node.transform().inverse() * point)
+}
+
+pub(crate) fn to_screen_rect(view: &UIView, rect: CGRect) -> CGRect {
+    unsafe { UIAccessibilityConvertFrameToScreenCoordinates(rect, view) }
 }
 
 pub(crate) fn to_cg_rect(view: &UIView, rect: accesskit::Rect) -> CGRect {
@@ -53,5 +59,5 @@ pub(crate) fn to_cg_rect(view: &UIView, rect: accesskit::Rect) -> CGRect {
             height: rect.height() / factor,
         },
     };
-    unsafe { view.convertRect_toView(local_rect, None) }
+    to_screen_rect(view, local_rect)
 }

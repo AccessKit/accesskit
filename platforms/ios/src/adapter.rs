@@ -284,7 +284,9 @@ impl Adapter {
         let tree = context.tree.borrow();
         let state = tree.state();
         let root = state.root();
-        let point = from_cg_point(&view, &root, point);
+        let Some(point) = from_cg_point(&view, &root, point) else {
+            return null_mut();
+        };
         let node = root.node_at_point(point, &filter).unwrap_or(root);
         match context.get_or_create_platform_node(node.id()) {
             Some(platform_node) => Retained::autorelease_return(platform_node) as *mut _,

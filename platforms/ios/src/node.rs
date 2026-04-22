@@ -30,7 +30,7 @@ use std::rc::{Rc, Weak};
 use crate::{
     context::Context,
     filters::{filter, filter_for_is_accessibility_element},
-    util::{UIAccessibilityExpandedStatus, to_cg_rect},
+    util::{UIAccessibilityExpandedStatus, to_cg_rect, to_screen_rect},
 };
 
 #[derive(Debug, PartialEq)]
@@ -265,10 +265,7 @@ declare_class!(
                 let view = context.view.load()?;
                 Some(match NodeWrapper(node).frame_source() {
                     FrameSource::Rect(rect) => to_cg_rect(&view, rect),
-                    FrameSource::ViewBounds => {
-                        let bounds = view.bounds();
-                        unsafe { view.convertRect_toView(bounds, None) }
-                    }
+                    FrameSource::ViewBounds => to_screen_rect(&view, view.bounds()),
                     FrameSource::Zero => CGRect::ZERO,
                 })
             })
