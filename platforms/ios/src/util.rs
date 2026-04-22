@@ -33,12 +33,8 @@ pub(crate) fn from_cg_point(view: &UIView, node: &Node, point: CGPoint) -> Optio
     let window = view.window()?;
     let screen_space = window.screen().coordinateSpace();
     let local_point = view.convertPoint_fromCoordinateSpace(point, &screen_space);
-    let insets = view.safeAreaInsets();
     let factor = view.contentScaleFactor();
-    let point = Point::new(
-        (local_point.x - insets.left) * factor,
-        (local_point.y - insets.top) * factor,
-    );
+    let point = Point::new(local_point.x * factor, local_point.y * factor);
     Some(node.transform().inverse() * point)
 }
 
@@ -47,12 +43,11 @@ pub(crate) fn to_screen_rect(view: &UIView, rect: CGRect) -> CGRect {
 }
 
 pub(crate) fn to_cg_rect(view: &UIView, rect: accesskit::Rect) -> CGRect {
-    let insets = view.safeAreaInsets();
     let factor = view.contentScaleFactor();
     let local_rect = CGRect {
         origin: CGPoint {
-            x: rect.x0 / factor + insets.left,
-            y: rect.y0 / factor + insets.top,
+            x: rect.x0 / factor,
+            y: rect.y0 / factor,
         },
         size: CGSize {
             width: rect.width() / factor,

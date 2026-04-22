@@ -43,13 +43,34 @@ const BUTTON_2_RECT: Rect = Rect {
     y1: 128.0,
 };
 
-fn build_button(id: NodeId, label: &str) -> Node {
+#[cfg(target_os = "ios")]
+fn safe_area_inset(window: &Window) -> (f64, f64) {
+    let Ok(outer) = window.outer_position() else {
+        return (0.0, 0.0);
+    };
+    let Ok(inner) = window.inner_position() else {
+        return (0.0, 0.0);
+    };
+    ((inner.x - outer.x) as f64, (inner.y - outer.y) as f64)
+}
+
+#[cfg(not(target_os = "ios"))]
+fn safe_area_inset(_: &Window) -> (f64, f64) {
+    (0.0, 0.0)
+}
+
+fn build_button(id: NodeId, label: &str, inset: (f64, f64)) -> Node {
     let rect = match id {
         BUTTON_1_ID => BUTTON_1_RECT,
         BUTTON_2_ID => BUTTON_2_RECT,
         _ => unreachable!(),
     };
-
+    let rect = Rect {
+        x0: rect.x0 + inset.0,
+        y0: rect.y0 + inset.1,
+        x1: rect.x1 + inset.0,
+        y1: rect.y1 + inset.1,
+    };
     let mut node = Node::new(Role::Button);
     node.set_bounds(rect);
     node.set_label(label);
@@ -93,10 +114,10 @@ impl UiState {
         node
     }
 
-    fn build_initial_tree(&mut self) -> TreeUpdate {
+    fn build_initial_tree(&mut self, inset: (f64, f64)) -> TreeUpdate {
         let root = self.build_root();
-        let button_1 = build_button(BUTTON_1_ID, "Button 1");
-        let button_2 = build_button(BUTTON_2_ID, "Button 2");
+        let button_1 = build_button(BUTTON_1_ID, "Button 1", inset);
+        let button_2 = build_button(BUTTON_2_ID, "Button 2", inset);
         let tree = Tree::new(WINDOW_ID);
         let mut result = TreeUpdate {
             nodes: vec![
@@ -221,6 +242,8 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                 self.window = None;
             }
             WindowEvent::Resized(_) => {
+                let inset = safe_area_inset(&window.window);
+                adapter.update_if_active(|| state.build_initial_tree(inset));
                 window.window.request_redraw();
             }
             WindowEvent::RedrawRequested => {
@@ -265,7 +288,8 @@ impl ApplicationHandler<AccessKitEvent> for Application {
 
         match user_event.window_event {
             AccessKitWindowEvent::InitialTreeRequested => {
-                adapter.update_if_active(|| state.build_initial_tree());
+                let inset = safe_area_inset(&window.window);
+                adapter.update_if_active(|| state.build_initial_tree(inset));
             }
             AccessKitWindowEvent::ActionRequested(ActionRequest {
                 action,
