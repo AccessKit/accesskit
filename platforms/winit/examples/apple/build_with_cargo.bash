@@ -18,10 +18,6 @@ export CARGO_TARGET_DIR="$DERIVED_FILE_DIR/cargo"
 case "$PLATFORM_NAME" in
     iphoneos)         CARGO_OS=ios;      BUILD_KIND=device ;;
     iphonesimulator)  CARGO_OS=ios;      BUILD_KIND=simulator ;;
-    appletvos)        CARGO_OS=tvos;     BUILD_KIND=device ;;
-    appletvsimulator) CARGO_OS=tvos;     BUILD_KIND=simulator ;;
-    xros)             CARGO_OS=visionos; BUILD_KIND=device ;;
-    xrsimulator)      CARGO_OS=visionos; BUILD_KIND=simulator ;;
     macosx)
         if [[ "${IS_MACCATALYST:-NO}" != "YES" ]]; then
             echo "non-Catalyst macOS builds are not supported" >&2
@@ -59,10 +55,6 @@ for arch in $ARCHS; do
             ;;
         simulator)
             if [[ "$RUST_ARCH" = "x86_64" ]]; then
-                if [[ "$CARGO_OS" = "visionos" ]]; then
-                    echo "x86_64 is not supported for visionOS" >&2
-                    exit 1
-                fi
                 # Rust names the x86_64 simulator target without a -sim suffix,
                 # but clang still needs the -simulator triple.
                 CARGO_TARGET="${RUST_ARCH}-apple-${CARGO_OS}"

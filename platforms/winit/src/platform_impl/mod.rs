@@ -31,7 +31,7 @@ mod platform;
 #[path = "android.rs"]
 mod platform;
 
-#[cfg(any(target_os = "ios", target_os = "tvos", target_os = "visionos"))]
+#[cfg(target_os = "ios")]
 #[path = "ios.rs"]
 mod platform;
 
@@ -49,9 +49,7 @@ mod platform;
         )
     ),
     all(feature = "accesskit_android", target_os = "android"),
-    target_os = "ios",
-    target_os = "tvos",
-    target_os = "visionos"
+    target_os = "ios"
 )))]
 #[path = "null.rs"]
 mod platform;
