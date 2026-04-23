@@ -92,6 +92,7 @@ struct UiState {
     focus: NodeId,
     announcement: Option<String>,
     pending_announcement: Option<(String, Instant)>,
+    inset: (f64, f64),
 }
 
 impl UiState {
@@ -100,6 +101,7 @@ impl UiState {
             focus: INITIAL_FOCUS,
             announcement: None,
             pending_announcement: None,
+            inset: (0.0, 0.0),
         }
     }
 
@@ -114,10 +116,10 @@ impl UiState {
         node
     }
 
-    fn build_initial_tree(&mut self, inset: (f64, f64)) -> TreeUpdate {
+    fn build_initial_tree(&mut self) -> TreeUpdate {
         let root = self.build_root();
-        let button_1 = build_button(BUTTON_1_ID, "Button 1", inset);
-        let button_2 = build_button(BUTTON_2_ID, "Button 2", inset);
+        let button_1 = build_button(BUTTON_1_ID, "Button 1", self.inset);
+        let button_2 = build_button(BUTTON_2_ID, "Button 2", self.inset);
         let tree = Tree::new(WINDOW_ID);
         let mut result = TreeUpdate {
             nodes: vec![
@@ -242,8 +244,8 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                 self.window = None;
             }
             WindowEvent::Resized(_) => {
-                let inset = safe_area_inset(&window.window);
-                adapter.update_if_active(|| state.build_initial_tree(inset));
+                state.inset = safe_area_inset(&window.window);
+                adapter.update_if_active(|| state.build_initial_tree());
                 window.window.request_redraw();
             }
             WindowEvent::RedrawRequested => {
@@ -288,8 +290,7 @@ impl ApplicationHandler<AccessKitEvent> for Application {
 
         match user_event.window_event {
             AccessKitWindowEvent::InitialTreeRequested => {
-                let inset = safe_area_inset(&window.window);
-                adapter.update_if_active(|| state.build_initial_tree(inset));
+                adapter.update_if_active(|| state.build_initial_tree());
             }
             AccessKitWindowEvent::ActionRequested(ActionRequest {
                 action,
