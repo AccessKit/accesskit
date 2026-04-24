@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, TreeUpdate};
 use objc2::{
     ClassType, DeclaredClass,
     declare::ClassBuilder,
@@ -20,7 +20,7 @@ use objc2::{
 };
 use objc2_foundation::{CGPoint, MainThreadMarker, NSArray, NSObject};
 use objc2_ui_kit::{UIView, UIWindow};
-use std::{cell::RefCell, ffi::c_void, ptr::null_mut, sync::Mutex};
+use std::{ffi::c_void, ptr::null_mut, sync::Mutex};
 
 use crate::{Adapter, event::QueuedEvents};
 
@@ -32,13 +32,8 @@ fn associated_object_key() -> *const c_void {
     (&ASSOCIATED_OBJECT_KEY as *const u8).cast()
 }
 
-struct AssociatedObjectState {
-    adapter: Adapter,
-    activation_handler: Box<dyn ActivationHandler>,
-}
-
 struct AssociatedObjectIvars {
-    state: RefCell<AssociatedObjectState>,
+    adapter: Adapter,
     prev_class: &'static AnyClass,
 }
 
@@ -59,17 +54,13 @@ declare_class!(
 impl AssociatedObject {
     fn new(
         adapter: Adapter,
-        activation_handler: impl 'static + ActivationHandler,
         prev_class: &'static AnyClass,
         mtm: MainThreadMarker,
     ) -> Retained<Self> {
-        let state = RefCell::new(AssociatedObjectState {
+        let this = mtm.alloc::<Self>().set_ivars(AssociatedObjectIvars {
             adapter,
-            activation_handler: Box::new(activation_handler),
+            prev_class,
         });
-        let this = mtm
-            .alloc::<Self>()
-            .set_ivars(AssociatedObjectIvars { state, prev_class });
 
         unsafe { msg_send_id![super(this), init] }
     }
@@ -97,24 +88,14 @@ unsafe extern "C" fn is_accessibility_element(this: &UIView, _cmd: Sel) -> Bool 
     let Some(associated) = associated_object(this) else {
         return Bool::YES;
     };
-    let mut state = associated.ivars().state.borrow_mut();
-    let state_mut = &mut *state;
-    Bool::new(
-        state_mut
-            .adapter
-            .is_accessibility_element(&mut *state_mut.activation_handler),
-    )
+    Bool::new(associated.ivars().adapter.is_accessibility_element())
 }
 
 unsafe extern "C" fn accessibility_elements(this: &UIView, _cmd: Sel) -> *mut NSArray<NSObject> {
     let Some(associated) = associated_object(this) else {
         return Retained::autorelease_return(NSArray::new());
     };
-    let mut state = associated.ivars().state.borrow_mut();
-    let state_mut = &mut *state;
-    state_mut
-        .adapter
-        .accessibility_elements(&mut *state_mut.activation_handler)
+    associated.ivars().adapter.accessibility_elements()
 }
 
 // UIAccessibilityHitTest methods
@@ -127,11 +108,7 @@ unsafe extern "C" fn accessibility_hit_test(
     let Some(associated) = associated_object(this) else {
         return null_mut();
     };
-    let mut state = associated.ivars().state.borrow_mut();
-    let state_mut = &mut *state;
-    state_mut
-        .adapter
-        .hit_test(point, &mut *state_mut.activation_handler) as *mut AnyObject
+    associated.ivars().adapter.hit_test(point) as *mut AnyObject
 }
 
 // UIView lifecycle
@@ -152,14 +129,7 @@ unsafe extern "C" fn did_move_to_window(this: &UIView, _cmd: Sel) {
     let Some(associated) = associated_object(this) else {
         return;
     };
-    let events = {
-        let mut state = associated.ivars().state.borrow_mut();
-        let state_mut = &mut *state;
-        state_mut
-            .adapter
-            .view_did_appear(&mut *state_mut.activation_handler)
-    };
-    if let Some(events) = events {
+    if let Some(events) = associated.ivars().adapter.view_did_appear() {
         events.raise();
     }
 }
@@ -176,7 +146,7 @@ impl SubclassingAdapter {
     /// This must be done before the view is shown or focused for
     /// the first time.
     ///
-    /// The action handler will always be called on the main thread.
+    /// All handlers will always be called on the main thread.
     ///
     /// # Safety
     ///
@@ -185,16 +155,23 @@ impl SubclassingAdapter {
         view: *mut c_void,
         activation_handler: impl 'static + ActivationHandler,
         action_handler: impl 'static + ActionHandler,
+        deactivation_handler: impl 'static + DeactivationHandler,
     ) -> Self {
         let view = view as *mut UIView;
         let retained_view = unsafe { Retained::retain(view) }.unwrap();
-        Self::new_internal(retained_view, activation_handler, action_handler)
+        Self::new_internal(
+            retained_view,
+            activation_handler,
+            action_handler,
+            deactivation_handler,
+        )
     }
 
     fn new_internal(
         retained_view: Retained<UIView>,
         activation_handler: impl 'static + ActivationHandler,
         action_handler: impl 'static + ActionHandler,
+        deactivation_handler: impl 'static + DeactivationHandler,
     ) -> Self {
         let mtm = MainThreadMarker::new().unwrap();
         let view = Retained::as_ptr(&retained_view) as *mut UIView;
@@ -205,12 +182,19 @@ impl SubclassingAdapter {
         {
             panic!("subclassing adapter already instantiated on view {view:?}");
         }
-        let adapter = unsafe { Adapter::new(view as *mut c_void, action_handler) };
+        let adapter = unsafe {
+            Adapter::new(
+                view as *mut c_void,
+                activation_handler,
+                action_handler,
+                deactivation_handler,
+            )
+        };
         // Cast to a pointer and back to force the lifetime to 'static
         // SAFETY: We know the class will live as long as the instance,
         // and we only use this reference while the instance is alive.
         let prev_class = unsafe { &*((*view).class() as *const AnyClass) };
-        let associated = AssociatedObject::new(adapter, activation_handler, prev_class, mtm);
+        let associated = AssociatedObject::new(adapter, prev_class, mtm);
         unsafe {
             objc_setAssociatedObject(
                 view as *mut _,
@@ -263,14 +247,7 @@ impl SubclassingAdapter {
         // UIKit won't replay `didMoveToWindow` for a view that is already
         // attached to its window; catch up manually.
         if result.view.window().is_some() {
-            let events = {
-                let mut state = result.associated.ivars().state.borrow_mut();
-                let state_mut = &mut *state;
-                state_mut
-                    .adapter
-                    .view_did_appear(&mut *state_mut.activation_handler)
-            };
-            if let Some(events) = events {
+            if let Some(events) = result.associated.ivars().adapter.view_did_appear() {
                 events.raise();
             }
         }
@@ -280,7 +257,7 @@ impl SubclassingAdapter {
     /// Create an adapter that dynamically subclasses the root view
     /// of the specified window.
     ///
-    /// The action handler will always be called on the main thread.
+    /// All handlers will always be called on the main thread.
     ///
     /// # Safety
     ///
@@ -294,6 +271,7 @@ impl SubclassingAdapter {
         window: *mut c_void,
         activation_handler: impl 'static + ActivationHandler,
         action_handler: impl 'static + ActionHandler,
+        deactivation_handler: impl 'static + DeactivationHandler,
     ) -> Self {
         let window = unsafe { &*(window as *const UIWindow) };
         let root_view_controller = window
@@ -302,7 +280,12 @@ impl SubclassingAdapter {
         let retained_view = root_view_controller
             .view()
             .expect("root view controller has no view");
-        Self::new_internal(retained_view, activation_handler, action_handler)
+        Self::new_internal(
+            retained_view,
+            activation_handler,
+            action_handler,
+            deactivation_handler,
+        )
     }
 
     /// If and only if the tree has been initialized, call the provided function
@@ -314,11 +297,13 @@ impl SubclassingAdapter {
     /// If a [`QueuedEvents`] instance is returned, the caller must call
     /// [`QueuedEvents::raise`] on it.
     pub fn update_if_active(
-        &mut self,
+        &self,
         update_factory: impl FnOnce() -> TreeUpdate,
     ) -> Option<QueuedEvents> {
-        let mut state = self.associated.ivars().state.borrow_mut();
-        state.adapter.update_if_active(update_factory)
+        self.associated
+            .ivars()
+            .adapter
+            .update_if_active(update_factory)
     }
 }
 

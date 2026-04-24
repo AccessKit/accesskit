@@ -9,8 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    ActionHandler, ActionRequest, ActivationHandler, Node as NodeProvider, NodeId, Role,
-    Tree as TreeData, TreeId, TreeUpdate,
+    ActionHandler, ActionRequest, ActivationHandler, DeactivationHandler, Node as NodeProvider,
+    NodeId, Role, Tree as TreeData, TreeId, TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Tree};
 use objc2::{
@@ -29,16 +29,16 @@ use objc2_ui_kit::{
     UIAccessibilityDarkerSystemColorsStatusDidChangeNotification,
     UIAccessibilityInvertColorsStatusDidChangeNotification, UIAccessibilityIsSpeakScreenEnabled,
     UIAccessibilityIsSwitchControlRunning, UIAccessibilityIsVoiceOverRunning,
-    UIAccessibilityOnOffSwitchLabelsDidChangeNotification, UIAccessibilityPostNotification,
+    UIAccessibilityOnOffSwitchLabelsDidChangeNotification,
     UIAccessibilityReduceMotionStatusDidChangeNotification,
-    UIAccessibilityScreenChangedNotification,
     UIAccessibilitySpeakScreenStatusDidChangeNotification,
     UIAccessibilitySwitchControlStatusDidChangeNotification,
     UIAccessibilityVideoAutoplayStatusDidChangeNotification,
     UIAccessibilityVoiceOverStatusDidChangeNotification, UIView,
 };
-use std::fmt::{Debug, Formatter};
-use std::{ffi::c_void, ptr::null_mut, rc::Rc};
+use std::cell::RefCell;
+use std::rc::{Rc, Weak};
+use std::{ffi::c_void, ptr::null_mut};
 
 use crate::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper, Context},
@@ -61,30 +61,6 @@ enum State {
         action_handler: Rc<dyn ActionHandlerNoMut>,
     },
     Active(Rc<Context>),
-}
-
-impl Debug for State {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            State::Inactive {
-                view,
-                action_handler: _,
-                mtm,
-            } => f
-                .debug_struct("Inactive")
-                .field("view", view)
-                .field("mtm", mtm)
-                .finish(),
-            State::Placeholder {
-                placeholder_context,
-                action_handler: _,
-            } => f
-                .debug_struct("Placeholder")
-                .field("placeholder_context", placeholder_context)
-                .finish(),
-            State::Active(context) => f.debug_struct("Active").field("context", context).finish(),
-        }
-    }
 }
 
 struct PlaceholderActionHandler;
@@ -117,12 +93,131 @@ fn observed_notification_names() -> [&'static NSNotificationName; 9] {
     }
 }
 
+type ActivationHandlerCell = RefCell<Box<dyn ActivationHandler>>;
+type DeactivationHandlerCell = RefCell<Box<dyn DeactivationHandler>>;
+
+/// Ensure `state` is `Active` or `Placeholder`. If currently `Inactive`,
+/// call the activation handler outside the state borrow and commit the
+/// resulting transition on re-borrow. If a re-entrant path moved us out
+/// of `Inactive` while the handler was running, the existing state wins.
+fn get_or_init_context(
+    state: &RefCell<State>,
+    activation_handler: &ActivationHandlerCell,
+) -> Rc<Context> {
+    let (view, action_handler, mtm) = {
+        let state = state.borrow();
+        match &*state {
+            State::Active(context) => return Rc::clone(context),
+            State::Placeholder {
+                placeholder_context,
+                ..
+            } => return Rc::clone(placeholder_context),
+            State::Inactive {
+                view,
+                action_handler,
+                mtm,
+            } => (view.clone(), Rc::clone(action_handler), *mtm),
+        }
+    };
+
+    let initial = activation_handler.borrow_mut().request_initial_tree();
+
+    let mut state = state.borrow_mut();
+    match &*state {
+        State::Active(context) => Rc::clone(context),
+        State::Placeholder {
+            placeholder_context,
+            ..
+        } => Rc::clone(placeholder_context),
+        State::Inactive { .. } => match initial {
+            Some(initial_state) => {
+                let tree = Tree::new(initial_state, true);
+                let context = Context::new(view, tree, action_handler, mtm);
+                let result = Rc::clone(&context);
+                *state = State::Active(context);
+                result
+            }
+            None => {
+                let placeholder_update = TreeUpdate {
+                    nodes: vec![(PLACEHOLDER_ROOT_ID, NodeProvider::new(Role::Window))],
+                    tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
+                    tree_id: TreeId::ROOT,
+                    focus: PLACEHOLDER_ROOT_ID,
+                };
+                let placeholder_tree = Tree::new(placeholder_update, true);
+                let placeholder_context = Context::new(
+                    view,
+                    placeholder_tree,
+                    Rc::new(ActionHandlerWrapper::new(PlaceholderActionHandler {})),
+                    mtm,
+                );
+                let result = Rc::clone(&placeholder_context);
+                *state = State::Placeholder {
+                    placeholder_context,
+                    action_handler,
+                };
+                result
+            }
+        },
+    }
+}
+
+fn try_activate(
+    state: &RefCell<State>,
+    activation_handler: &ActivationHandlerCell,
+) -> Option<QueuedEvents> {
+    if !any_assistive_tech_running() {
+        return None;
+    }
+    if !matches!(&*state.borrow(), State::Inactive { .. }) {
+        return None;
+    }
+    let context = get_or_init_context(state, activation_handler);
+    if !matches!(&*state.borrow(), State::Active(_)) {
+        return None;
+    }
+    let focus_id = context.tree.borrow().state().focus().map(|node| node.id());
+    focus_id.map(|id| QueuedEvents::new(context, vec![layout_event(Some(id))]))
+}
+
+fn try_deactivate(state: &RefCell<State>, deactivation_handler: &DeactivationHandlerCell) {
+    let transitioned = {
+        let mut state = state.borrow_mut();
+        let (view, action_handler, mtm) = match &*state {
+            State::Inactive { .. } => return,
+            State::Placeholder {
+                placeholder_context,
+                action_handler,
+            } => (
+                placeholder_context.view.clone(),
+                Rc::clone(action_handler),
+                placeholder_context.mtm,
+            ),
+            State::Active(context) => (
+                context.view.clone(),
+                Rc::clone(&context.action_handler),
+                context.mtm,
+            ),
+        };
+        *state = State::Inactive {
+            view,
+            action_handler,
+            mtm,
+        };
+        true
+    };
+    if transitioned {
+        deactivation_handler.borrow_mut().deactivate_accessibility();
+    }
+}
+
 struct StatusObserverIvars {
-    view: WeakId<UIView>,
+    state: Weak<RefCell<State>>,
+    activation_handler: Weak<ActivationHandlerCell>,
+    deactivation_handler: Weak<DeactivationHandlerCell>,
 }
 
 declare_class!(
-    #[derive(Debug)]
     struct StatusObserver;
 
     unsafe impl ClassType for StatusObserver {
@@ -138,22 +233,34 @@ declare_class!(
     unsafe impl StatusObserver {
         #[method(accessibilityStatusChanged:)]
         fn accessibility_status_changed(&self, _notification: &NSNotification) {
-            if !any_assistive_tech_running() {
-                return;
-            }
-            if self.ivars().view.load().is_none() {
-                return;
-            }
-            unsafe {
-                UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, None);
+            let ivars = self.ivars();
+            if any_assistive_tech_running() {
+                if let (Some(state), Some(activation_handler)) =
+                    (ivars.state.upgrade(), ivars.activation_handler.upgrade())
+                {
+                    let _ = get_or_init_context(&state, &activation_handler);
+                }
+            } else if let (Some(state), Some(deactivation_handler)) =
+                (ivars.state.upgrade(), ivars.deactivation_handler.upgrade())
+            {
+                try_deactivate(&state, &deactivation_handler);
             }
         }
     }
 );
 
 impl StatusObserver {
-    fn new(view: WeakId<UIView>, mtm: MainThreadMarker) -> Retained<Self> {
-        let this = mtm.alloc::<Self>().set_ivars(StatusObserverIvars { view });
+    fn new(
+        state: Weak<RefCell<State>>,
+        activation_handler: Weak<ActivationHandlerCell>,
+        deactivation_handler: Weak<DeactivationHandlerCell>,
+        mtm: MainThreadMarker,
+    ) -> Retained<Self> {
+        let this = mtm.alloc::<Self>().set_ivars(StatusObserverIvars {
+            state,
+            activation_handler,
+            deactivation_handler,
+        });
         unsafe { msg_send_id![super(this), init] }
     }
 }
@@ -169,9 +276,9 @@ impl StatusObserver {
 /// A typical setup looks like this:
 ///
 /// 1. In the view's initializer, create an `Adapter` with
-///    [`Adapter::new`], passing a pointer to the view and an
-///    [`ActionHandler`]. Store the adapter alongside the view (e.g. in
-///    an associated object or a Rust-side wrapper).
+///    [`Adapter::new`], passing a pointer to the view and the required
+///    handlers. Store the adapter alongside the view (e.g. in an
+///    associated object or a Rust-side wrapper).
 /// 2. Override `isAccessibilityElement` to return the result of
 ///    [`Adapter::is_accessibility_element`].
 /// 3. Override `accessibilityElements` to return the result of
@@ -184,9 +291,11 @@ impl StatusObserver {
 ///    [`Adapter::update_if_active`] and raise the returned events.
 ///
 /// All adapter methods must be called on the main thread.
-#[derive(Debug)]
 pub struct Adapter {
-    state: State,
+    state: Rc<RefCell<State>>,
+    activation_handler: Rc<ActivationHandlerCell>,
+    #[allow(dead_code)]
+    deactivation_handler: Rc<DeactivationHandlerCell>,
     status_observer: Retained<StatusObserver>,
 }
 
@@ -194,17 +303,37 @@ impl Adapter {
     /// Create a new iOS adapter. This function must be called on
     /// the main thread.
     ///
-    /// The action handler will always be called on the main thread.
+    /// All handlers will always be called on the main thread.
     ///
     /// # Safety
     ///
     /// `view` must be a valid, unreleased pointer to a `UIView`.
-    pub unsafe fn new(view: *mut c_void, action_handler: impl 'static + ActionHandler) -> Self {
+    pub unsafe fn new(
+        view: *mut c_void,
+        activation_handler: impl 'static + ActivationHandler,
+        action_handler: impl 'static + ActionHandler,
+        deactivation_handler: impl 'static + DeactivationHandler,
+    ) -> Self {
         let view = unsafe { Retained::retain(view as *mut UIView) }.unwrap();
         let view = WeakId::from_retained(&view);
         let mtm = MainThreadMarker::new().unwrap();
 
-        let status_observer = StatusObserver::new(view.clone(), mtm);
+        let state = Rc::new(RefCell::new(State::Inactive {
+            view,
+            action_handler: Rc::new(ActionHandlerWrapper::new(action_handler)),
+            mtm,
+        }));
+        let activation_handler: Rc<ActivationHandlerCell> =
+            Rc::new(RefCell::new(Box::new(activation_handler)));
+        let deactivation_handler: Rc<DeactivationHandlerCell> =
+            Rc::new(RefCell::new(Box::new(deactivation_handler)));
+
+        let status_observer = StatusObserver::new(
+            Rc::downgrade(&state),
+            Rc::downgrade(&activation_handler),
+            Rc::downgrade(&deactivation_handler),
+            mtm,
+        );
         let center = unsafe { NSNotificationCenter::defaultCenter() };
         for name in observed_notification_names() {
             unsafe {
@@ -217,13 +346,10 @@ impl Adapter {
             }
         }
 
-        let state = State::Inactive {
-            view,
-            action_handler: Rc::new(ActionHandlerWrapper::new(action_handler)),
-            mtm,
-        };
         Self {
             state,
+            activation_handler,
+            deactivation_handler,
             status_observer,
         }
     }
@@ -237,16 +363,21 @@ impl Adapter {
     /// If a [`QueuedEvents`] instance is returned, the caller must call
     /// [`QueuedEvents::raise`] on it.
     pub fn update_if_active(
-        &mut self,
+        &self,
         update_factory: impl FnOnce() -> TreeUpdate,
     ) -> Option<QueuedEvents> {
-        match &self.state {
+        if matches!(&*self.state.borrow(), State::Inactive { .. }) {
+            return None;
+        }
+        let update = update_factory();
+        let mut state = self.state.borrow_mut();
+        match &mut *state {
             State::Inactive { .. } => None,
             State::Placeholder {
                 placeholder_context,
                 action_handler,
             } => {
-                let tree = Tree::new(update_factory(), true);
+                let tree = Tree::new(update, true);
                 let context = Context::new(
                     placeholder_context.view.clone(),
                     tree,
@@ -258,13 +389,15 @@ impl Adapter {
                     let events = vec![screen_changed_event(Some(id))];
                     QueuedEvents::new(Rc::clone(&context), events)
                 });
-                self.state = State::Active(context);
+                *state = State::Active(context);
                 queued_events
             }
             State::Active(context) => {
                 let mut event_generator = EventGenerator::new(context.clone());
-                let mut tree = context.tree.borrow_mut();
-                tree.update_and_process_changes(update_factory(), &mut event_generator);
+                {
+                    let mut tree = context.tree.borrow_mut();
+                    tree.update_and_process_changes(update, &mut event_generator);
+                }
                 Some(event_generator.into_result())
             }
         }
@@ -275,101 +408,23 @@ impl Adapter {
     ///
     /// If a [`QueuedEvents`] instance is returned, the caller must call
     /// [`QueuedEvents::raise`] on it.
-    pub fn view_did_appear<H: ActivationHandler + ?Sized>(
-        &mut self,
-        activation_handler: &mut H,
-    ) -> Option<QueuedEvents> {
-        if !any_assistive_tech_running() {
-            return None;
-        }
-        if !matches!(self.state, State::Inactive { .. }) {
-            return None;
-        }
-        let context = self.get_or_init_context(activation_handler);
-        if !matches!(self.state, State::Active(_)) {
-            return None;
-        }
-        let focus_id = context.tree.borrow().state().focus().map(|node| node.id());
-        focus_id.map(|id| QueuedEvents::new(context, vec![layout_event(Some(id))]))
-    }
-
-    fn get_or_init_context<H: ActivationHandler + ?Sized>(
-        &mut self,
-        activation_handler: &mut H,
-    ) -> Rc<Context> {
-        match &self.state {
-            State::Inactive {
-                view,
-                action_handler,
-                mtm,
-            } => match activation_handler.request_initial_tree() {
-                Some(initial_state) => {
-                    let tree = Tree::new(initial_state, true);
-                    let context = Context::new(view.clone(), tree, Rc::clone(action_handler), *mtm);
-                    let result = Rc::clone(&context);
-                    self.state = State::Active(context);
-                    result
-                }
-                None => {
-                    let placeholder_update = TreeUpdate {
-                        nodes: vec![(PLACEHOLDER_ROOT_ID, NodeProvider::new(Role::Window))],
-                        tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
-                        tree_id: TreeId::ROOT,
-                        focus: PLACEHOLDER_ROOT_ID,
-                    };
-                    let placeholder_tree = Tree::new(placeholder_update, true);
-                    let placeholder_context = Context::new(
-                        view.clone(),
-                        placeholder_tree,
-                        Rc::new(ActionHandlerWrapper::new(PlaceholderActionHandler {})),
-                        *mtm,
-                    );
-                    let result = Rc::clone(&placeholder_context);
-                    self.state = State::Placeholder {
-                        placeholder_context,
-                        action_handler: Rc::clone(action_handler),
-                    };
-                    result
-                }
-            },
-            State::Placeholder {
-                placeholder_context,
-                ..
-            } => Rc::clone(placeholder_context),
-            State::Active(context) => Rc::clone(context),
-        }
-    }
-
-    fn weak_view(&self) -> &WeakId<UIView> {
-        match &self.state {
-            State::Inactive { view, .. } => view,
-            State::Placeholder {
-                placeholder_context,
-                ..
-            } => &placeholder_context.view,
-            State::Active(context) => &context.view,
-        }
+    pub fn view_did_appear(&self) -> Option<QueuedEvents> {
+        try_activate(&self.state, &self.activation_handler)
     }
 
     // UIAccessibilityContainer methods
 
     /// Indicates whether the view itself is an accessibility element.
     /// This corresponds to `isAccessibilityElement`.
-    pub fn is_accessibility_element<H: ActivationHandler + ?Sized>(
-        &mut self,
-        activation_handler: &mut H,
-    ) -> bool {
-        let _ = self.get_or_init_context(activation_handler);
+    pub fn is_accessibility_element(&self) -> bool {
+        let _ = get_or_init_context(&self.state, &self.activation_handler);
         false
     }
 
     /// Returns all accessibility elements in the container.
     /// This corresponds to `accessibilityElements`.
-    pub fn accessibility_elements<H: ActivationHandler + ?Sized>(
-        &mut self,
-        activation_handler: &mut H,
-    ) -> *mut NSArray<NSObject> {
-        let context = self.get_or_init_context(activation_handler);
+    pub fn accessibility_elements(&self) -> *mut NSArray<NSObject> {
+        let context = get_or_init_context(&self.state, &self.activation_handler);
         let tree = context.tree.borrow();
         let state = tree.state();
         let node = state.root();
@@ -395,22 +450,15 @@ impl Adapter {
 
     /// Returns the accessibility element at the specified point.
     /// This corresponds to `accessibilityHitTest:`.
-    pub fn hit_test<H: ActivationHandler + ?Sized>(
-        &mut self,
-        point: CGPoint,
-        activation_handler: &mut H,
-    ) -> *mut NSObject {
-        let view = match self.weak_view().load() {
+    pub fn hit_test(&self, point: CGPoint) -> *mut NSObject {
+        let context = get_or_init_context(&self.state, &self.activation_handler);
+        let view = match context.view.load() {
             Some(view) => view,
-            None => {
-                return null_mut();
-            }
+            None => return null_mut(),
         };
-
-        let context = self.get_or_init_context(activation_handler);
         let tree = context.tree.borrow();
-        let state = tree.state();
-        let root = state.root();
+        let tree_state = tree.state();
+        let root = tree_state.root();
         let Some(point) = from_cg_point(&view, &root, point) else {
             return null_mut();
         };
@@ -428,11 +476,6 @@ impl Drop for Adapter {
         unsafe {
             let observer: &AnyObject = self.status_observer.as_ref().as_ref();
             center.removeObserver(observer);
-        }
-        if !matches!(self.state, State::Inactive { .. }) {
-            unsafe {
-                UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, None);
-            }
         }
     }
 }

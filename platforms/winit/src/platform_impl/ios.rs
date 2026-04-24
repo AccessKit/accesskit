@@ -21,7 +21,7 @@ impl Adapter {
         window: &Window,
         activation_handler: impl 'static + ActivationHandler,
         action_handler: impl 'static + ActionHandler,
-        _deactivation_handler: impl 'static + DeactivationHandler,
+        deactivation_handler: impl 'static + DeactivationHandler,
     ) -> Self {
         #[cfg(feature = "rwh_05")]
         let view = match window.raw_window_handle() {
@@ -34,7 +34,14 @@ impl Adapter {
             _ => unreachable!(),
         };
 
-        let adapter = unsafe { SubclassingAdapter::new(view, activation_handler, action_handler) };
+        let adapter = unsafe {
+            SubclassingAdapter::new(
+                view,
+                activation_handler,
+                action_handler,
+                deactivation_handler,
+            )
+        };
         Self { adapter }
     }
 
