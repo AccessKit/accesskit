@@ -12,7 +12,7 @@ use objc2::{
         OBJC_ASSOCIATION_RETAIN_NONATOMIC, objc_getAssociatedObject, objc_setAssociatedObject,
         object_setClass,
     },
-    msg_send_id,
+    msg_send, msg_send_id,
     mutability::MainThreadOnly,
     rc::Retained,
     runtime::{AnyClass, AnyObject, Bool, Sel},
@@ -134,6 +134,36 @@ unsafe extern "C" fn accessibility_hit_test(
         .hit_test(point, &mut *state_mut.activation_handler) as *mut AnyObject
 }
 
+// UIView lifecycle
+
+unsafe extern "C" fn did_move_to_window(this: &UIView, _cmd: Sel) {
+    let Some(associated) = associated_object(this) else {
+        return;
+    };
+    let prev_class = associated.ivars().prev_class;
+    unsafe {
+        let _: () = msg_send![super(this, prev_class), didMoveToWindow];
+    }
+
+    if this.window().is_none() {
+        return;
+    }
+
+    let Some(associated) = associated_object(this) else {
+        return;
+    };
+    let events = {
+        let mut state = associated.ivars().state.borrow_mut();
+        let state_mut = &mut *state;
+        state_mut
+            .adapter
+            .view_did_appear(&mut *state_mut.activation_handler)
+    };
+    if let Some(events) = events {
+        events.raise();
+    }
+}
+
 /// Uses dynamic Objective-C subclassing to implement the `UIView`
 /// accessibility methods when normal subclassing isn't an option.
 pub struct SubclassingAdapter {
@@ -212,6 +242,10 @@ impl SubclassingAdapter {
                         sel!(accessibilityHitTest:),
                         accessibility_hit_test as unsafe extern "C" fn(_, _, _) -> _,
                     );
+                    builder.add_method(
+                        sel!(didMoveToWindow),
+                        did_move_to_window as unsafe extern "C" fn(_, _),
+                    );
                 }
                 let class = builder.register();
                 subclasses.push((prev_class, class));
@@ -222,10 +256,25 @@ impl SubclassingAdapter {
         // the subclass doesn't add any instance variables;
         // it uses an associated object instead.
         unsafe { object_setClass(view as *mut _, (subclass as *const AnyClass).cast()) };
-        Self {
+        let result = Self {
             view: retained_view,
             associated,
+        };
+        // UIKit won't replay `didMoveToWindow` for a view that is already
+        // attached to its window; catch up manually.
+        if result.view.window().is_some() {
+            let events = {
+                let mut state = result.associated.ivars().state.borrow_mut();
+                let state_mut = &mut *state;
+                state_mut
+                    .adapter
+                    .view_did_appear(&mut *state_mut.activation_handler)
+            };
+            if let Some(events) = events {
+                events.raise();
+            }
         }
+        result
     }
 
     /// Create an adapter that dynamically subclasses the root view

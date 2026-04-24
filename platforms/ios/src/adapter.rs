@@ -13,17 +13,36 @@ use accesskit::{
     Tree as TreeData, TreeId, TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Tree};
-use objc2::rc::{Retained, WeakId};
-use objc2_foundation::{CGPoint, MainThreadMarker, NSArray, NSObject};
+use objc2::{
+    ClassType, DeclaredClass, declare_class, msg_send_id,
+    mutability::MainThreadOnly,
+    rc::{Retained, WeakId},
+    runtime::AnyObject,
+    sel,
+};
+use objc2_foundation::{
+    CGPoint, MainThreadMarker, NSArray, NSNotification, NSNotificationCenter, NSNotificationName,
+    NSObject,
+};
 use objc2_ui_kit::{
-    UIAccessibilityPostNotification, UIAccessibilityScreenChangedNotification, UIView,
+    UIAccessibilityBoldTextStatusDidChangeNotification,
+    UIAccessibilityDarkerSystemColorsStatusDidChangeNotification,
+    UIAccessibilityInvertColorsStatusDidChangeNotification, UIAccessibilityIsSpeakScreenEnabled,
+    UIAccessibilityIsSwitchControlRunning, UIAccessibilityIsVoiceOverRunning,
+    UIAccessibilityOnOffSwitchLabelsDidChangeNotification, UIAccessibilityPostNotification,
+    UIAccessibilityReduceMotionStatusDidChangeNotification,
+    UIAccessibilityScreenChangedNotification,
+    UIAccessibilitySpeakScreenStatusDidChangeNotification,
+    UIAccessibilitySwitchControlStatusDidChangeNotification,
+    UIAccessibilityVideoAutoplayStatusDidChangeNotification,
+    UIAccessibilityVoiceOverStatusDidChangeNotification, UIView,
 };
 use std::fmt::{Debug, Formatter};
 use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
 use crate::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper, Context},
-    event::{EventGenerator, QueuedEvents, screen_changed_event},
+    event::{EventGenerator, QueuedEvents, layout_event, screen_changed_event},
     filters::filter,
     node::PlatformNode,
     util::from_cg_point,
@@ -74,6 +93,71 @@ impl ActionHandler for PlaceholderActionHandler {
     fn do_action(&mut self, _request: ActionRequest) {}
 }
 
+fn any_assistive_tech_running() -> bool {
+    unsafe {
+        UIAccessibilityIsVoiceOverRunning().as_bool()
+            || UIAccessibilityIsSwitchControlRunning().as_bool()
+            || UIAccessibilityIsSpeakScreenEnabled().as_bool()
+    }
+}
+
+fn observed_notification_names() -> [&'static NSNotificationName; 9] {
+    unsafe {
+        [
+            UIAccessibilityVoiceOverStatusDidChangeNotification,
+            UIAccessibilitySwitchControlStatusDidChangeNotification,
+            UIAccessibilitySpeakScreenStatusDidChangeNotification,
+            UIAccessibilityInvertColorsStatusDidChangeNotification,
+            UIAccessibilityReduceMotionStatusDidChangeNotification,
+            UIAccessibilityBoldTextStatusDidChangeNotification,
+            UIAccessibilityDarkerSystemColorsStatusDidChangeNotification,
+            UIAccessibilityOnOffSwitchLabelsDidChangeNotification,
+            UIAccessibilityVideoAutoplayStatusDidChangeNotification,
+        ]
+    }
+}
+
+struct StatusObserverIvars {
+    view: WeakId<UIView>,
+}
+
+declare_class!(
+    #[derive(Debug)]
+    struct StatusObserver;
+
+    unsafe impl ClassType for StatusObserver {
+        type Super = NSObject;
+        type Mutability = MainThreadOnly;
+        const NAME: &'static str = "AccessKitAccessibilityStatusObserver";
+    }
+
+    impl DeclaredClass for StatusObserver {
+        type Ivars = StatusObserverIvars;
+    }
+
+    unsafe impl StatusObserver {
+        #[method(accessibilityStatusChanged:)]
+        fn accessibility_status_changed(&self, _notification: &NSNotification) {
+            if !any_assistive_tech_running() {
+                return;
+            }
+            if self.ivars().view.load().is_none() {
+                return;
+            }
+            unsafe {
+                UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, None);
+            }
+        }
+    }
+);
+
+impl StatusObserver {
+    fn new(view: WeakId<UIView>, mtm: MainThreadMarker) -> Retained<Self> {
+        let this = mtm.alloc::<Self>().set_ivars(StatusObserverIvars { view });
+        unsafe { msg_send_id![super(this), init] }
+    }
+}
+
 /// An AccessKit adapter for an owned `UIView`.
 ///
 /// The adapter bridges an AccessKit tree to UIKit's informal accessibility
@@ -94,13 +178,16 @@ impl ActionHandler for PlaceholderActionHandler {
 ///    [`Adapter::accessibility_elements`].
 /// 4. Override `accessibilityHitTest:` to return the result of
 ///    [`Adapter::hit_test`].
-/// 5. Whenever the application's accessibility tree changes, call
+/// 5. In `viewDidAppear:`, call [`Adapter::view_did_appear`] and raise
+///    the returned events.
+/// 6. Whenever the application's accessibility tree changes, call
 ///    [`Adapter::update_if_active`] and raise the returned events.
 ///
 /// All adapter methods must be called on the main thread.
 #[derive(Debug)]
 pub struct Adapter {
     state: State,
+    status_observer: Retained<StatusObserver>,
 }
 
 impl Adapter {
@@ -116,12 +203,29 @@ impl Adapter {
         let view = unsafe { Retained::retain(view as *mut UIView) }.unwrap();
         let view = WeakId::from_retained(&view);
         let mtm = MainThreadMarker::new().unwrap();
+
+        let status_observer = StatusObserver::new(view.clone(), mtm);
+        let center = unsafe { NSNotificationCenter::defaultCenter() };
+        for name in observed_notification_names() {
+            unsafe {
+                center.addObserver_selector_name_object(
+                    status_observer.as_ref().as_ref(),
+                    sel!(accessibilityStatusChanged:),
+                    Some(name),
+                    None,
+                );
+            }
+        }
+
         let state = State::Inactive {
             view,
             action_handler: Rc::new(ActionHandlerWrapper::new(action_handler)),
             mtm,
         };
-        Self { state }
+        Self {
+            state,
+            status_observer,
+        }
     }
 
     /// If and only if the tree has been initialized, call the provided function
@@ -164,6 +268,29 @@ impl Adapter {
                 Some(event_generator.into_result())
             }
         }
+    }
+
+    /// Called when the host view has just appeared on screen. If an assistive
+    /// technology is running, this proactively builds the accessibility tree.
+    ///
+    /// If a [`QueuedEvents`] instance is returned, the caller must call
+    /// [`QueuedEvents::raise`] on it.
+    pub fn view_did_appear<H: ActivationHandler + ?Sized>(
+        &mut self,
+        activation_handler: &mut H,
+    ) -> Option<QueuedEvents> {
+        if !any_assistive_tech_running() {
+            return None;
+        }
+        if !matches!(self.state, State::Inactive { .. }) {
+            return None;
+        }
+        let context = self.get_or_init_context(activation_handler);
+        if !matches!(self.state, State::Active(_)) {
+            return None;
+        }
+        let focus_id = context.tree.borrow().state().focus().map(|node| node.id());
+        focus_id.map(|id| QueuedEvents::new(context, vec![layout_event(Some(id))]))
     }
 
     fn get_or_init_context<H: ActivationHandler + ?Sized>(
@@ -297,6 +424,11 @@ impl Adapter {
 
 impl Drop for Adapter {
     fn drop(&mut self) {
+        let center = unsafe { NSNotificationCenter::defaultCenter() };
+        unsafe {
+            let observer: &AnyObject = self.status_observer.as_ref().as_ref();
+            center.removeObserver(observer);
+        }
         if !matches!(self.state, State::Inactive { .. }) {
             unsafe {
                 UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, None);

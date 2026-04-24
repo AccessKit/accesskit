@@ -23,6 +23,7 @@ objc2-foundation = { version = "0.2.0", features = [
     "NSArray",
     "NSAttributedString",
     "NSDictionary",
+    "NSNotification",
     "NSString",
     "NSValue",
     "NSThread",
