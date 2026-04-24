@@ -2,8 +2,8 @@
 mod fill;
 
 use accesskit::{
-    Action, ActionRequest, ActivationHandler, Live, Node, NodeId, Rect, Role, Tree, TreeId,
-    TreeUpdate,
+    Action, ActionRequest, ActivationHandler, Affine, Live, Node, NodeId, Rect, Role, Tree, TreeId,
+    TreeUpdate, Vec2,
 };
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
 use std::{
@@ -50,32 +50,26 @@ const BUTTON_2_RECT: Rect = Rect {
 };
 
 #[cfg(target_os = "ios")]
-fn safe_area_inset(window: &Window) -> (f64, f64) {
+fn safe_area_inset(window: &Window) -> Vec2 {
     let Ok(outer) = window.outer_position() else {
-        return (0.0, 0.0);
+        return Vec2::ZERO;
     };
     let Ok(inner) = window.inner_position() else {
-        return (0.0, 0.0);
+        return Vec2::ZERO;
     };
-    ((inner.x - outer.x) as f64, (inner.y - outer.y) as f64)
+    Vec2::new((inner.x - outer.x) as f64, (inner.y - outer.y) as f64)
 }
 
 #[cfg(not(target_os = "ios"))]
-fn safe_area_inset(_: &Window) -> (f64, f64) {
-    (0.0, 0.0)
+fn safe_area_inset(_: &Window) -> Vec2 {
+    Vec2::ZERO
 }
 
-fn build_button(id: NodeId, label: &str, inset: (f64, f64)) -> Node {
+fn build_button(id: NodeId, label: &str) -> Node {
     let rect = match id {
         BUTTON_1_ID => BUTTON_1_RECT,
         BUTTON_2_ID => BUTTON_2_RECT,
         _ => unreachable!(),
-    };
-    let rect = Rect {
-        x0: rect.x0 + inset.0,
-        y0: rect.y0 + inset.1,
-        x1: rect.x1 + inset.0,
-        y1: rect.y1 + inset.1,
     };
     let mut node = Node::new(Role::Button);
     node.set_bounds(rect);
@@ -98,22 +92,27 @@ struct UiState {
     focus: NodeId,
     announcement: Option<String>,
     pending_announcement: Option<(String, Instant)>,
-    safe_area_inset: (f64, f64),
+    scale_factor: f64,
+    safe_area_inset: Vec2,
 }
 
 impl UiState {
-    fn new() -> Arc<Mutex<Self>> {
+    fn new(scale_factor: f64, safe_area_inset: Vec2) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
             focus: INITIAL_FOCUS,
             announcement: None,
             pending_announcement: None,
-            safe_area_inset: (0.0, 0.0),
+            scale_factor,
+            safe_area_inset,
         }))
     }
 
     fn build_root(&mut self) -> Node {
         let mut node = Node::new(Role::Window);
         node.set_bounds(WINDOW_RECT);
+        node.set_transform(
+            Affine::translate(self.safe_area_inset) * Affine::scale(self.scale_factor),
+        );
         node.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
         if self.announcement.is_some() {
             node.push_child(ANNOUNCEMENT_ID);
@@ -124,8 +123,8 @@ impl UiState {
 
     fn build_initial_tree(&mut self) -> TreeUpdate {
         let root = self.build_root();
-        let button_1 = build_button(BUTTON_1_ID, "Button 1", self.safe_area_inset);
-        let button_2 = build_button(BUTTON_2_ID, "Button 2", self.safe_area_inset);
+        let button_1 = build_button(BUTTON_1_ID, "Button 1");
+        let button_2 = build_button(BUTTON_2_ID, "Button 2");
         let tree = Tree::new(WINDOW_ID);
         let mut result = TreeUpdate {
             nodes: vec![
@@ -235,7 +234,7 @@ impl Application {
             .with_visible(false);
 
         let window = event_loop.create_window(window_attributes)?;
-        let ui = UiState::new();
+        let ui = UiState::new(window.scale_factor(), safe_area_inset(&window));
         let activation_handler = TearoffActivationHandler {
             state: Arc::clone(&ui),
         };
@@ -268,8 +267,10 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                 self.window = None;
             }
             WindowEvent::Resized(_) => {
+                let factor = window.window.scale_factor();
                 let inset = safe_area_inset(&window.window);
                 let mut state = state.lock().unwrap();
+                state.scale_factor = factor;
                 state.safe_area_inset = inset;
                 adapter.update_if_active(|| state.build_initial_tree());
                 window.window.request_redraw();
