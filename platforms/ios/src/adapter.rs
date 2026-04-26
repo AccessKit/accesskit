@@ -37,6 +37,7 @@ use objc2_ui_kit::{
     UIAccessibilityVoiceOverStatusDidChangeNotification, UIView,
 };
 use std::cell::RefCell;
+use std::fmt::{Debug, Formatter};
 use std::rc::{Rc, Weak};
 use std::{ffi::c_void, ptr::null_mut};
 
@@ -61,6 +62,30 @@ enum State {
         action_handler: Rc<dyn ActionHandlerNoMut>,
     },
     Active(Rc<Context>),
+}
+
+impl Debug for State {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            State::Inactive {
+                view,
+                action_handler: _,
+                mtm,
+            } => f
+                .debug_struct("Inactive")
+                .field("view", view)
+                .field("mtm", mtm)
+                .finish(),
+            State::Placeholder {
+                placeholder_context,
+                action_handler: _,
+            } => f
+                .debug_struct("Placeholder")
+                .field("placeholder_context", placeholder_context)
+                .finish(),
+            State::Active(context) => f.debug_struct("Active").field("context", context).finish(),
+        }
+    }
 }
 
 struct PlaceholderActionHandler;
@@ -297,6 +322,14 @@ pub struct Adapter {
     #[allow(dead_code)]
     deactivation_handler: Rc<DeactivationHandlerCell>,
     status_observer: Retained<StatusObserver>,
+}
+
+impl Debug for Adapter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Adapter")
+            .field("state", &self.state)
+            .finish()
+    }
 }
 
 impl Adapter {
