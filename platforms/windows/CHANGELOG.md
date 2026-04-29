@@ -38,6 +38,29 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.33.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.32.1...accesskit_windows-v0.33.0) (2026-04-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* Prepare consumer crate and Windows adapter for 2024 edition
+
+### Features
+
+* Support tree views on Windows ([#698](https://github.com/AccessKit/accesskit/issues/698)) ([1d3b189](https://github.com/AccessKit/accesskit/commit/1d3b18912ea5f4b0abd37ddb0a771768155fbd7b))
+
+
+### Code Refactoring
+
+* Prepare consumer crate and Windows adapter for 2024 edition ([258b2e6](https://github.com/AccessKit/accesskit/commit/258b2e66b741b142c84563ef00f70bf6bc8da9d8))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.35.0 to 0.36.0
+
 ## [0.32.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.32.0...accesskit_windows-v0.32.1) (2026-03-04)
 
 
