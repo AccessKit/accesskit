@@ -24,6 +24,23 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.36.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.35.0...accesskit_consumer-v0.36.0) (2026-04-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* Prepare consumer crate and Windows adapter for 2024 edition
+
+### Features
+
+* Allow looking up nodes by LocalNodeId and TreeId ([#707](https://github.com/AccessKit/accesskit/issues/707)) ([9d78086](https://github.com/AccessKit/accesskit/commit/9d78086b7a46eb3c2bc84239e25451dfbb0cfeaf))
+* Support tree views on Windows ([#698](https://github.com/AccessKit/accesskit/issues/698)) ([1d3b189](https://github.com/AccessKit/accesskit/commit/1d3b18912ea5f4b0abd37ddb0a771768155fbd7b))
+
+
+### Code Refactoring
+
+* Prepare consumer crate and Windows adapter for 2024 edition ([258b2e6](https://github.com/AccessKit/accesskit/commit/258b2e66b741b142c84563ef00f70bf6bc8da9d8))
+
 ## [0.35.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.34.0...accesskit_consumer-v0.35.0) (2026-03-04)
 
 

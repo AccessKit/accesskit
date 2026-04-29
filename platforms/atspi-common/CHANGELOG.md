@@ -24,6 +24,15 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_consumer bumped from 0.25.0 to 0.26.0
 
+## [0.18.1](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.18.0...accesskit_atspi_common-v0.18.1) (2026-04-29)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.35.0 to 0.36.0
+
 ## [0.18.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.17.0...accesskit_atspi_common-v0.18.0) (2026-03-04)
 
 
