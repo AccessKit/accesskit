@@ -741,6 +741,19 @@ impl<'a> Node<'a> {
         self.write_label(&mut result).unwrap().then_some(result)
     }
 
+    pub fn has_label(&self) -> bool {
+        if self.data().label().is_some() {
+            return true;
+        }
+        self.labelled_by().any(|node| {
+            if node.label_comes_from_value() {
+                node.has_value()
+            } else {
+                node.data().label().is_some()
+            }
+        })
+    }
+
     fn write_label_direct<W: fmt::Write>(&self, mut writer: W) -> Result<bool, fmt::Error> {
         if let Some(label) = &self.data().label() {
             writer.write_str(label)?;
@@ -775,6 +788,10 @@ impl<'a> Node<'a> {
         self.data()
             .description()
             .map(|description| description.to_string())
+    }
+
+    pub fn has_description(&self) -> bool {
+        self.data().description().is_some()
     }
 
     pub fn url(&self) -> Option<&str> {
@@ -885,6 +902,10 @@ impl<'a> Node<'a> {
 
     pub fn is_selected(&self) -> Option<bool> {
         self.data().is_selected()
+    }
+
+    pub fn is_touch_transparent(&self) -> bool {
+        self.data().is_touch_transparent()
     }
 
     pub fn is_item_like(&self) -> bool {

@@ -31,6 +31,10 @@ mod platform;
 #[path = "android.rs"]
 mod platform;
 
+#[cfg(target_os = "ios")]
+#[path = "ios.rs"]
+mod platform;
+
 #[cfg(not(any(
     target_os = "windows",
     target_os = "macos",
@@ -44,7 +48,8 @@ mod platform;
             target_os = "openbsd"
         )
     ),
-    all(feature = "accesskit_android", target_os = "android")
+    all(feature = "accesskit_android", target_os = "android"),
+    target_os = "ios"
 )))]
 #[path = "null.rs"]
 mod platform;

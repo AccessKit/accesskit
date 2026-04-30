@@ -5,6 +5,7 @@ members = [
     "consumer",
     "platforms/android",
     "platforms/atspi-common",
+    "platforms/ios",
     "platforms/macos",
     "platforms/unix",
     "platforms/windows",

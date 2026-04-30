@@ -2,17 +2,19 @@
 mod fill;
 
 use accesskit::{
-    Action, ActionRequest, ActivationHandler, Live, Node, NodeId, Rect, Role, Tree, TreeId,
-    TreeUpdate,
+    Action, ActionRequest, ActivationHandler, Affine, Live, Node, NodeId, Rect, Role, Tree, TreeId,
+    TreeUpdate, Vec2,
 };
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
 use std::{
     error::Error,
     sync::{Arc, Mutex},
+    time::{Duration, Instant},
 };
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, KeyEvent, WindowEvent},
+    event_loop::ControlFlow,
     event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
     keyboard::Key,
     window::{Window, WindowId},
@@ -26,19 +28,42 @@ const BUTTON_2_ID: NodeId = NodeId(2);
 const ANNOUNCEMENT_ID: NodeId = NodeId(3);
 const INITIAL_FOCUS: NodeId = BUTTON_1_ID;
 
+const WINDOW_RECT: Rect = Rect {
+    x0: 0.0,
+    y0: 0.0,
+    x1: 393.0,
+    y1: 759.0,
+};
+
 const BUTTON_1_RECT: Rect = Rect {
     x0: 20.0,
     y0: 20.0,
-    x1: 100.0,
-    y1: 60.0,
+    x1: 200.0,
+    y1: 64.0,
 };
 
 const BUTTON_2_RECT: Rect = Rect {
     x0: 20.0,
-    y0: 60.0,
-    x1: 100.0,
-    y1: 100.0,
+    y0: 84.0,
+    x1: 200.0,
+    y1: 128.0,
 };
+
+#[cfg(target_os = "ios")]
+fn safe_area_inset(window: &Window) -> Vec2 {
+    let Ok(outer) = window.outer_position() else {
+        return Vec2::ZERO;
+    };
+    let Ok(inner) = window.inner_position() else {
+        return Vec2::ZERO;
+    };
+    Vec2::new((inner.x - outer.x) as f64, (inner.y - outer.y) as f64)
+}
+
+#[cfg(not(target_os = "ios"))]
+fn safe_area_inset(_: &Window) -> Vec2 {
+    Vec2::ZERO
+}
 
 fn build_button(id: NodeId, label: &str) -> Node {
     let rect = match id {
@@ -46,7 +71,6 @@ fn build_button(id: NodeId, label: &str) -> Node {
         BUTTON_2_ID => BUTTON_2_RECT,
         _ => unreachable!(),
     };
-
     let mut node = Node::new(Role::Button);
     node.set_bounds(rect);
     node.set_label(label);
@@ -62,21 +86,33 @@ fn build_announcement(text: &str) -> Node {
     node
 }
 
+const ANNOUNCEMENT_DELAY: Duration = Duration::from_millis(150);
+
 struct UiState {
     focus: NodeId,
     announcement: Option<String>,
+    pending_announcement: Option<(String, Instant)>,
+    scale_factor: f64,
+    safe_area_inset: Vec2,
 }
 
 impl UiState {
-    fn new() -> Arc<Mutex<Self>> {
+    fn new(scale_factor: f64, safe_area_inset: Vec2) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
             focus: INITIAL_FOCUS,
             announcement: None,
+            pending_announcement: None,
+            scale_factor,
+            safe_area_inset,
         }))
     }
 
     fn build_root(&mut self) -> Node {
         let mut node = Node::new(Role::Window);
+        node.set_bounds(WINDOW_RECT);
+        node.set_transform(
+            Affine::translate(self.safe_area_inset) * Affine::scale(self.scale_factor),
+        );
         node.set_children(vec![BUTTON_1_ID, BUTTON_2_ID]);
         if self.announcement.is_some() {
             node.push_child(ANNOUNCEMENT_ID);
@@ -118,23 +154,38 @@ impl UiState {
         });
     }
 
-    fn press_button(&mut self, adapter: &mut Adapter, id: NodeId) {
+    fn press_button(&mut self, id: NodeId) {
         let text = if id == BUTTON_1_ID {
             "You pressed button 1"
         } else {
             "You pressed button 2"
         };
-        self.announcement = Some(text.into());
-        adapter.update_if_active(|| {
-            let announcement = build_announcement(text);
-            let root = self.build_root();
-            TreeUpdate {
-                nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],
-                tree: None,
-                tree_id: TreeId::ROOT,
-                focus: self.focus,
-            }
-        });
+        // On iOS, VoiceOver announces the label of the activated button.
+        // Postpone the live region update so the messages don't overlap.
+        self.pending_announcement = Some((text.into(), Instant::now()));
+    }
+
+    fn flush_announcement(&mut self, adapter: &mut Adapter) -> bool {
+        let Some((_, queued_at)) = &self.pending_announcement else {
+            return false;
+        };
+        if queued_at.elapsed() < ANNOUNCEMENT_DELAY {
+            return true;
+        }
+        if let Some((text, _)) = self.pending_announcement.take() {
+            self.announcement = Some(text.clone());
+            adapter.update_if_active(|| {
+                let announcement = build_announcement(&text);
+                let root = self.build_root();
+                TreeUpdate {
+                    nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],
+                    tree: None,
+                    tree_id: TreeId::ROOT,
+                    focus: self.focus,
+                }
+            });
+        }
+        false
     }
 }
 
@@ -183,7 +234,7 @@ impl Application {
             .with_visible(false);
 
         let window = event_loop.create_window(window_attributes)?;
-        let ui = UiState::new();
+        let ui = UiState::new(window.scale_factor(), safe_area_inset(&window));
         let activation_handler = TearoffActivationHandler {
             state: Arc::clone(&ui),
         };
@@ -216,6 +267,12 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                 self.window = None;
             }
             WindowEvent::Resized(_) => {
+                let factor = window.window.scale_factor();
+                let inset = safe_area_inset(&window.window);
+                let mut state = state.lock().unwrap();
+                state.scale_factor = factor;
+                state.safe_area_inset = inset;
+                adapter.update_if_active(|| state.build_initial_tree());
                 window.window.request_redraw();
             }
             WindowEvent::RedrawRequested => {
@@ -243,7 +300,7 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                 Key::Named(winit::keyboard::NamedKey::Space) => {
                     let mut state = state.lock().unwrap();
                     let id = state.focus;
-                    state.press_button(adapter, id);
+                    state.press_button(id);
                     window.window.request_redraw();
                 }
                 _ => (),
@@ -274,27 +331,38 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                             state.set_focus(adapter, target_node);
                         }
                         Action::Click => {
-                            state.press_button(adapter, target_node);
+                            state.press_button(target_node);
                         }
                         _ => (),
                     }
                 }
                 window.window.request_redraw();
             }
-            AccessKitWindowEvent::AccessibilityDeactivated => (),
+            AccessKitWindowEvent::AccessibilityDeactivated => {}
         }
     }
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        self.create_window(event_loop)
-            .expect("failed to create initial window");
+        if self.window.is_none() {
+            self.create_window(event_loop)
+                .expect("failed to create initial window");
+        }
         if let Some(window) = self.window.as_ref() {
             window.window.request_redraw();
         }
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        if self.window.is_none() {
+        if let Some(window) = &mut self.window {
+            if window
+                .ui
+                .lock()
+                .unwrap()
+                .flush_announcement(&mut window.adapter)
+            {
+                event_loop.set_control_flow(ControlFlow::wait_duration(ANNOUNCEMENT_DELAY));
+            }
+        } else {
             event_loop.exit();
         }
     }
