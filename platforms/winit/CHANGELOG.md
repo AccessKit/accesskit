@@ -147,6 +147,23 @@
     * accesskit_macos bumped from 0.18.0 to 0.18.1
     * accesskit_unix bumped from 0.13.0 to 0.13.1
 
+## [0.33.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.32.2...accesskit_winit-v0.33.0) (2026-05-11)
+
+
+### Features
+
+* Basic iOS adapter ([#710](https://github.com/AccessKit/accesskit/issues/710)) ([2dbb06f](https://github.com/AccessKit/accesskit/commit/2dbb06fb3dcc5369cb10fb901490ddf34017f56a))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_windows bumped from 0.32.1 to 0.33.0
+    * accesskit_macos bumped from 0.26.0 to 0.26.1
+    * accesskit_unix bumped from 0.21.0 to 0.21.1
+    * accesskit_android bumped from 0.7.2 to 0.7.3
+
 ## [0.32.2](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.32.1...accesskit_winit-v0.32.2) (2026-03-04)
 
 
