@@ -68,6 +68,13 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_atspi_common bumped from 0.10.0 to 0.10.1
 
+## [0.21.2](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.21.1...accesskit_unix-v0.21.2) (2026-05-23)
+
+
+### Bug Fixes
+
+* Watch the IsEnabled property to lazily activate on Unix ([#715](https://github.com/AccessKit/accesskit/issues/715)) ([e7299a7](https://github.com/AccessKit/accesskit/commit/e7299a753d78e8b00dd75e1d2182abb517648f98))
+
 ## [0.21.1](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.21.0...accesskit_unix-v0.21.1) (2026-05-11)
 
 
