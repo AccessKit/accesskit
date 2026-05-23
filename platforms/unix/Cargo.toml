@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_unix"
-version = "0.21.1"
+version = "0.21.2"
 authors.workspace = true
 license.workspace = true
 description = "AccessKit UI accessibility infrastructure: Linux adapter"

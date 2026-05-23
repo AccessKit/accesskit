@@ -86,7 +86,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_unix"
-version = "0.21.1"
+version = "0.21.2"
 dependencies = [
  "accesskit",
  "accesskit_atspi_common",
@@ -120,7 +120,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_winit"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "accesskit",
  "accesskit_android",
