@@ -21,7 +21,7 @@ use tokio::{
 };
 #[cfg(feature = "tokio")]
 use tokio_stream::{StreamExt, wrappers::UnboundedReceiverStream};
-use zbus::{Connection, connection::Builder};
+use zbus::{Connection, connection::Builder, proxy::PropertyChanged};
 
 use crate::{
     adapter::{AdapterState, Callback, Message},
@@ -135,6 +135,33 @@ fn deactivate_adapter(entry: &mut AdapterEntry) {
     }
 }
 
+async fn bus_after_status_change(
+    change: Option<PropertyChanged<'_, bool>>,
+    session_bus: &Connection,
+    executor: &Executor<'_>,
+) -> zbus::Result<Option<Bus>> {
+    let enabled = match change {
+        Some(change) => change.get().await?,
+        None => false,
+    };
+    if enabled {
+        map_or_ignoring_broken_pipe(Bus::new(session_bus, executor).await, None, Some)
+    } else {
+        Ok(None)
+    }
+}
+
+fn sync_adapters(adapters: &mut [AdapterEntry], atspi_bus: &Option<Bus>) {
+    let active = atspi_bus.is_some();
+    for entry in adapters {
+        if active {
+            activate_adapter(entry);
+        } else {
+            deactivate_adapter(entry);
+        }
+    }
+}
+
 async fn run_event_loop(
     executor: &Executor<'_>,
     session_bus: Connection,
@@ -151,7 +178,7 @@ async fn run_event_loop(
     );
 
     let status = StatusProxy::new(&session_bus).await?;
-    let changes = status.receive_screen_reader_enabled_changed().await.fuse();
+    let changes = status.receive_is_enabled_changed().await.fuse();
     pin!(changes);
 
     #[cfg(not(feature = "tokio"))]
@@ -166,19 +193,8 @@ async fn run_event_loop(
     loop {
         select! {
             change = changes.next() => {
-                atspi_bus = None;
-                if let Some(change) = change {
-                    if change.get().await? {
-                        atspi_bus = map_or_ignoring_broken_pipe(Bus::new(&session_bus, executor).await, None, Some)?;
-                    }
-                }
-                for entry in &mut adapters {
-                    if atspi_bus.is_some() {
-                        activate_adapter(entry);
-                    } else {
-                        deactivate_adapter(entry);
-                    }
-                }
+                atspi_bus = bus_after_status_change(change, &session_bus, executor).await?;
+                sync_adapters(&mut adapters, &atspi_bus);
             }
             message = messages.next() => {
                 if let Some(message) = message {
