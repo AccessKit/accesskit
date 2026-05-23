@@ -116,6 +116,59 @@ impl<'a> AdapterChangeHandler<'a> {
         self.remove_node(node);
     }
 
+    fn apply_filters(
+        &mut self,
+        old_node: &Node,
+        old_filter_result: FilterResult,
+        new_node: &Node,
+        new_filter_result: FilterResult,
+    ) {
+        let parent = new_node.filtered_parent(&filter);
+        if new_filter_result == FilterResult::Include {
+            if old_filter_result == FilterResult::ExcludeSubtree {
+                self.add_subtree(new_node);
+            } else {
+                self.add_node(new_node);
+                if let Some(parent) = parent {
+                    for child in old_node.filtered_children(&filter) {
+                        self.adapter
+                            .emit_object_event(parent.id(), ObjectEvent::ChildRemoved(child.id()));
+                    }
+                }
+            }
+
+            if let Some(parent) = parent {
+                let position = parent
+                    .filtered_children(&filter)
+                    .position(|c| c.id() == new_node.id())
+                    .unwrap();
+                self.adapter.emit_object_event(
+                    parent.id(),
+                    ObjectEvent::ChildAdded(position, new_node.id()),
+                );
+            }
+        } else if old_filter_result == FilterResult::Include {
+            if new_filter_result == FilterResult::ExcludeSubtree {
+                self.remove_subtree(old_node);
+            } else {
+                self.remove_node(old_node);
+                if let Some(parent) = parent {
+                    for (position, child) in new_node.filtered_children(&filter).enumerate() {
+                        self.adapter.emit_object_event(
+                            parent.id(),
+                            ObjectEvent::ChildAdded(position, child.id()),
+                        );
+                    }
+                }
+            }
+
+            if let Some(parent) = parent {
+                self.adapter
+                    .emit_object_event(parent.id(), ObjectEvent::ChildRemoved(old_node.id()));
+            }
+        }
+    }
+
     fn emit_text_change_if_needed_parent(&mut self, old_node: &Node, new_node: &Node) {
         if !new_node.supports_text_ranges() || !old_node.supports_text_ranges() {
             return;
@@ -287,19 +340,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         let filter_old = filter(old_node);
         let filter_new = filter(new_node);
         if filter_new != filter_old {
-            if filter_new == FilterResult::Include {
-                if filter_old == FilterResult::ExcludeSubtree {
-                    self.add_subtree(new_node);
-                } else {
-                    self.add_node(new_node);
-                }
-            } else if filter_old == FilterResult::Include {
-                if filter_new == FilterResult::ExcludeSubtree {
-                    self.remove_subtree(old_node);
-                } else {
-                    self.remove_node(old_node);
-                }
-            }
+            self.apply_filters(old_node, filter_old, new_node, filter_new);
         } else if filter_new == FilterResult::Include {
             let old_wrapper = NodeWrapper(old_node);
             let new_wrapper = NodeWrapper(new_node);
