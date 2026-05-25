@@ -348,29 +348,25 @@ impl State {
                 changes: &mut Option<&mut InternalChanges>,
                 seen_child_ids: &HashSet<NodeId>,
                 new_tree_root: Option<NodeId>,
-                id: NodeId,
+                root: NodeId,
             ) {
-                if let Some(changes) = changes {
-                    changes.removed_node_ids.insert(id);
-                }
-                let node = nodes.remove(&id).unwrap();
-                if let Some(subtree_id) = node.data.tree_id() {
-                    grafts_to_remove.insert(subtree_id);
-                }
-                let (_, tree_index) = id.to_components();
-                for child_id in node.data.children().iter() {
-                    let child_node_id = NodeId::new(*child_id, tree_index);
-                    if !seen_child_ids.contains(&child_node_id)
-                        && new_tree_root != Some(child_node_id)
-                    {
-                        traverse_unreachable(
-                            nodes,
-                            grafts_to_remove,
-                            changes,
-                            seen_child_ids,
-                            new_tree_root,
-                            child_node_id,
-                        );
+                let mut stack = vec![root];
+                while let Some(id) = stack.pop() {
+                    if let Some(changes) = changes {
+                        changes.removed_node_ids.insert(id);
+                    }
+                    let node = nodes.remove(&id).unwrap();
+                    if let Some(subtree_id) = node.data.tree_id() {
+                        grafts_to_remove.insert(subtree_id);
+                    }
+                    let (_, tree_index) = id.to_components();
+                    for child_id in node.data.children().iter() {
+                        let child_node_id = NodeId::new(*child_id, tree_index);
+                        if !seen_child_ids.contains(&child_node_id)
+                            && new_tree_root != Some(child_node_id)
+                        {
+                            stack.push(child_node_id);
+                        }
                     }
                 }
             }
@@ -392,28 +388,25 @@ impl State {
             subtrees_to_remove: &mut Vec<TreeId>,
             subtrees_queued: &mut HashSet<TreeId>,
             changes: &mut Option<&mut InternalChanges>,
-            id: NodeId,
+            root: NodeId,
         ) {
-            let Some(node) = nodes.remove(&id) else {
-                return;
-            };
-            if let Some(changes) = changes {
-                changes.removed_node_ids.insert(id);
-            }
-            if let Some(nested_subtree_id) = node.data.tree_id() {
-                if subtrees_queued.insert(nested_subtree_id) {
-                    subtrees_to_remove.push(nested_subtree_id);
+            let mut stack = vec![root];
+            while let Some(id) = stack.pop() {
+                let Some(node) = nodes.remove(&id) else {
+                    continue;
+                };
+                if let Some(changes) = changes {
+                    changes.removed_node_ids.insert(id);
                 }
-            }
-            let (_, tree_index) = id.to_components();
-            for child_id in node.data.children().iter() {
-                traverse_subtree(
-                    nodes,
-                    subtrees_to_remove,
-                    subtrees_queued,
-                    changes,
-                    NodeId::new(*child_id, tree_index),
-                );
+                if let Some(nested_subtree_id) = node.data.tree_id() {
+                    if subtrees_queued.insert(nested_subtree_id) {
+                        subtrees_to_remove.push(nested_subtree_id);
+                    }
+                }
+                let (_, tree_index) = id.to_components();
+                for child_id in node.data.children().iter() {
+                    stack.push(NodeId::new(*child_id, tree_index));
+                }
             }
         }
 
