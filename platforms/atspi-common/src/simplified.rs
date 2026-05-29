@@ -572,6 +572,26 @@ impl Accessible {
     }
 }
 
+pub struct Cache {
+    root: PlatformRoot,
+}
+
+impl Cache {
+    pub fn new(root: PlatformRoot) -> Self {
+        Self { root }
+    }
+
+    pub fn items(&self) -> Result<Vec<Accessible>> {
+        let descendants: Vec<Accessible> = self
+            .root
+            .map_descendants(|node, _, _| Accessible::Node(node))?;
+        let mut items = Vec::with_capacity(descendants.len() + 1);
+        items.push(Accessible::Root(self.root.clone()));
+        items.extend(descendants);
+        Ok(items)
+    }
+}
+
 #[derive(PartialEq)]
 pub enum EventData {
     U32(u32),
@@ -744,5 +764,71 @@ impl Event {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Accessible, Cache};
+    use crate::{Adapter, AdapterCallback, AppContext, Event, WindowBounds};
+    use accesskit::{
+        ActionHandler, ActionRequest, Node, NodeId as LocalNodeId, Role, Tree, TreeId, TreeUpdate,
+    };
+    use accesskit_consumer::NodeId;
+    use atspi_common::InterfaceSet;
+
+    struct NoOpActionHandler;
+    impl ActionHandler for NoOpActionHandler {
+        fn do_action(&mut self, _request: ActionRequest) {}
+    }
+
+    struct NoOpCallback;
+    impl AdapterCallback for NoOpCallback {
+        fn register_interfaces(&self, _: &Adapter, _: NodeId, _: InterfaceSet) {}
+        fn unregister_interfaces(&self, _: &Adapter, _: NodeId, _: InterfaceSet) {}
+        fn emit_event(&self, _: &Adapter, _: Event) {}
+    }
+
+    fn with_children(role: Role, children: &[LocalNodeId]) -> Node {
+        let mut node = Node::new(role);
+        node.set_children(children.to_vec());
+        node
+    }
+
+    fn initial_tree() -> TreeUpdate {
+        TreeUpdate {
+            nodes: vec![
+                (
+                    LocalNodeId(0),
+                    with_children(Role::Window, &[LocalNodeId(1)]),
+                ),
+                (LocalNodeId(1), Node::new(Role::Button)),
+            ],
+            tree: Some(Tree::new(LocalNodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: LocalNodeId(0),
+        }
+    }
+
+    fn build_cache() -> (Adapter, Cache) {
+        let app_context = AppContext::new(None);
+        let adapter = Adapter::new(
+            &app_context,
+            NoOpCallback,
+            initial_tree(),
+            false,
+            WindowBounds::default(),
+            NoOpActionHandler,
+        );
+        let cache = Cache::new(adapter.platform_root());
+        (adapter, cache)
+    }
+
+    #[test]
+    fn items_prepends_application_root() {
+        let (_adapter, cache) = build_cache();
+        let items = cache.items().unwrap();
+        assert_eq!(items.len(), 3);
+        assert!(matches!(items[0], Accessible::Root(_)));
     }
 }
