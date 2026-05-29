@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    atspi::{ObjectId, interfaces::*},
+    atspi::{ObjectId, cache_path, interfaces::*},
     context::get_or_init_app_context,
     executor::{Executor, Task},
 };
@@ -85,7 +85,15 @@ impl Bus {
                 .object_server()
                 .at(
                     path,
-                    RootAccessibleInterface::new(self.unique_name().to_owned(), node),
+                    RootAccessibleInterface::new(self.unique_name().to_owned(), node.clone()),
+                )
+                .await?;
+
+            self.conn
+                .object_server()
+                .at(
+                    cache_path(),
+                    CacheInterface::new(self.unique_name().to_owned(), node),
                 )
                 .await?;
         }
