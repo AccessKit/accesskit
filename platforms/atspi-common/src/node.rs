@@ -1659,10 +1659,30 @@ impl PlatformRoot {
         self.resolve_app_context(|context| Ok(context.name.clone().unwrap_or_default()))
     }
 
+    pub fn description(&self) -> Result<String> {
+        Ok(String::new())
+    }
+
     pub fn child_count(&self) -> Result<i32> {
         self.resolve_app_context(|context| {
             i32::try_from(context.adapters.len()).map_err(|_| Error::TooManyChildren)
         })
+    }
+
+    pub fn interfaces(&self) -> InterfaceSet {
+        InterfaceSet::new(Interface::Accessible | Interface::Application)
+    }
+
+    pub fn role(&self) -> AtspiRole {
+        AtspiRole::Application
+    }
+
+    pub fn index_in_parent(&self) -> i32 {
+        -1
+    }
+
+    pub fn state(&self) -> StateSet {
+        StateSet::empty()
     }
 
     pub fn child_at_index(&self, index: usize) -> Result<Option<PlatformNode>> {

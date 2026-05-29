@@ -28,7 +28,7 @@ impl Accessible {
     pub fn role(&self) -> Result<Role> {
         match self {
             Self::Node(node) => node.role(),
-            Self::Root(_) => Ok(Role::Application),
+            Self::Root(root) => Ok(root.role()),
         }
     }
 
@@ -49,14 +49,14 @@ impl Accessible {
     pub fn description(&self) -> Result<String> {
         match self {
             Self::Node(node) => node.description(),
-            Self::Root(_) => Ok("".into()),
+            Self::Root(root) => root.description(),
         }
     }
 
     pub fn state(&self) -> StateSet {
         match self {
             Self::Node(node) => node.state(),
-            Self::Root(_) => StateSet::empty(),
+            Self::Root(root) => root.state(),
         }
     }
 
@@ -80,7 +80,7 @@ impl Accessible {
     pub fn index_in_parent(&self) -> Result<i32> {
         match self {
             Self::Node(node) => node.index_in_parent(),
-            Self::Root(_) => Ok(-1),
+            Self::Root(root) => Ok(root.index_in_parent()),
         }
     }
 
