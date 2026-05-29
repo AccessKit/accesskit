@@ -5,8 +5,8 @@
 
 use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, Rect, TreeUpdate};
 use accesskit_atspi_common::{
-    ActionHandlerNoMut, ActionHandlerWrapper, Adapter as AdapterImpl, AdapterCallback, Event,
-    NodeId, PlatformNode, WindowBounds, next_adapter_id,
+    ActionHandlerNoMut, ActionHandlerWrapper, Adapter as AdapterImpl, AdapterCallback, CacheEvent,
+    Event, NodeId, PlatformNode, WindowBounds, next_adapter_id,
 };
 #[cfg(not(feature = "tokio"))]
 use async_channel::Sender;
@@ -51,10 +51,24 @@ impl AdapterCallback for Callback {
     }
 
     fn emit_event(&self, adapter: &AdapterImpl, event: Event) {
-        self.send_message(Message::EmitEvent {
-            adapter_id: adapter.id(),
-            event,
-        });
+        match event {
+            Event::Cache(CacheEvent::Added(id)) => {
+                let node = adapter.platform_node(id);
+                self.send_message(Message::EmitCacheAdd { node });
+            }
+            Event::Cache(CacheEvent::Removed(id)) => {
+                self.send_message(Message::EmitCacheRemove {
+                    adapter_id: adapter.id(),
+                    node_id: id,
+                });
+            }
+            event => {
+                self.send_message(Message::EmitEvent {
+                    adapter_id: adapter.id(),
+                    event,
+                });
+            }
+        }
     }
 }
 
@@ -246,5 +260,12 @@ pub(crate) enum Message {
     EmitEvent {
         adapter_id: usize,
         event: Event,
+    },
+    EmitCacheAdd {
+        node: PlatformNode,
+    },
+    EmitCacheRemove {
+        adapter_id: usize,
+        node_id: NodeId,
     },
 }

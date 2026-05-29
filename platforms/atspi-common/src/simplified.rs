@@ -10,8 +10,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    Adapter, Event as EventEnum, NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot, Property,
-    WindowEvent,
+    Adapter, CacheEvent, Event as EventEnum, NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot,
+    Property, WindowEvent,
 };
 
 pub use crate::{
@@ -763,23 +763,52 @@ impl Event {
                     data: Some(EventData::String(name)),
                 }
             }
+            EventEnum::Cache(cache_event) => {
+                let (kind, target) = match cache_event {
+                    CacheEvent::Added(target) => ("cache:add", target),
+                    CacheEvent::Removed(target) => ("cache:remove", target),
+                };
+                Self {
+                    kind: kind.into(),
+                    source: Accessible::Node(adapter.platform_node(target)),
+                    detail1: 0,
+                    detail2: 0,
+                    data: None,
+                }
+            }
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Accessible, Cache};
+    use super::{Accessible, Cache, Event as SimplifiedEvent};
     use crate::{Adapter, AdapterCallback, AppContext, Event, WindowBounds};
     use accesskit::{
         ActionHandler, ActionRequest, Node, NodeId as LocalNodeId, Role, Tree, TreeId, TreeUpdate,
     };
     use accesskit_consumer::NodeId;
     use atspi_common::InterfaceSet;
+    use std::sync::{Arc, Mutex};
 
     struct NoOpActionHandler;
     impl ActionHandler for NoOpActionHandler {
         fn do_action(&mut self, _request: ActionRequest) {}
+    }
+
+    struct CacheKindCallback {
+        kinds: Arc<Mutex<Vec<String>>>,
+    }
+
+    impl AdapterCallback for CacheKindCallback {
+        fn register_interfaces(&self, _: &Adapter, _: NodeId, _: InterfaceSet) {}
+        fn unregister_interfaces(&self, _: &Adapter, _: NodeId, _: InterfaceSet) {}
+        fn emit_event(&self, adapter: &Adapter, event: Event) {
+            if matches!(event, Event::Cache(_)) {
+                let simplified = SimplifiedEvent::new(adapter, event);
+                self.kinds.lock().unwrap().push(simplified.kind);
+            }
+        }
     }
 
     struct NoOpCallback;
@@ -808,6 +837,44 @@ mod tests {
             tree_id: TreeId::ROOT,
             focus: LocalNodeId(0),
         }
+    }
+
+    #[test]
+    fn cache_events_map_to_kind_strings() {
+        let kinds = Arc::new(Mutex::new(Vec::new()));
+        let app_context = AppContext::new(None);
+        let mut adapter = Adapter::new(
+            &app_context,
+            CacheKindCallback {
+                kinds: kinds.clone(),
+            },
+            initial_tree(),
+            false,
+            WindowBounds::default(),
+            NoOpActionHandler,
+        );
+        adapter.update(TreeUpdate {
+            nodes: vec![
+                (
+                    LocalNodeId(0),
+                    with_children(Role::Window, &[LocalNodeId(1), LocalNodeId(2)]),
+                ),
+                (LocalNodeId(2), Node::new(Role::Button)),
+            ],
+            tree: None,
+            tree_id: TreeId::ROOT,
+            focus: LocalNodeId(0),
+        });
+        adapter.update(TreeUpdate {
+            nodes: vec![(
+                LocalNodeId(0),
+                with_children(Role::Window, &[LocalNodeId(1)]),
+            )],
+            tree: None,
+            tree_id: TreeId::ROOT,
+            focus: LocalNodeId(0),
+        });
+        assert_eq!(*kinds.lock().unwrap(), vec!["cache:add", "cache:remove"]);
     }
 
     fn build_cache() -> (Adapter, Cache) {

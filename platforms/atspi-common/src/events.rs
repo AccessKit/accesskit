@@ -19,6 +19,13 @@ pub enum Event {
         name: String,
         event: WindowEvent,
     },
+    Cache(CacheEvent),
+}
+
+#[derive(Debug)]
+pub enum CacheEvent {
+    Added(NodeId),
+    Removed(NodeId),
 }
 
 #[derive(Debug)]
