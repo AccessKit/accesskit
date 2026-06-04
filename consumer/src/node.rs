@@ -14,6 +14,7 @@ use accesskit::{
 };
 use alloc::{
     string::{String, ToString},
+    vec,
     vec::Vec,
 };
 use core::{fmt, iter::FusedIterator};
@@ -121,13 +122,13 @@ impl<'a> Node<'a> {
     }
 
     pub fn filtered_parent(&self, filter: &impl Fn(&Node) -> FilterResult) -> Option<Node<'a>> {
-        self.parent().and_then(move |parent| {
-            if filter(&parent) == FilterResult::Include {
-                Some(parent)
-            } else {
-                parent.filtered_parent(filter)
+        let mut current = self.parent()?;
+        loop {
+            if filter(&current) == FilterResult::Include {
+                return Some(current);
             }
-        })
+            current = current.parent()?;
+        }
     }
 
     pub fn parent_and_index(self) -> Option<(Node<'a>, usize)> {
@@ -283,13 +284,16 @@ impl<'a> Node<'a> {
     }
 
     pub fn is_descendant_of(&self, ancestor: &Node) -> bool {
-        if self.id() == ancestor.id() {
-            return true;
+        let mut current = *self;
+        loop {
+            if current.id() == ancestor.id() {
+                return true;
+            }
+            match current.parent() {
+                Some(parent) => current = parent,
+                None => return false,
+            }
         }
-        if let Some(parent) = self.parent() {
-            return parent.is_descendant_of(ancestor);
-        }
-        false
     }
 
     /// Returns the transform defined directly on this node, or the identity
@@ -303,22 +307,26 @@ impl<'a> Node<'a> {
     /// Returns the combined affine transform of this node and its ancestors,
     /// up to and including the root of this node's tree.
     pub fn transform(&self) -> Affine {
-        self.parent()
-            .map_or(Affine::IDENTITY, |parent| parent.transform())
-            * self.direct_transform()
+        let mut acc = self.direct_transform();
+        let mut current = *self;
+        while let Some(parent) = current.parent() {
+            acc = parent.direct_transform() * acc;
+            current = parent;
+        }
+        acc
     }
 
     pub(crate) fn relative_transform(&self, stop_at: &Node) -> Affine {
-        let parent_transform = if let Some(parent) = self.parent() {
+        let mut acc = self.direct_transform();
+        let mut current = *self;
+        while let Some(parent) = current.parent() {
             if parent.id() == stop_at.id() {
-                Affine::IDENTITY
-            } else {
-                parent.relative_transform(stop_at)
+                break;
             }
-        } else {
-            Affine::IDENTITY
-        };
-        parent_transform * self.direct_transform()
+            acc = parent.direct_transform() * acc;
+            current = parent;
+        }
+        acc
     }
 
     pub fn raw_bounds(&self) -> Option<Rect> {
@@ -348,23 +356,37 @@ impl<'a> Node<'a> {
         point: Point,
         filter: &impl Fn(&Node) -> FilterResult,
     ) -> Option<(Node<'a>, Point)> {
-        let filter_result = filter(self);
-
-        if filter_result == FilterResult::ExcludeSubtree {
-            return None;
+        // A node's `Test` frame is pushed before its children, then children in
+        // forward order, so that children are searched last-to-first and the
+        // node's own bounds are tested only after all descendants miss.
+        enum Frame<'n> {
+            Visit(Node<'n>, Point),
+            Test(Node<'n>, Point),
         }
 
-        for child in self.children().rev() {
-            let point = child.direct_transform().inverse() * point;
-            if let Some(result) = child.hit_test(point, filter) {
-                return Some(result);
-            }
-        }
-
-        if filter_result == FilterResult::Include {
-            if let Some(rect) = &self.raw_bounds() {
-                if rect.contains(point) {
-                    return Some((*self, point));
+        let mut stack = Vec::with_capacity(self.children().len() + 1);
+        stack.push(Frame::Visit(*self, point));
+        while let Some(frame) = stack.pop() {
+            match frame {
+                Frame::Test(node, point) => {
+                    if let Some(rect) = &node.raw_bounds() {
+                        if rect.contains(point) {
+                            return Some((node, point));
+                        }
+                    }
+                }
+                Frame::Visit(node, point) => {
+                    let filter_result = filter(&node);
+                    if filter_result == FilterResult::ExcludeSubtree {
+                        continue;
+                    }
+                    if filter_result == FilterResult::Include {
+                        stack.push(Frame::Test(node, point));
+                    }
+                    for child in node.children() {
+                        let child_point = child.direct_transform().inverse() * point;
+                        stack.push(Frame::Visit(child, child_point));
+                    }
                 }
             }
         }
@@ -1000,15 +1022,16 @@ impl<'a> Node<'a> {
         &self,
         filter: &impl Fn(&Node) -> FilterResult,
     ) -> Option<Node<'a>> {
-        for child in self.children() {
-            let result = filter(&child);
-            if result == FilterResult::Include {
-                return Some(child);
-            }
-            if result == FilterResult::ExcludeNode {
-                if let Some(descendant) = child.first_filtered_child(filter) {
-                    return Some(descendant);
+        let mut stack = vec![self.children()];
+        while let Some(iter) = stack.last_mut() {
+            if let Some(child) = iter.next() {
+                match filter(&child) {
+                    FilterResult::Include => return Some(child),
+                    FilterResult::ExcludeNode => stack.push(child.children()),
+                    FilterResult::ExcludeSubtree => {}
                 }
+            } else {
+                stack.pop();
             }
         }
         None
@@ -1018,15 +1041,16 @@ impl<'a> Node<'a> {
         &self,
         filter: &impl Fn(&Node) -> FilterResult,
     ) -> Option<Node<'a>> {
-        for child in self.children().rev() {
-            let result = filter(&child);
-            if result == FilterResult::Include {
-                return Some(child);
-            }
-            if result == FilterResult::ExcludeNode {
-                if let Some(descendant) = child.last_filtered_child(filter) {
-                    return Some(descendant);
+        let mut stack = vec![self.children().rev()];
+        while let Some(iter) = stack.last_mut() {
+            if let Some(child) = iter.next() {
+                match filter(&child) {
+                    FilterResult::Include => return Some(child),
+                    FilterResult::ExcludeNode => stack.push(child.children().rev()),
+                    FilterResult::ExcludeSubtree => {}
                 }
+            } else {
+                stack.pop();
             }
         }
         None
@@ -1085,8 +1109,8 @@ impl<W: fmt::Write> fmt::Write for SpacePrefixingWriter<W> {
 #[cfg(test)]
 mod tests {
     use accesskit::{
-        Action, Node, NodeId, Point, Rect, Role, TextDirection, TextPosition, TextSelection, Tree,
-        TreeId, TreeUpdate,
+        Action, Affine, Node, NodeId, Point, Rect, Role, TextDirection, TextPosition,
+        TextSelection, Tree, TreeId, TreeUpdate, Vec2,
     };
     use alloc::vec;
 
@@ -1402,6 +1426,98 @@ mod tests {
                 .root()
                 .node_at_point(Point::new(100.0, 70.0), &test_tree_filter)
                 .is_none()
+        );
+    }
+
+    #[test]
+    fn first_filtered_child() {
+        let tree = test_tree();
+        assert_eq!(
+            Some(PARAGRAPH_0_ID),
+            tree.state()
+                .root()
+                .first_filtered_child(&test_tree_filter)
+                .map(|node| node.id().to_components().0)
+        );
+        // Descends through ExcludeNode children (EMPTY_CONTAINER_3_0 then into
+        // LINK_3_1) to find the first included descendant.
+        assert_eq!(
+            Some(LABEL_3_1_0_ID),
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
+                .unwrap()
+                .first_filtered_child(&test_tree_filter)
+                .map(|node| node.id().to_components().0)
+        );
+        assert!(
+            tree.state()
+                .node_by_id(nid(LABEL_2_0_ID))
+                .unwrap()
+                .first_filtered_child(&test_tree_filter)
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn last_filtered_child() {
+        let tree = test_tree();
+        // Reverse order: skips the trailing ExcludeNode container, returns the
+        // included button.
+        assert_eq!(
+            Some(BUTTON_3_2_ID),
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_3_IGNORED_ID))
+                .unwrap()
+                .last_filtered_child(&test_tree_filter)
+                .map(|node| node.id().to_components().0)
+        );
+        assert!(
+            tree.state()
+                .node_by_id(nid(LABEL_2_0_ID))
+                .unwrap()
+                .last_filtered_child(&test_tree_filter)
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn transform() {
+        let tree = test_tree();
+        assert_eq!(Affine::IDENTITY, tree.state().root().transform());
+        // PARAGRAPH_1_IGNORED defines a translation.
+        let expected = Affine::translate(Vec2::new(10.0, 40.0));
+        assert_eq!(
+            expected,
+            tree.state()
+                .node_by_id(nid(PARAGRAPH_1_IGNORED_ID))
+                .unwrap()
+                .transform()
+        );
+        // LABEL_1_1 inherits its parent's translation (it has none of its own).
+        assert_eq!(
+            expected,
+            tree.state()
+                .node_by_id(nid(LABEL_1_1_ID))
+                .unwrap()
+                .transform()
+        );
+    }
+
+    #[test]
+    fn relative_transform() {
+        let tree = test_tree();
+        let label = tree.state().node_by_id(nid(LABEL_1_1_ID)).unwrap();
+        let paragraph = tree
+            .state()
+            .node_by_id(nid(PARAGRAPH_1_IGNORED_ID))
+            .unwrap();
+        // Relative to its immediate (transformed) parent: identity, since the
+        // parent's transform is excluded.
+        assert_eq!(Affine::IDENTITY, label.relative_transform(&paragraph));
+        // Relative to the root: includes the parent's translation.
+        assert_eq!(
+            Affine::translate(Vec2::new(10.0, 40.0)),
+            label.relative_transform(&tree.state().root())
         );
     }
 
