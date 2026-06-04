@@ -847,9 +847,17 @@ impl PlatformNode {
     }
 
     pub fn index_in_parent(&self) -> Result<i32> {
-        self.resolve(|node| {
-            i32::try_from(node.preceding_filtered_siblings(&filter).count())
-                .map_err(|_| Error::IndexOutOfRange)
+        self.resolve_with_context(|node, _tree, context| {
+            if node.filtered_parent(&filter).is_some() {
+                i32::try_from(node.preceding_filtered_siblings(&filter).count())
+                    .map_err(|_| Error::IndexOutOfRange)
+            } else {
+                let index = context
+                    .read_app_context()
+                    .adapter_index(self.adapter_id)
+                    .map_err(|_| Error::Defunct)?;
+                i32::try_from(index).map_err(|_| Error::IndexOutOfRange)
+            }
         })
     }
 
