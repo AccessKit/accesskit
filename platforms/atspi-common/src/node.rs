@@ -20,7 +20,6 @@ use atspi_common::{
 use std::{
     collections::HashMap,
     hash::{Hash, Hasher},
-    iter::FusedIterator,
     sync::{Arc, RwLock, RwLockReadGuard, Weak},
 };
 
@@ -56,9 +55,7 @@ impl NodeWrapper<'_> {
         self.0.id()
     }
 
-    fn filtered_child_ids(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = NodeId> + FusedIterator<Item = NodeId> + '_ {
+    fn filtered_child_ids(&self) -> impl DoubleEndedIterator<Item = NodeId> {
         self.0.filtered_children(&filter).map(|child| child.id())
     }
 
