@@ -8,7 +8,7 @@ use accesskit::{
     TextPosition as WeakPosition, TextSelection, VerticalOffset,
 };
 use alloc::{string::String, vec::Vec};
-use core::{cmp::Ordering, fmt, iter::FusedIterator};
+use core::{cmp::Ordering, fmt};
 
 use crate::{FilterResult, Node, TreeState, node::NodeId};
 
@@ -1378,10 +1378,7 @@ impl<'a> Node<'a> {
         // TODO: more attributes
     }
 
-    pub(crate) fn text_runs(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a + use<'a>
-    {
+    pub(crate) fn text_runs(&self) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a> {
         let id = self.id();
         self.filtered_children(move |node| text_node_filter(id, node))
     }
@@ -1389,8 +1386,7 @@ impl<'a> Node<'a> {
     fn following_text_runs(
         &self,
         root_node: &Node,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a + use<'a>
-    {
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a> {
         let id = root_node.id();
         self.following_filtered_siblings(move |node| text_node_filter(id, node))
     }
@@ -1398,8 +1394,7 @@ impl<'a> Node<'a> {
     fn preceding_text_runs(
         &self,
         root_node: &Node,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a + use<'a>
-    {
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a> {
         let id = root_node.id();
         self.preceding_filtered_siblings(move |node| text_node_filter(id, node))
     }

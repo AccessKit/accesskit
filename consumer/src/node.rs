@@ -17,7 +17,7 @@ use alloc::{
     vec,
     vec::Vec,
 };
-use core::{fmt, iter::FusedIterator};
+use core::fmt;
 
 use crate::filters::FilterResult;
 use crate::iterators::{
@@ -150,11 +150,7 @@ impl<'a> Node<'a> {
 
     pub fn child_ids(
         &self,
-    ) -> impl DoubleEndedIterator<Item = NodeId>
-    + ExactSizeIterator<Item = NodeId>
-    + FusedIterator<Item = NodeId>
-    + 'a
-    + use<'a> {
+    ) -> impl DoubleEndedIterator<Item = NodeId> + ExactSizeIterator + use<'a> {
         if self.is_graft() {
             ChildIds::Graft(self.graft_child_id())
         } else {
@@ -167,81 +163,58 @@ impl<'a> Node<'a> {
 
     pub fn children(
         &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>>
-    + ExactSizeIterator<Item = Node<'a>>
-    + FusedIterator<Item = Node<'a>>
-    + 'a
-    + use<'a> {
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + ExactSizeIterator + use<'a> {
         let state = self.tree_state;
         self.child_ids()
             .map(move |id| state.node_by_id(id).unwrap())
     }
 
-    pub fn filtered_children<F: Fn(&Node) -> FilterResult + 'a>(
+    pub fn filtered_children<F: Fn(&Node) -> FilterResult>(
         &self,
         filter: F,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + use<'a, F>
-    {
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a, F> {
         FilteredChildren::new(*self, filter)
     }
 
     pub fn following_sibling_ids(
         &self,
-    ) -> impl DoubleEndedIterator<Item = NodeId>
-    + ExactSizeIterator<Item = NodeId>
-    + FusedIterator<Item = NodeId>
-    + 'a
-    + use<'a> {
+    ) -> impl DoubleEndedIterator<Item = NodeId> + ExactSizeIterator + use<'a> {
         FollowingSiblings::new(*self)
     }
 
     pub fn following_siblings(
         &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>>
-    + ExactSizeIterator<Item = Node<'a>>
-    + FusedIterator<Item = Node<'a>>
-    + 'a
-    + use<'a> {
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + ExactSizeIterator + use<'a> {
         let state = self.tree_state;
         self.following_sibling_ids()
             .map(move |id| state.node_by_id(id).unwrap())
     }
 
-    pub fn following_filtered_siblings<F: Fn(&Node) -> FilterResult + 'a>(
+    pub fn following_filtered_siblings<F: Fn(&Node) -> FilterResult>(
         &self,
         filter: F,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + use<'a, F>
-    {
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a, F> {
         FollowingFilteredSiblings::new(*self, filter)
     }
 
     pub fn preceding_sibling_ids(
         &self,
-    ) -> impl DoubleEndedIterator<Item = NodeId>
-    + ExactSizeIterator<Item = NodeId>
-    + FusedIterator<Item = NodeId>
-    + 'a
-    + use<'a> {
+    ) -> impl DoubleEndedIterator<Item = NodeId> + ExactSizeIterator + use<'a> {
         PrecedingSiblings::new(*self)
     }
 
     pub fn preceding_siblings(
         &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>>
-    + ExactSizeIterator<Item = Node<'a>>
-    + FusedIterator<Item = Node<'a>>
-    + 'a
-    + use<'a> {
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + ExactSizeIterator + use<'a> {
         let state = self.tree_state;
         self.preceding_sibling_ids()
             .map(move |id| state.node_by_id(id).unwrap())
     }
 
-    pub fn preceding_filtered_siblings<F: Fn(&Node) -> FilterResult + 'a>(
+    pub fn preceding_filtered_siblings<F: Fn(&Node) -> FilterResult>(
         &self,
         filter: F,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + use<'a, F>
-    {
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a, F> {
         PrecedingFilteredSiblings::new(*self, filter)
     }
 
@@ -726,10 +699,7 @@ fn descendant_label_filter(node: &Node) -> FilterResult {
 }
 
 impl<'a> Node<'a> {
-    pub fn labelled_by(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a + use<'a>
-    {
+    pub fn labelled_by(&self) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a> {
         let explicit = &self.state.data.labelled_by();
         if explicit.is_empty()
             && matches!(
@@ -967,10 +937,7 @@ impl<'a> Node<'a> {
         )
     }
 
-    pub fn controls(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a + use<'a>
-    {
+    pub fn controls(&self) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a> {
         let state = self.tree_state;
         let id = self.id;
         let data = &self.state.data;
@@ -1066,11 +1033,10 @@ impl<'a> Node<'a> {
         })
     }
 
-    pub fn items<F: Fn(&Node) -> FilterResult + 'a>(
+    pub fn items<F: Fn(&Node) -> FilterResult>(
         &self,
         filter: F,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + use<'a, F>
-    {
+    ) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a, F> {
         self.filtered_children(move |child| match filter(child) {
             FilterResult::Include if child.is_item_like() => FilterResult::Include,
             FilterResult::Include => FilterResult::ExcludeNode,
