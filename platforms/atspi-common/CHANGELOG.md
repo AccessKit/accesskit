@@ -24,6 +24,35 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_consumer bumped from 0.25.0 to 0.26.0
 
+## [0.19.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.18.1...accesskit_atspi_common-v0.19.0) (2026-06-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* Trim trait bounds on iterator return types ([#721](https://github.com/AccessKit/accesskit/issues/721))
+
+### Features
+
+* Implement the cache object on Unix ([#719](https://github.com/AccessKit/accesskit/issues/719)) ([61bdabd](https://github.com/AccessKit/accesskit/commit/61bdabdb70016068c21e31bf42b36bc4209232cd))
+
+
+### Bug Fixes
+
+* Compute index in parent for tree roots on Unix ([#718](https://github.com/AccessKit/accesskit/issues/718)) ([7d8c55e](https://github.com/AccessKit/accesskit/commit/7d8c55e55cce4b88c289e96fccb67a38d0afa27f))
+
+
+### Code Refactoring
+
+* Trim trait bounds on iterator return types ([#721](https://github.com/AccessKit/accesskit/issues/721)) ([4023b41](https://github.com/AccessKit/accesskit/commit/4023b414c3c1318ec2780b13a4e9f70713703862))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.24.0 to 0.24.1
+    * accesskit_consumer bumped from 0.36.0 to 0.37.0
+
 ## [0.18.1](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.18.0...accesskit_atspi_common-v0.18.1) (2026-05-11)
 
 

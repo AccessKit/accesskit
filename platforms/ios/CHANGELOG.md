@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.1](https://github.com/AccessKit/accesskit/compare/accesskit_ios-v0.1.0...accesskit_ios-v0.1.1) (2026-06-12)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.24.0 to 0.24.1
+    * accesskit_consumer bumped from 0.36.0 to 0.37.0
+
 ## 0.1.0 (2026-05-11)
 
 
