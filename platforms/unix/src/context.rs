@@ -270,6 +270,23 @@ async fn process_adapter_message(
                     .await?;
             }
         }
+        Message::EmitEvent {
+            event: Event::Cache(_),
+            ..
+        } => unreachable!("cache events are sent as EmitCacheAdd/EmitCacheRemove"),
+        Message::EmitCacheAdd { node } => {
+            if let Some(bus) = atspi_bus {
+                bus.emit_cache_add(node).await?;
+            }
+        }
+        Message::EmitCacheRemove {
+            adapter_id,
+            node_id,
+        } => {
+            if let Some(bus) = atspi_bus {
+                bus.emit_cache_remove(adapter_id, node_id).await?;
+            }
+        }
     }
 
     Ok(())

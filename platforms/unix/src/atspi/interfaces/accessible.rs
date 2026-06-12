@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use accesskit_atspi_common::{NodeIdOrRoot, PlatformNode, PlatformRoot};
-use atspi::{Interface, InterfaceSet, RelationType, Role, StateSet};
+use atspi::{InterfaceSet, RelationType, Role, StateSet};
 use zbus::{fdo, interface, names::OwnedUniqueName};
 
 use super::map_root_error;
@@ -159,8 +159,8 @@ impl RootAccessibleInterface {
     }
 
     #[zbus(property)]
-    fn description(&self) -> &str {
-        ""
+    fn description(&self) -> fdo::Result<String> {
+        self.root.description().map_err(map_root_error)
     }
 
     #[zbus(property)]
@@ -204,7 +204,7 @@ impl RootAccessibleInterface {
     }
 
     fn get_index_in_parent(&self) -> i32 {
-        -1
+        self.root.index_in_parent()
     }
 
     fn get_relation_set(&self) -> Vec<(RelationType, Vec<OwnedObjectAddress>)> {
@@ -212,11 +212,11 @@ impl RootAccessibleInterface {
     }
 
     fn get_role(&self) -> Role {
-        Role::Application
+        self.root.role()
     }
 
     fn get_state(&self) -> StateSet {
-        StateSet::empty()
+        self.root.state()
     }
 
     fn get_application(&self) -> (OwnedObjectAddress,) {
@@ -224,6 +224,6 @@ impl RootAccessibleInterface {
     }
 
     fn get_interfaces(&self) -> InterfaceSet {
-        InterfaceSet::new(Interface::Accessible | Interface::Application)
+        self.root.interfaces()
     }
 }

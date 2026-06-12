@@ -13,6 +13,11 @@ use zbus::{
 
 const ACCESSIBLE_PATH_PREFIX: &str = "/org/a11y/atspi/accessible/";
 const ROOT_PATH: &str = "/org/a11y/atspi/accessible/root";
+const CACHE_PATH: &str = "/org/a11y/atspi/cache";
+
+pub(crate) fn cache_path() -> OwnedObjectPath {
+    ObjectPath::from_str_unchecked(CACHE_PATH).into()
+}
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum ObjectId {

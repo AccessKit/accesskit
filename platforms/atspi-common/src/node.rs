@@ -55,6 +55,31 @@ impl NodeWrapper<'_> {
         self.0.id()
     }
 
+    pub(crate) fn cache_node(
+        &self,
+        adapter_id: usize,
+        index_in_parent: i32,
+        child_count: i32,
+        window_focused: bool,
+    ) -> CacheNode {
+        let parent = self
+            .0
+            .filtered_parent(&filter)
+            .map_or(NodeIdOrRoot::Root, |node| NodeIdOrRoot::Node(node.id()));
+        CacheNode {
+            adapter_id,
+            id: self.id(),
+            parent,
+            index_in_parent,
+            child_count,
+            interfaces: self.interfaces(),
+            name: self.name().unwrap_or_default(),
+            description: self.description().unwrap_or_default(),
+            role: self.role(),
+            states: self.state(window_focused),
+        }
+    }
+
     fn filtered_child_ids(&self) -> impl DoubleEndedIterator<Item = NodeId> {
         self.0.filtered_children(&filter).map(|child| child.id())
     }
@@ -855,6 +880,30 @@ impl PlatformNode {
                     .map_err(|_| Error::Defunct)?;
                 i32::try_from(index).map_err(|_| Error::IndexOutOfRange)
             }
+        })
+    }
+
+    pub fn cache_node(&self) -> Result<CacheNode> {
+        self.resolve_with_context(|node, tree, context| {
+            let index_in_parent = if node.filtered_parent(&filter).is_some() {
+                i32::try_from(node.preceding_filtered_siblings(&filter).count())
+                    .map_err(|_| Error::IndexOutOfRange)?
+            } else {
+                let index = context
+                    .read_app_context()
+                    .adapter_index(self.adapter_id)
+                    .map_err(|_| Error::Defunct)?;
+                i32::try_from(index).map_err(|_| Error::IndexOutOfRange)?
+            };
+            let child_count = i32::try_from(node.filtered_children(&filter).count())
+                .map_err(|_| Error::TooManyChildren)?;
+            let wrapper = NodeWrapper(&node);
+            Ok(wrapper.cache_node(
+                self.adapter_id,
+                index_in_parent,
+                child_count,
+                tree.state().focus_id().is_some(),
+            ))
         })
     }
 
@@ -1659,10 +1708,30 @@ impl PlatformRoot {
         self.resolve_app_context(|context| Ok(context.name.clone().unwrap_or_default()))
     }
 
+    pub fn description(&self) -> Result<String> {
+        Ok(String::new())
+    }
+
     pub fn child_count(&self) -> Result<i32> {
         self.resolve_app_context(|context| {
             i32::try_from(context.adapters.len()).map_err(|_| Error::TooManyChildren)
         })
+    }
+
+    pub fn interfaces(&self) -> InterfaceSet {
+        InterfaceSet::new(Interface::Accessible | Interface::Application)
+    }
+
+    pub fn role(&self) -> AtspiRole {
+        AtspiRole::Application
+    }
+
+    pub fn index_in_parent(&self) -> i32 {
+        -1
+    }
+
+    pub fn state(&self) -> StateSet {
+        StateSet::empty()
     }
 
     pub fn child_at_index(&self, index: usize) -> Result<Option<PlatformNode>> {
@@ -1736,6 +1805,111 @@ impl PlatformRoot {
         app_context.id = Some(id);
         Ok(())
     }
+
+    pub fn map_descendants<T, I>(&self, f: impl Fn(PlatformNode, usize, usize) -> I) -> Result<T>
+    where
+        T: FromIterator<I>,
+    {
+        fn collect_descendants<I>(
+            node: Node<'_>,
+            index_in_parent: usize,
+            adapter_id: usize,
+            context: &Arc<Context>,
+            f: &impl Fn(PlatformNode, usize, usize) -> I,
+            results: &mut Vec<I>,
+        ) {
+            let children: Vec<_> = node.filtered_children(&filter).collect();
+            let platform_node = PlatformNode::new(context, adapter_id, node.id());
+            results.push(f(platform_node, index_in_parent, children.len()));
+            for (child_index, child) in children.into_iter().enumerate() {
+                collect_descendants(child, child_index, adapter_id, context, f, results);
+            }
+        }
+
+        self.resolve_app_context(|context| {
+            let mut results = Vec::new();
+
+            for (adapter_slot, (adapter_id, adapter_context)) in context.adapters.iter().enumerate()
+            {
+                let tree = adapter_context.read_tree();
+                let state = tree.state();
+                let root = state.root();
+
+                collect_descendants(
+                    root,
+                    adapter_slot,
+                    *adapter_id,
+                    adapter_context,
+                    &f,
+                    &mut results,
+                );
+            }
+
+            Ok(results.into_iter().collect())
+        })
+    }
+
+    pub fn map_descendant_cache_nodes<T, I>(&self, f: impl Fn(CacheNode) -> I) -> Result<T>
+    where
+        T: FromIterator<I>,
+    {
+        fn collect_descendants<I>(
+            node: Node<'_>,
+            index_in_parent: i32,
+            adapter_id: usize,
+            window_focused: bool,
+            f: &impl Fn(CacheNode) -> I,
+            results: &mut Vec<Result<I>>,
+        ) {
+            let children: Vec<_> = node.filtered_children(&filter).collect();
+            let child_count = match i32::try_from(children.len()) {
+                Ok(count) => count,
+                Err(_) => {
+                    results.push(Err(Error::TooManyChildren));
+                    return;
+                }
+            };
+            let wrapper = NodeWrapper(&node);
+            let cache_node =
+                wrapper.cache_node(adapter_id, index_in_parent, child_count, window_focused);
+            results.push(Ok(f(cache_node)));
+            for (child_index, child) in children.into_iter().enumerate() {
+                let child_index = match i32::try_from(child_index) {
+                    Ok(index) => index,
+                    Err(_) => {
+                        results.push(Err(Error::IndexOutOfRange));
+                        return;
+                    }
+                };
+                collect_descendants(child, child_index, adapter_id, window_focused, f, results);
+            }
+        }
+
+        self.resolve_app_context(|context| {
+            let mut results = Vec::new();
+
+            for (adapter_slot, (adapter_id, adapter_context)) in context.adapters.iter().enumerate()
+            {
+                let tree = adapter_context.read_tree();
+                let state = tree.state();
+                let root = state.root();
+                let index_in_parent =
+                    i32::try_from(adapter_slot).map_err(|_| Error::IndexOutOfRange)?;
+                let window_focused = state.focus_id().is_some();
+
+                collect_descendants(
+                    root,
+                    index_in_parent,
+                    *adapter_id,
+                    window_focused,
+                    &f,
+                    &mut results,
+                );
+            }
+
+            results.into_iter().collect()
+        })
+    }
 }
 
 impl PartialEq for PlatformRoot {
@@ -1754,4 +1928,17 @@ impl Hash for PlatformRoot {
 pub enum NodeIdOrRoot {
     Node(NodeId),
     Root,
+}
+
+pub struct CacheNode {
+    pub adapter_id: usize,
+    pub id: NodeId,
+    pub parent: NodeIdOrRoot,
+    pub index_in_parent: i32,
+    pub child_count: i32,
+    pub interfaces: InterfaceSet,
+    pub name: String,
+    pub description: String,
+    pub role: AtspiRole,
+    pub states: StateSet,
 }

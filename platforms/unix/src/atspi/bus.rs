@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::{
-    atspi::{ObjectId, interfaces::*},
+    atspi::{ObjectId, cache_path, interfaces::*},
     context::get_or_init_app_context,
     executor::{Executor, Task},
 };
@@ -85,7 +85,15 @@ impl Bus {
                 .object_server()
                 .at(
                     path,
-                    RootAccessibleInterface::new(self.unique_name().to_owned(), node),
+                    RootAccessibleInterface::new(self.unique_name().to_owned(), node.clone()),
+                )
+                .await?;
+
+            self.conn
+                .object_server()
+                .at(
+                    cache_path(),
+                    CacheInterface::new(self.unique_name().to_owned(), node),
                 )
                 .await?;
         }
@@ -367,6 +375,43 @@ impl Bus {
         body.any_data = window_name.into();
         self.emit_event(target, "org.a11y.atspi.Event.Window", signal, body)
             .await
+    }
+
+    pub(crate) async fn emit_cache_add(&self, node: PlatformNode) -> Result<()> {
+        let Ok(item) = cache_item_for_node(self.unique_name().inner(), &node) else {
+            return Ok(());
+        };
+        self.emit_cache_signal("AddAccessible", &item).await
+    }
+
+    pub(crate) async fn emit_cache_remove(&self, adapter_id: usize, node_id: NodeId) -> Result<()> {
+        let reference = object_ref(
+            self.unique_name().inner(),
+            ObjectId::Node {
+                adapter: adapter_id,
+                node: node_id,
+            },
+        );
+        self.emit_cache_signal("RemoveAccessible", &reference).await
+    }
+
+    async fn emit_cache_signal<B>(&self, signal_name: &str, body: &B) -> Result<()>
+    where
+        B: serde::Serialize + zbus::zvariant::DynamicType,
+    {
+        map_or_ignoring_broken_pipe(
+            self.conn
+                .emit_signal(
+                    Option::<BusName>::None,
+                    cache_path(),
+                    InterfaceName::from_str_unchecked("org.a11y.atspi.Cache"),
+                    MemberName::from_str_unchecked(signal_name),
+                    body,
+                )
+                .await,
+            (),
+            |_| (),
+        )
     }
 
     async fn emit_event(
