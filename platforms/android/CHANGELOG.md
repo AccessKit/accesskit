@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.4](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.7.3...accesskit_android-v0.7.4) (2026-06-12)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.24.0 to 0.24.1
+    * accesskit_consumer bumped from 0.36.0 to 0.37.0
+
 ## [0.7.3](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.7.2...accesskit_android-v0.7.3) (2026-05-11)
 
 

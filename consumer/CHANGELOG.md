@@ -24,6 +24,24 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.37.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.36.0...accesskit_consumer-v0.37.0) (2026-06-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* Trim trait bounds on iterator return types ([#721](https://github.com/AccessKit/accesskit/issues/721))
+
+### Code Refactoring
+
+* Trim trait bounds on iterator return types ([#721](https://github.com/AccessKit/accesskit/issues/721)) ([4023b41](https://github.com/AccessKit/accesskit/commit/4023b414c3c1318ec2780b13a4e9f70713703862))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.24.0 to 0.24.1
+
 ## [0.36.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.35.0...accesskit_consumer-v0.36.0) (2026-05-11)
 
 

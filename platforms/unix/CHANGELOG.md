@@ -68,6 +68,26 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_atspi_common bumped from 0.10.0 to 0.10.1
 
+## [0.22.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.21.1...accesskit_unix-v0.22.0) (2026-06-12)
+
+
+### Features
+
+* Implement the cache object on Unix ([#719](https://github.com/AccessKit/accesskit/issues/719)) ([61bdabd](https://github.com/AccessKit/accesskit/commit/61bdabdb70016068c21e31bf42b36bc4209232cd))
+
+
+### Bug Fixes
+
+* Watch the IsEnabled property to lazily activate on Unix ([#715](https://github.com/AccessKit/accesskit/issues/715)) ([e7299a7](https://github.com/AccessKit/accesskit/commit/e7299a753d78e8b00dd75e1d2182abb517648f98))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.24.0 to 0.24.1
+    * accesskit_atspi_common bumped from 0.18.1 to 0.19.0
+
 ## [0.21.1](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.21.0...accesskit_unix-v0.21.1) (2026-05-11)
 
 

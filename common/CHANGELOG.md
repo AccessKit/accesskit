@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.24.0...accesskit-v0.24.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* Update pyo3 dependency to 0.29 ([#724](https://github.com/AccessKit/accesskit/issues/724)) ([c9725e2](https://github.com/AccessKit/accesskit/commit/c9725e2bc2094c68ba152c929fb31d4a09e44af5))
+
 ## [0.24.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.23.0...accesskit-v0.24.0) (2026-02-01)
 
 
