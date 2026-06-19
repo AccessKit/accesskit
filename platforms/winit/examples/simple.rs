@@ -86,8 +86,8 @@ const ANNOUNCEMENT_DELAY: Duration = Duration::from_millis(150);
 
 struct UiState {
     focus: NodeId,
-    announcement: Option<String>,
-    pending_announcement: Option<(String, Instant)>,
+    announcement: Option<&'static str>,
+    pending_announcement: Option<(&'static str, Instant)>,
     scale_factor: f64,
     inset: Vec2,
 }
@@ -156,7 +156,7 @@ impl UiState {
         };
         // On iOS, VoiceOver announces the label of the activated button.
         // Postpone the live region update so the messages don't overlap.
-        self.pending_announcement = Some((text.into(), Instant::now()));
+        self.pending_announcement = Some((text, Instant::now()));
     }
 
     fn flush_announcement(&mut self, adapter: &mut Adapter) -> bool {
@@ -167,9 +167,9 @@ impl UiState {
             return true;
         }
         if let Some((text, _)) = self.pending_announcement.take() {
-            self.announcement = Some(text.clone());
+            self.announcement = Some(text);
             adapter.update_if_active(|| {
-                let announcement = build_announcement(&text);
+                let announcement = build_announcement(text);
                 let root = self.build_root();
                 TreeUpdate {
                     nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],
