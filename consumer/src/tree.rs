@@ -3135,4 +3135,61 @@ mod tests {
         assert_eq!(handler.old_focus, Some(node_id(2)));
         assert_eq!(handler.new_focus, Some(node_id(3)));
     }
+
+    // The host-focus toggle and toolkit metadata accessors had no coverage.
+    #[cfg(test)]
+    mod host_focus {
+        use accesskit::{Node, NodeId, Role, Tree, TreeId, TreeUpdate};
+        use alloc::vec;
+
+        use crate::tests::nid;
+
+        struct NoOpHandler;
+        impl crate::TreeChangeHandler for NoOpHandler {
+            fn node_added(&mut self, _node: &crate::Node) {}
+            fn node_updated(&mut self, _old_node: &crate::Node, _new_node: &crate::Node) {}
+            fn focus_moved(
+                &mut self,
+                _old_node: Option<&crate::Node>,
+                _new_node: Option<&crate::Node>,
+            ) {
+            }
+            fn node_removed(&mut self, _node: &crate::Node) {}
+        }
+
+        #[test]
+        fn host_focus_and_toolkit_metadata() {
+            let mut data_tree = Tree::new(NodeId(0));
+            data_tree.toolkit_name = Some("test-kit".into());
+            data_tree.toolkit_version = Some("1.2.3".into());
+            let update = TreeUpdate {
+                nodes: vec![
+                    (NodeId(0), {
+                        let mut node = Node::new(Role::RootWebArea);
+                        node.set_children(vec![NodeId(1)]);
+                        node
+                    }),
+                    (NodeId(1), Node::new(Role::Dialog)),
+                ],
+                tree: Some(data_tree),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(1),
+            };
+            let mut tree = crate::Tree::new(update, true);
+            {
+                let state = tree.state();
+                assert!(state.is_host_focused());
+                assert!(state.focus_id_in_tree() == nid(NodeId(1)));
+                assert!(state.focus_in_tree().id() == nid(NodeId(1)));
+                assert_eq!(Some("test-kit"), state.toolkit_name());
+                assert_eq!(Some("1.2.3"), state.toolkit_version());
+                // Focus rests on a dialog, so it is the active dialog.
+                assert!(state.active_dialog().map(|n| n.id()) == Some(nid(NodeId(1))));
+            }
+            // Dropping host focus is reflected by `is_host_focused`.
+            let mut handler = NoOpHandler;
+            tree.update_host_focus_state_and_process_changes(false, &mut handler);
+            assert!(!tree.state().is_host_focused());
+        }
+    }
 }
