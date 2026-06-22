@@ -6,10 +6,10 @@
 use accesskit::Point;
 use accesskit_consumer::Node;
 use objc2::encode::{Encode, Encoding, RefEncode};
-use objc2_foundation::{CGPoint, CGRect, CGSize, NSInteger};
+use objc2_foundation::{CGPoint, CGRect, CGSize, NSAttributedStringKey, NSInteger, NSString};
 use objc2_ui_kit::{
-    UIAccessibilityConvertFrameToScreenCoordinates, UIAccessibilityTraits, UICoordinateSpace,
-    UIView,
+    UIAccessibilityConvertFrameToScreenCoordinates, UIAccessibilityPriority, UIAccessibilityTraits,
+    UICoordinateSpace, UIView,
 };
 use std::ffi::{c_char, c_void};
 use std::sync::OnceLock;
@@ -78,4 +78,27 @@ pub(crate) fn toggle_button_trait() -> UIAccessibilityTraits {
             *symbol.cast::<UIAccessibilityTraits>()
         }
     })
+}
+
+fn resolve_nsstring_const(symbol: *const c_char) -> Option<&'static NSString> {
+    unsafe {
+        let slot = dlsym(RTLD_DEFAULT, symbol);
+        if slot.is_null() {
+            None
+        } else {
+            (*slot.cast::<*const NSString>()).as_ref()
+        }
+    }
+}
+
+pub(crate) fn announcement_priority_high() -> Option<&'static UIAccessibilityPriority> {
+    resolve_nsstring_const(c"UIAccessibilityPriorityHigh".as_ptr())
+}
+
+pub(crate) fn announcement_priority_low() -> Option<&'static UIAccessibilityPriority> {
+    resolve_nsstring_const(c"UIAccessibilityPriorityLow".as_ptr())
+}
+
+pub(crate) fn announcement_priority_key() -> Option<&'static NSAttributedStringKey> {
+    resolve_nsstring_const(c"UIAccessibilitySpeechAttributeAnnouncementPriority".as_ptr())
 }
