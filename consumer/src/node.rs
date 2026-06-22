@@ -2089,4 +2089,335 @@ mod tests {
                 .is_focused()
         );
     }
+
+    // The numeric, scroll, and semantic-state accessors are thin reads of the
+    // underlying node data, but none of them were exercised by the existing
+    // suite; these pin the setter-to-getter round trip the platform adapters
+    // depend on.
+    #[test]
+    fn numeric_and_scroll_accessors() {
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut node = Node::new(Role::RootWebArea);
+                    node.set_children(vec![NodeId(1)]);
+                    node
+                }),
+                (NodeId(1), {
+                    let mut node = Node::new(Role::Slider);
+                    node.set_numeric_value(3.0);
+                    node.set_min_numeric_value(0.0);
+                    node.set_max_numeric_value(10.0);
+                    node.set_numeric_value_step(1.0);
+                    node.set_numeric_value_jump(2.0);
+                    node.set_scroll_x(5.0);
+                    node.set_scroll_x_min(0.0);
+                    node.set_scroll_x_max(50.0);
+                    node.set_scroll_y(6.0);
+                    node.set_scroll_y_min(0.0);
+                    node.set_scroll_y_max(60.0);
+                    node
+                }),
+            ],
+            tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        };
+        let tree = crate::Tree::new(update, false);
+        let state = tree.state();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
+        assert_eq!(Some(3.0), node.numeric_value());
+        assert_eq!(Some(0.0), node.min_numeric_value());
+        assert_eq!(Some(10.0), node.max_numeric_value());
+        assert_eq!(Some(1.0), node.numeric_value_step());
+        assert_eq!(Some(2.0), node.numeric_value_jump());
+        assert_eq!(Some(5.0), node.scroll_x());
+        assert_eq!(Some(0.0), node.scroll_x_min());
+        assert_eq!(Some(50.0), node.scroll_x_max());
+        assert_eq!(Some(6.0), node.scroll_y());
+        assert_eq!(Some(0.0), node.scroll_y_min());
+        assert_eq!(Some(60.0), node.scroll_y_max());
+    }
+
+    #[test]
+    fn state_and_semantic_accessors() {
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut node = Node::new(Role::RootWebArea);
+                    node.set_children(vec![NodeId(1)]);
+                    node
+                }),
+                (NodeId(1), {
+                    let mut node = Node::new(Role::CheckBox);
+                    node.set_toggled(accesskit::Toggled::Mixed);
+                    node.set_orientation(accesskit::Orientation::Vertical);
+                    node.set_has_popup(accesskit::HasPopup::Menu);
+                    node.set_aria_current(accesskit::AriaCurrent::Page);
+                    node.set_level(3);
+                    node.set_role_description("custom");
+                    node.set_multiselectable();
+                    node
+                }),
+            ],
+            tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        };
+        let tree = crate::Tree::new(update, false);
+        let state = tree.state();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
+        assert_eq!(Some(accesskit::Toggled::Mixed), node.toggled());
+        assert_eq!(Some(accesskit::Orientation::Vertical), node.orientation());
+        assert_eq!(Some(accesskit::HasPopup::Menu), node.has_popup());
+        assert_eq!(Some(accesskit::AriaCurrent::Page), node.aria_current());
+        assert_eq!(Some(3), node.level());
+        assert_eq!(Some("custom"), node.role_description());
+        assert!(node.has_role_description());
+        assert!(node.is_multiselectable());
+    }
+
+    #[test]
+    fn read_only_and_disabled_states() {
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut node = Node::new(Role::RootWebArea);
+                    node.set_children(vec![NodeId(1), NodeId(2), NodeId(3)]);
+                    node
+                }),
+                // An editable field that is neither read-only nor disabled.
+                (NodeId(1), Node::new(Role::TextInput)),
+                // The same kind of field, explicitly marked read-only.
+                (NodeId(2), {
+                    let mut node = Node::new(Role::TextInput);
+                    node.set_read_only();
+                    node
+                }),
+                // A disabled field; `is_read_only_or_disabled` must fold it in.
+                (NodeId(3), {
+                    let mut node = Node::new(Role::TextInput);
+                    node.set_disabled();
+                    node
+                }),
+            ],
+            tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        };
+        let tree = crate::Tree::new(update, false);
+        let state = tree.state();
+        let editable = state.node_by_id(nid(NodeId(1))).unwrap();
+        assert!(!editable.is_read_only());
+        assert!(!editable.is_disabled());
+        assert!(!editable.is_read_only_or_disabled());
+        let read_only = state.node_by_id(nid(NodeId(2))).unwrap();
+        assert!(read_only.is_read_only());
+        assert!(read_only.is_read_only_or_disabled());
+        let disabled = state.node_by_id(nid(NodeId(3))).unwrap();
+        assert!(disabled.is_disabled());
+        assert!(disabled.is_read_only_or_disabled());
+    }
+
+    #[test]
+    fn is_hidden_is_inherited_from_an_ancestor() {
+        // Only the parent sets the hidden flag; the child must inherit it.
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut node = Node::new(Role::RootWebArea);
+                    node.set_children(vec![NodeId(1)]);
+                    node
+                }),
+                (NodeId(1), {
+                    let mut node = Node::new(Role::GenericContainer);
+                    node.set_hidden();
+                    node.set_children(vec![NodeId(2)]);
+                    node
+                }),
+                (NodeId(2), Node::new(Role::Button)),
+            ],
+            tree: Some(Tree::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        };
+        let tree = crate::Tree::new(update, false);
+        let state = tree.state();
+        assert!(state.node_by_id(nid(NodeId(1))).unwrap().is_hidden());
+        assert!(state.node_by_id(nid(NodeId(2))).unwrap().is_hidden());
+    }
+
+    // A node carrying a broad set of explicitly-provided properties and
+    // supported actions, used to exercise the accessor surface in one place.
+    #[cfg(test)]
+    mod accessors {
+        use accesskit::{Action, Node, NodeId, Rect, Role, Tree, TreeId, TreeUpdate};
+        use alloc::string::ToString;
+        use alloc::vec;
+        use alloc::vec::Vec;
+
+        use crate::tests::nid;
+        use crate::FilterResult;
+
+        fn accessor_tree() -> crate::Tree {
+            let mut root = Node::new(Role::RootWebArea);
+            root.set_children(vec![
+                NodeId(1),
+                NodeId(2),
+                NodeId(4),
+                NodeId(5),
+                NodeId(6),
+                NodeId(7),
+            ]);
+
+            let mut listbox = Node::new(Role::ListBox);
+            listbox.set_multiselectable();
+            listbox.set_children(vec![NodeId(3)]);
+
+            let mut option = Node::new(Role::ListBoxOption);
+            option.set_selected(true);
+            option.set_size_of_set(5);
+            option.set_position_in_set(2);
+
+            let mut button = Node::new(Role::Button);
+            button.add_action(Action::Click);
+            button.add_action(Action::Focus);
+            button.add_action(Action::Increment);
+            button.add_action(Action::Decrement);
+            button.set_label("ok");
+            button.set_description("a button");
+            button.set_busy();
+            button.set_live_atomic();
+            button.set_modal();
+            button.set_required();
+            button.set_touch_transparent();
+            button.set_live(accesskit::Live::Polite);
+            button.set_author_id("auth-1");
+            button.set_class_name("btn");
+            button.set_sort_direction(accesskit::SortDirection::Ascending);
+            button.set_braille_label("braille");
+            button.set_braille_role_description("braille role");
+            button.set_column_index_text("C");
+            button.set_row_index_text("R");
+            button.set_bounds(Rect {
+                x0: 0.0,
+                y0: 0.0,
+                x1: 10.0,
+                y1: 10.0,
+            });
+            button.set_controls(vec![NodeId(4)]);
+
+            let mut link = Node::new(Role::Link);
+            link.set_url("https://example.com");
+
+            let update = TreeUpdate {
+                nodes: vec![
+                    (NodeId(0), root),
+                    (NodeId(1), listbox),
+                    (NodeId(3), option),
+                    (NodeId(2), button),
+                    (NodeId(4), link),
+                    (NodeId(5), Node::new(Role::Dialog)),
+                    (NodeId(6), Node::new(Role::MultilineTextInput)),
+                    (NodeId(7), Node::new(Role::TabList)),
+                ],
+                tree: Some(Tree::new(NodeId(0))),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(2),
+            };
+            crate::Tree::new(update, false)
+        }
+
+        #[test]
+        fn rich_node_accessors() {
+            let tree = accessor_tree();
+            let state = tree.state();
+            let filter = |_: &crate::Node| FilterResult::Include;
+            let button = state.node_by_id(nid(NodeId(2))).unwrap();
+            assert!(button.is_clickable(&filter));
+            assert!(button.is_focusable(&filter));
+            assert!(button.is_focused_in_tree());
+            assert!(button.is_invocable(&filter));
+            assert!(button.supports_increment(&filter));
+            assert!(button.supports_decrement(&filter));
+            assert_eq!(Some("ok".to_string()), button.label());
+            assert!(button.has_label());
+            assert_eq!(Some("a button".to_string()), button.description());
+            assert!(button.has_description());
+            assert!(button.is_busy());
+            assert!(button.is_live_atomic());
+            assert!(button.is_modal());
+            assert!(button.is_required());
+            assert!(button.is_touch_transparent());
+            assert_eq!(accesskit::Live::Polite, button.live());
+            assert_eq!(Some("auth-1"), button.author_id());
+            assert_eq!(Some("btn"), button.class_name());
+            assert_eq!(
+                Some(accesskit::SortDirection::Ascending),
+                button.sort_direction()
+            );
+            assert_eq!(Some("braille"), button.braille_label());
+            assert!(button.has_braille_label());
+            assert_eq!(Some("braille role"), button.braille_role_description());
+            assert!(button.has_braille_role_description());
+            assert_eq!(Some("C"), button.column_index_text());
+            assert_eq!(Some("R"), button.row_index_text());
+            assert!(button.has_bounds());
+            assert!(button.bounding_box().is_some());
+            let controlled = button.controls().map(|n| n.id()).collect::<Vec<_>>();
+            assert!(controlled == vec![nid(NodeId(4))]);
+            assert!(!button.index_path().is_empty());
+        }
+
+        #[test]
+        fn role_and_membership_accessors() {
+            let tree = accessor_tree();
+            let state = tree.state();
+            let filter = |_: &crate::Node| FilterResult::Include;
+            let listbox = state.node_by_id(nid(NodeId(1))).unwrap();
+            assert!(listbox.is_container_with_selectable_children());
+            assert_eq!(Some(accesskit::Orientation::Vertical), listbox.orientation());
+            let items = listbox.items(filter).map(|n| n.id()).collect::<Vec<_>>();
+            assert!(items == vec![nid(NodeId(3))]);
+
+            let option = state.node_by_id(nid(NodeId(3))).unwrap();
+            assert!(option.is_selectable());
+            assert!(option.is_item_like());
+            assert_eq!(Some(5), option.size_of_set());
+            assert_eq!(Some(2), option.position_in_set());
+            assert!(option.selection_container(&filter).map(|n| n.id()) == Some(nid(NodeId(1))));
+
+            let link = state.node_by_id(nid(NodeId(4))).unwrap();
+            assert_eq!(Some("https://example.com"), link.url());
+            assert!(link.supports_url());
+            assert!(!link.is_focused_in_tree());
+
+            assert!(state.node_by_id(nid(NodeId(5))).unwrap().is_dialog());
+            assert!(state.node_by_id(nid(NodeId(6))).unwrap().is_multiline());
+            assert_eq!(
+                Some(accesskit::Orientation::Horizontal),
+                state.node_by_id(nid(NodeId(7))).unwrap().orientation()
+            );
+        }
+
+        #[test]
+        fn value_accessors() {
+            let mut node = Node::new(Role::SpinButton);
+            node.set_value("42");
+            let mut root = Node::new(Role::RootWebArea);
+            root.set_children(vec![NodeId(1)]);
+            let update = TreeUpdate {
+                nodes: vec![(NodeId(0), root), (NodeId(1), node)],
+                tree: Some(Tree::new(NodeId(0))),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(0),
+            };
+            let tree = crate::Tree::new(update, false);
+            let state = tree.state();
+            let node = state.node_by_id(nid(NodeId(1))).unwrap();
+            assert_eq!(Some("42".to_string()), node.value());
+            assert!(node.has_value());
+            assert_eq!(Some("42"), node.raw_value());
+        }
+    }
 }
