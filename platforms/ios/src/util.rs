@@ -7,7 +7,12 @@ use accesskit::Point;
 use accesskit_consumer::Node;
 use objc2::encode::{Encode, Encoding, RefEncode};
 use objc2_foundation::{CGPoint, CGRect, CGSize, NSInteger};
-use objc2_ui_kit::{UIAccessibilityConvertFrameToScreenCoordinates, UICoordinateSpace, UIView};
+use objc2_ui_kit::{
+    UIAccessibilityConvertFrameToScreenCoordinates, UIAccessibilityTraits, UICoordinateSpace,
+    UIView,
+};
+use std::ffi::{c_char, c_void};
+use std::sync::OnceLock;
 
 // TODO: Remove once we update to objc2 0.6
 #[repr(transparent)]
@@ -55,4 +60,22 @@ pub(crate) fn to_cg_rect(view: &UIView, rect: accesskit::Rect) -> CGRect {
         },
     };
     to_screen_rect(view, local_rect)
+}
+
+const RTLD_DEFAULT: *mut c_void = -2isize as *mut c_void;
+
+unsafe extern "C" {
+    fn dlsym(handle: *mut c_void, symbol: *const c_char) -> *mut c_void;
+}
+
+pub(crate) fn toggle_button_trait() -> UIAccessibilityTraits {
+    static TRAIT: OnceLock<UIAccessibilityTraits> = OnceLock::new();
+    *TRAIT.get_or_init(|| unsafe {
+        let symbol = dlsym(RTLD_DEFAULT, c"UIAccessibilityTraitToggleButton".as_ptr());
+        if symbol.is_null() {
+            0
+        } else {
+            *symbol.cast::<UIAccessibilityTraits>()
+        }
+    })
 }

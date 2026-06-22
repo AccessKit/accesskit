@@ -23,14 +23,14 @@ use objc2_ui_kit::{
     UIAccessibilityTraitButton, UIAccessibilityTraitHeader, UIAccessibilityTraitImage,
     UIAccessibilityTraitLink, UIAccessibilityTraitNone, UIAccessibilityTraitNotEnabled,
     UIAccessibilityTraitSearchField, UIAccessibilityTraitSelected, UIAccessibilityTraitStaticText,
-    UIAccessibilityTraitToggleButton, UIAccessibilityTraitUpdatesFrequently, UIAccessibilityTraits,
+    UIAccessibilityTraitUpdatesFrequently, UIAccessibilityTraits,
 };
 use std::rc::{Rc, Weak};
 
 use crate::{
     context::Context,
     filters::{filter, filter_for_is_accessibility_element},
-    util::{UIAccessibilityExpandedStatus, to_cg_rect, to_screen_rect},
+    util::{UIAccessibilityExpandedStatus, to_cg_rect, to_screen_rect, toggle_button_trait},
 };
 
 #[derive(Debug, PartialEq)]
@@ -139,7 +139,7 @@ impl NodeWrapper<'_> {
         }
 
         if self.0.toggled().is_some() {
-            traits |= unsafe { UIAccessibilityTraitToggleButton };
+            traits |= toggle_button_trait();
         }
 
         if self.0.is_selected() == Some(true) {
@@ -710,7 +710,7 @@ mod tests {
         node.set_toggled(Toggled::False);
         let t = node_traits(&node);
         assert!(t & unsafe { UIAccessibilityTraitButton } != 0);
-        assert!(t & unsafe { UIAccessibilityTraitToggleButton } != 0);
+        assert!(t & toggle_button_trait() != 0);
     }
 
     #[test]
@@ -719,7 +719,7 @@ mod tests {
         node.set_toggled(Toggled::True);
         let t = node_traits(&node);
         assert!(t & unsafe { UIAccessibilityTraitButton } != 0);
-        assert!(t & unsafe { UIAccessibilityTraitToggleButton } != 0);
+        assert!(t & toggle_button_trait() != 0);
     }
 
     #[test]
@@ -745,7 +745,7 @@ mod tests {
             let mut node = NodeBuilder::new(Role::CheckBox);
             node.set_toggled(toggled);
             assert!(
-                node_traits(&node) & unsafe { UIAccessibilityTraitToggleButton } != 0,
+                node_traits(&node) & toggle_button_trait() != 0,
                 "toggled {toggled:?}",
             );
         }
@@ -821,7 +821,7 @@ mod tests {
         assert!(t & unsafe { UIAccessibilityTraitButton } != 0);
         assert!(t & unsafe { UIAccessibilityTraitNotEnabled } == 0);
         assert!(t & unsafe { UIAccessibilityTraitSelected } == 0);
-        assert!(t & unsafe { UIAccessibilityTraitToggleButton } == 0);
+        assert!(t & toggle_button_trait() == 0);
         assert!(t & unsafe { UIAccessibilityTraitUpdatesFrequently } == 0);
         assert!(t & unsafe { UIAccessibilityTraitAllowsDirectInteraction } == 0);
     }
@@ -864,7 +864,7 @@ mod tests {
         node.set_disabled();
         let t = node_traits(&node);
         assert!(t & unsafe { UIAccessibilityTraitButton } != 0);
-        assert!(t & unsafe { UIAccessibilityTraitToggleButton } != 0);
+        assert!(t & toggle_button_trait() != 0);
         assert!(t & unsafe { UIAccessibilityTraitNotEnabled } != 0);
     }
 
