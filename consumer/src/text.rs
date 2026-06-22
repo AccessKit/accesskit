@@ -2833,4 +2833,215 @@ mod tests {
             RangePropertyValue::Mixed
         );
     }
+
+    // Coverage for the weak-reference round trip on text ranges, which the
+    // platform adapters rely on to persist a selection across tree updates.
+    #[cfg(test)]
+    mod weak_range_round_trip {
+        use accesskit::{Node, NodeId, Role, Tree, TreeId, TreeUpdate};
+        use alloc::vec;
+
+        use crate::tests::nid;
+
+        fn single_run_text_tree() -> crate::Tree {
+            let update = TreeUpdate {
+                nodes: vec![
+                    (NodeId(0), {
+                        let mut node = Node::new(Role::TextInput);
+                        node.set_children(vec![NodeId(1)]);
+                        node
+                    }),
+                    (NodeId(1), {
+                        let mut node = Node::new(Role::TextRun);
+                        node.set_value("text");
+                        node.set_character_lengths([1, 1, 1, 1]);
+                        node
+                    }),
+                ],
+                tree: Some(Tree::new(NodeId(0))),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(0),
+            };
+            crate::Tree::new(update, false)
+        }
+
+        #[test]
+        fn document_range_survives_downgrade_and_upgrade() {
+            let tree = single_run_text_tree();
+            let state = tree.state();
+            let node = state.node_by_id(nid(NodeId(0))).unwrap();
+            let range = node.document_range();
+            let upgraded = range.downgrade().upgrade(state).unwrap();
+            assert!(range == upgraded);
+        }
+
+        #[test]
+        fn degenerate_range_survives_downgrade_and_upgrade() {
+            let tree = single_run_text_tree();
+            let state = tree.state();
+            let node = state.node_by_id(nid(NodeId(0))).unwrap();
+            let range = node.document_start().to_degenerate_range();
+            let upgraded = range.downgrade().upgrade(state).unwrap();
+            assert!(range == upgraded);
+        }
+
+        #[test]
+        fn weak_range_does_not_upgrade_against_a_non_text_node() {
+            // Capture a weak range, then upgrade it against a tree whose
+            // matching node is not a text container: it must refuse rather than
+            // produce a bogus range.
+            let weak = {
+                let tree = single_run_text_tree();
+                let state = tree.state();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
+                node.document_range().downgrade()
+            };
+            let other = {
+                let update = TreeUpdate {
+                    nodes: vec![(NodeId(0), Node::new(Role::Button))],
+                    tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
+                    focus: NodeId(0),
+                };
+                crate::Tree::new(update, false)
+            };
+            assert!(weak.upgrade(other.state()).is_none());
+        }
+    }
+
+    // `Position` exposes page-granularity navigation, but AccessKit models a
+    // document as a single page, so every page motion resolves to a document
+    // boundary (and `forward_to_page_start`/`forward_to_page_end` deliberately
+    // coincide). This was previously untested; pin the mapping so it can't
+    // silently drift.
+    #[cfg(test)]
+    mod page_navigation {
+        use accesskit::{Node, NodeId, Role, Tree, TreeId, TreeUpdate};
+        use alloc::vec;
+
+        use crate::tests::nid;
+
+        #[test]
+        fn page_navigation_resolves_to_document_bounds() {
+            let update = TreeUpdate {
+                nodes: vec![
+                    (NodeId(0), {
+                        let mut node = Node::new(Role::TextInput);
+                        node.set_children(vec![NodeId(1)]);
+                        node
+                    }),
+                    (NodeId(1), {
+                        let mut node = Node::new(Role::TextRun);
+                        node.set_value("text");
+                        node.set_character_lengths([1, 1, 1, 1]);
+                        node
+                    }),
+                ],
+                tree: Some(Tree::new(NodeId(0))),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(0),
+            };
+            let tree = crate::Tree::new(update, false);
+            let state = tree.state();
+            let node = state.node_by_id(nid(NodeId(0))).unwrap();
+            let start = node.document_start();
+            assert!(start.document_end() == start.forward_to_page_start());
+            assert!(start.document_end() == start.forward_to_page_end());
+            assert!(start.document_start() == start.backward_to_page_start());
+        }
+    }
+
+
+    // Coverage for the remaining Position/Range/WeakRange helpers and the
+    // node-level text-selection accessors.
+    #[cfg(test)]
+    mod text_helpers {
+        use accesskit::{Node, NodeId, Role, TextPosition, TextSelection, Tree, TreeId, TreeUpdate};
+        use alloc::string::ToString;
+        use alloc::vec;
+
+        use crate::tests::nid;
+
+        fn text_tree_with_selection() -> crate::Tree {
+            let selection = TextSelection {
+                anchor: TextPosition {
+                    node: NodeId(1),
+                    character_index: 0,
+                },
+                focus: TextPosition {
+                    node: NodeId(1),
+                    character_index: 2,
+                },
+            };
+            let update = TreeUpdate {
+                nodes: vec![
+                    (NodeId(0), {
+                        let mut node = Node::new(Role::TextInput);
+                        node.set_children(vec![NodeId(1)]);
+                        node.set_text_selection(selection);
+                        node
+                    }),
+                    (NodeId(1), {
+                        let mut node = Node::new(Role::TextRun);
+                        node.set_value("text");
+                        node.set_character_lengths([1, 1, 1, 1]);
+                        node
+                    }),
+                ],
+                tree: Some(Tree::new(NodeId(0))),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(0),
+            };
+            crate::Tree::new(update, false)
+        }
+
+        #[test]
+        fn position_helpers_at_document_start() {
+            let tree = text_tree_with_selection();
+            let state = tree.state();
+            let node = state.node_by_id(nid(NodeId(0))).unwrap();
+            let start = node.document_start();
+            assert!(start.is_page_start());
+            assert!(!start.is_paragraph_separator());
+            assert!(start.inner_node().id() == nid(NodeId(1)));
+            // Biasing the document start to the start is a no-op on the raw form.
+            assert!(start.to_raw() == start.biased_to_start().to_raw());
+        }
+
+        #[test]
+        fn range_and_weak_range_getters() {
+            let tree = text_tree_with_selection();
+            let state = tree.state();
+            let node = state.node_by_id(nid(NodeId(0))).unwrap();
+            let range = node.document_range();
+            assert!(range.node().id() == nid(NodeId(0)));
+            let _ = range.to_text_selection();
+            let weak = range.downgrade();
+            assert!(weak.node_id() == nid(NodeId(0)));
+            // The document range is non-empty, so its endpoints differ.
+            assert_ne!(weak.start_comparable(), weak.end_comparable());
+        }
+
+        #[test]
+        fn node_text_selection_accessors() {
+            let tree = text_tree_with_selection();
+            let state = tree.state();
+            let node = state.node_by_id(nid(NodeId(0))).unwrap();
+            assert!(node.has_text_selection());
+            assert!(node.text_selection().is_some());
+            assert!(node.text_selection_anchor().is_some());
+            assert!(node.text_selection_focus().is_some());
+        }
+
+        #[test]
+        fn single_line_value_serializes_text_runs() {
+            // A single-line text input with no explicit value serializes its
+            // text runs, exercising the write_text/traverse_text path.
+            let tree = text_tree_with_selection();
+            let state = tree.state();
+            let node = state.node_by_id(nid(NodeId(0))).unwrap();
+            assert!(node.has_value());
+            assert_eq!(Some("text".to_string()), node.value());
+        }
+    }
 }
