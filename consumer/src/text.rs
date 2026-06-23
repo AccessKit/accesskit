@@ -1449,7 +1449,9 @@ macro_rules! inherited_flags {
 }
 
 inherited_flags! {
-    (is_italic, set_italic)
+    (is_italic, set_italic),
+    (is_spelling_error, set_is_spelling_error),
+    (is_grammar_error, set_is_grammar_error)
 }
 
 impl<'a> Node<'a> {
@@ -1465,6 +1467,8 @@ impl<'a> Node<'a> {
             || self.underline() != other.underline()
             || self.text_align() != other.text_align()
             || self.vertical_offset() != other.vertical_offset()
+            || self.is_spelling_error() != other.is_spelling_error()
+            || self.is_grammar_error() != other.is_grammar_error()
         // TODO: more attributes
     }
 
