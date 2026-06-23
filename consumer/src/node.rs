@@ -886,6 +886,10 @@ impl<'a> Node<'a> {
         self.data().is_required()
     }
 
+    pub fn is_visited(&self) -> bool {
+        self.data().is_visited()
+    }
+
     pub fn live(&self) -> Live {
         self.data()
             .live()

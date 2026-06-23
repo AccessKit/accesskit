@@ -326,6 +326,9 @@ impl NodeWrapper<'_> {
         if state.is_multiselectable() {
             atspi_state.insert(State::Multiselectable);
         }
+        if state.is_visited() {
+            atspi_state.insert(State::Visited);
+        }
         if let Some(orientation) = state.orientation() {
             atspi_state.insert(if orientation == Orientation::Horizontal {
                 State::Horizontal
@@ -1941,4 +1944,49 @@ pub struct CacheNode {
     pub description: String,
     pub role: AtspiRole,
     pub states: StateSet,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::NodeWrapper;
+    use accesskit::{Node, NodeId, Role, Tree as TreeData, TreeId, TreeUpdate};
+    use accesskit_consumer::Tree;
+    use atspi_common::State;
+
+    // A node flagged `is_visited` (e.g. an already-followed link) should expose
+    // the AT-SPI `Visited` state; an otherwise-identical node without the flag
+    // should not.
+    #[test]
+    fn visited_flag_maps_to_atspi_visited_state() {
+        let mut visited_link = Node::new(Role::Link);
+        visited_link.set_visited();
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut root = Node::new(Role::Window);
+                    root.set_children(vec![NodeId(1), NodeId(2)]);
+                    root
+                }),
+                (NodeId(1), visited_link),
+                (NodeId(2), Node::new(Role::Link)),
+            ],
+            tree: Some(TreeData::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        };
+        let tree = Tree::new(update, false);
+        let state = tree.state();
+        let children: Vec<_> = state.root().children().collect();
+
+        assert!(
+            NodeWrapper(&children[0])
+                .state(true)
+                .contains(State::Visited)
+        );
+        assert!(
+            !NodeWrapper(&children[1])
+                .state(true)
+                .contains(State::Visited)
+        );
+    }
 }
