@@ -2256,8 +2256,8 @@ mod tests {
         use alloc::vec;
         use alloc::vec::Vec;
 
-        use crate::tests::nid;
         use crate::FilterResult;
+        use crate::tests::nid;
 
         fn accessor_tree() -> crate::Tree {
             let mut root = Node::new(Role::RootWebArea);
@@ -2376,7 +2376,10 @@ mod tests {
             let filter = |_: &crate::Node| FilterResult::Include;
             let listbox = state.node_by_id(nid(NodeId(1))).unwrap();
             assert!(listbox.is_container_with_selectable_children());
-            assert_eq!(Some(accesskit::Orientation::Vertical), listbox.orientation());
+            assert_eq!(
+                Some(accesskit::Orientation::Vertical),
+                listbox.orientation()
+            );
             let items = listbox.items(filter).map(|n| n.id()).collect::<Vec<_>>();
             assert!(items == vec![nid(NodeId(3))]);
 

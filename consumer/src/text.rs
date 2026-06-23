@@ -3186,7 +3186,9 @@ mod tests {
     // node-level text-selection accessors.
     #[cfg(test)]
     mod text_helpers {
-        use accesskit::{Node, NodeId, Role, TextPosition, TextSelection, Tree, TreeId, TreeUpdate};
+        use accesskit::{
+            Node, NodeId, Role, TextPosition, TextSelection, Tree, TreeId, TreeUpdate,
+        };
         use alloc::string::ToString;
         use alloc::vec;
 
