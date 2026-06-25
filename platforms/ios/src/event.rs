@@ -11,15 +11,18 @@ use objc2_foundation::{
 };
 use objc2_ui_kit::{
     UIAccessibilityAnnouncementNotification, UIAccessibilityLayoutChangedNotification,
-    UIAccessibilityNotifications, UIAccessibilityPostNotification, UIAccessibilityPriority,
-    UIAccessibilityPriorityHigh, UIAccessibilityPriorityLow,
-    UIAccessibilityScreenChangedNotification, UIAccessibilitySpeechAttributeAnnouncementPriority,
-    UIAccessibilitySpeechAttributeQueueAnnouncement,
+    UIAccessibilityNotifications, UIAccessibilityPostNotification,
+    UIAccessibilityScreenChangedNotification, UIAccessibilitySpeechAttributeQueueAnnouncement,
 };
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-use crate::{context::Context, filters::filter, node::PlatformNode};
+use crate::{
+    context::Context,
+    filters::filter,
+    node::PlatformNode,
+    util::{announcement_priority_high, announcement_priority_key, announcement_priority_low},
+};
 
 pub(crate) enum QueuedEvent {
     Generic {
@@ -29,7 +32,7 @@ pub(crate) enum QueuedEvent {
     NodeDestroyed(NodeId),
     Announcement {
         text: String,
-        priority: &'static UIAccessibilityPriority,
+        assertive: bool,
     },
 }
 
@@ -37,11 +40,7 @@ impl QueuedEvent {
     fn live_region_announcement(text: String, priority: Live) -> Self {
         Self::Announcement {
             text,
-            priority: if priority == Live::Assertive {
-                unsafe { UIAccessibilityPriorityHigh }
-            } else {
-                unsafe { UIAccessibilityPriorityLow }
-            },
+            assertive: priority == Live::Assertive,
         }
     }
 
@@ -61,32 +60,46 @@ impl QueuedEvent {
             Self::NodeDestroyed(node_id) => {
                 context.remove_platform_node(node_id);
             }
-            Self::Announcement { text, priority } => {
-                Self::raise_announcement(&text, priority);
+            Self::Announcement { text, assertive } => {
+                Self::raise_announcement(&text, assertive);
             }
         }
     }
 
-    fn raise_announcement(text: &str, priority: &'static UIAccessibilityPriority) {
+    fn raise_announcement(text: &str, assertive: bool) {
         let text = NSString::from_str(text);
-        let mut attrs: objc2::rc::Retained<NSMutableDictionary<NSAttributedStringKey, AnyObject>> =
-            NSMutableDictionary::new();
-        unsafe {
-            attrs.setObject_forKey(
-                priority,
-                ProtocolObject::from_ref(UIAccessibilitySpeechAttributeAnnouncementPriority),
-            );
-            attrs.setObject_forKey(
-                &*NSNumber::new_bool(true),
-                ProtocolObject::from_ref(UIAccessibilitySpeechAttributeQueueAnnouncement),
-            );
-        }
-        let announcement = unsafe { NSAttributedString::new_with_attributes(&text, &attrs) };
-        unsafe {
-            UIAccessibilityPostNotification(
-                UIAccessibilityAnnouncementNotification,
-                Some(&announcement),
-            );
+        let priority = if assertive {
+            announcement_priority_high()
+        } else {
+            announcement_priority_low()
+        };
+        match (priority, announcement_priority_key()) {
+            (Some(priority), Some(priority_key)) => {
+                let mut attrs: objc2::rc::Retained<
+                    NSMutableDictionary<NSAttributedStringKey, AnyObject>,
+                > = NSMutableDictionary::new();
+                unsafe {
+                    attrs.setObject_forKey(priority, ProtocolObject::from_ref(priority_key));
+                    attrs.setObject_forKey(
+                        &*NSNumber::new_bool(true),
+                        ProtocolObject::from_ref(UIAccessibilitySpeechAttributeQueueAnnouncement),
+                    );
+                }
+                let announcement =
+                    unsafe { NSAttributedString::new_with_attributes(&text, &attrs) };
+                unsafe {
+                    UIAccessibilityPostNotification(
+                        UIAccessibilityAnnouncementNotification,
+                        Some(&announcement),
+                    );
+                }
+            }
+            _ => unsafe {
+                UIAccessibilityPostNotification(
+                    UIAccessibilityAnnouncementNotification,
+                    Some(&*text),
+                );
+            },
         }
     }
 }
