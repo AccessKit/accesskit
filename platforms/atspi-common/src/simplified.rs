@@ -785,7 +785,7 @@ mod tests {
     use super::{Accessible, Cache, Event as SimplifiedEvent};
     use crate::{Adapter, AdapterCallback, AppContext, Event, WindowBounds};
     use accesskit::{
-        ActionHandler, ActionRequest, Node, NodeId, Role, TreeInfo, TreeIo, TreeUpdate,
+        ActionHandler, ActionRequest, Node, NodeId, Role, TreeId, TreeInfo, TreeUpdate,
     };
     use accesskit_consumer::FullNodeId;
     use atspi_common::InterfaceSet;
