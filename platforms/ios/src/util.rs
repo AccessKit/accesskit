@@ -62,6 +62,12 @@ pub(crate) fn to_cg_rect(view: &UIView, rect: accesskit::Rect) -> CGRect {
     to_screen_rect(view, local_rect)
 }
 
+// This handle is used as a parameter to dlsym to perform symbol searches at
+// runtime. When a symbol search returns null, its usage can be omitted on
+// unsupported iOS versions. See:
+// https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlsym.3.html
+// and https://github.com/apple-oss-distributions/dyld/blob/main/include/dlfcn.h
+// for more information.
 const RTLD_DEFAULT: *mut c_void = -2isize as *mut c_void;
 
 unsafe extern "C" {
