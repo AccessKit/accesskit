@@ -9,7 +9,7 @@ use crate::{
     executor::{Executor, Task},
 };
 use accesskit_atspi_common::{
-    NodeId, NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot, Property, WindowEvent,
+    FullNodeId, NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot, Property, WindowEvent,
 };
 use atspi::{
     Interface, InterfaceSet,
@@ -166,7 +166,7 @@ impl Bus {
     pub(crate) async fn unregister_interfaces(
         &self,
         adapter_id: usize,
-        node_id: NodeId,
+        node_id: FullNodeId,
         old_interfaces: InterfaceSet,
     ) -> zbus::Result<()> {
         let path = ObjectId::Node {
@@ -359,7 +359,7 @@ impl Bus {
     pub(crate) async fn emit_window_event(
         &self,
         adapter_id: usize,
-        target: NodeId,
+        target: FullNodeId,
         window_name: String,
         event: WindowEvent,
     ) -> Result<()> {
@@ -384,7 +384,7 @@ impl Bus {
         self.emit_cache_signal("AddAccessible", &item).await
     }
 
-    pub(crate) async fn emit_cache_remove(&self, adapter_id: usize, node_id: NodeId) -> Result<()> {
+    pub(crate) async fn emit_cache_remove(&self, adapter_id: usize, node_id: FullNodeId) -> Result<()> {
         let reference = object_ref(
             self.unique_name().inner(),
             ObjectId::Node {

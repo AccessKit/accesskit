@@ -13,7 +13,7 @@
 use accesskit::{
     Action, ActionData, ActionRequest, Orientation, Role, TextAlign, TextSelection, Toggled,
 };
-use accesskit_consumer::{FilterResult, Node, NodeId, Tree};
+use accesskit_consumer::{FilterResult, NodeId, FullRefdeId, Tree};
 use objc2::{
     ClassType, DeclaredClass, declare_class, msg_send_id,
     mutability::InteriorMutable,
@@ -33,7 +33,7 @@ use crate::{context::Context, filters::filter, util::*};
 
 const SCROLL_TO_VISIBLE_ACTION: &str = "AXScrollToVisible";
 
-fn ns_role(node: &Node) -> &'static NSAccessibilityRole {
+fn ns_role(node: &NodeRef) -> &'static NSAccessibilityRole {
     let role = node.role();
     // TODO: Handle special cases.
     unsafe {
@@ -230,7 +230,7 @@ fn ns_role(node: &Node) -> &'static NSAccessibilityRole {
     }
 }
 
-fn ns_sub_role(node: &Node) -> &'static NSAccessibilitySubrole {
+fn ns_sub_role(node: &NodeRef) -> &'static NSAccessibilitySubrole {
     let role = node.role();
 
     unsafe {
@@ -285,7 +285,7 @@ fn ns_sub_role(node: &Node) -> &'static NSAccessibilitySubrole {
     }
 }
 
-pub(crate) fn can_be_focused(node: &Node) -> bool {
+pub(crate) fn can_be_focused(node: &NodeRef) -> bool {
     filter(node) == FilterResult::Include && node.role() != Role::Window
 }
 
@@ -296,7 +296,7 @@ pub(crate) enum Value {
     String(String),
 }
 
-pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
+pub(crate) struct NodeWrapper<'a>(pub(crate) &'a NodeRef<'a>);
 
 impl NodeWrapper<'_> {
     fn is_root(&self) -> bool {
@@ -364,7 +364,7 @@ fn downcast_ref<T: ClassType>(obj: &NSObject) -> Option<&T> {
 
 pub(crate) struct PlatformNodeIvars {
     context: Weak<Context>,
-    node_id: NodeId,
+    node_id: FullNodeId,
 }
 
 declare_class!(
@@ -1302,7 +1302,7 @@ declare_class!(
 );
 
 impl PlatformNode {
-    pub(crate) fn new(context: Weak<Context>, node_id: NodeId) -> Id<Self> {
+    pub(crate) fn new(context: Weak<Context>, node_id: FullNodeId) -> Id<Self> {
         let this = Self::alloc().set_ivars(PlatformNodeIvars { context, node_id });
 
         unsafe { msg_send_id![super(this), init] }
@@ -1310,7 +1310,7 @@ impl PlatformNode {
 
     fn resolve_with_context<F, T>(&self, f: F) -> Option<T>
     where
-        F: FnOnce(&Node, &Tree, &Rc<Context>) -> T,
+        F: FnOnce(&NodeRef, &Tree, &Rc<Context>) -> T,
     {
         let context = self.ivars().context.upgrade()?;
         let tree = context.tree.borrow();
@@ -1321,7 +1321,7 @@ impl PlatformNode {
 
     fn resolve<F, T>(&self, f: F) -> Option<T>
     where
-        F: FnOnce(&Node) -> T,
+        F: FnOnce(&NodeRef) -> T,
     {
         self.resolve_with_context(|node, _, _| f(node))
     }

@@ -3,13 +3,13 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit_consumer::NodeId;
+use accesskit_consumer::FullNodeId;
 use atspi_common::InterfaceSet;
 
 use crate::{Adapter, Event};
 
 pub trait AdapterCallback {
-    fn register_interfaces(&self, adapter: &Adapter, id: NodeId, interfaces: InterfaceSet);
-    fn unregister_interfaces(&self, adapter: &Adapter, id: NodeId, interfaces: InterfaceSet);
+    fn register_interfaces(&self, adapter: &Adapter, id: FullNodeId, interfaces: InterfaceSet);
+    fn unregister_interfaces(&self, adapter: &Adapter, id: FullNodeId, interfaces: InterfaceSet);
     fn emit_event(&self, adapter: &Adapter, event: Event);
 }

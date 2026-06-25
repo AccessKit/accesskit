@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit_consumer::NodeId;
+use accesskit_consumer::FullNodeId;
 use atspi_common::{Politeness, Role, State};
 
 use crate::{NodeIdOrRoot, Rect};
@@ -15,7 +15,7 @@ pub enum Event {
         event: ObjectEvent,
     },
     Window {
-        target: NodeId,
+        target: FullNodeId,
         name: String,
         event: WindowEvent,
     },
@@ -24,8 +24,8 @@ pub enum Event {
 
 #[derive(Debug)]
 pub enum CacheEvent {
-    Added(NodeId),
-    Removed(NodeId),
+    Added(FullNodeId),
+    Removed(FullNodeId),
 }
 
 #[derive(Debug)]
@@ -40,12 +40,12 @@ pub enum Property {
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug)]
 pub enum ObjectEvent {
-    ActiveDescendantChanged(NodeId),
+    ActiveDescendantChanged(FullNodeId),
     Announcement(String, Politeness),
     BoundsChanged(Rect),
     CaretMoved(i32),
-    ChildAdded(usize, NodeId),
-    ChildRemoved(NodeId),
+    ChildAdded(usize, FullNodeId),
+    ChildRemoved(FullNodeId),
     PropertyChanged(Property),
     SelectionChanged,
     StateChanged(State, bool),

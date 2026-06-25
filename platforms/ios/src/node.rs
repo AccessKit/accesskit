@@ -9,7 +9,7 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{Action, ActionRequest, Live, Rect, Role, Toggled};
-use accesskit_consumer::{FilterResult, Node, NodeId, Tree};
+use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, Tree};
 use objc2::{
     ClassType, DeclaredClass, declare_class, msg_send_id,
     mutability::MainThreadOnly,
@@ -58,7 +58,7 @@ enum FrameSource {
     Zero,
 }
 
-pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
+pub(crate) struct NodeWrapper<'a>(pub(crate) &'a NodeRef<'a>);
 
 impl NodeWrapper<'_> {
     fn label(&self) -> Option<String> {
@@ -183,7 +183,7 @@ impl NodeWrapper<'_> {
 
 pub(crate) struct PlatformNodeIvars {
     context: Weak<Context>,
-    node_id: NodeId,
+    node_id: FullNodeId,
 }
 
 declare_class!(
@@ -443,7 +443,7 @@ impl PlatformNode {
         Retained::into_super(Self::into_ns_object(this))
     }
 
-    pub(crate) fn new(context: &Rc<Context>, node_id: NodeId) -> Option<Retained<Self>> {
+    pub(crate) fn new(context: &Rc<Context>, node_id: FullNodeId) -> Option<Retained<Self>> {
         // UIAccessibilityElement's designated initializer is
         // `initWithAccessibilityContainer:`; plain `init` raises
         // NSInvalidArgumentException at runtime. Following Flutter's iOS
@@ -461,7 +461,7 @@ impl PlatformNode {
 
     fn resolve<F, T>(&self, f: F) -> Option<T>
     where
-        F: FnOnce(&Node) -> T,
+        F: FnOnce(&NodeRef) -> T,
     {
         let context = self.ivars().context.upgrade()?;
         let tree = context.tree.borrow();
@@ -472,7 +472,7 @@ impl PlatformNode {
 
     fn resolve_with_context<F, T>(&self, f: F) -> Option<T>
     where
-        F: FnOnce(&Node, &Tree, &Rc<Context>) -> T,
+        F: FnOnce(&NodeRef, &Tree, &Rc<Context>) -> T,
     {
         let context = self.ivars().context.upgrade()?;
         let tree = context.tree.borrow();
@@ -505,23 +505,23 @@ impl PlatformNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use accesskit::{Action, Node as NodeBuilder, NodeId, Rect, Toggled, Tree, TreeId, TreeUpdate};
+    use accesskit::{Action, Node, NodeId, Rect, Toggled, TreeId, TreeInfo, TreeUpdate};
 
     const ROOT_ID: NodeId = NodeId(0);
 
-    fn build_tree(nodes: Vec<(NodeId, NodeBuilder)>) -> accesskit_consumer::Tree {
+    fn build_tree(nodes: Vec<(NodeId, Node)>) -> accesskit_consumer::Tree {
         let update = TreeUpdate {
             nodes,
-            tree: Some(Tree::new(ROOT_ID)),
+            tree: Some(TreeInfo::new(ROOT_ID)),
             tree_id: TreeId::ROOT,
             focus: ROOT_ID,
         };
         accesskit_consumer::Tree::new(update, false)
     }
 
-    fn with_single<F, R>(node: &NodeBuilder, f: F) -> R
+    fn with_single<F, R>(node: &Node, f: F) -> R
     where
-        F: FnOnce(&Node) -> R,
+        F: FnOnce(&NodeRef) -> R,
     {
         let tree = build_tree(vec![(ROOT_ID, node.clone())]);
         let state = tree.state();
@@ -529,27 +529,27 @@ mod tests {
         f(&tree_node)
     }
 
-    fn wrapper_value(node: &NodeBuilder) -> Option<Value> {
+    fn wrapper_value(node: &Node) -> Option<Value> {
         with_single(node, |n| NodeWrapper(n).value())
     }
 
-    fn wrapper_label(node: &NodeBuilder) -> Option<String> {
+    fn wrapper_label(node: &Node) -> Option<String> {
         with_single(node, |n| NodeWrapper(n).label())
     }
 
-    fn wrapper_hint(node: &NodeBuilder) -> Option<String> {
+    fn wrapper_hint(node: &Node) -> Option<String> {
         with_single(node, |n| NodeWrapper(n).hint())
     }
 
-    fn node_traits(node: &NodeBuilder) -> UIAccessibilityTraits {
+    fn node_traits(node: &Node) -> UIAccessibilityTraits {
         with_single(node, |n| NodeWrapper(n).traits())
     }
 
-    fn node_container_type(node: &NodeBuilder) -> UIAccessibilityContainerType {
+    fn node_container_type(node: &Node) -> UIAccessibilityContainerType {
         with_single(node, |n| NodeWrapper(n).container_type())
     }
 
-    fn node_can_be_focused(nodes: Vec<(NodeId, NodeBuilder)>, target: NodeId) -> bool {
+    fn node_can_be_focused(nodes: Vec<(NodeId, Node)>, target: NodeId) -> bool {
         let tree = build_tree(nodes);
         let state = tree.state();
         let node = state.node_by_tree_local_id(target, TreeId::ROOT).unwrap();
@@ -560,14 +560,14 @@ mod tests {
 
     #[test]
     fn label_present() {
-        let mut node = NodeBuilder::new(Role::Button);
+        let mut node = Node::new(Role::Button);
         node.set_label("OK");
         assert_eq!(wrapper_label(&node), Some("OK".into()));
     }
 
     #[test]
     fn label_absent() {
-        let node = NodeBuilder::new(Role::Button);
+        let node = Node::new(Role::Button);
         assert_eq!(wrapper_label(&node), None);
     }
 
@@ -575,14 +575,14 @@ mod tests {
 
     #[test]
     fn hint_present() {
-        let mut node = NodeBuilder::new(Role::Button);
+        let mut node = Node::new(Role::Button);
         node.set_description("Confirms the action");
         assert_eq!(wrapper_hint(&node), Some("Confirms the action".into()));
     }
 
     #[test]
     fn hint_absent() {
-        let node = NodeBuilder::new(Role::Button);
+        let node = Node::new(Role::Button);
         assert_eq!(wrapper_hint(&node), None);
     }
 
@@ -590,42 +590,42 @@ mod tests {
 
     #[test]
     fn value_toggled_true() {
-        let mut node = NodeBuilder::new(Role::CheckBox);
+        let mut node = Node::new(Role::CheckBox);
         node.set_toggled(Toggled::True);
         assert_eq!(wrapper_value(&node), Some(Value::Bool(true)));
     }
 
     #[test]
     fn value_toggled_false() {
-        let mut node = NodeBuilder::new(Role::CheckBox);
+        let mut node = Node::new(Role::CheckBox);
         node.set_toggled(Toggled::False);
         assert_eq!(wrapper_value(&node), Some(Value::Bool(false)));
     }
 
     #[test]
     fn value_toggled_mixed() {
-        let mut node = NodeBuilder::new(Role::CheckBox);
+        let mut node = Node::new(Role::CheckBox);
         node.set_toggled(Toggled::Mixed);
         assert_eq!(wrapper_value(&node), Some(Value::Bool(true)));
     }
 
     #[test]
     fn value_text_string() {
-        let mut node = NodeBuilder::new(Role::Label);
+        let mut node = Node::new(Role::Label);
         node.set_value("hello");
         assert_eq!(wrapper_value(&node), Some(Value::String("hello".into())));
     }
 
     #[test]
     fn value_numeric() {
-        let mut node = NodeBuilder::new(Role::Slider);
+        let mut node = Node::new(Role::Slider);
         node.set_numeric_value(42.5);
         assert_eq!(wrapper_value(&node), Some(Value::Number(42.5)));
     }
 
     #[test]
     fn value_toggled_takes_priority() {
-        let mut node = NodeBuilder::new(Role::CheckBox);
+        let mut node = Node::new(Role::CheckBox);
         node.set_toggled(Toggled::True);
         node.set_value("ignored");
         node.set_numeric_value(99.0);
@@ -634,7 +634,7 @@ mod tests {
 
     #[test]
     fn value_string_over_numeric() {
-        let mut node = NodeBuilder::new(Role::Label);
+        let mut node = Node::new(Role::Label);
         node.set_value("text");
         node.set_numeric_value(1.0);
         assert_eq!(wrapper_value(&node), Some(Value::String("text".into())));
@@ -642,7 +642,7 @@ mod tests {
 
     #[test]
     fn value_none() {
-        let node = NodeBuilder::new(Role::Button);
+        let node = Node::new(Role::Button);
         assert_eq!(wrapper_value(&node), None);
     }
 
@@ -672,7 +672,7 @@ mod tests {
 
     #[test]
     fn focusable_button() {
-        let mut node = NodeBuilder::new(Role::Button);
+        let mut node = Node::new(Role::Button);
         node.set_label("OK");
         node.add_action(Action::Click);
         assert!(node_can_be_focused(vec![(ROOT_ID, node)], ROOT_ID));
@@ -680,7 +680,7 @@ mod tests {
 
     #[test]
     fn window_not_focusable() {
-        let node = NodeBuilder::new(Role::Window);
+        let node = Node::new(Role::Window);
         assert!(!node_can_be_focused(vec![(ROOT_ID, node)], ROOT_ID));
     }
 
@@ -688,25 +688,25 @@ mod tests {
 
     #[test]
     fn traits_button() {
-        let node = NodeBuilder::new(Role::Button);
+        let node = Node::new(Role::Button);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitButton } != 0);
     }
 
     #[test]
     fn traits_default_button() {
-        let node = NodeBuilder::new(Role::DefaultButton);
+        let node = Node::new(Role::DefaultButton);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitButton } != 0);
     }
 
     #[test]
     fn traits_disclosure_triangle() {
-        let node = NodeBuilder::new(Role::DisclosureTriangle);
+        let node = Node::new(Role::DisclosureTriangle);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitButton } != 0);
     }
 
     #[test]
     fn traits_checkbox_is_button_and_toggle() {
-        let mut node = NodeBuilder::new(Role::CheckBox);
+        let mut node = Node::new(Role::CheckBox);
         node.set_toggled(Toggled::False);
         let t = node_traits(&node);
         assert!(t & unsafe { UIAccessibilityTraitButton } != 0);
@@ -715,7 +715,7 @@ mod tests {
 
     #[test]
     fn traits_switch_is_button_and_toggle() {
-        let mut node = NodeBuilder::new(Role::Switch);
+        let mut node = Node::new(Role::Switch);
         node.set_toggled(Toggled::True);
         let t = node_traits(&node);
         assert!(t & unsafe { UIAccessibilityTraitButton } != 0);
@@ -731,7 +731,7 @@ mod tests {
             Role::MenuItemRadio,
             Role::Tab,
         ] {
-            let node = NodeBuilder::new(role);
+            let node = Node::new(role);
             assert!(
                 node_traits(&node) & unsafe { UIAccessibilityTraitButton } != 0,
                 "role {role:?}",
@@ -742,7 +742,7 @@ mod tests {
     #[test]
     fn traits_toggled_true_and_mixed_set_toggle_button() {
         for toggled in [Toggled::True, Toggled::Mixed] {
-            let mut node = NodeBuilder::new(Role::CheckBox);
+            let mut node = Node::new(Role::CheckBox);
             node.set_toggled(toggled);
             assert!(
                 node_traits(&node) & unsafe { UIAccessibilityTraitToggleButton } != 0,
@@ -753,70 +753,70 @@ mod tests {
 
     #[test]
     fn traits_link() {
-        let node = NodeBuilder::new(Role::Link);
+        let node = Node::new(Role::Link);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitLink } != 0);
     }
 
     #[test]
     fn traits_image() {
-        let node = NodeBuilder::new(Role::Image);
+        let node = Node::new(Role::Image);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitImage } != 0);
     }
 
     #[test]
     fn traits_label() {
-        let node = NodeBuilder::new(Role::Label);
+        let node = Node::new(Role::Label);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitStaticText } != 0);
     }
 
     #[test]
     fn traits_heading() {
-        let node = NodeBuilder::new(Role::Heading);
+        let node = Node::new(Role::Heading);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitHeader } != 0);
     }
 
     #[test]
     fn traits_slider() {
-        let node = NodeBuilder::new(Role::Slider);
+        let node = Node::new(Role::Slider);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitAdjustable } != 0);
     }
 
     #[test]
     fn traits_spin_button() {
-        let node = NodeBuilder::new(Role::SpinButton);
+        let node = Node::new(Role::SpinButton);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitAdjustable } != 0);
     }
 
     #[test]
     fn traits_search_input() {
-        let node = NodeBuilder::new(Role::SearchInput);
+        let node = Node::new(Role::SearchInput);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitSearchField } != 0);
     }
 
     #[test]
     fn traits_disabled() {
-        let mut node = NodeBuilder::new(Role::Button);
+        let mut node = Node::new(Role::Button);
         node.set_disabled();
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitNotEnabled } != 0);
     }
 
     #[test]
     fn traits_selected() {
-        let mut node = NodeBuilder::new(Role::Tab);
+        let mut node = Node::new(Role::Tab);
         node.set_selected(true);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitSelected } != 0);
     }
 
     #[test]
     fn traits_selected_false_does_not_set_selected() {
-        let mut node = NodeBuilder::new(Role::Tab);
+        let mut node = Node::new(Role::Tab);
         node.set_selected(false);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitSelected } == 0);
     }
 
     #[test]
     fn traits_plain_button_has_no_modifiers() {
-        let node = NodeBuilder::new(Role::Button);
+        let node = Node::new(Role::Button);
         let t = node_traits(&node);
         assert!(t & unsafe { UIAccessibilityTraitButton } != 0);
         assert!(t & unsafe { UIAccessibilityTraitNotEnabled } == 0);
@@ -828,7 +828,7 @@ mod tests {
 
     #[test]
     fn traits_disabled_and_selected_accumulate() {
-        let mut node = NodeBuilder::new(Role::Button);
+        let mut node = Node::new(Role::Button);
         node.set_disabled();
         node.set_selected(true);
         let t = node_traits(&node);
@@ -839,27 +839,27 @@ mod tests {
 
     #[test]
     fn traits_live_region() {
-        let mut node = NodeBuilder::new(Role::Label);
+        let mut node = Node::new(Role::Label);
         node.set_live(Live::Polite);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitUpdatesFrequently } != 0);
     }
 
     #[test]
     fn traits_live_off_not_updating() {
-        let mut node = NodeBuilder::new(Role::Label);
+        let mut node = Node::new(Role::Label);
         node.set_live(Live::Off);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitUpdatesFrequently } == 0);
     }
 
     #[test]
     fn traits_progress_indicator_updates_frequently() {
-        let node = NodeBuilder::new(Role::ProgressIndicator);
+        let node = Node::new(Role::ProgressIndicator);
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitUpdatesFrequently } != 0);
     }
 
     #[test]
     fn traits_combined() {
-        let mut node = NodeBuilder::new(Role::CheckBox);
+        let mut node = Node::new(Role::CheckBox);
         node.set_toggled(Toggled::False);
         node.set_disabled();
         let t = node_traits(&node);
@@ -870,14 +870,14 @@ mod tests {
 
     #[test]
     fn traits_touch_transparent() {
-        let mut node = NodeBuilder::new(Role::Image);
+        let mut node = Node::new(Role::Image);
         node.set_touch_transparent();
         assert!(node_traits(&node) & unsafe { UIAccessibilityTraitAllowsDirectInteraction } != 0);
     }
 
     #[test]
     fn traits_none_for_group() {
-        let node = NodeBuilder::new(Role::Group);
+        let node = Node::new(Role::Group);
         assert_eq!(node_traits(&node), unsafe { UIAccessibilityTraitNone });
     }
 
@@ -886,7 +886,7 @@ mod tests {
     #[test]
     fn container_type_data_table_roles() {
         for role in [Role::Table, Role::Grid, Role::TreeGrid, Role::ListGrid] {
-            let node = NodeBuilder::new(role);
+            let node = Node::new(role);
             assert_eq!(
                 node_container_type(&node),
                 UIAccessibilityContainerType::DataTable,
@@ -898,7 +898,7 @@ mod tests {
     #[test]
     fn container_type_list_roles() {
         for role in [Role::List, Role::ListBox, Role::DescriptionList, Role::Tree] {
-            let node = NodeBuilder::new(role);
+            let node = Node::new(role);
             assert_eq!(
                 node_container_type(&node),
                 UIAccessibilityContainerType::List,
@@ -921,7 +921,7 @@ mod tests {
             Role::Region,
             Role::Search,
         ] {
-            let node = NodeBuilder::new(role);
+            let node = Node::new(role);
             assert_eq!(
                 node_container_type(&node),
                 UIAccessibilityContainerType::Landmark,
@@ -932,7 +932,7 @@ mod tests {
 
     #[test]
     fn container_type_semantic_group_for_group() {
-        let node = NodeBuilder::new(Role::Group);
+        let node = Node::new(Role::Group);
         assert_eq!(
             node_container_type(&node),
             UIAccessibilityContainerType::SemanticGroup,
@@ -941,7 +941,7 @@ mod tests {
 
     #[test]
     fn container_type_none_for_button() {
-        let node = NodeBuilder::new(Role::Button);
+        let node = Node::new(Role::Button);
         assert_eq!(
             node_container_type(&node),
             UIAccessibilityContainerType::None,
@@ -950,7 +950,7 @@ mod tests {
 
     // ---- frame_source ----
 
-    fn node_frame_source(nodes: Vec<(NodeId, NodeBuilder)>, target: NodeId) -> FrameSource {
+    fn node_frame_source(nodes: Vec<(NodeId, Node)>, target: NodeId) -> FrameSource {
         let tree = build_tree(nodes);
         let state = tree.state();
         let node = state.node_by_tree_local_id(target, TreeId::ROOT).unwrap();
@@ -959,7 +959,7 @@ mod tests {
 
     #[test]
     fn frame_source_uses_bounding_box_when_present() {
-        let mut node = NodeBuilder::new(Role::Button);
+        let mut node = Node::new(Role::Button);
         node.set_bounds(Rect {
             x0: 1.0,
             y0: 2.0,
@@ -979,7 +979,7 @@ mod tests {
 
     #[test]
     fn frame_source_root_without_bounds_uses_view_bounds() {
-        let node = NodeBuilder::new(Role::Window);
+        let node = Node::new(Role::Window);
         assert_eq!(
             node_frame_source(vec![(ROOT_ID, node)], ROOT_ID),
             FrameSource::ViewBounds,
@@ -989,9 +989,9 @@ mod tests {
     #[test]
     fn frame_source_non_root_without_bounds_is_zero() {
         const CHILD_ID: NodeId = NodeId(1);
-        let mut root = NodeBuilder::new(Role::Window);
+        let mut root = Node::new(Role::Window);
         root.set_children(vec![CHILD_ID]);
-        let child = NodeBuilder::new(Role::Button);
+        let child = Node::new(Role::Button);
         assert_eq!(
             node_frame_source(vec![(ROOT_ID, root), (CHILD_ID, child)], CHILD_ID),
             FrameSource::Zero,
@@ -1000,7 +1000,7 @@ mod tests {
 
     #[test]
     fn frame_source_bounding_box_takes_priority_on_root() {
-        let mut node = NodeBuilder::new(Role::Window);
+        let mut node = Node::new(Role::Window);
         node.set_bounds(Rect {
             x0: 0.0,
             y0: 0.0,

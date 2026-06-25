@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit_consumer::{Node, NodeId};
+use accesskit_consumer::{NodeId, FullRefdeId};
 use jni::{JNIEnv, objects::JObject, sys::jint};
 use std::collections::HashMap;
 
@@ -61,17 +61,17 @@ pub(crate) const RANGE_TYPE_FLOAT: jint = 1;
 
 #[derive(Debug, Default)]
 pub(crate) struct NodeIdMap {
-    java_to_accesskit: HashMap<jint, NodeId>,
-    accesskit_to_java: HashMap<NodeId, jint>,
+    java_to_accesskit: HashMap<jint, FullNodeId>,
+    accesskit_to_java: HashMap<FullNodeId, jint>,
     next_java_id: jint,
 }
 
 impl NodeIdMap {
-    pub(crate) fn get_accesskit_id(&self, java_id: jint) -> Option<NodeId> {
+    pub(crate) fn get_accesskit_id(&self, java_id: jint) -> Option<FullNodeId> {
         self.java_to_accesskit.get(&java_id).copied()
     }
 
-    pub(crate) fn get_or_create_java_id(&mut self, node: &Node) -> jint {
+    pub(crate) fn get_or_create_java_id(&mut self, node: &NodeRef) -> jint {
         if node.is_root() {
             return HOST_VIEW_ID;
         }

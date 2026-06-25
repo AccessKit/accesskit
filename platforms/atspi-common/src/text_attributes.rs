@@ -4,34 +4,34 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{Color, TextAlign, TextDecorationStyle};
-use accesskit_consumer::Node;
+use accesskit_consumer::NodeRef;
 use phf::phf_map;
 
 fn color_to_string(color: Color) -> String {
     format!("{},{},{}", color.red, color.green, color.blue)
 }
 
-fn family_name(node: &Node) -> Option<String> {
+fn family_name(node: &NodeRef) -> Option<String> {
     node.font_family().map(String::from)
 }
 
-fn size(node: &Node) -> Option<String> {
+fn size(node: &NodeRef) -> Option<String> {
     node.font_size().map(|value| value.to_string())
 }
 
-fn weight(node: &Node) -> Option<String> {
+fn weight(node: &NodeRef) -> Option<String> {
     node.font_weight().map(|value| value.to_string())
 }
 
-fn style(node: &Node) -> Option<String> {
+fn style(node: &NodeRef) -> Option<String> {
     node.is_italic().then(|| "italic".into())
 }
 
-fn strikethrough(node: &Node) -> Option<String> {
+fn strikethrough(node: &NodeRef) -> Option<String> {
     node.strikethrough().map(|_| "true".into())
 }
 
-fn underline(node: &Node) -> Option<String> {
+fn underline(node: &NodeRef) -> Option<String> {
     node.underline().map(|deco| {
         match deco.style {
             TextDecorationStyle::Double => "double",
@@ -41,19 +41,19 @@ fn underline(node: &Node) -> Option<String> {
     })
 }
 
-fn bg_color(node: &Node) -> Option<String> {
+fn bg_color(node: &NodeRef) -> Option<String> {
     node.background_color().map(color_to_string)
 }
 
-fn fg_color(node: &Node) -> Option<String> {
+fn fg_color(node: &NodeRef) -> Option<String> {
     node.foreground_color().map(color_to_string)
 }
 
-fn language(node: &Node) -> Option<String> {
+fn language(node: &NodeRef) -> Option<String> {
     node.language().map(String::from)
 }
 
-fn justification(node: &Node) -> Option<String> {
+fn justification(node: &NodeRef) -> Option<String> {
     node.text_align().map(|align| {
         match align {
             TextAlign::Left => "left",
@@ -65,7 +65,7 @@ fn justification(node: &Node) -> Option<String> {
     })
 }
 
-pub(crate) const ATTRIBUTE_GETTERS: phf::Map<&'static str, fn(&Node) -> Option<String>> = phf_map! {
+pub(crate) const ATTRIBUTE_GETTERS: phf::Map<&'static str, fn(&NodeRef) -> Option<String>> = phf_map! {
     "family-name" => family_name,
     "size" => size,
     "weight" => weight,

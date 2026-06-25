@@ -9,8 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, Affine, AriaCurrent, HasPopup, Live, Node as NodeData, NodeId as LocalNodeId,
-    Orientation, Point, Rect, Role, SortDirection, TextSelection, Toggled, TreeId,
+    Action, Affine, AriaCurrent, HasPopup, Live, Node, NodeId, Orientation, Point, Rect, Role,
+    SortDirection, TextSelection, Toggled, TreeId,
 };
 use alloc::{
     string::{String, ToString},
@@ -24,27 +24,27 @@ use crate::iterators::{
     ChildIds, FilteredChildren, FollowingFilteredSiblings, FollowingSiblings, LabelledBy,
     PrecedingFilteredSiblings, PrecedingSiblings,
 };
-use crate::tree::{State as TreeState, TreeIndex};
+use crate::tree::{TreeIndex, TreeState};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct NodeId(TreeIndex, LocalNodeId);
+pub struct FullNodeId(TreeIndex, NodeId);
 
-impl NodeId {
-    pub(crate) fn new(local_id: LocalNodeId, tree_index: TreeIndex) -> Self {
+impl FullNodeId {
+    pub(crate) fn new(local_id: NodeId, tree_index: TreeIndex) -> Self {
         Self(tree_index, local_id)
     }
 
-    pub(crate) fn with_same_tree(&self, local_id: LocalNodeId) -> Self {
+    pub(crate) fn with_same_tree(&self, local_id: NodeId) -> Self {
         Self(self.0, local_id)
     }
 
-    pub(crate) fn to_components(self) -> (LocalNodeId, TreeIndex) {
+    pub(crate) fn to_components(self) -> (NodeId, TreeIndex) {
         (self.1, self.0)
     }
 }
 
-impl From<NodeId> for u128 {
-    fn from(id: NodeId) -> Self {
+impl From<FullNodeId> for u128 {
+    fn from(id: FullNodeId) -> Self {
         let tree_index = id.0.0 as u128;
         let local_id = id.1.0 as u128;
         (local_id << 64) | tree_index
@@ -52,23 +52,23 @@ impl From<NodeId> for u128 {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct ParentAndIndex(pub(crate) NodeId, pub(crate) usize);
+pub(crate) struct ParentAndIndex(pub(crate) FullNodeId, pub(crate) usize);
 
 #[derive(Clone, Debug)]
 pub(crate) struct NodeState {
     pub(crate) parent_and_index: Option<ParentAndIndex>,
-    pub(crate) data: NodeData,
+    pub(crate) data: Node,
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Node<'a> {
+pub struct NodeRef<'a> {
     pub tree_state: &'a TreeState,
-    pub(crate) id: NodeId,
+    pub(crate) id: FullNodeId,
     pub(crate) state: &'a NodeState,
 }
 
-impl<'a> Node<'a> {
-    pub fn data(&self) -> &'a NodeData {
+impl<'a> NodeRef<'a> {
+    pub fn data(&self) -> &'a Node {
         &self.state.data
     }
 
@@ -94,7 +94,7 @@ impl<'a> Node<'a> {
         self.tree_state.focus == self.id()
     }
 
-    pub fn is_focusable(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
+    pub fn is_focusable(&self, parent_filter: &impl Fn(&NodeRef) -> FilterResult) -> bool {
         self.supports_action(Action::Focus, parent_filter) || self.is_focused_in_tree()
     }
 
@@ -109,19 +109,22 @@ impl<'a> Node<'a> {
         self.state.data.tree_id().is_some()
     }
 
-    pub fn parent_id(&self) -> Option<NodeId> {
+    pub fn parent_id(&self) -> Option<FullNodeId> {
         self.state
             .parent_and_index
             .as_ref()
             .map(|ParentAndIndex(id, _)| *id)
     }
 
-    pub fn parent(&self) -> Option<Node<'a>> {
+    pub fn parent(&self) -> Option<NodeRef<'a>> {
         self.parent_id()
             .map(|id| self.tree_state.node_by_id(id).unwrap())
     }
 
-    pub fn filtered_parent(&self, filter: &impl Fn(&Node) -> FilterResult) -> Option<Node<'a>> {
+    pub fn filtered_parent(
+        &self,
+        filter: &impl Fn(&NodeRef) -> FilterResult,
+    ) -> Option<NodeRef<'a>> {
         let mut current = self.parent()?;
         loop {
             if filter(&current) == FilterResult::Include {
@@ -131,7 +134,7 @@ impl<'a> Node<'a> {
         }
     }
 
-    pub fn parent_and_index(self) -> Option<(Node<'a>, usize)> {
+    pub fn parent_and_index(self) -> Option<(NodeRef<'a>, usize)> {
         self.state
             .parent_and_index
             .as_ref()
@@ -141,7 +144,7 @@ impl<'a> Node<'a> {
     }
 
     /// Returns the single child of a graft node (the subtree root), if available.
-    fn graft_child_id(&self) -> Option<NodeId> {
+    fn graft_child_id(&self) -> Option<FullNodeId> {
         self.state
             .data
             .tree_id()
@@ -150,7 +153,7 @@ impl<'a> Node<'a> {
 
     pub fn child_ids(
         &self,
-    ) -> impl DoubleEndedIterator<Item = NodeId> + ExactSizeIterator + use<'a> {
+    ) -> impl DoubleEndedIterator<Item = FullNodeId> + ExactSizeIterator + use<'a> {
         if self.is_graft() {
             ChildIds::Graft(self.graft_child_id())
         } else {
@@ -163,62 +166,62 @@ impl<'a> Node<'a> {
 
     pub fn children(
         &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + ExactSizeIterator + use<'a> {
+    ) -> impl DoubleEndedIterator<Item = NodeRef<'a>> + ExactSizeIterator + use<'a> {
         let state = self.tree_state;
         self.child_ids()
             .map(move |id| state.node_by_id(id).unwrap())
     }
 
-    pub fn filtered_children<F: Fn(&Node) -> FilterResult>(
+    pub fn filtered_children<F: Fn(&NodeRef) -> FilterResult>(
         &self,
         filter: F,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a, F> {
+    ) -> impl DoubleEndedIterator<Item = NodeRef<'a>> + use<'a, F> {
         FilteredChildren::new(*self, filter)
     }
 
     pub fn following_sibling_ids(
         &self,
-    ) -> impl DoubleEndedIterator<Item = NodeId> + ExactSizeIterator + use<'a> {
+    ) -> impl DoubleEndedIterator<Item = FullNodeId> + ExactSizeIterator + use<'a> {
         FollowingSiblings::new(*self)
     }
 
     pub fn following_siblings(
         &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + ExactSizeIterator + use<'a> {
+    ) -> impl DoubleEndedIterator<Item = NodeRef<'a>> + ExactSizeIterator + use<'a> {
         let state = self.tree_state;
         self.following_sibling_ids()
             .map(move |id| state.node_by_id(id).unwrap())
     }
 
-    pub fn following_filtered_siblings<F: Fn(&Node) -> FilterResult>(
+    pub fn following_filtered_siblings<F: Fn(&NodeRef) -> FilterResult>(
         &self,
         filter: F,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a, F> {
+    ) -> impl DoubleEndedIterator<Item = NodeRef<'a>> + use<'a, F> {
         FollowingFilteredSiblings::new(*self, filter)
     }
 
     pub fn preceding_sibling_ids(
         &self,
-    ) -> impl DoubleEndedIterator<Item = NodeId> + ExactSizeIterator + use<'a> {
+    ) -> impl DoubleEndedIterator<Item = FullNodeId> + ExactSizeIterator + use<'a> {
         PrecedingSiblings::new(*self)
     }
 
     pub fn preceding_siblings(
         &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + ExactSizeIterator + use<'a> {
+    ) -> impl DoubleEndedIterator<Item = NodeRef<'a>> + ExactSizeIterator + use<'a> {
         let state = self.tree_state;
         self.preceding_sibling_ids()
             .map(move |id| state.node_by_id(id).unwrap())
     }
 
-    pub fn preceding_filtered_siblings<F: Fn(&Node) -> FilterResult>(
+    pub fn preceding_filtered_siblings<F: Fn(&NodeRef) -> FilterResult>(
         &self,
         filter: F,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a, F> {
+    ) -> impl DoubleEndedIterator<Item = NodeRef<'a>> + use<'a, F> {
         PrecedingFilteredSiblings::new(*self, filter)
     }
 
-    pub fn deepest_first_child(self) -> Option<Node<'a>> {
+    pub fn deepest_first_child(self) -> Option<NodeRef<'a>> {
         let mut deepest_child = self.children().next()?;
         while let Some(first_child) = deepest_child.children().next() {
             deepest_child = first_child;
@@ -228,8 +231,8 @@ impl<'a> Node<'a> {
 
     pub fn deepest_first_filtered_child(
         &self,
-        filter: &impl Fn(&Node) -> FilterResult,
-    ) -> Option<Node<'a>> {
+        filter: &impl Fn(&NodeRef) -> FilterResult,
+    ) -> Option<NodeRef<'a>> {
         let mut deepest_child = self.first_filtered_child(filter)?;
         while let Some(first_child) = deepest_child.first_filtered_child(filter) {
             deepest_child = first_child;
@@ -237,7 +240,7 @@ impl<'a> Node<'a> {
         Some(deepest_child)
     }
 
-    pub fn deepest_last_child(self) -> Option<Node<'a>> {
+    pub fn deepest_last_child(self) -> Option<NodeRef<'a>> {
         let mut deepest_child = self.children().next_back()?;
         while let Some(last_child) = deepest_child.children().next_back() {
             deepest_child = last_child;
@@ -247,8 +250,8 @@ impl<'a> Node<'a> {
 
     pub fn deepest_last_filtered_child(
         &self,
-        filter: &impl Fn(&Node) -> FilterResult,
-    ) -> Option<Node<'a>> {
+        filter: &impl Fn(&NodeRef) -> FilterResult,
+    ) -> Option<NodeRef<'a>> {
         let mut deepest_child = self.last_filtered_child(filter)?;
         while let Some(last_child) = deepest_child.last_filtered_child(filter) {
             deepest_child = last_child;
@@ -256,7 +259,7 @@ impl<'a> Node<'a> {
         Some(deepest_child)
     }
 
-    pub fn is_descendant_of(&self, ancestor: &Node) -> bool {
+    pub fn is_descendant_of(&self, ancestor: &NodeRef) -> bool {
         let mut current = *self;
         loop {
             if current.id() == ancestor.id() {
@@ -289,7 +292,7 @@ impl<'a> Node<'a> {
         acc
     }
 
-    pub(crate) fn relative_transform(&self, stop_at: &Node) -> Affine {
+    pub(crate) fn relative_transform(&self, stop_at: &NodeRef) -> Affine {
         let mut acc = self.direct_transform();
         let mut current = *self;
         while let Some(parent) = current.parent() {
@@ -318,7 +321,7 @@ impl<'a> Node<'a> {
             .map(|rect| self.transform().transform_rect_bbox(*rect))
     }
 
-    pub(crate) fn bounding_box_in_coordinate_space(&self, other: &Node) -> Option<Rect> {
+    pub(crate) fn bounding_box_in_coordinate_space(&self, other: &NodeRef) -> Option<Rect> {
         self.raw_bounds()
             .as_ref()
             .map(|rect| self.relative_transform(other).transform_rect_bbox(*rect))
@@ -327,14 +330,14 @@ impl<'a> Node<'a> {
     pub(crate) fn hit_test(
         &self,
         point: Point,
-        filter: &impl Fn(&Node) -> FilterResult,
-    ) -> Option<(Node<'a>, Point)> {
+        filter: &impl Fn(&NodeRef) -> FilterResult,
+    ) -> Option<(NodeRef<'a>, Point)> {
         // A node's `Test` frame is pushed before its children, then children in
         // forward order, so that children are searched last-to-first and the
         // node's own bounds are tested only after all descendants miss.
         enum Frame<'n> {
-            Visit(Node<'n>, Point),
-            Test(Node<'n>, Point),
+            Visit(NodeRef<'n>, Point),
+            Test(NodeRef<'n>, Point),
         }
 
         let mut stack = Vec::with_capacity(self.children().len() + 1);
@@ -372,16 +375,16 @@ impl<'a> Node<'a> {
     pub fn node_at_point(
         &self,
         point: Point,
-        filter: &impl Fn(&Node) -> FilterResult,
-    ) -> Option<Node<'a>> {
+        filter: &impl Fn(&NodeRef) -> FilterResult,
+    ) -> Option<NodeRef<'a>> {
         self.hit_test(point, filter).map(|(node, _)| node)
     }
 
-    pub fn id(&self) -> NodeId {
+    pub fn id(&self) -> FullNodeId {
         self.id
     }
 
-    pub fn locate(&self) -> (LocalNodeId, TreeId) {
+    pub fn locate(&self) -> (NodeId, TreeId) {
         self.tree_state.locate_node(self.id).unwrap()
     }
 
@@ -438,7 +441,7 @@ impl<'a> Node<'a> {
     }
 
     pub fn is_hidden(&self) -> bool {
-        self.fetch_inherited_flag(NodeData::is_hidden)
+        self.fetch_inherited_flag(Node::is_hidden)
     }
 
     pub fn level(&self) -> Option<usize> {
@@ -516,7 +519,7 @@ impl<'a> Node<'a> {
 
     pub(crate) fn fetch_inherited_property<T>(
         &self,
-        getter: fn(&'a NodeData) -> Option<T>,
+        getter: fn(&'a Node) -> Option<T>,
     ) -> Option<T> {
         let mut node = *self;
         loop {
@@ -528,7 +531,7 @@ impl<'a> Node<'a> {
         }
     }
 
-    pub(crate) fn fetch_inherited_flag(&self, getter: fn(&'a NodeData) -> bool) -> bool {
+    pub(crate) fn fetch_inherited_flag(&self, getter: fn(&'a Node) -> bool) -> bool {
         let mut node = *self;
         loop {
             if getter(node.data()) {
@@ -596,7 +599,7 @@ impl<'a> Node<'a> {
     // and we assume that it will based on the role, the attempted action
     // does nothing. This stance is a departure from Chromium.
 
-    pub fn is_clickable(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
+    pub fn is_clickable(&self, parent_filter: &impl Fn(&NodeRef) -> FilterResult) -> bool {
         self.supports_action(Action::Click, parent_filter)
     }
 
@@ -611,7 +614,7 @@ impl<'a> Node<'a> {
 
     pub fn size_of_set_from_container(
         &self,
-        filter: &impl Fn(&Node) -> FilterResult,
+        filter: &impl Fn(&NodeRef) -> FilterResult,
     ) -> Option<usize> {
         let mut parent = self.filtered_parent(filter);
         while let Some(node) = parent {
@@ -650,7 +653,7 @@ impl<'a> Node<'a> {
             )
     }
 
-    pub fn is_invocable(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
+    pub fn is_invocable(&self, parent_filter: &impl Fn(&NodeRef) -> FilterResult) -> bool {
         // A control is "invocable" if it initiates an action when activated but
         // does not maintain any state. A control that maintains state
         // when activated would be considered a toggle or expand-collapse
@@ -670,7 +673,7 @@ impl<'a> Node<'a> {
     pub fn supports_action(
         &self,
         action: Action,
-        parent_filter: &impl Fn(&Node) -> FilterResult,
+        parent_filter: &impl Fn(&NodeRef) -> FilterResult,
     ) -> bool {
         if self.data().supports_action(action) {
             return true;
@@ -681,16 +684,16 @@ impl<'a> Node<'a> {
         false
     }
 
-    pub fn supports_increment(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
+    pub fn supports_increment(&self, parent_filter: &impl Fn(&NodeRef) -> FilterResult) -> bool {
         self.supports_action(Action::Increment, parent_filter)
     }
 
-    pub fn supports_decrement(&self, parent_filter: &impl Fn(&Node) -> FilterResult) -> bool {
+    pub fn supports_decrement(&self, parent_filter: &impl Fn(&NodeRef) -> FilterResult) -> bool {
         self.supports_action(Action::Decrement, parent_filter)
     }
 }
 
-fn descendant_label_filter(node: &Node) -> FilterResult {
+fn descendant_label_filter(node: &NodeRef) -> FilterResult {
     match node.role() {
         Role::Label | Role::Image => FilterResult::Include,
         Role::GenericContainer => FilterResult::ExcludeNode,
@@ -698,8 +701,8 @@ fn descendant_label_filter(node: &Node) -> FilterResult {
     }
 }
 
-impl<'a> Node<'a> {
-    pub fn labelled_by(&self) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a> {
+impl<'a> NodeRef<'a> {
+    pub fn labelled_by(&self) -> impl DoubleEndedIterator<Item = NodeRef<'a>> + use<'a> {
         let explicit = &self.state.data.labelled_by();
         if explicit.is_empty()
             && matches!(
@@ -937,7 +940,7 @@ impl<'a> Node<'a> {
         )
     }
 
-    pub fn controls(&self) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a> {
+    pub fn controls(&self) -> impl DoubleEndedIterator<Item = NodeRef<'a>> + use<'a> {
         let state = self.tree_state;
         let id = self.id;
         let data = &self.state.data;
@@ -946,7 +949,7 @@ impl<'a> Node<'a> {
             .map(move |control_id| state.node_by_id(id.with_same_tree(*control_id)).unwrap())
     }
 
-    pub fn active_descendant(&self) -> Option<Node<'a>> {
+    pub fn active_descendant(&self) -> Option<NodeRef<'a>> {
         self.state
             .data
             .active_descendant()
@@ -973,7 +976,7 @@ impl<'a> Node<'a> {
         self.relative_index_path(self.tree_state.root_id())
     }
 
-    pub fn relative_index_path(&self, ancestor_id: NodeId) -> Vec<usize> {
+    pub fn relative_index_path(&self, ancestor_id: FullNodeId) -> Vec<usize> {
         let mut result = Vec::new();
         let mut current = *self;
         while current.id() != ancestor_id {
@@ -987,8 +990,8 @@ impl<'a> Node<'a> {
 
     pub(crate) fn first_filtered_child(
         &self,
-        filter: &impl Fn(&Node) -> FilterResult,
-    ) -> Option<Node<'a>> {
+        filter: &impl Fn(&NodeRef) -> FilterResult,
+    ) -> Option<NodeRef<'a>> {
         let mut stack = vec![self.children()];
         while let Some(iter) = stack.last_mut() {
             if let Some(child) = iter.next() {
@@ -1006,8 +1009,8 @@ impl<'a> Node<'a> {
 
     pub(crate) fn last_filtered_child(
         &self,
-        filter: &impl Fn(&Node) -> FilterResult,
-    ) -> Option<Node<'a>> {
+        filter: &impl Fn(&NodeRef) -> FilterResult,
+    ) -> Option<NodeRef<'a>> {
         let mut stack = vec![self.children().rev()];
         while let Some(iter) = stack.last_mut() {
             if let Some(child) = iter.next() {
@@ -1023,7 +1026,10 @@ impl<'a> Node<'a> {
         None
     }
 
-    pub fn selection_container(&self, filter: &impl Fn(&Node) -> FilterResult) -> Option<Node<'a>> {
+    pub fn selection_container(
+        &self,
+        filter: &impl Fn(&NodeRef) -> FilterResult,
+    ) -> Option<NodeRef<'a>> {
         self.filtered_parent(&|parent| match filter(parent) {
             FilterResult::Include if parent.is_container_with_selectable_children() => {
                 FilterResult::Include
@@ -1033,10 +1039,10 @@ impl<'a> Node<'a> {
         })
     }
 
-    pub fn items<F: Fn(&Node) -> FilterResult>(
+    pub fn items<F: Fn(&NodeRef) -> FilterResult>(
         &self,
         filter: F,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a, F> {
+    ) -> impl DoubleEndedIterator<Item = NodeRef<'a>> + use<'a, F> {
         self.filtered_children(move |child| match filter(child) {
             FilterResult::Include if child.is_item_like() => FilterResult::Include,
             FilterResult::Include => FilterResult::ExcludeNode,
@@ -1076,7 +1082,7 @@ impl<W: fmt::Write> fmt::Write for SpacePrefixingWriter<W> {
 mod tests {
     use accesskit::{
         Action, Affine, Node, NodeId, Point, Rect, Role, TextDirection, TextPosition,
-        TextSelection, Tree, TreeId, TreeUpdate, Vec2,
+        TextSelection, TreeId, TreeInfo, TreeUpdate, Vec2,
     };
     use alloc::vec;
 
@@ -1498,7 +1504,7 @@ mod tests {
                 }),
                 (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
@@ -1544,7 +1550,7 @@ mod tests {
                     node
                 }),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
@@ -1695,7 +1701,7 @@ mod tests {
                     node
                 }),
             ],
-            tree: Some(Tree::new(ROOT_ID)),
+            tree: Some(TreeInfo::new(ROOT_ID)),
             tree_id: TreeId::ROOT,
             focus: ROOT_ID,
         };
@@ -1803,7 +1809,7 @@ mod tests {
                     node
                 }),
             ],
-            tree: Some(Tree::new(ROOT_ID)),
+            tree: Some(TreeInfo::new(ROOT_ID)),
             tree_id: TreeId::ROOT,
             focus: TEXT_INPUT_ID,
         };
@@ -1872,7 +1878,7 @@ mod tests {
                     node
                 }),
             ],
-            tree: Some(Tree::new(ROOT_ID)),
+            tree: Some(TreeInfo::new(ROOT_ID)),
             tree_id: TreeId::ROOT,
             focus: TEXT_INPUT_ID,
         };
@@ -1911,7 +1917,7 @@ mod tests {
                     node
                 }),
             ],
-            tree: Some(Tree::new(ROOT_ID)),
+            tree: Some(TreeInfo::new(ROOT_ID)),
             tree_id: TreeId::ROOT,
             focus: ROOT_ID,
         };
@@ -1920,15 +1926,15 @@ mod tests {
     }
 
     mod node_id {
-        use super::NodeId as LocalNodeId;
-        use crate::node::NodeId;
+        use super::NodeId;
+        use crate::node::FullNodeId;
         use crate::tree::TreeIndex;
 
         #[test]
         fn new_and_to_components_round_trip() {
-            let node_id = LocalNodeId(42);
+            let node_id = NodeId(42);
             let tree_index = TreeIndex(7);
-            let id = NodeId::new(node_id, tree_index);
+            let id = FullNodeId::new(node_id, tree_index);
             let (extracted_node_id, extracted_tree_index) = id.to_components();
             assert_eq!(node_id, extracted_node_id);
             assert_eq!(tree_index, extracted_tree_index);
@@ -1936,11 +1942,11 @@ mod tests {
 
         #[test]
         fn with_same_tree_preserves_tree_index() {
-            let original_node_id = LocalNodeId(100);
+            let original_node_id = NodeId(100);
             let tree_index = TreeIndex(5);
-            let id = NodeId::new(original_node_id, tree_index);
+            let id = FullNodeId::new(original_node_id, tree_index);
 
-            let new_node_id = LocalNodeId(200);
+            let new_node_id = NodeId(200);
             let new_id = id.with_same_tree(new_node_id);
 
             let (extracted_node_id, extracted_tree_index) = new_id.to_components();
@@ -1950,9 +1956,9 @@ mod tests {
 
         #[test]
         fn into_u128() {
-            let node_id = LocalNodeId(12345);
+            let node_id = NodeId(12345);
             let tree_index = TreeIndex(67);
-            let id = NodeId::new(node_id, tree_index);
+            let id = FullNodeId::new(node_id, tree_index);
             let (extracted_node_id, extracted_tree_index) = id.to_components();
             assert_eq!(node_id, extracted_node_id);
             assert_eq!(tree_index, extracted_tree_index);
@@ -1960,10 +1966,10 @@ mod tests {
 
         #[test]
         fn equality() {
-            let id1 = NodeId::new(LocalNodeId(1), TreeIndex(2));
-            let id2 = NodeId::new(LocalNodeId(1), TreeIndex(2));
-            let id3 = NodeId::new(LocalNodeId(1), TreeIndex(3));
-            let id4 = NodeId::new(LocalNodeId(2), TreeIndex(2));
+            let id1 = FullNodeId::new(NodeId(1), TreeIndex(2));
+            let id2 = FullNodeId::new(NodeId(1), TreeIndex(2));
+            let id3 = FullNodeId::new(NodeId(1), TreeIndex(3));
+            let id4 = FullNodeId::new(NodeId(2), TreeIndex(2));
 
             assert_eq!(id1, id2);
             assert_ne!(id1, id3);
@@ -1985,7 +1991,7 @@ mod tests {
                 }),
                 (BUTTON_ID, Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(ROOT_ID)),
+            tree: Some(TreeInfo::new(ROOT_ID)),
             tree_id: TreeId::ROOT,
             focus: BUTTON_ID,
         };
@@ -2012,7 +2018,7 @@ mod tests {
                 }),
                 (BUTTON_ID, Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(ROOT_ID)),
+            tree: Some(TreeInfo::new(ROOT_ID)),
             tree_id: TreeId::ROOT,
             focus: ROOT_ID,
         };
@@ -2047,7 +2053,7 @@ mod tests {
                 }),
                 (ITEM_ID, Node::new(Role::ListBoxOption)),
             ],
-            tree: Some(Tree::new(ROOT_ID)),
+            tree: Some(TreeInfo::new(ROOT_ID)),
             tree_id: TreeId::ROOT,
             focus: LISTBOX_ID,
         };
@@ -2076,7 +2082,7 @@ mod tests {
                 }),
                 (ITEM_ID, Node::new(Role::ListBoxOption)),
             ],
-            tree: Some(Tree::new(ROOT_ID)),
+            tree: Some(TreeInfo::new(ROOT_ID)),
             tree_id: TreeId::ROOT,
             focus: LISTBOX_ID,
         };

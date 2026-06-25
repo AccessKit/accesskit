@@ -6,7 +6,7 @@
 use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, Rect, TreeUpdate};
 use accesskit_atspi_common::{
     ActionHandlerNoMut, ActionHandlerWrapper, Adapter as AdapterImpl, AdapterCallback, CacheEvent,
-    Event, NodeId, PlatformNode, WindowBounds, next_adapter_id,
+    Event, FullNodeId, PlatformNode, WindowBounds, next_adapter_id,
 };
 #[cfg(not(feature = "tokio"))]
 use async_channel::Sender;
@@ -37,12 +37,12 @@ impl Callback {
 }
 
 impl AdapterCallback for Callback {
-    fn register_interfaces(&self, adapter: &AdapterImpl, id: NodeId, interfaces: InterfaceSet) {
+    fn register_interfaces(&self, adapter: &AdapterImpl, id: FullNodeId, interfaces: InterfaceSet) {
         let node = adapter.platform_node(id);
         self.send_message(Message::RegisterInterfaces { node, interfaces });
     }
 
-    fn unregister_interfaces(&self, adapter: &AdapterImpl, id: NodeId, interfaces: InterfaceSet) {
+    fn unregister_interfaces(&self, adapter: &AdapterImpl, id: FullNodeId, interfaces: InterfaceSet) {
         self.send_message(Message::UnregisterInterfaces {
             adapter_id: adapter.id(),
             node_id: id,
@@ -254,7 +254,7 @@ pub(crate) enum Message {
     },
     UnregisterInterfaces {
         adapter_id: usize,
-        node_id: NodeId,
+        node_id: FullNodeId,
         interfaces: InterfaceSet,
     },
     EmitEvent {
@@ -266,6 +266,6 @@ pub(crate) enum Message {
     },
     EmitCacheRemove {
         adapter_id: usize,
-        node_id: NodeId,
+        node_id: FullNodeId,
     },
 }

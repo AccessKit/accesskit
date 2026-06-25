@@ -4,22 +4,22 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    Color, Node as NodeData, Point, Rect, Role, TextAlign, TextDecoration, TextDirection,
+    Color, Node, Point, Rect, Role, TextAlign, TextDecoration, TextDirection,
     TextPosition as WeakPosition, TextSelection, VerticalOffset,
 };
 use alloc::{string::String, vec::Vec};
 use core::{cmp::Ordering, fmt};
 
-use crate::{FilterResult, Node, TreeState, node::NodeId};
+use crate::{FilterResult, NodeRef, TreeState, node::FullNodeId};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct InnerPosition<'a> {
-    pub(crate) node: Node<'a>,
+    pub(crate) node: NodeRef<'a>,
     pub(crate) character_index: usize,
 }
 
 impl<'a> InnerPosition<'a> {
-    fn upgrade(tree_state: &'a TreeState, weak: WeakPosition, node_id: NodeId) -> Option<Self> {
+    fn upgrade(tree_state: &'a TreeState, weak: WeakPosition, node_id: FullNodeId) -> Option<Self> {
         let node = tree_state.node_by_id(node_id.with_same_tree(weak.node))?;
         if node.role() != Role::TextRun {
             return None;
@@ -37,7 +37,7 @@ impl<'a> InnerPosition<'a> {
     fn clamped_upgrade(
         tree_state: &'a TreeState,
         weak: WeakPosition,
-        node_id: NodeId,
+        node_id: FullNodeId,
     ) -> Option<Self> {
         let node = tree_state.node_by_id(node_id.with_same_tree(weak.node))?;
         if node.role() != Role::TextRun {
@@ -72,15 +72,15 @@ impl<'a> InnerPosition<'a> {
         self.is_line_end() && self.node.data().value().unwrap().ends_with('\n')
     }
 
-    fn is_document_start(&self, root_node: &Node) -> bool {
+    fn is_document_start(&self, root_node: &NodeRef) -> bool {
         self.is_run_start() && self.node.preceding_text_runs(root_node).next().is_none()
     }
 
-    fn is_document_end(&self, root_node: &Node) -> bool {
+    fn is_document_end(&self, root_node: &NodeRef) -> bool {
         self.is_run_end() && self.node.following_text_runs(root_node).next().is_none()
     }
 
-    fn biased_to_start(&self, root_node: &Node) -> Self {
+    fn biased_to_start(&self, root_node: &NodeRef) -> Self {
         if self.is_run_end() {
             if let Some(node) = self.node.following_text_runs(root_node).next() {
                 return Self {
@@ -92,7 +92,7 @@ impl<'a> InnerPosition<'a> {
         *self
     }
 
-    fn biased_to_end(&self, root_node: &Node) -> Self {
+    fn biased_to_end(&self, root_node: &NodeRef) -> Self {
         if self.is_run_start() {
             if let Some(node) = self.node.preceding_text_runs(root_node).next() {
                 return Self {
@@ -104,7 +104,7 @@ impl<'a> InnerPosition<'a> {
         *self
     }
 
-    fn comparable(&self, root_node: &Node) -> (Vec<usize>, usize) {
+    fn comparable(&self, root_node: &NodeRef) -> (Vec<usize>, usize) {
         let normalized = self.biased_to_start(root_node);
         (
             normalized.node.relative_index_path(root_node.id()),
@@ -159,7 +159,7 @@ impl Eq for InnerPosition<'_> {}
 
 #[derive(Clone, Copy, Debug)]
 pub struct Position<'a> {
-    root_node: Node<'a>,
+    root_node: NodeRef<'a>,
     pub(crate) inner: InnerPosition<'a>,
 }
 
@@ -168,7 +168,7 @@ impl<'a> Position<'a> {
         self.inner.downgrade()
     }
 
-    pub fn inner_node(&self) -> &Node<'a> {
+    pub fn inner_node(&self) -> &NodeRef<'a> {
         &self.inner.node
     }
 
@@ -611,20 +611,20 @@ impl<T: alloc::fmt::Debug + PartialEq> RangePropertyValue<Option<T>> {
 
 #[derive(Clone, Copy)]
 pub struct Range<'a> {
-    pub(crate) node: Node<'a>,
+    pub(crate) node: NodeRef<'a>,
     pub(crate) start: InnerPosition<'a>,
     pub(crate) end: InnerPosition<'a>,
 }
 
 impl<'a> Range<'a> {
-    fn new(node: Node<'a>, mut start: InnerPosition<'a>, mut end: InnerPosition<'a>) -> Self {
+    fn new(node: NodeRef<'a>, mut start: InnerPosition<'a>, mut end: InnerPosition<'a>) -> Self {
         if start.comparable(&node) > end.comparable(&node) {
             core::mem::swap(&mut start, &mut end);
         }
         Self { node, start, end }
     }
 
-    pub fn node(&self) -> &Node<'a> {
+    pub fn node(&self) -> &NodeRef<'a> {
         &self.node
     }
 
@@ -648,7 +648,7 @@ impl<'a> Range<'a> {
 
     fn walk<F, T>(&self, mut f: F) -> Option<T>
     where
-        F: FnMut(&Node<'a>) -> Option<T>,
+        F: FnMut(&NodeRef<'a>) -> Option<T>,
     {
         // If the range is degenerate, we don't want to normalize it.
         // This is important e.g. when getting the bounding rectangle
@@ -679,7 +679,7 @@ impl<'a> Range<'a> {
 
     pub fn traverse_text<F, T>(&self, mut f: F) -> Option<T>
     where
-        F: FnMut(&Node<'a>, &str) -> Option<T>,
+        F: FnMut(&NodeRef<'a>, &str) -> Option<T>,
     {
         self.walk(|node| {
             let character_lengths = node.data().character_lengths();
@@ -822,7 +822,7 @@ impl<'a> Range<'a> {
 
     fn fetch_property<T: alloc::fmt::Debug + PartialEq>(
         &self,
-        getter: fn(&Node<'a>) -> T,
+        getter: fn(&NodeRef<'a>) -> T,
     ) -> RangePropertyValue<T> {
         let mut value = None;
         self.walk(|node| {
@@ -895,7 +895,7 @@ impl Eq for Range<'_> {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WeakRange {
-    node_id: NodeId,
+    node_id: FullNodeId,
     start: WeakPosition,
     end: WeakPosition,
     start_comparable: (Vec<usize>, usize),
@@ -903,7 +903,7 @@ pub struct WeakRange {
 }
 
 impl WeakRange {
-    pub fn node_id(&self) -> NodeId {
+    pub fn node_id(&self) -> FullNodeId {
         self.node_id
     }
 
@@ -915,10 +915,10 @@ impl WeakRange {
         &self.end_comparable
     }
 
-    pub fn upgrade_node<'a>(&self, tree_state: &'a TreeState) -> Option<Node<'a>> {
+    pub fn upgrade_node<'a>(&self, tree_state: &'a TreeState) -> Option<NodeRef<'a>> {
         tree_state
             .node_by_id(self.node_id)
-            .filter(Node::supports_text_ranges)
+            .filter(NodeRef::supports_text_ranges)
     }
 
     pub fn upgrade<'a>(&self, tree_state: &'a TreeState) -> Option<Range<'a>> {
@@ -929,7 +929,7 @@ impl WeakRange {
     }
 }
 
-fn text_node_filter(root_id: NodeId, node: &Node) -> FilterResult {
+fn text_node_filter(root_id: FullNodeId, node: &NodeRef) -> FilterResult {
     if node.id() == root_id || node.role() == Role::TextRun {
         FilterResult::Include
     } else {
@@ -937,7 +937,7 @@ fn text_node_filter(root_id: NodeId, node: &Node) -> FilterResult {
     }
 }
 
-fn character_index_at_point(node: &Node, point: Point) -> usize {
+fn character_index_at_point(node: &NodeRef, point: Point) -> usize {
     // We know the node has a bounding rectangle because it was returned
     // by a hit test.
     let rect = node.data().bounds().unwrap();
@@ -979,9 +979,9 @@ fn character_index_at_point(node: &Node, point: Point) -> usize {
 
 macro_rules! inherited_properties {
     ($(($getter:ident, $type:ty, $setter:ident, $test_value_1:expr_2021, $test_value_2:expr_2021)),+) => {
-        impl<'a> Node<'a> {
+        impl<'a> NodeRef<'a> {
             $(pub fn $getter(&self) -> Option<$type> {
-                self.fetch_inherited_property(NodeData::$getter)
+                self.fetch_inherited_property(Node::$getter)
             })*
         }
         impl<'a> Position<'a> {
@@ -991,12 +991,12 @@ macro_rules! inherited_properties {
         }
         impl<'a> Range<'a> {
             $(pub fn $getter(&self) -> RangePropertyValue<Option<$type>> {
-                self.fetch_property(Node::$getter)
+                self.fetch_property(NodeRef::$getter)
             })*
         }
         $(#[cfg(test)]
         mod $getter {
-            use accesskit::{Node, NodeId, Role, Tree, TreeId, TreeUpdate};
+            use accesskit::{Node, NodeId, Role, TreeInfo, TreeId, TreeUpdate};
             use alloc::vec;
             use super::RangePropertyValue;
             use crate::tests::nid;
@@ -1017,7 +1017,7 @@ macro_rules! inherited_properties {
                             node
                         }),
                     ],
-                    tree: Some(Tree::new(NodeId(0))),
+                    tree: Some(TreeInfo::new(NodeId(0))),
                     tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
@@ -1046,7 +1046,7 @@ macro_rules! inherited_properties {
                             node
                         }),
                     ],
-                    tree: Some(Tree::new(NodeId(0))),
+                    tree: Some(TreeInfo::new(NodeId(0))),
                     tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
@@ -1076,7 +1076,7 @@ macro_rules! inherited_properties {
                             node
                         }),
                     ],
-                    tree: Some(Tree::new(NodeId(0))),
+                    tree: Some(TreeInfo::new(NodeId(0))),
                     tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
@@ -1105,7 +1105,7 @@ macro_rules! inherited_properties {
                             node
                         }),
                     ],
-                    tree: Some(Tree::new(NodeId(0))),
+                    tree: Some(TreeInfo::new(NodeId(0))),
                     tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
@@ -1140,7 +1140,7 @@ macro_rules! inherited_properties {
                             node
                         }),
                     ],
-                    tree: Some(Tree::new(NodeId(0))),
+                    tree: Some(TreeInfo::new(NodeId(0))),
                     tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
@@ -1174,7 +1174,7 @@ macro_rules! inherited_properties {
                             node
                         }),
                     ],
-                    tree: Some(Tree::new(NodeId(0))),
+                    tree: Some(TreeInfo::new(NodeId(0))),
                     tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
@@ -1214,9 +1214,9 @@ inherited_properties! {
 
 macro_rules! inherited_flags {
     ($(($getter:ident, $setter:ident)),+) => {
-        impl<'a> Node<'a> {
+        impl<'a> NodeRef<'a> {
             $(pub fn $getter(&self) -> bool {
-                self.fetch_inherited_flag(NodeData::$getter)
+                self.fetch_inherited_flag(Node::$getter)
             })*
         }
         impl<'a> Position<'a> {
@@ -1226,12 +1226,12 @@ macro_rules! inherited_flags {
         }
         impl<'a> Range<'a> {
             $(pub fn $getter(&self) -> RangePropertyValue<bool> {
-                self.fetch_property(Node::$getter)
+                self.fetch_property(NodeRef::$getter)
             })*
         }
         $(#[cfg(test)]
         mod $getter {
-            use accesskit::{Node, NodeId, Role, Tree, TreeId, TreeUpdate};
+            use accesskit::{Node, NodeId, Role, TreeInfo, TreeId, TreeUpdate};
             use alloc::vec;
             use super::RangePropertyValue;
             use crate::tests::nid;
@@ -1252,7 +1252,7 @@ macro_rules! inherited_flags {
                             node
                         }),
                     ],
-                    tree: Some(Tree::new(NodeId(0))),
+                    tree: Some(TreeInfo::new(NodeId(0))),
                     tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
@@ -1281,7 +1281,7 @@ macro_rules! inherited_flags {
                             node
                         }),
                     ],
-                    tree: Some(Tree::new(NodeId(0))),
+                    tree: Some(TreeInfo::new(NodeId(0))),
                     tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
@@ -1309,7 +1309,7 @@ macro_rules! inherited_flags {
                             node
                         }),
                     ],
-                    tree: Some(Tree::new(NodeId(0))),
+                    tree: Some(TreeInfo::new(NodeId(0))),
                     tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
@@ -1344,7 +1344,7 @@ macro_rules! inherited_flags {
                             node
                         }),
                     ],
-                    tree: Some(Tree::new(NodeId(0))),
+                    tree: Some(TreeInfo::new(NodeId(0))),
                     tree_id: TreeId::ROOT,
                     focus: NodeId(0),
                 };
@@ -1362,7 +1362,7 @@ inherited_flags! {
     (is_italic, set_italic)
 }
 
-impl<'a> Node<'a> {
+impl<'a> NodeRef<'a> {
     fn text_attributes_differ(&self, other: &Self) -> bool {
         self.font_family() != other.font_family()
             || self.language() != other.language()
@@ -1378,23 +1378,23 @@ impl<'a> Node<'a> {
         // TODO: more attributes
     }
 
-    pub(crate) fn text_runs(&self) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a> {
+    pub(crate) fn text_runs(&self) -> impl DoubleEndedIterator<Item = NodeRef<'a>> + use<'a> {
         let id = self.id();
         self.filtered_children(move |node| text_node_filter(id, node))
     }
 
     fn following_text_runs(
         &self,
-        root_node: &Node,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a> {
+        root_node: &NodeRef,
+    ) -> impl DoubleEndedIterator<Item = NodeRef<'a>> + use<'a> {
         let id = root_node.id();
         self.following_filtered_siblings(move |node| text_node_filter(id, node))
     }
 
     fn preceding_text_runs(
         &self,
-        root_node: &Node,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + use<'a> {
+        root_node: &NodeRef,
+    ) -> impl DoubleEndedIterator<Item = NodeRef<'a>> + use<'a> {
         let id = root_node.id();
         self.preceding_filtered_siblings(move |node| text_node_filter(id, node))
     }
@@ -1695,7 +1695,7 @@ mod tests {
     // This was originally based on an actual tree produced by egui but
     // has since been heavily modified by hand to cover various test cases.
     fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {
-        use accesskit::{Action, Affine, Node, Role, TextDirection, Tree, TreeId, TreeUpdate};
+        use accesskit::{Action, Affine, Node, Role, TextDirection, TreeId, TreeInfo, TreeUpdate};
 
         let update = TreeUpdate {
             nodes: vec![
@@ -1905,7 +1905,7 @@ mod tests {
                     node
                 }),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
             focus: NodeId(1),
         };
