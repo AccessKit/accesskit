@@ -7,7 +7,8 @@
 
 use accesskit::{Action, ActionData, ActionRequest, ScrollHint, VerticalOffset};
 use accesskit_consumer::{
-    NodeRef, TextPosition as Position, TextRange as Range, Tree, TreeState, WeakTextRange as WeakRange,
+    NodeRef, TextPosition as Position, TextRange as Range, Tree, TreeState,
+    WeakTextRange as WeakRange,
 };
 use std::sync::{Arc, RwLock, Weak};
 use windows::{

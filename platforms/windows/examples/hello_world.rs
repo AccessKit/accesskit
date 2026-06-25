@@ -1,8 +1,8 @@
 // Based on the create_window sample in windows-samples-rs.
 
 use accesskit::{
-    Action, ActionHandler, ActionRequest, ActivationHandler, Live, Node, NodeId, Rect, Role, TreeInfo,
-    TreeId, TreeUpdate,
+    Action, ActionHandler, ActionRequest, ActivationHandler, Live, Node, NodeId, Rect, Role,
+    TreeId, TreeInfo, TreeUpdate,
 };
 use accesskit_windows::Adapter;
 use once_cell::sync::Lazy;

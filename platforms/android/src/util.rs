@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit_consumer::{NodeId, FullRefdeId};
+use accesskit_consumer::{FullNodeId, NodeRef};
 use jni::{JNIEnv, objects::JObject, sys::jint};
 use std::collections::HashMap;
 

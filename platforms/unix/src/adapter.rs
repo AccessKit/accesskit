@@ -42,7 +42,12 @@ impl AdapterCallback for Callback {
         self.send_message(Message::RegisterInterfaces { node, interfaces });
     }
 
-    fn unregister_interfaces(&self, adapter: &AdapterImpl, id: FullNodeId, interfaces: InterfaceSet) {
+    fn unregister_interfaces(
+        &self,
+        adapter: &AdapterImpl,
+        id: FullNodeId,
+        interfaces: InterfaceSet,
+    ) {
         self.send_message(Message::UnregisterInterfaces {
             adapter_id: adapter.id(),
             node_id: id,

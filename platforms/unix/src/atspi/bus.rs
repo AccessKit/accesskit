@@ -384,7 +384,11 @@ impl Bus {
         self.emit_cache_signal("AddAccessible", &item).await
     }
 
-    pub(crate) async fn emit_cache_remove(&self, adapter_id: usize, node_id: FullNodeId) -> Result<()> {
+    pub(crate) async fn emit_cache_remove(
+        &self,
+        adapter_id: usize,
+        node_id: FullNodeId,
+    ) -> Result<()> {
         let reference = object_ref(
             self.unique_name().inner(),
             ObjectId::Node {
