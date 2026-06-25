@@ -784,8 +784,10 @@ impl Event {
 mod tests {
     use super::{Accessible, Cache, Event as SimplifiedEvent};
     use crate::{Adapter, AdapterCallback, AppContext, Event, WindowBounds};
-    use accesskit::{ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeId, TreeUpdate};
-    use accesskit_consumer::NodeId;
+    use accesskit::{
+        ActionHandler, ActionRequest, Node, NodeId, Role, TreeInfo, TreeIo, TreeUpdate,
+    };
+    use accesskit_consumer::FullNodeId;
     use atspi_common::InterfaceSet;
     use std::sync::{Arc, Mutex};
 
@@ -799,8 +801,8 @@ mod tests {
     }
 
     impl AdapterCallback for CacheKindCallback {
-        fn register_interfaces(&self, _: &Adapter, _: NodeId, _: InterfaceSet) {}
-        fn unregister_interfaces(&self, _: &Adapter, _: NodeId, _: InterfaceSet) {}
+        fn register_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
+        fn unregister_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
         fn emit_event(&self, adapter: &Adapter, event: Event) {
             if matches!(event, Event::Cache(_)) {
                 let simplified = SimplifiedEvent::new(adapter, event);
@@ -811,8 +813,8 @@ mod tests {
 
     struct NoOpCallback;
     impl AdapterCallback for NoOpCallback {
-        fn register_interfaces(&self, _: &Adapter, _: NodeId, _: InterfaceSet) {}
-        fn unregister_interfaces(&self, _: &Adapter, _: NodeId, _: InterfaceSet) {}
+        fn register_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
+        fn unregister_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
         fn emit_event(&self, _: &Adapter, _: Event) {}
     }
 
@@ -828,7 +830,7 @@ mod tests {
                 (NodeId(0), with_children(Role::Window, &[NodeId(1)])),
                 (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
             focus: NodeId(0),
         }

@@ -13,7 +13,7 @@
 use accesskit::{
     Action, ActionData, ActionRequest, Orientation, Role, TextAlign, TextSelection, Toggled,
 };
-use accesskit_consumer::{FilterResult, FullRefdeId, NodeId, Tree};
+use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, Tree};
 use objc2::{
     ClassType, DeclaredClass, declare_class, msg_send_id,
     mutability::InteriorMutable,

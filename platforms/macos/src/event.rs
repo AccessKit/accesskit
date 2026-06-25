@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{Live, Role};
-use accesskit_consumer::{FilterResult, FullRefdeId, NodeId, TreeChangeHandler};
+use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, TreeChangeHandler};
 use hashbrown::HashSet;
 use objc2::runtime::{AnyObject, ProtocolObject};
 use objc2_app_kit::*;
