@@ -12,6 +12,5 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-accesskit = { version = "0.24.1", path = "../common" }
+accesskit = { version = "0.24.1", path = "../accesskit" }
 hashbrown.workspace = true
-
