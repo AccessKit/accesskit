@@ -5,7 +5,7 @@
 
 use accesskit::{Rect, Role};
 
-use crate::node::Node;
+use crate::node::NodeRef;
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FilterResult {
@@ -14,7 +14,7 @@ pub enum FilterResult {
     ExcludeSubtree,
 }
 
-fn common_filter_base(node: &Node) -> Option<FilterResult> {
+fn common_filter_base(node: &NodeRef) -> Option<FilterResult> {
     if node.is_focused() {
         return Some(FilterResult::Include);
     }
@@ -36,12 +36,12 @@ fn common_filter_base(node: &Node) -> Option<FilterResult> {
     None
 }
 
-fn common_filter_without_parent_checks(node: &Node) -> FilterResult {
+fn common_filter_without_parent_checks(node: &NodeRef) -> FilterResult {
     common_filter_base(node).unwrap_or(FilterResult::Include)
 }
 
 fn is_first_sibling_in_parent_bbox<'a>(
-    mut siblings: impl Iterator<Item = Node<'a>>,
+    mut siblings: impl Iterator<Item = NodeRef<'a>>,
     parent_bbox: Rect,
 ) -> bool {
     siblings.next().is_some_and(|sibling| {
@@ -51,7 +51,7 @@ fn is_first_sibling_in_parent_bbox<'a>(
     })
 }
 
-pub fn common_filter(node: &Node) -> FilterResult {
+pub fn common_filter(node: &NodeRef) -> FilterResult {
     if let Some(result) = common_filter_base(node) {
         return result;
     }
@@ -91,7 +91,7 @@ pub fn common_filter(node: &Node) -> FilterResult {
     FilterResult::Include
 }
 
-pub fn common_filter_with_root_exception(node: &Node) -> FilterResult {
+pub fn common_filter_with_root_exception(node: &NodeRef) -> FilterResult {
     if node.is_root() {
         return FilterResult::Include;
     }
@@ -100,7 +100,7 @@ pub fn common_filter_with_root_exception(node: &Node) -> FilterResult {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Rect, Role, Tree, TreeId, TreeUpdate};
+    use accesskit::{Node, NodeId, Rect, Role, TreeId, TreeInfo, TreeUpdate};
     use alloc::vec;
 
     use super::{
@@ -128,7 +128,7 @@ mod tests {
                 }),
                 (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
@@ -151,7 +151,7 @@ mod tests {
                     node
                 }),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
@@ -174,7 +174,7 @@ mod tests {
                     node
                 }),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
             focus: NodeId(1),
         };
@@ -193,7 +193,7 @@ mod tests {
                 }),
                 (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
@@ -218,7 +218,7 @@ mod tests {
                 }),
                 (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
@@ -239,7 +239,7 @@ mod tests {
                 }),
                 (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
             focus: NodeId(1),
         };
@@ -259,7 +259,7 @@ mod tests {
                 }),
                 (NodeId(1), Node::new(Role::TextRun)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
@@ -345,7 +345,7 @@ mod tests {
                     node
                 }),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
@@ -411,7 +411,7 @@ mod tests {
                     node
                 }),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };

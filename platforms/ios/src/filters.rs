@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit_consumer::{FilterResult, Node};
+use accesskit_consumer::{FilterResult, NodeRef};
 
 pub(crate) use accesskit_consumer::common_filter as filter;
 
@@ -24,7 +24,7 @@ use crate::node::NodeWrapper;
 /// Otherwise, non-focusable children (e.g. Labels, Images) just provide
 /// labeling info to the parent, so the parent should remain the
 /// accessibility element.
-pub(crate) fn filter_for_is_accessibility_element(node: &Node) -> FilterResult {
+pub(crate) fn filter_for_is_accessibility_element(node: &NodeRef) -> FilterResult {
     let result = filter(node);
     if result != FilterResult::Include {
         return result;
@@ -54,22 +54,22 @@ pub(crate) fn filter_for_is_accessibility_element(node: &Node) -> FilterResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use accesskit::{Action, Node as NodeBuilder, NodeId, Role, Tree, TreeId, TreeUpdate};
+    use accesskit::{Action, Node, NodeId, Role, TreeId, TreeInfo, TreeUpdate};
 
     const ROOT_ID: NodeId = NodeId(0);
     const CHILD_1_ID: NodeId = NodeId(1);
 
-    fn build_tree(nodes: Vec<(NodeId, NodeBuilder)>) -> accesskit_consumer::Tree {
+    fn build_tree(nodes: Vec<(NodeId, Node)>) -> accesskit_consumer::Tree {
         let update = TreeUpdate {
             nodes,
-            tree: Some(Tree::new(ROOT_ID)),
+            tree: Some(TreeInfo::new(ROOT_ID)),
             tree_id: TreeId::ROOT,
             focus: ROOT_ID,
         };
         accesskit_consumer::Tree::new(update, false)
     }
 
-    fn filter_node(nodes: Vec<(NodeId, NodeBuilder)>, target: NodeId) -> FilterResult {
+    fn filter_node(nodes: Vec<(NodeId, Node)>, target: NodeId) -> FilterResult {
         let tree = build_tree(nodes);
         let node = tree
             .state()
@@ -78,8 +78,8 @@ mod tests {
         filter_for_is_accessibility_element(&node)
     }
 
-    fn make_button(label: &str) -> NodeBuilder {
-        let mut node = NodeBuilder::new(Role::Button);
+    fn make_button(label: &str) -> Node {
+        let mut node = Node::new(Role::Button);
         node.set_label(label);
         node.add_action(Action::Click);
         node
@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn leaf_button_is_element() {
-        let mut root = NodeBuilder::new(Role::Window);
+        let mut root = Node::new(Role::Window);
         root.set_children(vec![CHILD_1_ID]);
         let child = make_button("OK");
         assert_eq!(
@@ -98,7 +98,7 @@ mod tests {
 
     #[test]
     fn hidden_node_excluded() {
-        let mut root = NodeBuilder::new(Role::Window);
+        let mut root = Node::new(Role::Window);
         root.set_children(vec![CHILD_1_ID]);
         let mut hidden = make_button("Hidden");
         hidden.set_hidden();
@@ -112,12 +112,12 @@ mod tests {
     fn checkbox_with_label_child_is_leaf() {
         const CHECKBOX_ID: NodeId = NodeId(1);
         const LABEL_ID: NodeId = NodeId(2);
-        let mut root = NodeBuilder::new(Role::Window);
+        let mut root = Node::new(Role::Window);
         root.set_children(vec![CHECKBOX_ID]);
-        let mut checkbox = NodeBuilder::new(Role::CheckBox);
+        let mut checkbox = Node::new(Role::CheckBox);
         checkbox.add_action(Action::Click);
         checkbox.set_children(vec![LABEL_ID]);
-        let mut label = NodeBuilder::new(Role::Label);
+        let mut label = Node::new(Role::Label);
         label.set_value("Accept terms");
         assert_eq!(
             filter_node(

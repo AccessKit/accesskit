@@ -1,8 +1,8 @@
 // Based on the create_window sample in windows-samples-rs.
 
 use accesskit::{
-    Action, ActionHandler, ActionRequest, ActivationHandler, Live, Node, NodeId, Rect, Role, Tree,
-    TreeId, TreeUpdate,
+    Action, ActionHandler, ActionRequest, ActivationHandler, Live, Node, NodeId, Rect, Role,
+    TreeId, TreeInfo, TreeUpdate,
 };
 use accesskit_windows::Adapter;
 use once_cell::sync::Lazy;
@@ -106,7 +106,7 @@ impl ActivationHandler for InnerWindowState {
         let root = self.build_root();
         let button_1 = build_button(BUTTON_1_ID, "Button 1");
         let button_2 = build_button(BUTTON_2_ID, "Button 2");
-        let tree = Tree::new(WINDOW_ID);
+        let tree = TreeInfo::new(WINDOW_ID);
 
         let mut result = TreeUpdate {
             nodes: vec![

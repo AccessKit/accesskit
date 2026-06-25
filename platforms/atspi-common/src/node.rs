@@ -9,10 +9,10 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionRequest, Affine, Live, NodeId as LocalNodeId, Orientation, Point,
-    Rect, Role, Toggled, TreeId,
+    Action, ActionData, ActionRequest, Affine, Live, NodeId, Orientation, Point, Rect, Role,
+    Toggled, TreeId,
 };
-use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeState};
+use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, Tree, TreeState};
 use atspi_common::{
     CoordType, Granularity, Interface, InterfaceSet, Layer, Politeness, RelationType,
     Role as AtspiRole, ScrollType, State, StateSet,
@@ -32,7 +32,7 @@ use crate::{
     util::*,
 };
 
-pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
+pub(crate) struct NodeWrapper<'a>(pub(crate) &'a NodeRef<'a>);
 
 impl NodeWrapper<'_> {
     pub(crate) fn name(&self) -> Option<String> {
@@ -47,11 +47,11 @@ impl NodeWrapper<'_> {
         self.0.description()
     }
 
-    pub(crate) fn parent_id(&self) -> Option<NodeId> {
+    pub(crate) fn parent_id(&self) -> Option<FullNodeId> {
         self.0.parent_id()
     }
 
-    pub(crate) fn id(&self) -> NodeId {
+    pub(crate) fn id(&self) -> FullNodeId {
         self.0.id()
     }
 
@@ -80,7 +80,7 @@ impl NodeWrapper<'_> {
         }
     }
 
-    fn filtered_child_ids(&self) -> impl DoubleEndedIterator<Item = NodeId> {
+    fn filtered_child_ids(&self) -> impl DoubleEndedIterator<Item = FullNodeId> {
         self.0.filtered_children(&filter).map(|child| child.id())
     }
 
@@ -628,8 +628,8 @@ impl NodeWrapper<'_> {
     }
 
     fn notify_children_changes(&self, adapter: &Adapter, old: &NodeWrapper<'_>) {
-        let old_filtered_children = old.filtered_child_ids().collect::<Vec<NodeId>>();
-        let new_filtered_children = self.filtered_child_ids().collect::<Vec<NodeId>>();
+        let old_filtered_children = old.filtered_child_ids().collect::<Vec<FullNodeId>>();
+        let new_filtered_children = self.filtered_child_ids().collect::<Vec<FullNodeId>>();
         for (index, child) in new_filtered_children.iter().enumerate() {
             if !old_filtered_children.contains(child) {
                 adapter.emit_object_event(self.id(), ObjectEvent::ChildAdded(index, *child));
@@ -647,11 +647,11 @@ impl NodeWrapper<'_> {
 pub struct PlatformNode {
     context: Weak<Context>,
     adapter_id: usize,
-    id: NodeId,
+    id: FullNodeId,
 }
 
 impl PlatformNode {
-    pub(crate) fn new(context: &Arc<Context>, adapter_id: usize, id: NodeId) -> Self {
+    pub(crate) fn new(context: &Arc<Context>, adapter_id: usize, id: FullNodeId) -> Self {
         Self {
             context: Arc::downgrade(context),
             adapter_id,
@@ -692,7 +692,7 @@ impl PlatformNode {
 
     fn resolve_with_context<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &'a Tree, &Context) -> Result<T>,
+        for<'a> F: FnOnce(NodeRef<'a>, &'a Tree, &Context) -> Result<T>,
     {
         self.with_tree_and_context(|tree, context| {
             if let Some(node) = tree.state().node_by_id(self.id) {
@@ -705,7 +705,7 @@ impl PlatformNode {
 
     fn resolve_for_selection_with_context<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &'a Tree, &Context) -> Result<T>,
+        for<'a> F: FnOnce(NodeRef<'a>, &'a Tree, &Context) -> Result<T>,
     {
         self.resolve_with_context(|node, tree, context| {
             let wrapper = NodeWrapper(&node);
@@ -719,7 +719,7 @@ impl PlatformNode {
 
     fn resolve_for_text_with_context<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &'a Tree, &Context) -> Result<T>,
+        for<'a> F: FnOnce(NodeRef<'a>, &'a Tree, &Context) -> Result<T>,
     {
         self.resolve_with_context(|node, tree, context| {
             let wrapper = NodeWrapper(&node);
@@ -733,14 +733,14 @@ impl PlatformNode {
 
     fn resolve<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>) -> Result<T>,
+        for<'a> F: FnOnce(NodeRef<'a>) -> Result<T>,
     {
         self.resolve_with_context(|node, _, _| f(node))
     }
 
     fn resolve_for_selection<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>) -> Result<T>,
+        for<'a> F: FnOnce(NodeRef<'a>) -> Result<T>,
     {
         self.resolve(|node| {
             let wrapper = NodeWrapper(&node);
@@ -754,14 +754,14 @@ impl PlatformNode {
 
     fn resolve_for_text<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>) -> Result<T>,
+        for<'a> F: FnOnce(NodeRef<'a>) -> Result<T>,
     {
         self.resolve_for_text_with_context(|node, _, _| f(node))
     }
 
-    fn do_action_internal<F>(&self, target: NodeId, f: F) -> Result<()>
+    fn do_action_internal<F>(&self, target: FullNodeId, f: F) -> Result<()>
     where
-        F: FnOnce(&TreeState, &Context, LocalNodeId, TreeId) -> ActionRequest,
+        F: FnOnce(&TreeState, &Context, NodeId, TreeId) -> ActionRequest,
     {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
@@ -789,7 +789,7 @@ impl PlatformNode {
         })
     }
 
-    pub fn relative(&self, id: NodeId) -> Self {
+    pub fn relative(&self, id: FullNodeId) -> Self {
         Self {
             context: self.context.clone(),
             adapter_id: self.adapter_id,
@@ -830,7 +830,7 @@ impl PlatformNode {
         self.adapter_id
     }
 
-    pub fn id(&self) -> NodeId {
+    pub fn id(&self) -> FullNodeId {
         self.id
     }
 
@@ -844,7 +844,7 @@ impl PlatformNode {
         })
     }
 
-    pub fn child_at_index(&self, index: usize) -> Result<Option<NodeId>> {
+    pub fn child_at_index(&self, index: usize) -> Result<Option<FullNodeId>> {
         self.resolve(|node| {
             let child = node
                 .filtered_children(&filter)
@@ -854,7 +854,7 @@ impl PlatformNode {
         })
     }
 
-    pub fn map_children<T, I>(&self, f: impl Fn(NodeId) -> I) -> Result<T>
+    pub fn map_children<T, I>(&self, f: impl Fn(FullNodeId) -> I) -> Result<T>
     where
         T: FromIterator<I>,
     {
@@ -909,7 +909,7 @@ impl PlatformNode {
 
     pub fn relation_set<T>(
         &self,
-        f: impl Fn(NodeId) -> T,
+        f: impl Fn(FullNodeId) -> T,
     ) -> Result<HashMap<RelationType, Vec<T>>> {
         self.resolve(|node| {
             let mut relations = HashMap::new();
@@ -1061,7 +1061,7 @@ impl PlatformNode {
         x: i32,
         y: i32,
         coord_type: CoordType,
-    ) -> Result<Option<NodeId>> {
+    ) -> Result<Option<FullNodeId>> {
         self.resolve_with_context(|node, _, context| {
             let window_bounds = context.read_root_window_bounds();
             let point = window_bounds.atspi_point_to_accesskit_point(
@@ -1154,7 +1154,7 @@ impl PlatformNode {
         })
     }
 
-    pub fn hyperlink_object(&self, index: i32) -> Result<Option<NodeId>> {
+    pub fn hyperlink_object(&self, index: i32) -> Result<Option<FullNodeId>> {
         self.resolve(|_| {
             if index == 0 {
                 Ok(Some(self.id))
@@ -1188,7 +1188,7 @@ impl PlatformNode {
         })
     }
 
-    pub fn selected_child(&self, selected_child_index: usize) -> Result<Option<NodeId>> {
+    pub fn selected_child(&self, selected_child_index: usize) -> Result<Option<FullNodeId>> {
         self.resolve_for_selection(|node| {
             Ok(node
                 .items(filter)
@@ -1744,7 +1744,7 @@ impl PlatformRoot {
         })
     }
 
-    pub fn child_id_at_index(&self, index: usize) -> Result<Option<(usize, NodeId)>> {
+    pub fn child_id_at_index(&self, index: usize) -> Result<Option<(usize, FullNodeId)>> {
         self.resolve_app_context(|context| {
             let child = context
                 .adapters
@@ -1769,7 +1769,7 @@ impl PlatformRoot {
         })
     }
 
-    pub fn map_child_ids<T, I>(&self, f: impl Fn((usize, NodeId)) -> I) -> Result<T>
+    pub fn map_child_ids<T, I>(&self, f: impl Fn((usize, FullNodeId)) -> I) -> Result<T>
     where
         T: FromIterator<I>,
     {
@@ -1811,7 +1811,7 @@ impl PlatformRoot {
         T: FromIterator<I>,
     {
         fn collect_descendants<I>(
-            node: Node<'_>,
+            node: NodeRef<'_>,
             index_in_parent: usize,
             adapter_id: usize,
             context: &Arc<Context>,
@@ -1854,7 +1854,7 @@ impl PlatformRoot {
         T: FromIterator<I>,
     {
         fn collect_descendants<I>(
-            node: Node<'_>,
+            node: NodeRef<'_>,
             index_in_parent: i32,
             adapter_id: usize,
             window_focused: bool,
@@ -1926,13 +1926,13 @@ impl Hash for PlatformRoot {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NodeIdOrRoot {
-    Node(NodeId),
+    Node(FullNodeId),
     Root,
 }
 
 pub struct CacheNode {
     pub adapter_id: usize,
-    pub id: NodeId,
+    pub id: FullNodeId,
     pub parent: NodeIdOrRoot,
     pub index_in_parent: i32,
     pub child_count: i32,

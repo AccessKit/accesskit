@@ -784,9 +784,7 @@ impl Event {
 mod tests {
     use super::{Accessible, Cache, Event as SimplifiedEvent};
     use crate::{Adapter, AdapterCallback, AppContext, Event, WindowBounds};
-    use accesskit::{
-        ActionHandler, ActionRequest, Node, NodeId as LocalNodeId, Role, Tree, TreeId, TreeUpdate,
-    };
+    use accesskit::{ActionHandler, ActionRequest, Node, NodeId, Role, Tree, TreeId, TreeUpdate};
     use accesskit_consumer::NodeId;
     use atspi_common::InterfaceSet;
     use std::sync::{Arc, Mutex};
@@ -818,7 +816,7 @@ mod tests {
         fn emit_event(&self, _: &Adapter, _: Event) {}
     }
 
-    fn with_children(role: Role, children: &[LocalNodeId]) -> Node {
+    fn with_children(role: Role, children: &[NodeId]) -> Node {
         let mut node = Node::new(role);
         node.set_children(children.to_vec());
         node
@@ -827,15 +825,12 @@ mod tests {
     fn initial_tree() -> TreeUpdate {
         TreeUpdate {
             nodes: vec![
-                (
-                    LocalNodeId(0),
-                    with_children(Role::Window, &[LocalNodeId(1)]),
-                ),
-                (LocalNodeId(1), Node::new(Role::Button)),
+                (NodeId(0), with_children(Role::Window, &[NodeId(1)])),
+                (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(Tree::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         }
     }
 
@@ -856,23 +851,20 @@ mod tests {
         adapter.update(TreeUpdate {
             nodes: vec![
                 (
-                    LocalNodeId(0),
-                    with_children(Role::Window, &[LocalNodeId(1), LocalNodeId(2)]),
+                    NodeId(0),
+                    with_children(Role::Window, &[NodeId(1), NodeId(2)]),
                 ),
-                (LocalNodeId(2), Node::new(Role::Button)),
+                (NodeId(2), Node::new(Role::Button)),
             ],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         });
         adapter.update(TreeUpdate {
-            nodes: vec![(
-                LocalNodeId(0),
-                with_children(Role::Window, &[LocalNodeId(1)]),
-            )],
+            nodes: vec![(NodeId(0), with_children(Role::Window, &[NodeId(1)]))],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         });
         assert_eq!(*kinds.lock().unwrap(), vec!["cache:add", "cache:remove"]);
     }

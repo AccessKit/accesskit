@@ -5,7 +5,7 @@
 
 use crate::node::PlatformNode;
 use accesskit::{ActionHandler, ActionRequest};
-use accesskit_consumer::{NodeId, Tree};
+use accesskit_consumer::{FullNodeId, Tree};
 use hashbrown::HashMap;
 use objc2::rc::{Id, WeakId};
 use objc2_app_kit::*;
@@ -35,7 +35,7 @@ pub(crate) struct Context {
     pub(crate) view: WeakId<NSView>,
     pub(crate) tree: RefCell<Tree>,
     pub(crate) action_handler: Rc<dyn ActionHandlerNoMut>,
-    platform_nodes: RefCell<HashMap<NodeId, Id<PlatformNode>>>,
+    platform_nodes: RefCell<HashMap<FullNodeId, Id<PlatformNode>>>,
     pub(crate) mtm: MainThreadMarker,
 }
 
@@ -67,7 +67,7 @@ impl Context {
         })
     }
 
-    pub(crate) fn get_or_create_platform_node(self: &Rc<Self>, id: NodeId) -> Id<PlatformNode> {
+    pub(crate) fn get_or_create_platform_node(self: &Rc<Self>, id: FullNodeId) -> Id<PlatformNode> {
         let mut platform_nodes = self.platform_nodes.borrow_mut();
         if let Some(result) = platform_nodes.get(&id) {
             return result.clone();
@@ -78,7 +78,7 @@ impl Context {
         result
     }
 
-    pub(crate) fn remove_platform_node(&self, id: NodeId) -> Option<Id<PlatformNode>> {
+    pub(crate) fn remove_platform_node(&self, id: FullNodeId) -> Option<Id<PlatformNode>> {
         let mut platform_nodes = self.platform_nodes.borrow_mut();
         platform_nodes.remove(&id)
     }

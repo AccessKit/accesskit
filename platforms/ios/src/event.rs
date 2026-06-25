@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::Live;
-use accesskit_consumer::{FilterResult, Node, NodeId, TreeChangeHandler};
+use accesskit_consumer::{FilterResult, FullRefdeId, NodeId, TreeChangeHandler};
 use objc2::runtime::{AnyObject, ProtocolObject};
 use objc2_foundation::{
     NSAttributedString, NSAttributedStringKey, NSMutableDictionary, NSNumber, NSString,
@@ -26,10 +26,10 @@ use crate::{
 
 pub(crate) enum QueuedEvent {
     Generic {
-        node_id: Option<NodeId>,
+        node_id: Option<FullNodeId>,
         notification: UIAccessibilityNotifications,
     },
-    NodeDestroyed(NodeId),
+    NodeDestroyed(FullNodeId),
     Announcement {
         text: String,
         assertive: bool,
@@ -129,14 +129,14 @@ impl QueuedEvents {
     }
 }
 
-pub(crate) fn layout_event(node_id: Option<NodeId>) -> QueuedEvent {
+pub(crate) fn layout_event(node_id: Option<FullNodeId>) -> QueuedEvent {
     QueuedEvent::Generic {
         node_id,
         notification: unsafe { UIAccessibilityLayoutChangedNotification },
     }
 }
 
-pub(crate) fn screen_changed_event(node_id: Option<NodeId>) -> QueuedEvent {
+pub(crate) fn screen_changed_event(node_id: Option<FullNodeId>) -> QueuedEvent {
     QueuedEvent::Generic {
         node_id,
         notification: unsafe { UIAccessibilityScreenChangedNotification },
@@ -145,8 +145,8 @@ pub(crate) fn screen_changed_event(node_id: Option<NodeId>) -> QueuedEvent {
 
 pub(crate) struct EventGenerator {
     context: Rc<Context>,
-    platform_focus: Option<NodeId>,
-    layout_event_focus: Option<Option<NodeId>>,
+    platform_focus: Option<FullNodeId>,
+    layout_event_focus: Option<Option<FullNodeId>>,
     events: Vec<QueuedEvent>,
 }
 
@@ -161,7 +161,7 @@ impl EventGenerator {
         }
     }
 
-    fn insert_focus_moved_event_if_needed(&mut self, focus: NodeId) {
+    fn insert_focus_moved_event_if_needed(&mut self, focus: FullNodeId) {
         if self.platform_focus != Some(focus) {
             self.layout_event_focus = Some(Some(focus));
         }
@@ -173,7 +173,7 @@ impl EventGenerator {
         }
     }
 
-    fn remove_node(&mut self, id: NodeId) {
+    fn remove_node(&mut self, id: FullNodeId) {
         self.insert_layout_changed_event_if_needed();
         if self.platform_focus == Some(id) {
             *self.context.platform_focus.borrow_mut() = None;
@@ -182,7 +182,7 @@ impl EventGenerator {
         self.events.push(QueuedEvent::NodeDestroyed(id));
     }
 
-    fn remove_subtree(&mut self, node: &Node) {
+    fn remove_subtree(&mut self, node: &NodeRef) {
         let mut to_remove = VecDeque::new();
         to_remove.push_back(*node);
 
@@ -205,7 +205,7 @@ impl EventGenerator {
 }
 
 impl TreeChangeHandler for EventGenerator {
-    fn node_added(&mut self, node: &Node) {
+    fn node_added(&mut self, node: &NodeRef) {
         if filter(node) != FilterResult::Include {
             return;
         }
@@ -218,7 +218,7 @@ impl TreeChangeHandler for EventGenerator {
         }
     }
 
-    fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
+    fn node_updated(&mut self, old_node: &NodeRef, new_node: &NodeRef) {
         let old_filter_result = filter(old_node);
         let old_included = old_filter_result == FilterResult::Include;
         let new_filter_result = filter(new_node);
@@ -252,7 +252,7 @@ impl TreeChangeHandler for EventGenerator {
         }
     }
 
-    fn focus_moved(&mut self, _old_node: Option<&Node>, new_node: Option<&Node>) {
+    fn focus_moved(&mut self, _old_node: Option<&NodeRef>, new_node: Option<&NodeRef>) {
         if let Some(new_node) = new_node {
             if filter(new_node) != FilterResult::Include {
                 return;
@@ -261,7 +261,7 @@ impl TreeChangeHandler for EventGenerator {
         }
     }
 
-    fn node_removed(&mut self, node: &Node) {
+    fn node_removed(&mut self, node: &NodeRef) {
         if filter(node) != FilterResult::Include {
             return;
         }
