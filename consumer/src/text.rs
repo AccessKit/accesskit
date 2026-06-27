@@ -80,6 +80,50 @@ impl<'a> InnerPosition<'a> {
         self.is_run_end() && self.node.following_text_runs(root_node).next().is_none()
     }
 
+    /// Whether the text run at this position begins a new page.
+    ///
+    /// Unlike line boundaries (run links via `previous_on_line`/`next_on_line`)
+    /// or paragraph boundaries (a run value ending in `'\n'`), page boundaries
+    /// come from block structure: AccessKit models a page break with the
+    /// [`is_page_breaking_object`] node flag. This returns `true` when the run
+    /// has an ancestor below `root_node` carrying that flag whose subtree does
+    /// not also contain the immediately preceding run — i.e. document order has
+    /// just crossed into a page-breaking object. The break is treated as
+    /// occurring *before* the flagged node.
+    ///
+    /// [`is_page_breaking_object`]: accesskit::Node::is_page_breaking_object
+    fn starts_new_page(&self, root_node: &Node) -> bool {
+        let preceding_run = match self.node.preceding_text_runs(root_node).next() {
+            // No preceding run: this is the document's first run, which always
+            // starts the first page.
+            None => return true,
+            Some(run) => run,
+        };
+        let mut ancestor = self.node.parent();
+        while let Some(node) = ancestor {
+            if node.id() == root_node.id() {
+                break;
+            }
+            if node.data().is_page_breaking_object() && !node_contains(&node, &preceding_run) {
+                return true;
+            }
+            ancestor = node.parent();
+        }
+        false
+    }
+
+    /// Whether the run immediately following this position begins a new page.
+    fn next_run_starts_new_page(&self, root_node: &Node) -> bool {
+        match self.node.following_text_runs(root_node).next() {
+            Some(next) => InnerPosition {
+                node: next,
+                character_index: 0,
+            }
+            .starts_new_page(root_node),
+            None => false,
+        }
+    }
+
     fn biased_to_start(&self, root_node: &Node) -> Self {
         if self.is_run_end() {
             if let Some(node) = self.node.following_text_runs(root_node).next() {
@@ -224,6 +268,19 @@ impl<'a> Position<'a> {
 
     pub fn is_page_start(&self) -> bool {
         self.is_document_start()
+            || (self.is_line_start()
+                && self
+                    .inner
+                    .biased_to_start(&self.root_node)
+                    .starts_new_page(&self.root_node))
+    }
+
+    pub fn is_page_end(&self) -> bool {
+        // Detected from the run-end side, mirroring `is_paragraph_end`: a page
+        // ends where the following run starts a new page. A position expressed
+        // as the start of the next page's run is a page *start*, not a page end.
+        self.is_document_end()
+            || (self.inner.is_line_end() && self.inner.next_run_starts_new_page(&self.root_node))
     }
 
     pub fn is_document_start(&self) -> bool {
@@ -552,15 +609,36 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_to_page_start(&self) -> Self {
-        self.document_end()
+        let mut current = *self;
+        loop {
+            current = current.forward_to_line_start();
+            if current.is_document_end() || current.is_page_start() {
+                break;
+            }
+        }
+        current
     }
 
     pub fn forward_to_page_end(&self) -> Self {
-        self.document_end()
+        let mut current = *self;
+        loop {
+            current = current.forward_to_line_end();
+            if current.is_document_end() || current.is_page_end() {
+                break;
+            }
+        }
+        current
     }
 
     pub fn backward_to_page_start(&self) -> Self {
-        self.document_start()
+        let mut current = *self;
+        loop {
+            current = current.backward_to_line_start();
+            if current.is_page_start() {
+                break;
+            }
+        }
+        current
     }
 
     pub fn document_end(&self) -> Self {
@@ -935,6 +1013,18 @@ fn text_node_filter(root_id: NodeId, node: &Node) -> FilterResult {
     } else {
         FilterResult::ExcludeNode
     }
+}
+
+/// Whether `descendant` is `ancestor` itself or appears in its subtree.
+fn node_contains(ancestor: &Node, descendant: &Node) -> bool {
+    let mut current = Some(*descendant);
+    while let Some(node) = current {
+        if node.id() == ancestor.id() {
+            return true;
+        }
+        current = node.parent();
+    }
+    false
 }
 
 fn character_index_at_point(node: &Node, point: Point) -> usize {
@@ -1359,7 +1449,9 @@ macro_rules! inherited_flags {
 }
 
 inherited_flags! {
-    (is_italic, set_italic)
+    (is_italic, set_italic),
+    (is_spelling_error, set_is_spelling_error),
+    (is_grammar_error, set_is_grammar_error)
 }
 
 impl<'a> Node<'a> {
@@ -1375,6 +1467,8 @@ impl<'a> Node<'a> {
             || self.underline() != other.underline()
             || self.text_align() != other.text_align()
             || self.vertical_offset() != other.vertical_offset()
+            || self.is_spelling_error() != other.is_spelling_error()
+            || self.is_grammar_error() != other.is_grammar_error()
         // TODO: more attributes
     }
 
@@ -2832,5 +2926,358 @@ mod tests {
             RangePropertyValue::<Option<usize>>::Mixed.map(|x| x + 1),
             RangePropertyValue::Mixed
         );
+    }
+
+    // Coverage for the weak-reference round trip on text ranges, which the
+    // platform adapters rely on to persist a selection across tree updates.
+    #[cfg(test)]
+    mod weak_range_round_trip {
+        use accesskit::{Node, NodeId, Role, Tree, TreeId, TreeUpdate};
+        use alloc::vec;
+
+        use crate::tests::nid;
+
+        fn single_run_text_tree() -> crate::Tree {
+            let update = TreeUpdate {
+                nodes: vec![
+                    (NodeId(0), {
+                        let mut node = Node::new(Role::TextInput);
+                        node.set_children(vec![NodeId(1)]);
+                        node
+                    }),
+                    (NodeId(1), {
+                        let mut node = Node::new(Role::TextRun);
+                        node.set_value("text");
+                        node.set_character_lengths([1, 1, 1, 1]);
+                        node
+                    }),
+                ],
+                tree: Some(Tree::new(NodeId(0))),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(0),
+            };
+            crate::Tree::new(update, false)
+        }
+
+        #[test]
+        fn document_range_survives_downgrade_and_upgrade() {
+            let tree = single_run_text_tree();
+            let state = tree.state();
+            let node = state.node_by_id(nid(NodeId(0))).unwrap();
+            let range = node.document_range();
+            let upgraded = range.downgrade().upgrade(state).unwrap();
+            assert!(range == upgraded);
+        }
+
+        #[test]
+        fn degenerate_range_survives_downgrade_and_upgrade() {
+            let tree = single_run_text_tree();
+            let state = tree.state();
+            let node = state.node_by_id(nid(NodeId(0))).unwrap();
+            let range = node.document_start().to_degenerate_range();
+            let upgraded = range.downgrade().upgrade(state).unwrap();
+            assert!(range == upgraded);
+        }
+
+        #[test]
+        fn weak_range_does_not_upgrade_against_a_non_text_node() {
+            // Capture a weak range, then upgrade it against a tree whose
+            // matching node is not a text container: it must refuse rather than
+            // produce a bogus range.
+            let weak = {
+                let tree = single_run_text_tree();
+                let state = tree.state();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
+                node.document_range().downgrade()
+            };
+            let other = {
+                let update = TreeUpdate {
+                    nodes: vec![(NodeId(0), Node::new(Role::Button))],
+                    tree: Some(Tree::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
+                    focus: NodeId(0),
+                };
+                crate::Tree::new(update, false)
+            };
+            assert!(weak.upgrade(other.state()).is_none());
+        }
+    }
+
+    // `Position` exposes page-granularity navigation driven by the
+    // `is_page_breaking_object` node flag: a page break occurs before a flagged
+    // block, so navigation lands on real page boundaries while skipping
+    // intra-page line and paragraph boundaries. A document with no page-break
+    // flags is a single page, so page motions resolve to document boundaries —
+    // the backward-compatible path every existing provider exercises.
+    #[cfg(test)]
+    mod page_navigation {
+        use crate::tests::nid;
+        use accesskit::{Node, NodeId, Role, Tree, TreeId, TreeUpdate};
+        use alloc::vec;
+
+        // A three-page document. Page boundaries come from `is_page_breaking_object`
+        // on the block-level "page" containers — NOT from line or paragraph
+        // structure. Page B deliberately holds two paragraphs ("Bravo\n" and
+        // "Charlie\n") so the tests can prove that page navigation lands on real
+        // page breaks while skipping the intra-page paragraph boundary at USV
+        // offset 12.
+        //
+        //   Document (1)
+        //     page A container (2, break) -> run (3) "Alpha\n"    usv  0..6
+        //     page B container (4, break) -> run (5) "Bravo\n"    usv  6..12
+        //                                    run (7) "Charlie\n"  usv 12..20
+        //     page C container (8, break) -> run (9) "Delta"      usv 20..25
+        fn three_page_tree() -> crate::Tree {
+            fn run(id: u64, value: &'static str) -> (NodeId, Node) {
+                let mut node = Node::new(Role::TextRun);
+                node.set_value(value);
+                node.set_character_lengths(vec![1u8; value.chars().count()]);
+                (NodeId(id), node)
+            }
+            fn page(id: u64, children: vec::Vec<NodeId>) -> (NodeId, Node) {
+                let mut node = Node::new(Role::GenericContainer);
+                node.set_is_page_breaking_object();
+                node.set_children(children);
+                (NodeId(id), node)
+            }
+
+            let update = TreeUpdate {
+                nodes: vec![
+                    (NodeId(0), {
+                        let mut node = Node::new(Role::Window);
+                        node.set_children(vec![NodeId(1)]);
+                        node
+                    }),
+                    (NodeId(1), {
+                        let mut node = Node::new(Role::Document);
+                        node.set_children(vec![NodeId(2), NodeId(4), NodeId(8)]);
+                        node
+                    }),
+                    page(2, vec![NodeId(3)]),
+                    run(3, "Alpha\n"),
+                    page(4, vec![NodeId(5), NodeId(7)]),
+                    run(5, "Bravo\n"),
+                    run(7, "Charlie\n"),
+                    page(8, vec![NodeId(9)]),
+                    run(9, "Delta"),
+                ],
+                tree: Some(Tree::new(NodeId(0))),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(0),
+            };
+            crate::Tree::new(update, false)
+        }
+
+        #[test]
+        fn is_page_start_tracks_breaks_not_paragraphs() {
+            let tree = three_page_tree();
+            let state = tree.state();
+            let doc = state.node_by_id(nid(NodeId(1))).unwrap();
+
+            let start = doc.document_start();
+            assert!(start.is_document_start());
+            assert!(start.is_page_start());
+
+            // Page B starts at the second page-breaking container (usv 6).
+            let page_b = start.forward_to_page_start();
+            assert_eq!(page_b.to_global_usv_index(), 6);
+            assert!(page_b.is_page_start());
+
+            // The paragraph boundary *inside* page B (usv 12) is a paragraph
+            // start but NOT a page start — this is what distinguishes page
+            // navigation from paragraph navigation.
+            let paragraph = page_b.forward_to_paragraph_start();
+            assert_eq!(paragraph.to_global_usv_index(), 12);
+            assert!(!paragraph.is_page_start());
+            assert!(!paragraph.is_page_end());
+        }
+
+        #[test]
+        fn forward_to_page_start_skips_intra_page_paragraphs() {
+            let tree = three_page_tree();
+            let state = tree.state();
+            let doc = state.node_by_id(nid(NodeId(1))).unwrap();
+
+            let p = doc.document_start().forward_to_page_start();
+            assert_eq!(p.to_global_usv_index(), 6); // page B
+            let p = p.forward_to_page_start();
+            assert_eq!(p.to_global_usv_index(), 20); // page C — skipped the paragraph at 12
+            let p = p.forward_to_page_start();
+            assert_eq!(p.to_global_usv_index(), 25); // no further page: document end
+            assert!(p.is_document_end());
+        }
+
+        #[test]
+        fn forward_to_page_end_lands_on_page_boundaries() {
+            let tree = three_page_tree();
+            let state = tree.state();
+            let doc = state.node_by_id(nid(NodeId(1))).unwrap();
+
+            let e = doc.document_start().forward_to_page_end();
+            assert_eq!(e.to_global_usv_index(), 6); // end of page A
+            assert!(e.is_page_end());
+            let e = e.forward_to_page_end();
+            assert_eq!(e.to_global_usv_index(), 20); // end of page B — skipped the paragraph at 12
+            let e = e.forward_to_page_end();
+            assert_eq!(e.to_global_usv_index(), 25); // end of page C = document end
+            assert!(e.is_document_end());
+        }
+
+        #[test]
+        fn backward_to_page_start_walks_pages_in_reverse() {
+            let tree = three_page_tree();
+            let state = tree.state();
+            let doc = state.node_by_id(nid(NodeId(1))).unwrap();
+
+            let b = doc.document_end().backward_to_page_start();
+            assert_eq!(b.to_global_usv_index(), 20); // page C start
+            let b = b.backward_to_page_start();
+            assert_eq!(b.to_global_usv_index(), 6); // page B start — skipped the paragraph at 12
+            let b = b.backward_to_page_start();
+            assert_eq!(b.to_global_usv_index(), 0); // page A start = document start
+            assert!(b.is_document_start());
+        }
+
+        #[test]
+        fn without_page_breaks_navigation_resolves_to_document_bounds() {
+            // A plain document with no `is_page_breaking_object` flags is a single
+            // page: every page motion resolves to a document boundary, exactly as
+            // it did before this feature. This pins the backward-compatible path
+            // that every existing provider and fixture exercises.
+            let update = TreeUpdate {
+                nodes: vec![
+                    (NodeId(0), {
+                        let mut node = Node::new(Role::Document);
+                        node.set_children(vec![NodeId(1), NodeId(2)]);
+                        node
+                    }),
+                    (NodeId(1), {
+                        let mut node = Node::new(Role::TextRun);
+                        node.set_value("One.\n");
+                        node.set_character_lengths([1, 1, 1, 1, 1]);
+                        node
+                    }),
+                    (NodeId(2), {
+                        let mut node = Node::new(Role::TextRun);
+                        node.set_value("Two.");
+                        node.set_character_lengths([1, 1, 1, 1]);
+                        node
+                    }),
+                ],
+                tree: Some(Tree::new(NodeId(0))),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(0),
+            };
+            let tree = crate::Tree::new(update, false);
+            let state = tree.state();
+            let doc = state.node_by_id(nid(NodeId(0))).unwrap();
+
+            let start = doc.document_start();
+            let end = doc.document_end();
+            assert!(start.is_page_start());
+            assert!(end.is_page_end());
+            assert!(start.forward_to_page_start().is_document_end());
+            assert!(start.forward_to_page_end().is_document_end());
+            assert!(end.backward_to_page_start().is_document_start());
+
+            // The lone interior paragraph boundary is not a page boundary.
+            let paragraph = start.forward_to_paragraph_start();
+            assert!(!paragraph.is_page_start());
+        }
+    }
+
+    // Coverage for the remaining Position/Range/WeakRange helpers and the
+    // node-level text-selection accessors.
+    #[cfg(test)]
+    mod text_helpers {
+        use accesskit::{
+            Node, NodeId, Role, TextPosition, TextSelection, Tree, TreeId, TreeUpdate,
+        };
+        use alloc::string::ToString;
+        use alloc::vec;
+
+        use crate::tests::nid;
+
+        fn text_tree_with_selection() -> crate::Tree {
+            let selection = TextSelection {
+                anchor: TextPosition {
+                    node: NodeId(1),
+                    character_index: 0,
+                },
+                focus: TextPosition {
+                    node: NodeId(1),
+                    character_index: 2,
+                },
+            };
+            let update = TreeUpdate {
+                nodes: vec![
+                    (NodeId(0), {
+                        let mut node = Node::new(Role::TextInput);
+                        node.set_children(vec![NodeId(1)]);
+                        node.set_text_selection(selection);
+                        node
+                    }),
+                    (NodeId(1), {
+                        let mut node = Node::new(Role::TextRun);
+                        node.set_value("text");
+                        node.set_character_lengths([1, 1, 1, 1]);
+                        node
+                    }),
+                ],
+                tree: Some(Tree::new(NodeId(0))),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(0),
+            };
+            crate::Tree::new(update, false)
+        }
+
+        #[test]
+        fn position_helpers_at_document_start() {
+            let tree = text_tree_with_selection();
+            let state = tree.state();
+            let node = state.node_by_id(nid(NodeId(0))).unwrap();
+            let start = node.document_start();
+            assert!(start.is_page_start());
+            assert!(!start.is_paragraph_separator());
+            assert!(start.inner_node().id() == nid(NodeId(1)));
+            // Biasing the document start to the start is a no-op on the raw form.
+            assert!(start.to_raw() == start.biased_to_start().to_raw());
+        }
+
+        #[test]
+        fn range_and_weak_range_getters() {
+            let tree = text_tree_with_selection();
+            let state = tree.state();
+            let node = state.node_by_id(nid(NodeId(0))).unwrap();
+            let range = node.document_range();
+            assert!(range.node().id() == nid(NodeId(0)));
+            let _ = range.to_text_selection();
+            let weak = range.downgrade();
+            assert!(weak.node_id() == nid(NodeId(0)));
+            // The document range is non-empty, so its endpoints differ.
+            assert_ne!(weak.start_comparable(), weak.end_comparable());
+        }
+
+        #[test]
+        fn node_text_selection_accessors() {
+            let tree = text_tree_with_selection();
+            let state = tree.state();
+            let node = state.node_by_id(nid(NodeId(0))).unwrap();
+            assert!(node.has_text_selection());
+            assert!(node.text_selection().is_some());
+            assert!(node.text_selection_anchor().is_some());
+            assert!(node.text_selection_focus().is_some());
+        }
+
+        #[test]
+        fn single_line_value_serializes_text_runs() {
+            // A single-line text input with no explicit value serializes its
+            // text runs, exercising the write_text/traverse_text path.
+            let tree = text_tree_with_selection();
+            let state = tree.state();
+            let node = state.node_by_id(nid(NodeId(0))).unwrap();
+            assert!(node.has_value());
+            assert_eq!(Some("text".to_string()), node.value());
+        }
     }
 }

@@ -229,6 +229,52 @@ impl From<Vec<IUnknown>> for Variant {
     }
 }
 
+impl From<Vec<i32>> for Variant {
+    fn from(value: Vec<i32>) -> Self {
+        if value.is_empty() {
+            Variant::empty()
+        } else {
+            let parray = safe_array_from_i32_slice(&value);
+            Self(VARIANT {
+                Anonymous: VARIANT_0 {
+                    Anonymous: ManuallyDrop::new(VARIANT_0_0 {
+                        vt: VT_ARRAY | VT_I4,
+                        wReserved1: 0,
+                        wReserved2: 0,
+                        wReserved3: 0,
+                        Anonymous: VARIANT_0_0_0 { parray },
+                    }),
+                },
+            })
+        }
+    }
+}
+
+/// Builds the UIA `AnnotationTypes` text attribute from a range's spelling and
+/// grammar error flags. Returns the reserved "mixed" value if either flag
+/// varies across the range, otherwise an array of the applicable
+/// `AnnotationType_*` ids (empty when the range has no errors).
+pub(crate) fn annotation_types_variant(
+    spelling: TextRangePropertyValue<bool>,
+    grammar: TextRangePropertyValue<bool>,
+) -> Variant {
+    if matches!(spelling, TextRangePropertyValue::Mixed)
+        || matches!(grammar, TextRangePropertyValue::Mixed)
+    {
+        return unsafe { UiaGetReservedMixedAttributeValue() }
+            .unwrap()
+            .into();
+    }
+    let mut types = Vec::new();
+    if matches!(spelling, TextRangePropertyValue::Single(true)) {
+        types.push(AnnotationType_SpellingError.0);
+    }
+    if matches!(grammar, TextRangePropertyValue::Single(true)) {
+        types.push(AnnotationType_GrammarError.0);
+    }
+    types.into()
+}
+
 fn safe_array_from_primitive_slice<T>(vt: VARENUM, slice: &[T]) -> *mut SAFEARRAY {
     let sa = unsafe { SafeArrayCreateVector(VARENUM(vt.0), 0, slice.len().try_into().unwrap()) };
     if sa.is_null() {
