@@ -224,12 +224,10 @@ where
         });
 
         let window = {
-            let state = window_mutex.lock().unwrap();
-            let mut state = if state.is_none() {
-                window_cv.wait(state).unwrap()
-            } else {
-                state
-            };
+            let mut state = window_mutex.lock().unwrap();
+            while state.is_none() {
+                state = window_cv.wait(state).unwrap();
+            }
             state.take().unwrap()
         };
 
