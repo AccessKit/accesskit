@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use crate::atspi::OwnedObjectAddress;
-use accesskit_atspi_common::{NodeId, PlatformNode};
+use accesskit_atspi_common::{FullNodeId, PlatformNode};
 use serde::{Serialize, Serializer};
 use zbus::{
     names::UniqueName,
@@ -22,7 +22,7 @@ pub(crate) fn cache_path() -> OwnedObjectPath {
 #[derive(Debug, PartialEq)]
 pub(crate) enum ObjectId {
     Root,
-    Node { adapter: usize, node: NodeId },
+    Node { adapter: usize, node: FullNodeId },
 }
 
 impl ObjectId {

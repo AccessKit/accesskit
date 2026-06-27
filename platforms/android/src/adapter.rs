@@ -9,11 +9,10 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node as NodeData,
-    NodeId as LocalNodeId, Orientation, Point, Role, ScrollUnit, TextSelection, Tree as TreeData,
-    TreeId, TreeUpdate,
+    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Orientation,
+    Point, Role, ScrollUnit, TextSelection, TreeId, TreeInfo, TreeUpdate,
 };
-use accesskit_consumer::{FilterResult, Node, TextPosition, Tree, TreeChangeHandler};
+use accesskit_consumer::{FilterResult, NodeRef, TextPosition, Tree, TreeChangeHandler};
 use jni::{
     JNIEnv,
     objects::JObject,
@@ -37,7 +36,7 @@ fn enqueue_window_content_changed(events: &mut Vec<QueuedEvent>) {
 fn enqueue_focus_event_if_applicable(
     events: &mut Vec<QueuedEvent>,
     node_id_map: &mut NodeIdMap,
-    node: &Node,
+    node: &NodeRef,
 ) {
     if node.is_root() && node.role() == Role::Window {
         return;
@@ -82,12 +81,12 @@ impl AdapterChangeHandler<'_> {
 }
 
 impl TreeChangeHandler for AdapterChangeHandler<'_> {
-    fn node_added(&mut self, _node: &Node) {
+    fn node_added(&mut self, _node: &NodeRef) {
         self.enqueue_window_content_changed_if_needed();
         // TODO: live regions?
     }
 
-    fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
+    fn node_updated(&mut self, old_node: &NodeRef, new_node: &NodeRef) {
         self.enqueue_window_content_changed_if_needed();
         if filter(new_node) != FilterResult::Include {
             return;
@@ -173,19 +172,19 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         // TODO: other events
     }
 
-    fn focus_moved(&mut self, _old_node: Option<&Node>, new_node: Option<&Node>) {
+    fn focus_moved(&mut self, _old_node: Option<&NodeRef>, new_node: Option<&NodeRef>) {
         if let Some(new_node) = new_node {
             enqueue_focus_event_if_applicable(self.events, self.node_id_map, new_node);
         }
     }
 
-    fn node_removed(&mut self, _node: &Node) {
+    fn node_removed(&mut self, _node: &NodeRef) {
         self.enqueue_window_content_changed_if_needed();
         // TODO: other events?
     }
 }
 
-const PLACEHOLDER_ROOT_ID: LocalNodeId = LocalNodeId(0);
+const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
 
 #[derive(Debug, Default)]
 enum State {
@@ -206,8 +205,8 @@ impl State {
                     Some(initial_state) => Self::Active(Tree::new(initial_state, true)),
                     None => {
                         let placeholder_update = TreeUpdate {
-                            nodes: vec![(PLACEHOLDER_ROOT_ID, NodeData::new(Role::Window))],
-                            tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
+                            nodes: vec![(PLACEHOLDER_ROOT_ID, Node::new(Role::Window))],
+                            tree: Some(TreeInfo::new(PLACEHOLDER_ROOT_ID)),
                             tree_id: TreeId::ROOT,
                             focus: PLACEHOLDER_ROOT_ID,
                         };
@@ -522,7 +521,7 @@ impl Adapter {
         selection_factory: F,
     ) -> Option<Extra>
     where
-        for<'a> F: FnOnce(&'a Node<'a>) -> Option<(TextPosition<'a>, TextPosition<'a>, Extra)>,
+        for<'a> F: FnOnce(&'a NodeRef<'a>) -> Option<(TextPosition<'a>, TextPosition<'a>, Extra)>,
     {
         let tree = self.state.get_full_tree()?;
         let tree_state = tree.state();

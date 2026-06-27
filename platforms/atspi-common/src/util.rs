@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{Point, Rect, ScrollHint};
-use accesskit_consumer::{Node, TextPosition, TextRange};
+use accesskit_consumer::{NodeRef, TextPosition, TextRange};
 use atspi_common::{CoordType, Granularity, ScrollType};
 
 use crate::Error;
@@ -23,7 +23,7 @@ impl WindowBounds {
     pub(crate) fn accesskit_point_to_atspi_point(
         &self,
         point: Point,
-        parent: Option<Node>,
+        parent: Option<NodeRef>,
         coord_type: CoordType,
     ) -> Point {
         let origin = self.origin(parent, coord_type);
@@ -33,14 +33,14 @@ impl WindowBounds {
     pub(crate) fn atspi_point_to_accesskit_point(
         &self,
         point: Point,
-        parent: Option<Node>,
+        parent: Option<NodeRef>,
         coord_type: CoordType,
     ) -> Point {
         let origin = self.origin(parent, coord_type);
         Point::new(point.x - origin.x, point.y - origin.y)
     }
 
-    fn origin(&self, parent: Option<Node>, coord_type: CoordType) -> Point {
+    fn origin(&self, parent: Option<NodeRef>, coord_type: CoordType) -> Point {
         match coord_type {
             CoordType::Screen => self.inner.origin(),
             CoordType::Window => Point::ZERO,
@@ -57,7 +57,7 @@ impl WindowBounds {
 }
 
 pub(crate) fn text_position_from_offset<'a>(
-    node: &'a Node,
+    node: &'a NodeRef,
     offset: i32,
 ) -> Option<TextPosition<'a>> {
     let index = offset.try_into().ok()?;
@@ -65,7 +65,7 @@ pub(crate) fn text_position_from_offset<'a>(
 }
 
 pub(crate) fn text_range_from_offset<'a>(
-    node: &'a Node,
+    node: &'a NodeRef,
     offset: i32,
     granularity: Granularity,
 ) -> Result<TextRange<'a>, Error> {
@@ -94,7 +94,7 @@ pub(crate) fn text_range_from_offset<'a>(
 }
 
 pub(crate) fn text_range_from_offsets<'a>(
-    node: &'a Node,
+    node: &'a NodeRef,
     start_offset: i32,
     end_offset: i32,
 ) -> Option<TextRange<'a>> {
@@ -111,7 +111,7 @@ pub(crate) fn text_range_from_offsets<'a>(
 }
 
 pub(crate) fn text_range_bounds_from_offsets(
-    node: &Node,
+    node: &NodeRef,
     start_offset: i32,
     end_offset: i32,
 ) -> Option<Rect> {

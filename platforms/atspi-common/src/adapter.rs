@@ -16,7 +16,7 @@ use crate::{
     util::WindowBounds,
 };
 use accesskit::{ActionHandler, Role, TreeUpdate};
-use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeChangeHandler, TreeState};
+use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, Tree, TreeChangeHandler, TreeState};
 use atspi_common::{InterfaceSet, Politeness, State};
 use std::fmt::{Debug, Formatter};
 use std::{
@@ -29,10 +29,10 @@ use std::{
 
 struct AdapterChangeHandler<'a> {
     adapter: &'a Adapter,
-    added_nodes: HashSet<NodeId>,
-    removed_nodes: HashSet<NodeId>,
-    checked_text_change: HashSet<NodeId>,
-    selection_changed: HashSet<NodeId>,
+    added_nodes: HashSet<FullNodeId>,
+    removed_nodes: HashSet<FullNodeId>,
+    checked_text_change: HashSet<FullNodeId>,
+    selection_changed: HashSet<FullNodeId>,
 }
 
 impl<'a> AdapterChangeHandler<'a> {
@@ -46,7 +46,7 @@ impl<'a> AdapterChangeHandler<'a> {
         }
     }
 
-    fn add_node(&mut self, node: &Node) {
+    fn add_node(&mut self, node: &NodeRef) {
         let id = node.id();
         if self.added_nodes.contains(&id) {
             return;
@@ -81,14 +81,14 @@ impl<'a> AdapterChangeHandler<'a> {
         }
     }
 
-    fn add_subtree(&mut self, node: &Node) {
+    fn add_subtree(&mut self, node: &NodeRef) {
         self.add_node(node);
         for child in node.filtered_children(&filter) {
             self.add_subtree(&child);
         }
     }
 
-    fn remove_node(&mut self, node: &Node) {
+    fn remove_node(&mut self, node: &NodeRef) {
         let id = node.id();
         if self.removed_nodes.contains(&id) {
             return;
@@ -111,14 +111,14 @@ impl<'a> AdapterChangeHandler<'a> {
         }
     }
 
-    fn remove_subtree(&mut self, node: &Node) {
+    fn remove_subtree(&mut self, node: &NodeRef) {
         for child in node.filtered_children(&filter) {
             self.remove_subtree(&child);
         }
         self.remove_node(node);
     }
 
-    fn emit_text_change_if_needed_parent(&mut self, old_node: &Node, new_node: &Node) {
+    fn emit_text_change_if_needed_parent(&mut self, old_node: &NodeRef, new_node: &NodeRef) {
         if !new_node.supports_text_ranges() || !old_node.supports_text_ranges() {
             return;
         }
@@ -181,7 +181,7 @@ impl<'a> AdapterChangeHandler<'a> {
         }
     }
 
-    fn emit_text_change_if_needed(&mut self, old_node: &Node, new_node: &Node) {
+    fn emit_text_change_if_needed(&mut self, old_node: &NodeRef, new_node: &NodeRef) {
         if let Role::TextRun | Role::GenericContainer = new_node.role() {
             if let (Some(old_parent), Some(new_parent)) = (
                 old_node.filtered_parent(&filter),
@@ -194,7 +194,7 @@ impl<'a> AdapterChangeHandler<'a> {
         }
     }
 
-    fn emit_text_selection_change(&self, old_node: Option<&Node>, new_node: &Node) {
+    fn emit_text_selection_change(&self, old_node: Option<&NodeRef>, new_node: &NodeRef) {
         if !new_node.supports_text_ranges() {
             return;
         }
@@ -246,7 +246,7 @@ impl<'a> AdapterChangeHandler<'a> {
         }
     }
 
-    fn enqueue_selection_changed_if_needed_parent(&mut self, node: Node) {
+    fn enqueue_selection_changed_if_needed_parent(&mut self, node: NodeRef) {
         if !node.is_container_with_selectable_children() {
             return;
         }
@@ -257,7 +257,7 @@ impl<'a> AdapterChangeHandler<'a> {
         self.selection_changed.insert(id);
     }
 
-    fn enqueue_selection_changed_if_needed(&mut self, node: &Node) {
+    fn enqueue_selection_changed_if_needed(&mut self, node: &NodeRef) {
         if !node.is_item_like() {
             return;
         }
@@ -278,13 +278,13 @@ impl<'a> AdapterChangeHandler<'a> {
 }
 
 impl TreeChangeHandler for AdapterChangeHandler<'_> {
-    fn node_added(&mut self, node: &Node) {
+    fn node_added(&mut self, node: &NodeRef) {
         if filter(node) == FilterResult::Include {
             self.add_node(node);
         }
     }
 
-    fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
+    fn node_updated(&mut self, old_node: &NodeRef, new_node: &NodeRef) {
         self.emit_text_change_if_needed(old_node, new_node);
         let filter_old = filter(old_node);
         let filter_new = filter(new_node);
@@ -321,7 +321,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
     }
 
-    fn focus_moved(&mut self, old_node: Option<&Node>, new_node: Option<&Node>) {
+    fn focus_moved(&mut self, old_node: Option<&NodeRef>, new_node: Option<&NodeRef>) {
         if let (None, Some(new_node)) = (old_node, new_node) {
             if let Some(root_window) = root_window(new_node.tree_state) {
                 self.adapter.window_activated(&NodeWrapper(&root_window));
@@ -342,7 +342,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
     }
 
-    fn node_removed(&mut self, node: &Node) {
+    fn node_removed(&mut self, node: &NodeRef) {
         if filter(node) == FilterResult::Include {
             self.remove_node(node);
         }
@@ -442,7 +442,7 @@ impl Adapter {
     }
 
     fn register_tree(&self) {
-        fn add_children(node: Node<'_>, to_add: &mut Vec<(NodeId, InterfaceSet)>) {
+        fn add_children(node: NodeRef<'_>, to_add: &mut Vec<(FullNodeId, InterfaceSet)>) {
             for child in node.filtered_children(&filter) {
                 let child_id = child.id();
                 let wrapper = NodeWrapper(&child);
@@ -477,11 +477,11 @@ impl Adapter {
         }
     }
 
-    pub fn platform_node(&self, id: NodeId) -> PlatformNode {
+    pub fn platform_node(&self, id: FullNodeId) -> PlatformNode {
         PlatformNode::new(&self.context, self.id, id)
     }
 
-    pub fn root_id(&self) -> NodeId {
+    pub fn root_id(&self) -> FullNodeId {
         self.context.read_tree().state().root_id()
     }
 
@@ -489,16 +489,16 @@ impl Adapter {
         PlatformRoot::new(&self.context.app_context)
     }
 
-    fn register_interfaces(&self, id: NodeId, new_interfaces: InterfaceSet) {
+    fn register_interfaces(&self, id: FullNodeId, new_interfaces: InterfaceSet) {
         self.callback.register_interfaces(self, id, new_interfaces);
     }
 
-    fn unregister_interfaces(&self, id: NodeId, old_interfaces: InterfaceSet) {
+    fn unregister_interfaces(&self, id: FullNodeId, old_interfaces: InterfaceSet) {
         self.callback
             .unregister_interfaces(self, id, old_interfaces);
     }
 
-    pub(crate) fn emit_object_event(&self, target: NodeId, event: ObjectEvent) {
+    pub(crate) fn emit_object_event(&self, target: FullNodeId, event: ObjectEvent) {
         let target = NodeIdOrRoot::Node(target);
         self.callback
             .emit_event(self, Event::Object { target, event });
@@ -510,12 +510,12 @@ impl Adapter {
             .emit_event(self, Event::Object { target, event });
     }
 
-    fn emit_cache_added(&self, target: NodeId) {
+    fn emit_cache_added(&self, target: FullNodeId) {
         self.callback
             .emit_event(self, Event::Cache(CacheEvent::Added(target)));
     }
 
-    fn emit_cache_removed(&self, target: NodeId) {
+    fn emit_cache_removed(&self, target: FullNodeId) {
         self.callback
             .emit_event(self, Event::Cache(CacheEvent::Removed(target)));
     }
@@ -539,7 +539,7 @@ impl Adapter {
         tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
     }
 
-    fn window_created(&self, adapter_index: usize, window: NodeId) {
+    fn window_created(&self, adapter_index: usize, window: FullNodeId) {
         self.emit_root_object_event(ObjectEvent::ChildAdded(adapter_index, window));
     }
 
@@ -568,7 +568,7 @@ impl Adapter {
         self.emit_object_event(window.id(), ObjectEvent::StateChanged(State::Active, false));
     }
 
-    fn window_destroyed(&self, window: NodeId) {
+    fn window_destroyed(&self, window: FullNodeId) {
         self.emit_root_object_event(ObjectEvent::ChildRemoved(window));
     }
 
@@ -591,7 +591,7 @@ impl Adapter {
     }
 }
 
-fn root_window(current_state: &TreeState) -> Option<Node<'_>> {
+fn root_window(current_state: &TreeState) -> Option<NodeRef<'_>> {
     const WINDOW_ROLES: &[Role] = &[Role::AlertDialog, Role::Dialog, Role::Window];
     let root = current_state.root();
     if WINDOW_ROLES.contains(&root.role()) {
@@ -617,15 +617,15 @@ mod tests {
     use super::Adapter;
     use crate::{AdapterCallback, AppContext, CacheEvent, Event, InterfaceSet, WindowBounds};
     use accesskit::{
-        ActionHandler, ActionRequest, Node, NodeId as LocalNodeId, Role, Tree, TreeId, TreeUpdate,
+        ActionHandler, ActionRequest, Node, NodeId, Role, TreeId, TreeInfo, TreeUpdate,
     };
-    use accesskit_consumer::NodeId;
+    use accesskit_consumer::FullNodeId;
     use std::sync::{Arc, Mutex};
 
     #[derive(Clone, Copy, Debug, PartialEq)]
     enum CacheOp {
-        Added(NodeId),
-        Removed(NodeId),
+        Added(FullNodeId),
+        Removed(FullNodeId),
     }
 
     struct CapturingCallback {
@@ -633,8 +633,8 @@ mod tests {
     }
 
     impl AdapterCallback for CapturingCallback {
-        fn register_interfaces(&self, _: &Adapter, _: NodeId, _: InterfaceSet) {}
-        fn unregister_interfaces(&self, _: &Adapter, _: NodeId, _: InterfaceSet) {}
+        fn register_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
+        fn unregister_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
         fn emit_event(&self, _: &Adapter, event: Event) {
             let mut ops = self.ops.lock().unwrap();
             match event {
@@ -650,7 +650,7 @@ mod tests {
         fn do_action(&mut self, _request: ActionRequest) {}
     }
 
-    fn with_children(role: Role, children: &[LocalNodeId]) -> Node {
+    fn with_children(role: Role, children: &[NodeId]) -> Node {
         let mut node = Node::new(role);
         node.set_children(children.to_vec());
         node
@@ -673,24 +673,21 @@ mod tests {
     fn initial_tree() -> TreeUpdate {
         TreeUpdate {
             nodes: vec![
-                (
-                    LocalNodeId(0),
-                    with_children(Role::Window, &[LocalNodeId(1)]),
-                ),
-                (LocalNodeId(1), Node::new(Role::Button)),
+                (NodeId(0), with_children(Role::Window, &[NodeId(1)])),
+                (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         }
     }
 
-    fn update(nodes: Vec<(LocalNodeId, Node)>) -> TreeUpdate {
+    fn update(nodes: Vec<(NodeId, Node)>) -> TreeUpdate {
         TreeUpdate {
             nodes,
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         }
     }
 
@@ -706,10 +703,10 @@ mod tests {
         ops.lock().unwrap().clear();
         adapter.update(update(vec![
             (
-                LocalNodeId(0),
-                with_children(Role::Window, &[LocalNodeId(1), LocalNodeId(2)]),
+                NodeId(0),
+                with_children(Role::Window, &[NodeId(1), NodeId(2)]),
             ),
-            (LocalNodeId(2), Node::new(Role::Button)),
+            (NodeId(2), Node::new(Role::Button)),
         ]));
         let ops = ops.lock().unwrap();
         assert_eq!(ops.len(), 1);
@@ -721,10 +718,10 @@ mod tests {
         let (mut adapter, ops) = build(initial_tree());
         adapter.update(update(vec![
             (
-                LocalNodeId(0),
-                with_children(Role::Window, &[LocalNodeId(1), LocalNodeId(2)]),
+                NodeId(0),
+                with_children(Role::Window, &[NodeId(1), NodeId(2)]),
             ),
-            (LocalNodeId(2), Node::new(Role::Button)),
+            (NodeId(2), Node::new(Role::Button)),
         ]));
         let added_id = match ops.lock().unwrap().as_slice() {
             [CacheOp::Added(id)] => *id,
@@ -732,8 +729,8 @@ mod tests {
         };
         ops.lock().unwrap().clear();
         adapter.update(update(vec![(
-            LocalNodeId(0),
-            with_children(Role::Window, &[LocalNodeId(1)]),
+            NodeId(0),
+            with_children(Role::Window, &[NodeId(1)]),
         )]));
         assert_eq!(*ops.lock().unwrap(), vec![CacheOp::Removed(added_id)]);
     }
@@ -744,15 +741,15 @@ mod tests {
         ops.lock().unwrap().clear();
         adapter.update(update(vec![
             (
-                LocalNodeId(0),
-                with_children(Role::Window, &[LocalNodeId(1), LocalNodeId(2)]),
+                NodeId(0),
+                with_children(Role::Window, &[NodeId(1), NodeId(2)]),
             ),
             (
-                LocalNodeId(2),
-                with_children(Role::Group, &[LocalNodeId(3), LocalNodeId(4)]),
+                NodeId(2),
+                with_children(Role::Group, &[NodeId(3), NodeId(4)]),
             ),
-            (LocalNodeId(3), Node::new(Role::Button)),
-            (LocalNodeId(4), Node::new(Role::Button)),
+            (NodeId(3), Node::new(Role::Button)),
+            (NodeId(4), Node::new(Role::Button)),
         ]));
         let ops = ops.lock().unwrap();
         assert_eq!(ops.len(), 3);
@@ -764,20 +761,20 @@ mod tests {
         let (mut adapter, ops) = build(initial_tree());
         adapter.update(update(vec![
             (
-                LocalNodeId(0),
-                with_children(Role::Window, &[LocalNodeId(1), LocalNodeId(2)]),
+                NodeId(0),
+                with_children(Role::Window, &[NodeId(1), NodeId(2)]),
             ),
             (
-                LocalNodeId(2),
-                with_children(Role::Group, &[LocalNodeId(3), LocalNodeId(4)]),
+                NodeId(2),
+                with_children(Role::Group, &[NodeId(3), NodeId(4)]),
             ),
-            (LocalNodeId(3), Node::new(Role::Button)),
-            (LocalNodeId(4), Node::new(Role::Button)),
+            (NodeId(3), Node::new(Role::Button)),
+            (NodeId(4), Node::new(Role::Button)),
         ]));
         ops.lock().unwrap().clear();
         adapter.update(update(vec![(
-            LocalNodeId(0),
-            with_children(Role::Window, &[LocalNodeId(1)]),
+            NodeId(0),
+            with_children(Role::Window, &[NodeId(1)]),
         )]));
         let ops = ops.lock().unwrap();
         assert_eq!(ops.len(), 3);
@@ -791,18 +788,18 @@ mod tests {
         let (mut adapter, ops) = build(TreeUpdate {
             nodes: vec![
                 (
-                    LocalNodeId(0),
-                    with_children(Role::Window, &[LocalNodeId(1), LocalNodeId(2)]),
+                    NodeId(0),
+                    with_children(Role::Window, &[NodeId(1), NodeId(2)]),
                 ),
-                (LocalNodeId(1), Node::new(Role::Button)),
-                (LocalNodeId(2), hidden),
+                (NodeId(1), Node::new(Role::Button)),
+                (NodeId(2), hidden),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         });
         ops.lock().unwrap().clear();
-        adapter.update(update(vec![(LocalNodeId(2), Node::new(Role::Button))]));
+        adapter.update(update(vec![(NodeId(2), Node::new(Role::Button))]));
         let ops = ops.lock().unwrap();
         assert_eq!(ops.len(), 1);
         assert!(matches!(ops[0], CacheOp::Added(_)));
@@ -814,7 +811,7 @@ mod tests {
         ops.lock().unwrap().clear();
         let mut hidden = Node::new(Role::Button);
         hidden.set_hidden();
-        adapter.update(update(vec![(LocalNodeId(1), hidden)]));
+        adapter.update(update(vec![(NodeId(1), hidden)]));
         let ops = ops.lock().unwrap();
         assert_eq!(ops.len(), 1);
         assert!(matches!(ops[0], CacheOp::Removed(_)));

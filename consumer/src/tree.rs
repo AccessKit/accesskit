@@ -3,12 +3,12 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{Node as NodeData, NodeId as LocalNodeId, Tree as TreeData, TreeId, TreeUpdate};
+use accesskit::{Node, NodeId, TreeId, TreeInfo, TreeUpdate};
 use alloc::{vec, vec::Vec};
 use core::fmt;
 use hashbrown::{HashMap, HashSet};
 
-use crate::node::{Node, NodeId, NodeState, ParentAndIndex};
+use crate::node::{FullNodeId, NodeRef, NodeState, ParentAndIndex};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
@@ -43,33 +43,33 @@ impl TreeIndexMap {
 /// State for a subtree, including its root node and current focus.
 #[derive(Clone, Debug)]
 pub(crate) struct SubtreeState {
-    pub(crate) root: NodeId,
-    pub(crate) focus: NodeId,
+    pub(crate) root: FullNodeId,
+    pub(crate) focus: FullNodeId,
 }
 
 #[derive(Clone, Debug)]
-pub struct State {
-    pub(crate) nodes: HashMap<NodeId, NodeState>,
-    pub(crate) data: TreeData,
-    pub(crate) root: NodeId,
-    pub(crate) focus: NodeId,
+pub struct TreeState {
+    pub(crate) nodes: HashMap<FullNodeId, NodeState>,
+    pub(crate) info: TreeInfo,
+    pub(crate) root: FullNodeId,
+    pub(crate) focus: FullNodeId,
     is_host_focused: bool,
     pub(crate) subtrees: HashMap<TreeId, SubtreeState>,
-    pub(crate) graft_parents: HashMap<TreeId, NodeId>,
+    pub(crate) graft_parents: HashMap<TreeId, FullNodeId>,
     tree_index_map: TreeIndexMap,
 }
 
 #[derive(Default)]
 struct InternalChanges {
-    added_node_ids: HashSet<NodeId>,
-    updated_node_ids: HashSet<NodeId>,
-    removed_node_ids: HashSet<NodeId>,
+    added_node_ids: HashSet<FullNodeId>,
+    updated_node_ids: HashSet<FullNodeId>,
+    removed_node_ids: HashSet<FullNodeId>,
 }
 
-impl State {
+impl TreeState {
     fn validate_global(&self) {
         if !self.nodes.contains_key(&self.root) {
-            panic!("Root ID {:?} is not in the node list", self.data.root);
+            panic!("Root ID {:?} is not in the node list", self.info.root);
         }
         if !self.nodes.contains_key(&self.focus) {
             panic!(
@@ -82,7 +82,7 @@ impl State {
     /// Computes the effective focus by following the graft chain from ROOT.
     /// If ROOT's focus is on a graft node, follows through to that subtree's focus,
     /// and continues recursively until reaching a non-graft node.
-    fn compute_effective_focus(&self) -> NodeId {
+    fn compute_effective_focus(&self) -> FullNodeId {
         let Some(root_subtree) = self.subtrees.get(&TreeId::ROOT) else {
             return self.focus;
         };
@@ -112,7 +112,7 @@ impl State {
         mut changes: Option<&mut InternalChanges>,
     ) {
         let tree_index = self.tree_index_map.get_or_create_index(update.tree_id);
-        let map_id = |id: LocalNodeId| NodeId::new(id, tree_index);
+        let map_id = |id: NodeId| FullNodeId::new(id, tree_index);
 
         let mut unreachable = HashSet::new();
         let mut seen_child_ids = HashSet::new();
@@ -139,11 +139,11 @@ impl State {
         let new_tree_root = if let Some(tree) = update.tree {
             let new_root = map_id(tree.root);
             if tree_id == TreeId::ROOT {
-                if tree.root != self.data.root {
+                if tree.root != self.info.root {
                     unreachable.insert(self.root);
                 }
                 self.root = new_root;
-                self.data = tree;
+                self.info = tree;
             } else if let Some(subtree) = self.subtrees.get(&tree_id) {
                 if subtree.root != new_root {
                     unreachable.insert(subtree.root);
@@ -160,18 +160,18 @@ impl State {
                 self.subtrees
                     .get(&tree_id)
                     .map(|s| s.root.to_components().0)
-                    .unwrap_or(self.data.root)
+                    .unwrap_or(self.info.root)
             });
 
-        let mut pending_nodes: HashMap<NodeId, _> = HashMap::new();
+        let mut pending_nodes: HashMap<FullNodeId, _> = HashMap::new();
         let mut pending_children = HashMap::new();
-        let mut pending_grafts: HashMap<TreeId, NodeId> = HashMap::new();
+        let mut pending_grafts: HashMap<TreeId, FullNodeId> = HashMap::new();
         let mut grafts_to_remove: HashSet<TreeId> = HashSet::new();
 
         fn record_graft(
-            pending_grafts: &mut HashMap<TreeId, NodeId>,
+            pending_grafts: &mut HashMap<TreeId, FullNodeId>,
             subtree_id: TreeId,
-            graft_node_id: NodeId,
+            graft_node_id: FullNodeId,
         ) {
             if subtree_id == TreeId::ROOT {
                 panic!("Cannot graft the root tree");
@@ -188,12 +188,12 @@ impl State {
         }
 
         fn add_node(
-            nodes: &mut HashMap<NodeId, NodeState>,
-            pending_grafts: &mut HashMap<TreeId, NodeId>,
+            nodes: &mut HashMap<FullNodeId, NodeState>,
+            pending_grafts: &mut HashMap<TreeId, FullNodeId>,
             changes: &mut Option<&mut InternalChanges>,
             parent_and_index: Option<ParentAndIndex>,
-            id: NodeId,
-            data: NodeData,
+            id: FullNodeId,
+            data: Node,
         ) {
             if let Some(subtree_id) = data.tree_id() {
                 if !data.children().is_empty() {
@@ -343,12 +343,12 @@ impl State {
 
         if !unreachable.is_empty() {
             fn traverse_unreachable(
-                nodes: &mut HashMap<NodeId, NodeState>,
+                nodes: &mut HashMap<FullNodeId, NodeState>,
                 grafts_to_remove: &mut HashSet<TreeId>,
                 changes: &mut Option<&mut InternalChanges>,
-                seen_child_ids: &HashSet<NodeId>,
-                new_tree_root: Option<NodeId>,
-                root: NodeId,
+                seen_child_ids: &HashSet<FullNodeId>,
+                new_tree_root: Option<FullNodeId>,
+                root: FullNodeId,
             ) {
                 let mut stack = vec![root];
                 while let Some(id) = stack.pop() {
@@ -361,7 +361,7 @@ impl State {
                     }
                     let (_, tree_index) = id.to_components();
                     for child_id in node.data.children().iter() {
-                        let child_node_id = NodeId::new(*child_id, tree_index);
+                        let child_node_id = FullNodeId::new(*child_id, tree_index);
                         if !seen_child_ids.contains(&child_node_id)
                             && new_tree_root != Some(child_node_id)
                         {
@@ -384,11 +384,11 @@ impl State {
         }
 
         fn traverse_subtree(
-            nodes: &mut HashMap<NodeId, NodeState>,
+            nodes: &mut HashMap<FullNodeId, NodeState>,
             subtrees_to_remove: &mut Vec<TreeId>,
             subtrees_queued: &mut HashSet<TreeId>,
             changes: &mut Option<&mut InternalChanges>,
-            root: NodeId,
+            root: FullNodeId,
         ) {
             let mut stack = vec![root];
             while let Some(id) = stack.pop() {
@@ -405,7 +405,7 @@ impl State {
                 }
                 let (_, tree_index) = id.to_components();
                 for child_id in node.data.children().iter() {
-                    stack.push(NodeId::new(*child_id, tree_index));
+                    stack.push(FullNodeId::new(*child_id, tree_index));
                 }
             }
         }
@@ -491,12 +491,12 @@ impl State {
         self.update(update, is_host_focused, changes);
     }
 
-    pub fn has_node(&self, id: NodeId) -> bool {
+    pub fn has_node(&self, id: FullNodeId) -> bool {
         self.nodes.contains_key(&id)
     }
 
-    pub fn node_by_id(&self, id: NodeId) -> Option<Node<'_>> {
-        self.nodes.get(&id).map(|node_state| Node {
+    pub fn node_by_id(&self, id: FullNodeId) -> Option<NodeRef<'_>> {
+        self.nodes.get(&id).map(|node_state| NodeRef {
             tree_state: self,
             id,
             state: node_state,
@@ -505,23 +505,23 @@ impl State {
 
     pub fn node_by_tree_local_id(
         &self,
-        local_node_id: LocalNodeId,
+        local_node_id: NodeId,
         tree_id: TreeId,
-    ) -> Option<Node<'_>> {
+    ) -> Option<NodeRef<'_>> {
         let tree_index = self.tree_index_map.get_index(tree_id)?;
-        self.node_by_id(NodeId::new(local_node_id, tree_index))
+        self.node_by_id(FullNodeId::new(local_node_id, tree_index))
     }
 
-    pub fn root_id(&self) -> NodeId {
+    pub fn root_id(&self) -> FullNodeId {
         self.root
     }
 
-    pub fn root(&self) -> Node<'_> {
+    pub fn root(&self) -> NodeRef<'_> {
         self.node_by_id(self.root_id()).unwrap()
     }
 
     /// Returns the root NodeId of the subtree with the given TreeId, if it exists.
-    pub fn subtree_root(&self, tree_id: TreeId) -> Option<NodeId> {
+    pub fn subtree_root(&self, tree_id: TreeId) -> Option<FullNodeId> {
         self.subtrees.get(&tree_id).map(|s| s.root)
     }
 
@@ -529,26 +529,26 @@ impl State {
         self.is_host_focused
     }
 
-    pub fn focus_id_in_tree(&self) -> NodeId {
+    pub fn focus_id_in_tree(&self) -> FullNodeId {
         self.focus
     }
 
-    pub fn focus_in_tree(&self) -> Node<'_> {
+    pub fn focus_in_tree(&self) -> NodeRef<'_> {
         self.node_by_id(self.focus_id_in_tree()).unwrap()
     }
 
-    pub fn focus_id(&self) -> Option<NodeId> {
+    pub fn focus_id(&self) -> Option<FullNodeId> {
         self.is_host_focused.then_some(self.focus)
     }
 
-    pub fn focus(&self) -> Option<Node<'_>> {
+    pub fn focus(&self) -> Option<NodeRef<'_>> {
         self.focus_id().map(|id| {
             let focused = self.node_by_id(id).unwrap();
             focused.active_descendant().unwrap_or(focused)
         })
     }
 
-    pub fn active_dialog(&self) -> Option<Node<'_>> {
+    pub fn active_dialog(&self) -> Option<NodeRef<'_>> {
         let mut node = self.focus();
         while let Some(candidate) = node {
             if candidate.is_dialog() {
@@ -560,14 +560,14 @@ impl State {
     }
 
     pub fn toolkit_name(&self) -> Option<&str> {
-        self.data.toolkit_name.as_deref()
+        self.info.toolkit_name.as_deref()
     }
 
     pub fn toolkit_version(&self) -> Option<&str> {
-        self.data.toolkit_version.as_deref()
+        self.info.toolkit_version.as_deref()
     }
 
-    pub fn locate_node(&self, node_id: NodeId) -> Option<(LocalNodeId, TreeId)> {
+    pub fn locate_node(&self, node_id: FullNodeId) -> Option<(NodeId, TreeId)> {
         if !self.has_node(node_id) {
             return None;
         }
@@ -579,16 +579,16 @@ impl State {
 }
 
 pub trait ChangeHandler {
-    fn node_added(&mut self, node: &Node);
-    fn node_updated(&mut self, old_node: &Node, new_node: &Node);
-    fn focus_moved(&mut self, old_node: Option<&Node>, new_node: Option<&Node>);
-    fn node_removed(&mut self, node: &Node);
+    fn node_added(&mut self, node: &NodeRef);
+    fn node_updated(&mut self, old_node: &NodeRef, new_node: &NodeRef);
+    fn focus_moved(&mut self, old_node: Option<&NodeRef>, new_node: Option<&NodeRef>);
+    fn node_removed(&mut self, node: &NodeRef);
 }
 
 #[derive(Debug)]
 pub struct Tree {
-    state: State,
-    next_state: State,
+    state: TreeState,
+    next_state: TreeState,
 }
 
 impl Tree {
@@ -603,11 +603,11 @@ impl Tree {
         }
         let mut tree_index_map = TreeIndexMap::default();
         let tree_index = tree_index_map.get_or_create_index(initial_state.tree_id);
-        let mut state = State {
+        let mut state = TreeState {
             nodes: HashMap::new(),
-            root: NodeId::new(tree.root, tree_index),
-            data: tree,
-            focus: NodeId::new(initial_state.focus, tree_index),
+            root: FullNodeId::new(tree.root, tree_index),
+            info: tree,
+            focus: FullNodeId::new(initial_state.focus, tree_index),
             is_host_focused,
             subtrees: HashMap::new(),
             graft_parents: HashMap::new(),
@@ -695,8 +695,8 @@ impl Tree {
         for id in changes.removed_node_ids {
             self.state.nodes.remove(&id);
         }
-        if self.state.data != self.next_state.data {
-            self.state.data.clone_from(&self.next_state.data);
+        if self.state.info != self.next_state.info {
+            self.state.info.clone_from(&self.next_state.info);
         }
         self.state.root = self.next_state.root;
         self.state.focus = self.next_state.focus;
@@ -710,12 +710,12 @@ impl Tree {
             .clone_from(&self.next_state.tree_index_map);
     }
 
-    pub fn state(&self) -> &State {
+    pub fn state(&self) -> &TreeState {
         &self.state
     }
 }
 
-struct ShortNodeList<'a, T>(&'a HashMap<NodeId, T>);
+struct ShortNodeList<'a, T>(&'a HashMap<FullNodeId, T>);
 
 impl<T> fmt::Display for ShortNodeList<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -739,22 +739,22 @@ impl<T> fmt::Display for ShortNodeList<'_, T> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId as LocalNodeId, Role, Tree, TreeId, TreeUpdate, Uuid};
+    use accesskit::{Node, NodeId, Role, TreeId, TreeInfo, TreeUpdate, Uuid};
     use alloc::{vec, vec::Vec};
 
     use super::{TreeIndex, TreeIndexMap};
-    use crate::node::NodeId;
+    use crate::node::FullNodeId;
 
     struct NoOpHandler;
     impl super::ChangeHandler for NoOpHandler {
-        fn node_added(&mut self, _: &crate::Node) {}
-        fn node_updated(&mut self, _: &crate::Node, _: &crate::Node) {}
-        fn focus_moved(&mut self, _: Option<&crate::Node>, _: Option<&crate::Node>) {}
-        fn node_removed(&mut self, _: &crate::Node) {}
+        fn node_added(&mut self, _: &crate::NodeRef) {}
+        fn node_updated(&mut self, _: &crate::NodeRef, _: &crate::NodeRef) {}
+        fn focus_moved(&mut self, _: Option<&crate::NodeRef>, _: Option<&crate::NodeRef>) {}
+        fn node_removed(&mut self, _: &crate::NodeRef) {}
     }
 
-    fn node_id(n: u64) -> NodeId {
-        NodeId::new(LocalNodeId(n), TreeIndex(0))
+    fn node_id(n: u64) -> FullNodeId {
+        FullNodeId::new(NodeId(n), TreeIndex(0))
     }
 
     #[test]
@@ -839,10 +839,10 @@ mod tests {
     #[test]
     fn init_tree_with_root_node() {
         let update = TreeUpdate {
-            nodes: vec![(LocalNodeId(0), Node::new(Role::Window))],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            nodes: vec![(NodeId(0), Node::new(Role::Window))],
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let tree = super::Tree::new(update, false);
         assert_eq!(node_id(0), tree.state().root().id());
@@ -856,10 +856,10 @@ mod tests {
     )]
     fn init_tree_with_non_root_tree_id_panics() {
         let update = TreeUpdate {
-            nodes: vec![(LocalNodeId(0), Node::new(Role::Window))],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            nodes: vec![(NodeId(0), Node::new(Role::Window))],
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId(Uuid::from_u128(1)),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let _ = super::Tree::new(update, false);
     }
@@ -868,17 +868,17 @@ mod tests {
     fn root_node_has_children() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1), LocalNodeId(2)]);
+                    node.set_children(vec![NodeId(1), NodeId(2)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Button)),
-                (LocalNodeId(2), Node::new(Role::Button)),
+                (NodeId(1), Node::new(Role::Button)),
+                (NodeId(2), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let tree = super::Tree::new(update, false);
         let state = tree.state();
@@ -897,25 +897,25 @@ mod tests {
     fn add_child_to_root_node() {
         let root_node = Node::new(Role::Window);
         let first_update = TreeUpdate {
-            nodes: vec![(LocalNodeId(0), root_node.clone())],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            nodes: vec![(NodeId(0), root_node.clone())],
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(first_update, false);
         assert_eq!(0, tree.state().root().children().count());
         let second_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = root_node;
-                    node.push_child(LocalNodeId(1));
+                    node.push_child(NodeId(1));
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::RootWebArea)),
+                (NodeId(1), Node::new(Role::RootWebArea)),
             ],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         struct Handler {
             got_new_child_node: bool,
@@ -925,17 +925,17 @@ mod tests {
             panic!("expected only new child node and updated root node");
         }
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, node: &crate::Node) {
+            fn node_added(&mut self, node: &crate::NodeRef) {
                 if node.id() == node_id(1) {
                     self.got_new_child_node = true;
                     return;
                 }
                 unexpected_change();
             }
-            fn node_updated(&mut self, old_node: &crate::Node, new_node: &crate::Node) {
+            fn node_updated(&mut self, old_node: &crate::NodeRef, new_node: &crate::NodeRef) {
                 if new_node.id() == node_id(0)
                     && old_node.data().children().is_empty()
-                    && new_node.data().children() == [LocalNodeId(1)]
+                    && new_node.data().children() == [NodeId(1)]
                 {
                     self.got_updated_root_node = true;
                     return;
@@ -944,12 +944,12 @@ mod tests {
             }
             fn focus_moved(
                 &mut self,
-                _old_node: Option<&crate::Node>,
-                _new_node: Option<&crate::Node>,
+                _old_node: Option<&crate::NodeRef>,
+                _new_node: Option<&crate::NodeRef>,
             ) {
                 unexpected_change();
             }
-            fn node_removed(&mut self, _node: &crate::Node) {
+            fn node_removed(&mut self, _node: &crate::NodeRef) {
                 unexpected_change();
             }
         }
@@ -974,24 +974,24 @@ mod tests {
         let root_node = Node::new(Role::Window);
         let first_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = root_node.clone();
-                    node.push_child(LocalNodeId(1));
+                    node.push_child(NodeId(1));
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::RootWebArea)),
+                (NodeId(1), Node::new(Role::RootWebArea)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(first_update, false);
         assert_eq!(1, tree.state().root().children().count());
         let second_update = TreeUpdate {
-            nodes: vec![(LocalNodeId(0), root_node)],
+            nodes: vec![(NodeId(0), root_node)],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         struct Handler {
             got_updated_root_node: bool,
@@ -1001,12 +1001,12 @@ mod tests {
             panic!("expected only removed child node and updated root node");
         }
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, _node: &crate::Node) {
+            fn node_added(&mut self, _node: &crate::NodeRef) {
                 unexpected_change();
             }
-            fn node_updated(&mut self, old_node: &crate::Node, new_node: &crate::Node) {
+            fn node_updated(&mut self, old_node: &crate::NodeRef, new_node: &crate::NodeRef) {
                 if new_node.id() == node_id(0)
-                    && old_node.data().children() == [LocalNodeId(1)]
+                    && old_node.data().children() == [NodeId(1)]
                     && new_node.data().children().is_empty()
                 {
                     self.got_updated_root_node = true;
@@ -1016,12 +1016,12 @@ mod tests {
             }
             fn focus_moved(
                 &mut self,
-                _old_node: Option<&crate::Node>,
-                _new_node: Option<&crate::Node>,
+                _old_node: Option<&crate::NodeRef>,
+                _new_node: Option<&crate::NodeRef>,
             ) {
                 unexpected_change();
             }
-            fn node_removed(&mut self, node: &crate::Node) {
+            fn node_removed(&mut self, node: &crate::NodeRef) {
                 if node.id() == node_id(1) {
                     self.got_removed_child_node = true;
                     return;
@@ -1044,17 +1044,17 @@ mod tests {
     fn move_focus_between_siblings() {
         let first_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1), LocalNodeId(2)]);
+                    node.set_children(vec![NodeId(1), NodeId(2)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Button)),
-                (LocalNodeId(2), Node::new(Role::Button)),
+                (NodeId(1), Node::new(Role::Button)),
+                (NodeId(2), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         let mut tree = super::Tree::new(first_update, true);
         assert!(tree.state().node_by_id(node_id(1)).unwrap().is_focused());
@@ -1062,7 +1062,7 @@ mod tests {
             nodes: vec![],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(2),
+            focus: NodeId(2),
         };
         struct Handler {
             got_old_focus_node_update: bool,
@@ -1073,10 +1073,10 @@ mod tests {
             panic!("expected only focus change");
         }
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, _node: &crate::Node) {
+            fn node_added(&mut self, _node: &crate::NodeRef) {
                 unexpected_change();
             }
-            fn node_updated(&mut self, old_node: &crate::Node, new_node: &crate::Node) {
+            fn node_updated(&mut self, old_node: &crate::NodeRef, new_node: &crate::NodeRef) {
                 if old_node.id() == node_id(1)
                     && new_node.id() == node_id(1)
                     && old_node.is_focused()
@@ -1097,8 +1097,8 @@ mod tests {
             }
             fn focus_moved(
                 &mut self,
-                old_node: Option<&crate::Node>,
-                new_node: Option<&crate::Node>,
+                old_node: Option<&crate::NodeRef>,
+                new_node: Option<&crate::NodeRef>,
             ) {
                 if let (Some(old_node), Some(new_node)) = (old_node, new_node) {
                     if old_node.id() == node_id(1) && new_node.id() == node_id(2) {
@@ -1108,7 +1108,7 @@ mod tests {
                 }
                 unexpected_change();
             }
-            fn node_removed(&mut self, _node: &crate::Node) {
+            fn node_removed(&mut self, _node: &crate::NodeRef) {
                 unexpected_change();
             }
         }
@@ -1130,20 +1130,20 @@ mod tests {
         let child_node = Node::new(Role::Button);
         let first_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = child_node.clone();
                     node.set_label("foo");
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(first_update, false);
         assert_eq!(
@@ -1151,14 +1151,14 @@ mod tests {
             tree.state().node_by_id(node_id(1)).unwrap().label()
         );
         let second_update = TreeUpdate {
-            nodes: vec![(LocalNodeId(1), {
+            nodes: vec![(NodeId(1), {
                 let mut node = child_node;
                 node.set_label("bar");
                 node
             })],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         struct Handler {
             got_updated_child_node: bool,
@@ -1167,10 +1167,10 @@ mod tests {
             panic!("expected only updated child node");
         }
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, _node: &crate::Node) {
+            fn node_added(&mut self, _node: &crate::NodeRef) {
                 unexpected_change();
             }
-            fn node_updated(&mut self, old_node: &crate::Node, new_node: &crate::Node) {
+            fn node_updated(&mut self, old_node: &crate::NodeRef, new_node: &crate::NodeRef) {
                 if new_node.id() == node_id(1)
                     && old_node.label() == Some("foo".into())
                     && new_node.label() == Some("bar".into())
@@ -1182,12 +1182,12 @@ mod tests {
             }
             fn focus_moved(
                 &mut self,
-                _old_node: Option<&crate::Node>,
-                _new_node: Option<&crate::Node>,
+                _old_node: Option<&crate::NodeRef>,
+                _new_node: Option<&crate::NodeRef>,
             ) {
                 unexpected_change();
             }
-            fn node_removed(&mut self, _node: &crate::Node) {
+            fn node_removed(&mut self, _node: &crate::NodeRef) {
                 unexpected_change();
             }
         }
@@ -1210,20 +1210,20 @@ mod tests {
     fn no_change_update() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::Button);
                     node.set_label("foo");
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update.clone(), false);
         struct Handler;
@@ -1231,20 +1231,20 @@ mod tests {
             panic!("expected no changes");
         }
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, _node: &crate::Node) {
+            fn node_added(&mut self, _node: &crate::NodeRef) {
                 unexpected_change();
             }
-            fn node_updated(&mut self, _old_node: &crate::Node, _new_node: &crate::Node) {
+            fn node_updated(&mut self, _old_node: &crate::NodeRef, _new_node: &crate::NodeRef) {
                 unexpected_change();
             }
             fn focus_moved(
                 &mut self,
-                _old_node: Option<&crate::Node>,
-                _new_node: Option<&crate::Node>,
+                _old_node: Option<&crate::NodeRef>,
+                _new_node: Option<&crate::NodeRef>,
             ) {
                 unexpected_change();
             }
-            fn node_removed(&mut self, _node: &crate::Node) {
+            fn node_removed(&mut self, _node: &crate::NodeRef) {
                 unexpected_change();
             }
         }
@@ -1265,13 +1265,13 @@ mod tests {
         }
 
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, _node: &crate::Node) {
+            fn node_added(&mut self, _node: &crate::NodeRef) {
                 unexpected_change();
             }
-            fn node_updated(&mut self, old_node: &crate::Node, new_node: &crate::Node) {
+            fn node_updated(&mut self, old_node: &crate::NodeRef, new_node: &crate::NodeRef) {
                 if new_node.id() == node_id(0)
-                    && old_node.child_ids().collect::<Vec<NodeId>>() == vec![node_id(1)]
-                    && new_node.child_ids().collect::<Vec<NodeId>>() == vec![node_id(2)]
+                    && old_node.child_ids().collect::<Vec<FullNodeId>>() == vec![node_id(1)]
+                    && new_node.child_ids().collect::<Vec<FullNodeId>>() == vec![node_id(2)]
                 {
                     self.got_updated_root = true;
                     return;
@@ -1287,12 +1287,12 @@ mod tests {
             }
             fn focus_moved(
                 &mut self,
-                _old_node: Option<&crate::Node>,
-                _new_node: Option<&crate::Node>,
+                _old_node: Option<&crate::NodeRef>,
+                _new_node: Option<&crate::NodeRef>,
             ) {
                 unexpected_change();
             }
-            fn node_removed(&mut self, node: &crate::Node) {
+            fn node_removed(&mut self, node: &crate::NodeRef) {
                 if node.id() == node_id(1) {
                     self.got_removed_container = true;
                     return;
@@ -1302,21 +1302,21 @@ mod tests {
         }
 
         let mut root = Node::new(Role::Window);
-        root.set_children([LocalNodeId(1)]);
+        root.set_children([NodeId(1)]);
         let mut container = Node::new(Role::GenericContainer);
-        container.set_children([LocalNodeId(2)]);
+        container.set_children([NodeId(2)]);
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), root.clone()),
-                (LocalNodeId(1), container),
-                (LocalNodeId(2), Node::new(Role::Button)),
+                (NodeId(0), root.clone()),
+                (NodeId(1), container),
+                (NodeId(2), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = crate::Tree::new(update, false);
-        root.set_children([LocalNodeId(2)]);
+        root.set_children([NodeId(2)]);
         let mut handler = Handler {
             got_updated_root: false,
             got_updated_child: false,
@@ -1324,10 +1324,10 @@ mod tests {
         };
         tree.update_and_process_changes(
             TreeUpdate {
-                nodes: vec![(LocalNodeId(0), root)],
+                nodes: vec![(NodeId(0), root)],
                 tree: None,
                 tree_id: TreeId::ROOT,
-                focus: LocalNodeId(0),
+                focus: NodeId(0),
             },
             &mut handler,
         );
@@ -1339,7 +1339,7 @@ mod tests {
                 .node_by_id(node_id(0))
                 .unwrap()
                 .child_ids()
-                .collect::<Vec<NodeId>>(),
+                .collect::<Vec<FullNodeId>>(),
             vec![node_id(2)]
         );
         assert!(tree.state().node_by_id(node_id(1)).is_none());
@@ -1357,20 +1357,20 @@ mod tests {
     fn graft_node_tracks_subtree() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let tree = super::Tree::new(update, false);
         assert_eq!(
@@ -1384,25 +1384,25 @@ mod tests {
     fn duplicate_graft_parent_panics() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1), LocalNodeId(2)]);
+                    node.set_children(vec![NodeId(1), NodeId(2)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
-                (LocalNodeId(2), {
+                (NodeId(2), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let _ = super::Tree::new(update, false);
     }
@@ -1411,21 +1411,21 @@ mod tests {
     fn reparent_subtree_by_removing_old_graft() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1), LocalNodeId(2)]);
+                    node.set_children(vec![NodeId(1), NodeId(2)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
-                (LocalNodeId(2), Node::new(Role::GenericContainer)),
+                (NodeId(2), Node::new(Role::GenericContainer)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
         assert_eq!(
@@ -1435,12 +1435,12 @@ mod tests {
 
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(2)]);
+                    node.set_children(vec![NodeId(2)]);
                     node
                 }),
-                (LocalNodeId(2), {
+                (NodeId(2), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
@@ -1448,7 +1448,7 @@ mod tests {
             ],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(update, &mut NoOpHandler);
         assert_eq!(
@@ -1461,21 +1461,21 @@ mod tests {
     fn reparent_subtree_by_clearing_old_graft_tree_id() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1), LocalNodeId(2)]);
+                    node.set_children(vec![NodeId(1), NodeId(2)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
-                (LocalNodeId(2), Node::new(Role::GenericContainer)),
+                (NodeId(2), Node::new(Role::GenericContainer)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
         assert_eq!(
@@ -1485,8 +1485,8 @@ mod tests {
 
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(1), Node::new(Role::GenericContainer)),
-                (LocalNodeId(2), {
+                (NodeId(1), Node::new(Role::GenericContainer)),
+                (NodeId(2), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
@@ -1494,7 +1494,7 @@ mod tests {
             ],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(update, &mut NoOpHandler);
         assert_eq!(
@@ -1508,33 +1508,33 @@ mod tests {
     fn duplicate_graft_parent_on_update_panics() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1), LocalNodeId(2)]);
+                    node.set_children(vec![NodeId(1), NodeId(2)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
-                (LocalNodeId(2), Node::new(Role::GenericContainer)),
+                (NodeId(2), Node::new(Role::GenericContainer)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
 
         let update = TreeUpdate {
-            nodes: vec![(LocalNodeId(2), {
+            nodes: vec![(NodeId(2), {
                 let mut node = Node::new(Role::GenericContainer);
                 node.set_tree_id(subtree_id());
                 node
             })],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(update, &mut NoOpHandler);
     }
@@ -1544,20 +1544,20 @@ mod tests {
     fn graft_root_tree_panics() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(TreeId::ROOT);
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let _ = super::Tree::new(update, false);
     }
@@ -1567,63 +1567,63 @@ mod tests {
     fn graft_root_tree_on_update_panics() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::GenericContainer)),
+                (NodeId(1), Node::new(Role::GenericContainer)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
 
         let update = TreeUpdate {
-            nodes: vec![(LocalNodeId(1), {
+            nodes: vec![(NodeId(1), {
                 let mut node = Node::new(Role::GenericContainer);
                 node.set_tree_id(TreeId::ROOT);
                 node
             })],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(update, &mut NoOpHandler);
     }
 
-    fn subtree_node_id(id: u64) -> NodeId {
-        NodeId::new(LocalNodeId(id), TreeIndex(1))
+    fn subtree_node_id(id: u64) -> FullNodeId {
+        FullNodeId::new(NodeId(id), TreeIndex(1))
     }
 
     #[test]
     fn node_by_tree_local_id_finds_root_tree_node() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Button)),
+                (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let tree = super::Tree::new(update, false);
 
         let root = tree
             .state()
-            .node_by_tree_local_id(LocalNodeId(0), TreeId::ROOT)
+            .node_by_tree_local_id(NodeId(0), TreeId::ROOT)
             .unwrap();
         assert_eq!(root.id(), node_id(0));
         assert_eq!(root.role(), Role::Window);
 
         let child = tree
             .state()
-            .node_by_tree_local_id(LocalNodeId(1), TreeId::ROOT)
+            .node_by_tree_local_id(NodeId(1), TreeId::ROOT)
             .unwrap();
         assert_eq!(child.id(), node_id(1));
         assert_eq!(child.role(), Role::Button);
@@ -1633,55 +1633,55 @@ mod tests {
     fn node_by_tree_local_id_finds_subtree_node() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Paragraph)),
+                (NodeId(1), Node::new(Role::Paragraph)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
         let sub_root = tree
             .state()
-            .node_by_tree_local_id(LocalNodeId(0), subtree_id())
+            .node_by_tree_local_id(NodeId(0), subtree_id())
             .unwrap();
         assert_eq!(sub_root.id(), subtree_node_id(0));
         assert_eq!(sub_root.role(), Role::Document);
 
         let sub_child = tree
             .state()
-            .node_by_tree_local_id(LocalNodeId(1), subtree_id())
+            .node_by_tree_local_id(NodeId(1), subtree_id())
             .unwrap();
         assert_eq!(sub_child.id(), subtree_node_id(1));
         assert_eq!(sub_child.role(), Role::Paragraph);
 
         let graft = tree
             .state()
-            .node_by_tree_local_id(LocalNodeId(1), TreeId::ROOT)
+            .node_by_tree_local_id(NodeId(1), TreeId::ROOT)
             .unwrap();
         assert_eq!(graft.id(), node_id(1));
         assert_eq!(graft.role(), Role::GenericContainer);
@@ -1690,16 +1690,16 @@ mod tests {
     #[test]
     fn node_by_tree_local_id_returns_none_for_unknown_tree_id() {
         let update = TreeUpdate {
-            nodes: vec![(LocalNodeId(0), Node::new(Role::Window))],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            nodes: vec![(NodeId(0), Node::new(Role::Window))],
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let tree = super::Tree::new(update, false);
 
         assert!(
             tree.state()
-                .node_by_tree_local_id(LocalNodeId(0), subtree_id())
+                .node_by_tree_local_id(NodeId(0), subtree_id())
                 .is_none()
         );
     }
@@ -1707,16 +1707,16 @@ mod tests {
     #[test]
     fn node_by_tree_local_id_returns_none_for_unknown_local_id() {
         let update = TreeUpdate {
-            nodes: vec![(LocalNodeId(0), Node::new(Role::Window))],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            nodes: vec![(NodeId(0), Node::new(Role::Window))],
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let tree = super::Tree::new(update, false);
 
         assert!(
             tree.state()
-                .node_by_tree_local_id(LocalNodeId(999), TreeId::ROOT)
+                .node_by_tree_local_id(NodeId(999), TreeId::ROOT)
                 .is_none()
         );
     }
@@ -1725,28 +1725,28 @@ mod tests {
     fn subtree_root_parent_is_graft_when_graft_exists_first() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
 
         let subtree_update = TreeUpdate {
-            nodes: vec![(LocalNodeId(0), Node::new(Role::Document))],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            nodes: vec![(NodeId(0), Node::new(Role::Document))],
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
@@ -1763,18 +1763,18 @@ mod tests {
     #[should_panic(expected = "no graft node exists for this tree")]
     fn subtree_push_without_graft_panics() {
         let update = TreeUpdate {
-            nodes: vec![(LocalNodeId(0), Node::new(Role::Window))],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            nodes: vec![(NodeId(0), Node::new(Role::Window))],
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
 
         let subtree_update = TreeUpdate {
-            nodes: vec![(LocalNodeId(0), Node::new(Role::Document))],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            nodes: vec![(NodeId(0), Node::new(Role::Document))],
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
     }
@@ -1784,28 +1784,28 @@ mod tests {
     fn subtree_update_without_tree_data_panics() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
 
         let subtree_update = TreeUpdate {
-            nodes: vec![(LocalNodeId(0), Node::new(Role::Document))],
+            nodes: vec![(NodeId(0), Node::new(Role::Document))],
             tree: None,
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
     }
@@ -1814,54 +1814,54 @@ mod tests {
     fn subtree_nodes_removed_when_graft_removed() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(nested_subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
         let nested_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Paragraph)),
+                (NodeId(1), Node::new(Role::Paragraph)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: nested_subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(nested_update, &mut NoOpHandler);
 
@@ -1871,14 +1871,14 @@ mod tests {
         assert!(tree.state().node_by_id(nested_subtree_node_id(1)).is_some());
 
         let update = TreeUpdate {
-            nodes: vec![(LocalNodeId(0), {
+            nodes: vec![(NodeId(0), {
                 let mut node = Node::new(Role::Window);
                 node.set_children(vec![]);
                 node
             })],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(update, &mut NoOpHandler);
 
@@ -1894,35 +1894,35 @@ mod tests {
     fn subtree_nodes_removed_when_graft_tree_id_cleared() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Paragraph)),
+                (NodeId(1), Node::new(Role::Paragraph)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
@@ -1930,10 +1930,10 @@ mod tests {
         assert!(tree.state().node_by_id(subtree_node_id(1)).is_some());
 
         let update = TreeUpdate {
-            nodes: vec![(LocalNodeId(1), Node::new(Role::GenericContainer))],
+            nodes: vec![(NodeId(1), Node::new(Role::GenericContainer))],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(update, &mut NoOpHandler);
 
@@ -1946,20 +1946,20 @@ mod tests {
     fn graft_node_has_no_children_when_subtree_not_pushed() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let tree = super::Tree::new(update, false);
 
@@ -1973,22 +1973,22 @@ mod tests {
     fn graft_node_with_children_panics() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
-                    node.set_children(vec![LocalNodeId(2)]);
+                    node.set_children(vec![NodeId(2)]);
                     node
                 }),
-                (LocalNodeId(2), Node::new(Role::Button)),
+                (NodeId(2), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         super::Tree::new(update, false);
     }
@@ -1996,33 +1996,33 @@ mod tests {
     #[test]
     fn node_added_called_when_subtree_pushed() {
         struct Handler {
-            added_nodes: Vec<NodeId>,
+            added_nodes: Vec<FullNodeId>,
         }
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, node: &crate::Node) {
+            fn node_added(&mut self, node: &crate::NodeRef) {
                 self.added_nodes.push(node.id());
             }
-            fn node_updated(&mut self, _: &crate::Node, _: &crate::Node) {}
-            fn focus_moved(&mut self, _: Option<&crate::Node>, _: Option<&crate::Node>) {}
-            fn node_removed(&mut self, _: &crate::Node) {}
+            fn node_updated(&mut self, _: &crate::NodeRef, _: &crate::NodeRef) {}
+            fn focus_moved(&mut self, _: Option<&crate::NodeRef>, _: Option<&crate::NodeRef>) {}
+            fn node_removed(&mut self, _: &crate::NodeRef) {}
         }
 
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
 
@@ -2032,17 +2032,17 @@ mod tests {
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1), LocalNodeId(2)]);
+                    node.set_children(vec![NodeId(1), NodeId(2)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Paragraph)),
-                (LocalNodeId(2), Node::new(Role::Button)),
+                (NodeId(1), Node::new(Role::Paragraph)),
+                (NodeId(2), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut handler);
 
@@ -2055,48 +2055,48 @@ mod tests {
     #[test]
     fn node_removed_called_when_graft_removed() {
         struct Handler {
-            removed_nodes: Vec<NodeId>,
+            removed_nodes: Vec<FullNodeId>,
         }
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, _: &crate::Node) {}
-            fn node_updated(&mut self, _: &crate::Node, _: &crate::Node) {}
-            fn focus_moved(&mut self, _: Option<&crate::Node>, _: Option<&crate::Node>) {}
-            fn node_removed(&mut self, node: &crate::Node) {
+            fn node_added(&mut self, _: &crate::NodeRef) {}
+            fn node_updated(&mut self, _: &crate::NodeRef, _: &crate::NodeRef) {}
+            fn focus_moved(&mut self, _: Option<&crate::NodeRef>, _: Option<&crate::NodeRef>) {}
+            fn node_removed(&mut self, node: &crate::NodeRef) {
                 self.removed_nodes.push(node.id());
             }
         }
 
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Paragraph)),
+                (NodeId(1), Node::new(Role::Paragraph)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
@@ -2108,14 +2108,14 @@ mod tests {
         };
 
         let update = TreeUpdate {
-            nodes: vec![(LocalNodeId(0), {
+            nodes: vec![(NodeId(0), {
                 let mut node = Node::new(Role::Window);
                 node.set_children(vec![]);
                 node
             })],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(update, &mut handler);
 
@@ -2128,42 +2128,42 @@ mod tests {
     #[test]
     fn node_updated_called_when_subtree_reparented() {
         struct Handler {
-            updated_nodes: Vec<NodeId>,
+            updated_nodes: Vec<FullNodeId>,
         }
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, _: &crate::Node) {}
-            fn node_updated(&mut self, _old: &crate::Node, new: &crate::Node) {
+            fn node_added(&mut self, _: &crate::NodeRef) {}
+            fn node_updated(&mut self, _old: &crate::NodeRef, new: &crate::NodeRef) {
                 self.updated_nodes.push(new.id());
             }
-            fn focus_moved(&mut self, _: Option<&crate::Node>, _: Option<&crate::Node>) {}
-            fn node_removed(&mut self, _: &crate::Node) {}
+            fn focus_moved(&mut self, _: Option<&crate::NodeRef>, _: Option<&crate::NodeRef>) {}
+            fn node_removed(&mut self, _: &crate::NodeRef) {}
         }
 
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1), LocalNodeId(2)]);
+                    node.set_children(vec![NodeId(1), NodeId(2)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
-                (LocalNodeId(2), Node::new(Role::GenericContainer)),
+                (NodeId(2), Node::new(Role::GenericContainer)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
 
         let subtree_update = TreeUpdate {
-            nodes: vec![(LocalNodeId(0), Node::new(Role::Document))],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            nodes: vec![(NodeId(0), Node::new(Role::Document))],
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
@@ -2176,8 +2176,8 @@ mod tests {
 
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(1), Node::new(Role::GenericContainer)),
-                (LocalNodeId(2), {
+                (NodeId(1), Node::new(Role::GenericContainer)),
+                (NodeId(2), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
@@ -2185,7 +2185,7 @@ mod tests {
             ],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(update, &mut handler);
 
@@ -2198,49 +2198,49 @@ mod tests {
     #[test]
     fn focus_moved_called_when_focus_moves_to_subtree() {
         struct Handler {
-            focus_moves: Vec<(Option<NodeId>, Option<NodeId>)>,
+            focus_moves: Vec<(Option<FullNodeId>, Option<FullNodeId>)>,
         }
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, _: &crate::Node) {}
-            fn node_updated(&mut self, _: &crate::Node, _: &crate::Node) {}
-            fn focus_moved(&mut self, old: Option<&crate::Node>, new: Option<&crate::Node>) {
+            fn node_added(&mut self, _: &crate::NodeRef) {}
+            fn node_updated(&mut self, _: &crate::NodeRef, _: &crate::NodeRef) {}
+            fn focus_moved(&mut self, old: Option<&crate::NodeRef>, new: Option<&crate::NodeRef>) {
                 self.focus_moves
                     .push((old.map(|n| n.id()), new.map(|n| n.id())));
             }
-            fn node_removed(&mut self, _: &crate::Node) {}
+            fn node_removed(&mut self, _: &crate::NodeRef) {}
         }
 
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, true);
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Button)),
+                (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
@@ -2252,7 +2252,7 @@ mod tests {
             nodes: vec![],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         tree.update_and_process_changes(update, &mut handler);
 
@@ -2265,49 +2265,49 @@ mod tests {
     #[test]
     fn focus_moved_called_when_subtree_focus_changes() {
         struct Handler {
-            focus_moves: Vec<(Option<NodeId>, Option<NodeId>)>,
+            focus_moves: Vec<(Option<FullNodeId>, Option<FullNodeId>)>,
         }
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, _: &crate::Node) {}
-            fn node_updated(&mut self, _: &crate::Node, _: &crate::Node) {}
-            fn focus_moved(&mut self, old: Option<&crate::Node>, new: Option<&crate::Node>) {
+            fn node_added(&mut self, _: &crate::NodeRef) {}
+            fn node_updated(&mut self, _: &crate::NodeRef, _: &crate::NodeRef) {}
+            fn focus_moved(&mut self, old: Option<&crate::NodeRef>, new: Option<&crate::NodeRef>) {
                 self.focus_moves
                     .push((old.map(|n| n.id()), new.map(|n| n.id())));
             }
-            fn node_removed(&mut self, _: &crate::Node) {}
+            fn node_removed(&mut self, _: &crate::NodeRef) {}
         }
 
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, true);
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Button)),
+                (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
@@ -2315,7 +2315,7 @@ mod tests {
             nodes: vec![],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         tree.update_and_process_changes(root_update, &mut NoOpHandler);
 
@@ -2327,7 +2327,7 @@ mod tests {
             nodes: vec![],
             tree: None,
             tree_id: subtree_id(),
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         tree.update_and_process_changes(subtree_update, &mut handler);
 
@@ -2341,62 +2341,62 @@ mod tests {
         TreeId(Uuid::from_u128(2))
     }
 
-    fn nested_subtree_node_id(n: u64) -> NodeId {
-        NodeId::new(LocalNodeId(n), TreeIndex(2))
+    fn nested_subtree_node_id(n: u64) -> FullNodeId {
+        FullNodeId::new(NodeId(n), TreeIndex(2))
     }
 
     #[test]
     fn nested_subtree_focus_follows_graft_chain() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, true);
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(nested_subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
         let nested_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Group);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Button)),
+                (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: nested_subtree_id(),
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         tree.update_and_process_changes(nested_update, &mut NoOpHandler);
 
@@ -2404,7 +2404,7 @@ mod tests {
             nodes: vec![],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         tree.update_and_process_changes(update, &mut NoOpHandler);
 
@@ -2412,7 +2412,7 @@ mod tests {
             nodes: vec![],
             tree: None,
             tree_id: subtree_id(),
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         tree.update_and_process_changes(update, &mut NoOpHandler);
 
@@ -2423,55 +2423,55 @@ mod tests {
     fn nested_subtree_focus_update_changes_effective_focus() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, true);
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(nested_subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
         let nested_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Group);
-                    node.set_children(vec![LocalNodeId(1), LocalNodeId(2)]);
+                    node.set_children(vec![NodeId(1), NodeId(2)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Button)),
-                (LocalNodeId(2), Node::new(Role::Button)),
+                (NodeId(1), Node::new(Role::Button)),
+                (NodeId(2), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: nested_subtree_id(),
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         tree.update_and_process_changes(nested_update, &mut NoOpHandler);
 
@@ -2479,7 +2479,7 @@ mod tests {
             nodes: vec![],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         tree.update_and_process_changes(root_update, &mut NoOpHandler);
 
@@ -2489,7 +2489,7 @@ mod tests {
             nodes: vec![],
             tree: None,
             tree_id: nested_subtree_id(),
-            focus: LocalNodeId(2),
+            focus: NodeId(2),
         };
         tree.update_and_process_changes(update, &mut NoOpHandler);
 
@@ -2501,55 +2501,55 @@ mod tests {
     fn removing_nested_subtree_while_intermediate_focus_on_graft_panics() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         let mut tree = super::Tree::new(update, true);
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(nested_subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
         let nested_update = TreeUpdate {
-            nodes: vec![(LocalNodeId(0), Node::new(Role::Button))],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            nodes: vec![(NodeId(0), Node::new(Role::Button))],
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: nested_subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(nested_update, &mut NoOpHandler);
 
         let update = TreeUpdate {
-            nodes: vec![(LocalNodeId(1), Node::new(Role::GenericContainer))],
+            nodes: vec![(NodeId(1), Node::new(Role::GenericContainer))],
             tree: None,
             tree_id: subtree_id(),
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         tree.update_and_process_changes(update, &mut NoOpHandler);
     }
@@ -2558,55 +2558,55 @@ mod tests {
     fn nested_subtree_root_lookup_for_focus_only_update() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, true);
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1), LocalNodeId(2)]);
+                    node.set_children(vec![NodeId(1), NodeId(2)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(nested_subtree_id());
                     node
                 }),
-                (LocalNodeId(2), Node::new(Role::Button)),
+                (NodeId(2), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
         let nested_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Group);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Button)),
+                (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: nested_subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(nested_update, &mut NoOpHandler);
 
@@ -2614,7 +2614,7 @@ mod tests {
             nodes: vec![],
             tree: None,
             tree_id: subtree_id(),
-            focus: LocalNodeId(2),
+            focus: NodeId(2),
         };
         tree.update_and_process_changes(update, &mut NoOpHandler);
 
@@ -2627,54 +2627,54 @@ mod tests {
     #[test]
     fn subtree_root_change_updates_graft_and_parent() {
         struct Handler {
-            updated_nodes: Vec<NodeId>,
-            added_nodes: Vec<NodeId>,
-            removed_nodes: Vec<NodeId>,
+            updated_nodes: Vec<FullNodeId>,
+            added_nodes: Vec<FullNodeId>,
+            removed_nodes: Vec<FullNodeId>,
         }
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, node: &crate::Node) {
+            fn node_added(&mut self, node: &crate::NodeRef) {
                 self.added_nodes.push(node.id());
             }
-            fn node_updated(&mut self, _old: &crate::Node, new: &crate::Node) {
+            fn node_updated(&mut self, _old: &crate::NodeRef, new: &crate::NodeRef) {
                 self.updated_nodes.push(new.id());
             }
-            fn focus_moved(&mut self, _: Option<&crate::Node>, _: Option<&crate::Node>) {}
-            fn node_removed(&mut self, node: &crate::Node) {
+            fn focus_moved(&mut self, _: Option<&crate::NodeRef>, _: Option<&crate::NodeRef>) {}
+            fn node_removed(&mut self, node: &crate::NodeRef) {
                 self.removed_nodes.push(node.id());
             }
         }
 
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Paragraph)),
+                (NodeId(1), Node::new(Role::Paragraph)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
@@ -2686,16 +2686,16 @@ mod tests {
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(2), {
+                (NodeId(2), {
                     let mut node = Node::new(Role::Article);
-                    node.set_children(vec![LocalNodeId(3)]);
+                    node.set_children(vec![NodeId(3)]);
                     node
                 }),
-                (LocalNodeId(3), Node::new(Role::Button)),
+                (NodeId(3), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(2))),
+            tree: Some(TreeInfo::new(NodeId(2))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(2),
+            focus: NodeId(2),
         };
         tree.update_and_process_changes(subtree_update, &mut handler);
 
@@ -2723,59 +2723,59 @@ mod tests {
     #[test]
     fn subtree_root_change_to_existing_child() {
         struct Handler {
-            updated_nodes: Vec<NodeId>,
-            added_nodes: Vec<NodeId>,
-            removed_nodes: Vec<NodeId>,
+            updated_nodes: Vec<FullNodeId>,
+            added_nodes: Vec<FullNodeId>,
+            removed_nodes: Vec<FullNodeId>,
         }
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, node: &crate::Node) {
+            fn node_added(&mut self, node: &crate::NodeRef) {
                 self.added_nodes.push(node.id());
             }
-            fn node_updated(&mut self, _old: &crate::Node, new: &crate::Node) {
+            fn node_updated(&mut self, _old: &crate::NodeRef, new: &crate::NodeRef) {
                 self.updated_nodes.push(new.id());
             }
-            fn focus_moved(&mut self, _: Option<&crate::Node>, _: Option<&crate::Node>) {}
-            fn node_removed(&mut self, node: &crate::Node) {
+            fn focus_moved(&mut self, _: Option<&crate::NodeRef>, _: Option<&crate::NodeRef>) {}
+            fn node_removed(&mut self, node: &crate::NodeRef) {
                 self.removed_nodes.push(node.id());
             }
         }
 
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::Article);
-                    node.set_children(vec![LocalNodeId(2)]);
+                    node.set_children(vec![NodeId(2)]);
                     node
                 }),
-                (LocalNodeId(2), Node::new(Role::Paragraph)),
+                (NodeId(2), Node::new(Role::Paragraph)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
@@ -2801,16 +2801,16 @@ mod tests {
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::Article);
-                    node.set_children(vec![LocalNodeId(2)]);
+                    node.set_children(vec![NodeId(2)]);
                     node
                 }),
-                (LocalNodeId(2), Node::new(Role::Paragraph)),
+                (NodeId(2), Node::new(Role::Paragraph)),
             ],
-            tree: Some(Tree::new(LocalNodeId(1))),
+            tree: Some(TreeInfo::new(NodeId(1))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         tree.update_and_process_changes(subtree_update, &mut handler);
 
@@ -2837,54 +2837,54 @@ mod tests {
     #[test]
     fn subtree_root_change_to_new_parent_of_old_root() {
         struct Handler {
-            updated_nodes: Vec<NodeId>,
-            added_nodes: Vec<NodeId>,
-            removed_nodes: Vec<NodeId>,
+            updated_nodes: Vec<FullNodeId>,
+            added_nodes: Vec<FullNodeId>,
+            removed_nodes: Vec<FullNodeId>,
         }
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, node: &crate::Node) {
+            fn node_added(&mut self, node: &crate::NodeRef) {
                 self.added_nodes.push(node.id());
             }
-            fn node_updated(&mut self, _old: &crate::Node, new: &crate::Node) {
+            fn node_updated(&mut self, _old: &crate::NodeRef, new: &crate::NodeRef) {
                 self.updated_nodes.push(new.id());
             }
-            fn focus_moved(&mut self, _: Option<&crate::Node>, _: Option<&crate::Node>) {}
-            fn node_removed(&mut self, node: &crate::Node) {
+            fn focus_moved(&mut self, _: Option<&crate::NodeRef>, _: Option<&crate::NodeRef>) {}
+            fn node_removed(&mut self, node: &crate::NodeRef) {
                 self.removed_nodes.push(node.id());
             }
         }
 
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Paragraph)),
+                (NodeId(1), Node::new(Role::Paragraph)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
@@ -2896,21 +2896,21 @@ mod tests {
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(2), {
+                (NodeId(2), {
                     let mut node = Node::new(Role::Article);
-                    node.set_children(vec![LocalNodeId(0)]);
+                    node.set_children(vec![NodeId(0)]);
                     node
                 }),
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Paragraph)),
+                (NodeId(1), Node::new(Role::Paragraph)),
             ],
-            tree: Some(Tree::new(LocalNodeId(2))),
+            tree: Some(TreeInfo::new(NodeId(2))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(2),
+            focus: NodeId(2),
         };
         tree.update_and_process_changes(subtree_update, &mut handler);
 
@@ -2939,58 +2939,58 @@ mod tests {
     #[test]
     fn subtree_update_without_tree_preserves_root() {
         struct Handler {
-            updated_nodes: Vec<NodeId>,
-            added_nodes: Vec<NodeId>,
-            removed_nodes: Vec<NodeId>,
+            updated_nodes: Vec<FullNodeId>,
+            added_nodes: Vec<FullNodeId>,
+            removed_nodes: Vec<FullNodeId>,
         }
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, node: &crate::Node) {
+            fn node_added(&mut self, node: &crate::NodeRef) {
                 self.added_nodes.push(node.id());
             }
-            fn node_updated(&mut self, _old: &crate::Node, new: &crate::Node) {
+            fn node_updated(&mut self, _old: &crate::NodeRef, new: &crate::NodeRef) {
                 self.updated_nodes.push(new.id());
             }
-            fn focus_moved(&mut self, _: Option<&crate::Node>, _: Option<&crate::Node>) {}
-            fn node_removed(&mut self, node: &crate::Node) {
+            fn focus_moved(&mut self, _: Option<&crate::NodeRef>, _: Option<&crate::NodeRef>) {}
+            fn node_removed(&mut self, node: &crate::NodeRef) {
                 self.removed_nodes.push(node.id());
             }
         }
 
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::GenericContainer);
                     node.set_tree_id(subtree_id());
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let mut tree = super::Tree::new(update, false);
 
         let subtree_update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Document);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::Paragraph);
                     node.set_label("original");
                     node
                 }),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut NoOpHandler);
 
@@ -3001,14 +3001,14 @@ mod tests {
         };
 
         let subtree_update = TreeUpdate {
-            nodes: vec![(LocalNodeId(1), {
+            nodes: vec![(NodeId(1), {
                 let mut node = Node::new(Role::Paragraph);
                 node.set_label("modified");
                 node
             })],
             tree: None,
             tree_id: subtree_id(),
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         tree.update_and_process_changes(subtree_update, &mut handler);
 
@@ -3032,16 +3032,16 @@ mod tests {
     fn focus_returns_focused_node() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), Node::new(Role::Button)),
+                (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         let tree = super::Tree::new(update, true);
         assert_eq!(tree.state().focus().unwrap().id(), node_id(1));
@@ -3051,22 +3051,22 @@ mod tests {
     fn focus_returns_active_descendant() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::ListBox);
-                    node.set_children(vec![LocalNodeId(2)]);
-                    node.set_active_descendant(LocalNodeId(2));
+                    node.set_children(vec![NodeId(2)]);
+                    node.set_active_descendant(NodeId(2));
                     node
                 }),
-                (LocalNodeId(2), Node::new(Role::ListBoxOption)),
+                (NodeId(2), Node::new(Role::ListBoxOption)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         let tree = super::Tree::new(update, true);
         assert_eq!(tree.state().focus().unwrap().id(), node_id(2));
@@ -3076,40 +3076,40 @@ mod tests {
     fn focus_moved_when_active_descendant_changes() {
         let update = TreeUpdate {
             nodes: vec![
-                (LocalNodeId(0), {
+                (NodeId(0), {
                     let mut node = Node::new(Role::Window);
-                    node.set_children(vec![LocalNodeId(1)]);
+                    node.set_children(vec![NodeId(1)]);
                     node
                 }),
-                (LocalNodeId(1), {
+                (NodeId(1), {
                     let mut node = Node::new(Role::ListBox);
-                    node.set_children(vec![LocalNodeId(2), LocalNodeId(3)]);
-                    node.set_active_descendant(LocalNodeId(2));
+                    node.set_children(vec![NodeId(2), NodeId(3)]);
+                    node.set_active_descendant(NodeId(2));
                     node
                 }),
-                (LocalNodeId(2), Node::new(Role::ListBoxOption)),
-                (LocalNodeId(3), Node::new(Role::ListBoxOption)),
+                (NodeId(2), Node::new(Role::ListBoxOption)),
+                (NodeId(3), Node::new(Role::ListBoxOption)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         let mut tree = super::Tree::new(update, true);
 
         struct Handler {
             focus_moved_called: bool,
-            old_focus: Option<NodeId>,
-            new_focus: Option<NodeId>,
+            old_focus: Option<FullNodeId>,
+            new_focus: Option<FullNodeId>,
         }
         impl super::ChangeHandler for Handler {
-            fn node_added(&mut self, _: &crate::Node) {}
-            fn node_updated(&mut self, _: &crate::Node, _: &crate::Node) {}
-            fn focus_moved(&mut self, old: Option<&crate::Node>, new: Option<&crate::Node>) {
+            fn node_added(&mut self, _: &crate::NodeRef) {}
+            fn node_updated(&mut self, _: &crate::NodeRef, _: &crate::NodeRef) {}
+            fn focus_moved(&mut self, old: Option<&crate::NodeRef>, new: Option<&crate::NodeRef>) {
                 self.focus_moved_called = true;
                 self.old_focus = old.map(|n| n.id());
                 self.new_focus = new.map(|n| n.id());
             }
-            fn node_removed(&mut self, _: &crate::Node) {}
+            fn node_removed(&mut self, _: &crate::NodeRef) {}
         }
 
         let mut handler = Handler {
@@ -3119,15 +3119,15 @@ mod tests {
         };
 
         let update = TreeUpdate {
-            nodes: vec![(LocalNodeId(1), {
+            nodes: vec![(NodeId(1), {
                 let mut node = Node::new(Role::ListBox);
-                node.set_children(vec![LocalNodeId(2), LocalNodeId(3)]);
-                node.set_active_descendant(LocalNodeId(3));
+                node.set_children(vec![NodeId(2), NodeId(3)]);
+                node.set_active_descendant(NodeId(3));
                 node
             })],
             tree: None,
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(1),
+            focus: NodeId(1),
         };
         tree.update_and_process_changes(update, &mut handler);
 

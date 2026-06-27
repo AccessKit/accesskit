@@ -9,8 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    ActionHandler, ActionRequest, ActivationHandler, DeactivationHandler, Node as NodeProvider,
-    NodeId, Role, Tree as TreeData, TreeId, TreeUpdate,
+    ActionHandler, ActionRequest, ActivationHandler, DeactivationHandler, Node, NodeId, Role,
+    TreeId, TreeInfo, TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Tree};
 use objc2::{
@@ -164,8 +164,8 @@ fn get_or_init_context(
             }
             None => {
                 let placeholder_update = TreeUpdate {
-                    nodes: vec![(PLACEHOLDER_ROOT_ID, NodeProvider::new(Role::Window))],
-                    tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
+                    nodes: vec![(PLACEHOLDER_ROOT_ID, Node::new(Role::Window))],
+                    tree: Some(TreeInfo::new(PLACEHOLDER_ROOT_ID)),
                     tree_id: TreeId::ROOT,
                     focus: PLACEHOLDER_ROOT_ID,
                 };

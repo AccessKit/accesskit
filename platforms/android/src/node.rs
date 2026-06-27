@@ -9,7 +9,7 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{Action, Live, Role, Toggled};
-use accesskit_consumer::Node;
+use accesskit_consumer::NodeRef;
 use jni::{JNIEnv, objects::JObject, sys::jint};
 
 use crate::{filters::filter, util::*};
@@ -24,7 +24,7 @@ pub(crate) fn add_action(env: &mut JNIEnv, node_info: &JObject, action: jint) {
         .unwrap();
 }
 
-pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
+pub(crate) struct NodeWrapper<'a>(pub(crate) &'a NodeRef<'a>);
 
 impl NodeWrapper<'_> {
     fn is_editable(&self) -> bool {

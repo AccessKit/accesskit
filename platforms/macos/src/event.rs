@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{Live, Role};
-use accesskit_consumer::{FilterResult, Node, NodeId, TreeChangeHandler};
+use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, TreeChangeHandler};
 use hashbrown::HashSet;
 use objc2::runtime::{AnyObject, ProtocolObject};
 use objc2_app_kit::*;
@@ -21,10 +21,10 @@ use crate::{
 // and send to the main thread. This ability isn't yet used though.
 pub(crate) enum QueuedEvent {
     Generic {
-        node_id: NodeId,
+        node_id: FullNodeId,
         notification: &'static NSAccessibilityNotificationName,
     },
-    NodeDestroyed(NodeId),
+    NodeDestroyed(FullNodeId),
     Announcement {
         text: String,
         priority: NSAccessibilityPriorityLevel,
@@ -32,7 +32,7 @@ pub(crate) enum QueuedEvent {
 }
 
 impl QueuedEvent {
-    fn live_region_announcement(node: &Node) -> Self {
+    fn live_region_announcement(node: &NodeRef) -> Self {
         Self::Announcement {
             text: node.value().unwrap(),
             priority: if node.live() == Live::Assertive {
@@ -130,7 +130,7 @@ impl QueuedEvents {
     }
 }
 
-pub(crate) fn focus_event(node_id: NodeId) -> QueuedEvent {
+pub(crate) fn focus_event(node_id: FullNodeId) -> QueuedEvent {
     QueuedEvent::Generic {
         node_id,
         notification: unsafe { NSAccessibilityFocusedUIElementChangedNotification },
@@ -140,8 +140,8 @@ pub(crate) fn focus_event(node_id: NodeId) -> QueuedEvent {
 pub(crate) struct EventGenerator {
     context: Rc<Context>,
     events: Vec<QueuedEvent>,
-    text_changed: HashSet<NodeId>,
-    selected_rows_changed: HashSet<NodeId>,
+    text_changed: HashSet<FullNodeId>,
+    selected_rows_changed: HashSet<FullNodeId>,
 }
 
 impl EventGenerator {
@@ -158,7 +158,7 @@ impl EventGenerator {
         QueuedEvents::new(self.context, self.events)
     }
 
-    fn remove_subtree(&mut self, node: &Node) {
+    fn remove_subtree(&mut self, node: &NodeRef) {
         let mut to_remove = VecDeque::new();
         to_remove.push_back(*node);
 
@@ -171,7 +171,7 @@ impl EventGenerator {
         }
     }
 
-    fn insert_text_change_if_needed_parent(&mut self, node: Node) {
+    fn insert_text_change_if_needed_parent(&mut self, node: NodeRef) {
         if !node.supports_text_ranges() {
             return;
         }
@@ -192,7 +192,7 @@ impl EventGenerator {
         self.text_changed.insert(id);
     }
 
-    fn insert_text_change_if_needed(&mut self, node: &Node) {
+    fn insert_text_change_if_needed(&mut self, node: &NodeRef) {
         if node.role() != Role::TextRun {
             return;
         }
@@ -201,7 +201,7 @@ impl EventGenerator {
         }
     }
 
-    fn enqueue_selected_rows_change_if_needed_parent(&mut self, node: Node) {
+    fn enqueue_selected_rows_change_if_needed_parent(&mut self, node: NodeRef) {
         let id = node.id();
         if self.selected_rows_changed.contains(&id) {
             return;
@@ -213,7 +213,7 @@ impl EventGenerator {
         self.selected_rows_changed.insert(id);
     }
 
-    fn enqueue_selected_rows_change_if_needed(&mut self, node: &Node) {
+    fn enqueue_selected_rows_change_if_needed(&mut self, node: &NodeRef) {
         let wrapper = NodeWrapper(node);
         if !wrapper.is_item_like() {
             return;
@@ -225,7 +225,7 @@ impl EventGenerator {
 }
 
 impl TreeChangeHandler for EventGenerator {
-    fn node_added(&mut self, node: &Node) {
+    fn node_added(&mut self, node: &NodeRef) {
         self.insert_text_change_if_needed(node);
         if filter(node) != FilterResult::Include {
             return;
@@ -239,7 +239,7 @@ impl TreeChangeHandler for EventGenerator {
         }
     }
 
-    fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
+    fn node_updated(&mut self, old_node: &NodeRef, new_node: &NodeRef) {
         if old_node.raw_value() != new_node.raw_value() {
             self.insert_text_change_if_needed(new_node);
         }
@@ -311,7 +311,7 @@ impl TreeChangeHandler for EventGenerator {
         }
     }
 
-    fn focus_moved(&mut self, _old_node: Option<&Node>, new_node: Option<&Node>) {
+    fn focus_moved(&mut self, _old_node: Option<&NodeRef>, new_node: Option<&NodeRef>) {
         if let Some(new_node) = new_node {
             if filter(new_node) != FilterResult::Include {
                 return;
@@ -320,7 +320,7 @@ impl TreeChangeHandler for EventGenerator {
         }
     }
 
-    fn node_removed(&mut self, node: &Node) {
+    fn node_removed(&mut self, node: &NodeRef) {
         self.insert_text_change_if_needed(node);
         if let Some(true) = node.is_selected() {
             self.enqueue_selected_rows_change_if_needed(node);

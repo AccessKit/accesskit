@@ -102,10 +102,10 @@ mod tests {
     use super::{CacheInterface, object_ref};
     use crate::atspi::ObjectId;
     use accesskit::{
-        ActionHandler, ActionRequest, Node, NodeId as LocalNodeId, Role, Tree, TreeId, TreeUpdate,
+        ActionHandler, ActionRequest, Node, NodeId, Role, TreeId, TreeInfo, TreeUpdate,
     };
     use accesskit_atspi_common::{
-        Adapter, AdapterCallback, AppContext, Event, NodeId, PlatformRoot, WindowBounds,
+        Adapter, AdapterCallback, AppContext, Event, FullNodeId, PlatformRoot, WindowBounds,
     };
     use atspi::{Interface, ObjectRef, ObjectRefOwned, Role as AtspiRole};
     use zbus::names::{OwnedUniqueName, UniqueName};
@@ -117,12 +117,12 @@ mod tests {
 
     struct NoOpCallback;
     impl AdapterCallback for NoOpCallback {
-        fn register_interfaces(&self, _: &Adapter, _: NodeId, _: atspi::InterfaceSet) {}
-        fn unregister_interfaces(&self, _: &Adapter, _: NodeId, _: atspi::InterfaceSet) {}
+        fn register_interfaces(&self, _: &Adapter, _: FullNodeId, _: atspi::InterfaceSet) {}
+        fn unregister_interfaces(&self, _: &Adapter, _: FullNodeId, _: atspi::InterfaceSet) {}
         fn emit_event(&self, _: &Adapter, _: Event) {}
     }
 
-    fn with_children(role: Role, children: &[LocalNodeId]) -> Node {
+    fn with_children(role: Role, children: &[NodeId]) -> Node {
         let mut node = Node::new(role);
         node.set_children(children.to_vec());
         node
@@ -156,15 +156,12 @@ mod tests {
     fn window_with_button() -> TreeUpdate {
         TreeUpdate {
             nodes: vec![
-                (
-                    LocalNodeId(0),
-                    with_children(Role::Window, &[LocalNodeId(1)]),
-                ),
-                (LocalNodeId(1), Node::new(Role::Button)),
+                (NodeId(0), with_children(Role::Window, &[NodeId(1)])),
+                (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         }
     }
 
@@ -216,15 +213,15 @@ mod tests {
         let update = TreeUpdate {
             nodes: vec![
                 (
-                    LocalNodeId(0),
-                    with_children(Role::Window, &[LocalNodeId(1), LocalNodeId(2)]),
+                    NodeId(0),
+                    with_children(Role::Window, &[NodeId(1), NodeId(2)]),
                 ),
-                (LocalNodeId(1), Node::new(Role::Button)),
-                (LocalNodeId(2), hidden),
+                (NodeId(1), Node::new(Role::Button)),
+                (NodeId(2), hidden),
             ],
-            tree: Some(Tree::new(LocalNodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         let (_adapter, iface) = cache(update);
         let items = iface.items().unwrap();
