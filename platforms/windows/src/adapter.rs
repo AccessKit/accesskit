@@ -7,7 +7,7 @@ use accesskit::{
     ActionHandler, ActivationHandler, Live, Node as NodeProvider, NodeId as LocalNodeId, Role,
     Tree as TreeData, TreeId, TreeUpdate,
 };
-use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeChangeHandler};
+use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeChangeHandler, TreeState};
 use hashbrown::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, atomic::Ordering};
@@ -84,6 +84,20 @@ impl AdapterChangeHandler<'_> {
         }
     }
 
+    fn element_for_possibly_removed_node(
+        &self,
+        tree_state: &TreeState,
+        id: NodeId,
+    ) -> IRawElementProviderSimple {
+        if tree_state.node_by_id(id).is_some() {
+            self.context
+                .get_or_create_platform_node(id)
+                .into_interface()
+        } else {
+            PlatformNode::new(self.context, id).into_interface()
+        }
+    }
+
     fn handle_selection_state_change(&mut self, node: &Node, is_selected: bool) {
         // If `node` belongs to a selection container, then map the events with the
         // selection container as the key because |FinalizeSelectionEvents| needs to
@@ -151,9 +165,9 @@ impl AdapterChangeHandler<'_> {
                     new_value: true.into(),
                 });
                 for child_id in changes.removed_items.iter() {
-                    let platform_node = self.context.get_or_create_platform_node(*child_id);
+                    let element = self.element_for_possibly_removed_node(tree_state, *child_id);
                     self.queue.push(QueuedEvent::PropertyChanged {
-                        element: platform_node.into_interface(),
+                        element,
                         property_id: UIA_SelectionItemIsSelectedPropertyId,
                         old_value: true.into(),
                         new_value: false.into(),
@@ -197,18 +211,14 @@ impl AdapterChangeHandler<'_> {
                         });
                     }
                     for removed_id in changes.removed_items.iter() {
+                        let element =
+                            self.element_for_possibly_removed_node(tree_state, *removed_id);
                         self.queue.push(QueuedEvent::Simple {
-                            element: self
-                                .context
-                                .get_or_create_platform_node(*removed_id)
-                                .into_interface(),
+                            element: element.clone(),
                             event_id: UIA_SelectionItem_ElementRemovedFromSelectionEventId,
                         });
                         self.queue.push(QueuedEvent::PropertyChanged {
-                            element: self
-                                .context
-                                .get_or_create_platform_node(*removed_id)
-                                .into_interface(),
+                            element,
                             property_id: UIA_SelectionItemIsSelectedPropertyId,
                             old_value: true.into(),
                             new_value: false.into(),
@@ -321,7 +331,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
             return;
         }
         if node.is_dialog() {
-            let platform_node = self.context.get_or_create_platform_node(node.id());
+            let platform_node = PlatformNode::new(self.context, node.id());
             let element: IRawElementProviderSimple = platform_node.into_interface();
             self.queue.push(QueuedEvent::Simple {
                 element,
