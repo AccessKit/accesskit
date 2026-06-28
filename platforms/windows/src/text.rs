@@ -18,7 +18,7 @@ use windows::{
     core::*,
 };
 
-use crate::{context::Context, node::PlatformNode, util::*};
+use crate::{context::Context, util::*};
 
 fn upgrade_range<'a>(weak: &WeakRange, tree_state: &'a TreeState) -> Result<Range<'a>> {
     if let Some(range) = weak.upgrade(tree_state) {
@@ -242,16 +242,6 @@ impl PlatformRange {
     fn upgrade_node<'a>(&self, tree_state: &'a TreeState) -> Result<Node<'a>> {
         let state = self.state.read().unwrap();
         upgrade_range_node(&state, tree_state)
-    }
-
-    fn with_node<F, T>(&self, f: F) -> Result<T>
-    where
-        F: FnOnce(Node) -> Result<T>,
-    {
-        self.with_tree_state(|tree_state| {
-            let node = self.upgrade_node(tree_state)?;
-            f(node)
-        })
     }
 
     fn upgrade_for_read<'a>(&self, tree_state: &'a TreeState) -> Result<Range<'a>> {
@@ -513,14 +503,11 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
     }
 
     fn GetEnclosingElement(&self) -> Result<IRawElementProviderSimple> {
-        self.with_node(|node| {
-            // Revisit this if we eventually support embedded objects.
-            Ok(PlatformNode {
-                context: self.context.clone(),
-                node_id: Some(node.id()),
-            }
-            .into())
-        })
+        // Revisit this if we eventually support embedded objects.
+        let context = self.upgrade_context()?;
+        let tree = context.read_tree();
+        let id = self.upgrade_node(tree.state())?.id();
+        Ok(context.get_or_create_platform_node(id).into_interface())
     }
 
     fn GetText(&self, _max_length: i32) -> Result<BSTR> {

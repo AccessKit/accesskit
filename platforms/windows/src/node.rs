@@ -726,11 +726,11 @@ impl NodeWrapper<'_> {
     pub(crate) fn enqueue_property_changes(
         &self,
         queue: &mut Vec<QueuedEvent>,
-        platform_node: &PlatformNode,
+        context: &Arc<Context>,
         element: &IRawElementProviderSimple,
         old: &NodeWrapper,
     ) {
-        self.enqueue_simple_property_changes(queue, platform_node, element, old);
+        self.enqueue_simple_property_changes(queue, context, element, old);
         self.enqueue_pattern_property_changes(queue, element, old);
         self.enqueue_property_implied_events(queue, element, old);
     }
@@ -792,18 +792,20 @@ pub(crate) struct PlatformNode {
 }
 
 impl PlatformNode {
-    pub(crate) fn new(context: &Arc<Context>, node_id: NodeId) -> Self {
+    pub(crate) fn new(context: &Arc<Context>, node_id: NodeId) -> ComObject<Self> {
         Self {
             context: Arc::downgrade(context),
             node_id: Some(node_id),
         }
+        .into_object()
     }
 
-    pub(crate) fn unspecified_root(context: &Arc<Context>) -> Self {
+    pub(crate) fn unspecified_root(context: &Arc<Context>) -> ComObject<Self> {
         Self {
             context: Arc::downgrade(context),
             node_id: None,
         }
+        .into_object()
     }
 
     fn upgrade_context(&self) -> Result<Arc<Context>> {
@@ -812,25 +814,18 @@ impl PlatformNode {
 
     fn with_tree_state_and_context<F, T>(&self, f: F) -> Result<T>
     where
-        F: FnOnce(&TreeState, &Context) -> Result<T>,
+        F: FnOnce(&TreeState, &Arc<Context>) -> Result<T>,
     {
         self.with_tree_and_context(|tree, context| f(tree.state(), context))
     }
 
     fn with_tree_and_context<F, T>(&self, f: F) -> Result<T>
     where
-        F: FnOnce(&Tree, &Context) -> Result<T>,
+        F: FnOnce(&Tree, &Arc<Context>) -> Result<T>,
     {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
         f(&tree, &context)
-    }
-
-    fn with_tree_state<F, T>(&self, f: F) -> Result<T>
-    where
-        F: FnOnce(&TreeState) -> Result<T>,
-    {
-        self.with_tree_state_and_context(|state, _| f(state))
     }
 
     fn node<'a>(&self, tree: &'a Tree) -> Result<Node<'a>> {
@@ -857,7 +852,7 @@ impl PlatformNode {
 
     fn resolve_with_context<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
+        for<'a> F: FnOnce(Node<'a>, &Arc<Context>) -> Result<T>,
     {
         self.with_tree_and_context(|tree, context| {
             let node = self.node(tree)?;
@@ -867,7 +862,7 @@ impl PlatformNode {
 
     fn resolve_with_tree_state_and_context<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &TreeState, &Context) -> Result<T>,
+        for<'a> F: FnOnce(Node<'a>, &TreeState, &Arc<Context>) -> Result<T>,
     {
         self.with_tree_and_context(|tree, context| {
             let node = self.node(tree)?;
@@ -884,7 +879,7 @@ impl PlatformNode {
 
     fn resolve_with_context_for_text_pattern<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
+        for<'a> F: FnOnce(Node<'a>, &Arc<Context>) -> Result<T>,
     {
         self.with_tree_and_context(|tree, context| {
             let node = self.node(tree)?;
@@ -984,13 +979,6 @@ impl PlatformNode {
         })
     }
 
-    fn relative(&self, node_id: NodeId) -> Self {
-        Self {
-            context: self.context.clone(),
-            node_id: Some(node_id),
-        }
-    }
-
     fn is_root(&self, state: &TreeState) -> bool {
         self.node_id.is_some_and(|id| id == state.root_id())
     }
@@ -1029,8 +1017,8 @@ impl IRawElementProviderSimple_Impl for PlatformNode_Impl {
                         let controlled: Vec<IUnknown> = node
                             .controls()
                             .filter(|controlled| filter(controlled) == FilterResult::Include)
-                            .map(|controlled| self.relative(controlled.id()))
-                            .map(IRawElementProviderSimple::from)
+                            .map(|controlled| context.get_or_create_platform_node(controlled.id()))
+                            .map(|result| result.into_interface::<IRawElementProviderSimple>())
                             .filter_map(|controlled| controlled.cast::<IUnknown>().ok())
                             .collect();
                         result = controlled.into();
@@ -1056,7 +1044,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode_Impl {
 #[allow(non_snake_case)]
 impl IRawElementProviderFragment_Impl for PlatformNode_Impl {
     fn Navigate(&self, direction: NavigateDirection) -> Result<IRawElementProviderFragment> {
-        self.resolve(|node| {
+        self.resolve_with_context(|node, context| {
             let result = match direction {
                 NavigateDirection_Parent => node.filtered_parent(&filter_with_root_exception),
                 NavigateDirection_NextSibling => node.following_filtered_siblings(&filter).next(),
@@ -1068,7 +1056,9 @@ impl IRawElementProviderFragment_Impl for PlatformNode_Impl {
                 _ => None,
             };
             match result {
-                Some(result) => Ok(self.relative(result.id()).into()),
+                Some(result) => Ok(context
+                    .get_or_create_platform_node(result.id())
+                    .into_interface()),
                 None => Err(Error::empty()),
             }
         })
@@ -1113,12 +1103,14 @@ impl IRawElementProviderFragment_Impl for PlatformNode_Impl {
     }
 
     fn FragmentRoot(&self) -> Result<IRawElementProviderFragmentRoot> {
-        self.with_tree_state(|state| {
+        self.with_tree_state_and_context(|state, context| {
             if self.is_root(state) {
                 Ok(self.to_interface())
             } else {
                 let root_id = state.root_id();
-                Ok(self.relative(root_id).into())
+                Ok(context
+                    .get_or_create_platform_node(root_id)
+                    .into_interface())
             }
         })
     }
@@ -1133,21 +1125,26 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode_Impl {
             let point = node.transform().inverse() * point;
             node.node_at_point(point, &filter).map_or_else(
                 || Err(Error::empty()),
-                |node| Ok(self.relative(node.id()).into()),
+                |node| {
+                    Ok(context
+                        .get_or_create_platform_node(node.id())
+                        .into_interface())
+                },
             )
         })
     }
 
     fn GetFocus(&self) -> Result<IRawElementProviderFragment> {
-        self.with_tree_state(|state| {
+        self.with_tree_state_and_context(|state, context| {
             if let Some(node) = state.focus() {
+                let id = node.id();
                 let self_id = if let Some(id) = self.node_id {
                     id
                 } else {
                     state.root_id()
                 };
-                if node.id() != self_id {
-                    return Ok(self.relative(node.id()).into());
+                if id != self_id {
+                    return Ok(context.get_or_create_platform_node(id).into_interface());
                 }
             }
             Err(Error::empty())
@@ -1169,7 +1166,7 @@ macro_rules! properties {
             fn enqueue_simple_property_changes(
                 &self,
                 queue: &mut Vec<QueuedEvent>,
-                platform_node: &PlatformNode,
+                context: &Arc<Context>,
                 element: &IRawElementProviderSimple,
                 old: &NodeWrapper,
             ) {
@@ -1197,7 +1194,7 @@ macro_rules! properties {
                     match (old_controlled, new_controlled) {
                         (Some(a), Some(b)) => {
                             are_equal = are_equal && a.id() == b.id();
-                            controls.push(platform_node.relative(b.id()).into());
+                            controls.push(context.get_or_create_platform_node(b.id()).into_interface::<IRawElementProviderSimple>().into());
                         }
                         (None, None) => break,
                         _ => are_equal = false,
@@ -1372,9 +1369,9 @@ patterns! {
         },
 
         fn SelectionContainer(&self) -> Result<IRawElementProviderSimple> {
-            self.resolve(|node| {
+            self.resolve_with_context(|node, context| {
                 if let Some(container) = node.selection_container(&filter) {
-                    Ok(self.relative(container.id()).into())
+                    Ok(context.get_or_create_platform_node(container.id()).into_interface())
                 } else {
                     Err(E_FAIL.into())
                 }
@@ -1386,12 +1383,11 @@ patterns! {
         (UIA_SelectionIsSelectionRequiredPropertyId, IsSelectionRequired, is_required, BOOL)
     ), (
         fn GetSelection(&self) -> Result<*mut SAFEARRAY> {
-            self.resolve(|node| {
+            self.resolve_with_context(|node, context| {
                 let selection: Vec<_> = node
                     .items(&filter)
                     .filter(|item| item.is_selected() == Some(true))
-                    .map(|item| self.relative(item.id()))
-                    .map(IRawElementProviderSimple::from)
+                    .map(|item| context.get_or_create_platform_node(item.id()).into_interface::<IRawElementProviderSimple>())
                     .filter_map(|item| item.cast::<IUnknown>().ok())
                     .collect();
                 Ok(safe_array_from_com_slice(&selection))
