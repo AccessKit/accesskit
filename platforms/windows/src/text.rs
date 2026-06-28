@@ -435,7 +435,13 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
                 Ok(value.0.into())
             }
             UIA_CultureAttributeId => Ok(Variant::from(range.language().map(LocaleName)).into()),
-            UIA_FontNameAttributeId => Ok(Variant::from(range.font_family()).into()),
+            UIA_FontNameAttributeId => {
+                let mut buffer = StringBuffer::acquire();
+                Ok(
+                    Variant::from(range.font_family().map(|s| StrWrapper::new(s, &mut buffer)))
+                        .into(),
+                )
+            }
             UIA_FontSizeAttributeId => {
                 Ok(Variant::from(range.font_size().map(|value| value as f64)).into())
             }
@@ -514,7 +520,8 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
         // The Microsoft docs imply that the provider isn't _required_
         // to truncate text at the max length, so we just ignore it.
         self.read(|range| {
-            let mut result = WideString::default();
+            let mut buffer = StringBuffer::acquire();
+            let mut result = WideString::new(&mut buffer);
             range.write_text(&mut result).unwrap();
             Ok(result.into())
         })

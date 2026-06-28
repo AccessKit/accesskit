@@ -20,7 +20,7 @@ use crate::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper, Context},
     filters::filter,
     node::{NodeWrapper, PlatformNode},
-    util::QueuedEvent,
+    util::{QueuedEvent, StringBuffer},
     window_handle::WindowHandle,
 };
 
@@ -241,7 +241,11 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         if filter(node) != FilterResult::Include {
             return;
         }
-        let wrapper = NodeWrapper(node);
+        let mut buffer = StringBuffer::acquire();
+        let mut wrapper = NodeWrapper {
+            node,
+            string_buffer: &mut buffer,
+        };
         if node.is_dialog() {
             let platform_node = self.context.get_or_create_platform_node(node.id());
             let element: IRawElementProviderSimple = platform_node.into_interface();
@@ -278,7 +282,11 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                         event_id: UIA_Window_WindowClosedEventId,
                     });
                 }
-                let old_wrapper = NodeWrapper(old_node);
+                let mut old_buffer = StringBuffer::acquire();
+                let old_wrapper = NodeWrapper {
+                    node: old_node,
+                    string_buffer: &mut old_buffer,
+                };
                 if old_wrapper.is_selection_item_pattern_supported() && old_wrapper.is_selected() {
                     self.handle_selection_state_change(old_node, false);
                 }
@@ -287,9 +295,22 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
         let platform_node = self.context.get_or_create_platform_node(new_node.id());
         let element: IRawElementProviderSimple = platform_node.into_interface();
-        let old_wrapper = NodeWrapper(old_node);
-        let new_wrapper = NodeWrapper(new_node);
-        new_wrapper.enqueue_property_changes(&mut self.queue, self.context, &element, &old_wrapper);
+        let mut old_buffer = StringBuffer::acquire();
+        let mut old_wrapper = NodeWrapper {
+            node: old_node,
+            string_buffer: &mut old_buffer,
+        };
+        let mut new_buffer = StringBuffer::acquire();
+        let mut new_wrapper = NodeWrapper {
+            node: new_node,
+            string_buffer: &mut new_buffer,
+        };
+        new_wrapper.enqueue_property_changes(
+            &mut self.queue,
+            self.context,
+            &element,
+            &mut old_wrapper,
+        );
         let new_name = new_wrapper.name();
         if new_name.is_some()
             && new_node.live() != Live::Off
@@ -338,7 +359,11 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 event_id: UIA_Window_WindowClosedEventId,
             });
         }
-        let wrapper = NodeWrapper(node);
+        let mut buffer = StringBuffer::acquire();
+        let wrapper = NodeWrapper {
+            node,
+            string_buffer: &mut buffer,
+        };
         if wrapper.is_selection_item_pattern_supported() {
             self.handle_selection_state_change(node, false);
         }
