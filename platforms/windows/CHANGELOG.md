@@ -38,6 +38,18 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.34.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.33.1...accesskit_windows-v0.34.0) (2026-07-01)
+
+
+### Features
+
+* Cache Windows node COM objects ([#725](https://github.com/AccessKit/accesskit/issues/725)) ([d7480d9](https://github.com/AccessKit/accesskit/commit/d7480d91212b5ef35203c9cddc962e08d762548b))
+
+
+### Bug Fixes
+
+* Avoid spurious wakeups in the Windows adapter test harness ([#722](https://github.com/AccessKit/accesskit/issues/722)) ([b3c109e](https://github.com/AccessKit/accesskit/commit/b3c109ed9271dace83cd5611b0c62af39e3de73d))
+
 ## [0.33.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.33.0...accesskit_windows-v0.33.1) (2026-06-12)
 
 
