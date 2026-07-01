@@ -104,6 +104,53 @@ jobs:
         if: ${{ matrix.extra_adapter_clippy }}
         run: cargo clippy ${{ matrix.extra_adapter_clippy }} --all-targets -- -D warnings
 
+  doc:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+            adapters: "-p accesskit_windows"
+          - os: macOS-latest
+            name: macOS
+            adapters: "-p accesskit_macos"
+          - os: ubuntu-latest
+            name: Linux
+            adapters: "-p accesskit_unix"
+            extra_adapter_doc: "-p accesskit_atspi_common --all-features"
+          - os: ubuntu-latest
+            name: Android
+            adapters: "-p accesskit_android"
+          - os: macOS-latest
+            name: iOS Simulator
+            target: "aarch64-apple-ios-sim"
+            adapters: "-p accesskit_ios"
+    name: cargo doc (${{ matrix.name }})
+    env:
+      RUSTDOCFLAGS: "-D warnings"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: restore cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: cargo doc (common packages)
+        run: cargo doc -p accesskit -p accesskit_consumer -p accesskit_winit --features winit/wayland-dlopen ${{ matrix.target && format('--target {0}', matrix.target) }}
+
+      - name: cargo doc (adapters)
+        run: cargo doc ${{ matrix.adapters }} ${{ matrix.target && format('--target {0}', matrix.target) }}
+
+      - name: cargo doc (extra adapters)
+        if: ${{ matrix.extra_adapter_doc }}
+        run: cargo doc ${{ matrix.extra_adapter_doc }}
+
   find-msrv:
     runs-on: ubuntu-latest
     outputs:
