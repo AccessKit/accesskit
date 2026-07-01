@@ -4,8 +4,8 @@
   "plugins": ["cargo-workspace"],
   "release-type": "rust",
   "packages": {
-    "common": {},
-    "consumer": {},
+    "accesskit": {},
+    "accesskit_consumer": {},
     "platforms/android": {},
     "platforms/atspi-common": {},
     "platforms/ios": {},
