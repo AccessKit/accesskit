@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/AccessKit/accesskit/compare/accesskit_ios-v0.1.1...accesskit_ios-v0.1.2) (2026-07-01)
+
+
+### Bug Fixes
+
+* Support iOS 15+ ([#729](https://github.com/AccessKit/accesskit/issues/729)) ([a2af5ec](https://github.com/AccessKit/accesskit/commit/a2af5ecb89102bfc055a3db368eb011b8708c435))
+
 ## [0.1.1](https://github.com/AccessKit/accesskit/compare/accesskit_ios-v0.1.0...accesskit_ios-v0.1.1) (2026-06-12)
 
 
