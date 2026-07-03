@@ -155,6 +155,50 @@ jobs:
       - name: cargo test (adapters)
         run: cargo test ${{ matrix.adapters }} ${{ matrix.target && format('--target {0}', matrix.target) }}
 
+  doc:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+            adapters: "-p accesskit_windows"
+          - os: macOS-latest
+            name: macOS
+            adapters: "-p accesskit_macos"
+          - os: ubuntu-latest
+            name: Linux
+            adapters: "-p accesskit_atspi_common -p accesskit_unix"
+          - os: ubuntu-latest
+            name: Android
+            adapters: "-p accesskit_android"
+          - os: macOS-latest
+            name: iOS Simulator
+            target: "aarch64-apple-ios-sim"
+            adapters: "-p accesskit_ios"
+    name: cargo doc (${{ matrix.name }})
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: install nightly toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: restore cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: cargo doc (common packages)
+        run: cargo doc -p accesskit -p accesskit_consumer -p accesskit_winit ${{ matrix.target && format('--target {0}', matrix.target) }} --no-deps --document-private-items
+        env:
+          RUSTDOCFLAGS: "--cfg docsrs -D warnings"
+
+      - name: cargo doc (adapters)
+        run: cargo doc ${{ matrix.adapters }} ${{ matrix.target && format('--target {0}', matrix.target) }} --no-deps --document-private-items
+        env:
+          RUSTDOCFLAGS: "--cfg docsrs -D warnings"
+
   check-android-dex:
     runs-on: ubuntu-latest
     steps:
