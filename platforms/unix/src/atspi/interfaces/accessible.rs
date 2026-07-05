@@ -3,10 +3,13 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, OnceLock},
+};
 
 use accesskit_atspi_common::{NodeIdOrRoot, PlatformNode, PlatformRoot};
-use atspi::{InterfaceSet, RelationType, Role, StateSet};
+use atspi::{InterfaceSet, ObjectRefOwned, RelationType, Role, StateSet};
 use zbus::{fdo, interface, names::OwnedUniqueName};
 
 use super::map_root_error;
@@ -143,11 +146,20 @@ impl NodeAccessibleInterface {
 pub(crate) struct RootAccessibleInterface {
     bus_name: OwnedUniqueName,
     root: PlatformRoot,
+    desktop: Arc<OnceLock<ObjectRefOwned>>,
 }
 
 impl RootAccessibleInterface {
-    pub fn new(bus_name: OwnedUniqueName, root: PlatformRoot) -> Self {
-        Self { bus_name, root }
+    pub fn new(
+        bus_name: OwnedUniqueName,
+        root: PlatformRoot,
+        desktop: Arc<OnceLock<ObjectRefOwned>>,
+    ) -> Self {
+        Self {
+            bus_name,
+            root,
+            desktop,
+        }
     }
 }
 
@@ -165,7 +177,12 @@ impl RootAccessibleInterface {
 
     #[zbus(property)]
     fn parent(&self) -> OwnedObjectAddress {
-        OwnedObjectAddress::null()
+        self.desktop
+            .get()
+            .cloned()
+            .unwrap_or_default()
+            .into_inner()
+            .into()
     }
 
     #[zbus(property)]

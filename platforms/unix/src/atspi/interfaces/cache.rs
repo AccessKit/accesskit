@@ -5,6 +5,7 @@
 
 use accesskit_atspi_common::{CacheNode, Error, NodeIdOrRoot, PlatformNode, PlatformRoot};
 use atspi::{CacheItem, ObjectRef, ObjectRefOwned};
+use std::sync::{Arc, OnceLock};
 use zbus::{
     fdo, interface,
     names::{OwnedUniqueName, UniqueName},
@@ -52,11 +53,15 @@ fn cache_item(bus_name: &UniqueName, node: CacheNode) -> CacheItem {
     }
 }
 
-fn application_cache_item(bus_name: &UniqueName, root: &PlatformRoot) -> Result<CacheItem, Error> {
+fn application_cache_item(
+    bus_name: &UniqueName,
+    root: &PlatformRoot,
+    desktop: ObjectRefOwned,
+) -> Result<CacheItem, Error> {
     Ok(CacheItem {
         object: object_ref(bus_name, ObjectId::Root),
         app: object_ref(bus_name, ObjectId::Root),
-        parent: ObjectRefOwned::new(ObjectRef::Null),
+        parent: desktop,
         index: root.index_in_parent(),
         children: root.child_count()?,
         ifaces: root.interfaces(),
@@ -70,11 +75,20 @@ fn application_cache_item(bus_name: &UniqueName, root: &PlatformRoot) -> Result<
 pub(crate) struct CacheInterface {
     bus_name: OwnedUniqueName,
     root: PlatformRoot,
+    desktop: Arc<OnceLock<ObjectRefOwned>>,
 }
 
 impl CacheInterface {
-    pub fn new(bus_name: OwnedUniqueName, root: PlatformRoot) -> Self {
-        Self { bus_name, root }
+    pub fn new(
+        bus_name: OwnedUniqueName,
+        root: PlatformRoot,
+        desktop: Arc<OnceLock<ObjectRefOwned>>,
+    ) -> Self {
+        Self {
+            bus_name,
+            root,
+            desktop,
+        }
     }
 
     fn items(&self) -> Result<Vec<CacheItem>, Error> {
@@ -83,8 +97,9 @@ impl CacheInterface {
             .root
             .map_descendant_cache_nodes(|node| cache_item(bus_name, node))?;
 
+        let desktop = self.desktop.get().cloned().unwrap_or_default();
         let mut items = Vec::with_capacity(descendants.len() + 1);
-        items.push(application_cache_item(bus_name, &self.root)?);
+        items.push(application_cache_item(bus_name, &self.root, desktop)?);
         items.extend(descendants);
         Ok(items)
     }
@@ -107,7 +122,8 @@ mod tests {
     use accesskit_atspi_common::{
         Adapter, AdapterCallback, AppContext, Event, NodeId, PlatformRoot, WindowBounds,
     };
-    use atspi::{Interface, ObjectRef, ObjectRefOwned, Role as AtspiRole};
+    use atspi::{Interface, ObjectRefOwned, Role as AtspiRole};
+    use std::sync::{Arc, OnceLock};
     use zbus::names::{OwnedUniqueName, UniqueName};
 
     struct NoOpActionHandler;
@@ -150,7 +166,9 @@ mod tests {
 
     fn cache(update: TreeUpdate) -> (Adapter, CacheInterface) {
         let (adapter, root) = root_for(update);
-        (adapter, CacheInterface::new(bus_name(), root))
+        let desktop = Arc::new(OnceLock::new());
+        desktop.set(desktop_ref()).unwrap();
+        (adapter, CacheInterface::new(bus_name(), root, desktop))
     }
 
     fn window_with_button() -> TreeUpdate {
@@ -175,6 +193,10 @@ mod tests {
         )
     }
 
+    fn desktop_ref() -> ObjectRefOwned {
+        ObjectRefOwned::from_static_str_unchecked(":1.1", "/org/a11y/atspi/accessible/root")
+    }
+
     #[test]
     fn get_items_prepends_application_root() {
         let (_adapter, iface) = cache(window_with_button());
@@ -184,7 +206,7 @@ mod tests {
         };
         assert_eq!(app.object, root_ref());
         assert_eq!(app.app, root_ref());
-        assert_eq!(app.parent, ObjectRefOwned::new(ObjectRef::Null));
+        assert_eq!(app.parent, desktop_ref());
         assert_eq!(app.index, -1);
         assert_eq!(app.children, 1);
         assert_eq!(app.role, AtspiRole::Application);
@@ -274,7 +296,11 @@ mod tests {
             WindowBounds::default(),
             NoOpActionHandler,
         );
-        let iface = CacheInterface::new(bus_name(), PlatformRoot::new(&app_context));
+        let iface = CacheInterface::new(
+            bus_name(),
+            PlatformRoot::new(&app_context),
+            Arc::new(OnceLock::new()),
+        );
         let items = iface.items().unwrap();
 
         let app_root = &items[0];
