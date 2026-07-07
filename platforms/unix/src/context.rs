@@ -25,7 +25,7 @@ use zbus::{Connection, connection::Builder, proxy::PropertyChanged};
 
 use crate::{
     adapter::{AdapterState, Callback, Message},
-    atspi::{Bus, map_or_ignoring_broken_pipe},
+    atspi::{Bus, map_or_ignoring_recoverable_error, zbus_error_is_unrecoverable},
     executor::Executor,
     util::block_on,
 };
@@ -58,7 +58,11 @@ pub(crate) fn get_or_init_messages() -> Sender<Message> {
                     if let Ok(session_bus) = Builder::session() {
                         if let Ok(session_bus) = session_bus.internal_executor(false).build().await
                         {
-                            run_event_loop(&executor, session_bus, rx).await.unwrap();
+                            if let Err(error) = run_event_loop(&executor, session_bus, rx).await {
+                                if zbus_error_is_unrecoverable(&error) {
+                                    panic!("Accessibility event loop failed: {error}");
+                                }
+                            }
                         }
                     }
                 }))
@@ -145,7 +149,7 @@ async fn bus_after_status_change(
         None => false,
     };
     if enabled {
-        map_or_ignoring_broken_pipe(Bus::new(session_bus, executor).await, None, Some)
+        map_or_ignoring_recoverable_error(Bus::new(session_bus, executor).await, None, Some)
     } else {
         Ok(None)
     }
@@ -195,6 +199,7 @@ async fn run_event_loop(
             change = changes.next() => {
                 atspi_bus = bus_after_status_change(change, &session_bus, executor).await?;
                 sync_adapters(&mut adapters, &atspi_bus);
+
             }
             message = messages.next() => {
                 if let Some(message) = message {

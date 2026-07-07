@@ -18,7 +18,6 @@ use atspi::{
 };
 use std::{
     env::var,
-    io,
     sync::{Arc, OnceLock},
 };
 use zbus::{
@@ -172,7 +171,7 @@ impl Bus {
     where
         T: zbus::object_server::Interface,
     {
-        map_or_ignoring_broken_pipe(
+        map_or_ignoring_recoverable_error(
             self.conn.object_server().at(path, interface).await,
             false,
             |result| result,
@@ -223,7 +222,7 @@ impl Bus {
     where
         T: zbus::object_server::Interface,
     {
-        map_or_ignoring_broken_pipe(
+        map_or_ignoring_recoverable_error(
             self.conn.object_server().remove::<T, _>(path).await,
             false,
             |result| result,
@@ -415,7 +414,7 @@ impl Bus {
     where
         B: serde::Serialize + zbus::zvariant::DynamicType,
     {
-        map_or_ignoring_broken_pipe(
+        map_or_ignoring_recoverable_error(
             self.conn
                 .emit_signal(
                     Option::<BusName>::None,
@@ -437,7 +436,7 @@ impl Bus {
         signal_name: &str,
         body: EventBodyBorrowed<'_>,
     ) -> Result<()> {
-        map_or_ignoring_broken_pipe(
+        map_or_ignoring_recoverable_error(
             self.conn
                 .emit_signal(
                     Option::<BusName>::None,
@@ -453,7 +452,14 @@ impl Bus {
     }
 }
 
-pub(crate) fn map_or_ignoring_broken_pipe<T, U, F>(
+pub(crate) fn zbus_error_is_unrecoverable(error: &zbus::Error) -> bool {
+    matches!(
+        error,
+        zbus::Error::InterfaceExists(..) | zbus::Error::MissingParameter(..)
+    )
+}
+
+pub(crate) fn map_or_ignoring_recoverable_error<T, U, F>(
     result: zbus::Result<T>,
     default: U,
     f: F,
@@ -463,9 +469,7 @@ where
 {
     match result {
         Ok(result) => Ok(f(result)),
-        Err(zbus::Error::InputOutput(error)) if error.kind() == io::ErrorKind::BrokenPipe => {
-            Ok(default)
-        }
-        Err(error) => Err(error),
+        Err(error) if zbus_error_is_unrecoverable(&error) => Err(error),
+        Err(_) => Ok(default),
     }
 }
