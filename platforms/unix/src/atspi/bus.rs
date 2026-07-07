@@ -12,11 +12,15 @@ use accesskit_atspi_common::{
     NodeId, NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot, Property, WindowEvent,
 };
 use atspi::{
-    Interface, InterfaceSet,
+    Interface, InterfaceSet, ObjectRefOwned,
     events::EventBodyBorrowed,
     proxy::{bus::BusProxy, socket::SocketProxy},
 };
-use std::{env::var, io};
+use std::{
+    env::var,
+    io,
+    sync::{Arc, OnceLock},
+};
 use zbus::{
     Address, Connection, Result,
     connection::Builder,
@@ -28,6 +32,7 @@ pub(crate) struct Bus {
     conn: Connection,
     _task: Task<()>,
     socket_proxy: SocketProxy<'static>,
+    desktop: Arc<OnceLock<ObjectRefOwned>>,
 }
 
 impl Bus {
@@ -58,6 +63,7 @@ impl Bus {
             conn,
             _task,
             socket_proxy,
+            desktop: Arc::new(OnceLock::new()),
         };
         bus.register_root_node().await?;
         Ok(bus)
@@ -77,15 +83,21 @@ impl Bus {
             .at(path.clone(), ApplicationInterface(node.clone()))
             .await?
         {
-            self.socket_proxy
+            let desktop = self
+                .socket_proxy
                 .embed(&(self.unique_name().as_str(), ObjectId::Root.path().into()))
                 .await?;
+            let _ = self.desktop.set(desktop);
 
             self.conn
                 .object_server()
                 .at(
                     path,
-                    RootAccessibleInterface::new(self.unique_name().to_owned(), node.clone()),
+                    RootAccessibleInterface::new(
+                        self.unique_name().to_owned(),
+                        node.clone(),
+                        Arc::clone(&self.desktop),
+                    ),
                 )
                 .await?;
 
@@ -93,7 +105,11 @@ impl Bus {
                 .object_server()
                 .at(
                     cache_path(),
-                    CacheInterface::new(self.unique_name().to_owned(), node),
+                    CacheInterface::new(
+                        self.unique_name().to_owned(),
+                        node,
+                        Arc::clone(&self.desktop),
+                    ),
                 )
                 .await?;
         }
