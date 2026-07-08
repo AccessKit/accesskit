@@ -476,6 +476,11 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
                     .map(|o| o == VerticalOffset::Superscript),
             )
             .into()),
+            UIA_AnnotationTypesAttributeId => Ok(annotation_types_variant(
+                range.is_spelling_error(),
+                range.is_grammar_error(),
+            )
+            .into()),
             // TODO: implement more attributes
             _ => {
                 let value = unsafe { UiaGetReservedNotSupportedValue() }.unwrap();
