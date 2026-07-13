@@ -49,11 +49,14 @@ fn runtime_id_from_node_id(id: NodeId) -> [i32; RUNTIME_ID_SIZE] {
     ]
 }
 
-pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
+pub(crate) struct NodeWrapper<'a> {
+    pub(crate) node: &'a Node<'a>,
+    pub(crate) string_buffer: &'a mut Vec<u16>,
+}
 
 impl NodeWrapper<'_> {
     fn control_type(&self) -> UIA_CONTROLTYPE_ID {
-        let role = self.0.role();
+        let role = self.node.role();
         // TODO: Handle special cases. (#14)
         match role {
             Role::Unknown => UIA_CustomControlTypeId,
@@ -261,12 +264,14 @@ impl NodeWrapper<'_> {
         }
     }
 
-    fn localized_control_type(&self) -> Option<&str> {
-        self.0.role_description()
+    fn localized_control_type(&mut self) -> Option<StrWrapper<'_>> {
+        self.node
+            .role_description()
+            .map(|s| StrWrapper::new(s, self.string_buffer))
     }
 
-    fn aria_role(&self) -> Option<&str> {
-        match self.0.role() {
+    fn aria_role(&mut self) -> Option<StrWrapper<'_>> {
+        match self.node.role() {
             Role::Alert => Some("alert"),
             Role::AlertDialog => Some("alertdialog"),
             Role::Application => Some("application"),
@@ -393,65 +398,72 @@ impl NodeWrapper<'_> {
                 None
             }
         }
+        .map(|s| StrWrapper::new(s, self.string_buffer))
     }
 
-    pub(crate) fn name(&self) -> Option<WideString> {
-        let mut result = WideString::default();
-        if self.0.label_comes_from_value() {
-            self.0.write_value(&mut result)
+    pub(crate) fn name(&mut self) -> Option<WideString<'_>> {
+        let mut result = WideString::new(self.string_buffer);
+        if self.node.label_comes_from_value() {
+            self.node.write_value(&mut result)
         } else {
-            self.0.write_label(&mut result)
+            self.node.write_label(&mut result)
         }
         .unwrap()
         .then_some(result)
     }
 
-    fn description(&self) -> Option<String> {
-        self.0.description()
+    fn description(&mut self) -> Option<WideString<'_>> {
+        self.node.description().map(|s| {
+            let mut result = WideString::new(self.string_buffer);
+            result.write_str(&s).unwrap();
+            result
+        })
     }
 
     fn culture(&self) -> Option<LocaleName<'_>> {
-        self.0.language().map(LocaleName)
+        self.node.language().map(LocaleName)
     }
 
-    fn placeholder(&self) -> Option<&str> {
-        self.0.placeholder()
+    fn placeholder(&mut self) -> Option<StrWrapper<'_>> {
+        self.node
+            .placeholder()
+            .map(|s| StrWrapper::new(s, self.string_buffer))
     }
 
     fn is_content_element(&self) -> bool {
-        filter(self.0) == FilterResult::Include
+        filter(self.node) == FilterResult::Include
     }
 
-    fn aria_properties(&self) -> Option<WideString> {
-        let mut result = WideString::default();
+    fn aria_properties(&mut self) -> Option<WideString<'_>> {
+        let mut result = WideString::new(self.string_buffer);
         let mut properties = AriaProperties::new(&mut result);
 
         // TODO: Atomic, and busy flags should include false when explicitly set to that
-        if self.0.is_live_atomic() {
+        if self.node.is_live_atomic() {
             properties.write_bool_property("atomic", true).unwrap();
         }
 
-        if let Some(label) = self.0.braille_label() {
+        if let Some(label) = self.node.braille_label() {
             properties.write_property("braillelabel", label).unwrap();
         }
 
-        if let Some(description) = self.0.braille_role_description() {
+        if let Some(description) = self.node.braille_role_description() {
             properties
                 .write_property("brailleroledescription", description)
                 .unwrap();
         }
 
-        if self.0.is_busy() {
+        if self.node.is_busy() {
             properties.write_bool_property("busy", true).unwrap();
         }
 
-        if let Some(colindextext) = self.0.column_index_text() {
+        if let Some(colindextext) = self.node.column_index_text() {
             properties
                 .write_property("colindextext", colindextext)
                 .unwrap();
         }
 
-        if let Some(current) = self.0.aria_current() {
+        if let Some(current) = self.node.aria_current() {
             if current != AriaCurrent::False {
                 properties
                     .write_property(
@@ -470,7 +482,7 @@ impl NodeWrapper<'_> {
             }
         }
 
-        if let Some(has_popup) = self.0.has_popup() {
+        if let Some(has_popup) = self.node.has_popup() {
             properties
                 .write_property(
                     "haspopup",
@@ -485,21 +497,21 @@ impl NodeWrapper<'_> {
                 .unwrap();
         }
 
-        if let Some(level) = self.0.level() {
+        if let Some(level) = self.node.level() {
             properties.write_usize_property("level", level).unwrap();
         }
 
-        if self.0.is_multiline() {
+        if self.node.is_multiline() {
             properties.write_bool_property("multiline", true).unwrap();
         }
 
-        if let Some(rowindextext) = self.0.row_index_text() {
+        if let Some(rowindextext) = self.node.row_index_text() {
             properties
                 .write_property("rowindextext", rowindextext)
                 .unwrap();
         }
 
-        if let Some(sort_direction) = self.0.sort_direction() {
+        if let Some(sort_direction) = self.node.sort_direction() {
             properties
                 .write_property(
                     "sort",
@@ -520,19 +532,19 @@ impl NodeWrapper<'_> {
     }
 
     fn is_enabled(&self) -> bool {
-        !self.0.is_disabled()
+        !self.node.is_disabled()
     }
 
     fn is_focusable(&self) -> bool {
-        self.0.is_focusable(&filter)
+        self.node.is_focusable(&filter)
     }
 
     fn is_focused(&self) -> bool {
-        self.0.is_focused()
+        self.node.is_focused()
     }
 
     fn live_setting(&self) -> LiveSetting {
-        let live = self.0.live();
+        let live = self.node.live();
         match live {
             Live::Off => Off,
             Live::Polite => Polite,
@@ -540,16 +552,20 @@ impl NodeWrapper<'_> {
         }
     }
 
-    fn automation_id(&self) -> Option<&str> {
-        self.0.author_id()
+    fn automation_id(&mut self) -> Option<StrWrapper<'_>> {
+        self.node
+            .author_id()
+            .map(|s| StrWrapper::new(s, self.string_buffer))
     }
 
-    fn class_name(&self) -> Option<&str> {
-        self.0.class_name()
+    fn class_name(&mut self) -> Option<StrWrapper<'_>> {
+        self.node
+            .class_name()
+            .map(|s| StrWrapper::new(s, self.string_buffer))
     }
 
     fn orientation(&self) -> OrientationType {
-        match self.0.orientation() {
+        match self.node.orientation() {
             Some(Orientation::Horizontal) => OrientationType_Horizontal,
             Some(Orientation::Vertical) => OrientationType_Vertical,
             None => OrientationType_None,
@@ -557,11 +573,11 @@ impl NodeWrapper<'_> {
     }
 
     fn is_toggle_pattern_supported(&self) -> bool {
-        self.0.toggled().is_some() && !self.is_selection_item_pattern_supported()
+        self.node.toggled().is_some() && !self.is_selection_item_pattern_supported()
     }
 
     fn toggle_state(&self) -> ToggleState {
-        match self.0.toggled().unwrap() {
+        match self.node.toggled().unwrap() {
             Toggled::False => ToggleState_Off,
             Toggled::True => ToggleState_On,
             Toggled::Mixed => ToggleState_Indeterminate,
@@ -569,73 +585,73 @@ impl NodeWrapper<'_> {
     }
 
     fn is_invoke_pattern_supported(&self) -> bool {
-        self.0.is_invocable(&filter)
+        self.node.is_invocable(&filter)
     }
 
     fn is_value_pattern_supported(&self) -> bool {
-        if self.0.supports_url() {
+        if self.node.supports_url() {
             return true;
         }
-        self.0.has_value() && !self.0.label_comes_from_value()
+        self.node.has_value() && !self.node.label_comes_from_value()
     }
 
     fn is_range_value_pattern_supported(&self) -> bool {
-        self.0.numeric_value().is_some()
+        self.node.numeric_value().is_some()
     }
 
-    fn value(&self) -> WideString {
-        if let Some(url) = self.0.supports_url().then(|| self.0.url()).flatten() {
-            let mut result = WideString::default();
+    fn value(&mut self) -> WideString<'_> {
+        if let Some(url) = self.node.supports_url().then(|| self.node.url()).flatten() {
+            let mut result = WideString::new(self.string_buffer);
             result.write_str(url).unwrap();
             return result;
         }
-        let mut result = WideString::default();
-        self.0.write_value(&mut result).unwrap();
+        let mut result = WideString::new(self.string_buffer);
+        self.node.write_value(&mut result).unwrap();
         result
     }
 
     fn is_read_only(&self) -> bool {
-        self.0.is_read_only()
+        self.node.is_read_only()
     }
 
     fn numeric_value(&self) -> f64 {
-        self.0.numeric_value().unwrap()
+        self.node.numeric_value().unwrap()
     }
 
     fn min_numeric_value(&self) -> f64 {
-        self.0.min_numeric_value().unwrap_or(0.0)
+        self.node.min_numeric_value().unwrap_or(0.0)
     }
 
     fn max_numeric_value(&self) -> f64 {
-        self.0.max_numeric_value().unwrap_or(0.0)
+        self.node.max_numeric_value().unwrap_or(0.0)
     }
 
     fn numeric_value_step(&self) -> f64 {
-        self.0.numeric_value_step().unwrap_or(0.0)
+        self.node.numeric_value_step().unwrap_or(0.0)
     }
 
     fn numeric_value_jump(&self) -> f64 {
-        self.0
+        self.node
             .numeric_value_jump()
             .unwrap_or_else(|| self.numeric_value_step())
     }
 
     fn is_required(&self) -> bool {
-        self.0.is_required()
+        self.node.is_required()
     }
 
     fn is_scroll_item_pattern_supported(&self) -> bool {
-        self.0.supports_action(Action::ScrollIntoView, &filter)
+        self.node.supports_action(Action::ScrollIntoView, &filter)
     }
 
     pub(crate) fn is_selection_item_pattern_supported(&self) -> bool {
-        match self.0.role() {
+        match self.node.role() {
             // TODO: tables (#29)
             // https://www.w3.org/TR/core-aam-1.1/#mapping_state-property_table
             // SelectionItem.IsSelected is exposed when aria-checked is True or
             // False, for 'radio' and 'menuitemradio' roles.
             Role::RadioButton | Role::MenuItemRadio => {
-                matches!(self.0.toggled(), Some(Toggled::True | Toggled::False))
+                matches!(self.node.toggled(), Some(Toggled::True | Toggled::False))
             }
             // https://www.w3.org/TR/wai-aria-1.1/#aria-selected
             // SelectionItem.IsSelected is exposed when aria-select is True or False.
@@ -643,63 +659,63 @@ impl NodeWrapper<'_> {
             | Role::ListItem
             | Role::MenuListOption
             | Role::Tab
-            | Role::TreeItem => self.0.is_selected().is_some(),
+            | Role::TreeItem => self.node.is_selected().is_some(),
             Role::GridCell => true,
             _ => false,
         }
     }
 
     pub(crate) fn is_selected(&self) -> bool {
-        match self.0.role() {
+        match self.node.role() {
             // https://www.w3.org/TR/core-aam-1.1/#mapping_state-property_table
             // SelectionItem.IsSelected is set according to the True or False
             // value of aria-checked for 'radio' and 'menuitemradio' roles.
-            Role::RadioButton | Role::MenuItemRadio => self.0.toggled() == Some(Toggled::True),
+            Role::RadioButton | Role::MenuItemRadio => self.node.toggled() == Some(Toggled::True),
             // https://www.w3.org/TR/wai-aria-1.1/#aria-selected
             // SelectionItem.IsSelected is set according to the True or False
             // value of aria-selected.
-            _ => self.0.is_selected().unwrap_or(false),
+            _ => self.node.is_selected().unwrap_or(false),
         }
     }
 
     fn position_in_set(&self) -> Option<i32> {
-        self.0
+        self.node
             .position_in_set()
             .and_then(|p| p.try_into().ok())
             .map(|p: i32| p + 1)
     }
 
     fn size_of_set(&self) -> Option<i32> {
-        self.0
+        self.node
             .size_of_set_from_container(&filter)
             .and_then(|s| s.try_into().ok())
     }
 
     fn level(&self) -> Option<i32> {
-        self.0
+        self.node
             .level()
             .and_then(|level| level.checked_add(1))
             .and_then(|level| level.try_into().ok())
     }
 
     fn is_selection_pattern_supported(&self) -> bool {
-        self.0.is_container_with_selectable_children()
+        self.node.is_container_with_selectable_children()
     }
 
     fn is_multiselectable(&self) -> bool {
-        self.0.is_multiselectable()
+        self.node.is_multiselectable()
     }
 
     fn is_text_pattern_supported(&self) -> bool {
-        self.0.supports_text_ranges()
+        self.node.supports_text_ranges()
     }
 
     fn is_expand_collapse_pattern_supported(&self) -> bool {
-        self.0.supports_expand_collapse()
+        self.node.supports_expand_collapse()
     }
 
     fn expand_collapse_state(&self) -> ExpandCollapseState {
-        match self.0.data().is_expanded() {
+        match self.node.data().is_expanded() {
             Some(true) => ExpandCollapseState_Expanded,
             Some(false) => ExpandCollapseState_Collapsed,
             // TODO: Handle the menu button case. (#27)
@@ -708,27 +724,27 @@ impl NodeWrapper<'_> {
     }
 
     fn is_password(&self) -> bool {
-        self.0.role() == Role::PasswordInput
+        self.node.role() == Role::PasswordInput
     }
 
     fn is_dialog(&self) -> bool {
-        self.0.is_dialog()
+        self.node.is_dialog()
     }
 
     fn is_window_pattern_supported(&self) -> bool {
-        self.0.is_dialog()
+        self.node.is_dialog()
     }
 
     fn is_modal(&self) -> bool {
-        self.0.is_modal()
+        self.node.is_modal()
     }
 
     pub(crate) fn enqueue_property_changes(
-        &self,
+        &mut self,
         queue: &mut Vec<QueuedEvent>,
         context: &Arc<Context>,
         element: &IRawElementProviderSimple,
-        old: &NodeWrapper,
+        old: &mut NodeWrapper,
     ) {
         self.enqueue_simple_property_changes(queue, context, element, old);
         self.enqueue_pattern_property_changes(queue, element, old);
@@ -743,7 +759,7 @@ impl NodeWrapper<'_> {
     ) {
         if self.is_text_pattern_supported()
             && old.is_text_pattern_supported()
-            && self.0.raw_text_selection() != old.0.raw_text_selection()
+            && self.node.raw_text_selection() != old.node.raw_text_selection()
         {
             queue.push(QueuedEvent::Simple {
                 element: element.clone(),
@@ -751,24 +767,23 @@ impl NodeWrapper<'_> {
             });
         }
     }
+}
 
-    fn enqueue_property_change(
-        &self,
-        queue: &mut Vec<QueuedEvent>,
-        element: &IRawElementProviderSimple,
-        property_id: UIA_PROPERTY_ID,
-        old_value: Variant,
-        new_value: Variant,
-    ) {
-        let old_value: VARIANT = old_value.into();
-        let new_value: VARIANT = new_value.into();
-        queue.push(QueuedEvent::PropertyChanged {
-            element: element.clone(),
-            property_id,
-            old_value,
-            new_value,
-        });
-    }
+fn enqueue_property_change(
+    queue: &mut Vec<QueuedEvent>,
+    element: &IRawElementProviderSimple,
+    property_id: UIA_PROPERTY_ID,
+    old_value: Variant,
+    new_value: Variant,
+) {
+    let old_value: VARIANT = old_value.into();
+    let new_value: VARIANT = new_value.into();
+    queue.push(QueuedEvent::PropertyChanged {
+        element: element.clone(),
+        property_id,
+        old_value,
+        new_value,
+    });
 }
 
 #[implement(
@@ -966,7 +981,11 @@ impl PlatformNode {
             if node.is_disabled() {
                 return Err(element_not_enabled());
             }
-            let wrapper = NodeWrapper(&node);
+            let mut buffer = StringBuffer::acquire();
+            let wrapper = NodeWrapper {
+                node: &node,
+                string_buffer: &mut buffer,
+            };
             if selected == wrapper.is_selected() {
                 return Ok(None);
             }
@@ -996,13 +1015,17 @@ impl IRawElementProviderSimple_Impl for PlatformNode_Impl {
 
     fn GetPropertyValue(&self, property_id: UIA_PROPERTY_ID) -> Result<VARIANT> {
         self.resolve_with_tree_state_and_context(|node, state, context| {
-            let wrapper = NodeWrapper(&node);
+            let mut buffer = StringBuffer::acquire();
+            let mut wrapper = NodeWrapper {
+                node: &node,
+                string_buffer: &mut buffer,
+            };
             let mut result = wrapper.get_property_value(property_id);
             if result.is_empty() {
                 if node.is_root() {
                     match property_id {
                         UIA_NamePropertyId => {
-                            result = window_title(context.hwnd).into();
+                            result = window_title(context.hwnd, &mut buffer).into();
                         }
                         UIA_NativeWindowHandlePropertyId => {
                             result = (context.hwnd.0.0 as i32).into();
@@ -1011,8 +1034,15 @@ impl IRawElementProviderSimple_Impl for PlatformNode_Impl {
                     }
                 }
                 match property_id {
-                    UIA_FrameworkIdPropertyId => result = state.toolkit_name().into(),
-                    UIA_ProviderDescriptionPropertyId => result = toolkit_description(state).into(),
+                    UIA_FrameworkIdPropertyId => {
+                        result = state
+                            .toolkit_name()
+                            .map(|s| StrWrapper::new(s, &mut buffer))
+                            .into()
+                    }
+                    UIA_ProviderDescriptionPropertyId => {
+                        result = toolkit_description(state, &mut buffer).into()
+                    }
                     UIA_ControllerForPropertyId => {
                         let controlled: Vec<IUnknown> = node
                             .controls()
@@ -1155,7 +1185,7 @@ impl IRawElementProviderFragmentRoot_Impl for PlatformNode_Impl {
 macro_rules! properties {
     ($(($id:ident, $m:ident)),+) => {
         impl NodeWrapper<'_> {
-            fn get_property_value(&self, property_id: UIA_PROPERTY_ID) -> Variant {
+            fn get_property_value(&mut self, property_id: UIA_PROPERTY_ID) -> Variant {
                 match property_id {
                     $($id => {
                         self.$m().into()
@@ -1164,17 +1194,17 @@ macro_rules! properties {
                 }
             }
             fn enqueue_simple_property_changes(
-                &self,
+                &mut self,
                 queue: &mut Vec<QueuedEvent>,
                 context: &Arc<Context>,
                 element: &IRawElementProviderSimple,
-                old: &NodeWrapper,
+                old: &mut NodeWrapper,
             ) {
                 $({
                     let old_value = old.$m();
                     let new_value = self.$m();
                     if old_value != new_value {
-                        self.enqueue_property_change(
+                        enqueue_property_change(
                             queue,
                             element,
                             $id,
@@ -1184,8 +1214,8 @@ macro_rules! properties {
                     }
                 })*
 
-                let mut old_controls = old.0.controls().filter(|controlled| filter(controlled) == FilterResult::Include);
-                let mut new_controls = self.0.controls().filter(|controlled| filter(controlled) == FilterResult::Include);
+                let mut old_controls = old.node.controls().filter(|controlled| filter(controlled) == FilterResult::Include);
+                let mut new_controls = self.node.controls().filter(|controlled| filter(controlled) == FilterResult::Include);
                 let mut are_equal = true;
                 let mut controls: Vec<IUnknown> = Vec::new();
                 loop {
@@ -1201,7 +1231,7 @@ macro_rules! properties {
                     }
                 }
                 if !are_equal {
-                    self.enqueue_property_change(
+                    enqueue_property_change(
                         queue,
                         &element,
                         UIA_ControllerForPropertyId,
@@ -1223,7 +1253,8 @@ macro_rules! patterns {
         impl PlatformNode_Impl {
             fn pattern_provider(&self, pattern_id: UIA_PATTERN_ID) -> Result<IUnknown> {
                 self.resolve(|node| {
-                    let wrapper = NodeWrapper(&node);
+                    let mut buffer = StringBuffer::acquire();
+                    let wrapper = NodeWrapper { node: &node, string_buffer: &mut buffer };
                     match pattern_id {
                         $($pattern_id if wrapper.$is_supported() => {
                             let intermediate: $provider_interface = self.to_interface();
@@ -1237,17 +1268,17 @@ macro_rules! patterns {
         }
         impl NodeWrapper<'_> {
             fn enqueue_pattern_property_changes(
-                &self,
+                &mut self,
                 queue: &mut Vec<QueuedEvent>,
                 element: &IRawElementProviderSimple,
-                old: &NodeWrapper,
+                old: &mut NodeWrapper,
             ) {
                 $(if self.$is_supported() && old.$is_supported() {
                     $({
                         let old_value = old.$getter();
                         let new_value = self.$getter();
                         if old_value != new_value {
-                            self.enqueue_property_change(
+                            enqueue_property_change(
                                 queue,
                                 element,
                                 $property_id,
@@ -1263,7 +1294,9 @@ macro_rules! patterns {
         impl $provider_interface_impl for PlatformNode_Impl {
             $(fn $com_getter(&self) -> Result<$com_type> {
                 self.resolve(|node| {
-                    let wrapper = NodeWrapper(&node);
+                    let mut buffer = StringBuffer::acquire();
+                    #[allow(unused_mut)]
+                    let mut wrapper = NodeWrapper { node: &node, string_buffer: &mut buffer };
                     Ok(wrapper.$getter().into())
                 })
             })*
@@ -1351,7 +1384,11 @@ patterns! {
     (UIA_SelectionItemPatternId, ISelectionItemProvider, ISelectionItemProvider_Impl, is_selection_item_pattern_supported, (), (
         fn IsSelected(&self) -> Result<BOOL> {
             self.resolve(|node| {
-                let wrapper = NodeWrapper(&node);
+                let mut buffer = StringBuffer::acquire();
+                let wrapper = NodeWrapper {
+                    node: &node,
+                    string_buffer: &mut buffer,
+                };
                 Ok(wrapper.is_selected().into())
             })
         },
