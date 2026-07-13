@@ -42,7 +42,6 @@ allow = []
 deny = []
 skip = [
     "bitflags:<2",
-    "quick-xml:<0.37",
     "raw-window-handle:<0.6",
     "windows-sys:<0.59",
     "windows-targets:<0.52",
@@ -50,6 +49,7 @@ skip = [
     "windows_i686_msvc:<0.52",
     "windows_x86_64_gnu:<0.52",
     "windows_x86_64_msvc:<0.52",
+    "winnow:<1.0.4",
 ]
 skip-tree = []
 
