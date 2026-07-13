@@ -1035,10 +1035,7 @@ impl IRawElementProviderSimple_Impl for PlatformNode_Impl {
                 }
                 match property_id {
                     UIA_FrameworkIdPropertyId => {
-                        result = state
-                            .toolkit_name()
-                            .map(|s| StrWrapper::new(s, &mut buffer))
-                            .into()
+                        result = StrWrapper::new(state.toolkit_name(), &mut buffer).into()
                     }
                     UIA_ProviderDescriptionPropertyId => {
                         result = toolkit_description(state, &mut buffer).into()
