@@ -559,12 +559,15 @@ impl State {
         None
     }
 
-    pub fn toolkit_name(&self) -> Option<&str> {
-        self.data.toolkit_name.as_deref()
+    pub fn toolkit_name(&self) -> &str {
+        self.data.toolkit_name.as_deref().unwrap_or("AccessKit")
     }
 
     pub fn toolkit_version(&self) -> Option<&str> {
-        self.data.toolkit_version.as_deref()
+        self.data
+            .toolkit_version
+            .as_deref()
+            .filter(|_| self.data.toolkit_name.is_some())
     }
 
     pub fn locate_node(&self, node_id: NodeId) -> Option<(LocalNodeId, TreeId)> {
@@ -3134,5 +3137,51 @@ mod tests {
         assert!(handler.focus_moved_called);
         assert_eq!(handler.old_focus, Some(node_id(2)));
         assert_eq!(handler.new_focus, Some(node_id(3)));
+    }
+
+    fn tree_with_toolkit_info(name: Option<&str>, version: Option<&str>) -> super::Tree {
+        let mut tree_data = Tree::new(LocalNodeId(0));
+        tree_data.toolkit_name = name.map(Into::into);
+        tree_data.toolkit_version = version.map(Into::into);
+        let update = TreeUpdate {
+            nodes: vec![(LocalNodeId(0), Node::new(Role::Window))],
+            tree: Some(tree_data),
+            tree_id: TreeId::ROOT,
+            focus: LocalNodeId(0),
+        };
+        super::Tree::new(update, false)
+    }
+
+    #[test]
+    fn toolkit_info_is_reported_when_both_name_and_version_are_set() {
+        let tree = tree_with_toolkit_info(Some("egui"), Some("0.30.0"));
+        let state = tree.state();
+        assert_eq!("egui", state.toolkit_name());
+        assert_eq!(Some("0.30.0"), state.toolkit_version());
+    }
+
+    #[test]
+    fn toolkit_version_is_none_when_only_name_is_set() {
+        let tree = tree_with_toolkit_info(Some("egui"), None);
+        let state = tree.state();
+        assert_eq!("egui", state.toolkit_name());
+        assert_eq!(None, state.toolkit_version());
+    }
+
+    #[test]
+    fn toolkit_name_falls_back_to_accesskit_when_unset() {
+        let tree = tree_with_toolkit_info(None, None);
+        let state = tree.state();
+        assert_eq!("AccessKit", state.toolkit_name());
+        assert_eq!(None, state.toolkit_version());
+    }
+
+    #[test]
+    fn toolkit_version_is_suppressed_when_name_is_unset() {
+        // A version without a name would be misreported as the version of AccessKit.
+        let tree = tree_with_toolkit_info(None, Some("0.30.0"));
+        let state = tree.state();
+        assert_eq!("AccessKit", state.toolkit_name());
+        assert_eq!(None, state.toolkit_version());
     }
 }
