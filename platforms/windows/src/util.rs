@@ -413,16 +413,14 @@ pub(crate) fn window_title(hwnd: WindowHandle, buffer: &mut Vec<u16>) -> Option<
 pub(crate) fn toolkit_description<'a>(
     state: &TreeState,
     buffer: &'a mut Vec<u16>,
-) -> Option<WideString<'a>> {
-    state.toolkit_name().map(|name| {
-        let mut result = WideString::new(buffer);
-        result.write_str(name).unwrap();
-        if let Some(version) = state.toolkit_version() {
-            result.write_char(' ').unwrap();
-            result.write_str(version).unwrap();
-        }
-        result
-    })
+) -> WideString<'a> {
+    let mut result = WideString::new(buffer);
+    result.write_str(state.toolkit_name()).unwrap();
+    if let Some(version) = state.toolkit_version() {
+        result.write_char(' ').unwrap();
+        result.write_str(version).unwrap();
+    }
+    result
 }
 
 pub(crate) fn upgrade<T>(weak: &Weak<T>) -> Result<Arc<T>> {
