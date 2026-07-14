@@ -68,6 +68,21 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_atspi_common bumped from 0.10.0 to 0.10.1
 
+## [0.22.1](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.22.0...accesskit_unix-v0.22.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* Don't panic on recoverable D-Bus errors on Unix ([#741](https://github.com/AccessKit/accesskit/issues/741)) ([a7d6545](https://github.com/AccessKit/accesskit/commit/a7d65458bd8d81ded693c7b8eae451e1e16aaa01))
+* Set the desktop as the app's parent on Unix ([#740](https://github.com/AccessKit/accesskit/issues/740)) ([e1f63ac](https://github.com/AccessKit/accesskit/commit/e1f63acbb2c36e3cae741871300aeb121c9e6274))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_atspi_common bumped from 0.19.0 to 0.19.1
+
 ## [0.22.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.21.1...accesskit_unix-v0.22.0) (2026-06-12)
 
 

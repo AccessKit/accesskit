@@ -24,6 +24,20 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_consumer bumped from 0.25.0 to 0.26.0
 
+## [0.19.1](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.19.0...accesskit_atspi_common-v0.19.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* Update Tree::toolkit_name call sites in the adapters ([27734d8](https://github.com/AccessKit/accesskit/commit/27734d8409d9e03f51caefe1c13ae4ff74e3c6b2))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.37.0 to 0.38.0
+
 ## [0.19.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.18.1...accesskit_atspi_common-v0.19.0) (2026-06-12)
 
 
