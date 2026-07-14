@@ -17,8 +17,8 @@ db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
 ignore = [
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser is unmaintained; pulled in by sctk-adwaita via ab_glyph/owned_ttf_parser; only a dev dependency" },
-    { id = "RUSTSEC-2026-0194", reason = "quick-xml DoS on untrusted XML; only used at build time by wayland-scanner on trusted protocol files, and wayland-scanner requires quick-xml 0.37.2; only a dev dependency" },
-    { id = "RUSTSEC-2026-0195", reason = "same quick-xml build-time usage as RUSTSEC-2026-0194; only a dev dependency" },
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml DoS on untrusted XML; only used at build time by wayland-scanner on trusted protocol files, and wayland-scanner requires quick-xml 0.37.2; doesn't execute on end-users system" },
+    { id = "RUSTSEC-2026-0195", reason = "same quick-xml build-time usage as RUSTSEC-2026-0194; doesn't execute on end-users system" },
 ]
 
 [licenses]
