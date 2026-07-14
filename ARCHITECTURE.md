@@ -18,18 +18,27 @@ The schema also defines actions that can be requested by assistive technologies,
 
 ## File structure
 
-- `common/` is the main accesskit crate, it's where there is what you need to import accesskit. You use this crate to build a representation for your accessibility tree.
-- `platforms/` is where you'll find the adapters, crates that expose the constructed accessibility trees to the platform APIs.
-- `consumer/` defines common code used by adapters. Most accesskit users don't need to use that crate.
+The main folders are:
+
+- `common/` stores the main accesskit crate.
+- `consumer/` stores utility code for platform adapters.
+- `platforms/` stores platform adapters.
+
+
+### `common/`
+
+This folder stores the `accesskit` crate, which defines the types you need to build your accessibility tree.
+
+See **`accesskit` crate overview** section for details.
 
 
 ### `consumer/`
 
-This folder holds the `accesskit_consumer` crate, which defines types and functions used by adapters.
+This folder stores the `accesskit_consumer` crate, which defines types and functions used by platform adapters (see next section).
 
 You're unlikely to need to look at `accesskit_consumer` unless you're writing a platform adapter or a testing system for accesskit.
 
-`accesskit_consumer::Tree` is the type that retains the accessibility tree in memory and updates it when a new `TreeUpdate` is emitted (see `accesskit` section).
+`accesskit_consumer::Tree` is the type that retains the accessibility tree in memory and updates it when a new `TreeUpdate` is emitted (see **`accesskit` crate overview**).
 
 
 ### `platforms/`
@@ -40,12 +49,10 @@ Adapters translate between accesskit's tree format and a given platform's access
 
 Adapters are best-effort implementations and may not cover all the accessibility APIs of their platform.
 
-Anecdotally, adapters have very similar code; the main difference between platform APIs is the threading model.
+(Anecdotally, adapters have very similar code; the main difference between platform APIs is the threading model.)
 
 
-## `accesskit` crate
-
-This is the repository's, main crate, stored in the `common/` folder.
+## `accesskit` crate overview
 
 The main types exported by the crate are:
 
@@ -91,13 +98,13 @@ pub struct TreeUpdate {
 
 If `nodes` is an empty `Vec`, the node tree will stay unchanged. Otherwise, each included node will be updated.
 
-You add new nodes by updating the parent with a children list that includes the id of new node, and you remove nodes by updating the parent with a children list without the if of the removed node.
+You add new nodes by updating the parent with a children list that includes the id of the new node, and you remove nodes by updating the parent with a children list without the id of the removed node.
 
 `tree_id` indicates which tree is affected (see **Sub-trees** section).
 
 The other two `TreeUpdate` fields (`tree`, `focus`) affect basic tree metadata.
 
-(If you include a node, you have to re-specify everything, otherwise you erase all properties)
+(If you include a node in a `TreeUpdate`, you have to re-specify all its properties, otherwise you erase the ones you haven't specified.)
 
 
 ### `Action`
