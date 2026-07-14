@@ -281,14 +281,11 @@ fn next_filtered_sibling<'a>(
                 _ => {
                     let parent = current.parent();
                     next = parent;
-                    if let Some(parent) = parent {
-                        if filter(&parent) != FilterResult::ExcludeNode {
-                            return None;
-                        }
-                        consider_children = false;
-                    } else {
+                    let parent = parent?;
+                    if filter(&parent) != FilterResult::ExcludeNode {
                         return None;
                     }
+                    consider_children = false;
                 }
             }
         }
@@ -325,14 +322,11 @@ fn previous_filtered_sibling<'a>(
                 _ => {
                     let parent = current.parent();
                     previous = parent;
-                    if let Some(parent) = parent {
-                        if filter(&parent) != FilterResult::ExcludeNode {
-                            return None;
-                        }
-                        consider_children = false;
-                    } else {
+                    let parent = parent?;
+                    if filter(&parent) != FilterResult::ExcludeNode {
                         return None;
                     }
+                    consider_children = false;
                 }
             }
         }
