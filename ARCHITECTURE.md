@@ -7,6 +7,8 @@ The expected userbase of AccessKit is developers who are writing a UI toolkit an
 
 ## Data schema
 
+<!-- TODO - Better explain this. -->
+
 The heart of AccessKit is a data schema that defines all the data required to render an accessible UI for screen readers and other assistive technologies.
 
 The schema represents a tree structure, in which each node is either a single UI element or an element cluster such as a window or document. Each node has an integer ID, a role (e.g. button, label, or text input), and a variety of optional attributes.
