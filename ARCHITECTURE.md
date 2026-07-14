@@ -34,7 +34,7 @@ You're unlikely to need to look at `accesskit_consumer` unless you're writing a 
 
 ### `platforms/`
 
-Crates in the `platforms/` folder are what we call "adapters".
+This folder stores a list of crates that we call "adapters".
 
 Adapters translate between accesskit's tree format and a given platform's accessibility API; you can think of them as backends for accesskit.
 
@@ -53,6 +53,8 @@ The main types exported by the crate are:
 - `Role`
 - `TreeUpdate`
 - `Action`
+
+Most of these types are defined in the `lib.rs` file.
 
 
 ### `Node`
