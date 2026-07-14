@@ -1,6 +1,6 @@
 [package]
 name = "accesskit_android"
-version = "0.7.4"
+version = "0.7.5"
 authors.workspace = true
 license.workspace = true
 description = "AccessKit UI accessibility infrastructure: Android adapter"
@@ -16,6 +16,6 @@ embedded-dex = []
 
 [dependencies]
 accesskit = { version = "0.24.1", path = "../../common" }
-accesskit_consumer = { version = "0.37.0", path = "../../consumer" }
+accesskit_consumer = { version = "0.38.0", path = "../../consumer" }
 jni = "0.21.1"
 log = "0.4.17"

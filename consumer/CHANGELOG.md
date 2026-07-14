@@ -24,6 +24,18 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.38.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.37.0...accesskit_consumer-v0.38.0) (2026-07-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* Make Tree::toolkit_name return 'AccessKit' by default
+
+### Bug Fixes
+
+* Address Rust 1.97 clippy warnings ([#744](https://github.com/AccessKit/accesskit/issues/744)) ([3bde63c](https://github.com/AccessKit/accesskit/commit/3bde63ca0eeb885931e64336afccdce68dd832bd))
+* Make Tree::toolkit_name return 'AccessKit' by default ([2da05e1](https://github.com/AccessKit/accesskit/commit/2da05e10c639ecf388cec44ac4dc690054e4f16b))
+
 ## [0.37.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.36.0...accesskit_consumer-v0.37.0) (2026-06-12)
 
 
