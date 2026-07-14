@@ -20,6 +20,7 @@ The schema also defines actions that can be requested by assistive technologies,
 - `platforms/` is where you'll find the backends, crates that expose the constructed accessibility trees to the platform APIs.
 - `consumer/` defines common code used by backends. Most accesskit users don't need to use that crate.
 
+
 ### `consumer/`
 
 This folder holds the `accesskit_consumer` crate, which defines types and functions used by backend.
@@ -27,6 +28,7 @@ This folder holds the `accesskit_consumer` crate, which defines types and functi
 You're unlikely to need to look at `accesskit_consumer` unless you're writing a platform backend or a testing system for accesskit.
 
 `accesskit_consumer::Tree` is the type that retains the accessibility tree in memory and updates it when a new `TreeUpdate` is emitted (see `accesskit` section).
+
 
 ### `platforms/`
 
@@ -49,6 +51,7 @@ The main types exported by the crate are:
 - `Role`
 - `TreeUpdate`
 - `Action`
+
 
 ### `Node`
 
@@ -91,7 +94,6 @@ You add new nodes by updating the parent with a children list that includes the 
 The other two `TreeUpdate` fields (`tree`, `focus`) affect basic tree metadata.
 
 (If you include a node, you have to re-specify everything, otherwise you erase all properties)
-
 
 
 ### `Action`
