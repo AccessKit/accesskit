@@ -1,0 +1,155 @@
+# ARCHITECTURE
+
+AccessKit is a cross-platform, cross-language abstraction over accessibility APIs, so toolkit developers only have to implement accessibility once.
+
+The expected userbase of AccessKit is developers who are writing a UI toolkit and want their toolkit to communicate with screen readers and other assistive technologies so that apps developed with the toolkit are accessible to a wider audience.
+
+
+## Data schema
+
+<!-- TODO - Better explain this. -->
+
+The heart of AccessKit is a data schema that defines all the data required to render an accessible UI for screen readers and other assistive technologies.
+
+The schema represents a tree structure, in which each node is either a single UI element or an element cluster such as a window or document. Each node has an integer ID, a role (e.g. button, label, or text input), and a variety of optional attributes.
+
+The schema also defines actions that can be requested by assistive technologies, such as moving the keyboard focus, invoking a button, or selecting text. The schema is based largely on Chromium's cross-platform accessibility abstraction.
+
+
+## File structure
+
+The main folders are:
+
+- `common/` stores the main accesskit crate.
+- `consumer/` stores utility code for platform adapters.
+- `platforms/` stores platform adapters.
+
+
+### `common/`
+
+This folder stores the `accesskit` crate, which defines the types you need to build your accessibility tree.
+
+See **`accesskit` crate overview** section for details.
+
+
+### `consumer/`
+
+This folder stores the `accesskit_consumer` crate, which defines types and functions used by platform adapters (see next section).
+
+You're unlikely to need to look at `accesskit_consumer` unless you're writing a platform adapter or a testing system for accesskit.
+
+`accesskit_consumer::Tree` is the type that retains the accessibility tree in memory and updates it when a new `TreeUpdate` is emitted (see **`accesskit` crate overview**).
+
+
+### `platforms/`
+
+This folder stores a list of crates that we call "adapters".
+
+Adapters translate between accesskit's tree format and a given platform's accessibility API; you can think of them as backends for accesskit.
+
+Adapters are best-effort implementations and may not cover all the accessibility APIs of their platform.
+
+(Anecdotally, adapters have very similar code; the main difference between platform APIs is the threading model.)
+
+
+## `accesskit` crate overview
+
+The main types exported by the crate are:
+
+- `Node`
+- `Role`
+- `TreeUpdate`
+- `Action`
+
+Most of these types are defined in the `lib.rs` file.
+
+
+### `Node`
+
+A `Node` represents the frozen state of a semantic UI element.
+
+A node can be a button, a date input, a widget group, a text run, a window, etc.
+
+A node is defined by:
+
+- A `Role`, which indicates how accessibility APIs should interpret the node.
+- A list of properties, semantic information about the node.
+- A list of actions that the node can receive.
+
+For instance, a button will have the role `Button`, may have properties like "label", "disabled", "bounds", etc, and can receive the actions `Focus`, `Blur` and `Click`.
+
+The exact list of which properties and actions apply to which roles is vague and undocumented, but mostly matches ARIA guidelines for equivalent roles.
+
+
+### `TreeUpdate`
+
+A `TreeUpdate` is a list of changes that applies to your accessibility tree. Its definition looks like:
+
+```rust
+pub struct TreeUpdate {
+    pub nodes: Vec<(NodeId, Node)>,
+    pub tree: Option<Tree>,
+    pub tree_id: TreeId,
+    pub focus: NodeId,
+}
+```
+
+`nodes` is the important field here.
+
+If `nodes` is an empty `Vec`, the node tree will stay unchanged. Otherwise, each included node will be updated.
+
+You add new nodes by updating the parent with a children list that includes the id of the new node, and you remove nodes by updating the parent with a children list without the id of the removed node.
+
+`tree_id` indicates which tree is affected (see **Sub-trees** section).
+
+The other two `TreeUpdate` fields (`tree`, `focus`) affect basic tree metadata.
+
+(If you include a node in a `TreeUpdate`, you have to re-specify all its properties, otherwise you erase the ones you haven't specified.)
+
+
+### `Action`
+
+Each node has a set of actions that it accepts.
+
+When you register that a node accepts certain actions, accesskit may give you `ActionRequest` values:
+
+```rust
+pub struct ActionRequest {
+    pub action: Action,
+    pub target_tree: TreeId,
+    pub target_node: NodeId,
+    pub data: Option<ActionData>,
+}
+```
+
+Action requests are usually sent based on user input.
+
+For instance, if you register a node with a `Button` role, an `"Apply"` label and that the node accepts `Action::Click`, if the user uses some voice control software and says "Click the 'Apply' button", your application will receive an `ActionRequest` with `Action::Click` targetting that node.
+
+
+### Sub-trees
+
+An app's accessibility tree can be composed of several subtrees.
+
+The idea behind subtrees is to allow different actors to produce accessibility trees without coordinating (for example, because they're separate processes in a browser), and let the main application submit them to the adapters, which take care of combining them.
+
+The main way this separation manifests is in namespacing: each subtree can pick whatever `NodeId`s it wants without worrying about colliding with other subtree's `NodeId`s.
+`NodeId(123)` in one subtree and `NodeId(123)` in another subtree refer to completely different nodes
+
+Subtrees are composed through "graft nodes", `Node` instances with a "tree_id" property set to the id of the subtree.
+
+Each sub-tree has to be submitted to the adapter with a separate `TreeUpdate`. When presented to the platform's accessibility APIs, the sub trees will be stitched together and submitted as a single accessibility tree.
+
+
+## Specification
+
+Accesskit is currently sparsely documented (see accesskit#402), and some values are subject to interpretation. AccessKit is inspired by Chromium's accessibility API, which is undocumented, and by the ARIA standard.
+
+In the short term, we plan on documenting which items match the ARIA standard exactly and which have a different or not-in-ARIA meaning.
+
+
+## Testing
+
+When working on AccesstKit or a project using it, it's important to check the user experience with an actual screen reader (or whatever assistive technology you're trying to support).
+
+README-APPLICATION-DEVELOPERS.md gives some information about how to do it.
