@@ -3140,14 +3140,14 @@ mod tests {
     }
 
     fn tree_with_toolkit_info(name: Option<&str>, version: Option<&str>) -> super::Tree {
-        let mut tree_data = Tree::new(LocalNodeId(0));
-        tree_data.toolkit_name = name.map(Into::into);
-        tree_data.toolkit_version = version.map(Into::into);
+        let mut tree_info = TreeInfo::new(NodeId(0));
+        tree_info.toolkit_name = name.map(Into::into);
+        tree_info.toolkit_version = version.map(Into::into);
         let update = TreeUpdate {
-            nodes: vec![(LocalNodeId(0), Node::new(Role::Window))],
-            tree: Some(tree_data),
+            nodes: vec![(NodeId(0), Node::new(Role::Window))],
+            tree: Some(tree_info),
             tree_id: TreeId::ROOT,
-            focus: LocalNodeId(0),
+            focus: NodeId(0),
         };
         super::Tree::new(update, false)
     }
