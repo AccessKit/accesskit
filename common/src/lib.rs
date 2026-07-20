@@ -734,7 +734,7 @@ impl fmt::Debug for NodeId {
     }
 }
 
-/// The stable identity of a [`Tree`].
+/// The stable identity of a tree.
 ///
 /// Use [`TreeId::ROOT`] for the main/root tree. For subtrees, use a random
 /// UUID (version 4) to avoid collisions between independently created trees.
@@ -2790,7 +2790,7 @@ impl JsonSchema for Properties {
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-pub struct Tree {
+pub struct TreeInfo {
     /// The identifier of the tree's root node.
     pub root: NodeId,
     /// The name of the UI toolkit in use.
@@ -2799,10 +2799,13 @@ pub struct Tree {
     pub toolkit_version: Option<String>,
 }
 
-impl Tree {
+#[deprecated(note = "Use TreeInfo instead")]
+pub type Tree = TreeInfo;
+
+impl TreeInfo {
     #[inline]
-    pub fn new(root: NodeId) -> Tree {
-        Tree {
+    pub fn new(root: NodeId) -> TreeInfo {
+        TreeInfo {
             root,
             toolkit_name: None,
             toolkit_version: None,
@@ -2810,7 +2813,7 @@ impl Tree {
     }
 }
 
-/// A serializable representation of an atomic change to a [`Tree`].
+/// A serializable representation of an atomic change to a tree.
 ///
 /// The sender and receiver must be in sync; the update is only meant
 /// to bring the tree from a specific previous state into its next state.
@@ -2853,7 +2856,7 @@ pub struct TreeUpdate {
     /// if it has not changed since the previous update, but providing the same
     /// information again is also allowed. This is required when initializing
     /// a tree.
-    pub tree: Option<Tree>,
+    pub tree: Option<TreeInfo>,
 
     /// The identifier of the tree that this update applies to.
     ///
@@ -3240,7 +3243,7 @@ mod tests {
 
     #[test]
     fn new_tree_should_have_root_id() {
-        let tree = Tree::new(NodeId(1));
+        let tree = TreeInfo::new(NodeId(1));
         assert_eq!(tree.root, NodeId(1));
         assert_eq!(tree.toolkit_name, None);
         assert_eq!(tree.toolkit_version, None);

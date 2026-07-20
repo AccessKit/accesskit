@@ -2,7 +2,8 @@
 mod fill;
 
 use accesskit::{
-    Action, ActionRequest, Affine, Live, Node, NodeId, Rect, Role, Tree, TreeId, TreeUpdate, Vec2,
+    Action, ActionRequest, Affine, Live, Node, NodeId, Rect, Role, TreeId, TreeInfo, TreeUpdate,
+    Vec2,
 };
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
 use std::error::Error;
@@ -119,7 +120,7 @@ impl UiState {
         let root = self.build_root();
         let button_1 = build_button(BUTTON_1_ID, "Button 1");
         let button_2 = build_button(BUTTON_2_ID, "Button 2");
-        let tree = Tree::new(WINDOW_ID);
+        let tree = TreeInfo::new(WINDOW_ID);
         let mut result = TreeUpdate {
             nodes: vec![
                 (WINDOW_ID, root),

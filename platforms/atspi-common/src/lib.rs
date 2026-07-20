@@ -17,7 +17,7 @@ pub mod simplified;
 mod text_attributes;
 mod util;
 
-pub use accesskit_consumer::NodeId;
+pub use accesskit_consumer::FullNodeId;
 pub use atspi_common::{
     CoordType, Granularity, InterfaceSet, Layer, RelationType, Role, ScrollType, State, StateSet,
 };
