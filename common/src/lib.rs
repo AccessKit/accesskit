@@ -1909,61 +1909,114 @@ node_id_property_methods! {
 }
 
 string_property_methods! {
-    /// The label of a control that can have a label. If the label is specified
-    /// via the [`Node::labelled_by`] relation, this doesn't need to be set.
-    /// Note that the text content of a node with the [`Role::Label`] role
-    /// should be provided via [`Node::value`], not this property.
+    /// The accessible name of this node. If the name is specified via the
+    /// [`Node::labelled_by`] relation, this doesn't need to be set. The text
+    /// content of a node with the [`Role::Label`] role should be provided via
+    /// [`Node::value`], not this property. ARIA equivalent: [accessible name].
+    ///
+    /// [accessible name]: https://www.w3.org/TR/wai-aria-1.2/#dfn-accessible-name
     (Label, label, set_label, clear_label),
+    /// A short explanation that supplements this node's accessible name.
+    /// ARIA equivalent: [accessible description].
+    ///
+    /// [accessible description]: https://www.w3.org/TR/wai-aria-1.2/#dfn-accessible-description
     (Description, description, set_description, clear_description),
+    /// The text content or string value of this node. ARIA equivalent:
+    /// [`aria-valuetext`] for range widgets.
+    ///
+    /// **Difference with ARIA:** Unlike `aria-valuetext`, this property is also
+    /// used for text controls and the text content of nodes such as [`Role::Label`].
+    ///
+    /// [`aria-valuetext`]: https://www.w3.org/TR/wai-aria-1.2/#aria-valuetext
     (Value, value, set_value, clear_value),
     /// A single character, usually part of this node's name, that can be pressed,
     /// possibly along with a platform-specific modifier, to perform
     /// this node's default action. For menu items, the access key is only active
     /// while the menu is active, in contrast with [`keyboard_shortcut`];
-    /// a single menu item may in fact have both properties.
+    /// a single menu item may in fact have both properties. ARIA has no distinct
+    /// equivalent; [`aria-keyshortcuts`] corresponds to [`keyboard_shortcut`].
     ///
     /// [`keyboard_shortcut`]: Node::keyboard_shortcut
+    /// [`aria-keyshortcuts`]: https://www.w3.org/TR/wai-aria-1.2/#aria-keyshortcuts
     (AccessKey, access_key, set_access_key, clear_access_key),
     /// A way for application authors to identify this node for automated
-    /// testing purpose. The value must be unique among this node's siblings.
+    /// testing purposes. The value must be unique among this node's siblings.
+    /// There is no ARIA equivalent.
     (AuthorId, author_id, set_author_id, clear_author_id),
+    /// The platform control class name for this node. There is no ARIA equivalent.
     (ClassName, class_name, set_class_name, clear_class_name),
-    /// Only present when different from parent.
+    /// The font family used for this node's text. Only set this when it differs
+    /// from the parent. There is no ARIA equivalent.
     (FontFamily, font_family, set_font_family, clear_font_family),
+    /// The name of the HTML element represented by this node. There is no ARIA
+    /// equivalent.
     (HtmlTag, html_tag, set_html_tag, clear_html_tag),
     /// Inner HTML of an element. Only used for a top-level math element,
     /// to support third-party math accessibility products that parse MathML.
+    /// There is no ARIA equivalent.
     (InnerHtml, inner_html, set_inner_html, clear_inner_html),
     /// A keystroke or sequence of keystrokes, complete with any required
     /// modifiers(s), that will perform this node's default action.
-    /// The value of this property should be in a human-friendly format.
+    /// The value of this property should be in a human-friendly format. ARIA
+    /// equivalent: [`aria-keyshortcuts`].
+    ///
+    /// **Difference with ARIA:** `aria-keyshortcuts` uses a standardized syntax,
+    /// while AccessKit expects a human-friendly string.
+    ///
+    /// [`aria-keyshortcuts`]: https://www.w3.org/TR/wai-aria-1.2/#aria-keyshortcuts
     (KeyboardShortcut, keyboard_shortcut, set_keyboard_shortcut, clear_keyboard_shortcut),
     /// An [IETF language tag](https://www.rfc-editor.org/info/bcp47).
-    /// Only present when different from parent.
+    /// Only set this when it differs from the parent. There is no ARIA equivalent;
+    /// web content supplies this information through the host language.
     (Language, language, set_language, clear_language),
     /// If a text input has placeholder text, it should be exposed
-    /// through this property rather than [`label`].
+    /// through this property rather than [`label`]. ARIA equivalent:
+    /// [`aria-placeholder`].
     ///
     /// [`label`]: Node::label
+    /// [`aria-placeholder`]: https://www.w3.org/TR/wai-aria-1.2/#aria-placeholder
     (Placeholder, placeholder, set_placeholder, clear_placeholder),
     /// An optional string that may override an assistive technology's
     /// description of the node's role. Only provide this for custom control types.
-    /// The value of this property should be in a human-friendly, localized format.
+    /// The value should be human-friendly and localized. ARIA equivalent:
+    /// [`aria-roledescription`].
+    ///
+    /// [`aria-roledescription`]: https://www.w3.org/TR/wai-aria-1.2/#aria-roledescription
     (RoleDescription, role_description, set_role_description, clear_role_description),
     /// An optional string that may override an assistive technology's
     /// description of the node's state, replacing default strings such as
     /// "checked" or "selected". Note that most platform accessibility APIs
-    /// and assistive technologies do not support this feature.
+    /// and assistive technologies do not support this feature. There is no ARIA
+    /// equivalent.
     (StateDescription, state_description, set_state_description, clear_state_description),
     /// If a node's only accessible name comes from a tooltip, it should be
-    /// exposed through this property rather than [`label`].
+    /// exposed through this property rather than [`label`]. There is no direct
+    /// ARIA equivalent.
     ///
     /// [`label`]: Node::label
     (Tooltip, tooltip, set_tooltip, clear_tooltip),
+    /// The target URL of a link. There is no ARIA equivalent; web content
+    /// supplies this information through the host language.
     (Url, url, set_url, clear_url),
+    /// A human-readable alternative to the numeric row index. ARIA 1.3 draft
+    /// equivalent: [`aria-rowindextext`].
+    ///
+    /// [`aria-rowindextext`]: https://www.w3.org/TR/wai-aria-1.3/#aria-rowindextext
     (RowIndexText, row_index_text, set_row_index_text, clear_row_index_text),
+    /// A human-readable alternative to the numeric column index. ARIA 1.3 draft
+    /// equivalent: [`aria-colindextext`].
+    ///
+    /// [`aria-colindextext`]: https://www.w3.org/TR/wai-aria-1.3/#aria-colindextext
     (ColumnIndexText, column_index_text, set_column_index_text, clear_column_index_text),
+    /// A concise label for this node in Braille. ARIA 1.3 draft equivalent:
+    /// [`aria-braillelabel`].
+    ///
+    /// [`aria-braillelabel`]: https://www.w3.org/TR/wai-aria-1.3/#aria-braillelabel
     (BrailleLabel, braille_label, set_braille_label, clear_braille_label),
+    /// A concise, localized description of this node's role in Braille. ARIA 1.3
+    /// draft equivalent: [`aria-brailleroledescription`].
+    ///
+    /// [`aria-brailleroledescription`]: https://www.w3.org/TR/wai-aria-1.3/#aria-brailleroledescription
     (BrailleRoleDescription, braille_role_description, set_braille_role_description, clear_braille_role_description)
 }
 
