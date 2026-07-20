@@ -17,11 +17,13 @@ default-target = "x86_64-apple-darwin"
 [dependencies]
 accesskit = { version = "0.24.1", path = "../../common" }
 accesskit_consumer = { version = "0.38.0", path = "../../consumer" }
+accesskit_l10n = { version = "0.1.0", path = "../../l10n" }
 hashbrown.workspace = true
 objc2 = "0.5.1"
 objc2-foundation = { version = "0.2.0", features = [
     "NSArray",
     "NSDictionary",
+    "NSLocale",
     "NSValue",
     "NSThread",
 ] }

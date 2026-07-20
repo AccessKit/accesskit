@@ -8,7 +8,7 @@ use accesskit_consumer::{NodeRef, TextPosition, TextRange};
 use objc2::encode::{Encoding, RefEncode};
 use objc2::{msg_send, rc::Id, runtime::AnyObject};
 use objc2_app_kit::*;
-use objc2_foundation::{NSPoint, NSRange, NSRect, NSSize};
+use objc2_foundation::{NSLocale, NSPoint, NSRange, NSRect, NSSize};
 
 pub(crate) fn from_ns_range<'a>(node: &'a NodeRef<'a>, ns_range: NSRange) -> Option<TextRange<'a>> {
     let pos = node.text_position_from_global_utf16_index(ns_range.location)?;
@@ -105,4 +105,16 @@ pub(crate) fn to_color_attribute(color: Color) -> Id<AnyObject> {
     };
     let cg_color: *const CGColor = unsafe { msg_send![&ns_color, CGColor] };
     unsafe { Id::retain(cg_color as *mut AnyObject).unwrap() }
+}
+
+pub(crate) fn get_locale() -> accesskit_l10n::LocaleId {
+    use std::sync::OnceLock;
+    static LOCALE: OnceLock<accesskit_l10n::LocaleId> = OnceLock::new();
+    *LOCALE.get_or_init(|| {
+        let tag = NSLocale::preferredLanguages()
+            .firstObject()
+            .map(|language| language.to_string())
+            .unwrap_or_default();
+        accesskit_l10n::LocaleId::new(&tag)
+    })
 }

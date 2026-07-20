@@ -98,6 +98,7 @@ version = "0.26.3"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
+ "accesskit_l10n",
  "hashbrown",
  "objc2 0.5.2",
  "objc2-app-kit",

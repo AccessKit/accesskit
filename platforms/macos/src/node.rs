@@ -490,10 +490,13 @@ declare_class!(
         fn role_description(&self) -> Option<Id<NSString>> {
             self.resolve(|node| {
                 if let Some(role_description) = node.role_description() {
-                    Some(NSString::from_str(role_description))
-                } else {
-                    unsafe { msg_send_id![super(self), accessibilityRoleDescription] }
+                    return Some(NSString::from_str(role_description));
                 }
+                let locale = crate::util::get_locale();
+                if let Some(desc) = accesskit_l10n::role_description(locale, node.role()) {
+                    return Some(NSString::from_str(desc));
+                }
+                unsafe { msg_send_id![super(self), accessibilityRoleDescription] }
             })
             .flatten()
         }
