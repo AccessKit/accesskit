@@ -734,7 +734,7 @@ impl fmt::Debug for NodeId {
     }
 }
 
-/// The stable identity of a [`TreeInfo`].
+/// The stable identity of a tree.
 ///
 /// Use [`TreeId::ROOT`] for the main/root tree. For subtrees, use a random
 /// UUID (version 4) to avoid collisions between independently created trees.
@@ -2813,7 +2813,7 @@ impl TreeInfo {
     }
 }
 
-/// A serializable representation of an atomic change to a [`TreeInfo`].
+/// A serializable representation of an atomic change to a tree.
 ///
 /// The sender and receiver must be in sync; the update is only meant
 /// to bring the tree from a specific previous state into its next state.
