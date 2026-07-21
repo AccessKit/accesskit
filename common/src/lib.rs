@@ -1961,11 +1961,10 @@ string_property_methods! {
     /// An [IETF language tag](https://www.rfc-editor.org/info/bcp47).
     /// Only set this when it differs from the parent.
     (Language, language, set_language, clear_language),
-    /// If a text input has placeholder text, it should be exposed
-    /// through this property rather than [`label`]. ARIA equivalent:
-    /// [`aria-placeholder`].
+    /// A short hint that helps the user with data entry when the node has no
+    /// [`Node::value`]. This property should not be used instead of
+    /// [`Node::label`]. ARIA equivalent: [`aria-placeholder`].
     ///
-    /// [`label`]: Node::label
     /// [`aria-placeholder`]: https://www.w3.org/TR/wai-aria-1.2/#aria-placeholder
     (Placeholder, placeholder, set_placeholder, clear_placeholder),
     /// An optional string that may override an assistive technology's
