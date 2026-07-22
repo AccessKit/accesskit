@@ -5,8 +5,7 @@ use accesskit::{
     TreeId, TreeInfo, TreeUpdate,
 };
 use accesskit_windows::Adapter;
-use once_cell::sync::Lazy;
-use std::cell::RefCell;
+use std::{cell::RefCell, sync::LazyLock};
 use windows::{
     Win32::{
         Foundation::*,
@@ -17,7 +16,7 @@ use windows::{
     core::*,
 };
 
-static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
+static WINDOW_CLASS_ATOM: LazyLock<u16> = LazyLock::new(|| {
     let class_name = w!("AccessKitTest");
 
     let wc = WNDCLASSW {
