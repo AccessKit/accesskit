@@ -67,6 +67,7 @@ version = "0.2.2"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
+ "example_common",
  "hashbrown",
  "libtest-mimic",
  "objc2 0.5.2",

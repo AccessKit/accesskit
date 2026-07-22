@@ -1,0 +1,30 @@
+name: AccessKit iOS Examples
+options:
+  bundleIdPrefix: dev.accesskit
+settings:
+  ENABLE_USER_SCRIPT_SANDBOXING: NO
+targets:
+  Showcase:
+    type: application
+    platform: iOS
+    deploymentTarget: "15.0"
+    info:
+        path: Info.plist
+        properties:
+            CFBundleDisplayName: AccessKit Example application
+            UILaunchScreen:
+                ImageRespectSafeAreaInsets: false
+            UIApplicationSceneManifest:
+                UIApplicationSupportsMultipleScenes: false
+                UISceneConfigurations:
+                    UIWindowSceneSessionRoleApplication:
+                        - UISceneConfigurationName: Default Configuration
+                          UISceneDelegateClassName: AccessKitExampleSceneDelegate
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: dev.accesskit.showcase
+    sources: []
+    postCompileScripts:
+      - script: |
+          ./build_with_cargo.bash showcase
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)

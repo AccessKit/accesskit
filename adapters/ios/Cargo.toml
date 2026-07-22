@@ -8,6 +8,7 @@ categories.workspace = true
 keywords = ["gui", "ui", "accessibility"]
 repository.workspace = true
 readme = "README.md"
+exclude = ["examples"]
 edition.workspace = true
 rust-version.workspace = true
 
@@ -43,7 +44,17 @@ objc2-ui-kit = { version = "0.2.0", features = [
 ] }
 
 [dev-dependencies]
+example_common = { path = "../../example_common" }
 libtest-mimic = "0.8.2"
+objc2-foundation = { version = "0.2.0", features = ["NSObjCRuntime", "NSRunLoop"] }
+objc2-ui-kit = { version = "0.2.0", features = [
+    "UIApplication",
+    "UIColor",
+    "UIScene",
+    "UISceneOptions",
+    "UISceneSession",
+    "UIWindowScene",
+] }
 
 # UIKit must be used from the main thread, where libtest doesn't run tests.
 [[test]]
