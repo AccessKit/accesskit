@@ -8,6 +8,7 @@ categories.workspace = true
 keywords = ["gui", "ui", "accessibility"]
 repository.workspace = true
 readme = "README.md"
+exclude = ["examples"]
 edition.workspace = true
 rust-version.workspace = true
 
@@ -40,4 +41,16 @@ objc2-ui-kit = { version = "0.2.0", features = [
     "UIView",
     "UIViewController",
     "UIWindow",
+] }
+
+[dev-dependencies]
+example_common = { path = "../../example_common" }
+objc2-foundation = { version = "0.2.0", features = ["NSObjCRuntime", "NSRunLoop"] }
+objc2-ui-kit = { version = "0.2.0", features = [
+    "UIApplication",
+    "UIColor",
+    "UIScene",
+    "UISceneOptions",
+    "UISceneSession",
+    "UIWindowScene",
 ] }

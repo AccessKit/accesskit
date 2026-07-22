@@ -174,13 +174,18 @@ impl UiState {
     }
 
     /// Sets the area of the window the user interface occupies: its logical
-    /// size, and its offset in physical pixels.
-    pub fn set_viewport(&mut self, scale_factor: f64, safe_area_inset: Vec2, size: Size) {
-        self.dispatch(Message::ViewportChanged(Viewport {
+    /// size, and its offset in physical pixels. Returns whether it changed.
+    pub fn set_viewport(&mut self, scale_factor: f64, safe_area_inset: Vec2, size: Size) -> bool {
+        let viewport = Viewport {
             scale_factor,
             safe_area_inset,
             size,
-        }));
+        };
+        if self.model.viewport == Some(viewport) {
+            return false;
+        }
+        self.dispatch(Message::ViewportChanged(viewport));
+        true
     }
 
     /// Builds an update for the AccessKit adapter: the whole tree when the

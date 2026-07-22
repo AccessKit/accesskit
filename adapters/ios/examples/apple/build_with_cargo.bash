@@ -4,6 +4,9 @@ set -eux
 : "${SRCROOT:?}" "${DERIVED_FILE_DIR:?}" "${TARGET_BUILD_DIR:?}" "${EXECUTABLE_PATH:?}" "${ARCHS:?}" "${PLATFORM_NAME:?}"
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH:$HOME/.cargo/bin"
 
+example="$1"
+shift
+
 if [[ "$CONFIGURATION" != "Debug" ]]; then
     CARGO_PROFILE=release
     cargo_args=(--release)
@@ -16,16 +19,8 @@ fi
 export CARGO_TARGET_DIR="$DERIVED_FILE_DIR/cargo"
 
 case "$PLATFORM_NAME" in
-    iphoneos)         CARGO_OS=ios;      BUILD_KIND=device ;;
-    iphonesimulator)  CARGO_OS=ios;      BUILD_KIND=simulator ;;
-    macosx)
-        if [[ "${IS_MACCATALYST:-NO}" != "YES" ]]; then
-            echo "non-Catalyst macOS builds are not supported" >&2
-            exit 1
-        fi
-        CARGO_OS=ios
-        BUILD_KIND=catalyst
-        ;;
+    iphoneos)         BUILD_KIND=device ;;
+    iphonesimulator)  BUILD_KIND=simulator ;;
     *)
         echo "unsupported platform: $PLATFORM_NAME" >&2
         exit 1
@@ -51,30 +46,24 @@ for arch in $ARCHS; do
                 echo "x86_64 is not valid for device builds" >&2
                 exit 1
             fi
-            CARGO_TARGET="${RUST_ARCH}-apple-${CARGO_OS}"
+            CARGO_TARGET="${RUST_ARCH}-apple-ios"
             ;;
         simulator)
+            # Rust names the x86_64 simulator target without a -sim suffix.
             if [[ "$RUST_ARCH" = "x86_64" ]]; then
-                # Rust names the x86_64 simulator target without a -sim suffix,
-                # but clang still needs the -simulator triple.
-                CARGO_TARGET="${RUST_ARCH}-apple-${CARGO_OS}"
-                export "CFLAGS_${RUST_ARCH}_apple_${CARGO_OS}=-target ${RUST_ARCH}-apple-${CARGO_OS}-simulator"
+                CARGO_TARGET="${RUST_ARCH}-apple-ios"
             else
-                CARGO_TARGET="${RUST_ARCH}-apple-${CARGO_OS}-sim"
+                CARGO_TARGET="${RUST_ARCH}-apple-ios-sim"
             fi
-            ;;
-        catalyst)
-            CARGO_TARGET="${RUST_ARCH}-apple-ios-macabi"
             ;;
     esac
 
     cargo build ${cargo_args[@]+"${cargo_args[@]}"} \
         --target "$CARGO_TARGET" \
-        --example "$1" \
-        --no-default-features --features rwh_06
+        --example "$example" \
+        "$@"
 
-    executables+=("$DERIVED_FILE_DIR/cargo/$CARGO_TARGET/$CARGO_PROFILE/examples/$1")
+    executables+=("$DERIVED_FILE_DIR/cargo/$CARGO_TARGET/$CARGO_PROFILE/examples/$example")
 done
 
 lipo -create -output "$TARGET_BUILD_DIR/$EXECUTABLE_PATH" "${executables[@]}"
-
