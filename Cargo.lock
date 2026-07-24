@@ -109,7 +109,6 @@ dependencies = [
  "accesskit",
  "accesskit_consumer",
  "hashbrown",
- "once_cell",
  "parking_lot",
  "scopeguard",
  "static_assertions",
