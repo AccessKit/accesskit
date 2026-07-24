@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.25.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.24.1...accesskit-v0.25.0) (2026-07-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* Rename some accesskit and accesskit_consumer types ([#734](https://github.com/AccessKit/accesskit/issues/734))
+
+### Code Refactoring
+
+* Rename some accesskit and accesskit_consumer types ([#734](https://github.com/AccessKit/accesskit/issues/734)) ([140f2a7](https://github.com/AccessKit/accesskit/commit/140f2a77e23e7c86ec43016d402526cd84c905f2))
+
 ## [0.24.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.24.0...accesskit-v0.24.1) (2026-06-12)
 
 
