@@ -12,19 +12,14 @@ use accesskit_atspi_common::{
     FullNodeId, NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot, Property, WindowEvent,
 };
 use atspi::{
-    Interface, InterfaceSet, ObjectRefOwned,
-    events::EventBodyBorrowed,
-    proxy::{bus::BusProxy, socket::SocketProxy},
+    Interface, InterfaceSet, ObjectRef, ObjectRefOwned, events::EventBodyBorrowed, proxy::{bus::BusProxy, socket::SocketProxy},
 };
 use std::{
     env::var,
     sync::{Arc, OnceLock},
 };
 use zbus::{
-    Address, Connection, Result,
-    connection::Builder,
-    names::{BusName, InterfaceName, MemberName, OwnedUniqueName},
-    zvariant::{Str, Value},
+    Address, Connection, Result, connection::Builder, names::{BusName, InterfaceName, MemberName, OwnedUniqueName}, zvariant::{Str, Value},
 };
 
 pub(crate) struct Bus {
@@ -82,16 +77,21 @@ impl Bus {
             .at(path.clone(), ApplicationInterface(node.clone()))
             .await?
         {
+            let name = self.unique_name().into();
+            let embed = ObjectRef::try_from_bus_name_and_path(
+                name, path.into())
+                .unwrap().into();
+
             let desktop = self
                 .socket_proxy
-                .embed(&(self.unique_name().as_str(), ObjectId::Root.path().into()))
+                .embed(&embed)
                 .await?;
             let _ = self.desktop.set(desktop);
 
             self.conn
                 .object_server()
                 .at(
-                    path,
+                    embed.path(),
                     RootAccessibleInterface::new(
                         self.unique_name().to_owned(),
                         node.clone(),
