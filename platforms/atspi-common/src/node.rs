@@ -442,6 +442,10 @@ impl NodeWrapper<'_> {
         self.0.supports_url()
     }
 
+    fn supports_collection(&self) -> bool {
+        self.0.is_container()
+    }
+
     fn supports_selection(&self) -> bool {
         self.0.is_container_with_selectable_children()
     }
@@ -464,6 +468,9 @@ impl NodeWrapper<'_> {
         }
         if self.supports_hyperlink() {
             interfaces.insert(Interface::Hyperlink);
+        }
+        if self.supports_collection() {
+            interfaces.insert(Interface::Collection);
         }
         if self.supports_selection() {
             interfaces.insert(Interface::Selection);
@@ -1176,6 +1183,14 @@ impl PlatformNode {
 
     pub fn hyperlink_is_valid(&self) -> Result<bool> {
         self.resolve(|node| Ok(node.url().is_some()))
+    }
+
+    pub fn active_descendant(&self) -> Result<Option<FullNodeId>> {
+        self.resolve(|node| {
+            Ok(node
+                .active_descendant()
+                .map(|node| node.id()))
+        })
     }
 
     pub fn n_selected_children(&self) -> Result<i32> {

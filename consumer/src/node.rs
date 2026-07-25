@@ -921,6 +921,10 @@ impl<'a> NodeRef<'a> {
         )
     }
 
+    pub fn is_container(&self) -> bool {
+        return true;
+    }
+
     pub fn is_container_with_selectable_children(&self) -> bool {
         matches!(
             self.role(),

@@ -148,6 +148,13 @@ impl Bus {
             )
             .await?;
         }
+        if new_interfaces.contains(Interface::Collection) {
+            self.register_interface(
+                &path,
+                CollectionInterface::new(bus_name.clone(), node.clone()),
+            )
+            .await?;
+        }
         if new_interfaces.contains(Interface::Selection) {
             self.register_interface(
                 &path,
@@ -202,6 +209,10 @@ impl Bus {
         }
         if old_interfaces.contains(Interface::Hyperlink) {
             self.unregister_interface::<HyperlinkInterface>(&path)
+                .await?;
+        }
+        if old_interfaces.contains(Interface::Collection) {
+            self.unregister_interface::<CollectionInterface>(&path)
                 .await?;
         }
         if old_interfaces.contains(Interface::Selection) {
