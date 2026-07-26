@@ -20,30 +20,30 @@ The schema also defines actions that can be requested by assistive technologies,
 
 The main folders are:
 
-- `common/` stores the main accesskit crate.
-- `consumer/` stores utility code for platform adapters.
-- `platforms/` stores platform adapters.
+- `accesskit/` stores the main accesskit crate.
+- `accesskit_consumer/` stores utility code for platform adapters.
+- `adapters/` stores platform adapters.
 
 
-### `common/`
+### `accesskit/`
 
-This folder stores the `accesskit` crate, which defines the types you need to build your accessibility tree.
+The `accesskit` crate defines the types you need to build your accessibility tree.
 
 See **`accesskit` crate overview** section for details.
 
 
-### `consumer/`
+### `accesskit_consumer/`
 
-This folder stores the `accesskit_consumer` crate, which defines types and functions used by platform adapters (see next section).
+The `accesskit_consumer` crate defines types and functions used by platform adapters (see next section).
 
 You're unlikely to need to look at `accesskit_consumer` unless you're writing a platform adapter or a testing system for accesskit.
 
 `accesskit_consumer::Tree` is the type that retains the accessibility tree in memory and updates it when a new `TreeUpdate` is emitted (see **`accesskit` crate overview**).
 
 
-### `platforms/`
+### `adapters/`
 
-This folder stores a list of crates that we call "adapters".
+This folder stores a list of crates that we call "platform adapters".
 
 Adapters translate between accesskit's tree format and a given platform's accessibility API; you can think of them as backends for accesskit.
 
