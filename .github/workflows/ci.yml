@@ -213,6 +213,6 @@ jobs:
       - uses: android-actions/setup-android@v4
       - run: sdkmanager "platforms;android-30"
       - run: sdkmanager "build-tools;33.0.2"
-      - run: cp platforms/android/classes.dex platforms/android/classes.dex.orig
-      - run: ./platforms/android/build-dex.sh
-      - run: cmp platforms/android/classes.dex.orig platforms/android/classes.dex
+      - run: cp adapters/android/classes.dex adapters/android/classes.dex.orig
+      - run: ./adapters/android/build-dex.sh
+      - run: cmp adapters/android/classes.dex.orig adapters/android/classes.dex

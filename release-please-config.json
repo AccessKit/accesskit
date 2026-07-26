@@ -6,12 +6,12 @@
   "packages": {
     "accesskit": {},
     "accesskit_consumer": {},
-    "platforms/android": {},
-    "platforms/atspi-common": {},
-    "platforms/ios": {},
-    "platforms/macos": {},
-    "platforms/unix": {},
-    "platforms/windows": {},
-    "platforms/winit": {}
+    "adapters/android": {},
+    "adapters/atspi-common": {},
+    "adapters/ios": {},
+    "adapters/macos": {},
+    "adapters/unix": {},
+    "adapters/windows": {},
+    "adapters/winit": {}
   }
 }
