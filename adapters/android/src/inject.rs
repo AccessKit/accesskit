@@ -9,7 +9,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, TreeId};
+use accesskit_consumer::{BoxedActivationHandler, NonGenericActivationHandler, TreeUpdate};
 use jni::{
     JNIEnv, JavaVM, NativeMethod,
     errors::Result,
@@ -31,7 +32,7 @@ use crate::{action::PlatformAction, adapter::Adapter, event::QueuedEvents};
 
 struct InnerInjectingAdapter {
     adapter: Adapter,
-    activation_handler: Box<dyn ActivationHandler + Send>,
+    activation_handler: Box<dyn NonGenericActivationHandler + Send>,
     action_handler: Box<dyn ActionHandler + Send>,
 }
 
@@ -330,7 +331,7 @@ impl InjectingAdapter {
     ) -> Self {
         let inner = Arc::new(Mutex::new(InnerInjectingAdapter {
             adapter: Adapter::default(),
-            activation_handler: Box::new(activation_handler),
+            activation_handler: Box::new(BoxedActivationHandler(activation_handler)),
             action_handler: Box::new(action_handler),
         }));
         let handle = NEXT_HANDLE.fetch_add(1, Ordering::Relaxed);
@@ -390,13 +391,13 @@ impl InjectingAdapter {
     /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
     /// the [`TreeUpdate`] returned by the provided function must contain
     /// a full tree.
-    pub fn update_if_active(&mut self, update_factory: impl FnOnce() -> TreeUpdate) {
+    pub fn update_if_active(&mut self, tree_id: TreeId, fill: impl FnOnce(&mut TreeUpdate)) {
         let mut env = self.vm.get_env().unwrap();
         let Some(host) = self.host.upgrade_local(&env).unwrap() else {
             return;
         };
         let mut inner = self.inner.lock().unwrap();
-        let Some(events) = inner.adapter.update_if_active(update_factory) else {
+        let Some(events) = inner.adapter.update_if_active(tree_id, fill) else {
             return;
         };
         drop(inner);

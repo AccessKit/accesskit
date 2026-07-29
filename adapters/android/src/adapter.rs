@@ -9,10 +9,13 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Orientation,
-    Point, Role, ScrollUnit, TextSelection, TreeId, TreeInfo, TreeUpdate,
+    Action, ActionData, ActionHandler, ActionRequest, NodeId, Orientation, Point, Role, ScrollUnit,
+    TextSelection, TreeId, TreeInfo, TreeUpdate as TreeUpdateTrait,
 };
-use accesskit_consumer::{FilterResult, NodeRef, TextPosition, Tree, TreeChangeHandler};
+use accesskit_consumer::{
+    FilterResult, NodeRef, NonGenericActivationHandler, TextPosition, Tree, TreeChangeHandler,
+    TreeUpdate,
+};
 use jni::{
     JNIEnv,
     objects::JObject,
@@ -195,23 +198,21 @@ enum State {
 }
 
 impl State {
-    fn get_or_init_tree<H: ActivationHandler + ?Sized>(
+    fn get_or_init_tree<H: NonGenericActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
     ) -> &Tree {
         match self {
             Self::Inactive => {
-                *self = match activation_handler.request_initial_tree() {
-                    Some(initial_state) => Self::Active(Tree::new(initial_state, true)),
-                    None => {
-                        let placeholder_update = TreeUpdate {
-                            nodes: vec![(PLACEHOLDER_ROOT_ID, Node::new(Role::Window))],
-                            tree: Some(TreeInfo::new(PLACEHOLDER_ROOT_ID)),
-                            tree_id: TreeId::ROOT,
-                            focus: PLACEHOLDER_ROOT_ID,
-                        };
-                        Self::Placeholder(Tree::new(placeholder_update, true))
-                    }
+                *self = match Tree::new_optional(true, |update| {
+                    activation_handler.request_initial_tree(update)
+                }) {
+                    Some(tree) => Self::Active(tree),
+                    None => Self::Placeholder(Tree::new(true, |update| {
+                        update.set_node(PLACEHOLDER_ROOT_ID, Role::Window, |_| ());
+                        update.set_tree(TreeInfo::new(PLACEHOLDER_ROOT_ID));
+                        update.set_focus(PLACEHOLDER_ROOT_ID);
+                    })),
                 };
                 self.get_or_init_tree(activation_handler)
             }
@@ -234,10 +235,11 @@ fn update_tree(
     node_id_map: &mut NodeIdMap,
     accessibility_focus: Option<jint>,
     tree: &mut Tree,
-    update: TreeUpdate,
+    tree_id: TreeId,
+    fill: impl FnOnce(&mut TreeUpdate),
 ) {
     let mut handler = AdapterChangeHandler::new(events, node_id_map, accessibility_focus);
-    tree.update_and_process_changes(update, &mut handler);
+    tree.update(tree_id, &mut handler, fill);
 }
 
 /// Low-level AccessKit adapter for Android.
@@ -260,9 +262,8 @@ pub struct Adapter {
 impl Adapter {
     /// If and only if the tree has been initialized, call the provided function
     /// and apply the resulting update. Note: If the caller's implementation of
-    /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
-    /// the [`TreeUpdate`] returned by the provided function must contain
-    /// a full tree.
+    /// [`ActivationHandler::request_initial_tree`] doesn't build a tree,
+    /// the provided function must build a full tree.
     ///
     /// If a [`QueuedEvents`] instance is returned, the caller must call
     /// [`QueuedEvents::raise`] on it.
@@ -270,14 +271,17 @@ impl Adapter {
     /// This method may be safely called on any thread, but refer to
     /// [`QueuedEvents::raise`] for restrictions on the context in which
     /// it should be called.
+    ///
+    /// [`ActivationHandler::request_initial_tree`]: accesskit::ActivationHandler::request_initial_tree
     pub fn update_if_active(
         &mut self,
-        update_factory: impl FnOnce() -> TreeUpdate,
+        tree_id: TreeId,
+        fill: impl FnOnce(&mut TreeUpdate),
     ) -> Option<QueuedEvents> {
         match &mut self.state {
             State::Inactive => None,
             State::Placeholder(_) => {
-                let tree = Tree::new(update_factory(), true);
+                let tree = Tree::new(true, fill);
                 let mut events = Vec::new();
                 enqueue_window_content_changed(&mut events);
                 let state = tree.state();
@@ -294,7 +298,8 @@ impl Adapter {
                     &mut self.node_id_map,
                     self.accessibility_focus,
                     tree,
-                    update_factory(),
+                    tree_id,
+                    fill,
                 );
                 Some(QueuedEvents(events))
             }
@@ -307,7 +312,7 @@ impl Adapter {
     ///
     /// The `host` parameter is the Android view for this adapter.
     /// It must be an instance of `android.view.View` or a subclass.
-    pub fn create_accessibility_node_info<'local, H: ActivationHandler + ?Sized>(
+    pub fn create_accessibility_node_info<'local, H: NonGenericActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
         env: &mut JNIEnv<'local>,
@@ -380,7 +385,7 @@ impl Adapter {
     ///
     /// The `host` parameter is the Android view for this adapter.
     /// It must be an instance of `android.view.View` or a subclass.
-    pub fn find_focus<'local, H: ActivationHandler + ?Sized>(
+    pub fn find_focus<'local, H: NonGenericActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
         env: &mut JNIEnv<'local>,
@@ -544,20 +549,16 @@ impl Adapter {
             anchor: anchor.to_raw(),
             focus: focus.to_raw(),
         };
-        let mut new_node = node.data().clone();
-        new_node.set_text_selection(selection);
-        let update = TreeUpdate {
-            nodes: vec![(node_id, new_node)],
-            tree: None,
-            tree_id,
-            focus: focus_id,
-        };
         update_tree(
             events,
             &mut self.node_id_map,
             self.accessibility_focus,
             tree,
-            update,
+            tree_id,
+            |update| {
+                update.update_node(node_id, |node| node.set_text_selection(selection));
+                update.set_focus(focus_id);
+            },
         );
         let request = ActionRequest {
             action: Action::SetTextSelection,
@@ -786,7 +787,7 @@ impl Adapter {
         }
     }
 
-    fn virtual_view_at_point<H: ActivationHandler + ?Sized>(
+    fn virtual_view_at_point<H: NonGenericActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
         x: jfloat,
@@ -816,7 +817,7 @@ impl Adapter {
     /// This method may be safely called on any thread, but refer to
     /// [`QueuedEvents::raise`] for restrictions on the context in which
     /// it should be called.
-    pub fn on_hover_event<H: ActivationHandler + ?Sized>(
+    pub fn on_hover_event<H: NonGenericActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
         action: jint,
