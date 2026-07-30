@@ -579,6 +579,20 @@ impl TreeState {
             .get_id(tree_index)
             .map(|tree_id| (local_id, tree_id))
     }
+
+    pub fn lookup_node_by_id_components(&self, tree_index: u32, node_id: NodeId) -> Option<FullNodeId> {
+        let own_tree_index = self.root_id().to_components().1;
+        if TreeIndex(tree_index) != own_tree_index {
+            return None;
+        }
+
+        let as_full_node_id = FullNodeId::new(node_id, own_tree_index);
+        if  self.has_node(as_full_node_id) {
+            Some(as_full_node_id)
+        } else {
+            None
+        }
+    }
 }
 
 pub trait ChangeHandler {

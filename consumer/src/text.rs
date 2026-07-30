@@ -1400,9 +1400,7 @@ impl<'a> NodeRef<'a> {
     }
 
     pub fn supports_text_ranges(&self) -> bool {
-        (self.is_text_input()
-            || matches!(self.role(), Role::Label | Role::Document | Role::Terminal))
-            && self.text_runs().next().is_some()
+        self.text_runs().next().is_some()
     }
 
     fn document_start_inner(&self) -> InnerPosition<'a> {

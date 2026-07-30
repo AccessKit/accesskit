@@ -5,12 +5,12 @@
 
 use std::collections::HashMap;
 
-use accesskit_atspi_common::{FullNodeId, PlatformNode};
-use atspi::{InterfaceSet, MatchType, ObjectMatchRule, RoleSet, SortOrder, StateSet};
+use accesskit_atspi_common::PlatformNode;
+use atspi::{InterfaceSet, MatchType, ObjectMatchRule, RoleSet, SortOrder, StateSet, TreeTraversalType};
 use serde::{Deserialize, Serialize};
-use zbus::{fdo, interface, names::OwnedUniqueName};
+use zbus::{fdo, interface, names::{BusName, OwnedUniqueName}, zvariant::ObjectPath};
 
-use crate::atspi::{ObjectId, OwnedObjectAddress};
+use crate::atspi::{ObjectId, OwnedObjectAddress, object_util::object_path_components};
 
 pub(crate) struct CollectionInterface {
     bus_name: OwnedUniqueName,
@@ -31,25 +31,82 @@ impl CollectionInterface {
 impl CollectionInterface {
 
     fn get_active_descendant(&self) -> fdo::Result<(OwnedObjectAddress,)> {
-        Err(fdo::Error::InvalidArgs("Not Implemented".into()))
+        let child = self
+            .node
+            .active_descendant()
+            .map_err(self.map_error())?
+            .map(|child| ObjectId::Node {
+                adapter: self.node.adapter_id(),
+                node: child,
+            });
+        Ok(super::optional_object_address(&self.bus_name, child))
     }
 
     fn get_matches(&self, fixed_rule: FixedObjectMatchRule, sortby: SortOrder, count: i32, traverse: bool) -> fdo::Result<Vec<OwnedObjectAddress>> {
         let rule: ObjectMatchRule = fixed_rule.try_into()
             .map_err(|err| fdo::Error::Failed(err))?;
-        Err(fdo::Error::InvalidArgs("Not Implemented".into()))
+        let is_reverse = sortby == SortOrder::ReverseCanonical;
+        let matched_children = self.node.get_matches(&rule, is_reverse, count as u32, traverse)
+            .map_err(self.map_error())?;
+        let matched_children_add = matched_children
+            .into_iter()
+            .map(|child| ObjectId::Node {
+                adapter: self.node.adapter_id(),
+                node: child,
+            })
+            .map(|child| super::optional_object_address(&self.bus_name, Some(child)).0)
+            .collect();
+        Ok(matched_children_add)
     }
 
-    fn get_matches_to(&self, current_object: OwnedObjectAddress, fixed_rule: FixedObjectMatchRule, sortby: SortOrder, tree: u32, count: i32, traverse: bool) -> fdo::Result<Vec<(OwnedObjectAddress,)>> {
+    fn get_matches_to(&self, current_object_t: (BusName, ObjectPath), fixed_rule: FixedObjectMatchRule, sortby: SortOrder, tree: TreeTraversalType, count: i32, traverse: bool) -> fdo::Result<Vec<OwnedObjectAddress>> {
         let rule: ObjectMatchRule = fixed_rule.try_into()
             .map_err(|err| fdo::Error::Failed(err))?;
-        Err(fdo::Error::InvalidArgs("Not Implemented".into()))
+
+        let current_object_components = object_path_components(&current_object_t.1)
+            .ok_or_else(|| fdo::Error::UnknownObject("Invalid Object Path: ".to_string() + current_object_t.1.as_str())
+        )?;
+        let current_tree_index = current_object_components.1;
+        let current_node_id = current_object_components.2;
+
+        let is_reverse = sortby == SortOrder::ReverseCanonical;
+        let matched_children = self.node.get_matches_to_or_from(
+            false, current_tree_index, current_node_id, &rule, is_reverse, tree, count as u32, traverse
+        ).map_err(self.map_error())?;
+        let matched_children_add = matched_children
+            .into_iter()
+            .map(|child| ObjectId::Node {
+                adapter: self.node.adapter_id(),
+                node: child,
+            })
+            .map(|child| super::optional_object_address(&self.bus_name, Some(child)).0)
+            .collect();
+        Ok(matched_children_add)
     }
 
-    fn get_matches_from(&self, current_object: OwnedObjectAddress, fixed_rule: FixedObjectMatchRule, sortby: SortOrder, tree: u32, count: i32, traverse: bool) -> fdo::Result<Vec<(OwnedObjectAddress,)>> {
+    fn get_matches_from(&self, current_object_t: (BusName, ObjectPath), fixed_rule: FixedObjectMatchRule, sortby: SortOrder, tree: TreeTraversalType, count: i32, traverse: bool) -> fdo::Result<Vec<OwnedObjectAddress>> {
         let rule: ObjectMatchRule = fixed_rule.try_into()
             .map_err(|err| fdo::Error::Failed(err))?;
-        Err(fdo::Error::InvalidArgs("Not Implemented".into()))
+
+        let current_object_components = object_path_components(&current_object_t.1)
+            .ok_or_else(|| fdo::Error::UnknownObject("Invalid Object Path: ".to_string() + current_object_t.1.as_str())
+        )?;
+        let current_tree_index = current_object_components.1;
+        let current_node_id = current_object_components.2;
+
+        let is_reverse = sortby == SortOrder::ReverseCanonical;
+        let matched_children = self.node.get_matches_to_or_from(
+            true, current_tree_index, current_node_id, &rule, is_reverse, tree, count as u32, traverse
+        ).map_err(self.map_error())?;
+        let matched_children_add = matched_children
+            .into_iter()
+            .map(|child| ObjectId::Node {
+                adapter: self.node.adapter_id(),
+                node: child,
+            })
+            .map(|child| super::optional_object_address(&self.bus_name, Some(child)).0)
+            .collect();
+        Ok(matched_children_add)
     }
     
 }

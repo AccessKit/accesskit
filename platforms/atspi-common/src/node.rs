@@ -9,13 +9,11 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionRequest, Affine, Live, NodeId, Orientation, Point, Rect, Role,
-    Toggled, TreeId,
+    Action, ActionData, ActionRequest, Affine, Live, NodeId, Orientation, Point, Rect, Role, Toggled, TreeId,
 };
 use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, Tree, TreeState};
 use atspi_common::{
-    CoordType, Granularity, Interface, InterfaceSet, Layer, Politeness, RelationType,
-    Role as AtspiRole, ScrollType, State, StateSet,
+    CoordType, Granularity, Interface, InterfaceSet, Layer, ObjectMatchRule, Politeness, RelationType, Role as AtspiRole, ScrollType, State, StateSet, TreeTraversalType,
 };
 use std::{
     collections::HashMap,
@@ -24,12 +22,7 @@ use std::{
 };
 
 use crate::{
-    Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
-    adapter::Adapter,
-    context::{AppContext, Context},
-    filters::filter,
-    text_attributes::ATTRIBUTE_GETTERS,
-    util::*,
+    Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result, adapter::Adapter, context::{AppContext, Context}, filters::filter, node_matcher::recurse_scan_children, text_attributes::ATTRIBUTE_GETTERS, util::*,
 };
 
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a NodeRef<'a>);
@@ -405,7 +398,7 @@ impl NodeWrapper<'_> {
         self.0.braille_role_description()
     }
 
-    fn attributes(&self) -> HashMap<&'static str, String> {
+    pub(crate) fn attributes(&self) -> HashMap<&'static str, String> {
         let mut attributes = HashMap::new();
         if let Some(placeholder) = self.placeholder() {
             attributes.insert("placeholder-text", placeholder.to_string());
@@ -1676,6 +1669,108 @@ impl PlatformNode {
             target_tree,
             target_node,
             data: Some(ActionData::NumericValue(value)),
+        })
+    }
+
+    pub fn get_matches(
+        &self,
+        match_rule: &ObjectMatchRule,
+        is_reverse: bool,
+        count: u32,
+        traverse: bool
+    ) -> Result<Vec<FullNodeId>>{
+        self.resolve_with_context(|node, tree, _| {
+            let is_window_focused = tree.state().focus_id().is_some();
+            let mut node_ids: Vec<FullNodeId> = Vec::new();
+            recurse_scan_children(
+                node,
+                &mut node_ids,
+                match_rule,
+                traverse,
+                None,
+                false,
+                is_reverse,
+                count,
+                is_window_focused);
+            Ok(node_ids)
+        })
+    }
+
+    pub fn get_matches_to_or_from(
+        &self,
+        is_from: bool,
+        target_tree_index: u32,
+        target_node_id: NodeId,
+        match_rule: &ObjectMatchRule,
+        is_reverse: bool,
+        traversal_type: TreeTraversalType,
+        count: u32,
+        traverse: bool
+    ) -> Result<Vec<FullNodeId>>{
+        let target_full_node_id = self.lookup_object_ref(target_tree_index, target_node_id)?;
+        let adjusted_traverse = traverse && traversal_type == TreeTraversalType::Inorder;
+        self.resolve_node_for_match(target_full_node_id, traversal_type, |node, tree| {
+            let is_window_focused = tree.state().focus_id().is_some();
+            let mut node_ids: Vec<FullNodeId> = Vec::new();
+            recurse_scan_children(
+                node,
+                &mut node_ids,
+                match_rule,
+                adjusted_traverse,
+                Some(target_full_node_id),
+                // Before/after are inverted if reverse
+                is_from != is_reverse,
+                is_reverse,
+                count,
+                is_window_focused);
+            Ok(node_ids)
+        })
+    }
+
+    fn lookup_object_ref(&self, tree_index: u32, node_id: NodeId) -> Result<FullNodeId> {
+        self.resolve_with_context(|_, tree, _| {
+            tree.state().lookup_node_by_id_components(tree_index, node_id)
+                .ok_or_else(|| Error::Defunct)
+        })
+    }
+
+    // Based on traversal_type, calls the function with one of the following:
+    // Inorder: self
+    // RestrictChildren: target_node (must be descendant of self)
+    // RestrictSiblings: Parent of target_node (must be descendant of self)
+    // It is expected that the matcher will also disable traverse for restricted modes
+    fn resolve_node_for_match<F>(
+        &self, 
+        target_node: FullNodeId,
+        traversal_type: TreeTraversalType,
+        f: F
+    ) -> Result<Vec<FullNodeId>>
+    where
+        for<'a> F: FnOnce(NodeRef<'a>, &Tree) -> Result<Vec<FullNodeId>>,
+    {
+        let id_to_resolve =
+            if traversal_type == TreeTraversalType::Inorder { self.id }
+            else { target_node };
+        self.with_tree_and_context(|tree, _| {
+            if
+                let Some(own_node) = tree.state().node_by_id(self.id)
+                && let Some(node) = tree.state().node_by_id(id_to_resolve)
+            {
+                if !node.is_descendant_of(&own_node) {
+                    return Ok(Vec::new());
+                }
+                if traversal_type == TreeTraversalType::RestrictSibling {
+                    if let Some(parent) = node.parent() {
+                        f(parent, &tree)
+                    } else {
+                        Ok(Vec::new())
+                    }
+                } else {
+                    f(node, &tree)
+                }
+            } else {
+                Err(Error::Defunct)
+            }
         })
     }
 }

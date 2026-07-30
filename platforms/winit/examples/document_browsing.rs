@@ -25,7 +25,9 @@ const BUTTON_1_ID: NodeId = NodeId(2);
 const BUTTON_2_ID: NodeId = NodeId(3);
 const HEADING_1_ID: NodeId = NodeId(4);
 const HEADING_2_ID: NodeId = NodeId(5);
-const ANNOUNCEMENT_ID: NodeId = NodeId(6);
+const TEXT_1_ID: NodeId = NodeId(6);
+const TEXT_2_ID: NodeId = NodeId(7);
+const ANNOUNCEMENT_ID: NodeId = NodeId(8);
 const INITIAL_FOCUS: NodeId = HEADING_1_ID;
 
 const WINDOW_RECT: Rect = Rect {
@@ -97,6 +99,22 @@ fn build_button(id: NodeId, label: &str) -> Node {
     node.set_label(label);
     node.add_action(Action::Focus);
     node.add_action(Action::Click);
+    node.add_action(Action::SetTextSelection);
+    node
+}
+
+fn build_text(id: NodeId, label: &str) -> Node {
+    let rect = match id {
+        TEXT_1_ID => HEADING_1_RECT,
+        TEXT_2_ID => HEADING_2_RECT,
+        _ => unreachable!(),
+    };
+    let mut node = Node::new(Role::TextRun);
+    let char_lengths: Vec<u8> = label.chars().map(|c| c.len_utf8() as u8).collect();
+    node.set_bounds(rect);
+    node.set_value(label);
+    node.add_action(Action::SetTextSelection);
+    node.set_character_lengths(char_lengths);
     node
 }
 
@@ -109,7 +127,15 @@ fn build_heading(id: NodeId, label: &str) -> Node {
     let mut node = Node::new(Role::Heading);
     node.set_bounds(rect);
     node.set_label(label);
+    node.set_value(label);
+    node.set_level(1);
+    if id == HEADING_1_ID {
+        node.set_children(vec![TEXT_1_ID]);
+    } else if id == HEADING_2_ID {
+        node.set_children(vec![TEXT_2_ID]);
+    }
     node.add_action(Action::Focus);
+    node.add_action(Action::SetTextSelection);
     node
 }
 
@@ -160,6 +186,8 @@ impl UiState {
         let button_2 = build_button(BUTTON_2_ID, "Button 2");
         let heading_1 = build_heading(HEADING_1_ID, "Heading 1");
         let heading_2 = build_heading(HEADING_2_ID, "Heading 2");
+        let text_1 = build_text(TEXT_1_ID, "Text 1");
+        let text_2 = build_text(TEXT_2_ID, "Text 2");
         let tree = TreeInfo::new(WINDOW_ID);
         let mut result = TreeUpdate {
             nodes: vec![
@@ -169,6 +197,8 @@ impl UiState {
                 (BUTTON_2_ID, button_2),
                 (HEADING_1_ID, heading_1),
                 (HEADING_2_ID, heading_2),
+                (TEXT_1_ID, text_1),
+                (TEXT_2_ID, text_2),
             ],
             tree: Some(tree),
             tree_id: TreeId::ROOT,
@@ -356,6 +386,9 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                         }
                         Action::Click => {
                             state.press_button(target_node);
+                        }
+                        Action::SetTextSelection => {
+                            state.set_focus(adapter, target_node);
                         }
                         _ => (),
                     }

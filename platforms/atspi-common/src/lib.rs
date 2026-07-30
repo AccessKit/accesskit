@@ -11,6 +11,7 @@ mod error;
 mod events;
 mod filters;
 mod node;
+mod node_matcher;
 mod rect;
 #[cfg(feature = "simplified-api")]
 pub mod simplified;
