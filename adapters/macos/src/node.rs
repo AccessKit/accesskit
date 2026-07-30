@@ -230,6 +230,17 @@ fn ns_role(node: &NodeRef) -> &'static NSAccessibilityRole {
     }
 }
 
+fn label_is_exposed_in_value(role: Role) -> bool {
+    matches!(
+        role,
+        Role::Label
+            | Role::ListBoxOption
+            | Role::ListMarker
+            | Role::MenuListOption
+            | Role::TitleBar
+    )
+}
+
 fn ns_sub_role(node: &NodeRef) -> &'static NSAccessibilitySubrole {
     let role = node.role();
 
@@ -309,6 +320,9 @@ impl NodeWrapper<'_> {
             // includes a title, VoiceOver behavior is broken.
             return None;
         }
+        if label_is_exposed_in_value(self.0.role()) {
+            return None;
+        }
         self.0.label()
     }
 
@@ -328,6 +342,11 @@ impl NodeWrapper<'_> {
             // On Mac, tabs are exposed as radio buttons, and are treated as checkable.
             // Also, `Node::is_selected` is mapped to checked via `accessibilityValue`.
             return Some(Value::Bool(self.0.is_selected().unwrap_or(false)));
+        }
+        if label_is_exposed_in_value(self.0.role()) {
+            if let Some(label) = self.0.label() {
+                return Some(Value::String(label));
+            }
         }
         if let Some(value) = self.0.value() {
             return Some(Value::String(value));
