@@ -17,7 +17,7 @@ async-io = ["dep:async-channel", "dep:async-executor", "dep:async-task", "dep:fu
 tokio = ["dep:tokio", "dep:tokio-stream"]
 
 [dependencies]
-accesskit = { version = "0.24.1", path = "../../common" }
+accesskit = { version = "0.24.1", path = "../../accesskit" }
 accesskit_atspi_common = { version = "0.19.1", path = "../atspi-common" }
 atspi = { git = "https://github.com/odilia-app/atspi", rev = "2aec2fc" }
 futures-lite = "2.3"
