@@ -2035,19 +2035,67 @@ f32_property_methods! {
 }
 
 usize_property_methods! {
+    /// The total number of rows in a table, grid, or tree grid. ARIA equivalent:
+    /// [`aria-rowcount`].
+    ///
+    /// [`aria-rowcount`]: https://www.w3.org/TR/wai-aria-1.2/#aria-rowcount
     (RowCount, row_count, set_row_count, clear_row_count),
+    /// The total number of columns in a table, grid, or tree grid. ARIA
+    /// equivalent: [`aria-colcount`].
+    ///
+    /// [`aria-colcount`]: https://www.w3.org/TR/wai-aria-1.2/#aria-colcount
     (ColumnCount, column_count, set_column_count, clear_column_count),
+    /// The row index of this node within a table, grid, or tree grid. ARIA
+    /// equivalent: [`aria-rowindex`].
+    ///
+    /// **Difference with ARIA:** `aria-rowindex` is one-based, while this
+    /// AccessKit property is zero-based.
+    ///
+    /// [`aria-rowindex`]: https://www.w3.org/TR/wai-aria-1.2/#aria-rowindex
     (RowIndex, row_index, set_row_index, clear_row_index),
+    /// The column index of this node within a table, grid, or tree grid. ARIA
+    /// equivalent: [`aria-colindex`].
+    ///
+    /// **Difference with ARIA:** `aria-colindex` is one-based, while this
+    /// AccessKit property is zero-based.
+    ///
+    /// [`aria-colindex`]: https://www.w3.org/TR/wai-aria-1.2/#aria-colindex
     (ColumnIndex, column_index, set_column_index, clear_column_index),
+    /// The number of rows spanned by a cell or grid cell. ARIA equivalent:
+    /// [`aria-rowspan`].
+    ///
+    /// [`aria-rowspan`]: https://www.w3.org/TR/wai-aria-1.2/#aria-rowspan
     (RowSpan, row_span, set_row_span, clear_row_span),
+    /// The number of columns spanned by a cell or grid cell. ARIA equivalent:
+    /// [`aria-colspan`].
+    ///
+    /// [`aria-colspan`]: https://www.w3.org/TR/wai-aria-1.2/#aria-colspan
     (ColumnSpan, column_span, set_column_span, clear_column_span),
+    /// The hierarchical level of this node within a structure. ARIA equivalent:
+    /// [`aria-level`].
+    ///
+    /// **Difference with ARIA:** `aria-level` is one-based, while this AccessKit
+    /// property is zero-based.
+    ///
+    /// [`aria-level`]: https://www.w3.org/TR/wai-aria-1.2/#aria-level
     (Level, level, set_level, clear_level),
     /// For containers like [`Role::ListBox`], specifies the total number of items.
+    /// ARIA equivalent: [`aria-setsize`].
+    ///
+    /// **Difference with ARIA:** `aria-setsize` is set on each item, while this
+    /// AccessKit property is set on the container.
+    ///
+    /// [`aria-setsize`]: https://www.w3.org/TR/wai-aria-1.2/#aria-setsize
     (SizeOfSet, size_of_set, set_size_of_set, clear_size_of_set),
     /// For items like [`Role::ListBoxOption`], specifies their index in the item list.
-    /// This may not exceed the value of [`size_of_set`] as set on the container.
+    /// This must be less than the value of [`size_of_set`] as set on the container.
+    /// ARIA equivalent: [`aria-posinset`].
+    ///
+    /// **Difference with ARIA:** `aria-posinset` is one-based, while this
+    /// AccessKit property is zero-based.
     ///
     /// [`size_of_set`]: Node::size_of_set
+    /// [`aria-posinset`]: https://www.w3.org/TR/wai-aria-1.2/#aria-posinset
     (PositionInSet, position_in_set, set_position_in_set, clear_position_in_set)
 }
 
