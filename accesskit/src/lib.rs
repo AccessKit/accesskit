@@ -2049,7 +2049,7 @@ usize_property_methods! {
     /// equivalent: [`aria-rowindex`].
     ///
     /// **Difference with ARIA:** `aria-rowindex` is one-based, while this
-    /// AccessKit property is zero-based.
+    /// property is zero-based.
     ///
     /// [`aria-rowindex`]: https://www.w3.org/TR/wai-aria-1.2/#aria-rowindex
     (RowIndex, row_index, set_row_index, clear_row_index),
@@ -2057,7 +2057,7 @@ usize_property_methods! {
     /// equivalent: [`aria-colindex`].
     ///
     /// **Difference with ARIA:** `aria-colindex` is one-based, while this
-    /// AccessKit property is zero-based.
+    /// property is zero-based.
     ///
     /// [`aria-colindex`]: https://www.w3.org/TR/wai-aria-1.2/#aria-colindex
     (ColumnIndex, column_index, set_column_index, clear_column_index),
@@ -2074,8 +2074,8 @@ usize_property_methods! {
     /// The hierarchical level of this node within a structure. ARIA equivalent:
     /// [`aria-level`].
     ///
-    /// **Difference with ARIA:** `aria-level` is one-based, while this AccessKit
-    /// property is zero-based.
+    /// **Difference with ARIA:** `aria-level` is one-based, while this property
+    /// is zero-based.
     ///
     /// [`aria-level`]: https://www.w3.org/TR/wai-aria-1.2/#aria-level
     (Level, level, set_level, clear_level),
@@ -2092,7 +2092,7 @@ usize_property_methods! {
     /// ARIA equivalent: [`aria-posinset`].
     ///
     /// **Difference with ARIA:** `aria-posinset` is one-based, while this
-    /// AccessKit property is zero-based.
+    /// property is zero-based.
     ///
     /// [`size_of_set`]: Node::size_of_set
     /// [`aria-posinset`]: https://www.w3.org/TR/wai-aria-1.2/#aria-posinset
