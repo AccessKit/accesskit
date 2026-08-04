@@ -2083,7 +2083,7 @@ usize_property_methods! {
     /// ARIA equivalent: [`aria-setsize`].
     ///
     /// **Difference with ARIA:** `aria-setsize` is set on each item, while this
-    /// AccessKit property is set on the container.
+    /// property is set on the container.
     ///
     /// [`aria-setsize`]: https://www.w3.org/TR/wai-aria-1.2/#aria-setsize
     (SizeOfSet, size_of_set, set_size_of_set, clear_size_of_set),
