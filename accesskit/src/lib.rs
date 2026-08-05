@@ -1878,20 +1878,42 @@ vec_type_methods! {
 }
 
 node_id_vec_property_methods! {
+    /// The ordered list of this node's direct children in the tree.
     (Children, children, set_children, push_child, clear_children),
+    /// The nodes whose contents or presence are controlled by this node. ARIA
+    /// equivalent: [`aria-controls`].
+    ///
+    /// [`aria-controls`]: https://www.w3.org/TR/wai-aria-1.2/#aria-controls
     (Controls, controls, set_controls, push_controlled, clear_controls),
+    /// The nodes that provide detailed, extended descriptions for this node.
+    /// ARIA equivalent: [`aria-details`].
+    ///
+    /// **Difference with ARIA:** `aria-details` references a single element,
+    /// while this property may reference multiple nodes.
+    ///
+    /// [`aria-details`]: https://www.w3.org/TR/wai-aria-1.2/#aria-details
     (Details, details, set_details, push_detail, clear_details),
+    /// The nodes that describe this node. ARIA equivalent: [`aria-describedby`].
+    ///
+    /// [`aria-describedby`]: https://www.w3.org/TR/wai-aria-1.2/#aria-describedby
     (DescribedBy, described_by, set_described_by, push_described_by, clear_described_by),
+    /// The nodes that follow this node in an alternate reading order. ARIA
+    /// equivalent: [`aria-flowto`].
+    ///
+    /// [`aria-flowto`]: https://www.w3.org/TR/wai-aria-1.2/#aria-flowto
     (FlowTo, flow_to, set_flow_to, push_flow_to, clear_flow_to),
+    /// The nodes that label this node. ARIA equivalent: [`aria-labelledby`].
+    ///
+    /// [`aria-labelledby`]: https://www.w3.org/TR/wai-aria-1.2/#aria-labelledby
     (LabelledBy, labelled_by, set_labelled_by, push_labelled_by, clear_labelled_by),
-    /// As with the `aria-owns` property in ARIA, this property should be set
-    /// only if the nodes referenced in the property are not descendants
-    /// of the owning node in the AccessKit tree. In the common case, where the
-    /// owned nodes are direct children or indirect descendants, this property
-    /// is unnecessary.
+    /// Nodes owned by this node that are not already its descendants in the
+    /// tree. This property is unnecessary for direct children or other
+    /// descendants. ARIA equivalent: [`aria-owns`].
+    ///
+    /// [`aria-owns`]: https://www.w3.org/TR/wai-aria-1.2/#aria-owns
     (Owns, owns, set_owns, push_owned, clear_owns),
-    /// On radio buttons this should be set to a list of all of the buttons
-    /// in the same group as this one, including this radio button itself.
+    /// For a radio button, the list of all radio buttons in the same group,
+    /// including this node.
     (RadioGroup, radio_group, set_radio_group, push_to_radio_group, clear_radio_group)
 }
 
@@ -2208,13 +2230,17 @@ coord_slice_property_methods! {
 }
 
 bool_property_methods! {
-    /// Whether this node is expanded, collapsed, or neither.
+    /// Whether this node is expanded, collapsed, or neither. ARIA equivalent:
+    /// [`aria-expanded`].
     ///
     /// Setting this to `false` means the node is collapsed; omitting it means this state
     /// isn't applicable.
+    ///
+    /// [`aria-expanded`]: https://www.w3.org/TR/wai-aria-1.2/#aria-expanded
     (Expanded, is_expanded, set_expanded, clear_expanded),
 
-    /// Indicates whether this node is selected or unselected.
+    /// Indicates whether this node is selected or unselected. ARIA equivalent:
+    /// [`aria-selected`].
     ///
     /// The absence of this flag (as opposed to a `false` setting)
     /// means that the concept of "selected" doesn't apply.
@@ -2223,6 +2249,8 @@ bool_property_methods! {
     /// to announce "not selected". The ambiguity of this flag
     /// in platform accessibility APIs has made extraneous
     /// "not selected" announcements a common annoyance.
+    ///
+    /// [`aria-selected`]: https://www.w3.org/TR/wai-aria-1.2/#aria-selected
     (Selected, is_selected, set_selected, clear_selected)
 }
 
