@@ -18,9 +18,11 @@ use jni::{
 };
 use log::debug;
 use std::{
+    any::Any,
     collections::BTreeMap,
     ffi::c_void,
     fmt::{Debug, Formatter},
+    panic::{AssertUnwindSafe, catch_unwind},
     sync::{
         Arc, Mutex, OnceLock, Weak,
         atomic::{AtomicI64, Ordering},
@@ -28,6 +30,47 @@ use std::{
 };
 
 use crate::{action::PlatformAction, adapter::Adapter, event::QueuedEvents};
+
+/// Log a panic caught at a JNI boundary and clear any Java exception it left
+/// pending (returning to the JVM with one pending rethrows it in the Java
+/// caller — for `runCallback` that is inside the UI `Looper`).
+fn report_contained_panic(env: &mut JNIEnv, what: &str, payload: Box<dyn Any + Send>) {
+    let msg: &str = if let Some(s) = payload.downcast_ref::<&'static str>() {
+        s
+    } else if let Some(s) = payload.downcast_ref::<String>() {
+        s
+    } else {
+        "non-string panic payload"
+    };
+    log::error!("accesskit_android: panic contained at the JNI boundary in {what}: {msg}");
+    if env.exception_check().unwrap_or(false) {
+        let _ = env.exception_describe();
+        let _ = env.exception_clear();
+    }
+}
+
+/// Run a native-method body with the unwind boundary an `extern "system"` fn
+/// requires, returning `T::default()` (null / `JNI_FALSE`) if it panicked.
+///
+/// Rust aborts the process when a panic reaches an `extern "system"` frame,
+/// and the code under these entry points surfaces every JNI error (a detached
+/// host view, a missing method, an OOM) as a panic — so without this
+/// boundary, any of those errors aborted the process. A contained panic
+/// poisons the adapter's mutex, so later delegate calls fail too (also
+/// contained): the process survives and accessibility degrades.
+fn guard_ffi<'local, T: Default>(
+    env: &mut JNIEnv<'local>,
+    what: &str,
+    f: impl FnOnce(&mut JNIEnv<'local>) -> T,
+) -> T {
+    match catch_unwind(AssertUnwindSafe(|| f(&mut *env))) {
+        Ok(value) => value,
+        Err(payload) => {
+            report_contained_panic(env, what, payload);
+            T::default()
+        }
+    }
+}
 
 struct InnerInjectingAdapter {
     adapter: Adapter,
@@ -139,7 +182,7 @@ extern "system" fn run_callback<'local>(
     let Some(callback) = CALLBACK_MAP.lock().unwrap().remove(&handle) else {
         return;
     };
-    callback(&mut env, &class, &host);
+    guard_ffi(&mut env, "runCallback", |env| callback(env, &class, &host));
 }
 
 extern "system" fn create_accessibility_node_info<'local>(
@@ -149,11 +192,13 @@ extern "system" fn create_accessibility_node_info<'local>(
     host: JObject<'local>,
     virtual_view_id: jint,
 ) -> JObject<'local> {
-    let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return JObject::null();
-    };
-    let mut inner_adapter = inner_adapter.lock().unwrap();
-    inner_adapter.create_accessibility_node_info(&mut env, &host, virtual_view_id)
+    guard_ffi(&mut env, "createAccessibilityNodeInfo", |env| {
+        let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
+            return JObject::null();
+        };
+        let mut inner_adapter = inner_adapter.lock().unwrap();
+        inner_adapter.create_accessibility_node_info(env, &host, virtual_view_id)
+    })
 }
 
 extern "system" fn find_focus<'local>(
@@ -163,11 +208,13 @@ extern "system" fn find_focus<'local>(
     host: JObject<'local>,
     focus_type: jint,
 ) -> JObject<'local> {
-    let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return JObject::null();
-    };
-    let mut inner_adapter = inner_adapter.lock().unwrap();
-    inner_adapter.find_focus(&mut env, &host, focus_type)
+    guard_ffi(&mut env, "findFocus", |env| {
+        let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
+            return JObject::null();
+        };
+        let mut inner_adapter = inner_adapter.lock().unwrap();
+        inner_adapter.find_focus(env, &host, focus_type)
+    })
 }
 
 extern "system" fn perform_action<'local>(
@@ -179,19 +226,21 @@ extern "system" fn perform_action<'local>(
     action: jint,
     arguments: JObject<'local>,
 ) -> jboolean {
-    let Some(action) = PlatformAction::from_java(&mut env, action, &arguments) else {
-        return JNI_FALSE;
-    };
-    let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return JNI_FALSE;
-    };
-    let mut inner_adapter = inner_adapter.lock().unwrap();
-    let Some(events) = inner_adapter.perform_action(virtual_view_id, &action) else {
-        return JNI_FALSE;
-    };
-    drop(inner_adapter);
-    events.raise(&mut env, &host);
-    JNI_TRUE
+    guard_ffi(&mut env, "performAction", |env| {
+        let Some(action) = PlatformAction::from_java(env, action, &arguments) else {
+            return JNI_FALSE;
+        };
+        let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
+            return JNI_FALSE;
+        };
+        let mut inner_adapter = inner_adapter.lock().unwrap();
+        let Some(events) = inner_adapter.perform_action(virtual_view_id, &action) else {
+            return JNI_FALSE;
+        };
+        drop(inner_adapter);
+        events.raise(env, &host);
+        JNI_TRUE
+    })
 }
 
 extern "system" fn on_hover_event<'local>(
@@ -203,16 +252,18 @@ extern "system" fn on_hover_event<'local>(
     x: jfloat,
     y: jfloat,
 ) -> jboolean {
-    let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return JNI_FALSE;
-    };
-    let mut inner_adapter = inner_adapter.lock().unwrap();
-    let Some(events) = inner_adapter.on_hover_event(action, x, y) else {
-        return JNI_FALSE;
-    };
-    drop(inner_adapter);
-    events.raise(&mut env, &host);
-    JNI_TRUE
+    guard_ffi(&mut env, "onHoverEvent", |env| {
+        let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
+            return JNI_FALSE;
+        };
+        let mut inner_adapter = inner_adapter.lock().unwrap();
+        let Some(events) = inner_adapter.on_hover_event(action, x, y) else {
+            return JNI_FALSE;
+        };
+        drop(inner_adapter);
+        events.raise(env, &host);
+        JNI_TRUE
+    })
 }
 
 fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
@@ -395,7 +446,12 @@ impl InjectingAdapter {
         let Some(host) = self.host.upgrade_local(&env).unwrap() else {
             return;
         };
-        let mut inner = self.inner.lock().unwrap();
+        // A contained panic in a delegate callback poisons this mutex; skip
+        // rather than propagate the poison panic into the caller's thread —
+        // accessibility is already degraded at that point.
+        let Ok(mut inner) = self.inner.lock() else {
+            return;
+        };
         let Some(events) = inner.adapter.update_if_active(update_factory) else {
             return;
         };
