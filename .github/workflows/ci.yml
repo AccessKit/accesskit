@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Check formatting
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: install stable toolchain
         uses: dtolnay/rust-toolchain@master
@@ -21,6 +21,11 @@ jobs:
 
       - name: cargo fmt
         run: cargo fmt --all -- --check
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
 
       - name: check Java formatting
         uses: axel-op/googlejavaformat-action@v4
@@ -33,6 +38,7 @@ jobs:
       matrix:
         include:
           - target: aarch64-apple-darwin
+          - target: aarch64-apple-ios
           - target: aarch64-linux-android
           - target: i686-pc-windows-gnu
           - target: i686-pc-windows-msvc
@@ -44,7 +50,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: find-msrv
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           rust-version: ${{ needs.find-msrv.outputs.version }}
@@ -55,33 +61,102 @@ jobs:
   clippy:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [macOS-latest, windows-latest, ubuntu-latest]
-    name: cargo clippy
+        include:
+          - os: windows-latest
+            name: Windows
+            adapters: "-p accesskit_windows"
+          - os: macOS-latest
+            name: macOS
+            adapters: "-p accesskit_macos"
+          - os: ubuntu-latest
+            name: Linux
+            adapters: "-p accesskit_unix"
+            extra_adapter_clippy: "-p accesskit_atspi_common --all-features"
+          - os: ubuntu-latest
+            name: Android
+            adapters: "-p accesskit_android"
+          - os: macOS-latest
+            name: iOS Simulator
+            target: "aarch64-apple-ios-sim"
+            adapters: "-p accesskit_ios"
+    name: cargo clippy (${{ matrix.name }})
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: install stable toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+          targets: ${{ matrix.target }}
 
       - name: restore cache
         uses: Swatinem/rust-cache@v2
 
-      - name: cargo clippy
-        run: cargo clippy --all-targets -- -D warnings
+      - name: cargo clippy (common packages)
+        run: cargo clippy -p accesskit -p accesskit_consumer -p accesskit_winit ${{ matrix.target && format('--target {0}', matrix.target) }} --all-targets -- -D warnings
 
-      - name: cargo clippy -p accesskit_atspi_common
-        if: matrix.os == 'ubuntu-latest'
-        run: cargo clippy -p accesskit_atspi_common --all-features -- -D warnings
+      - name: cargo clippy (adapters)
+        run: cargo clippy ${{ matrix.adapters }} ${{ matrix.target && format('--target {0}', matrix.target) }} --all-targets -- -D warnings
+
+      - name: cargo clippy (extra adapters)
+        if: ${{ matrix.extra_adapter_clippy }}
+        run: cargo clippy ${{ matrix.extra_adapter_clippy }} --all-targets -- -D warnings
+
+  doc:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+            adapters: "-p accesskit_windows"
+          - os: macOS-latest
+            name: macOS
+            adapters: "-p accesskit_macos"
+          - os: ubuntu-latest
+            name: Linux
+            adapters: "-p accesskit_unix"
+            extra_adapter_doc: "-p accesskit_atspi_common --all-features"
+          - os: ubuntu-latest
+            name: Android
+            adapters: "-p accesskit_android"
+          - os: macOS-latest
+            name: iOS Simulator
+            target: "aarch64-apple-ios-sim"
+            adapters: "-p accesskit_ios"
+    name: cargo doc (${{ matrix.name }})
+    env:
+      RUSTDOCFLAGS: "-D warnings"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: restore cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: cargo doc (common packages)
+        run: cargo doc -p accesskit -p accesskit_consumer -p accesskit_winit --features winit/wayland-dlopen ${{ matrix.target && format('--target {0}', matrix.target) }}
+
+      - name: cargo doc (adapters)
+        run: cargo doc ${{ matrix.adapters }} ${{ matrix.target && format('--target {0}', matrix.target) }}
+
+      - name: cargo doc (extra adapters)
+        if: ${{ matrix.extra_adapter_doc }}
+        run: cargo doc ${{ matrix.extra_adapter_doc }}
 
   find-msrv:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.step2.outputs.version }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - id: step2
         run: echo "version=`cat Cargo.toml | sed -n 's/rust-version = "\(.*\)"/\1/p'`" >> "$GITHUB_OUTPUT"
 
@@ -89,36 +164,53 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: find-msrv
     strategy:
+      fail-fast: false
       matrix:
-        os: [macOS-latest, windows-latest, ubuntu-latest]
-    name: cargo test
+        include:
+          - os: windows-latest
+            name: Windows
+            adapters: "-p accesskit_windows"
+          - os: macOS-latest
+            name: macOS
+            adapters: "-p accesskit_macos"
+          - os: ubuntu-latest
+            name: Linux
+            adapters: "-p accesskit_atspi_common -p accesskit_unix"
+          - os: ubuntu-latest
+            name: Android
+            adapters: "-p accesskit_android"
+          - os: macOS-latest
+            name: iOS Simulator
+            target: "aarch64-apple-ios-sim"
+            adapters: "-p accesskit_ios"
+    name: cargo test (${{ matrix.name }})
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: install stable toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ needs.find-msrv.outputs.version }}
+          targets: ${{ matrix.target }}
 
       - name: restore cache
         uses: Swatinem/rust-cache@v2
 
-      - name: cargo test
-        run: cargo test
+      - name: cargo test (common packages)
+        run: cargo test -p accesskit -p accesskit_consumer -p accesskit_winit ${{ matrix.target && format('--target {0}', matrix.target) }}
 
-      - name: cargo test -p accesskit_windows
-        if: matrix.os == 'windows-latest'
-        run: cargo test -p accesskit_windows
+      - name: cargo test (adapters)
+        run: cargo test ${{ matrix.adapters }} ${{ matrix.target && format('--target {0}', matrix.target) }}
 
   check-android-dex:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
       - run: sdkmanager "platforms;android-30"
       - run: sdkmanager "build-tools;33.0.2"
       - run: cp platforms/android/classes.dex platforms/android/classes.dex.orig

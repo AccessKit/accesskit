@@ -5,7 +5,7 @@
 
 use accesskit::{Rect, Role};
 
-use crate::node::Node;
+use crate::node::NodeRef;
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FilterResult {
@@ -14,13 +14,18 @@ pub enum FilterResult {
     ExcludeSubtree,
 }
 
-fn common_filter_base(node: &Node) -> Option<FilterResult> {
+fn common_filter_base(node: &NodeRef) -> Option<FilterResult> {
     if node.is_focused() {
         return Some(FilterResult::Include);
     }
 
     if node.is_hidden() {
         return Some(FilterResult::ExcludeSubtree);
+    }
+
+    // Graft nodes are transparent containers pointing to a subtree
+    if node.is_graft() {
+        return Some(FilterResult::ExcludeNode);
     }
 
     let role = node.role();
@@ -31,12 +36,12 @@ fn common_filter_base(node: &Node) -> Option<FilterResult> {
     None
 }
 
-fn common_filter_without_parent_checks(node: &Node) -> FilterResult {
+fn common_filter_without_parent_checks(node: &NodeRef) -> FilterResult {
     common_filter_base(node).unwrap_or(FilterResult::Include)
 }
 
 fn is_first_sibling_in_parent_bbox<'a>(
-    mut siblings: impl Iterator<Item = Node<'a>>,
+    mut siblings: impl Iterator<Item = NodeRef<'a>>,
     parent_bbox: Rect,
 ) -> bool {
     siblings.next().is_some_and(|sibling| {
@@ -46,7 +51,7 @@ fn is_first_sibling_in_parent_bbox<'a>(
     })
 }
 
-pub fn common_filter(node: &Node) -> FilterResult {
+pub fn common_filter(node: &NodeRef) -> FilterResult {
     if let Some(result) = common_filter_base(node) {
         return result;
     }
@@ -86,7 +91,7 @@ pub fn common_filter(node: &Node) -> FilterResult {
     FilterResult::Include
 }
 
-pub fn common_filter_with_root_exception(node: &Node) -> FilterResult {
+pub fn common_filter_with_root_exception(node: &NodeRef) -> FilterResult {
     if node.is_root() {
         return FilterResult::Include;
     }
@@ -95,19 +100,20 @@ pub fn common_filter_with_root_exception(node: &Node) -> FilterResult {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node, NodeId, Rect, Role, Tree, TreeUpdate};
+    use accesskit::{Node, NodeId, Rect, Role, TreeId, TreeInfo, TreeUpdate};
     use alloc::vec;
 
     use super::{
-        common_filter, common_filter_with_root_exception,
         FilterResult::{self, *},
+        common_filter, common_filter_with_root_exception,
     };
+    use crate::tests::nid;
 
     #[track_caller]
     fn assert_filter_result(expected: FilterResult, tree: &crate::Tree, id: NodeId) {
         assert_eq!(
             expected,
-            common_filter(&tree.state().node_by_id(id).unwrap())
+            common_filter(&tree.state().node_by_id(nid(id)).unwrap())
         );
     }
 
@@ -122,7 +128,8 @@ mod tests {
                 }),
                 (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
@@ -144,7 +151,8 @@ mod tests {
                     node
                 }),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
@@ -166,7 +174,8 @@ mod tests {
                     node
                 }),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(1),
         };
         let tree = crate::Tree::new(update, true);
@@ -184,14 +193,15 @@ mod tests {
                 }),
                 (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
         assert_filter_result(ExcludeNode, &tree, NodeId(0));
         assert_eq!(
             Include,
-            common_filter_with_root_exception(&tree.state().node_by_id(NodeId(0)).unwrap())
+            common_filter_with_root_exception(&tree.state().node_by_id(nid(NodeId(0))).unwrap())
         );
         assert_filter_result(Include, &tree, NodeId(1));
     }
@@ -208,7 +218,8 @@ mod tests {
                 }),
                 (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
@@ -228,7 +239,8 @@ mod tests {
                 }),
                 (NodeId(1), Node::new(Role::Button)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(1),
         };
         let tree = crate::Tree::new(update, true);
@@ -247,7 +259,8 @@ mod tests {
                 }),
                 (NodeId(1), Node::new(Role::TextRun)),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         let tree = crate::Tree::new(update, false);
@@ -332,7 +345,8 @@ mod tests {
                     node
                 }),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(0),
         };
         crate::Tree::new(update, false)
@@ -377,5 +391,31 @@ mod tests {
         let tree = clipped_children_test_tree();
         assert_filter_result(ExcludeSubtree, &tree, NodeId(10));
         assert_filter_result(ExcludeSubtree, &tree, NodeId(11));
+    }
+
+    #[test]
+    fn graft_node() {
+        use accesskit::Uuid;
+
+        let subtree_id = TreeId(Uuid::from_u128(1));
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![NodeId(1)]);
+                    node
+                }),
+                (NodeId(1), {
+                    let mut node = Node::new(Role::GenericContainer);
+                    node.set_tree_id(subtree_id);
+                    node
+                }),
+            ],
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        };
+        let tree = crate::Tree::new(update, false);
+        assert_filter_result(ExcludeNode, &tree, NodeId(1));
     }
 }

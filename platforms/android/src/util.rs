@@ -3,9 +3,8 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::NodeId;
-use accesskit_consumer::Node;
-use jni::{objects::JObject, sys::jint, JNIEnv};
+use accesskit_consumer::{FullNodeId, NodeRef};
+use jni::{JNIEnv, objects::JObject, sys::jint};
 use std::collections::HashMap;
 
 pub(crate) const ACTION_FOCUS: jint = 1 << 0;
@@ -28,6 +27,7 @@ pub(crate) const ACTION_ARGUMENT_SELECTION_END_INT: &str = "ACTION_ARGUMENT_SELE
 pub(crate) const CONTENT_CHANGE_TYPE_SUBTREE: jint = 1 << 0;
 
 pub(crate) const EVENT_VIEW_CLICKED: jint = 1;
+pub(crate) const EVENT_VIEW_SELECTED: jint = 1 << 2;
 pub(crate) const EVENT_VIEW_FOCUSED: jint = 1 << 3;
 pub(crate) const EVENT_VIEW_TEXT_CHANGED: jint = 1 << 4;
 pub(crate) const EVENT_VIEW_HOVER_ENTER: jint = 1 << 7;
@@ -57,19 +57,21 @@ pub(crate) const MOVEMENT_GRANULARITY_WORD: jint = 1 << 1;
 pub(crate) const MOVEMENT_GRANULARITY_LINE: jint = 1 << 2;
 pub(crate) const MOVEMENT_GRANULARITY_PARAGRAPH: jint = 1 << 3;
 
+pub(crate) const RANGE_TYPE_FLOAT: jint = 1;
+
 #[derive(Debug, Default)]
 pub(crate) struct NodeIdMap {
-    java_to_accesskit: HashMap<jint, NodeId>,
-    accesskit_to_java: HashMap<NodeId, jint>,
+    java_to_accesskit: HashMap<jint, FullNodeId>,
+    accesskit_to_java: HashMap<FullNodeId, jint>,
     next_java_id: jint,
 }
 
 impl NodeIdMap {
-    pub(crate) fn get_accesskit_id(&self, java_id: jint) -> Option<NodeId> {
+    pub(crate) fn get_accesskit_id(&self, java_id: jint) -> Option<FullNodeId> {
         self.java_to_accesskit.get(&java_id).copied()
     }
 
-    pub(crate) fn get_or_create_java_id(&mut self, node: &Node) -> jint {
+    pub(crate) fn get_or_create_java_id(&mut self, node: &NodeRef) -> jint {
         if node.is_root() {
             return HOST_VIEW_ID;
         }

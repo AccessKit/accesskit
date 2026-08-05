@@ -6,7 +6,9 @@
 mod accessible;
 mod action;
 mod application;
+mod cache;
 mod component;
+mod hyperlink;
 mod selection;
 mod text;
 mod value;
@@ -31,7 +33,9 @@ fn optional_object_address(
 pub(crate) use accessible::*;
 pub(crate) use action::*;
 pub(crate) use application::*;
+pub(crate) use cache::*;
 pub(crate) use component::*;
+pub(crate) use hyperlink::*;
 pub(crate) use selection::*;
 pub(crate) use text::*;
 pub(crate) use value::*;

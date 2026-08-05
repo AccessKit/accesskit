@@ -5,20 +5,21 @@
 
 #![allow(non_upper_case_globals)]
 
-use accesskit::{Action, ActionData, ActionRequest, ScrollHint};
+use accesskit::{Action, ActionData, ActionRequest, ScrollHint, VerticalOffset};
 use accesskit_consumer::{
-    Node, TextPosition as Position, TextRange as Range, TreeState, WeakTextRange as WeakRange,
+    NodeRef, TextPosition as Position, TextRange as Range, Tree, TreeState,
+    WeakTextRange as WeakRange,
 };
 use std::sync::{Arc, RwLock, Weak};
 use windows::{
-    core::*,
     Win32::{
         System::{Com::*, Variant::*},
         UI::Accessibility::*,
     },
+    core::*,
 };
 
-use crate::{context::Context, node::PlatformNode, util::*};
+use crate::{context::Context, util::*};
 
 fn upgrade_range<'a>(weak: &WeakRange, tree_state: &'a TreeState) -> Result<Range<'a>> {
     if let Some(range) = weak.upgrade(tree_state) {
@@ -28,7 +29,7 @@ fn upgrade_range<'a>(weak: &WeakRange, tree_state: &'a TreeState) -> Result<Rang
     }
 }
 
-fn upgrade_range_node<'a>(weak: &WeakRange, tree_state: &'a TreeState) -> Result<Node<'a>> {
+fn upgrade_range_node<'a>(weak: &WeakRange, tree_state: &'a TreeState) -> Result<NodeRef<'a>> {
     if let Some(node) = weak.upgrade_node(tree_state) {
         Ok(node)
     } else {
@@ -239,19 +240,9 @@ impl PlatformRange {
         self.with_tree_state_and_context(|state, _| f(state))
     }
 
-    fn upgrade_node<'a>(&self, tree_state: &'a TreeState) -> Result<Node<'a>> {
+    fn upgrade_node<'a>(&self, tree_state: &'a TreeState) -> Result<NodeRef<'a>> {
         let state = self.state.read().unwrap();
         upgrade_range_node(&state, tree_state)
-    }
-
-    fn with_node<F, T>(&self, f: F) -> Result<T>
-    where
-        F: FnOnce(Node) -> Result<T>,
-    {
-        self.with_tree_state(|tree_state| {
-            let node = self.upgrade_node(tree_state)?;
-            f(node)
-        })
     }
 
     fn upgrade_for_read<'a>(&self, tree_state: &'a TreeState) -> Result<Range<'a>> {
@@ -291,12 +282,12 @@ impl PlatformRange {
 
     fn do_action<F>(&self, f: F) -> Result<()>
     where
-        for<'a> F: FnOnce(Range<'a>) -> ActionRequest,
+        for<'a> F: FnOnce(Range<'a>, &Tree) -> ActionRequest,
     {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
         let range = self.upgrade_for_read(tree.state())?;
-        let request = f(range);
+        let request = f(range, &tree);
         drop(tree);
         context.do_action(request);
         Ok(())
@@ -426,15 +417,13 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
     }
 
     fn GetAttributeValue(&self, id: UIA_TEXTATTRIBUTE_ID) -> Result<VARIANT> {
-        match id {
+        self.read(|range| match id {
             UIA_IsReadOnlyAttributeId => {
                 // TBD: do we ever want to support mixed read-only/editable text?
-                self.with_node(|node| {
-                    let value = node.is_read_only();
-                    Ok(value.into())
-                })
+                let value = range.node().is_read_only();
+                Ok(value.into())
             }
-            UIA_CaretPositionAttributeId => self.read(|range| {
+            UIA_CaretPositionAttributeId => {
                 let mut value = CaretPosition_Unknown;
                 if range.is_degenerate() {
                     let pos = range.start();
@@ -445,13 +434,61 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
                     }
                 }
                 Ok(value.0.into())
-            }),
+            }
+            UIA_CultureAttributeId => Ok(Variant::from(range.language().map(LocaleName)).into()),
+            UIA_FontNameAttributeId => {
+                let mut buffer = StringBuffer::acquire();
+                Ok(
+                    Variant::from(range.font_family().map(|s| StrWrapper::new(s, &mut buffer)))
+                        .into(),
+                )
+            }
+            UIA_FontSizeAttributeId => {
+                Ok(Variant::from(range.font_size().map(|value| value as f64)).into())
+            }
+            UIA_FontWeightAttributeId => {
+                Ok(Variant::from(range.font_weight().map(|value| value as i32)).into())
+            }
+            UIA_IsItalicAttributeId => Ok(Variant::from(range.is_italic()).into()),
+            UIA_BackgroundColorAttributeId => Ok(Variant::from(range.background_color()).into()),
+            UIA_ForegroundColorAttributeId => Ok(Variant::from(range.foreground_color()).into()),
+            UIA_OverlineStyleAttributeId => {
+                Ok(Variant::from(range.overline().map(|d| d.style)).into())
+            }
+            UIA_OverlineColorAttributeId => {
+                Ok(Variant::from(range.overline().map(|d| d.color)).into())
+            }
+            UIA_StrikethroughStyleAttributeId => {
+                Ok(Variant::from(range.strikethrough().map(|d| d.style)).into())
+            }
+            UIA_StrikethroughColorAttributeId => {
+                Ok(Variant::from(range.strikethrough().map(|d| d.color)).into())
+            }
+            UIA_UnderlineStyleAttributeId => {
+                Ok(Variant::from(range.underline().map(|d| d.style)).into())
+            }
+            UIA_UnderlineColorAttributeId => {
+                Ok(Variant::from(range.underline().map(|d| d.color)).into())
+            }
+            UIA_HorizontalTextAlignmentAttributeId => Ok(Variant::from(range.text_align()).into()),
+            UIA_IsSubscriptAttributeId => Ok(Variant::from(
+                range
+                    .vertical_offset()
+                    .map(|o| o == VerticalOffset::Subscript),
+            )
+            .into()),
+            UIA_IsSuperscriptAttributeId => Ok(Variant::from(
+                range
+                    .vertical_offset()
+                    .map(|o| o == VerticalOffset::Superscript),
+            )
+            .into()),
             // TODO: implement more attributes
             _ => {
                 let value = unsafe { UiaGetReservedNotSupportedValue() }.unwrap();
                 Ok(value.into())
             }
-        }
+        })
     }
 
     fn GetBoundingRectangles(&self) -> Result<*mut SAFEARRAY> {
@@ -473,21 +510,19 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
     }
 
     fn GetEnclosingElement(&self) -> Result<IRawElementProviderSimple> {
-        self.with_node(|node| {
-            // Revisit this if we eventually support embedded objects.
-            Ok(PlatformNode {
-                context: self.context.clone(),
-                node_id: Some(node.id()),
-            }
-            .into())
-        })
+        // Revisit this if we eventually support embedded objects.
+        let context = self.upgrade_context()?;
+        let tree = context.read_tree();
+        let id = self.upgrade_node(tree.state())?.id();
+        Ok(context.get_or_create_platform_node(id).into_interface())
     }
 
     fn GetText(&self, _max_length: i32) -> Result<BSTR> {
         // The Microsoft docs imply that the provider isn't _required_
         // to truncate text at the max length, so we just ignore it.
         self.read(|range| {
-            let mut result = WideString::default();
+            let mut buffer = StringBuffer::acquire();
+            let mut result = WideString::new(&mut buffer);
             range.write_text(&mut result).unwrap();
             Ok(result.into())
         })
@@ -557,10 +592,14 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
     }
 
     fn Select(&self) -> Result<()> {
-        self.do_action(|range| ActionRequest {
-            action: Action::SetTextSelection,
-            target: range.node().id(),
-            data: Some(ActionData::SetTextSelection(range.to_text_selection())),
+        self.do_action(|range, tree| {
+            let (target_node, target_tree) = tree.state().locate_node(range.node().id()).unwrap();
+            ActionRequest {
+                action: Action::SetTextSelection,
+                target_tree,
+                target_node,
+                data: Some(ActionData::SetTextSelection(range.to_text_selection())),
+            }
         })
     }
 
@@ -575,15 +614,20 @@ impl ITextRangeProvider_Impl for PlatformRange_Impl {
     }
 
     fn ScrollIntoView(&self, align_to_top: BOOL) -> Result<()> {
-        self.do_action(|range| {
+        self.do_action(|range, tree| {
             let position = if align_to_top.into() {
                 range.start()
             } else {
                 range.end()
             };
+            let (target_node, target_tree) = tree
+                .state()
+                .locate_node(position.inner_node().id())
+                .unwrap();
             ActionRequest {
-                target: position.inner_node().id(),
                 action: Action::ScrollIntoView,
+                target_tree,
+                target_node,
                 data: Some(ActionData::ScrollHint(if align_to_top.into() {
                     ScrollHint::TopEdge
                 } else {

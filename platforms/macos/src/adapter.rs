@@ -5,14 +5,14 @@
 
 use crate::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper, Context},
-    event::{focus_event, EventGenerator, QueuedEvents},
+    event::{EventGenerator, QueuedEvents, focus_event},
     filters::filter,
     node::can_be_focused,
     util::*,
 };
 use accesskit::{
-    ActionHandler, ActionRequest, ActivationHandler, Node as NodeProvider, NodeId, Role,
-    Tree as TreeData, TreeUpdate,
+    ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Role, TreeId, TreeInfo,
+    TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, Tree};
 use objc2::rc::{Retained, Weak};
@@ -129,12 +129,9 @@ impl Adapter {
                     Rc::clone(action_handler),
                     placeholder_context.mtm,
                 );
-                let result = context
-                    .tree
-                    .borrow()
-                    .state()
-                    .focus_id()
-                    .map(|id| QueuedEvents::new(Rc::clone(&context), vec![focus_event(id)]));
+                let result = context.tree.borrow().state().focus().map(|node| {
+                    QueuedEvents::new(Rc::clone(&context), vec![focus_event(node.id())])
+                });
                 self.state = State::Active(context);
                 result
             }
@@ -194,8 +191,9 @@ impl Adapter {
                 }
                 None => {
                     let placeholder_update = TreeUpdate {
-                        nodes: vec![(PLACEHOLDER_ROOT_ID, NodeProvider::new(Role::Window))],
-                        tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
+                        nodes: vec![(PLACEHOLDER_ROOT_ID, Node::new(Role::Window))],
+                        tree: Some(TreeInfo::new(PLACEHOLDER_ROOT_ID)),
+                        tree_id: TreeId::ROOT,
                         focus: PLACEHOLDER_ROOT_ID,
                     };
                     let placeholder_tree = Tree::new(placeholder_update, false);

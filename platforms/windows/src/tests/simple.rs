@@ -4,9 +4,10 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    Action, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Role, Tree, TreeUpdate,
+    Action, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Role, TreeId, TreeInfo,
+    TreeUpdate,
 };
-use windows::{core::*, Win32::UI::Accessibility::*};
+use windows::{Win32::UI::Accessibility::*, core::*};
 
 use super::*;
 
@@ -34,7 +35,8 @@ fn get_initial_state() -> TreeUpdate {
             (BUTTON_1_ID, button_1),
             (BUTTON_2_ID, button_2),
         ],
-        tree: Some(Tree::new(WINDOW_ID)),
+        tree: Some(TreeInfo::new(WINDOW_ID)),
+        tree_id: TreeId::ROOT,
         focus: BUTTON_1_ID,
     }
 }

@@ -60,11 +60,14 @@ impl TextInterface {
             .map_err(self.map_error())
     }
 
-    fn get_attributes(&self, offset: i32) -> fdo::Result<(HashMap<String, String>, i32, i32)> {
+    fn get_attributes(
+        &self,
+        offset: i32,
+    ) -> fdo::Result<(HashMap<&'static str, String>, i32, i32)> {
         self.node.text_attributes(offset).map_err(self.map_error())
     }
 
-    fn get_default_attributes(&self) -> fdo::Result<HashMap<String, String>> {
+    fn get_default_attributes(&self) -> fdo::Result<HashMap<&'static str, String>> {
         self.node
             .default_text_attributes()
             .map_err(self.map_error())
@@ -128,7 +131,7 @@ impl TextInterface {
         &self,
         offset: i32,
         include_defaults: bool,
-    ) -> fdo::Result<(HashMap<String, String>, i32, i32)> {
+    ) -> fdo::Result<(HashMap<&'static str, String>, i32, i32)> {
         self.node
             .text_attribute_run(offset, include_defaults)
             .map_err(self.map_error())

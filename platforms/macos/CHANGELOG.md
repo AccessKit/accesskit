@@ -37,6 +37,159 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.26.3](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.26.2...accesskit_macos-v0.26.3) (2026-07-14)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.37.0 to 0.38.0
+
+## [0.26.2](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.26.1...accesskit_macos-v0.26.2) (2026-06-12)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.24.0 to 0.24.1
+    * accesskit_consumer bumped from 0.36.0 to 0.37.0
+
+## [0.26.1](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.26.0...accesskit_macos-v0.26.1) (2026-05-11)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.35.0 to 0.36.0
+
+## [0.26.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.25.0...accesskit_macos-v0.26.0) (2026-03-04)
+
+
+### Features
+
+* Expose text attributes on macOS ([#691](https://github.com/AccessKit/accesskit/issues/691)) ([641b05b](https://github.com/AccessKit/accesskit/commit/641b05b10d3d55631a73d10a1f753111dde372e8))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.34.0 to 0.35.0
+
+## [0.25.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.24.1...accesskit_macos-v0.25.0) (2026-02-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* Update minimum supported Rust version to 1.85 ([#683](https://github.com/AccessKit/accesskit/issues/683))
+
+### Bug Fixes
+
+* Update minimum supported Rust version to 1.85 ([#683](https://github.com/AccessKit/accesskit/issues/683)) ([f8c22cb](https://github.com/AccessKit/accesskit/commit/f8c22cbb53ce6b1859adeff3c0b7154ad9e1f25e))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.23.0 to 0.24.0
+    * accesskit_consumer bumped from 0.33.1 to 0.34.0
+
+## [0.24.1](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.24.0...accesskit_macos-v0.24.1) (2026-01-18)
+
+
+### Bug Fixes
+
+* Emit initial focus event for active descendant node ([#681](https://github.com/AccessKit/accesskit/issues/681)) ([13a37d1](https://github.com/AccessKit/accesskit/commit/13a37d144e2fafceaf26e7645f6acc679ccb2f34))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.33.0 to 0.33.1
+
+## [0.24.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.23.0...accesskit_macos-v0.24.0) (2026-01-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655))
+
+### Features
+
+* Implement the `url` property ([#669](https://github.com/AccessKit/accesskit/issues/669)) ([6202e63](https://github.com/AccessKit/accesskit/commit/6202e63c667e73216a306b3dd45ff25c364a4f45))
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655)) ([c16eb80](https://github.com/AccessKit/accesskit/commit/c16eb80c49d14f39e8a7defb1694bf22b8ceed6f))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.22.0 to 0.23.0
+    * accesskit_consumer bumped from 0.32.0 to 0.33.0
+
+## [0.23.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.22.2...accesskit_macos-v0.23.0) (2025-12-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop deprecated roles ([#642](https://github.com/AccessKit/accesskit/issues/642))
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626))
+
+### Features
+
+* Add GridCell role ([#643](https://github.com/AccessKit/accesskit/issues/643)) ([1e5abca](https://github.com/AccessKit/accesskit/commit/1e5abca737d1ee942c0804fec2c06d3cb08faa94))
+* Implement BrailleLabel and BrailleRoleDescription roles ([#638](https://github.com/AccessKit/accesskit/issues/638)) ([0fdcebb](https://github.com/AccessKit/accesskit/commit/0fdcebb55e308e039ec99fbc31e94e8087a69f2d))
+* Rename HeaderAsNonLandmark to SectionHeader, FooterAsNonLandmark to SectionFooter ([#635](https://github.com/AccessKit/accesskit/issues/635)) ([dd69526](https://github.com/AccessKit/accesskit/commit/dd695260877cb862ece4c2b7d8607308f5fed608))
+
+
+### Bug Fixes
+
+* Expose dialogs in the platform adapters ([1576a94](https://github.com/AccessKit/accesskit/commit/1576a940ec3e9066fc5e181419dae6899bf2db46))
+* Upgrade hashbrown, indexmap ([#653](https://github.com/AccessKit/accesskit/issues/653)) ([fd73a85](https://github.com/AccessKit/accesskit/commit/fd73a85e57a6591a449b0a1880025fb940873c66))
+
+
+### Code Refactoring
+
+* Drop deprecated roles ([#642](https://github.com/AccessKit/accesskit/issues/642)) ([4d46c27](https://github.com/AccessKit/accesskit/commit/4d46c2740631c5fe4f057707b949d12b26931d0b))
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626)) ([ea23ec4](https://github.com/AccessKit/accesskit/commit/ea23ec424c7dbb8841e03d71b6a15b74264850a9))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.1 to 0.22.0
+    * accesskit_consumer bumped from 0.31.0 to 0.32.0
+
+## [0.22.2](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.22.1...accesskit_macos-v0.22.2) (2025-10-20)
+
+
+### Bug Fixes
+
+* Implement setting values on macOS ([#615](https://github.com/AccessKit/accesskit/issues/615)) ([9e07b15](https://github.com/AccessKit/accesskit/commit/9e07b158c34d6df3a0a08f1cc1ecdd1a0b7a943f))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.30.1 to 0.31.0
+
+## [0.22.1](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.22.0...accesskit_macos-v0.22.1) (2025-10-02)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.0 to 0.21.1
+    * accesskit_consumer bumped from 0.30.0 to 0.30.1
+
 ## [0.22.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.21.0...accesskit_macos-v0.22.0) (2025-07-16)
 
 

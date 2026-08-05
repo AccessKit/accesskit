@@ -3,20 +3,31 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-#[derive(Debug, thiserror::Error)]
+use std::fmt;
+
+#[derive(Debug)]
 pub enum Error {
-    #[error("defunct")]
     Defunct,
-    #[error("unsupported interface")]
     UnsupportedInterface,
-    #[error("too many children")]
     TooManyChildren,
-    #[error("index out of range")]
     IndexOutOfRange,
-    #[error("too many characters")]
     TooManyCharacters,
-    #[error("unsupported text granularity")]
     UnsupportedTextGranularity,
 }
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Defunct => "defunct",
+            Self::UnsupportedInterface => "unsupported interface",
+            Self::TooManyChildren => "too many children",
+            Self::IndexOutOfRange => "index out of range",
+            Self::TooManyCharacters => "too many characters",
+            Self::UnsupportedTextGranularity => "unsupported text granularity",
+        })
+    }
+}
+
+impl std::error::Error for Error {}
 
 pub type Result<T> = std::result::Result<T, Error>;

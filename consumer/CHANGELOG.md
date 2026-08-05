@@ -24,6 +24,188 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.38.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.37.0...accesskit_consumer-v0.38.0) (2026-07-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* Make Tree::toolkit_name return 'AccessKit' by default
+
+### Bug Fixes
+
+* Address Rust 1.97 clippy warnings ([#744](https://github.com/AccessKit/accesskit/issues/744)) ([3bde63c](https://github.com/AccessKit/accesskit/commit/3bde63ca0eeb885931e64336afccdce68dd832bd))
+* Make Tree::toolkit_name return 'AccessKit' by default ([2da05e1](https://github.com/AccessKit/accesskit/commit/2da05e10c639ecf388cec44ac4dc690054e4f16b))
+
+## [0.37.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.36.0...accesskit_consumer-v0.37.0) (2026-06-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* Trim trait bounds on iterator return types ([#721](https://github.com/AccessKit/accesskit/issues/721))
+
+### Code Refactoring
+
+* Trim trait bounds on iterator return types ([#721](https://github.com/AccessKit/accesskit/issues/721)) ([4023b41](https://github.com/AccessKit/accesskit/commit/4023b414c3c1318ec2780b13a4e9f70713703862))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.24.0 to 0.24.1
+
+## [0.36.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.35.0...accesskit_consumer-v0.36.0) (2026-05-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* Prepare consumer crate and Windows adapter for 2024 edition
+
+### Features
+
+* Allow looking up nodes by LocalNodeId and TreeId ([#707](https://github.com/AccessKit/accesskit/issues/707)) ([9d78086](https://github.com/AccessKit/accesskit/commit/9d78086b7a46eb3c2bc84239e25451dfbb0cfeaf))
+* Basic iOS adapter ([#710](https://github.com/AccessKit/accesskit/issues/710)) ([2dbb06f](https://github.com/AccessKit/accesskit/commit/2dbb06fb3dcc5369cb10fb901490ddf34017f56a))
+* Support tree views on Windows ([#698](https://github.com/AccessKit/accesskit/issues/698)) ([1d3b189](https://github.com/AccessKit/accesskit/commit/1d3b18912ea5f4b0abd37ddb0a771768155fbd7b))
+
+
+### Code Refactoring
+
+* Prepare consumer crate and Windows adapter for 2024 edition ([258b2e6](https://github.com/AccessKit/accesskit/commit/258b2e66b741b142c84563ef00f70bf6bc8da9d8))
+
+## [0.35.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.34.0...accesskit_consumer-v0.35.0) (2026-03-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* Allow locating nodes without Tree access
+
+### Features
+
+* Expose text attributes on macOS ([#691](https://github.com/AccessKit/accesskit/issues/691)) ([641b05b](https://github.com/AccessKit/accesskit/commit/641b05b10d3d55631a73d10a1f753111dde372e8))
+
+
+### Code Refactoring
+
+* Allow locating nodes without Tree access ([941a96d](https://github.com/AccessKit/accesskit/commit/941a96d161414ea6db448ecafdd11fa6e3f1680d))
+
+## [0.34.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.33.1...accesskit_consumer-v0.34.0) (2026-02-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* Update minimum supported Rust version to 1.85 ([#683](https://github.com/AccessKit/accesskit/issues/683))
+
+### Bug Fixes
+
+* Update minimum supported Rust version to 1.85 ([#683](https://github.com/AccessKit/accesskit/issues/683)) ([f8c22cb](https://github.com/AccessKit/accesskit/commit/f8c22cbb53ce6b1859adeff3c0b7154ad9e1f25e))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.23.0 to 0.24.0
+
+## [0.33.1](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.33.0...accesskit_consumer-v0.33.1) (2026-01-18)
+
+
+### Bug Fixes
+
+* Fix next word and line at the end of text runs ([#678](https://github.com/AccessKit/accesskit/issues/678)) ([828979e](https://github.com/AccessKit/accesskit/commit/828979e5f668bc8c4ceba018d417956a5c69b2bd))
+
+## [0.33.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.32.0...accesskit_consumer-v0.33.0) (2026-01-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* Store text decoration style and color in a struct ([#674](https://github.com/AccessKit/accesskit/issues/674))
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655))
+
+### Features
+
+* Implement the `url` property ([#669](https://github.com/AccessKit/accesskit/issues/669)) ([6202e63](https://github.com/AccessKit/accesskit/commit/6202e63c667e73216a306b3dd45ff25c364a4f45))
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655)) ([c16eb80](https://github.com/AccessKit/accesskit/commit/c16eb80c49d14f39e8a7defb1694bf22b8ceed6f))
+
+
+### Bug Fixes
+
+* Implement the `active_descendant` property ([#675](https://github.com/AccessKit/accesskit/issues/675)) ([863755d](https://github.com/AccessKit/accesskit/commit/863755d6898c7006a5f49c3661a26cb62d837d1b))
+
+
+### Code Refactoring
+
+* Store text decoration style and color in a struct ([#674](https://github.com/AccessKit/accesskit/issues/674)) ([c2e8487](https://github.com/AccessKit/accesskit/commit/c2e8487d0a243da0d1c996887fb4c9a7e3beacc7))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.22.0 to 0.23.0
+
+## [0.32.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.31.0...accesskit_consumer-v0.32.0) (2025-12-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* Use a proper `Color` struct for the color properties ([#663](https://github.com/AccessKit/accesskit/issues/663))
+* Change font size and weight to `f32` ([#662](https://github.com/AccessKit/accesskit/issues/662))
+* Drop deprecated roles ([#642](https://github.com/AccessKit/accesskit/issues/642))
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626))
+* Support properties on text ranges ([#627](https://github.com/AccessKit/accesskit/issues/627))
+
+### Features
+
+* Add `map` function to `TextRangePropertyValue<Option<T>>` ([#632](https://github.com/AccessKit/accesskit/issues/632)) ([555617a](https://github.com/AccessKit/accesskit/commit/555617a004c1d57c7ed114a4fd38c0c48ac2d149))
+* expose more data on Node ([3d0d873](https://github.com/AccessKit/accesskit/commit/3d0d8739ef53214ea6da2fcfbc7fc29d01f53a40))
+* Implement BrailleLabel and BrailleRoleDescription roles ([#638](https://github.com/AccessKit/accesskit/issues/638)) ([0fdcebb](https://github.com/AccessKit/accesskit/commit/0fdcebb55e308e039ec99fbc31e94e8087a69f2d))
+* Support dialogs in the consumer crate ([028f611](https://github.com/AccessKit/accesskit/commit/028f611b7324bf4bcc121e1e047c426075c34982))
+* Support inherited flags ([#661](https://github.com/AccessKit/accesskit/issues/661)) ([176c90c](https://github.com/AccessKit/accesskit/commit/176c90cac8f93447a7ac354efca853a394a25e33))
+* Support properties on text ranges ([#627](https://github.com/AccessKit/accesskit/issues/627)) ([b854ad8](https://github.com/AccessKit/accesskit/commit/b854ad8dbd54eeb38105c9b39c9e76310a753570))
+
+
+### Bug Fixes
+
+* Upgrade hashbrown, indexmap ([#653](https://github.com/AccessKit/accesskit/issues/653)) ([fd73a85](https://github.com/AccessKit/accesskit/commit/fd73a85e57a6591a449b0a1880025fb940873c66))
+
+
+### Code Refactoring
+
+* Change font size and weight to `f32` ([#662](https://github.com/AccessKit/accesskit/issues/662)) ([ae0ead8](https://github.com/AccessKit/accesskit/commit/ae0ead825298539f08140b3775f0fdbfc17acd13))
+* Drop deprecated roles ([#642](https://github.com/AccessKit/accesskit/issues/642)) ([4d46c27](https://github.com/AccessKit/accesskit/commit/4d46c2740631c5fe4f057707b949d12b26931d0b))
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626)) ([ea23ec4](https://github.com/AccessKit/accesskit/commit/ea23ec424c7dbb8841e03d71b6a15b74264850a9))
+* Use a proper `Color` struct for the color properties ([#663](https://github.com/AccessKit/accesskit/issues/663)) ([922e882](https://github.com/AccessKit/accesskit/commit/922e882a8cd9aa372038fb9c66ff57a557e7888d))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.1 to 0.22.0
+
+## [0.31.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.30.1...accesskit_consumer-v0.31.0) (2025-10-20)
+
+
+### Features
+
+* Expose text properties on consumer `Node` with inheritance ([#617](https://github.com/AccessKit/accesskit/issues/617)) ([0f132ea](https://github.com/AccessKit/accesskit/commit/0f132ea7b94c33d0ee47dfe6b0549a68d331f493))
+
+## [0.30.1](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.30.0...accesskit_consumer-v0.30.1) (2025-10-02)
+
+
+### Bug Fixes
+
+* Fix clippy warnings introduced in 1.89 ([#606](https://github.com/AccessKit/accesskit/issues/606)) ([b2c07d6](https://github.com/AccessKit/accesskit/commit/b2c07d654a8ce6f01e61a79c91f2f9d5a96afdc9))
+* Only expose the `placeholder` property on empty text inputs ([#607](https://github.com/AccessKit/accesskit/issues/607)) ([1764cef](https://github.com/AccessKit/accesskit/commit/1764cef1892e3bf05182fb9c4c65d5ba4f157f50))
+* Prevent filtered node iterators from panicking when exhausted ([#621](https://github.com/AccessKit/accesskit/issues/621)) ([1c8071f](https://github.com/AccessKit/accesskit/commit/1c8071f62dd91e398f0df1618b9a2858c8793d98))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.0 to 0.21.1
+
 ## [0.30.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.29.0...accesskit_consumer-v0.30.0) (2025-07-16)
 
 

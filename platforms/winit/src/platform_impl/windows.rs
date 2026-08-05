@@ -7,7 +7,7 @@ use crate::raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use crate::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
 use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, TreeUpdate};
-use accesskit_windows::{SubclassingAdapter, HWND};
+use accesskit_windows::{HWND, SubclassingAdapter};
 use winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::Window};
 
 pub struct Adapter {

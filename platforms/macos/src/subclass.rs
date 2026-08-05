@@ -5,11 +5,12 @@
 
 use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
 use objc2::{
+    ClassType, DeclaredClass,
     declare::ClassBuilder,
     define_class,
     ffi::{
-        objc_getAssociatedObject, objc_setAssociatedObject, object_setClass,
-        OBJC_ASSOCIATION_RETAIN_NONATOMIC,
+        OBJC_ASSOCIATION_RETAIN_NONATOMIC, objc_getAssociatedObject, objc_setAssociatedObject,
+        object_setClass,
     },
     msg_send,
     rc::Retained,
@@ -25,7 +26,7 @@ use std::{
     sync::Mutex,
 };
 
-use crate::{event::QueuedEvents, Adapter};
+use crate::{Adapter, event::QueuedEvents};
 
 static SUBCLASSES: Mutex<Vec<(&'static AnyClass, &'static AnyClass)>> = Mutex::new(Vec::new());
 

@@ -10,4 +10,4 @@ mod object_id;
 
 pub(crate) use bus::*;
 pub(crate) use object_address::OwnedObjectAddress;
-pub(crate) use object_id::ObjectId;
+pub(crate) use object_id::{ObjectId, cache_path};

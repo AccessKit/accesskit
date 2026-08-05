@@ -1,20 +1,20 @@
 // Based on the create_window sample in windows-samples-rs.
 
 use accesskit::{
-    Action, ActionHandler, ActionRequest, ActivationHandler, Live, Node, NodeId, Rect, Role, Tree,
-    TreeUpdate,
+    Action, ActionHandler, ActionRequest, ActivationHandler, Live, Node, NodeId, Rect, Role,
+    TreeId, TreeInfo, TreeUpdate,
 };
 use accesskit_windows::Adapter;
 use once_cell::sync::Lazy;
 use std::cell::RefCell;
 use windows::{
-    core::*,
     Win32::{
         Foundation::*,
         Graphics::Gdi::ValidateRect,
         System::LibraryLoader::GetModuleHandleW,
         UI::{Input::KeyboardAndMouse::*, WindowsAndMessaging::*},
     },
+    core::*,
 };
 
 static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
@@ -31,7 +31,7 @@ static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
 
     let atom = unsafe { RegisterClassW(&wc) };
     if atom == 0 {
-        panic!("{}", Error::from_win32());
+        panic!("{}", Error::from_thread());
     }
     atom
 });
@@ -95,6 +95,7 @@ impl InnerWindowState {
         if self.announcement.is_some() {
             node.push_child(ANNOUNCEMENT_ID);
         }
+        node.set_language("en");
         node
     }
 }
@@ -105,7 +106,7 @@ impl ActivationHandler for InnerWindowState {
         let root = self.build_root();
         let button_1 = build_button(BUTTON_1_ID, "Button 1");
         let button_2 = build_button(BUTTON_2_ID, "Button 2");
-        let tree = Tree::new(WINDOW_ID);
+        let tree = TreeInfo::new(WINDOW_ID);
 
         let mut result = TreeUpdate {
             nodes: vec![
@@ -114,6 +115,7 @@ impl ActivationHandler for InnerWindowState {
                 (BUTTON_2_ID, button_2),
             ],
             tree: Some(tree),
+            tree_id: TreeId::ROOT,
             focus: self.focus,
         };
         if let Some(announcement) = &self.announcement {
@@ -137,6 +139,7 @@ impl WindowState {
         if let Some(events) = adapter.update_if_active(|| TreeUpdate {
             nodes: vec![],
             tree: None,
+            tree_id: TreeId::ROOT,
             focus,
         }) {
             drop(adapter);
@@ -159,6 +162,7 @@ impl WindowState {
             TreeUpdate {
                 nodes: vec![(ANNOUNCEMENT_ID, announcement), (WINDOW_ID, root)],
                 tree: None,
+                tree_id: TreeId::ROOT,
                 focus: inner_state.focus,
             }
         }) {
@@ -170,7 +174,7 @@ impl WindowState {
 }
 
 unsafe fn get_window_state(window: HWND) -> *const WindowState {
-    GetWindowLongPtrW(window, GWLP_USERDATA) as _
+    unsafe { GetWindowLongPtrW(window, GWLP_USERDATA) as _ }
 }
 
 fn update_window_focus_state(window: HWND, is_focused: bool) {
@@ -200,7 +204,7 @@ impl ActionHandler for SimpleActionHandler {
                         Some(self.window),
                         SET_FOCUS_MSG,
                         WPARAM(0),
-                        LPARAM(request.target.0 as _),
+                        LPARAM(request.target_node.0 as _),
                     )
                 }
                 .unwrap();
@@ -211,7 +215,7 @@ impl ActionHandler for SimpleActionHandler {
                         Some(self.window),
                         CLICK_MSG,
                         WPARAM(0),
-                        LPARAM(request.target.0 as _),
+                        LPARAM(request.target_node.0 as _),
                     )
                 }
                 .unwrap();
@@ -340,7 +344,7 @@ fn create_window(title: &str, initial_focus: NodeId) -> Result<HWND> {
         )?
     };
     if window.is_invalid() {
-        return Err(Error::from_win32());
+        return Err(Error::from_thread());
     }
 
     Ok(window)
@@ -349,8 +353,12 @@ fn create_window(title: &str, initial_focus: NodeId) -> Result<HWND> {
 fn main() -> Result<()> {
     println!("This example has no visible GUI, and a keyboard interface:");
     println!("- [Tab] switches focus between two logical buttons.");
-    println!("- [Space] 'presses' the button, adding static text in a live region announcing that it was pressed.");
-    println!("Enable Narrator with [Win]+[Ctrl]+[Enter] (or [Win]+[Enter] on older versions of Windows).");
+    println!(
+        "- [Space] 'presses' the button, adding static text in a live region announcing that it was pressed."
+    );
+    println!(
+        "Enable Narrator with [Win]+[Ctrl]+[Enter] (or [Win]+[Enter] on older versions of Windows)."
+    );
 
     let window = create_window(WINDOW_TITLE, INITIAL_FOCUS)?;
     let _ = unsafe { ShowWindow(window, SW_SHOW) };

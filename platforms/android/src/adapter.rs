@@ -9,21 +9,21 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node as NodeData, NodeId,
-    Orientation, Point, Role, ScrollUnit, TextSelection, Tree as TreeData, TreeUpdate,
+    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Orientation,
+    Point, Role, ScrollUnit, TextSelection, TreeId, TreeInfo, TreeUpdate,
 };
-use accesskit_consumer::{FilterResult, Node, TextPosition, Tree, TreeChangeHandler};
+use accesskit_consumer::{FilterResult, NodeRef, TextPosition, Tree, TreeChangeHandler};
 use jni::{
+    JNIEnv,
     objects::JObject,
     sys::{jfloat, jint},
-    JNIEnv,
 };
 
 use crate::{
     action::{PlatformAction, PlatformActionInner},
     event::{QueuedEvent, QueuedEvents, ScrollDimension},
     filters::filter,
-    node::{add_action, NodeWrapper},
+    node::{NodeWrapper, add_action},
     util::*,
 };
 
@@ -36,7 +36,7 @@ fn enqueue_window_content_changed(events: &mut Vec<QueuedEvent>) {
 fn enqueue_focus_event_if_applicable(
     events: &mut Vec<QueuedEvent>,
     node_id_map: &mut NodeIdMap,
-    node: &Node,
+    node: &NodeRef,
 ) {
     if node.is_root() && node.role() == Role::Window {
         return;
@@ -51,14 +51,20 @@ fn enqueue_focus_event_if_applicable(
 struct AdapterChangeHandler<'a> {
     events: &'a mut Vec<QueuedEvent>,
     node_id_map: &'a mut NodeIdMap,
+    accessibility_focus: Option<jint>,
     enqueued_window_content_changed: bool,
 }
 
 impl<'a> AdapterChangeHandler<'a> {
-    fn new(events: &'a mut Vec<QueuedEvent>, node_id_map: &'a mut NodeIdMap) -> Self {
+    fn new(
+        events: &'a mut Vec<QueuedEvent>,
+        node_id_map: &'a mut NodeIdMap,
+        accessibility_focus: Option<jint>,
+    ) -> Self {
         Self {
             events,
             node_id_map,
+            accessibility_focus,
             enqueued_window_content_changed: false,
         }
     }
@@ -75,12 +81,12 @@ impl AdapterChangeHandler<'_> {
 }
 
 impl TreeChangeHandler for AdapterChangeHandler<'_> {
-    fn node_added(&mut self, _node: &Node) {
+    fn node_added(&mut self, _node: &NodeRef) {
         self.enqueue_window_content_changed_if_needed();
         // TODO: live regions?
     }
 
-    fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
+    fn node_updated(&mut self, old_node: &NodeRef, new_node: &NodeRef) {
         self.enqueue_window_content_changed_if_needed();
         if filter(new_node) != FilterResult::Include {
             return;
@@ -141,16 +147,38 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 y: scroll_y,
             });
         }
+        if old_node.numeric_value() != new_node.numeric_value() && new_node.data().value().is_none()
+        {
+            if let (Some(current), Some(min), Some(max)) = (
+                new_node.numeric_value(),
+                new_node.min_numeric_value(),
+                new_node.max_numeric_value(),
+            ) {
+                let id = self.node_id_map.get_or_create_java_id(new_node);
+                let event_type = if self.accessibility_focus == Some(id) {
+                    EVENT_VIEW_SELECTED
+                } else {
+                    EVENT_VIEW_SCROLLED
+                };
+                self.events.push(QueuedEvent::RangeValueChanged {
+                    virtual_view_id: id,
+                    event_type,
+                    current,
+                    min,
+                    max,
+                });
+            }
+        }
         // TODO: other events
     }
 
-    fn focus_moved(&mut self, _old_node: Option<&Node>, new_node: Option<&Node>) {
+    fn focus_moved(&mut self, _old_node: Option<&NodeRef>, new_node: Option<&NodeRef>) {
         if let Some(new_node) = new_node {
             enqueue_focus_event_if_applicable(self.events, self.node_id_map, new_node);
         }
     }
 
-    fn node_removed(&mut self, _node: &Node) {
+    fn node_removed(&mut self, _node: &NodeRef) {
         self.enqueue_window_content_changed_if_needed();
         // TODO: other events?
     }
@@ -177,8 +205,9 @@ impl State {
                     Some(initial_state) => Self::Active(Tree::new(initial_state, true)),
                     None => {
                         let placeholder_update = TreeUpdate {
-                            nodes: vec![(PLACEHOLDER_ROOT_ID, NodeData::new(Role::Window))],
-                            tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
+                            nodes: vec![(PLACEHOLDER_ROOT_ID, Node::new(Role::Window))],
+                            tree: Some(TreeInfo::new(PLACEHOLDER_ROOT_ID)),
+                            tree_id: TreeId::ROOT,
                             focus: PLACEHOLDER_ROOT_ID,
                         };
                         Self::Placeholder(Tree::new(placeholder_update, true))
@@ -203,10 +232,11 @@ impl State {
 fn update_tree(
     events: &mut Vec<QueuedEvent>,
     node_id_map: &mut NodeIdMap,
+    accessibility_focus: Option<jint>,
     tree: &mut Tree,
     update: TreeUpdate,
 ) {
-    let mut handler = AdapterChangeHandler::new(events, node_id_map);
+    let mut handler = AdapterChangeHandler::new(events, node_id_map, accessibility_focus);
     tree.update_and_process_changes(update, &mut handler);
 }
 
@@ -259,7 +289,13 @@ impl Adapter {
             }
             State::Active(tree) => {
                 let mut events = Vec::new();
-                update_tree(&mut events, &mut self.node_id_map, tree, update_factory());
+                update_tree(
+                    &mut events,
+                    &mut self.node_id_map,
+                    self.accessibility_focus,
+                    tree,
+                    update_factory(),
+                );
                 Some(QueuedEvents(events))
             }
         }
@@ -382,6 +418,7 @@ impl Adapter {
         } else {
             self.node_id_map.get_accesskit_id(virtual_view_id)?
         };
+        let (target_node, target_tree) = tree_state.locate_node(target)?;
         let mut events = Vec::new();
         let request = match action {
             ACTION_CLICK => ActionRequest {
@@ -396,12 +433,14 @@ impl Adapter {
                         Action::Click
                     }
                 },
-                target,
+                target_tree,
+                target_node,
                 data: None,
             },
             ACTION_FOCUS => ActionRequest {
                 action: Action::Focus,
-                target,
+                target_tree,
+                target_node,
                 data: None,
             },
             ACTION_SCROLL_BACKWARD | ACTION_SCROLL_FORWARD => ActionRequest {
@@ -436,7 +475,8 @@ impl Adapter {
                         Action::ScrollRight
                     }
                 },
-                target,
+                target_tree,
+                target_node,
                 data: Some(ActionData::ScrollUnit(ScrollUnit::Page)),
             },
             ACTION_ACCESSIBILITY_FOCUS => {
@@ -481,7 +521,7 @@ impl Adapter {
         selection_factory: F,
     ) -> Option<Extra>
     where
-        for<'a> F: FnOnce(&'a Node<'a>) -> Option<(TextPosition<'a>, TextPosition<'a>, Extra)>,
+        for<'a> F: FnOnce(&'a NodeRef<'a>) -> Option<(TextPosition<'a>, TextPosition<'a>, Extra)>,
     {
         let tree = self.state.get_full_tree()?;
         let tree_state = tree.state();
@@ -491,7 +531,8 @@ impl Adapter {
             let id = self.node_id_map.get_accesskit_id(virtual_view_id)?;
             tree_state.node_by_id(id).unwrap()
         };
-        let target = node.id();
+        let (node_id, tree_id) = tree_state.locate_node(node.id())?;
+        let (focus_id, _) = tree_state.locate_node(tree_state.focus_id_in_tree())?;
         // TalkBack expects the text selection change to take effect
         // immediately, so we optimistically update the node.
         // But don't be *too* optimistic.
@@ -506,14 +547,22 @@ impl Adapter {
         let mut new_node = node.data().clone();
         new_node.set_text_selection(selection);
         let update = TreeUpdate {
-            nodes: vec![(node.id(), new_node)],
+            nodes: vec![(node_id, new_node)],
             tree: None,
-            focus: tree_state.focus_id_in_tree(),
+            tree_id,
+            focus: focus_id,
         };
-        update_tree(events, &mut self.node_id_map, tree, update);
+        update_tree(
+            events,
+            &mut self.node_id_map,
+            self.accessibility_focus,
+            tree,
+            update,
+        );
         let request = ActionRequest {
-            target,
             action: Action::SetTextSelection,
+            target_tree: tree_id,
+            target_node: node_id,
             data: Some(ActionData::SetTextSelection(selection)),
         };
         action_handler.do_action(request);
@@ -563,11 +612,7 @@ impl Adapter {
             self.set_text_selection_common(action_handler, &mut events, virtual_view_id, |node| {
                 let current = node.text_selection_focus().unwrap_or_else(|| {
                     let range = node.document_range();
-                    if forward {
-                        range.start()
-                    } else {
-                        range.end()
-                    }
+                    if forward { range.start() } else { range.end() }
                 });
                 if (forward && current.is_document_end())
                     || (!forward && current.is_document_start())
@@ -674,12 +719,10 @@ impl Adapter {
                 }
                 let focus = if forward { segment_end } else { segment_start };
                 let anchor = if extend_selection {
-                    node.text_selection_anchor().unwrap_or({
-                        if forward {
-                            segment_start
-                        } else {
-                            segment_end
-                        }
+                    node.text_selection_anchor().unwrap_or(if forward {
+                        segment_start
+                    } else {
+                        segment_end
                     })
                 } else {
                     focus

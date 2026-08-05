@@ -5,6 +5,7 @@ members = [
     "consumer",
     "platforms/android",
     "platforms/atspi-common",
+    "platforms/ios",
     "platforms/macos",
     "platforms/unix",
     "platforms/windows",
@@ -19,10 +20,13 @@ default-members = [
 [workspace.package]
 authors = ["The AccessKit contributors"]
 categories = ["gui"]
-edition = "2021"
+edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/AccessKit/accesskit"
-rust-version = "1.77.2"
+rust-version = "1.85"
+
+[workspace.dependencies]
+hashbrown = { version = "0.16", default-features = false, features = ["default-hasher"] }
 
 [profile.release]
 lto = true

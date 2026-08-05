@@ -4,16 +4,17 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    Action, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Role, Tree, TreeUpdate,
+    Action, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Role, TreeId, TreeInfo,
+    TreeUpdate,
 };
 use once_cell::sync::Lazy;
 use windows::{
-    core::*,
     Win32::{
         Foundation::*,
         System::LibraryLoader::GetModuleHandleW,
         UI::{Accessibility::*, WindowsAndMessaging::*},
     },
+    core::*,
 };
 use winit::{
     application::ApplicationHandler,
@@ -51,7 +52,8 @@ fn get_initial_state() -> TreeUpdate {
             (BUTTON_1_ID, button_1),
             (BUTTON_2_ID, button_2),
         ],
-        tree: Some(Tree::new(WINDOW_ID)),
+        tree: Some(TreeInfo::new(WINDOW_ID)),
+        tree_id: TreeId::ROOT,
         focus: BUTTON_1_ID,
     }
 }
@@ -131,7 +133,7 @@ static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
 
     let atom = unsafe { RegisterClassW(&wc) };
     if atom == 0 {
-        panic!("{}", Error::from_win32());
+        panic!("{}", Error::from_thread());
     }
     atom
 });
@@ -157,7 +159,7 @@ fn create_window(title: &str) -> HWND {
     }
     .unwrap();
     if window.is_invalid() {
-        panic!("{}", Error::from_win32());
+        panic!("{}", Error::from_thread());
     }
 
     window

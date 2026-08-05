@@ -3,10 +3,10 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, NodeId, Rect, TreeUpdate};
+use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, Rect, TreeUpdate};
 use accesskit_atspi_common::{
-    next_adapter_id, ActionHandlerNoMut, ActionHandlerWrapper, Adapter as AdapterImpl,
-    AdapterCallback, Event, PlatformNode, WindowBounds,
+    ActionHandlerNoMut, ActionHandlerWrapper, Adapter as AdapterImpl, AdapterCallback, CacheEvent,
+    Event, FullNodeId, PlatformNode, WindowBounds, next_adapter_id,
 };
 #[cfg(not(feature = "tokio"))]
 use async_channel::Sender;
@@ -37,12 +37,17 @@ impl Callback {
 }
 
 impl AdapterCallback for Callback {
-    fn register_interfaces(&self, adapter: &AdapterImpl, id: NodeId, interfaces: InterfaceSet) {
+    fn register_interfaces(&self, adapter: &AdapterImpl, id: FullNodeId, interfaces: InterfaceSet) {
         let node = adapter.platform_node(id);
         self.send_message(Message::RegisterInterfaces { node, interfaces });
     }
 
-    fn unregister_interfaces(&self, adapter: &AdapterImpl, id: NodeId, interfaces: InterfaceSet) {
+    fn unregister_interfaces(
+        &self,
+        adapter: &AdapterImpl,
+        id: FullNodeId,
+        interfaces: InterfaceSet,
+    ) {
         self.send_message(Message::UnregisterInterfaces {
             adapter_id: adapter.id(),
             node_id: id,
@@ -51,10 +56,24 @@ impl AdapterCallback for Callback {
     }
 
     fn emit_event(&self, adapter: &AdapterImpl, event: Event) {
-        self.send_message(Message::EmitEvent {
-            adapter_id: adapter.id(),
-            event,
-        });
+        match event {
+            Event::Cache(CacheEvent::Added(id)) => {
+                let node = adapter.platform_node(id);
+                self.send_message(Message::EmitCacheAdd { node });
+            }
+            Event::Cache(CacheEvent::Removed(id)) => {
+                self.send_message(Message::EmitCacheRemove {
+                    adapter_id: adapter.id(),
+                    node_id: id,
+                });
+            }
+            event => {
+                self.send_message(Message::EmitEvent {
+                    adapter_id: adapter.id(),
+                    event,
+                });
+            }
+        }
     }
 }
 
@@ -240,11 +259,18 @@ pub(crate) enum Message {
     },
     UnregisterInterfaces {
         adapter_id: usize,
-        node_id: NodeId,
+        node_id: FullNodeId,
         interfaces: InterfaceSet,
     },
     EmitEvent {
         adapter_id: usize,
         event: Event,
+    },
+    EmitCacheAdd {
+        node: PlatformNode,
+    },
+    EmitCacheRemove {
+        adapter_id: usize,
+        node_id: FullNodeId,
     },
 }

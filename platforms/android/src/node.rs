@@ -9,8 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{Action, Live, Role, Toggled};
-use accesskit_consumer::Node;
-use jni::{objects::JObject, sys::jint, JNIEnv};
+use accesskit_consumer::NodeRef;
+use jni::{JNIEnv, objects::JObject, sys::jint};
 
 use crate::{filters::filter, util::*};
 
@@ -24,7 +24,7 @@ pub(crate) fn add_action(env: &mut JNIEnv, node_info: &JObject, action: jint) {
         .unwrap();
 }
 
-pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
+pub(crate) struct NodeWrapper<'a>(pub(crate) &'a NodeRef<'a>);
 
 impl NodeWrapper<'_> {
     fn is_editable(&self) -> bool {
@@ -67,20 +67,19 @@ impl NodeWrapper<'_> {
     }
 
     fn is_selected(&self) -> bool {
-        match self.0.role() {
-            // https://www.w3.org/TR/core-aam-1.1/#mapping_state-property_table
-            // SelectionItem.IsSelected is set according to the True or False
-            // value of aria-checked for 'radio' and 'menuitemradio' roles.
-            Role::RadioButton | Role::MenuItemRadio => self.0.toggled() == Some(Toggled::True),
-            // https://www.w3.org/TR/wai-aria-1.1/#aria-selected
-            // SelectionItem.IsSelected is set according to the True or False
-            // value of aria-selected.
-            _ => self.0.is_selected().unwrap_or(false),
-        }
+        self.0.is_selected().unwrap_or(false)
     }
 
     fn content_description(&self) -> Option<String> {
         self.0.label()
+    }
+
+    fn url(&self) -> Option<&str> {
+        if self.0.supports_url() || self.0.role() == Role::Image {
+            self.0.url()
+        } else {
+            None
+        }
     }
 
     pub(crate) fn text(&self) -> Option<String> {
@@ -321,6 +320,23 @@ impl NodeWrapper<'_> {
             .unwrap();
         }
 
+        if let Some(url) = self.url() {
+            let extras = env
+                .call_method(node_info, "getExtras", "()Landroid/os/Bundle;", &[])
+                .unwrap()
+                .l()
+                .unwrap();
+            let key = env.new_string("AccessibilityNodeInfo.targetUrl").unwrap();
+            let value = env.new_string(url).unwrap();
+            env.call_method(
+                &extras,
+                "putString",
+                "(Ljava/lang/String;Ljava/lang/String;)V",
+                &[(&key).into(), (&value).into()],
+            )
+            .unwrap();
+        }
+
         let class_name = env.new_string(self.class_name()).unwrap();
         env.call_method(
             node_info,
@@ -362,6 +378,40 @@ impl NodeWrapper<'_> {
             || self.0.supports_action(Action::ScrollDown, &filter)
         {
             add_action(env, node_info, ACTION_SCROLL_FORWARD);
+        }
+
+        if self.0.data().value().is_none() {
+            if let (Some(current), Some(min), Some(max)) = (
+                self.0.numeric_value(),
+                self.0.min_numeric_value(),
+                self.0.max_numeric_value(),
+            ) {
+                let range_info_class = env
+                    .find_class("android/view/accessibility/AccessibilityNodeInfo$RangeInfo")
+                    .unwrap();
+                let range_info = env
+                    .call_static_method(
+                        &range_info_class,
+                        "obtain",
+                        "(IFFF)Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;",
+                        &[
+                            RANGE_TYPE_FLOAT.into(),
+                            (min as f32).into(),
+                            (max as f32).into(),
+                            (current as f32).into(),
+                        ],
+                    )
+                    .unwrap()
+                    .l()
+                    .unwrap();
+                env.call_method(
+                    node_info,
+                    "setRangeInfo",
+                    "(Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;)V",
+                    &[(&range_info).into()],
+                )
+                .unwrap();
+            }
         }
 
         let live = match self.0.live() {

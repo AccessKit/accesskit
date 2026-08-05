@@ -9,7 +9,7 @@ use accesskit_atspi_common::{Adapter as AdapterImpl, AppContext, Event};
 use async_channel::{Receiver, Sender};
 use atspi::proxy::bus::StatusProxy;
 #[cfg(not(feature = "tokio"))]
-use futures_util::{pin_mut as pin, select, StreamExt};
+use futures_util::{StreamExt, pin_mut as pin, select};
 use std::{
     sync::{Arc, Mutex, OnceLock, RwLock},
     thread,
@@ -20,12 +20,12 @@ use tokio::{
     sync::mpsc::{UnboundedReceiver as Receiver, UnboundedSender as Sender},
 };
 #[cfg(feature = "tokio")]
-use tokio_stream::{wrappers::UnboundedReceiverStream, StreamExt};
-use zbus::{connection::Builder, Connection};
+use tokio_stream::{StreamExt, wrappers::UnboundedReceiverStream};
+use zbus::{Connection, connection::Builder, proxy::PropertyChanged};
 
 use crate::{
     adapter::{AdapterState, Callback, Message},
-    atspi::{map_or_ignoring_broken_pipe, Bus},
+    atspi::{Bus, map_or_ignoring_recoverable_error, zbus_error_is_unrecoverable},
     executor::Executor,
     util::block_on,
 };
@@ -58,7 +58,11 @@ pub(crate) fn get_or_init_messages() -> Sender<Message> {
                     if let Ok(session_bus) = Builder::session() {
                         if let Ok(session_bus) = session_bus.internal_executor(false).build().await
                         {
-                            run_event_loop(&executor, session_bus, rx).await.unwrap();
+                            if let Err(error) = run_event_loop(&executor, session_bus, rx).await {
+                                if zbus_error_is_unrecoverable(&error) {
+                                    panic!("Accessibility event loop failed: {error}");
+                                }
+                            }
                         }
                     }
                 }))
@@ -135,6 +139,33 @@ fn deactivate_adapter(entry: &mut AdapterEntry) {
     }
 }
 
+async fn bus_after_status_change(
+    change: Option<PropertyChanged<'_, bool>>,
+    session_bus: &Connection,
+    executor: &Executor<'_>,
+) -> zbus::Result<Option<Bus>> {
+    let enabled = match change {
+        Some(change) => change.get().await?,
+        None => false,
+    };
+    if enabled {
+        map_or_ignoring_recoverable_error(Bus::new(session_bus, executor).await, None, Some)
+    } else {
+        Ok(None)
+    }
+}
+
+fn sync_adapters(adapters: &mut [AdapterEntry], atspi_bus: &Option<Bus>) {
+    let active = atspi_bus.is_some();
+    for entry in adapters {
+        if active {
+            activate_adapter(entry);
+        } else {
+            deactivate_adapter(entry);
+        }
+    }
+}
+
 async fn run_event_loop(
     executor: &Executor<'_>,
     session_bus: Connection,
@@ -166,19 +197,9 @@ async fn run_event_loop(
     loop {
         select! {
             change = changes.next() => {
-                atspi_bus = None;
-                if let Some(change) = change {
-                    if change.get().await? {
-                        atspi_bus = map_or_ignoring_broken_pipe(Bus::new(&session_bus, executor).await, None, Some)?;
-                    }
-                }
-                for entry in &mut adapters {
-                    if atspi_bus.is_some() {
-                        activate_adapter(entry);
-                    } else {
-                        deactivate_adapter(entry);
-                    }
-                }
+                atspi_bus = bus_after_status_change(change, &session_bus, executor).await?;
+                sync_adapters(&mut adapters, &atspi_bus);
+
             }
             message = messages.next() => {
                 if let Some(message) = message {
@@ -252,6 +273,23 @@ async fn process_adapter_message(
             if let Some(bus) = atspi_bus {
                 bus.emit_window_event(adapter_id, target, name, event)
                     .await?;
+            }
+        }
+        Message::EmitEvent {
+            event: Event::Cache(_),
+            ..
+        } => unreachable!("cache events are sent as EmitCacheAdd/EmitCacheRemove"),
+        Message::EmitCacheAdd { node } => {
+            if let Some(bus) = atspi_bus {
+                bus.emit_cache_add(node).await?;
+            }
+        }
+        Message::EmitCacheRemove {
+            adapter_id,
+            node_id,
+        } => {
+            if let Some(bus) = atspi_bus {
+                bus.emit_cache_remove(adapter_id, node_id).await?;
             }
         }
     }

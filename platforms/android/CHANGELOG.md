@@ -1,5 +1,149 @@
 # Changelog
 
+## [0.7.5](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.7.4...accesskit_android-v0.7.5) (2026-07-14)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.37.0 to 0.38.0
+
+## [0.7.4](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.7.3...accesskit_android-v0.7.4) (2026-06-12)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.24.0 to 0.24.1
+    * accesskit_consumer bumped from 0.36.0 to 0.37.0
+
+## [0.7.3](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.7.2...accesskit_android-v0.7.3) (2026-05-11)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.35.0 to 0.36.0
+
+## [0.7.2](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.7.1...accesskit_android-v0.7.2) (2026-03-04)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.34.0 to 0.35.0
+
+## [0.7.1](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.7.0...accesskit_android-v0.7.1) (2026-02-25)
+
+
+### Bug Fixes
+
+* Don't report selected state when toggled on Android ([#689](https://github.com/AccessKit/accesskit/issues/689)) ([8392850](https://github.com/AccessKit/accesskit/commit/8392850941d0ca9e4d38b23e7fc7a1cb281efaae))
+* Populate range info on Android ([#686](https://github.com/AccessKit/accesskit/issues/686)) ([6146089](https://github.com/AccessKit/accesskit/commit/61460894044b0ad85a3028b12b756be4ab99ec5a))
+
+## [0.7.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.6.1...accesskit_android-v0.7.0) (2026-02-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* Update minimum supported Rust version to 1.85 ([#683](https://github.com/AccessKit/accesskit/issues/683))
+
+### Bug Fixes
+
+* Update minimum supported Rust version to 1.85 ([#683](https://github.com/AccessKit/accesskit/issues/683)) ([f8c22cb](https://github.com/AccessKit/accesskit/commit/f8c22cbb53ce6b1859adeff3c0b7154ad9e1f25e))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.23.0 to 0.24.0
+    * accesskit_consumer bumped from 0.33.1 to 0.34.0
+
+## [0.6.1](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.6.0...accesskit_android-v0.6.1) (2026-01-18)
+
+
+### Bug Fixes
+
+* Use proper bundle key for Android URL property ([#679](https://github.com/AccessKit/accesskit/issues/679)) ([98f9342](https://github.com/AccessKit/accesskit/commit/98f9342a420df32c18d567dc7c4ea2522b241ec9))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.33.0 to 0.33.1
+
+## [0.6.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.5.0...accesskit_android-v0.6.0) (2026-01-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655))
+
+### Features
+
+* Implement the `url` property ([#669](https://github.com/AccessKit/accesskit/issues/669)) ([6202e63](https://github.com/AccessKit/accesskit/commit/6202e63c667e73216a306b3dd45ff25c364a4f45))
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655)) ([c16eb80](https://github.com/AccessKit/accesskit/commit/c16eb80c49d14f39e8a7defb1694bf22b8ceed6f))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.22.0 to 0.23.0
+    * accesskit_consumer bumped from 0.32.0 to 0.33.0
+
+## [0.5.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.4.2...accesskit_android-v0.5.0) (2025-12-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop deprecated roles ([#642](https://github.com/AccessKit/accesskit/issues/642))
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626))
+
+### Features
+
+* Add GridCell role ([#643](https://github.com/AccessKit/accesskit/issues/643)) ([1e5abca](https://github.com/AccessKit/accesskit/commit/1e5abca737d1ee942c0804fec2c06d3cb08faa94))
+* Implement BrailleLabel and BrailleRoleDescription roles ([#638](https://github.com/AccessKit/accesskit/issues/638)) ([0fdcebb](https://github.com/AccessKit/accesskit/commit/0fdcebb55e308e039ec99fbc31e94e8087a69f2d))
+
+
+### Code Refactoring
+
+* Drop deprecated roles ([#642](https://github.com/AccessKit/accesskit/issues/642)) ([4d46c27](https://github.com/AccessKit/accesskit/commit/4d46c2740631c5fe4f057707b949d12b26931d0b))
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626)) ([ea23ec4](https://github.com/AccessKit/accesskit/commit/ea23ec424c7dbb8841e03d71b6a15b74264850a9))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.1 to 0.22.0
+    * accesskit_consumer bumped from 0.31.0 to 0.32.0
+
+## [0.4.2](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.4.1...accesskit_android-v0.4.2) (2025-10-20)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.30.1 to 0.31.0
+
+## [0.4.1](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.4.0...accesskit_android-v0.4.1) (2025-10-02)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.0 to 0.21.1
+    * accesskit_consumer bumped from 0.30.0 to 0.30.1
+
 ## [0.4.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.3.0...accesskit_android-v0.4.0) (2025-07-16)
 
 

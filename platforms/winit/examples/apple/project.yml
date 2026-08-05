@@ -1,0 +1,36 @@
+name: AccessKit Winit Examples
+options:
+  bundleIdPrefix: dev.accesskit
+settings:
+  ENABLE_USER_SCRIPT_SANDBOXING: NO
+targets:
+  Simple:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    info:
+        path: Info.plist
+        properties:
+            UILaunchScreen:
+                - ImageRespectSafeAreaInsets: false
+    sources: []
+    postCompileScripts:
+      - script: |
+          ./build_with_cargo.bash simple
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)
+  MixedHandlers:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    info:
+        path: Info.plist
+        properties:
+            UILaunchScreen:
+                - ImageRespectSafeAreaInsets: false
+    sources: []
+    postCompileScripts:
+      - script: |
+          ./build_with_cargo.bash mixed_handlers
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)

@@ -10,8 +10,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    Adapter, Event as EventEnum, NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot, Property,
-    WindowEvent,
+    Adapter, CacheEvent, Event as EventEnum, NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot,
+    Property, WindowEvent,
 };
 
 pub use crate::{
@@ -28,7 +28,7 @@ impl Accessible {
     pub fn role(&self) -> Result<Role> {
         match self {
             Self::Node(node) => node.role(),
-            Self::Root(_) => Ok(Role::Application),
+            Self::Root(root) => Ok(root.role()),
         }
     }
 
@@ -49,14 +49,14 @@ impl Accessible {
     pub fn description(&self) -> Result<String> {
         match self {
             Self::Node(node) => node.description(),
-            Self::Root(_) => Ok("".into()),
+            Self::Root(root) => root.description(),
         }
     }
 
     pub fn state(&self) -> StateSet {
         match self {
             Self::Node(node) => node.state(),
-            Self::Root(_) => StateSet::empty(),
+            Self::Root(root) => root.state(),
         }
     }
 
@@ -80,7 +80,7 @@ impl Accessible {
     pub fn index_in_parent(&self) -> Result<i32> {
         match self {
             Self::Node(node) => node.index_in_parent(),
-            Self::Root(_) => Ok(-1),
+            Self::Root(root) => Ok(root.index_in_parent()),
         }
     }
 
@@ -238,6 +238,57 @@ impl Accessible {
         }
     }
 
+    pub fn supports_hyperlink(&self) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.supports_hyperlink(),
+            Self::Root(_) => Ok(false),
+        }
+    }
+
+    pub fn n_anchors(&self) -> Result<i32> {
+        match self {
+            Self::Node(node) => node.n_anchors(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn hyperlink_start_index(&self) -> Result<i32> {
+        match self {
+            Self::Node(node) => node.hyperlink_start_index(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn hyperlink_end_index(&self) -> Result<i32> {
+        match self {
+            Self::Node(node) => node.hyperlink_end_index(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn hyperlink_object(&self, index: i32) -> Result<Option<Self>> {
+        match self {
+            Self::Node(node) => node
+                .hyperlink_object(index)
+                .map(|id| id.map(|id| Self::Node(node.relative(id)))),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn uri(&self, index: i32) -> Result<String> {
+        match self {
+            Self::Node(node) => node.uri(index),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn hyperlink_is_valid(&self) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.hyperlink_is_valid(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
     pub fn supports_selection(&self) -> Result<bool> {
         match self {
             Self::Node(node) => node.supports_selection(),
@@ -356,14 +407,17 @@ impl Accessible {
         }
     }
 
-    pub fn text_attributes(&self, offset: i32) -> Result<(HashMap<String, String>, i32, i32)> {
+    pub fn text_attributes(
+        &self,
+        offset: i32,
+    ) -> Result<(HashMap<&'static str, String>, i32, i32)> {
         match self {
             Self::Node(node) => node.text_attributes(offset),
             Self::Root(_) => Err(Error::UnsupportedInterface),
         }
     }
 
-    pub fn default_text_attributes(&self) -> Result<HashMap<String, String>> {
+    pub fn default_text_attributes(&self) -> Result<HashMap<&'static str, String>> {
         match self {
             Self::Node(node) => node.default_text_attributes(),
             Self::Root(_) => Err(Error::UnsupportedInterface),
@@ -440,7 +494,7 @@ impl Accessible {
         &self,
         offset: i32,
         include_defaults: bool,
-    ) -> Result<(HashMap<String, String>, i32, i32)> {
+    ) -> Result<(HashMap<&'static str, String>, i32, i32)> {
         match self {
             Self::Node(node) => node.text_attribute_run(offset, include_defaults),
             Self::Root(_) => Err(Error::UnsupportedInterface),
@@ -515,6 +569,26 @@ impl Accessible {
             Self::Node(node) => node.set_current_value(value),
             Self::Root(_) => Err(Error::UnsupportedInterface),
         }
+    }
+}
+
+pub struct Cache {
+    root: PlatformRoot,
+}
+
+impl Cache {
+    pub fn new(root: PlatformRoot) -> Self {
+        Self { root }
+    }
+
+    pub fn items(&self) -> Result<Vec<Accessible>> {
+        let descendants: Vec<Accessible> = self
+            .root
+            .map_descendants(|node, _, _| Accessible::Node(node))?;
+        let mut items = Vec::with_capacity(descendants.len() + 1);
+        items.push(Accessible::Root(self.root.clone()));
+        items.extend(descendants);
+        Ok(items)
     }
 }
 
@@ -689,6 +763,133 @@ impl Event {
                     data: Some(EventData::String(name)),
                 }
             }
+            EventEnum::Cache(cache_event) => {
+                let (kind, target) = match cache_event {
+                    CacheEvent::Added(target) => ("cache:add", target),
+                    CacheEvent::Removed(target) => ("cache:remove", target),
+                };
+                Self {
+                    kind: kind.into(),
+                    source: Accessible::Node(adapter.platform_node(target)),
+                    detail1: 0,
+                    detail2: 0,
+                    data: None,
+                }
+            }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Accessible, Cache, Event as SimplifiedEvent};
+    use crate::{Adapter, AdapterCallback, AppContext, Event, WindowBounds};
+    use accesskit::{
+        ActionHandler, ActionRequest, Node, NodeId, Role, TreeId, TreeInfo, TreeUpdate,
+    };
+    use accesskit_consumer::FullNodeId;
+    use atspi_common::InterfaceSet;
+    use std::sync::{Arc, Mutex};
+
+    struct NoOpActionHandler;
+    impl ActionHandler for NoOpActionHandler {
+        fn do_action(&mut self, _request: ActionRequest) {}
+    }
+
+    struct CacheKindCallback {
+        kinds: Arc<Mutex<Vec<String>>>,
+    }
+
+    impl AdapterCallback for CacheKindCallback {
+        fn register_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
+        fn unregister_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
+        fn emit_event(&self, adapter: &Adapter, event: Event) {
+            if matches!(event, Event::Cache(_)) {
+                let simplified = SimplifiedEvent::new(adapter, event);
+                self.kinds.lock().unwrap().push(simplified.kind);
+            }
+        }
+    }
+
+    struct NoOpCallback;
+    impl AdapterCallback for NoOpCallback {
+        fn register_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
+        fn unregister_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
+        fn emit_event(&self, _: &Adapter, _: Event) {}
+    }
+
+    fn with_children(role: Role, children: &[NodeId]) -> Node {
+        let mut node = Node::new(role);
+        node.set_children(children.to_vec());
+        node
+    }
+
+    fn initial_tree() -> TreeUpdate {
+        TreeUpdate {
+            nodes: vec![
+                (NodeId(0), with_children(Role::Window, &[NodeId(1)])),
+                (NodeId(1), Node::new(Role::Button)),
+            ],
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        }
+    }
+
+    #[test]
+    fn cache_events_map_to_kind_strings() {
+        let kinds = Arc::new(Mutex::new(Vec::new()));
+        let app_context = AppContext::new(None);
+        let mut adapter = Adapter::new(
+            &app_context,
+            CacheKindCallback {
+                kinds: kinds.clone(),
+            },
+            initial_tree(),
+            false,
+            WindowBounds::default(),
+            NoOpActionHandler,
+        );
+        adapter.update(TreeUpdate {
+            nodes: vec![
+                (
+                    NodeId(0),
+                    with_children(Role::Window, &[NodeId(1), NodeId(2)]),
+                ),
+                (NodeId(2), Node::new(Role::Button)),
+            ],
+            tree: None,
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        });
+        adapter.update(TreeUpdate {
+            nodes: vec![(NodeId(0), with_children(Role::Window, &[NodeId(1)]))],
+            tree: None,
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        });
+        assert_eq!(*kinds.lock().unwrap(), vec!["cache:add", "cache:remove"]);
+    }
+
+    fn build_cache() -> (Adapter, Cache) {
+        let app_context = AppContext::new(None);
+        let adapter = Adapter::new(
+            &app_context,
+            NoOpCallback,
+            initial_tree(),
+            false,
+            WindowBounds::default(),
+            NoOpActionHandler,
+        );
+        let cache = Cache::new(adapter.platform_root());
+        (adapter, cache)
+    }
+
+    #[test]
+    fn items_prepends_application_root() {
+        let (_adapter, cache) = build_cache();
+        let items = cache.items().unwrap();
+        assert_eq!(items.len(), 3);
+        assert!(matches!(items[0], Accessible::Root(_)));
     }
 }

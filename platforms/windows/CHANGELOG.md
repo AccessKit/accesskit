@@ -38,6 +38,180 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.34.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.33.1...accesskit_windows-v0.34.0) (2026-07-14)
+
+
+### Features
+
+* Cache Windows node COM objects ([#725](https://github.com/AccessKit/accesskit/issues/725)) ([d7480d9](https://github.com/AccessKit/accesskit/commit/d7480d91212b5ef35203c9cddc962e08d762548b))
+
+
+### Bug Fixes
+
+* Avoid spurious wakeups in the Windows adapter test harness ([#722](https://github.com/AccessKit/accesskit/issues/722)) ([b3c109e](https://github.com/AccessKit/accesskit/commit/b3c109ed9271dace83cd5611b0c62af39e3de73d))
+* Update Tree::toolkit_name call sites in the adapters ([27734d8](https://github.com/AccessKit/accesskit/commit/27734d8409d9e03f51caefe1c13ae4ff74e3c6b2))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.37.0 to 0.38.0
+
+## [0.33.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.33.0...accesskit_windows-v0.33.1) (2026-06-12)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.24.0 to 0.24.1
+    * accesskit_consumer bumped from 0.36.0 to 0.37.0
+
+## [0.33.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.32.1...accesskit_windows-v0.33.0) (2026-05-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* Prepare consumer crate and Windows adapter for 2024 edition
+
+### Features
+
+* Support tree views on Windows ([#698](https://github.com/AccessKit/accesskit/issues/698)) ([1d3b189](https://github.com/AccessKit/accesskit/commit/1d3b18912ea5f4b0abd37ddb0a771768155fbd7b))
+
+
+### Code Refactoring
+
+* Prepare consumer crate and Windows adapter for 2024 edition ([258b2e6](https://github.com/AccessKit/accesskit/commit/258b2e66b741b142c84563ef00f70bf6bc8da9d8))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.35.0 to 0.36.0
+
+## [0.32.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.32.0...accesskit_windows-v0.32.1) (2026-03-04)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.34.0 to 0.35.0
+
+## [0.32.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.31.1...accesskit_windows-v0.32.0) (2026-02-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* Update minimum supported Rust version to 1.85 ([#683](https://github.com/AccessKit/accesskit/issues/683))
+
+### Bug Fixes
+
+* Update minimum supported Rust version to 1.85 ([#683](https://github.com/AccessKit/accesskit/issues/683)) ([f8c22cb](https://github.com/AccessKit/accesskit/commit/f8c22cbb53ce6b1859adeff3c0b7154ad9e1f25e))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.23.0 to 0.24.0
+    * accesskit_consumer bumped from 0.33.1 to 0.34.0
+
+## [0.31.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.31.0...accesskit_windows-v0.31.1) (2026-01-18)
+
+
+### Bug Fixes
+
+* Emit initial focus event for active descendant node ([#681](https://github.com/AccessKit/accesskit/issues/681)) ([13a37d1](https://github.com/AccessKit/accesskit/commit/13a37d144e2fafceaf26e7645f6acc679ccb2f34))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.33.0 to 0.33.1
+
+## [0.31.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.30.0...accesskit_windows-v0.31.0) (2026-01-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655))
+
+### Features
+
+* Implement the `url` property ([#669](https://github.com/AccessKit/accesskit/issues/669)) ([6202e63](https://github.com/AccessKit/accesskit/commit/6202e63c667e73216a306b3dd45ff25c364a4f45))
+* More text attributes on Windows ([#676](https://github.com/AccessKit/accesskit/issues/676)) ([259e832](https://github.com/AccessKit/accesskit/commit/259e83271371007d7564588939c6aafd0b7b3ac0))
+* Multiple tree support ([#655](https://github.com/AccessKit/accesskit/issues/655)) ([c16eb80](https://github.com/AccessKit/accesskit/commit/c16eb80c49d14f39e8a7defb1694bf22b8ceed6f))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.22.0 to 0.23.0
+    * accesskit_consumer bumped from 0.32.0 to 0.33.0
+
+## [0.30.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.29.2...accesskit_windows-v0.30.0) (2025-12-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* Drop deprecated roles ([#642](https://github.com/AccessKit/accesskit/issues/642))
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626))
+
+### Features
+
+* Add GridCell role ([#643](https://github.com/AccessKit/accesskit/issues/643)) ([1e5abca](https://github.com/AccessKit/accesskit/commit/1e5abca737d1ee942c0804fec2c06d3cb08faa94))
+* Add simple text attributes on Windows ([#659](https://github.com/AccessKit/accesskit/issues/659)) ([f2bfa63](https://github.com/AccessKit/accesskit/commit/f2bfa6322c737be695438d728fdd2d9451b3b7e9))
+* Implement BrailleLabel and BrailleRoleDescription roles ([#638](https://github.com/AccessKit/accesskit/issues/638)) ([0fdcebb](https://github.com/AccessKit/accesskit/commit/0fdcebb55e308e039ec99fbc31e94e8087a69f2d))
+* Implement the UIA `Culture` property ([#631](https://github.com/AccessKit/accesskit/issues/631)) ([06fc934](https://github.com/AccessKit/accesskit/commit/06fc934d96e4ca0f0610edcbe9add3abec3486cd))
+* Rename HeaderAsNonLandmark to SectionHeader, FooterAsNonLandmark to SectionFooter ([#635](https://github.com/AccessKit/accesskit/issues/635)) ([dd69526](https://github.com/AccessKit/accesskit/commit/dd695260877cb862ece4c2b7d8607308f5fed608))
+
+
+### Bug Fixes
+
+* Cast font size to `f64` on Windows ([#664](https://github.com/AccessKit/accesskit/issues/664)) ([a45124d](https://github.com/AccessKit/accesskit/commit/a45124d6824b31fe720cc711ca2646017f63f7f1))
+* Expose dialogs in the platform adapters ([1576a94](https://github.com/AccessKit/accesskit/commit/1576a940ec3e9066fc5e181419dae6899bf2db46))
+* expose more node data to UIA in aria_properties ([fa15c84](https://github.com/AccessKit/accesskit/commit/fa15c84fecbe97da889ec75d26fae98fce93b500))
+* Extend AriaRoleProperty in Windows adapter ([#648](https://github.com/AccessKit/accesskit/issues/648)) ([4b8e01a](https://github.com/AccessKit/accesskit/commit/4b8e01a4c5c4373d8a4ce9721418c719cfe5a7a0))
+* Upgrade hashbrown, indexmap ([#653](https://github.com/AccessKit/accesskit/issues/653)) ([fd73a85](https://github.com/AccessKit/accesskit/commit/fd73a85e57a6591a449b0a1880025fb940873c66))
+
+
+### Code Refactoring
+
+* Drop deprecated roles ([#642](https://github.com/AccessKit/accesskit/issues/642)) ([4d46c27](https://github.com/AccessKit/accesskit/commit/4d46c2740631c5fe4f057707b949d12b26931d0b))
+* Infrastructure for supporting text formatting changes ([#626](https://github.com/AccessKit/accesskit/issues/626)) ([ea23ec4](https://github.com/AccessKit/accesskit/commit/ea23ec424c7dbb8841e03d71b6a15b74264850a9))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.1 to 0.22.0
+    * accesskit_consumer bumped from 0.31.0 to 0.32.0
+
+## [0.29.2](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.29.1...accesskit_windows-v0.29.2) (2025-10-20)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.30.1 to 0.31.0
+
+## [0.29.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.29.0...accesskit_windows-v0.29.1) (2025-10-02)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.21.0 to 0.21.1
+    * accesskit_consumer bumped from 0.30.0 to 0.30.1
+
 ## [0.29.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.28.0...accesskit_windows-v0.29.0) (2025-07-16)
 
 

@@ -10,14 +10,14 @@ use std::{
     mem::transmute,
 };
 use windows::{
-    core::*,
     Win32::{Foundation::*, UI::WindowsAndMessaging::*},
+    core::*,
 };
 
 use crate::{Adapter, QueuedEvents};
 
 fn win32_error() -> ! {
-    panic!("{}", Error::from_win32())
+    panic!("{}", Error::from_thread())
 }
 
 // Work around a difference between the SetWindowLongPtrW API definition
@@ -165,7 +165,9 @@ impl SubclassingAdapter {
         action_handler: impl 'static + ActionHandler + Send,
     ) -> Self {
         if unsafe { IsWindowVisible(hwnd) }.into() {
-            panic!("The AccessKit Windows subclassing adapter must be created before the window is shown (made visible) for the first time.");
+            panic!(
+                "The AccessKit Windows subclassing adapter must be created before the window is shown (made visible) for the first time."
+            );
         }
 
         let mut r#impl = SubclassImpl::new(hwnd, activation_handler, action_handler);

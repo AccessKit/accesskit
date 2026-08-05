@@ -4,22 +4,23 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    NodeId, Point, Rect, Role, TextDirection, TextPosition as WeakPosition, TextSelection,
+    Color, Node, Point, Rect, Role, TextAlign, TextDecoration, TextDirection,
+    TextPosition as WeakPosition, TextSelection, VerticalOffset,
 };
 use alloc::{string::String, vec::Vec};
-use core::{cmp::Ordering, fmt, iter::FusedIterator};
+use core::{cmp::Ordering, fmt};
 
-use crate::{FilterResult, Node, TreeState};
+use crate::{FilterResult, NodeRef, TreeState, node::FullNodeId};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct InnerPosition<'a> {
-    pub(crate) node: Node<'a>,
+    pub(crate) node: NodeRef<'a>,
     pub(crate) character_index: usize,
 }
 
 impl<'a> InnerPosition<'a> {
-    fn upgrade(tree_state: &'a TreeState, weak: WeakPosition) -> Option<Self> {
-        let node = tree_state.node_by_id(weak.node)?;
+    fn upgrade(tree_state: &'a TreeState, weak: WeakPosition, node_id: FullNodeId) -> Option<Self> {
+        let node = tree_state.node_by_id(node_id.with_same_tree(weak.node))?;
         if node.role() != Role::TextRun {
             return None;
         }
@@ -33,8 +34,12 @@ impl<'a> InnerPosition<'a> {
         })
     }
 
-    fn clamped_upgrade(tree_state: &'a TreeState, weak: WeakPosition) -> Option<Self> {
-        let node = tree_state.node_by_id(weak.node)?;
+    fn clamped_upgrade(
+        tree_state: &'a TreeState,
+        weak: WeakPosition,
+        node_id: FullNodeId,
+    ) -> Option<Self> {
+        let node = tree_state.node_by_id(node_id.with_same_tree(weak.node))?;
         if node.role() != Role::TextRun {
             return None;
         }
@@ -45,17 +50,6 @@ impl<'a> InnerPosition<'a> {
             node,
             character_index,
         })
-    }
-
-    fn is_word_start(&self) -> bool {
-        let mut total_length = 0usize;
-        for length in self.node.data().word_lengths().iter() {
-            if total_length == self.character_index {
-                return true;
-            }
-            total_length += *length as usize;
-        }
-        false
     }
 
     fn is_run_start(&self) -> bool {
@@ -78,15 +72,15 @@ impl<'a> InnerPosition<'a> {
         self.is_line_end() && self.node.data().value().unwrap().ends_with('\n')
     }
 
-    fn is_document_start(&self, root_node: &Node) -> bool {
+    fn is_document_start(&self, root_node: &NodeRef) -> bool {
         self.is_run_start() && self.node.preceding_text_runs(root_node).next().is_none()
     }
 
-    fn is_document_end(&self, root_node: &Node) -> bool {
+    fn is_document_end(&self, root_node: &NodeRef) -> bool {
         self.is_run_end() && self.node.following_text_runs(root_node).next().is_none()
     }
 
-    fn biased_to_start(&self, root_node: &Node) -> Self {
+    fn biased_to_start(&self, root_node: &NodeRef) -> Self {
         if self.is_run_end() {
             if let Some(node) = self.node.following_text_runs(root_node).next() {
                 return Self {
@@ -98,7 +92,7 @@ impl<'a> InnerPosition<'a> {
         *self
     }
 
-    fn biased_to_end(&self, root_node: &Node) -> Self {
+    fn biased_to_end(&self, root_node: &NodeRef) -> Self {
         if self.is_run_start() {
             if let Some(node) = self.node.preceding_text_runs(root_node).next() {
                 return Self {
@@ -110,7 +104,7 @@ impl<'a> InnerPosition<'a> {
         *self
     }
 
-    fn comparable(&self, root_node: &Node) -> (Vec<usize>, usize) {
+    fn comparable(&self, root_node: &NodeRef) -> (Vec<usize>, usize) {
         let normalized = self.biased_to_start(root_node);
         (
             normalized.node.relative_index_path(root_node.id()),
@@ -118,39 +112,13 @@ impl<'a> InnerPosition<'a> {
         )
     }
 
-    fn previous_word_start(&self) -> Self {
-        let mut total_length_before = 0usize;
-        for length in self.node.data().word_lengths().iter() {
-            let new_total_length = total_length_before + (*length as usize);
-            if new_total_length >= self.character_index {
-                break;
-            }
-            total_length_before = new_total_length;
-        }
-        Self {
-            node: self.node,
-            character_index: total_length_before,
-        }
-    }
-
-    fn word_end(&self) -> Self {
-        let mut total_length = 0usize;
-        for length in self.node.data().word_lengths().iter() {
-            total_length += *length as usize;
-            if total_length > self.character_index {
-                break;
-            }
-        }
-        Self {
-            node: self.node,
-            character_index: total_length,
-        }
-    }
-
     fn line_start(&self) -> Self {
         let mut node = self.node;
         while let Some(id) = node.data().previous_on_line() {
-            node = node.tree_state.node_by_id(id).unwrap();
+            node = node
+                .tree_state
+                .node_by_id(node.id.with_same_tree(id))
+                .unwrap();
         }
         Self {
             node,
@@ -161,7 +129,10 @@ impl<'a> InnerPosition<'a> {
     fn line_end(&self) -> Self {
         let mut node = self.node;
         while let Some(id) = node.data().next_on_line() {
-            node = node.tree_state.node_by_id(id).unwrap();
+            node = node
+                .tree_state
+                .node_by_id(node.id.with_same_tree(id))
+                .unwrap();
         }
         Self {
             node,
@@ -170,8 +141,9 @@ impl<'a> InnerPosition<'a> {
     }
 
     pub(crate) fn downgrade(&self) -> WeakPosition {
+        let (local_node_id, _) = self.node.id.to_components();
         WeakPosition {
-            node: self.node.id(),
+            node: local_node_id,
             character_index: self.character_index,
         }
     }
@@ -185,9 +157,9 @@ impl PartialEq for InnerPosition<'_> {
 
 impl Eq for InnerPosition<'_> {}
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Position<'a> {
-    root_node: Node<'a>,
+    root_node: NodeRef<'a>,
     pub(crate) inner: InnerPosition<'a>,
 }
 
@@ -196,17 +168,32 @@ impl<'a> Position<'a> {
         self.inner.downgrade()
     }
 
-    pub fn inner_node(&self) -> &Node<'a> {
+    pub fn inner_node(&self) -> &NodeRef<'a> {
         &self.inner.node
     }
 
     pub fn is_format_start(&self) -> bool {
-        // TODO: support variable text formatting (part of rich text)
         self.is_document_start()
+            || (self.inner.character_index == 0
+                && self.inner.node.text_attributes_differ(
+                    &self
+                        .inner
+                        .node
+                        .preceding_text_runs(&self.root_node)
+                        .next()
+                        .unwrap(),
+                ))
     }
 
     pub fn is_word_start(&self) -> bool {
-        self.inner.is_word_start()
+        self.is_paragraph_start()
+            || self
+                .inner
+                .node
+                .data()
+                .word_starts()
+                .binary_search(&(self.inner.character_index as u8))
+                .is_ok()
     }
 
     pub fn is_line_start(&self) -> bool {
@@ -354,49 +341,159 @@ impl<'a> Position<'a> {
     }
 
     pub fn forward_to_format_start(&self) -> Self {
-        // TODO: support variable text formatting (part of rich text)
+        for node in self.inner.node.following_text_runs(&self.root_node) {
+            if self.inner.node.text_attributes_differ(&node) {
+                return Self {
+                    root_node: self.root_node,
+                    inner: InnerPosition {
+                        node,
+                        character_index: 0,
+                    },
+                };
+            }
+        }
         self.document_end()
     }
 
     pub fn forward_to_format_end(&self) -> Self {
-        // TODO: support variable text formatting (part of rich text)
-        self.document_end()
+        self.forward_to_format_start().biased_to_end()
     }
 
     pub fn backward_to_format_start(&self) -> Self {
-        // TODO: support variable text formatting (part of rich text)
+        if self.inner.character_index != 0 {
+            let test_pos = Self {
+                root_node: self.root_node,
+                inner: InnerPosition {
+                    node: self.inner.node,
+                    character_index: 0,
+                },
+            };
+            if test_pos.is_format_start() {
+                return test_pos;
+            }
+        }
+        for node in self.inner.node.preceding_text_runs(&self.root_node) {
+            let test_pos = Self {
+                root_node: self.root_node,
+                inner: InnerPosition {
+                    node,
+                    character_index: 0,
+                },
+            };
+            if test_pos.is_format_start() {
+                return test_pos;
+            }
+        }
         self.document_start()
     }
 
     pub fn forward_to_word_start(&self) -> Self {
         let pos = self.inner.biased_to_start(&self.root_node);
-        Self {
-            root_node: self.root_node,
-            inner: pos.word_end().biased_to_start(&self.root_node),
+        // Wrap the following in a scope to make sure we can't misuse the
+        // `word_starts` local later.
+        {
+            let word_starts = pos.node.data().word_starts();
+            let index = match word_starts.binary_search(&(pos.character_index as u8)) {
+                Ok(index) => index + 1,
+                Err(index) => index,
+            };
+            if let Some(start) = word_starts.get(index) {
+                return Self {
+                    root_node: self.root_node,
+                    inner: InnerPosition {
+                        node: pos.node,
+                        character_index: *start as usize,
+                    },
+                };
+            }
         }
+        for node in pos.node.following_text_runs(&self.root_node) {
+            let start_pos = Self {
+                root_node: self.root_node,
+                inner: InnerPosition {
+                    node,
+                    character_index: 0,
+                },
+            };
+            if start_pos.is_paragraph_start() {
+                return start_pos;
+            }
+            if let Some(start) = node.data().word_starts().first() {
+                return Self {
+                    root_node: self.root_node,
+                    inner: InnerPosition {
+                        node,
+                        character_index: *start as usize,
+                    },
+                };
+            }
+        }
+        self.document_end()
     }
 
     pub fn forward_to_word_end(&self) -> Self {
-        let pos = self.inner.biased_to_start(&self.root_node);
-        Self {
-            root_node: self.root_node,
-            inner: pos.word_end(),
-        }
+        self.forward_to_word_start().biased_to_end()
     }
 
     pub fn backward_to_word_start(&self) -> Self {
-        let pos = self.inner.biased_to_end(&self.root_node);
-        Self {
-            root_node: self.root_node,
-            inner: pos.previous_word_start().biased_to_start(&self.root_node),
+        // Wrap the following in a scope to make sure we can't misuse the
+        // `word_starts` local later.
+        {
+            let word_starts = self.inner.node.data().word_starts();
+            let index = match word_starts.binary_search(&(self.inner.character_index as u8)) {
+                Ok(index) => index,
+                Err(index) => index,
+            };
+            if let Some(index) = index.checked_sub(1) {
+                return Self {
+                    root_node: self.root_node,
+                    inner: InnerPosition {
+                        node: self.inner.node,
+                        character_index: word_starts[index] as usize,
+                    },
+                };
+            }
         }
+        if self.inner.character_index != 0 {
+            let start_pos = Self {
+                root_node: self.root_node,
+                inner: InnerPosition {
+                    node: self.inner.node,
+                    character_index: 0,
+                },
+            };
+            if start_pos.is_paragraph_start() {
+                return start_pos;
+            }
+        }
+        for node in self.inner.node.preceding_text_runs(&self.root_node) {
+            if let Some(start) = node.data().word_starts().last() {
+                return Self {
+                    root_node: self.root_node,
+                    inner: InnerPosition {
+                        node,
+                        character_index: *start as usize,
+                    },
+                };
+            }
+            let start_pos = Self {
+                root_node: self.root_node,
+                inner: InnerPosition {
+                    node,
+                    character_index: 0,
+                },
+            };
+            if start_pos.is_paragraph_start() {
+                return start_pos;
+            }
+        }
+        self.document_start()
     }
 
     pub fn forward_to_line_start(&self) -> Self {
-        let pos = self.inner.biased_to_start(&self.root_node);
         Self {
             root_node: self.root_node,
-            inner: pos.line_end().biased_to_start(&self.root_node),
+            inner: self.inner.line_end().biased_to_start(&self.root_node),
         }
     }
 
@@ -467,17 +564,11 @@ impl<'a> Position<'a> {
     }
 
     pub fn document_end(&self) -> Self {
-        Self {
-            root_node: self.root_node,
-            inner: self.root_node.document_end(),
-        }
+        self.root_node.document_end()
     }
 
     pub fn document_start(&self) -> Self {
-        Self {
-            root_node: self.root_node,
-            inner: self.root_node.document_start(),
-        }
+        self.root_node.document_start()
     }
 }
 
@@ -500,27 +591,40 @@ impl PartialOrd for Position<'_> {
     }
 }
 
-pub enum AttributeValue<T> {
+#[derive(Debug, PartialEq)]
+pub enum RangePropertyValue<T: alloc::fmt::Debug + PartialEq> {
     Single(T),
     Mixed,
 }
 
+impl<T: alloc::fmt::Debug + PartialEq> RangePropertyValue<Option<T>> {
+    pub fn map<U: alloc::fmt::Debug + PartialEq>(
+        self,
+        f: impl FnOnce(T) -> U,
+    ) -> RangePropertyValue<Option<U>> {
+        match self {
+            Self::Single(value) => RangePropertyValue::Single(value.map(f)),
+            Self::Mixed => RangePropertyValue::Mixed,
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct Range<'a> {
-    pub(crate) node: Node<'a>,
+    pub(crate) node: NodeRef<'a>,
     pub(crate) start: InnerPosition<'a>,
     pub(crate) end: InnerPosition<'a>,
 }
 
 impl<'a> Range<'a> {
-    fn new(node: Node<'a>, mut start: InnerPosition<'a>, mut end: InnerPosition<'a>) -> Self {
+    fn new(node: NodeRef<'a>, mut start: InnerPosition<'a>, mut end: InnerPosition<'a>) -> Self {
         if start.comparable(&node) > end.comparable(&node) {
             core::mem::swap(&mut start, &mut end);
         }
         Self { node, start, end }
     }
 
-    pub fn node(&self) -> &Node<'a> {
+    pub fn node(&self) -> &NodeRef<'a> {
         &self.node
     }
 
@@ -544,7 +648,7 @@ impl<'a> Range<'a> {
 
     fn walk<F, T>(&self, mut f: F) -> Option<T>
     where
-        F: FnMut(&Node) -> Option<T>,
+        F: FnMut(&NodeRef<'a>) -> Option<T>,
     {
         // If the range is degenerate, we don't want to normalize it.
         // This is important e.g. when getting the bounding rectangle
@@ -573,14 +677,11 @@ impl<'a> Range<'a> {
         None
     }
 
-    pub fn text(&self) -> String {
-        let mut result = String::new();
-        self.write_text(&mut result).unwrap();
-        result
-    }
-
-    pub fn write_text<W: fmt::Write>(&self, mut writer: W) -> fmt::Result {
-        if let Some(err) = self.walk(|node| {
+    pub fn traverse_text<F, T>(&self, mut f: F) -> Option<T>
+    where
+        F: FnMut(&NodeRef<'a>, &str) -> Option<T>,
+    {
+        self.walk(|node| {
             let character_lengths = node.data().character_lengths();
             let start_index = if node.id() == self.start.node.id() {
                 self.start.character_index
@@ -611,12 +712,22 @@ impl<'a> Range<'a> {
                         .sum::<usize>();
                 &value[slice_start..slice_end]
             };
-            writer.write_str(s).err()
-        }) {
+            f(node, s)
+        })
+    }
+
+    pub fn write_text<W: fmt::Write>(&self, mut writer: W) -> fmt::Result {
+        if let Some(err) = self.traverse_text(|_, s| writer.write_str(s).err()) {
             Err(err)
         } else {
             Ok(())
         }
+    }
+
+    pub fn text(&self) -> String {
+        let mut result = String::new();
+        self.write_text(&mut result).unwrap();
+        result
     }
 
     /// Returns the range's transformed bounding boxes relative to the tree's
@@ -647,7 +758,7 @@ impl<'a> Range<'a> {
                     return Some(Vec::new());
                 }
             };
-            let direction = match node.data().text_direction() {
+            let direction = match node.text_direction() {
                 Some(direction) => direction,
                 None => {
                     return Some(Vec::new());
@@ -709,24 +820,23 @@ impl<'a> Range<'a> {
         .unwrap_or(result)
     }
 
-    pub fn attribute<F, T>(&self, f: F) -> AttributeValue<T>
-    where
-        F: Fn(&Node) -> T,
-        T: PartialEq,
-    {
+    fn fetch_property<T: alloc::fmt::Debug + PartialEq>(
+        &self,
+        getter: fn(&NodeRef<'a>) -> T,
+    ) -> RangePropertyValue<T> {
         let mut value = None;
         self.walk(|node| {
-            let current = f(node);
+            let current = getter(node);
             if let Some(value) = &value {
                 if *value != current {
-                    return Some(AttributeValue::Mixed);
+                    return Some(RangePropertyValue::Mixed);
                 }
             } else {
                 value = Some(current);
             }
             None
         })
-        .unwrap_or_else(|| AttributeValue::Single(value.unwrap()))
+        .unwrap_or_else(|| RangePropertyValue::Single(value.unwrap()))
     }
 
     fn fix_start_bias(&mut self) {
@@ -785,7 +895,7 @@ impl Eq for Range<'_> {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WeakRange {
-    node_id: NodeId,
+    node_id: FullNodeId,
     start: WeakPosition,
     end: WeakPosition,
     start_comparable: (Vec<usize>, usize),
@@ -793,7 +903,7 @@ pub struct WeakRange {
 }
 
 impl WeakRange {
-    pub fn node_id(&self) -> NodeId {
+    pub fn node_id(&self) -> FullNodeId {
         self.node_id
     }
 
@@ -805,21 +915,21 @@ impl WeakRange {
         &self.end_comparable
     }
 
-    pub fn upgrade_node<'a>(&self, tree_state: &'a TreeState) -> Option<Node<'a>> {
+    pub fn upgrade_node<'a>(&self, tree_state: &'a TreeState) -> Option<NodeRef<'a>> {
         tree_state
             .node_by_id(self.node_id)
-            .filter(Node::supports_text_ranges)
+            .filter(NodeRef::supports_text_ranges)
     }
 
     pub fn upgrade<'a>(&self, tree_state: &'a TreeState) -> Option<Range<'a>> {
         let node = self.upgrade_node(tree_state)?;
-        let start = InnerPosition::upgrade(tree_state, self.start)?;
-        let end = InnerPosition::upgrade(tree_state, self.end)?;
+        let start = InnerPosition::upgrade(tree_state, self.start, self.node_id)?;
+        let end = InnerPosition::upgrade(tree_state, self.end, self.node_id)?;
         Some(Range { node, start, end })
     }
 }
 
-fn text_node_filter(root_id: NodeId, node: &Node) -> FilterResult {
+fn text_node_filter(root_id: FullNodeId, node: &NodeRef) -> FilterResult {
     if node.id() == root_id || node.role() == Role::TextRun {
         FilterResult::Include
     } else {
@@ -827,7 +937,7 @@ fn text_node_filter(root_id: NodeId, node: &Node) -> FilterResult {
     }
 }
 
-fn character_index_at_point(node: &Node, point: Point) -> usize {
+fn character_index_at_point(node: &NodeRef, point: Point) -> usize {
     // We know the node has a bounding rectangle because it was returned
     // by a hit test.
     let rect = node.data().bounds().unwrap();
@@ -844,7 +954,7 @@ fn character_index_at_point(node: &Node, point: Point) -> usize {
             return 0;
         }
     };
-    let direction = match node.data().text_direction() {
+    let direction = match node.text_direction() {
         Some(direction) => direction,
         None => {
             return 0;
@@ -867,26 +977,424 @@ fn character_index_at_point(node: &Node, point: Point) -> usize {
     character_lengths.len()
 }
 
-impl<'a> Node<'a> {
-    pub(crate) fn text_runs(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+macro_rules! inherited_properties {
+    ($(($getter:ident, $type:ty, $setter:ident, $test_value_1:expr_2021, $test_value_2:expr_2021)),+) => {
+        impl<'a> NodeRef<'a> {
+            $(pub fn $getter(&self) -> Option<$type> {
+                self.fetch_inherited_property(Node::$getter)
+            })*
+        }
+        impl<'a> Position<'a> {
+            $(pub fn $getter(&self) -> Option<$type> {
+                self.inner.node.$getter()
+            })*
+        }
+        impl<'a> Range<'a> {
+            $(pub fn $getter(&self) -> RangePropertyValue<Option<$type>> {
+                self.fetch_property(NodeRef::$getter)
+            })*
+        }
+        $(#[cfg(test)]
+        mod $getter {
+            use accesskit::{Node, NodeId, Role, TreeInfo, TreeId, TreeUpdate};
+            use alloc::vec;
+            use super::RangePropertyValue;
+            use crate::tests::nid;
+            #[test]
+            fn directly_set() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1)]);
+                            node
+                        }),
+                        (NodeId(1), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text");
+                            node.set_character_lengths([1, 1, 1, 1]);
+                            node.$setter($test_value_1);
+                            node
+                        }),
+                    ],
+                    tree: Some(TreeInfo::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                let state = tree.state();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
+                let pos = node.document_start();
+                assert_eq!(pos.$getter(), Some($test_value_1));
+                let range = node.document_range();
+                assert_eq!(range.$getter(), RangePropertyValue::Single(Some($test_value_1)));
+            }
+            #[test]
+            fn set_on_parent() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1)]);
+                            node.$setter($test_value_1);
+                            node
+                        }),
+                        (NodeId(1), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text");
+                            node.set_character_lengths([1, 1, 1, 1]);
+                            node
+                        }),
+                    ],
+                    tree: Some(TreeInfo::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                let state = tree.state();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
+                let pos = node.document_start();
+                assert_eq!(pos.$getter(), Some($test_value_1));
+                let range = node.document_range();
+                assert_eq!(range.$getter(), RangePropertyValue::Single(Some($test_value_1)));
+            }
+            #[test]
+            fn only_child_overrides_parent() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1)]);
+                            node.$setter($test_value_1);
+                            node
+                        }),
+                        (NodeId(1), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text");
+                            node.set_character_lengths([1, 1, 1, 1]);
+                            node.$setter($test_value_2);
+                            node
+                        }),
+                    ],
+                    tree: Some(TreeInfo::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                let state = tree.state();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
+                assert_eq!(node.$getter(), Some($test_value_1));
+                let pos = node.document_start();
+                assert_eq!(pos.$getter(), Some($test_value_2));
+                let range = node.document_range();
+                assert_eq!(range.$getter(), RangePropertyValue::Single(Some($test_value_2)));
+            }
+            #[test]
+            fn unset() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1)]);
+                            node
+                        }),
+                        (NodeId(1), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text");
+                            node.set_character_lengths([1, 1, 1, 1]);
+                            node
+                        }),
+                    ],
+                    tree: Some(TreeInfo::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                let state = tree.state();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
+                let pos = node.document_start();
+                assert_eq!(pos.$getter(), None);
+                let range = node.document_range();
+                assert_eq!(range.$getter(), RangePropertyValue::Single(None));
+            }
+            #[test]
+            fn mixed_some_and_none() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1), NodeId(2)]);
+                            node
+                        }),
+                        (NodeId(1), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text 1\n");
+                            node.set_character_lengths([1, 1, 1, 1, 1, 1, 1]);
+                            node.$setter($test_value_1);
+                            node
+                        }),
+                        (NodeId(2), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text 2");
+                            node.set_character_lengths([1, 1, 1, 1, 1, 1]);
+                            node
+                        }),
+                    ],
+                    tree: Some(TreeInfo::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                let state = tree.state();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
+                let range = node.document_range();
+                assert_eq!(range.$getter(), RangePropertyValue::Mixed);
+            }
+            #[test]
+            fn mixed_one_child_overrides_parent() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1), NodeId(2)]);
+                            node.$setter($test_value_1);
+                            node
+                        }),
+                        (NodeId(1), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text 1\n");
+                            node.set_character_lengths([1, 1, 1, 1, 1, 1, 1]);
+                            node.$setter($test_value_2);
+                            node
+                        }),
+                        (NodeId(2), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text 2");
+                            node.set_character_lengths([1, 1, 1, 1, 1, 1]);
+                            node
+                        }),
+                    ],
+                    tree: Some(TreeInfo::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                let state = tree.state();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
+                assert_eq!(node.$getter(), Some($test_value_1));
+                let start = node.document_start();
+                assert_eq!(start.$getter(), Some($test_value_2));
+                let start_range = start.to_degenerate_range();
+                assert_eq!(start_range.$getter(), RangePropertyValue::Single(Some($test_value_2)));
+                let end = node.document_end();
+                assert_eq!(end.$getter(), Some($test_value_1));
+                let end_range = end.to_degenerate_range();
+                assert_eq!(end_range.$getter(), RangePropertyValue::Single(Some($test_value_1)));
+                let range = node.document_range();
+                assert_eq!(range.$getter(), RangePropertyValue::Mixed);
+            }
+        })*
+    }
+}
+
+inherited_properties! {
+    (text_direction, TextDirection, set_text_direction, accesskit::TextDirection::LeftToRight, accesskit::TextDirection::RightToLeft),
+    (font_family, &'a str, set_font_family, "Noto", "Inconsolata"),
+    (language, &'a str, set_language, "en", "fr"),
+    (font_size, f32, set_font_size, 12.0, 24.0),
+    (font_weight, f32, set_font_weight, 400.0, 700.0),
+    (background_color, Color, set_background_color, accesskit::Color { red: 255, green: 255, blue: 255, alpha: 255 }, accesskit::Color { red: 255, green: 0, blue: 0, alpha: 255 }),
+    (foreground_color, Color, set_foreground_color, accesskit::Color { red: 0, green: 0, blue: 0, alpha: 255 }, accesskit::Color { red: 0, green: 0, blue: 255, alpha: 255 }),
+    (overline, TextDecoration, set_overline, crate::text::tests::TEST_TEXT_DECORATION_1, crate::text::tests::TEST_TEXT_DECORATION_2),
+    (strikethrough, TextDecoration, set_strikethrough, crate::text::tests::TEST_TEXT_DECORATION_2, crate::text::tests::TEST_TEXT_DECORATION_3),
+    (underline, TextDecoration, set_underline, crate::text::tests::TEST_TEXT_DECORATION_3, crate::text::tests::TEST_TEXT_DECORATION_4),
+    (text_align, TextAlign, set_text_align, accesskit::TextAlign::Left, accesskit::TextAlign::Justify),
+    (vertical_offset, VerticalOffset, set_vertical_offset, accesskit::VerticalOffset::Subscript, accesskit::VerticalOffset::Superscript)
+}
+
+macro_rules! inherited_flags {
+    ($(($getter:ident, $setter:ident)),+) => {
+        impl<'a> NodeRef<'a> {
+            $(pub fn $getter(&self) -> bool {
+                self.fetch_inherited_flag(Node::$getter)
+            })*
+        }
+        impl<'a> Position<'a> {
+            $(pub fn $getter(&self) -> bool {
+                self.inner.node.$getter()
+            })*
+        }
+        impl<'a> Range<'a> {
+            $(pub fn $getter(&self) -> RangePropertyValue<bool> {
+                self.fetch_property(NodeRef::$getter)
+            })*
+        }
+        $(#[cfg(test)]
+        mod $getter {
+            use accesskit::{Node, NodeId, Role, TreeInfo, TreeId, TreeUpdate};
+            use alloc::vec;
+            use super::RangePropertyValue;
+            use crate::tests::nid;
+            #[test]
+            fn directly_set() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1)]);
+                            node
+                        }),
+                        (NodeId(1), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text");
+                            node.set_character_lengths([1, 1, 1, 1]);
+                            node.$setter();
+                            node
+                        }),
+                    ],
+                    tree: Some(TreeInfo::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                let state = tree.state();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
+                let pos = node.document_start();
+                assert!(pos.$getter());
+                let range = node.document_range();
+                assert_eq!(range.$getter(), RangePropertyValue::Single(true));
+            }
+            #[test]
+            fn set_on_parent() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1)]);
+                            node.$setter();
+                            node
+                        }),
+                        (NodeId(1), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text");
+                            node.set_character_lengths([1, 1, 1, 1]);
+                            node
+                        }),
+                    ],
+                    tree: Some(TreeInfo::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                let state = tree.state();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
+                let pos = node.document_start();
+                assert!(pos.$getter());
+                let range = node.document_range();
+                assert_eq!(range.$getter(), RangePropertyValue::Single(true));
+            }
+            #[test]
+            fn unset() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1)]);
+                            node
+                        }),
+                        (NodeId(1), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text");
+                            node.set_character_lengths([1, 1, 1, 1]);
+                            node
+                        }),
+                    ],
+                    tree: Some(TreeInfo::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                let state = tree.state();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
+                let pos = node.document_start();
+                assert!(!pos.$getter());
+                let range = node.document_range();
+                assert_eq!(range.$getter(), RangePropertyValue::Single(false));
+            }
+            #[test]
+            fn mixed() {
+                let update = TreeUpdate {
+                    nodes: vec![
+                        (NodeId(0), {
+                            let mut node = Node::new(Role::TextInput);
+                            node.set_children(vec![NodeId(1), NodeId(2)]);
+                            node
+                        }),
+                        (NodeId(1), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text 1\n");
+                            node.set_character_lengths([1, 1, 1, 1, 1, 1, 1]);
+                            node.$setter();
+                            node
+                        }),
+                        (NodeId(2), {
+                            let mut node = Node::new(Role::TextRun);
+                            node.set_value("text 2");
+                            node.set_character_lengths([1, 1, 1, 1, 1, 1]);
+                            node
+                        }),
+                    ],
+                    tree: Some(TreeInfo::new(NodeId(0))),
+                    tree_id: TreeId::ROOT,
+                    focus: NodeId(0),
+                };
+                let tree = crate::Tree::new(update, false);
+                let state = tree.state();
+                let node = state.node_by_id(nid(NodeId(0))).unwrap();
+                let range = node.document_range();
+                assert_eq!(range.$getter(), RangePropertyValue::Mixed);
+            }
+        })*
+    }
+}
+
+inherited_flags! {
+    (is_italic, set_italic)
+}
+
+impl<'a> NodeRef<'a> {
+    fn text_attributes_differ(&self, other: &Self) -> bool {
+        self.font_family() != other.font_family()
+            || self.language() != other.language()
+            || self.font_size() != other.font_size()
+            || self.font_weight() != other.font_weight()
+            || self.background_color() != other.background_color()
+            || self.foreground_color() != other.foreground_color()
+            || self.overline() != other.overline()
+            || self.strikethrough() != other.strikethrough()
+            || self.underline() != other.underline()
+            || self.text_align() != other.text_align()
+            || self.vertical_offset() != other.vertical_offset()
+        // TODO: more attributes
+    }
+
+    pub(crate) fn text_runs(&self) -> impl DoubleEndedIterator<Item = NodeRef<'a>> + use<'a> {
         let id = self.id();
         self.filtered_children(move |node| text_node_filter(id, node))
     }
 
     fn following_text_runs(
         &self,
-        root_node: &Node,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+        root_node: &NodeRef,
+    ) -> impl DoubleEndedIterator<Item = NodeRef<'a>> + use<'a> {
         let id = root_node.id();
         self.following_filtered_siblings(move |node| text_node_filter(id, node))
     }
 
     fn preceding_text_runs(
         &self,
-        root_node: &Node,
-    ) -> impl DoubleEndedIterator<Item = Node<'a>> + FusedIterator<Item = Node<'a>> + 'a {
+        root_node: &NodeRef,
+    ) -> impl DoubleEndedIterator<Item = NodeRef<'a>> + use<'a> {
         let id = root_node.id();
         self.preceding_filtered_siblings(move |node| text_node_filter(id, node))
     }
@@ -897,7 +1405,7 @@ impl<'a> Node<'a> {
             && self.text_runs().next().is_some()
     }
 
-    fn document_start(&self) -> InnerPosition<'a> {
+    fn document_start_inner(&self) -> InnerPosition<'a> {
         let node = self.text_runs().next().unwrap();
         InnerPosition {
             node,
@@ -905,7 +1413,14 @@ impl<'a> Node<'a> {
         }
     }
 
-    fn document_end(&self) -> InnerPosition<'a> {
+    pub fn document_start(&self) -> Position<'a> {
+        Position {
+            root_node: *self,
+            inner: self.document_start_inner(),
+        }
+    }
+
+    fn document_end_inner(&self) -> InnerPosition<'a> {
         let node = self.text_runs().next_back().unwrap();
         InnerPosition {
             node,
@@ -913,9 +1428,16 @@ impl<'a> Node<'a> {
         }
     }
 
+    pub fn document_end(&self) -> Position<'a> {
+        Position {
+            root_node: *self,
+            inner: self.document_end_inner(),
+        }
+    }
+
     pub fn document_range(&self) -> Range<'_> {
-        let start = self.document_start();
-        let end = self.document_end();
+        let start = self.document_start_inner();
+        let end = self.document_end_inner();
         Range::new(*self, start, end)
     }
 
@@ -924,16 +1446,21 @@ impl<'a> Node<'a> {
     }
 
     pub fn text_selection(&self) -> Option<Range<'_>> {
+        let id = self.id;
         self.data().text_selection().map(|selection| {
-            let anchor = InnerPosition::clamped_upgrade(self.tree_state, selection.anchor).unwrap();
-            let focus = InnerPosition::clamped_upgrade(self.tree_state, selection.focus).unwrap();
+            let anchor =
+                InnerPosition::clamped_upgrade(self.tree_state, selection.anchor, id).unwrap();
+            let focus =
+                InnerPosition::clamped_upgrade(self.tree_state, selection.focus, id).unwrap();
             Range::new(*self, anchor, focus)
         })
     }
 
     pub fn text_selection_anchor(&self) -> Option<Position<'_>> {
+        let id = self.id;
         self.data().text_selection().map(|selection| {
-            let anchor = InnerPosition::clamped_upgrade(self.tree_state, selection.anchor).unwrap();
+            let anchor =
+                InnerPosition::clamped_upgrade(self.tree_state, selection.anchor, id).unwrap();
             Position {
                 root_node: *self,
                 inner: anchor,
@@ -942,8 +1469,10 @@ impl<'a> Node<'a> {
     }
 
     pub fn text_selection_focus(&self) -> Option<Position<'_>> {
+        let id = self.id;
         self.data().text_selection().map(|selection| {
-            let focus = InnerPosition::clamped_upgrade(self.tree_state, selection.focus).unwrap();
+            let focus =
+                InnerPosition::clamped_upgrade(self.tree_state, selection.focus, id).unwrap();
             Position {
                 root_node: *self,
                 inner: focus,
@@ -975,17 +1504,14 @@ impl<'a> Node<'a> {
             if let Some(rect) = node.bounding_box_in_coordinate_space(self) {
                 let origin = rect.origin();
                 if point.x < origin.x || point.y < origin.y {
-                    return Position {
-                        root_node: *self,
-                        inner: self.document_start(),
-                    };
+                    return self.document_start();
                 }
             }
         }
 
         for node in self.text_runs().rev() {
             if let Some(rect) = node.bounding_box_in_coordinate_space(self) {
-                if let Some(direction) = node.data().text_direction() {
+                if let Some(direction) = node.text_direction() {
                     let is_past_end = match direction {
                         TextDirection::LeftToRight => {
                             point.y >= rect.y0 && point.y < rect.y1 && point.x >= rect.x1
@@ -1016,14 +1542,11 @@ impl<'a> Node<'a> {
             }
         }
 
-        Position {
-            root_node: *self,
-            inner: self.document_end(),
-        }
+        self.document_end()
     }
 
     pub fn line_range_from_index(&self, line_index: usize) -> Option<Range<'_>> {
-        let mut pos = self.document_range().start();
+        let mut pos = self.document_start();
 
         if line_index > 0 {
             if pos.is_document_end() || pos.forward_to_line_end().is_document_end() {
@@ -1079,10 +1602,7 @@ impl<'a> Node<'a> {
             total_length = new_total_length;
         }
         if index == total_length {
-            return Some(Position {
-                root_node: *self,
-                inner: self.document_end(),
-            });
+            return Some(self.document_end());
         }
         None
     }
@@ -1121,10 +1641,7 @@ impl<'a> Node<'a> {
             total_length = new_total_length;
         }
         if index == total_length {
-            return Some(Position {
-                root_node: *self,
-                inner: self.document_end(),
-            });
+            return Some(self.document_end());
         }
         None
     }
@@ -1132,12 +1649,53 @@ impl<'a> Node<'a> {
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{NodeId, Point, Rect, TextSelection};
+    use crate::tests::nid;
+    use accesskit::{
+        Color, NodeId, Point, Rect, TextDecoration, TextDecorationStyle, TextSelection,
+    };
     use alloc::vec;
 
-    // This is based on an actual tree produced by egui.
+    pub(crate) const TEST_TEXT_DECORATION_1: TextDecoration = TextDecoration {
+        style: TextDecorationStyle::Solid,
+        color: Color {
+            red: 0,
+            green: 0,
+            blue: 0,
+            alpha: 255,
+        },
+    };
+    pub(crate) const TEST_TEXT_DECORATION_2: TextDecoration = TextDecoration {
+        style: TextDecorationStyle::Dotted,
+        color: Color {
+            red: 255,
+            green: 0,
+            blue: 0,
+            alpha: 255,
+        },
+    };
+    pub(crate) const TEST_TEXT_DECORATION_3: TextDecoration = TextDecoration {
+        style: TextDecorationStyle::Dashed,
+        color: Color {
+            red: 0,
+            green: 255,
+            blue: 0,
+            alpha: 255,
+        },
+    };
+    pub(crate) const TEST_TEXT_DECORATION_4: TextDecoration = TextDecoration {
+        style: TextDecorationStyle::Double,
+        color: Color {
+            red: 0,
+            green: 0,
+            blue: 255,
+            alpha: 255,
+        },
+    };
+
+    // This was originally based on an actual tree produced by egui but
+    // has since been heavily modified by hand to cover various test cases.
     fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {
-        use accesskit::{Action, Affine, Node, Role, TextDirection, Tree, TreeUpdate};
+        use accesskit::{Action, Affine, Node, Role, TextDirection, TreeId, TreeInfo, TreeUpdate};
 
         let update = TreeUpdate {
             nodes: vec![
@@ -1162,8 +1720,11 @@ mod tests {
                         NodeId(5),
                         NodeId(6),
                         NodeId(7),
+                        NodeId(8),
+                        NodeId(9),
                     ]);
                     node.add_action(Action::Focus);
+                    node.set_text_direction(TextDirection::LeftToRight);
                     if let Some(selection) = selection {
                         node.set_text_selection(selection);
                     }
@@ -1182,7 +1743,6 @@ mod tests {
                     // is to test conversion between UTF-8 and UTF-16
                     // indices.
                     node.set_value("This paragraph is\u{a0}long enough to wrap ");
-                    node.set_text_direction(TextDirection::LeftToRight);
                     node.set_character_lengths([
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1,
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -1201,7 +1761,7 @@ mod tests {
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                     ]);
-                    node.set_word_lengths([5, 10, 3, 5, 7, 3, 5]);
+                    node.set_word_starts([5, 15, 18, 23, 30, 33]);
                     node
                 }),
                 (NodeId(3), {
@@ -1209,26 +1769,60 @@ mod tests {
                     node.set_bounds(Rect {
                         x0: 12.0,
                         y0: 48.33333206176758,
-                        x1: 129.5855712890625,
+                        x1: 34.252257,
                         y1: 63.0,
                     });
-                    node.set_value("to another line.\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
-                    node.set_character_lengths([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
-                    node.set_character_positions([
-                        0.0, 7.3333435, 14.666687, 22.0, 29.333344, 36.666687, 44.0, 51.333344,
-                        58.666687, 66.0, 73.33334, 80.66669, 88.0, 95.33334, 102.66669, 110.0,
-                        117.58557,
-                    ]);
-                    node.set_character_widths([
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
-                        0.0,
-                    ]);
-                    node.set_word_lengths([3, 8, 6]);
+                    node.set_value("to ");
+                    node.set_character_lengths([1, 1, 1]);
+                    node.set_character_positions([0.0, 7.3333435, 14.666687]);
+                    node.set_character_widths([7.58557, 7.58557, 7.58557]);
+                    node.set_word_starts([0]);
+                    node.set_next_on_line(NodeId(4));
                     node
                 }),
                 (NodeId(4), {
+                    let mut node = Node::new(Role::TextRun);
+                    node.set_bounds(Rect {
+                        x0: 34.0,
+                        y0: 48.33333206176758,
+                        x1: 85.58557,
+                        y1: 63.0,
+                    });
+                    node.set_value("another");
+                    node.set_character_lengths([1, 1, 1, 1, 1, 1, 1]);
+                    node.set_character_positions([
+                        0.0, 7.333344, 14.666687, 22.0, 29.333344, 36.666687, 44.0,
+                    ]);
+                    node.set_character_widths([
+                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
+                    ]);
+                    node.set_word_starts([0]);
+                    node.set_underline(TEST_TEXT_DECORATION_1);
+                    node.set_previous_on_line(NodeId(3));
+                    node.set_next_on_line(NodeId(5));
+                    node
+                }),
+                (NodeId(5), {
+                    let mut node = Node::new(Role::TextRun);
+                    node.set_bounds(Rect {
+                        x0: 85.33334,
+                        y0: 48.33333206176758,
+                        x1: 129.5855712890625,
+                        y1: 63.0,
+                    });
+                    node.set_value(" line.\n");
+                    node.set_character_lengths([1, 1, 1, 1, 1, 1, 1]);
+                    node.set_character_positions([
+                        0.0, 7.333344, 14.666687, 22.0, 29.333344, 36.666687, 44.25226,
+                    ]);
+                    node.set_character_widths([
+                        7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 0.0,
+                    ]);
+                    node.set_word_starts([1]);
+                    node.set_previous_on_line(NodeId(4));
+                    node
+                }),
+                (NodeId(6), {
                     let mut node = Node::new(Role::TextRun);
                     node.set_bounds(Rect {
                         x0: 12.0,
@@ -1237,7 +1831,6 @@ mod tests {
                         y1: 77.66666412353516,
                     });
                     node.set_value("Another paragraph.\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
                     node.set_character_lengths([
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                     ]);
@@ -1251,10 +1844,10 @@ mod tests {
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 0.0,
                     ]);
-                    node.set_word_lengths([8, 11]);
+                    node.set_word_starts([8]);
                     node
                 }),
-                (NodeId(5), {
+                (NodeId(7), {
                     let mut node = Node::new(Role::TextRun);
                     node.set_bounds(Rect {
                         x0: 12.0,
@@ -1263,14 +1856,12 @@ mod tests {
                         y1: 92.33332824707031,
                     });
                     node.set_value("\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
                     node.set_character_lengths([1]);
                     node.set_character_positions([0.0]);
                     node.set_character_widths([0.0]);
-                    node.set_word_lengths([1]);
                     node
                 }),
-                (NodeId(6), {
+                (NodeId(8), {
                     let mut node = Node::new(Role::TextRun);
                     node.set_bounds(Rect {
                         x0: 12.0,
@@ -1283,7 +1874,6 @@ mod tests {
                     // UTF-16 code units, to fully test conversion between
                     // UTF-8, UTF-16, and AccessKit character indices.
                     node.set_value("Last non-blank line\u{1f44d}\u{1f3fb}\n");
-                    node.set_text_direction(TextDirection::LeftToRight);
                     node.set_character_lengths([
                         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 8, 1,
                     ]);
@@ -1297,10 +1887,10 @@ mod tests {
                         7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557, 7.58557,
                         7.58557, 7.58557, 7.58557, 7.58557, 0.0,
                     ]);
-                    node.set_word_lengths([5, 4, 6, 6]);
+                    node.set_word_starts([5, 9, 15]);
                     node
                 }),
-                (NodeId(7), {
+                (NodeId(9), {
                     let mut node = Node::new(Role::TextRun);
                     node.set_bounds(Rect {
                         x0: 12.0,
@@ -1309,15 +1899,14 @@ mod tests {
                         y1: 121.66666412353516,
                     });
                     node.set_value("");
-                    node.set_text_direction(TextDirection::LeftToRight);
                     node.set_character_lengths([]);
                     node.set_character_positions([]);
                     node.set_character_widths([]);
-                    node.set_word_lengths([0]);
                     node
                 }),
             ],
-            tree: Some(Tree::new(NodeId(0))),
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
             focus: NodeId(1),
         };
 
@@ -1329,11 +1918,11 @@ mod tests {
 
         TextSelection {
             anchor: TextPosition {
-                node: NodeId(7),
+                node: NodeId(9),
                 character_index: 0,
             },
             focus: TextPosition {
-                node: NodeId(7),
+                node: NodeId(9),
                 character_index: 0,
             },
         }
@@ -1344,11 +1933,11 @@ mod tests {
 
         TextSelection {
             anchor: TextPosition {
-                node: NodeId(7),
+                node: NodeId(9),
                 character_index: 3,
             },
             focus: TextPosition {
-                node: NodeId(7),
+                node: NodeId(9),
                 character_index: 3,
             },
         }
@@ -1389,12 +1978,12 @@ mod tests {
 
         TextSelection {
             anchor: TextPosition {
-                node: NodeId(3),
-                character_index: 5,
+                node: NodeId(4),
+                character_index: 3,
             },
             focus: TextPosition {
-                node: NodeId(3),
-                character_index: 5,
+                node: NodeId(4),
+                character_index: 3,
             },
         }
     }
@@ -1403,15 +1992,25 @@ mod tests {
     fn supports_text_ranges() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        assert!(!state.node_by_id(NodeId(0)).unwrap().supports_text_ranges());
-        assert!(state.node_by_id(NodeId(1)).unwrap().supports_text_ranges());
+        assert!(
+            !state
+                .node_by_id(nid(NodeId(0)))
+                .unwrap()
+                .supports_text_ranges()
+        );
+        assert!(
+            state
+                .node_by_id(nid(NodeId(1)))
+                .unwrap()
+                .supports_text_ranges()
+        );
     }
 
     #[test]
     fn multiline_document_range() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let range = node.document_range();
         let start = range.start();
         assert!(start.is_word_start());
@@ -1428,7 +2027,10 @@ mod tests {
         assert!(end.is_paragraph_start());
         assert!(!end.is_document_start());
         assert!(end.is_document_end());
-        assert_eq!(range.text(), "This paragraph is\u{a0}long enough to wrap to another line.\nAnother paragraph.\n\nLast non-blank line\u{1f44d}\u{1f3fb}\n");
+        assert_eq!(
+            range.text(),
+            "This paragraph is\u{a0}long enough to wrap to another line.\nAnother paragraph.\n\nLast non-blank line\u{1f44d}\u{1f3fb}\n"
+        );
         assert_eq!(
             range.bounding_boxes(),
             vec![
@@ -1440,6 +2042,90 @@ mod tests {
                 },
                 Rect {
                     x0: 18.0,
+                    y0: 72.49999809265137,
+                    x1: 51.3783855,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 51.0,
+                    y0: 72.49999809265137,
+                    x1: 128.378355,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 128.00001,
+                    y0: 72.49999809265137,
+                    x1: 194.37835693359375,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 18.0,
+                    y0: 94.5,
+                    x1: 216.3783416748047,
+                    y1: 116.49999618530273
+                },
+                Rect {
+                    x0: 18.0,
+                    y0: 116.49999618530273,
+                    x1: 18.0,
+                    y1: 138.49999237060547
+                },
+                Rect {
+                    x0: 18.0,
+                    y0: 138.49999237060547,
+                    x1: 238.37834930419922,
+                    y1: 160.5
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn multiline_document_range_to_first_format_change() {
+        let tree = main_multiline_tree(None);
+        let state = tree.state();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
+        let mut range = node.document_range();
+        range.set_end(range.start().forward_to_format_end());
+        assert_eq!(
+            range.text(),
+            "This paragraph is\u{a0}long enough to wrap to "
+        );
+        assert_eq!(
+            range.bounding_boxes(),
+            vec![
+                Rect {
+                    x0: 18.0,
+                    y0: 50.499996185302734,
+                    x1: 436.3783721923828,
+                    y1: 72.49999809265137
+                },
+                Rect {
+                    x0: 18.0,
+                    y0: 72.49999809265137,
+                    x1: 51.3783855,
+                    y1: 94.5
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn multiline_document_range_from_last_format_change() {
+        let tree = main_multiline_tree(None);
+        let state = tree.state();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
+        let mut range = node.document_range();
+        range.set_start(range.end().backward_to_format_start());
+        assert_eq!(
+            range.text(),
+            " line.\nAnother paragraph.\n\nLast non-blank line\u{1f44d}\u{1f3fb}\n"
+        );
+        assert_eq!(
+            range.bounding_boxes(),
+            vec![
+                Rect {
+                    x0: 128.00001,
                     y0: 72.49999809265137,
                     x1: 194.37835693359375,
                     y1: 94.5
@@ -1470,7 +2156,7 @@ mod tests {
     fn multiline_end_degenerate_range() {
         let tree = main_multiline_tree(Some(multiline_end_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -1496,7 +2182,7 @@ mod tests {
     fn multiline_wrapped_line_end_range() {
         let tree = main_multiline_tree(Some(multiline_wrapped_line_end_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -1558,7 +2244,7 @@ mod tests {
     fn multiline_find_line_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -1576,12 +2262,26 @@ mod tests {
         assert_eq!(range.text(), "to another line.\n");
         assert_eq!(
             range.bounding_boxes(),
-            vec![Rect {
-                x0: 18.0,
-                y0: 72.49999809265137,
-                x1: 194.37835693359375,
-                y1: 94.5
-            },]
+            vec![
+                Rect {
+                    x0: 18.0,
+                    y0: 72.49999809265137,
+                    x1: 51.3783855,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 51.0,
+                    y0: 72.49999809265137,
+                    x1: 128.378355,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 128.00001,
+                    y0: 72.49999809265137,
+                    x1: 194.37835693359375,
+                    y1: 94.5
+                },
+            ]
         );
         assert!(line_start.forward_to_line_start().is_line_start());
     }
@@ -1590,7 +2290,7 @@ mod tests {
     fn multiline_find_wrapped_line_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_first_line_middle_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -1622,7 +2322,7 @@ mod tests {
     fn multiline_find_paragraph_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -1652,21 +2352,63 @@ mod tests {
                 Rect {
                     x0: 18.0,
                     y0: 72.49999809265137,
+                    x1: 51.3783855,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 51.0,
+                    y0: 72.49999809265137,
+                    x1: 128.378355,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 128.00001,
+                    y0: 72.49999809265137,
                     x1: 194.37835693359375,
                     y1: 94.5
                 },
             ]
         );
-        assert!(paragraph_start
-            .forward_to_paragraph_start()
-            .is_paragraph_start());
+        assert!(
+            paragraph_start
+                .forward_to_paragraph_start()
+                .is_paragraph_start()
+        );
+    }
+
+    #[test]
+    fn multiline_find_format_ends_from_middle() {
+        let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
+        let state = tree.state();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
+        let mut range = node.text_selection().unwrap();
+        assert!(range.is_degenerate());
+        let pos = range.start();
+        assert!(!pos.is_format_start());
+        assert!(!pos.is_document_start());
+        assert!(!pos.is_document_end());
+        let format_start = pos.backward_to_format_start();
+        range.set_start(format_start);
+        let format_end = pos.forward_to_format_end();
+        range.set_end(format_end);
+        assert!(!range.is_degenerate());
+        assert_eq!(range.text(), "another");
+        assert_eq!(
+            range.bounding_boxes(),
+            vec![Rect {
+                x0: 51.0,
+                y0: 72.49999809265137,
+                x1: 128.378355,
+                y1: 94.5
+            }]
+        );
     }
 
     #[test]
     fn multiline_find_word_ends_from_middle() {
         let tree = main_multiline_tree(Some(multiline_second_line_middle_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let mut range = node.text_selection().unwrap();
         assert!(range.is_degenerate());
         let pos = range.start();
@@ -1676,17 +2418,29 @@ mod tests {
         let word_start = pos.backward_to_word_start();
         range.set_start(word_start);
         let word_end = word_start.forward_to_word_end();
+        let word_end2 = pos.forward_to_word_end();
+        assert_eq!(word_end, word_end2);
+        let word_start2 = word_end.backward_to_word_start();
+        assert_eq!(word_start, word_start2);
         range.set_end(word_end);
         assert!(!range.is_degenerate());
         assert_eq!(range.text(), "another ");
         assert_eq!(
             range.bounding_boxes(),
-            vec![Rect {
-                x0: 51.0,
-                y0: 72.49999809265137,
-                x1: 139.3783721923828,
-                y1: 94.5
-            }]
+            [
+                Rect {
+                    x0: 51.0,
+                    y0: 72.49999809265137,
+                    x1: 128.378355,
+                    y1: 94.5
+                },
+                Rect {
+                    x0: 128.00001,
+                    y0: 72.49999809265137,
+                    x1: 139.37836478782654,
+                    y1: 94.5
+                }
+            ]
         );
     }
 
@@ -1694,7 +2448,7 @@ mod tests {
     fn text_position_at_point() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
 
         {
             let pos = node.text_position_at_point(Point::new(8.0, 31.666664123535156));
@@ -1786,7 +2540,7 @@ mod tests {
     fn to_global_usv_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
 
         {
             let range = node.document_range();
@@ -1811,7 +2565,7 @@ mod tests {
     fn to_global_utf16_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
 
         {
             let range = node.document_range();
@@ -1836,7 +2590,7 @@ mod tests {
     fn to_line_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
 
         {
             let range = node.document_range();
@@ -1862,7 +2616,7 @@ mod tests {
     fn line_range_from_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
 
         {
             let range = node.line_range_from_index(0).unwrap();
@@ -1901,7 +2655,7 @@ mod tests {
     fn text_position_from_global_usv_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
 
         {
             let pos = node.text_position_from_global_usv_index(0).unwrap();
@@ -1980,7 +2734,7 @@ mod tests {
     fn text_position_from_global_utf16_index() {
         let tree = main_multiline_tree(None);
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
 
         {
             let pos = node.text_position_from_global_utf16_index(0).unwrap();
@@ -2059,7 +2813,24 @@ mod tests {
     fn multiline_selection_clamping() {
         let tree = main_multiline_tree(Some(multiline_past_end_selection()));
         let state = tree.state();
-        let node = state.node_by_id(NodeId(1)).unwrap();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let _ = node.text_selection().unwrap();
+    }
+
+    #[test]
+    fn range_property_value_map() {
+        use super::RangePropertyValue;
+        assert_eq!(
+            RangePropertyValue::Single(Some(0)).map(|x| x + 1),
+            RangePropertyValue::Single(Some(1))
+        );
+        assert_eq!(
+            RangePropertyValue::<Option<usize>>::Single(None).map(|x| x + 1),
+            RangePropertyValue::Single(None)
+        );
+        assert_eq!(
+            RangePropertyValue::<Option<usize>>::Mixed.map(|x| x + 1),
+            RangePropertyValue::Mixed
+        );
     }
 }

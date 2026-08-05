@@ -4,13 +4,12 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{
-    ActionHandler, ActivationHandler, Live, Node as NodeProvider, NodeId, Role, Tree as TreeData,
-    TreeUpdate,
+    ActionHandler, ActivationHandler, Live, Node, NodeId, Role, TreeId, TreeInfo, TreeUpdate,
 };
-use accesskit_consumer::{FilterResult, Node, Tree, TreeChangeHandler};
+use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, Tree, TreeChangeHandler, TreeState};
 use hashbrown::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
-use std::sync::{atomic::Ordering, Arc};
+use std::sync::{Arc, atomic::Ordering};
 use windows::Win32::{
     Foundation::*,
     UI::{Accessibility::*, WindowsAndMessaging::*},
@@ -20,13 +19,13 @@ use crate::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper, Context},
     filters::filter,
     node::{NodeWrapper, PlatformNode},
-    util::QueuedEvent,
+    util::{QueuedEvent, StringBuffer},
     window_handle::WindowHandle,
 };
 
-fn focus_event(context: &Arc<Context>, node_id: NodeId) -> QueuedEvent {
-    let platform_node = PlatformNode::new(context, node_id);
-    let element: IRawElementProviderSimple = platform_node.into();
+fn focus_event(context: &Arc<Context>, node_id: FullNodeId) -> QueuedEvent {
+    let platform_node = context.get_or_create_platform_node(node_id);
+    let element: IRawElementProviderSimple = platform_node.into_interface();
     QueuedEvent::Simple {
         element,
         event_id: UIA_AutomationFocusChangedEventId,
@@ -36,8 +35,8 @@ fn focus_event(context: &Arc<Context>, node_id: NodeId) -> QueuedEvent {
 struct AdapterChangeHandler<'a> {
     context: &'a Arc<Context>,
     queue: Vec<QueuedEvent>,
-    text_changed: HashSet<NodeId>,
-    selection_changed: HashMap<NodeId, SelectionChanges>,
+    text_changed: HashSet<FullNodeId>,
+    selection_changed: HashMap<FullNodeId, SelectionChanges>,
 }
 
 impl<'a> AdapterChangeHandler<'a> {
@@ -52,7 +51,7 @@ impl<'a> AdapterChangeHandler<'a> {
 }
 
 impl AdapterChangeHandler<'_> {
-    fn insert_text_change_if_needed_parent(&mut self, node: Node) {
+    fn insert_text_change_if_needed_parent(&mut self, node: NodeRef) {
         if !node.supports_text_ranges() {
             return;
         }
@@ -60,8 +59,8 @@ impl AdapterChangeHandler<'_> {
         if self.text_changed.contains(&id) {
             return;
         }
-        let platform_node = PlatformNode::new(self.context, node.id());
-        let element: IRawElementProviderSimple = platform_node.into();
+        let platform_node = self.context.get_or_create_platform_node(node.id());
+        let element: IRawElementProviderSimple = platform_node.into_interface();
         // Text change events must come before selection change
         // events. It doesn't matter if text change events come
         // before other events.
@@ -75,7 +74,7 @@ impl AdapterChangeHandler<'_> {
         self.text_changed.insert(id);
     }
 
-    fn insert_text_change_if_needed(&mut self, node: &Node) {
+    fn insert_text_change_if_needed(&mut self, node: &NodeRef) {
         if node.role() != Role::TextRun {
             return;
         }
@@ -84,7 +83,21 @@ impl AdapterChangeHandler<'_> {
         }
     }
 
-    fn handle_selection_state_change(&mut self, node: &Node, is_selected: bool) {
+    fn element_for_possibly_removed_node(
+        &self,
+        tree_state: &TreeState,
+        id: FullNodeId,
+    ) -> IRawElementProviderSimple {
+        if tree_state.node_by_id(id).is_some() {
+            self.context
+                .get_or_create_platform_node(id)
+                .into_interface()
+        } else {
+            PlatformNode::new(self.context, id).into_interface()
+        }
+    }
+
+    fn handle_selection_state_change(&mut self, node: &NodeRef, is_selected: bool) {
         // If `node` belongs to a selection container, then map the events with the
         // selection container as the key because |FinalizeSelectionEvents| needs to
         // determine whether or not there is only one element selected in order to
@@ -135,19 +148,25 @@ impl AdapterChangeHandler<'_> {
 
             if let Some(only_selected_child) = only_selected_child {
                 self.queue.push(QueuedEvent::Simple {
-                    element: PlatformNode::new(self.context, only_selected_child.id()).into(),
+                    element: self
+                        .context
+                        .get_or_create_platform_node(only_selected_child.id())
+                        .into_interface(),
                     event_id: UIA_SelectionItem_ElementSelectedEventId,
                 });
                 self.queue.push(QueuedEvent::PropertyChanged {
-                    element: PlatformNode::new(self.context, only_selected_child.id()).into(),
+                    element: self
+                        .context
+                        .get_or_create_platform_node(only_selected_child.id())
+                        .into_interface(),
                     property_id: UIA_SelectionItemIsSelectedPropertyId,
                     old_value: false.into(),
                     new_value: true.into(),
                 });
                 for child_id in changes.removed_items.iter() {
-                    let platform_node = PlatformNode::new(self.context, *child_id);
+                    let element = self.element_for_possibly_removed_node(tree_state, *child_id);
                     self.queue.push(QueuedEvent::PropertyChanged {
-                        element: platform_node.into(),
+                        element,
                         property_id: UIA_SelectionItemIsSelectedPropertyId,
                         old_value: true.into(),
                         new_value: false.into(),
@@ -161,9 +180,9 @@ impl AdapterChangeHandler<'_> {
                 if let Some(container) = container.filter(|_| {
                     changes.added_items.len() + changes.removed_items.len() > INVALIDATE_LIMIT
                 }) {
-                    let platform_node = PlatformNode::new(self.context, container.id());
+                    let platform_node = self.context.get_or_create_platform_node(container.id());
                     self.queue.push(QueuedEvent::Simple {
-                        element: platform_node.into(),
+                        element: platform_node.into_interface(),
                         event_id: UIA_Selection_InvalidatedEventId,
                     });
                 } else {
@@ -171,26 +190,34 @@ impl AdapterChangeHandler<'_> {
                         container.is_some_and(|c| c.is_multiselectable());
                     for added_id in changes.added_items.iter() {
                         self.queue.push(QueuedEvent::Simple {
-                            element: PlatformNode::new(self.context, *added_id).into(),
+                            element: self
+                                .context
+                                .get_or_create_platform_node(*added_id)
+                                .into_interface(),
                             event_id: match container_is_multiselectable {
                                 true => UIA_SelectionItem_ElementAddedToSelectionEventId,
                                 false => UIA_SelectionItem_ElementSelectedEventId,
                             },
                         });
                         self.queue.push(QueuedEvent::PropertyChanged {
-                            element: PlatformNode::new(self.context, *added_id).into(),
+                            element: self
+                                .context
+                                .get_or_create_platform_node(*added_id)
+                                .into_interface(),
                             property_id: UIA_SelectionItemIsSelectedPropertyId,
                             old_value: false.into(),
                             new_value: true.into(),
                         });
                     }
                     for removed_id in changes.removed_items.iter() {
+                        let element =
+                            self.element_for_possibly_removed_node(tree_state, *removed_id);
                         self.queue.push(QueuedEvent::Simple {
-                            element: PlatformNode::new(self.context, *removed_id).into(),
+                            element: element.clone(),
                             event_id: UIA_SelectionItem_ElementRemovedFromSelectionEventId,
                         });
                         self.queue.push(QueuedEvent::PropertyChanged {
-                            element: PlatformNode::new(self.context, *removed_id).into(),
+                            element,
                             property_id: UIA_SelectionItemIsSelectedPropertyId,
                             old_value: true.into(),
                             new_value: false.into(),
@@ -203,20 +230,32 @@ impl AdapterChangeHandler<'_> {
 }
 
 struct SelectionChanges {
-    added_items: HashSet<NodeId>,
-    removed_items: HashSet<NodeId>,
+    added_items: HashSet<FullNodeId>,
+    removed_items: HashSet<FullNodeId>,
 }
 
 impl TreeChangeHandler for AdapterChangeHandler<'_> {
-    fn node_added(&mut self, node: &Node) {
+    fn node_added(&mut self, node: &NodeRef) {
         self.insert_text_change_if_needed(node);
         if filter(node) != FilterResult::Include {
             return;
         }
-        let wrapper = NodeWrapper(node);
+        let mut buffer = StringBuffer::acquire();
+        let mut wrapper = NodeWrapper {
+            node,
+            string_buffer: &mut buffer,
+        };
+        if node.is_dialog() {
+            let platform_node = self.context.get_or_create_platform_node(node.id());
+            let element: IRawElementProviderSimple = platform_node.into_interface();
+            self.queue.push(QueuedEvent::Simple {
+                element,
+                event_id: UIA_Window_WindowOpenedEventId,
+            });
+        }
         if wrapper.name().is_some() && node.live() != Live::Off {
-            let platform_node = PlatformNode::new(self.context, node.id());
-            let element: IRawElementProviderSimple = platform_node.into();
+            let platform_node = self.context.get_or_create_platform_node(node.id());
+            let element: IRawElementProviderSimple = platform_node.into_interface();
             self.queue.push(QueuedEvent::Simple {
                 element,
                 event_id: UIA_LiveRegionChangedEventId,
@@ -227,29 +266,49 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
     }
 
-    fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
+    fn node_updated(&mut self, old_node: &NodeRef, new_node: &NodeRef) {
         if old_node.raw_value() != new_node.raw_value() {
             self.insert_text_change_if_needed(new_node);
         }
         let old_node_was_filtered_out = filter(old_node) != FilterResult::Include;
         if filter(new_node) != FilterResult::Include {
             if !old_node_was_filtered_out {
-                let old_wrapper = NodeWrapper(old_node);
+                if old_node.is_dialog() {
+                    let platform_node = self.context.get_or_create_platform_node(old_node.id());
+                    let element: IRawElementProviderSimple = platform_node.into_interface();
+                    self.queue.push(QueuedEvent::Simple {
+                        element,
+                        event_id: UIA_Window_WindowClosedEventId,
+                    });
+                }
+                let mut old_buffer = StringBuffer::acquire();
+                let old_wrapper = NodeWrapper {
+                    node: old_node,
+                    string_buffer: &mut old_buffer,
+                };
                 if old_wrapper.is_selection_item_pattern_supported() && old_wrapper.is_selected() {
                     self.handle_selection_state_change(old_node, false);
                 }
             }
             return;
         }
-        let platform_node = PlatformNode::new(self.context, new_node.id());
-        let element: IRawElementProviderSimple = platform_node.into();
-        let old_wrapper = NodeWrapper(old_node);
-        let new_wrapper = NodeWrapper(new_node);
+        let platform_node = self.context.get_or_create_platform_node(new_node.id());
+        let element: IRawElementProviderSimple = platform_node.into_interface();
+        let mut old_buffer = StringBuffer::acquire();
+        let mut old_wrapper = NodeWrapper {
+            node: old_node,
+            string_buffer: &mut old_buffer,
+        };
+        let mut new_buffer = StringBuffer::acquire();
+        let mut new_wrapper = NodeWrapper {
+            node: new_node,
+            string_buffer: &mut new_buffer,
+        };
         new_wrapper.enqueue_property_changes(
             &mut self.queue,
-            &PlatformNode::new(self.context, new_node.id()),
+            self.context,
             &element,
-            &old_wrapper,
+            &mut old_wrapper,
         );
         let new_name = new_wrapper.name();
         if new_name.is_some()
@@ -263,6 +322,14 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 event_id: UIA_LiveRegionChangedEventId,
             });
         }
+        if old_node_was_filtered_out && new_node.is_dialog() {
+            let platform_node = self.context.get_or_create_platform_node(new_node.id());
+            let element: IRawElementProviderSimple = platform_node.into_interface();
+            self.queue.push(QueuedEvent::Simple {
+                element,
+                event_id: UIA_Window_WindowOpenedEventId,
+            });
+        }
         if new_wrapper.is_selection_item_pattern_supported()
             && (new_wrapper.is_selected() != old_wrapper.is_selected()
                 || (old_node_was_filtered_out && new_wrapper.is_selected()))
@@ -271,18 +338,31 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
     }
 
-    fn focus_moved(&mut self, _old_node: Option<&Node>, new_node: Option<&Node>) {
+    fn focus_moved(&mut self, _old_node: Option<&NodeRef>, new_node: Option<&NodeRef>) {
         if let Some(new_node) = new_node {
             self.queue.push(focus_event(self.context, new_node.id()));
         }
     }
 
-    fn node_removed(&mut self, node: &Node) {
+    fn node_removed(&mut self, node: &NodeRef) {
         self.insert_text_change_if_needed(node);
+        self.context.remove_platform_node(node.id());
         if filter(node) != FilterResult::Include {
             return;
         }
-        let wrapper = NodeWrapper(node);
+        if node.is_dialog() {
+            let platform_node = PlatformNode::new(self.context, node.id());
+            let element: IRawElementProviderSimple = platform_node.into_interface();
+            self.queue.push(QueuedEvent::Simple {
+                element,
+                event_id: UIA_Window_WindowClosedEventId,
+            });
+        }
+        let mut buffer = StringBuffer::acquire();
+        let wrapper = NodeWrapper {
+            node,
+            string_buffer: &mut buffer,
+        };
         if wrapper.is_selection_item_pattern_supported() {
             self.handle_selection_state_change(node, false);
         }
@@ -394,8 +474,8 @@ impl Adapter {
                 let result = context
                     .read_tree()
                     .state()
-                    .focus_id()
-                    .map(|id| QueuedEvents(vec![focus_event(context, id)]));
+                    .focus()
+                    .map(|node| QueuedEvents(vec![focus_event(context, node.id())]));
                 self.state = State::Active(Arc::clone(context));
                 result
             }
@@ -456,7 +536,7 @@ impl Adapter {
         wparam: WPARAM,
         lparam: LPARAM,
         activation_handler: &mut H,
-    ) -> Option<impl Into<LRESULT>> {
+    ) -> Option<impl Into<LRESULT> + use<H>> {
         // Don't bother with MSAA object IDs that are asking for something other
         // than the client area of the window. DefWindowProc can handle those.
         // First, cast the lparam to i32, to handle inconsistent conversion
@@ -477,15 +557,16 @@ impl Adapter {
                     let tree = Tree::new(initial_state, *is_window_focused);
                     let context = Context::new(hwnd, tree, Arc::clone(action_handler), false);
                     let node_id = context.read_tree().state().root_id();
-                    let platform_node = PlatformNode::new(&context, node_id);
+                    let platform_node = context.get_or_create_platform_node(node_id);
                     self.state = State::Active(context);
                     (hwnd, platform_node)
                 }
                 None => {
                     let hwnd = *hwnd;
                     let placeholder_update = TreeUpdate {
-                        nodes: vec![(PLACEHOLDER_ROOT_ID, NodeProvider::new(Role::Window))],
-                        tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
+                        nodes: vec![(PLACEHOLDER_ROOT_ID, Node::new(Role::Window))],
+                        tree: Some(TreeInfo::new(PLACEHOLDER_ROOT_ID)),
+                        tree_id: TreeId::ROOT,
                         focus: PLACEHOLDER_ROOT_ID,
                     };
                     let placeholder_tree = Tree::new(placeholder_update, *is_window_focused);
@@ -499,10 +580,10 @@ impl Adapter {
             State::Placeholder(context) => (context.hwnd, PlatformNode::unspecified_root(context)),
             State::Active(context) => {
                 let node_id = context.read_tree().state().root_id();
-                (context.hwnd, PlatformNode::new(context, node_id))
+                (context.hwnd, context.get_or_create_platform_node(node_id))
             }
         };
-        let el: IRawElementProviderSimple = platform_node.into();
+        let el: IRawElementProviderSimple = platform_node.into_interface();
         Some(WmGetObjectResult {
             hwnd,
             wparam,

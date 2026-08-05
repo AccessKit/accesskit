@@ -14,18 +14,20 @@ mod node;
 mod rect;
 #[cfg(feature = "simplified-api")]
 pub mod simplified;
+mod text_attributes;
 mod util;
 
+pub use accesskit_consumer::FullNodeId;
 pub use atspi_common::{
     CoordType, Granularity, InterfaceSet, Layer, RelationType, Role, ScrollType, State, StateSet,
 };
 
 pub use action::*;
-pub use adapter::{next_adapter_id, Adapter};
+pub use adapter::{Adapter, next_adapter_id};
 pub use callback::AdapterCallback;
 pub use context::{ActionHandlerNoMut, ActionHandlerWrapper, AppContext};
 pub use error::*;
 pub use events::*;
-pub use node::{NodeIdOrRoot, PlatformNode, PlatformRoot};
+pub use node::{CacheNode, NodeIdOrRoot, PlatformNode, PlatformRoot};
 pub use rect::*;
 pub use util::WindowBounds;

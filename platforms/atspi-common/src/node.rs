@@ -10,9 +10,9 @@
 
 use accesskit::{
     Action, ActionData, ActionRequest, Affine, Live, NodeId, Orientation, Point, Rect, Role,
-    Toggled,
+    Toggled, TreeId,
 };
-use accesskit_consumer::{FilterResult, Node, TreeState};
+use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, Tree, TreeState};
 use atspi_common::{
     CoordType, Granularity, Interface, InterfaceSet, Layer, Politeness, RelationType,
     Role as AtspiRole, ScrollType, State, StateSet,
@@ -20,19 +20,19 @@ use atspi_common::{
 use std::{
     collections::HashMap,
     hash::{Hash, Hasher},
-    iter::FusedIterator,
     sync::{Arc, RwLock, RwLockReadGuard, Weak},
 };
 
 use crate::{
+    Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
     adapter::Adapter,
     context::{AppContext, Context},
     filters::filter,
+    text_attributes::ATTRIBUTE_GETTERS,
     util::*,
-    Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
 };
 
-pub(crate) struct NodeWrapper<'a>(pub(crate) &'a Node<'a>);
+pub(crate) struct NodeWrapper<'a>(pub(crate) &'a NodeRef<'a>);
 
 impl NodeWrapper<'_> {
     pub(crate) fn name(&self) -> Option<String> {
@@ -47,17 +47,40 @@ impl NodeWrapper<'_> {
         self.0.description()
     }
 
-    pub(crate) fn parent_id(&self) -> Option<NodeId> {
+    pub(crate) fn parent_id(&self) -> Option<FullNodeId> {
         self.0.parent_id()
     }
 
-    pub(crate) fn id(&self) -> NodeId {
+    pub(crate) fn id(&self) -> FullNodeId {
         self.0.id()
     }
 
-    fn filtered_child_ids(
+    pub(crate) fn cache_node(
         &self,
-    ) -> impl DoubleEndedIterator<Item = NodeId> + FusedIterator<Item = NodeId> + '_ {
+        adapter_id: usize,
+        index_in_parent: i32,
+        child_count: i32,
+        window_focused: bool,
+    ) -> CacheNode {
+        let parent = self
+            .0
+            .filtered_parent(&filter)
+            .map_or(NodeIdOrRoot::Root, |node| NodeIdOrRoot::Node(node.id()));
+        CacheNode {
+            adapter_id,
+            id: self.id(),
+            parent,
+            index_in_parent,
+            child_count,
+            interfaces: self.interfaces(),
+            name: self.name().unwrap_or_default(),
+            description: self.description().unwrap_or_default(),
+            role: self.role(),
+            states: self.state(window_focused),
+        }
+    }
+
+    fn filtered_child_ids(&self) -> impl DoubleEndedIterator<Item = FullNodeId> {
         self.0.filtered_children(&filter).map(|child| child.id())
     }
 
@@ -87,7 +110,7 @@ impl NodeWrapper<'_> {
             Role::DefaultButton => AtspiRole::Button,
             Role::Canvas => AtspiRole::Canvas,
             Role::Caption => AtspiRole::Caption,
-            Role::Cell => AtspiRole::TableCell,
+            Role::Cell | Role::GridCell => AtspiRole::TableCell,
             Role::CheckBox => AtspiRole::CheckBox,
             Role::Switch => AtspiRole::ToggleButton,
             Role::ColorWell => AtspiRole::Button,
@@ -97,12 +120,10 @@ impl NodeWrapper<'_> {
             Role::ContentDeletion => AtspiRole::ContentDeletion,
             Role::ContentInsertion => AtspiRole::ContentInsertion,
             Role::ContentInfo | Role::Footer => AtspiRole::Landmark,
-            Role::Definition | Role::DescriptionListDetail => AtspiRole::DescriptionValue,
+            Role::Definition => AtspiRole::DescriptionValue,
             Role::DescriptionList => AtspiRole::DescriptionList,
-            Role::DescriptionListTerm => AtspiRole::DescriptionTerm,
             Role::Details => AtspiRole::Panel,
             Role::Dialog => AtspiRole::Dialog,
-            Role::Directory => AtspiRole::List,
             Role::DisclosureTriangle => AtspiRole::ToggleButton,
             Role::DocCover => AtspiRole::Image,
             Role::DocBackLink | Role::DocBiblioRef | Role::DocGlossRef | Role::DocNoteRef => {
@@ -149,10 +170,7 @@ impl NodeWrapper<'_> {
             // names should be exposed as `AtspiRole::Landmark` according to Core AAM.
             Role::Form => AtspiRole::Form,
             Role::Figure | Role::Feed => AtspiRole::Panel,
-            Role::GenericContainer
-            | Role::FooterAsNonLandmark
-            | Role::HeaderAsNonLandmark
-            | Role::Ruby => AtspiRole::Section,
+            Role::GenericContainer | Role::Ruby => AtspiRole::Section,
             Role::GraphicsDocument => AtspiRole::DocumentFrame,
             Role::GraphicsObject => AtspiRole::Panel,
             Role::GraphicsSymbol => AtspiRole::Image,
@@ -205,8 +223,6 @@ impl NodeWrapper<'_> {
             Role::PdfActionableHighlight => AtspiRole::Button,
             Role::PdfRoot => AtspiRole::DocumentFrame,
             Role::PluginObject => AtspiRole::Embedded,
-            Role::Portal => AtspiRole::Button,
-            Role::Pre => AtspiRole::Section,
             Role::ProgressIndicator => AtspiRole::ProgressBar,
             Role::RadioButton => AtspiRole::RadioButton,
             Role::RadioGroup => AtspiRole::Panel,
@@ -224,6 +240,8 @@ impl NodeWrapper<'_> {
             // shows up in the tree.
             Role::RubyAnnotation => AtspiRole::Static,
             Role::Section => AtspiRole::Section,
+            Role::SectionFooter => AtspiRole::Footer,
+            Role::SectionHeader => AtspiRole::Header,
             Role::ScrollBar => AtspiRole::ScrollBar,
             Role::Search => AtspiRole::Landmark,
             Role::Slider => AtspiRole::Slider,
@@ -284,7 +302,11 @@ impl NodeWrapper<'_> {
         let state = self.0;
         let atspi_role = self.role();
         let mut atspi_state = StateSet::empty();
-        if state.parent_id().is_none() && state.role() == Role::Window && is_window_focused {
+        if is_window_focused
+            && ((state.parent_id().is_none() && state.role() == Role::Window)
+                || (state.is_dialog()
+                    && state.tree_state.active_dialog().map(|d| d.id()) == Some(state.id())))
+        {
             atspi_state.insert(State::Active);
         }
         if state.is_text_input() && !state.is_read_only() {
@@ -313,6 +335,9 @@ impl NodeWrapper<'_> {
         }
         if atspi_role != AtspiRole::ToggleButton && state.toggled().is_some() {
             atspi_state.insert(State::Checkable);
+        }
+        if state.is_modal() {
+            atspi_state.insert(State::Modal);
         }
         if let Some(selected) = state.is_selected() {
             if !state.is_disabled() {
@@ -372,6 +397,14 @@ impl NodeWrapper<'_> {
             .map(|s| s.to_string())
     }
 
+    fn braille_label(&self) -> Option<&str> {
+        self.0.braille_label()
+    }
+
+    fn braille_role_description(&self) -> Option<&str> {
+        self.0.braille_role_description()
+    }
+
     fn attributes(&self) -> HashMap<&'static str, String> {
         let mut attributes = HashMap::new();
         if let Some(placeholder) = self.placeholder() {
@@ -382,6 +415,12 @@ impl NodeWrapper<'_> {
         }
         if let Some(size_of_set) = self.size_of_set() {
             attributes.insert("setsize", size_of_set);
+        }
+        if let Some(label) = self.braille_label() {
+            attributes.insert("braillelabel", label.to_string());
+        }
+        if let Some(role_description) = self.braille_role_description() {
+            attributes.insert("brailleroledescription", role_description.to_string());
         }
 
         attributes
@@ -397,6 +436,10 @@ impl NodeWrapper<'_> {
 
     fn supports_component(&self) -> bool {
         self.0.raw_bounds().is_some() || self.is_root()
+    }
+
+    fn supports_hyperlink(&self) -> bool {
+        self.0.supports_url()
     }
 
     fn supports_selection(&self) -> bool {
@@ -418,6 +461,9 @@ impl NodeWrapper<'_> {
         }
         if self.supports_component() {
             interfaces.insert(Interface::Component);
+        }
+        if self.supports_hyperlink() {
+            interfaces.insert(Interface::Hyperlink);
         }
         if self.supports_selection() {
             interfaces.insert(Interface::Selection);
@@ -441,11 +487,7 @@ impl NodeWrapper<'_> {
     }
 
     fn n_actions(&self) -> i32 {
-        if self.0.is_clickable(&filter) {
-            1
-        } else {
-            0
-        }
+        if self.0.is_clickable(&filter) { 1 } else { 0 }
     }
 
     fn get_action_name(&self, index: i32) -> String {
@@ -586,8 +628,8 @@ impl NodeWrapper<'_> {
     }
 
     fn notify_children_changes(&self, adapter: &Adapter, old: &NodeWrapper<'_>) {
-        let old_filtered_children = old.filtered_child_ids().collect::<Vec<NodeId>>();
-        let new_filtered_children = self.filtered_child_ids().collect::<Vec<NodeId>>();
+        let old_filtered_children = old.filtered_child_ids().collect::<Vec<FullNodeId>>();
+        let new_filtered_children = self.filtered_child_ids().collect::<Vec<FullNodeId>>();
         for (index, child) in new_filtered_children.iter().enumerate() {
             if !old_filtered_children.contains(child) {
                 adapter.emit_object_event(self.id(), ObjectEvent::ChildAdded(index, *child));
@@ -605,11 +647,11 @@ impl NodeWrapper<'_> {
 pub struct PlatformNode {
     context: Weak<Context>,
     adapter_id: usize,
-    id: NodeId,
+    id: FullNodeId,
 }
 
 impl PlatformNode {
-    pub(crate) fn new(context: &Arc<Context>, adapter_id: usize, id: NodeId) -> Self {
+    pub(crate) fn new(context: &Arc<Context>, adapter_id: usize, id: FullNodeId) -> Self {
         Self {
             context: Arc::downgrade(context),
             adapter_id,
@@ -639,22 +681,22 @@ impl PlatformNode {
         f(tree.state())
     }
 
-    fn with_tree_state_and_context<F, T>(&self, f: F) -> Result<T>
+    fn with_tree_and_context<F, T>(&self, f: F) -> Result<T>
     where
-        F: FnOnce(&TreeState, &Context) -> Result<T>,
+        F: FnOnce(&Tree, &Context) -> Result<T>,
     {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
-        f(tree.state(), &context)
+        f(&tree, &context)
     }
 
     fn resolve_with_context<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
+        for<'a> F: FnOnce(NodeRef<'a>, &'a Tree, &Context) -> Result<T>,
     {
-        self.with_tree_state_and_context(|state, context| {
-            if let Some(node) = state.node_by_id(self.id) {
-                f(node, context)
+        self.with_tree_and_context(|tree, context| {
+            if let Some(node) = tree.state().node_by_id(self.id) {
+                f(node, tree, context)
             } else {
                 Err(Error::Defunct)
             }
@@ -663,12 +705,12 @@ impl PlatformNode {
 
     fn resolve_for_selection_with_context<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
+        for<'a> F: FnOnce(NodeRef<'a>, &'a Tree, &Context) -> Result<T>,
     {
-        self.resolve_with_context(|node, context| {
+        self.resolve_with_context(|node, tree, context| {
             let wrapper = NodeWrapper(&node);
             if wrapper.supports_selection() {
-                f(node, context)
+                f(node, tree, context)
             } else {
                 Err(Error::UnsupportedInterface)
             }
@@ -677,12 +719,12 @@ impl PlatformNode {
 
     fn resolve_for_text_with_context<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>, &Context) -> Result<T>,
+        for<'a> F: FnOnce(NodeRef<'a>, &'a Tree, &Context) -> Result<T>,
     {
-        self.resolve_with_context(|node, context| {
+        self.resolve_with_context(|node, tree, context| {
             let wrapper = NodeWrapper(&node);
             if wrapper.supports_text() {
-                f(node, context)
+                f(node, tree, context)
             } else {
                 Err(Error::UnsupportedInterface)
             }
@@ -691,14 +733,14 @@ impl PlatformNode {
 
     fn resolve<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>) -> Result<T>,
+        for<'a> F: FnOnce(NodeRef<'a>) -> Result<T>,
     {
-        self.resolve_with_context(|node, _| f(node))
+        self.resolve_with_context(|node, _, _| f(node))
     }
 
     fn resolve_for_selection<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>) -> Result<T>,
+        for<'a> F: FnOnce(NodeRef<'a>) -> Result<T>,
     {
         self.resolve(|node| {
             let wrapper = NodeWrapper(&node);
@@ -712,19 +754,19 @@ impl PlatformNode {
 
     fn resolve_for_text<F, T>(&self, f: F) -> Result<T>
     where
-        for<'a> F: FnOnce(Node<'a>) -> Result<T>,
+        for<'a> F: FnOnce(NodeRef<'a>) -> Result<T>,
     {
-        self.resolve_for_text_with_context(|node, _| f(node))
+        self.resolve_for_text_with_context(|node, _, _| f(node))
     }
 
-    fn do_action_internal<F>(&self, f: F) -> Result<()>
+    fn do_action_internal<F>(&self, target: FullNodeId, f: F) -> Result<()>
     where
-        F: FnOnce(&TreeState, &Context) -> ActionRequest,
+        F: FnOnce(&TreeState, &Context, NodeId, TreeId) -> ActionRequest,
     {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
-        if tree.state().has_node(self.id) {
-            let request = f(tree.state(), &context);
+        if let Some((target_node, target_tree)) = tree.state().locate_node(target) {
+            let request = f(tree.state(), &context, target_node, target_tree);
             drop(tree);
             context.do_action(request);
             Ok(())
@@ -747,7 +789,7 @@ impl PlatformNode {
         })
     }
 
-    pub fn relative(&self, id: NodeId) -> Self {
+    pub fn relative(&self, id: FullNodeId) -> Self {
         Self {
             context: self.context.clone(),
             adapter_id: self.adapter_id,
@@ -761,7 +803,7 @@ impl PlatformNode {
     }
 
     pub fn toolkit_name(&self) -> Result<String> {
-        self.with_tree_state(|state| Ok(state.toolkit_name().unwrap_or_default().to_string()))
+        self.with_tree_state(|state| Ok(state.toolkit_name().to_string()))
     }
 
     pub fn toolkit_version(&self) -> Result<String> {
@@ -788,7 +830,7 @@ impl PlatformNode {
         self.adapter_id
     }
 
-    pub fn id(&self) -> NodeId {
+    pub fn id(&self) -> FullNodeId {
         self.id
     }
 
@@ -802,7 +844,7 @@ impl PlatformNode {
         })
     }
 
-    pub fn child_at_index(&self, index: usize) -> Result<Option<NodeId>> {
+    pub fn child_at_index(&self, index: usize) -> Result<Option<FullNodeId>> {
         self.resolve(|node| {
             let child = node
                 .filtered_children(&filter)
@@ -812,7 +854,7 @@ impl PlatformNode {
         })
     }
 
-    pub fn map_children<T, I>(&self, f: impl Fn(NodeId) -> I) -> Result<T>
+    pub fn map_children<T, I>(&self, f: impl Fn(FullNodeId) -> I) -> Result<T>
     where
         T: FromIterator<I>,
     {
@@ -827,15 +869,47 @@ impl PlatformNode {
     }
 
     pub fn index_in_parent(&self) -> Result<i32> {
-        self.resolve(|node| {
-            i32::try_from(node.preceding_filtered_siblings(&filter).count())
-                .map_err(|_| Error::IndexOutOfRange)
+        self.resolve_with_context(|node, _tree, context| {
+            if node.filtered_parent(&filter).is_some() {
+                i32::try_from(node.preceding_filtered_siblings(&filter).count())
+                    .map_err(|_| Error::IndexOutOfRange)
+            } else {
+                let index = context
+                    .read_app_context()
+                    .adapter_index(self.adapter_id)
+                    .map_err(|_| Error::Defunct)?;
+                i32::try_from(index).map_err(|_| Error::IndexOutOfRange)
+            }
+        })
+    }
+
+    pub fn cache_node(&self) -> Result<CacheNode> {
+        self.resolve_with_context(|node, tree, context| {
+            let index_in_parent = if node.filtered_parent(&filter).is_some() {
+                i32::try_from(node.preceding_filtered_siblings(&filter).count())
+                    .map_err(|_| Error::IndexOutOfRange)?
+            } else {
+                let index = context
+                    .read_app_context()
+                    .adapter_index(self.adapter_id)
+                    .map_err(|_| Error::Defunct)?;
+                i32::try_from(index).map_err(|_| Error::IndexOutOfRange)?
+            };
+            let child_count = i32::try_from(node.filtered_children(&filter).count())
+                .map_err(|_| Error::TooManyChildren)?;
+            let wrapper = NodeWrapper(&node);
+            Ok(wrapper.cache_node(
+                self.adapter_id,
+                index_in_parent,
+                child_count,
+                tree.state().focus_id().is_some(),
+            ))
         })
     }
 
     pub fn relation_set<T>(
         &self,
-        f: impl Fn(NodeId) -> T,
+        f: impl Fn(FullNodeId) -> T,
     ) -> Result<HashMap<RelationType, Vec<T>>> {
         self.resolve(|node| {
             let mut relations = HashMap::new();
@@ -864,9 +938,9 @@ impl PlatformNode {
     }
 
     pub fn state(&self) -> StateSet {
-        self.resolve_with_context(|node, context| {
+        self.resolve_with_context(|node, tree, _| {
             let wrapper = NodeWrapper(&node);
-            Ok(wrapper.state(context.read_tree().state().focus_id().is_some()))
+            Ok(wrapper.state(tree.state().focus_id().is_some()))
         })
         .unwrap_or(State::Defunct.into())
     }
@@ -889,6 +963,13 @@ impl PlatformNode {
         self.resolve(|node| {
             let wrapper = NodeWrapper(&node);
             Ok(wrapper.supports_component())
+        })
+    }
+
+    pub fn supports_hyperlink(&self) -> Result<bool> {
+        self.resolve(|node| {
+            let wrapper = NodeWrapper(&node);
+            Ok(wrapper.supports_hyperlink())
         })
     }
 
@@ -954,16 +1035,17 @@ impl PlatformNode {
         if index != 0 {
             return Ok(false);
         }
-        self.do_action_internal(|_, _| ActionRequest {
+        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
             action: Action::Click,
-            target: self.id,
+            target_tree,
+            target_node,
             data: None,
         })?;
         Ok(true)
     }
 
     pub fn contains(&self, x: i32, y: i32, coord_type: CoordType) -> Result<bool> {
-        self.resolve_with_context(|node, context| {
+        self.resolve_with_context(|node, _, context| {
             let window_bounds = context.read_root_window_bounds();
             let wrapper = NodeWrapper(&node);
             if let Some(extents) = wrapper.extents(&window_bounds, coord_type) {
@@ -979,8 +1061,8 @@ impl PlatformNode {
         x: i32,
         y: i32,
         coord_type: CoordType,
-    ) -> Result<Option<NodeId>> {
-        self.resolve_with_context(|node, context| {
+    ) -> Result<Option<FullNodeId>> {
+        self.resolve_with_context(|node, _, context| {
             let window_bounds = context.read_root_window_bounds();
             let point = window_bounds.atspi_point_to_accesskit_point(
                 Point::new(x.into(), y.into()),
@@ -993,7 +1075,7 @@ impl PlatformNode {
     }
 
     pub fn extents(&self, coord_type: CoordType) -> Result<AtspiRect> {
-        self.resolve_with_context(|node, context| {
+        self.resolve_with_context(|node, _, context| {
             let window_bounds = context.read_root_window_bounds();
             let wrapper = NodeWrapper(&node);
             Ok(wrapper
@@ -1014,39 +1096,86 @@ impl PlatformNode {
     }
 
     pub fn grab_focus(&self) -> Result<bool> {
-        self.do_action_internal(|_, _| ActionRequest {
+        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
             action: Action::Focus,
-            target: self.id,
+            target_tree,
+            target_node,
             data: None,
         })?;
         Ok(true)
     }
 
     pub fn scroll_to(&self, scroll_type: ScrollType) -> Result<bool> {
-        self.do_action_internal(|_, _| ActionRequest {
+        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
             action: Action::ScrollIntoView,
-            target: self.id,
+            target_tree,
+            target_node,
             data: atspi_scroll_type_to_scroll_hint(scroll_type).map(ActionData::ScrollHint),
         })?;
         Ok(true)
     }
 
     pub fn scroll_to_point(&self, coord_type: CoordType, x: i32, y: i32) -> Result<bool> {
-        self.resolve_with_context(|node, context| {
+        self.resolve_with_context(|node, tree, context| {
             let window_bounds = context.read_root_window_bounds();
             let point = window_bounds.atspi_point_to_accesskit_point(
                 Point::new(x.into(), y.into()),
                 node.filtered_parent(&filter),
                 coord_type,
             );
+            let (target_node, target_tree) =
+                tree.state().locate_node(self.id).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::ScrollToPoint,
-                target: self.id,
+                target_tree,
+                target_node,
                 data: Some(ActionData::ScrollToPoint(point)),
             });
             Ok(())
         })?;
         Ok(true)
+    }
+
+    pub fn n_anchors(&self) -> Result<i32> {
+        self.resolve(|node| if node.url().is_some() { Ok(1) } else { Ok(0) })
+    }
+
+    pub fn hyperlink_start_index(&self) -> Result<i32> {
+        self.resolve(|_| {
+            // TODO: Support rich text
+            Ok(-1)
+        })
+    }
+
+    pub fn hyperlink_end_index(&self) -> Result<i32> {
+        self.resolve(|_| {
+            // TODO: Support rich text
+            Ok(-1)
+        })
+    }
+
+    pub fn hyperlink_object(&self, index: i32) -> Result<Option<FullNodeId>> {
+        self.resolve(|_| {
+            if index == 0 {
+                Ok(Some(self.id))
+            } else {
+                Ok(None)
+            }
+        })
+    }
+
+    pub fn uri(&self, index: i32) -> Result<String> {
+        self.resolve(|node| {
+            if index == 0 {
+                Ok(node.url().map(|s| s.to_string()).unwrap_or_default())
+            } else {
+                Ok(String::new())
+            }
+        })
+    }
+
+    pub fn hyperlink_is_valid(&self) -> Result<bool> {
+        self.resolve(|node| Ok(node.url().is_some()))
     }
 
     pub fn n_selected_children(&self) -> Result<i32> {
@@ -1059,7 +1188,7 @@ impl PlatformNode {
         })
     }
 
-    pub fn selected_child(&self, selected_child_index: usize) -> Result<Option<NodeId>> {
+    pub fn selected_child(&self, selected_child_index: usize) -> Result<Option<FullNodeId>> {
         self.resolve_for_selection(|node| {
             Ok(node
                 .items(filter)
@@ -1070,14 +1199,17 @@ impl PlatformNode {
     }
 
     pub fn select_child(&self, child_index: usize) -> Result<bool> {
-        self.resolve_for_selection_with_context(|node, context| {
+        self.resolve_for_selection_with_context(|node, tree, context| {
             if let Some(child) = node.filtered_children(filter).nth(child_index) {
                 if let Some(true) = child.is_selected() {
                     Ok(true)
                 } else if child.is_selectable() && child.is_clickable(&filter) {
+                    let (target_node, target_tree) =
+                        tree.state().locate_node(child.id()).ok_or(Error::Defunct)?;
                     context.do_action(ActionRequest {
                         action: Action::Click,
-                        target: child.id(),
+                        target_tree,
+                        target_node,
                         data: None,
                     });
                     Ok(true)
@@ -1091,16 +1223,19 @@ impl PlatformNode {
     }
 
     pub fn deselect_selected_child(&self, selected_child_index: usize) -> Result<bool> {
-        self.resolve_for_selection_with_context(|node, context| {
+        self.resolve_for_selection_with_context(|node, tree, context| {
             if let Some(child) = node
                 .items(filter)
                 .filter(|c| c.is_selected() == Some(true))
                 .nth(selected_child_index)
             {
                 if child.is_clickable(&filter) {
+                    let (target_node, target_tree) =
+                        tree.state().locate_node(child.id()).ok_or(Error::Defunct)?;
                     context.do_action(ActionRequest {
                         action: Action::Click,
-                        target: child.id(),
+                        target_tree,
+                        target_node,
                         data: None,
                     });
                     Ok(true)
@@ -1133,14 +1268,17 @@ impl PlatformNode {
     }
 
     pub fn deselect_child(&self, child_index: usize) -> Result<bool> {
-        self.resolve_for_selection_with_context(|node, context| {
+        self.resolve_for_selection_with_context(|node, tree, context| {
             if let Some(child) = node.filtered_children(filter).nth(child_index) {
                 if let Some(false) = child.is_selected() {
                     Ok(true)
                 } else if child.is_selectable() && child.is_clickable(&filter) {
+                    let (target_node, target_tree) =
+                        tree.state().locate_node(child.id()).ok_or(Error::Defunct)?;
                     context.do_action(ActionRequest {
                         action: Action::Click,
-                        target: child.id(),
+                        target_tree,
+                        target_node,
                         data: None,
                     });
                     Ok(true)
@@ -1206,11 +1344,14 @@ impl PlatformNode {
     }
 
     pub fn set_caret_offset(&self, offset: i32) -> Result<bool> {
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, tree, context| {
             let offset = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
+            let (target_node, target_tree) =
+                tree.state().locate_node(node.id()).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::SetTextSelection,
-                target: node.id(),
+                target_tree,
+                target_node,
                 data: Some(ActionData::SetTextSelection(
                     offset.to_degenerate_range().to_text_selection(),
                 )),
@@ -1219,23 +1360,37 @@ impl PlatformNode {
         })
     }
 
-    pub fn text_attribute_value(&self, _offset: i32, _attribute_name: &str) -> Result<String> {
-        // TODO: Implement rich text.
-        Err(Error::UnsupportedInterface)
+    pub fn text_attribute_value(&self, offset: i32, attribute_name: &str) -> Result<String> {
+        self.resolve_for_text(|node| {
+            let pos = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
+            Ok(ATTRIBUTE_GETTERS
+                .get(attribute_name)
+                .and_then(|getter| (*getter)(pos.inner_node()))
+                .unwrap_or_default())
+        })
     }
 
-    pub fn text_attributes(&self, _offset: i32) -> Result<(HashMap<String, String>, i32, i32)> {
-        // TODO: Implement rich text.
-        Err(Error::UnsupportedInterface)
+    pub fn text_attributes(
+        &self,
+        offset: i32,
+    ) -> Result<(HashMap<&'static str, String>, i32, i32)> {
+        self.text_attribute_run(offset, false)
     }
 
-    pub fn default_text_attributes(&self) -> Result<HashMap<String, String>> {
-        // TODO: Implement rich text.
-        Err(Error::UnsupportedInterface)
+    pub fn default_text_attributes(&self) -> Result<HashMap<&'static str, String>> {
+        self.resolve_for_text(|node| {
+            let mut result = HashMap::with_capacity(ATTRIBUTE_GETTERS.len());
+            for (name, getter) in ATTRIBUTE_GETTERS.entries() {
+                if let Some(value) = (*getter)(&node) {
+                    result.insert(*name, value);
+                }
+            }
+            Ok(result)
+        })
     }
 
     pub fn character_extents(&self, offset: i32, coord_type: CoordType) -> Result<AtspiRect> {
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, _, context| {
             let range = text_range_from_offset(&node, offset, Granularity::Char)?;
             if let Some(bounds) = range.bounding_boxes().first() {
                 let window_bounds = context.read_root_window_bounds();
@@ -1252,7 +1407,7 @@ impl PlatformNode {
     }
 
     pub fn offset_at_point(&self, x: i32, y: i32, coord_type: CoordType) -> Result<i32> {
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, _, context| {
             let window_bounds = context.read_root_window_bounds();
             let point = window_bounds.atspi_point_to_accesskit_point(
                 Point::new(x.into(), y.into()),
@@ -1311,15 +1466,18 @@ impl PlatformNode {
             return Ok(false);
         }
 
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, tree, context| {
             // Simply collapse the selection to the position of the caret if a caret is
             // visible, otherwise set the selection to 0.
             let selection_end = node
                 .text_selection_focus()
                 .unwrap_or_else(|| node.document_range().start());
+            let (target_node, target_tree) =
+                tree.state().locate_node(node.id()).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::SetTextSelection,
-                target: node.id(),
+                target_tree,
+                target_node,
                 data: Some(ActionData::SetTextSelection(
                     selection_end.to_degenerate_range().to_text_selection(),
                 )),
@@ -1338,12 +1496,15 @@ impl PlatformNode {
             return Ok(false);
         }
 
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, tree, context| {
             let range = text_range_from_offsets(&node, start_offset, end_offset)
                 .ok_or(Error::IndexOutOfRange)?;
+            let (target_node, target_tree) =
+                tree.state().locate_node(node.id()).ok_or(Error::Defunct)?;
             context.do_action(ActionRequest {
                 action: Action::SetTextSelection,
-                target: node.id(),
+                target_tree,
+                target_node,
                 data: Some(ActionData::SetTextSelection(range.to_text_selection())),
             });
             Ok(true)
@@ -1356,7 +1517,7 @@ impl PlatformNode {
         end_offset: i32,
         coord_type: CoordType,
     ) -> Result<AtspiRect> {
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, _, context| {
             if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
                 let window_bounds = context.read_root_window_bounds();
                 let new_origin = window_bounds.accesskit_point_to_atspi_point(
@@ -1373,14 +1534,41 @@ impl PlatformNode {
 
     pub fn text_attribute_run(
         &self,
-        _offset: i32,
-        _include_defaults: bool,
-    ) -> Result<(HashMap<String, String>, i32, i32)> {
-        // TODO: Implement rich text.
-        // For now, just report a range spanning the entire text with no attributes,
-        // this is required by Orca to announce selection content and caret movements.
-        let character_count = self.character_count()?;
-        Ok((HashMap::new(), 0, character_count))
+        offset: i32,
+        include_defaults: bool,
+    ) -> Result<(HashMap<&'static str, String>, i32, i32)> {
+        self.resolve_for_text(|node| {
+            let pos = text_position_from_offset(&node, offset).ok_or(Error::IndexOutOfRange)?;
+            let mut result = HashMap::with_capacity(ATTRIBUTE_GETTERS.len());
+            for (name, getter) in ATTRIBUTE_GETTERS.entries() {
+                if let Some(value) = (*getter)(pos.inner_node()) {
+                    if !include_defaults {
+                        if let Some(default) = (*getter)(&node) {
+                            if value == default {
+                                continue;
+                            }
+                        }
+                    }
+                    result.insert(*name, value);
+                }
+            }
+            let start = if pos.is_format_start() {
+                pos
+            } else {
+                pos.backward_to_format_start()
+            };
+            let end = pos.forward_to_format_end();
+            Ok((
+                result,
+                start
+                    .to_global_usv_index()
+                    .try_into()
+                    .map_err(|_| Error::TooManyCharacters)?,
+                end.to_global_usv_index()
+                    .try_into()
+                    .map_err(|_| Error::TooManyCharacters)?,
+            ))
+        })
     }
 
     pub fn scroll_substring_to(
@@ -1389,7 +1577,7 @@ impl PlatformNode {
         end_offset: i32,
         scroll_type: ScrollType,
     ) -> Result<bool> {
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, tree, context| {
             if let Some(range) = text_range_from_offsets(&node, start_offset, end_offset) {
                 let position = if matches!(
                     scroll_type,
@@ -1399,9 +1587,14 @@ impl PlatformNode {
                 } else {
                     range.start()
                 };
+                let (target_node, target_tree) = tree
+                    .state()
+                    .locate_node(position.inner_node().id())
+                    .ok_or(Error::Defunct)?;
                 context.do_action(ActionRequest {
                     action: Action::ScrollIntoView,
-                    target: position.inner_node().id(),
+                    target_tree,
+                    target_node,
                     data: atspi_scroll_type_to_scroll_hint(scroll_type).map(ActionData::ScrollHint),
                 });
                 Ok(true)
@@ -1419,7 +1612,7 @@ impl PlatformNode {
         x: i32,
         y: i32,
     ) -> Result<bool> {
-        self.resolve_for_text_with_context(|node, context| {
+        self.resolve_for_text_with_context(|node, tree, context| {
             let window_bounds = context.read_root_window_bounds();
             let target_point = window_bounds.atspi_point_to_accesskit_point(
                 Point::new(x.into(), y.into()),
@@ -1429,9 +1622,12 @@ impl PlatformNode {
 
             if let Some(rect) = text_range_bounds_from_offsets(&node, start_offset, end_offset) {
                 let point = Point::new(target_point.x - rect.x0, target_point.y - rect.y0);
+                let (target_node, target_tree) =
+                    tree.state().locate_node(node.id()).ok_or(Error::Defunct)?;
                 context.do_action(ActionRequest {
                     action: Action::ScrollToPoint,
-                    target: node.id(),
+                    target_tree,
+                    target_node,
                     data: Some(ActionData::ScrollToPoint(point)),
                 });
                 return Ok(true);
@@ -1460,9 +1656,10 @@ impl PlatformNode {
     }
 
     pub fn set_current_value(&self, value: f64) -> Result<()> {
-        self.do_action_internal(|_, _| ActionRequest {
+        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
             action: Action::SetValue,
-            target: self.id,
+            target_tree,
+            target_node,
             data: Some(ActionData::NumericValue(value)),
         })
     }
@@ -1511,10 +1708,30 @@ impl PlatformRoot {
         self.resolve_app_context(|context| Ok(context.name.clone().unwrap_or_default()))
     }
 
+    pub fn description(&self) -> Result<String> {
+        Ok(String::new())
+    }
+
     pub fn child_count(&self) -> Result<i32> {
         self.resolve_app_context(|context| {
             i32::try_from(context.adapters.len()).map_err(|_| Error::TooManyChildren)
         })
+    }
+
+    pub fn interfaces(&self) -> InterfaceSet {
+        InterfaceSet::new(Interface::Accessible | Interface::Application)
+    }
+
+    pub fn role(&self) -> AtspiRole {
+        AtspiRole::Application
+    }
+
+    pub fn index_in_parent(&self) -> i32 {
+        -1
+    }
+
+    pub fn state(&self) -> StateSet {
+        StateSet::empty()
     }
 
     pub fn child_at_index(&self, index: usize) -> Result<Option<PlatformNode>> {
@@ -1527,7 +1744,7 @@ impl PlatformRoot {
         })
     }
 
-    pub fn child_id_at_index(&self, index: usize) -> Result<Option<(usize, NodeId)>> {
+    pub fn child_id_at_index(&self, index: usize) -> Result<Option<(usize, FullNodeId)>> {
         self.resolve_app_context(|context| {
             let child = context
                 .adapters
@@ -1552,7 +1769,7 @@ impl PlatformRoot {
         })
     }
 
-    pub fn map_child_ids<T, I>(&self, f: impl Fn((usize, NodeId)) -> I) -> Result<T>
+    pub fn map_child_ids<T, I>(&self, f: impl Fn((usize, FullNodeId)) -> I) -> Result<T>
     where
         T: FromIterator<I>,
     {
@@ -1588,6 +1805,111 @@ impl PlatformRoot {
         app_context.id = Some(id);
         Ok(())
     }
+
+    pub fn map_descendants<T, I>(&self, f: impl Fn(PlatformNode, usize, usize) -> I) -> Result<T>
+    where
+        T: FromIterator<I>,
+    {
+        fn collect_descendants<I>(
+            node: NodeRef<'_>,
+            index_in_parent: usize,
+            adapter_id: usize,
+            context: &Arc<Context>,
+            f: &impl Fn(PlatformNode, usize, usize) -> I,
+            results: &mut Vec<I>,
+        ) {
+            let children: Vec<_> = node.filtered_children(&filter).collect();
+            let platform_node = PlatformNode::new(context, adapter_id, node.id());
+            results.push(f(platform_node, index_in_parent, children.len()));
+            for (child_index, child) in children.into_iter().enumerate() {
+                collect_descendants(child, child_index, adapter_id, context, f, results);
+            }
+        }
+
+        self.resolve_app_context(|context| {
+            let mut results = Vec::new();
+
+            for (adapter_slot, (adapter_id, adapter_context)) in context.adapters.iter().enumerate()
+            {
+                let tree = adapter_context.read_tree();
+                let state = tree.state();
+                let root = state.root();
+
+                collect_descendants(
+                    root,
+                    adapter_slot,
+                    *adapter_id,
+                    adapter_context,
+                    &f,
+                    &mut results,
+                );
+            }
+
+            Ok(results.into_iter().collect())
+        })
+    }
+
+    pub fn map_descendant_cache_nodes<T, I>(&self, f: impl Fn(CacheNode) -> I) -> Result<T>
+    where
+        T: FromIterator<I>,
+    {
+        fn collect_descendants<I>(
+            node: NodeRef<'_>,
+            index_in_parent: i32,
+            adapter_id: usize,
+            window_focused: bool,
+            f: &impl Fn(CacheNode) -> I,
+            results: &mut Vec<Result<I>>,
+        ) {
+            let children: Vec<_> = node.filtered_children(&filter).collect();
+            let child_count = match i32::try_from(children.len()) {
+                Ok(count) => count,
+                Err(_) => {
+                    results.push(Err(Error::TooManyChildren));
+                    return;
+                }
+            };
+            let wrapper = NodeWrapper(&node);
+            let cache_node =
+                wrapper.cache_node(adapter_id, index_in_parent, child_count, window_focused);
+            results.push(Ok(f(cache_node)));
+            for (child_index, child) in children.into_iter().enumerate() {
+                let child_index = match i32::try_from(child_index) {
+                    Ok(index) => index,
+                    Err(_) => {
+                        results.push(Err(Error::IndexOutOfRange));
+                        return;
+                    }
+                };
+                collect_descendants(child, child_index, adapter_id, window_focused, f, results);
+            }
+        }
+
+        self.resolve_app_context(|context| {
+            let mut results = Vec::new();
+
+            for (adapter_slot, (adapter_id, adapter_context)) in context.adapters.iter().enumerate()
+            {
+                let tree = adapter_context.read_tree();
+                let state = tree.state();
+                let root = state.root();
+                let index_in_parent =
+                    i32::try_from(adapter_slot).map_err(|_| Error::IndexOutOfRange)?;
+                let window_focused = state.focus_id().is_some();
+
+                collect_descendants(
+                    root,
+                    index_in_parent,
+                    *adapter_id,
+                    window_focused,
+                    &f,
+                    &mut results,
+                );
+            }
+
+            results.into_iter().collect()
+        })
+    }
 }
 
 impl PartialEq for PlatformRoot {
@@ -1604,6 +1926,19 @@ impl Hash for PlatformRoot {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NodeIdOrRoot {
-    Node(NodeId),
+    Node(FullNodeId),
     Root,
+}
+
+pub struct CacheNode {
+    pub adapter_id: usize,
+    pub id: FullNodeId,
+    pub parent: NodeIdOrRoot,
+    pub index_in_parent: i32,
+    pub child_count: i32,
+    pub interfaces: InterfaceSet,
+    pub name: String,
+    pub description: String,
+    pub role: AtspiRole,
+    pub states: StateSet,
 }

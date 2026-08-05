@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use jni::{objects::JObject, sys::jint, JNIEnv};
+use jni::{JNIEnv, objects::JObject, sys::jint};
 
 use crate::util::*;
 
