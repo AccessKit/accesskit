@@ -1,20 +1,20 @@
 [workspace]
 resolver = "2"
 members = [
-    "common",
-    "consumer",
-    "platforms/android",
-    "platforms/atspi-common",
-    "platforms/ios",
-    "platforms/macos",
-    "platforms/unix",
-    "platforms/windows",
-    "platforms/winit",
+    "accesskit",
+    "accesskit_consumer",
+    "adapters/android",
+    "adapters/atspi-common",
+    "adapters/ios",
+    "adapters/macos",
+    "adapters/unix",
+    "adapters/windows",
+    "adapters/winit",
 ]
 default-members = [
-    "common",
-    "consumer",
-    "platforms/winit",
+    "accesskit",
+    "accesskit_consumer",
+    "adapters/winit",
 ]
 
 [workspace.package]

@@ -108,8 +108,12 @@ version = "0.34.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
+<<<<<<< HEAD
  "hashbrown 0.16.1",
  "once_cell",
+=======
+ "hashbrown",
+>>>>>>> upstream/main
  "parking_lot",
  "scopeguard",
  "static_assertions",

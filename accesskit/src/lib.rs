@@ -1909,12 +1909,26 @@ node_id_property_methods! {
 }
 
 string_property_methods! {
-    /// The label of a control that can have a label. If the label is specified
-    /// via the [`Node::labelled_by`] relation, this doesn't need to be set.
-    /// Note that the text content of a node with the [`Role::Label`] role
-    /// should be provided via [`Node::value`], not this property.
+    /// The label of this node. If the label is specified via the
+    /// [`Node::labelled_by`] relation, this doesn't need to be set. The text
+    /// content of a node with the [`Role::Label`] role should be provided via
+    /// [`Node::value`], not this property. ARIA equivalent: [`aria-label`].
+    ///
+    /// [`aria-label`]: https://www.w3.org/TR/wai-aria-1.2/#aria-label
     (Label, label, set_label, clear_label),
+    /// Additional information that supplements this node's label. ARIA 1.3
+    /// draft equivalent: [`aria-description`].
+    ///
+    /// [`aria-description`]: https://www.w3.org/TR/wai-aria-1.3/#aria-description
     (Description, description, set_description, clear_description),
+    /// The text content or string value of this node. ARIA equivalent:
+    /// [`aria-valuetext`] for range widgets.
+    ///
+    /// **Difference with ARIA:** Unlike `aria-valuetext`, this property is also
+    /// used for text controls and the text content of nodes such as [`Role::Label`]
+    /// and [`Role::TextRun`].
+    ///
+    /// [`aria-valuetext`]: https://www.w3.org/TR/wai-aria-1.2/#aria-valuetext
     (Value, value, set_value, clear_value),
     /// A single character, usually part of this node's name, that can be pressed,
     /// possibly along with a platform-specific modifier, to perform
@@ -1925,45 +1939,76 @@ string_property_methods! {
     /// [`keyboard_shortcut`]: Node::keyboard_shortcut
     (AccessKey, access_key, set_access_key, clear_access_key),
     /// A way for application authors to identify this node for automated
-    /// testing purpose. The value must be unique among this node's siblings.
+    /// testing purposes. The value must be unique among this node's siblings.
     (AuthorId, author_id, set_author_id, clear_author_id),
+    /// The platform control class name for this node.
     (ClassName, class_name, set_class_name, clear_class_name),
-    /// Only present when different from parent.
+    /// The font family used for this node's text. Only set this when it differs
+    /// from the parent.
     (FontFamily, font_family, set_font_family, clear_font_family),
+    /// The name of the HTML element represented by this node.
     (HtmlTag, html_tag, set_html_tag, clear_html_tag),
     /// Inner HTML of an element. Only used for a top-level math element,
     /// to support third-party math accessibility products that parse MathML.
     (InnerHtml, inner_html, set_inner_html, clear_inner_html),
     /// A keystroke or sequence of keystrokes, complete with any required
     /// modifiers(s), that will perform this node's default action.
-    /// The value of this property should be in a human-friendly format.
+    /// The value of this property should be in a human-friendly format. ARIA
+    /// equivalent: [`aria-keyshortcuts`].
+    ///
+    /// [`aria-keyshortcuts`]: https://www.w3.org/TR/wai-aria-1.2/#aria-keyshortcuts
     (KeyboardShortcut, keyboard_shortcut, set_keyboard_shortcut, clear_keyboard_shortcut),
     /// An [IETF language tag](https://www.rfc-editor.org/info/bcp47).
-    /// Only present when different from parent.
+    /// Only set this when it differs from the parent.
     (Language, language, set_language, clear_language),
-    /// If a text input has placeholder text, it should be exposed
-    /// through this property rather than [`label`].
+    /// A short hint that helps the user with data entry when the node has no
+    /// [`Node::value`]. This property should not be used instead of
+    /// [`Node::label`]. ARIA equivalent: [`aria-placeholder`].
     ///
-    /// [`label`]: Node::label
+    /// [`aria-placeholder`]: https://www.w3.org/TR/wai-aria-1.2/#aria-placeholder
     (Placeholder, placeholder, set_placeholder, clear_placeholder),
     /// An optional string that may override an assistive technology's
     /// description of the node's role. Only provide this for custom control types.
-    /// The value of this property should be in a human-friendly, localized format.
+    /// The value should be human-friendly and localized. ARIA equivalent:
+    /// [`aria-roledescription`].
+    ///
+    /// [`aria-roledescription`]: https://www.w3.org/TR/wai-aria-1.2/#aria-roledescription
     (RoleDescription, role_description, set_role_description, clear_role_description),
     /// An optional string that may override an assistive technology's
     /// description of the node's state, replacing default strings such as
     /// "checked" or "selected". Note that most platform accessibility APIs
     /// and assistive technologies do not support this feature.
     (StateDescription, state_description, set_state_description, clear_state_description),
-    /// If a node's only accessible name comes from a tooltip, it should be
-    /// exposed through this property rather than [`label`].
+    /// If a node's only label comes from a tooltip, it should be exposed through
+    /// this property rather than [`label`].
     ///
     /// [`label`]: Node::label
     (Tooltip, tooltip, set_tooltip, clear_tooltip),
+    /// The target URL of a link.
     (Url, url, set_url, clear_url),
+    /// A human-readable alternative to the numeric row index. ARIA 1.3 draft
+    /// equivalent: [`aria-rowindextext`].
+    ///
+    /// [`aria-rowindextext`]: https://www.w3.org/TR/wai-aria-1.3/#aria-rowindextext
     (RowIndexText, row_index_text, set_row_index_text, clear_row_index_text),
+    /// A human-readable alternative to the numeric column index. ARIA 1.3 draft
+    /// equivalent: [`aria-colindextext`].
+    ///
+    /// [`aria-colindextext`]: https://www.w3.org/TR/wai-aria-1.3/#aria-colindextext
     (ColumnIndexText, column_index_text, set_column_index_text, clear_column_index_text),
+    /// An alternative to [`Node::label`] that assistive technologies may present
+    /// on a Braille display instead of speaking it. The value is ordinary text,
+    /// not Unicode Braille characters. ARIA 1.3 draft equivalent:
+    /// [`aria-braillelabel`].
+    ///
+    /// [`aria-braillelabel`]: https://www.w3.org/TR/wai-aria-1.3/#aria-braillelabel
     (BrailleLabel, braille_label, set_braille_label, clear_braille_label),
+    /// An alternative to [`Node::role_description`] that assistive technologies
+    /// may present on a Braille display instead of speaking it. The value is
+    /// ordinary text, not Unicode Braille characters. ARIA 1.3 draft equivalent:
+    /// [`aria-brailleroledescription`].
+    ///
+    /// [`aria-brailleroledescription`]: https://www.w3.org/TR/wai-aria-1.3/#aria-brailleroledescription
     (BrailleRoleDescription, braille_role_description, set_braille_role_description, clear_braille_role_description)
 }
 
@@ -1990,19 +2035,67 @@ f32_property_methods! {
 }
 
 usize_property_methods! {
+    /// The total number of rows in a table, grid, or tree grid. ARIA equivalent:
+    /// [`aria-rowcount`].
+    ///
+    /// [`aria-rowcount`]: https://www.w3.org/TR/wai-aria-1.2/#aria-rowcount
     (RowCount, row_count, set_row_count, clear_row_count),
+    /// The total number of columns in a table, grid, or tree grid. ARIA
+    /// equivalent: [`aria-colcount`].
+    ///
+    /// [`aria-colcount`]: https://www.w3.org/TR/wai-aria-1.2/#aria-colcount
     (ColumnCount, column_count, set_column_count, clear_column_count),
+    /// The row index of this node within a table, grid, or tree grid. ARIA
+    /// equivalent: [`aria-rowindex`].
+    ///
+    /// **Difference with ARIA:** `aria-rowindex` is one-based, while this
+    /// property is zero-based.
+    ///
+    /// [`aria-rowindex`]: https://www.w3.org/TR/wai-aria-1.2/#aria-rowindex
     (RowIndex, row_index, set_row_index, clear_row_index),
+    /// The column index of this node within a table, grid, or tree grid. ARIA
+    /// equivalent: [`aria-colindex`].
+    ///
+    /// **Difference with ARIA:** `aria-colindex` is one-based, while this
+    /// property is zero-based.
+    ///
+    /// [`aria-colindex`]: https://www.w3.org/TR/wai-aria-1.2/#aria-colindex
     (ColumnIndex, column_index, set_column_index, clear_column_index),
+    /// The number of rows spanned by a cell or grid cell. ARIA equivalent:
+    /// [`aria-rowspan`].
+    ///
+    /// [`aria-rowspan`]: https://www.w3.org/TR/wai-aria-1.2/#aria-rowspan
     (RowSpan, row_span, set_row_span, clear_row_span),
+    /// The number of columns spanned by a cell or grid cell. ARIA equivalent:
+    /// [`aria-colspan`].
+    ///
+    /// [`aria-colspan`]: https://www.w3.org/TR/wai-aria-1.2/#aria-colspan
     (ColumnSpan, column_span, set_column_span, clear_column_span),
+    /// The hierarchical level of this node within a structure. ARIA equivalent:
+    /// [`aria-level`].
+    ///
+    /// **Difference with ARIA:** `aria-level` is one-based, while this property
+    /// is zero-based.
+    ///
+    /// [`aria-level`]: https://www.w3.org/TR/wai-aria-1.2/#aria-level
     (Level, level, set_level, clear_level),
     /// For containers like [`Role::ListBox`], specifies the total number of items.
+    /// ARIA equivalent: [`aria-setsize`].
+    ///
+    /// **Difference with ARIA:** `aria-setsize` is set on each item, while this
+    /// property is set on the container.
+    ///
+    /// [`aria-setsize`]: https://www.w3.org/TR/wai-aria-1.2/#aria-setsize
     (SizeOfSet, size_of_set, set_size_of_set, clear_size_of_set),
     /// For items like [`Role::ListBoxOption`], specifies their index in the item list.
-    /// This may not exceed the value of [`size_of_set`] as set on the container.
+    /// This must be less than the value of [`size_of_set`] as set on the container.
+    /// ARIA equivalent: [`aria-posinset`].
+    ///
+    /// **Difference with ARIA:** `aria-posinset` is one-based, while this
+    /// property is zero-based.
     ///
     /// [`size_of_set`]: Node::size_of_set
+    /// [`aria-posinset`]: https://www.w3.org/TR/wai-aria-1.2/#aria-posinset
     (PositionInSet, position_in_set, set_position_in_set, clear_position_in_set)
 }
 

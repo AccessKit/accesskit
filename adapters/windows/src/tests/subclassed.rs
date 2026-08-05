@@ -7,7 +7,7 @@ use accesskit::{
     Action, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Role, TreeId, TreeInfo,
     TreeUpdate,
 };
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use windows::{
     Win32::{
         Foundation::*,
@@ -119,7 +119,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
     unsafe { DefWindowProcW(window, message, wparam, lparam) }
 }
 
-static WINDOW_CLASS_ATOM: Lazy<u16> = Lazy::new(|| {
+static WINDOW_CLASS_ATOM: LazyLock<u16> = LazyLock::new(|| {
     let class_name = w!("AccessKitSubclassTest");
 
     let wc = WNDCLASSW {
