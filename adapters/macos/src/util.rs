@@ -96,14 +96,12 @@ unsafe impl RefEncode for CGColor {
 }
 
 pub(crate) fn to_color_attribute(color: Color) -> Retained<AnyObject> {
-    let ns_color = 
-        NSColor::colorWithSRGBRed_green_blue_alpha(
-            color_channel_to_f64(color.red),
-            color_channel_to_f64(color.green),
-            color_channel_to_f64(color.blue),
-            color_channel_to_f64(color.alpha),
-        )
-    ;
+    let ns_color = NSColor::colorWithSRGBRed_green_blue_alpha(
+        color_channel_to_f64(color.red),
+        color_channel_to_f64(color.green),
+        color_channel_to_f64(color.blue),
+        color_channel_to_f64(color.alpha),
+    );
     let cg_color: *const CGColor = unsafe { msg_send![&ns_color, CGColor] };
     unsafe { Retained::retain(cg_color as *mut AnyObject).unwrap() }
 }

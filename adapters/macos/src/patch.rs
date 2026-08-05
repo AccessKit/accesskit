@@ -9,7 +9,7 @@ use objc2::{
     ffi::class_addMethod,
     msg_send,
     runtime::{AnyClass, AnyObject, MethodImplementation, Sel},
-    sel
+    sel,
 };
 use objc2_app_kit::NSWindow;
 use std::{ffi::CString, ptr::null_mut, str::FromStr};

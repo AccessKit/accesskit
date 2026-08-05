@@ -15,14 +15,16 @@ use accesskit::{
 };
 use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, Tree};
 use objc2::{
-    define_class, msg_send,
+    AnyThread, DeclaredClass, define_class, msg_send,
     rc::Retained,
     runtime::{AnyObject, Sel},
-    sel, AnyThread, DeclaredClass,
+    sel,
 };
 use objc2_app_kit::*;
 use objc2_foundation::{
-    NSArray, NSAttributedString, NSAttributedStringKey, NSCopying, NSInteger, NSMutableAttributedString, NSMutableDictionary, NSNumber, NSObject, NSPoint, NSRange, NSRect, NSString, NSURL, ns_string,
+    NSArray, NSAttributedString, NSAttributedStringKey, NSCopying, NSInteger,
+    NSMutableAttributedString, NSMutableDictionary, NSNumber, NSObject, NSPoint, NSRange, NSRect,
+    NSString, NSURL, ns_string,
 };
 use std::rc::{Rc, Weak};
 
@@ -579,7 +581,7 @@ define_class!(
             .flatten()
         }
 
-        
+
         #[unsafe(method_id(accessibilityURL))]
         fn url(&self) -> Option<Retained<NSURL>> {
             self.resolve(|node| {
@@ -987,7 +989,7 @@ define_class!(
             })
             .unwrap_or_else(|| NSRange::new(0, 0))
         }
-        
+
         #[unsafe(method(setAccessibilitySelectedTextRange:))]
         fn set_selected_text_range(&self, range: NSRange) {
             self.resolve_with_context(|node, tree, context| {
@@ -1047,7 +1049,7 @@ define_class!(
             });
         }
 
-        
+
         #[unsafe(method_id(accessibilityAttributeValue:))]
         fn accessibility_attribute_value(&self, attr: &NSString) -> Option<Retained<NSString>> {
             self.resolve(|node| {
