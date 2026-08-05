@@ -551,7 +551,7 @@ define_class!(
                         });
                     }
                 });
-            } else if let Some(number) = value.downcast_ref::<NSString>() {
+            } else if let Some(number) = value.downcast_ref::<NSNumber>() {
                 self.resolve_with_context(|node, tree, context| {
                     if let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) {
                         context.do_action(ActionRequest {
