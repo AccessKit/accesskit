@@ -22,9 +22,7 @@ use objc2::{
 };
 use objc2_app_kit::*;
 use objc2_foundation::{
-    NSArray, NSAttributedString, NSCopying, NSInteger, NSMutableAttributedString,
-    NSMutableDictionary, NSNumber, NSObject, NSObjectProtocol, NSPoint, NSRange, NSRect, NSString,
-    NSURL, ns_string,
+    NSArray, NSAttributedString, NSAttributedStringKey, NSCopying, NSInteger, NSMutableAttributedString, NSMutableDictionary, NSNumber, NSObject, NSPoint, NSRange, NSRect, NSString, NSURL, ns_string,
 };
 use std::rc::{Rc, Weak};
 
@@ -378,7 +376,7 @@ define_class!(
                     context
                         .view
                         .load()
-                        .and_then(|view| unsafe { NSAccessibility::accessibilityParent(&*view) })
+                        .and_then(|view| NSAccessibility::accessibilityParent(&*view))
                 }
             })
             .flatten()
@@ -390,7 +388,7 @@ define_class!(
                 context
                     .view
                     .load()
-                    .and_then(|view| unsafe { NSAccessibility::accessibilityParent(&*view) })
+                    .and_then(|view| NSAccessibility::accessibilityParent(&*view))
             })
             .flatten()
         }
@@ -401,7 +399,7 @@ define_class!(
                 context
                     .view
                     .load()
-                    .and_then(|view| unsafe { NSAccessibility::accessibilityParent(&*view) })
+                    .and_then(|view| NSAccessibility::accessibilityParent(&*view))
             })
             .flatten()
         }
@@ -447,7 +445,7 @@ define_class!(
                 node.bounding_box().map_or_else(
                     || {
                         if node.is_root() {
-                            unsafe { NSAccessibility::accessibilityFrame(&*view) }
+                            NSAccessibility::accessibilityFrame(&*view)
                         } else {
                             NSRect::ZERO
                         }
@@ -540,7 +538,7 @@ define_class!(
 
         #[unsafe(method(setAccessibilityValue:))]
         fn set_value(&self, value: &NSObject) {
-            if let Some(string) = downcast_ref::<NSString>(value) {
+            if let Some(string) = value.downcast_ref::<NSString>() {
                 self.resolve_with_context(|node, tree, context| {
                     if let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) {
                         context.do_action(ActionRequest {
@@ -551,7 +549,7 @@ define_class!(
                         });
                     }
                 });
-            } else if let Some(number) = downcast_ref::<NSNumber>(value) {
+            } else if let Some(number) = value.downcast_ref::<NSString>() {
                 self.resolve_with_context(|node, tree, context| {
                     if let Some((target_node, target_tree)) = tree.state().locate_node(node.id()) {
                         context.do_action(ActionRequest {
@@ -587,7 +585,7 @@ define_class!(
             self.resolve(|node| {
                 node.supports_url().then(|| node.url()).flatten().and_then(|url| {
                     let ns_string = NSString::from_str(url);
-                    unsafe { NSURL::URLWithString(&ns_string) }
+                    NSURL::URLWithString(&ns_string)
                 })
             })
             .flatten()
@@ -813,85 +811,85 @@ define_class!(
             .flatten()
         }
 
-        #[method_id(accessibilityAttributedStringForRange:)]
-        fn attributed_string_for_range(&self, range: NSRange) -> Option<Id<NSAttributedString>> {
+        #[unsafe(method_id(accessibilityAttributedStringForRange:))]
+        fn attributed_string_for_range(&self, range: NSRange) -> Option<Retained<NSAttributedString>> {
             self.resolve(|node| {
                 if node.supports_text_ranges() {
                     if let Some(range) = from_ns_range(node, range) {
-                        let mut result = NSMutableAttributedString::new();
-                        unsafe { result.beginEditing() };
+                        let result = NSMutableAttributedString::new();
+                        result.beginEditing();
                         range.traverse_text::<_, ()>(|node, text| {
                             let ns_text = NSString::from_str(text);
-                            let mut attrs = NSMutableDictionary::new();
+                            let  attrs = NSMutableDictionary::<NSAttributedStringKey, objc2::runtime::AnyObject>::new();
                             if let Some(color) = node.background_color() {
-                                attrs.insert_id(
+                                attrs.insert(
                                     unsafe { NSAccessibilityBackgroundColorTextAttribute },
-                                    to_color_attribute(color)
+                                    &to_color_attribute(color)
                                 );
                             }
                             if let Some(color) = node.foreground_color() {
-                                attrs.insert_id(
+                                attrs.insert(
                                     unsafe { NSAccessibilityForegroundColorTextAttribute },
-                                    to_color_attribute(color)
+                                    &to_color_attribute(color)
                                 );
                             }
-                            let mut font_attrs = NSMutableDictionary::<NSAccessibilityFontAttributeKey, AnyObject>::new();
+                            let font_attrs = NSMutableDictionary::<NSAccessibilityFontAttributeKey, AnyObject>::new();
                             if let Some(family) = node.font_family() {
-                                font_attrs.insert_id(
+                                font_attrs.insert(
                                     unsafe { NSAccessibilityFontFamilyKey },
-                                    Id::into_super(Id::into_super(NSString::from_str(family)))
+                                    &Retained::into_super(Retained::into_super(NSString::from_str(family)))
                                 );
                             }
                             if let Some(size) = node.font_size() {
-                                font_attrs.insert_id(
+                                font_attrs.insert(
                                     unsafe { NSAccessibilityFontSizeKey },
-                                    Id::into_super(Id::into_super(Id::into_super(NSNumber::new_f32(size))))
+                                    &Retained::into_super(Retained::into_super(Retained::into_super(NSNumber::new_f32(size))))
                                 );
                             }
                             if let Some(weight) = node.font_weight() {
                                 if weight >= 700.0 {
-                                    font_attrs.insert_id(
+                                    font_attrs.insert(
                                         ns_string!("AXFontBold"),
-                                        Id::into_super(Id::into_super(Id::into_super(NSNumber::new_bool(true))))
+                                        &Retained::into_super(Retained::into_super(Retained::into_super(NSNumber::new_bool(true))))
                                     );
                                 }
                             }
                             if node.is_italic() {
-                                font_attrs.insert_id(
+                                font_attrs.insert(
                                     ns_string!("AXFontItalic"),
-                                    Id::into_super(Id::into_super(Id::into_super(NSNumber::new_bool(true))))
+                                    &Retained::into_super(Retained::into_super(Retained::into_super(NSNumber::new_bool(true))))
                                 );
                             }
                             if !font_attrs.is_empty() {
-                                attrs.insert_id(
+                                attrs.insert(
                                     unsafe { NSAccessibilityFontTextAttribute },
-                                    Id::into_super(Id::into_super(Id::into_super(font_attrs)))
+                                    &Retained::into_super(Retained::into_super(Retained::into_super(font_attrs)))
                                 );
                             }
                             if let Some(deco) = node.underline() {
-                                attrs.insert_id(
+                                attrs.insert(
                                     unsafe { NSAccessibilityUnderlineTextAttribute },
-                                    Id::into_super(Id::into_super(Id::into_super(NSNumber::new_bool(true))))
+                                    &Retained::into_super(Retained::into_super(Retained::into_super(NSNumber::new_bool(true))))
                                 );
-                                attrs.insert_id(
+                                attrs.insert(
                                     unsafe { NSAccessibilityUnderlineColorTextAttribute },
-                                    to_color_attribute(deco.color)
+                                    &to_color_attribute(deco.color)
                                 );
                             }
                             if let Some(deco) = node.strikethrough() {
-                                attrs.insert_id(
+                                attrs.insert(
                                     unsafe { NSAccessibilityStrikethroughTextAttribute },
-                                    Id::into_super(Id::into_super(Id::into_super(NSNumber::new_bool(true))))
+                                    &Retained::into_super(Retained::into_super(Retained::into_super(NSNumber::new_bool(true))))
                                 );
-                                attrs.insert_id(
+                                attrs.insert(
                                     unsafe { NSAccessibilityStrikethroughColorTextAttribute },
-                                    to_color_attribute(deco.color)
+                                    &to_color_attribute(deco.color)
                                 );
                             }
                             if let Some(language) = node.language() {
-                                attrs.insert_id(
+                                attrs.insert(
                                     unsafe { NSAccessibilityLanguageTextAttribute },
-                                    Id::into_super(Id::into_super(NSString::from_str(language)))
+                                    &Retained::into_super(Retained::into_super(NSString::from_str(language)))
                                 );
                             }
                             if let Some(align) = node.text_align() {
@@ -901,17 +899,17 @@ define_class!(
                                     TextAlign::Right => NSTextAlignment::Right,
                                     TextAlign::Justify => NSTextAlignment::Justified,
                                 };
-                                attrs.insert_id(
+                                attrs.insert(
                                     unsafe { NSAccessibilityTextAlignmentAttribute },
-                                    Id::into_super(Id::into_super(Id::into_super(NSNumber::new_isize(ns_align.0))))
+                                    &Retained::into_super(Retained::into_super(Retained::into_super(NSNumber::new_isize(ns_align.0))))
                                 );
                             }
                             let part = unsafe { NSAttributedString::new_with_attributes(&ns_text, &attrs) };
-                            unsafe { result.appendAttributedString(&part) };
+                            result.appendAttributedString(&part);
                             None
                         });
-                        unsafe { result.endEditing() };
-                        return Some(Id::into_super(result));
+                        result.endEditing();
+                        return Some(Retained::into_super(result));
                     }
                 }
                 None
@@ -970,7 +968,7 @@ define_class!(
             .unwrap_or_else(|| NSRange::new(0, 0))
         }
 
-        #[unsafe(method(accessibilityStyleRangeForIndex:)]
+        #[unsafe(method(accessibilityStyleRangeForIndex:))]
         fn style_range_for_index(&self, index: NSInteger) -> NSRange {
             self.resolve(|node| {
                 if node.supports_text_ranges() && index >= 0 {
@@ -1051,7 +1049,7 @@ define_class!(
 
         
         #[unsafe(method_id(accessibilityAttributeValue:))]
-        fn accessibility_attribute_value(&self, attr: &NSString) -> Option<Id<NSString>> {
+        fn accessibility_attribute_value(&self, attr: &NSString) -> Option<Retained<NSString>> {
             self.resolve(|node| {
                 if attr == ns_string!("AXBrailleLabel") && node.has_braille_label() {
                     return Some(NSString::from_str(node.braille_label().unwrap()))
@@ -1152,7 +1150,7 @@ define_class!(
             .flatten()
         }
 
-        #[method(isAccessibilityModal)]
+        #[unsafe(method(isAccessibilityModal))]
         fn is_modal(&self) -> bool {
             self.resolve(|node| node.is_modal())
                 .unwrap_or(false)

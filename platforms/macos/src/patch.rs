@@ -8,8 +8,8 @@ use objc2::{
     encode::{Encode, EncodeArguments, EncodeReturn, Encoding},
     ffi::class_addMethod,
     msg_send,
-    runtime::{AnyClass, AnyObject, Bool, MethodImplementation, Sel},
-    sel, Message
+    runtime::{AnyClass, AnyObject, MethodImplementation, Sel},
+    sel
 };
 use objc2_app_kit::NSWindow;
 use std::{ffi::CString, ptr::null_mut, str::FromStr};

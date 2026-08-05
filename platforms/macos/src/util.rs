@@ -6,7 +6,8 @@
 use accesskit::{Color, Point, Rect};
 use accesskit_consumer::{NodeRef, TextPosition, TextRange};
 use objc2::encode::{Encoding, RefEncode};
-use objc2::{msg_send, rc::Id, runtime::AnyObject};
+use objc2::rc::Retained;
+use objc2::{msg_send, runtime::AnyObject};
 use objc2_app_kit::*;
 use objc2_foundation::{NSPoint, NSRange, NSRect, NSSize};
 
@@ -94,15 +95,15 @@ unsafe impl RefEncode for CGColor {
     const ENCODING_REF: Encoding = Encoding::Pointer(&Encoding::Struct("CGColor", &[]));
 }
 
-pub(crate) fn to_color_attribute(color: Color) -> Id<AnyObject> {
-    let ns_color = unsafe {
+pub(crate) fn to_color_attribute(color: Color) -> Retained<AnyObject> {
+    let ns_color = 
         NSColor::colorWithSRGBRed_green_blue_alpha(
             color_channel_to_f64(color.red),
             color_channel_to_f64(color.green),
             color_channel_to_f64(color.blue),
             color_channel_to_f64(color.alpha),
         )
-    };
+    ;
     let cg_color: *const CGColor = unsafe { msg_send![&ns_color, CGColor] };
-    unsafe { Id::retain(cg_color as *mut AnyObject).unwrap() }
+    unsafe { Retained::retain(cg_color as *mut AnyObject).unwrap() }
 }

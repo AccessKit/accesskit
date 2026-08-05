@@ -5,7 +5,7 @@
 
 use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
 use objc2::{
-    ClassType, DeclaredClass,
+    DeclaredClass,
     declare::ClassBuilder,
     define_class,
     ffi::{
@@ -15,7 +15,7 @@ use objc2::{
     msg_send,
     rc::Retained,
     runtime::{AnyClass, Sel},
-    sel, AnyThread, DeclaredClass,
+    sel, AnyThread,
 };
 use objc2_app_kit::{NSView, NSWindow};
 use objc2_foundation::{NSArray, NSObject, NSPoint};
