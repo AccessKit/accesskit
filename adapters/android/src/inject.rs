@@ -164,6 +164,9 @@ fn post_to_ui_thread(
         .unwrap()
         .l()
         .unwrap();
+    // Free the `Runnable` local reference: this can be reached from a caller
+    // thread that never pops a local frame.
+    let runnable = env.auto_local(runnable);
     env.call_method(
         host,
         "post",
@@ -446,6 +449,12 @@ impl InjectingAdapter {
         let Some(host) = self.host.upgrade_local(&env).unwrap() else {
             return;
         };
+        // `upgrade_local` creates a new local reference, and on a caller thread
+        // that is not executing a JNI native method (which this type documents
+        // as supported) nothing pops a local frame — so without an explicit
+        // free, every call leaks one local until ART hits its local reference
+        // table limit.
+        let host = env.auto_local(host);
         // A contained panic in a delegate callback poisons this mutex; skip
         // rather than propagate the poison panic into the caller's thread —
         // accessibility is already degraded at that point.
@@ -473,6 +482,8 @@ impl Drop for InjectingAdapter {
             let Some(host) = host.upgrade_local(env)? else {
                 return Ok(());
             };
+            // Same local-reference discipline as `update_if_active`.
+            let host = env.auto_local(host);
             post_to_ui_thread(env, delegate_class, &host, |env, delegate_class, host| {
                 let prev_delegate = env
                     .call_method(
