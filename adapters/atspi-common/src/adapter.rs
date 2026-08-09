@@ -617,10 +617,14 @@ mod tests {
     use super::Adapter;
     use crate::{AdapterCallback, AppContext, CacheEvent, Event, InterfaceSet, WindowBounds};
     use accesskit::{
-        ActionHandler, ActionRequest, Node, NodeId, Role, TreeId, TreeInfo, TreeUpdate,
+        Action, ActionData, ActionHandler, ActionRequest, Node, NodeId, Role, TreeId, TreeInfo,
+        TreeUpdate,
     };
     use accesskit_consumer::FullNodeId;
+    use atspi_common::Interface;
     use std::sync::{Arc, Mutex};
+
+    type Log<T> = Arc<Mutex<Vec<T>>>;
 
     #[derive(Clone, Copy, Debug, PartialEq)]
     enum CacheOp {
@@ -628,15 +632,13 @@ mod tests {
         Removed(FullNodeId),
     }
 
-    struct CapturingCallback {
-        ops: Arc<Mutex<Vec<CacheOp>>>,
-    }
+    struct Recorder<T>(Log<T>);
 
-    impl AdapterCallback for CapturingCallback {
+    impl AdapterCallback for Recorder<CacheOp> {
         fn register_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
         fn unregister_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
         fn emit_event(&self, _: &Adapter, event: Event) {
-            let mut ops = self.ops.lock().unwrap();
+            let mut ops = self.0.lock().unwrap();
             match event {
                 Event::Cache(CacheEvent::Added(id)) => ops.push(CacheOp::Added(id)),
                 Event::Cache(CacheEvent::Removed(id)) => ops.push(CacheOp::Removed(id)),
@@ -645,9 +647,10 @@ mod tests {
         }
     }
 
-    struct NoOpActionHandler;
-    impl ActionHandler for NoOpActionHandler {
-        fn do_action(&mut self, _request: ActionRequest) {}
+    impl ActionHandler for Recorder<ActionRequest> {
+        fn do_action(&mut self, request: ActionRequest) {
+            self.0.lock().unwrap().push(request);
+        }
     }
 
     fn with_children(role: Role, children: &[NodeId]) -> Node {
@@ -656,18 +659,19 @@ mod tests {
         node
     }
 
-    fn build(initial: TreeUpdate) -> (Adapter, Arc<Mutex<Vec<CacheOp>>>) {
+    fn build(initial: TreeUpdate) -> (Adapter, Log<CacheOp>, Log<ActionRequest>) {
         let ops = Arc::new(Mutex::new(Vec::new()));
+        let actions = Arc::new(Mutex::new(Vec::new()));
         let app_context = AppContext::new(None);
         let adapter = Adapter::new(
             &app_context,
-            CapturingCallback { ops: ops.clone() },
+            Recorder(ops.clone()),
             initial,
             false,
             WindowBounds::default(),
-            NoOpActionHandler,
+            Recorder(actions.clone()),
         );
-        (adapter, ops)
+        (adapter, ops, actions)
     }
 
     fn initial_tree() -> TreeUpdate {
@@ -692,14 +696,68 @@ mod tests {
     }
 
     #[test]
+    fn editable_text_support_and_dispatch() {
+        let mut text_input = Node::new(Role::TextInput);
+        text_input.add_action(Action::SetValue);
+        let (mut adapter, _, requests) = build(TreeUpdate {
+            nodes: vec![(NodeId(0), text_input.clone())],
+            ..initial_tree()
+        });
+        let platform = adapter.platform_node(adapter.root_id());
+        assert!(
+            platform
+                .interfaces()
+                .unwrap()
+                .contains(Interface::EditableText)
+        );
+
+        #[cfg(feature = "simplified-api")]
+        let node = crate::simplified::Accessible::Node(platform.clone());
+        #[cfg(not(feature = "simplified-api"))]
+        let node = platform.clone();
+
+        assert!(node.supports_editable_text().unwrap());
+        assert!(node.set_text_contents("hello").unwrap());
+
+        let mut read_only_input = text_input.clone();
+        read_only_input.set_read_only();
+        let mut numeric_input = text_input.clone();
+        numeric_input.set_numeric_value(0.0);
+        let mut button = Node::new(Role::Button);
+        button.add_action(Action::SetValue);
+        for unsupported in [
+            Node::new(Role::TextInput),
+            read_only_input,
+            numeric_input,
+            button,
+        ] {
+            adapter.update(update(vec![(NodeId(0), unsupported)]));
+            assert!(!node.supports_editable_text().unwrap());
+            assert!(matches!(
+                node.set_text_contents("ignored"),
+                Err(crate::Error::UnsupportedInterface)
+            ));
+        }
+        assert_eq!(
+            requests.lock().unwrap().as_slice(),
+            &[ActionRequest {
+                action: Action::SetValue,
+                target_tree: TreeId::ROOT,
+                target_node: NodeId(0),
+                data: Some(ActionData::Value("hello".into())),
+            }]
+        );
+    }
+
+    #[test]
     fn no_cache_events_on_construction() {
-        let (_adapter, ops) = build(initial_tree());
+        let (_adapter, ops, _) = build(initial_tree());
         assert!(ops.lock().unwrap().is_empty());
     }
 
     #[test]
     fn add_node_emits_one_added() {
-        let (mut adapter, ops) = build(initial_tree());
+        let (mut adapter, ops, _) = build(initial_tree());
         ops.lock().unwrap().clear();
         adapter.update(update(vec![
             (
@@ -715,7 +773,7 @@ mod tests {
 
     #[test]
     fn remove_node_emits_removed_for_same_id() {
-        let (mut adapter, ops) = build(initial_tree());
+        let (mut adapter, ops, _) = build(initial_tree());
         adapter.update(update(vec![
             (
                 NodeId(0),
@@ -737,7 +795,7 @@ mod tests {
 
     #[test]
     fn subtree_add_emits_added_per_node() {
-        let (mut adapter, ops) = build(initial_tree());
+        let (mut adapter, ops, _) = build(initial_tree());
         ops.lock().unwrap().clear();
         adapter.update(update(vec![
             (
@@ -758,7 +816,7 @@ mod tests {
 
     #[test]
     fn subtree_remove_emits_removed_per_node() {
-        let (mut adapter, ops) = build(initial_tree());
+        let (mut adapter, ops, _) = build(initial_tree());
         adapter.update(update(vec![
             (
                 NodeId(0),
@@ -785,7 +843,7 @@ mod tests {
     fn filter_transition_into_tree_emits_added() {
         let mut hidden = Node::new(Role::Button);
         hidden.set_hidden();
-        let (mut adapter, ops) = build(TreeUpdate {
+        let (mut adapter, ops, _) = build(TreeUpdate {
             nodes: vec![
                 (
                     NodeId(0),
@@ -807,7 +865,7 @@ mod tests {
 
     #[test]
     fn filter_transition_out_of_tree_emits_removed() {
-        let (mut adapter, ops) = build(initial_tree());
+        let (mut adapter, ops, _) = build(initial_tree());
         ops.lock().unwrap().clear();
         let mut hidden = Node::new(Role::Button);
         hidden.set_hidden();

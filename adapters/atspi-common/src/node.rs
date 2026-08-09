@@ -9,8 +9,7 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionRequest, Affine, Live, NodeId, Orientation, Point, Rect, Role,
-    Toggled, TreeId,
+    Action, ActionData, ActionRequest, Affine, Live, Orientation, Point, Rect, Role, Toggled,
 };
 use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, Tree, TreeState};
 use atspi_common::{
@@ -438,6 +437,15 @@ impl NodeWrapper<'_> {
         self.0.raw_bounds().is_some() || self.is_root()
     }
 
+    fn supports_editable_text(&self) -> bool {
+        // Empty inputs may have no text ranges. Numeric controls use AT-SPI Value because
+        // SetValue doesn't declare which ActionData variant the handler accepts.
+        self.0.is_text_input()
+            && !self.0.is_read_only()
+            && !self.supports_value()
+            && self.0.supports_action(Action::SetValue, &filter)
+    }
+
     fn supports_hyperlink(&self) -> bool {
         self.0.supports_url()
     }
@@ -461,6 +469,9 @@ impl NodeWrapper<'_> {
         }
         if self.supports_component() {
             interfaces.insert(Interface::Component);
+        }
+        if self.supports_editable_text() {
+            interfaces.insert(Interface::EditableText);
         }
         if self.supports_hyperlink() {
             interfaces.insert(Interface::Hyperlink);
@@ -759,20 +770,32 @@ impl PlatformNode {
         self.resolve_for_text_with_context(|node, _, _| f(node))
     }
 
-    fn do_action_internal<F>(&self, target: FullNodeId, f: F) -> Result<()>
-    where
-        F: FnOnce(&TreeState, &Context, NodeId, TreeId) -> ActionRequest,
-    {
+    fn dispatch_action(&self, action: Action, data: Option<ActionData>) -> Result<()> {
+        self.dispatch_checked_action(action, data, |_| true)
+    }
+
+    fn dispatch_checked_action(
+        &self,
+        action: Action,
+        data: Option<ActionData>,
+        supports: impl for<'a> FnOnce(NodeRef<'a>) -> bool,
+    ) -> Result<()> {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
-        if let Some((target_node, target_tree)) = tree.state().locate_node(target) {
-            let request = f(tree.state(), &context, target_node, target_tree);
-            drop(tree);
-            context.do_action(request);
-            Ok(())
-        } else {
-            Err(Error::Defunct)
+        let state = tree.state();
+        let node = state.node_by_id(self.id).ok_or(Error::Defunct)?;
+        if !supports(node) {
+            return Err(Error::UnsupportedInterface);
         }
+        let (target_node, target_tree) = state.locate_node(self.id).ok_or(Error::Defunct)?;
+        drop(tree);
+        context.do_action(ActionRequest {
+            action,
+            target_tree,
+            target_node,
+            data,
+        });
+        Ok(())
     }
 
     pub fn name(&self) -> Result<String> {
@@ -966,6 +989,10 @@ impl PlatformNode {
         })
     }
 
+    pub fn supports_editable_text(&self) -> Result<bool> {
+        self.resolve(|node| Ok(NodeWrapper(&node).supports_editable_text()))
+    }
+
     pub fn supports_hyperlink(&self) -> Result<bool> {
         self.resolve(|node| {
             let wrapper = NodeWrapper(&node);
@@ -1035,12 +1062,7 @@ impl PlatformNode {
         if index != 0 {
             return Ok(false);
         }
-        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
-            action: Action::Click,
-            target_tree,
-            target_node,
-            data: None,
-        })?;
+        self.dispatch_action(Action::Click, None)?;
         Ok(true)
     }
 
@@ -1096,22 +1118,15 @@ impl PlatformNode {
     }
 
     pub fn grab_focus(&self) -> Result<bool> {
-        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
-            action: Action::Focus,
-            target_tree,
-            target_node,
-            data: None,
-        })?;
+        self.dispatch_action(Action::Focus, None)?;
         Ok(true)
     }
 
     pub fn scroll_to(&self, scroll_type: ScrollType) -> Result<bool> {
-        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
-            action: Action::ScrollIntoView,
-            target_tree,
-            target_node,
-            data: atspi_scroll_type_to_scroll_hint(scroll_type).map(ActionData::ScrollHint),
-        })?;
+        self.dispatch_action(
+            Action::ScrollIntoView,
+            atspi_scroll_type_to_scroll_hint(scroll_type).map(ActionData::ScrollHint),
+        )?;
         Ok(true)
     }
 
@@ -1656,12 +1671,16 @@ impl PlatformNode {
     }
 
     pub fn set_current_value(&self, value: f64) -> Result<()> {
-        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
-            action: Action::SetValue,
-            target_tree,
-            target_node,
-            data: Some(ActionData::NumericValue(value)),
-        })
+        self.dispatch_action(Action::SetValue, Some(ActionData::NumericValue(value)))
+    }
+
+    pub fn set_text_contents(&self, value: &str) -> Result<bool> {
+        self.dispatch_checked_action(
+            Action::SetValue,
+            Some(ActionData::Value(value.into())),
+            |node| NodeWrapper(&node).supports_editable_text(),
+        )?;
+        Ok(true)
     }
 }
 
