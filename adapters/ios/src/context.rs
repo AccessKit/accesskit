@@ -6,7 +6,7 @@
 use accesskit::{ActionHandler, ActionRequest};
 use accesskit_consumer::{FullNodeId, Tree};
 use hashbrown::HashMap;
-use objc2::rc::{Retained, WeakId};
+use objc2::rc::{Retained, Weak};
 use objc2_foundation::MainThreadMarker;
 use objc2_ui_kit::UIView;
 use std::fmt::Debug;
@@ -33,7 +33,7 @@ impl<H: ActionHandler> ActionHandlerNoMut for ActionHandlerWrapper<H> {
 }
 
 pub(crate) struct Context {
-    pub(crate) view: WeakId<UIView>,
+    pub(crate) view: Weak<UIView>,
     pub(crate) tree: RefCell<Tree>,
     pub(crate) action_handler: Rc<dyn ActionHandlerNoMut>,
     platform_nodes: RefCell<HashMap<FullNodeId, Retained<PlatformNode>>>,
@@ -56,7 +56,7 @@ impl Debug for Context {
 
 impl Context {
     pub(crate) fn new(
-        view: WeakId<UIView>,
+        view: Weak<UIView>,
         tree: Tree,
         action_handler: Rc<dyn ActionHandlerNoMut>,
         mtm: MainThreadMarker,

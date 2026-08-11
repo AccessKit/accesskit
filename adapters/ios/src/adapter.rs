@@ -14,15 +14,14 @@ use accesskit::{
 };
 use accesskit_consumer::{FilterResult, Tree};
 use objc2::{
-    ClassType, DeclaredClass, declare_class, msg_send_id,
-    mutability::MainThreadOnly,
-    rc::{Retained, WeakId},
+    DeclaredClass, define_class, msg_send,
+    rc::{Retained, Weak},
     runtime::AnyObject,
     sel,
 };
 use objc2_foundation::{
-    CGPoint, MainThreadMarker, NSArray, NSNotification, NSNotificationCenter, NSNotificationName,
-    NSObject,
+    MainThreadMarker, NSArray, NSNotification, NSNotificationCenter, NSNotificationName, NSObject,
+    NSPoint,
 };
 use objc2_ui_kit::{
     UIAccessibilityBoldTextStatusDidChangeNotification,
@@ -38,7 +37,7 @@ use objc2_ui_kit::{
 };
 use std::cell::RefCell;
 use std::fmt::{Debug, Formatter};
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 use std::{ffi::c_void, ptr::null_mut};
 
 use crate::{
@@ -53,7 +52,7 @@ const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
 
 enum State {
     Inactive {
-        view: WeakId<UIView>,
+        view: Weak<UIView>,
         action_handler: Rc<dyn ActionHandlerNoMut>,
         mtm: MainThreadMarker,
     },
@@ -95,11 +94,9 @@ impl ActionHandler for PlaceholderActionHandler {
 }
 
 fn any_assistive_tech_running() -> bool {
-    unsafe {
-        UIAccessibilityIsVoiceOverRunning().as_bool()
-            || UIAccessibilityIsSwitchControlRunning().as_bool()
-            || UIAccessibilityIsSpeakScreenEnabled().as_bool()
-    }
+    UIAccessibilityIsVoiceOverRunning()
+        || UIAccessibilityIsSwitchControlRunning()
+        || UIAccessibilityIsSpeakScreenEnabled()
 }
 
 fn observed_notification_names() -> [&'static NSNotificationName; 9] {
@@ -236,27 +233,22 @@ fn try_deactivate(state: &RefCell<State>, deactivation_handler: &DeactivationHan
     }
 }
 
+#[derive(Debug)]
 struct StatusObserverIvars {
-    state: Weak<RefCell<State>>,
-    activation_handler: Weak<ActivationHandlerCell>,
-    deactivation_handler: Weak<DeactivationHandlerCell>,
+    state: std::rc::Weak<RefCell<State>>,
+    activation_handler: std::rc::Weak<ActivationHandlerCell>,
+    deactivation_handler: std::rc::Weak<DeactivationHandlerCell>,
 }
 
-declare_class!(
+define_class!(
+    #[unsafe(super(NSObject))]
+
+    #[ivars = StatusObserverIvars]
+    #[name = "AccessKitAccessibilityStatusObserver"]
     struct StatusObserver;
 
-    unsafe impl ClassType for StatusObserver {
-        type Super = NSObject;
-        type Mutability = MainThreadOnly;
-        const NAME: &'static str = "AccessKitAccessibilityStatusObserver";
-    }
-
-    impl DeclaredClass for StatusObserver {
-        type Ivars = StatusObserverIvars;
-    }
-
-    unsafe impl StatusObserver {
-        #[method(accessibilityStatusChanged:)]
+    impl StatusObserver {
+        #[unsafe(method(accessibilityStatusChanged:))]
         fn accessibility_status_changed(&self, _notification: &NSNotification) {
             let ivars = self.ivars();
             if any_assistive_tech_running() {
@@ -276,9 +268,9 @@ declare_class!(
 
 impl StatusObserver {
     fn new(
-        state: Weak<RefCell<State>>,
-        activation_handler: Weak<ActivationHandlerCell>,
-        deactivation_handler: Weak<DeactivationHandlerCell>,
+        state: std::rc::Weak<RefCell<State>>,
+        activation_handler: std::rc::Weak<ActivationHandlerCell>,
+        deactivation_handler: std::rc::Weak<DeactivationHandlerCell>,
         mtm: MainThreadMarker,
     ) -> Retained<Self> {
         let this = mtm.alloc::<Self>().set_ivars(StatusObserverIvars {
@@ -286,7 +278,7 @@ impl StatusObserver {
             activation_handler,
             deactivation_handler,
         });
-        unsafe { msg_send_id![super(this), init] }
+        unsafe { msg_send![super(this), init] }
     }
 }
 
@@ -348,7 +340,7 @@ impl Adapter {
         deactivation_handler: impl 'static + DeactivationHandler,
     ) -> Self {
         let view = unsafe { Retained::retain(view as *mut UIView) }.unwrap();
-        let view = WeakId::from_retained(&view);
+        let view = Weak::from_retained(&view);
         let mtm = MainThreadMarker::new().unwrap();
 
         let state = Rc::new(RefCell::new(State::Inactive {
@@ -367,11 +359,11 @@ impl Adapter {
             Rc::downgrade(&deactivation_handler),
             mtm,
         );
-        let center = unsafe { NSNotificationCenter::defaultCenter() };
+        let center = NSNotificationCenter::defaultCenter();
         for name in observed_notification_names() {
             unsafe {
                 center.addObserver_selector_name_object(
-                    status_observer.as_ref().as_ref(),
+                    status_observer.as_ref(),
                     sel!(accessibilityStatusChanged:),
                     Some(name),
                     None,
@@ -475,7 +467,7 @@ impl Adapter {
                 .collect::<Vec<Retained<NSObject>>>()
         };
 
-        let array = NSArray::from_vec(platform_nodes);
+        let array = NSArray::from_retained_slice(&platform_nodes);
         Retained::autorelease_return(array)
     }
 
@@ -483,7 +475,7 @@ impl Adapter {
 
     /// Returns the accessibility element at the specified point.
     /// This corresponds to `accessibilityHitTest:`.
-    pub fn hit_test(&self, point: CGPoint) -> *mut NSObject {
+    pub fn hit_test(&self, point: NSPoint) -> *mut NSObject {
         let context = get_or_init_context(&self.state, &self.activation_handler);
         let view = match context.view.load() {
             Some(view) => view,
@@ -505,9 +497,9 @@ impl Adapter {
 
 impl Drop for Adapter {
     fn drop(&mut self) {
-        let center = unsafe { NSNotificationCenter::defaultCenter() };
+        let center = NSNotificationCenter::defaultCenter();
         unsafe {
-            let observer: &AnyObject = self.status_observer.as_ref().as_ref();
+            let observer: &AnyObject = self.status_observer.as_ref();
             center.removeObserver(observer);
         }
     }

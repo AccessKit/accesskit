@@ -18,8 +18,8 @@ default-target = "aarch64-apple-ios"
 accesskit = { version = "0.24.1", path = "../../accesskit" }
 accesskit_consumer = { version = "0.38.0", path = "../../accesskit_consumer" }
 hashbrown.workspace = true
-objc2 = "0.5.1"
-objc2-foundation = { version = "0.2.0", features = [
+objc2 = "0.6.2"
+objc2-foundation = { version = "0.3.1", features = [
     "NSArray",
     "NSAttributedString",
     "NSDictionary",
@@ -28,7 +28,7 @@ objc2-foundation = { version = "0.2.0", features = [
     "NSValue",
     "NSThread",
 ] }
-objc2-ui-kit = { version = "0.2.0", features = [
+objc2-ui-kit = { version = "0.3.1", features = [
     "UIAccessibility",
     "UIAccessibilityConstants",
     "UIAccessibilityContainer",

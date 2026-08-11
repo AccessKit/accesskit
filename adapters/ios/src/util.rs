@@ -6,7 +6,7 @@
 use accesskit::Point;
 use accesskit_consumer::NodeRef;
 use objc2::encode::{Encode, Encoding, RefEncode};
-use objc2_foundation::{CGPoint, CGRect, CGSize, NSAttributedStringKey, NSInteger, NSString};
+use objc2_foundation::{NSAttributedStringKey, NSInteger, NSPoint, NSRect, NSSize, NSString};
 use objc2_ui_kit::{
     UIAccessibilityConvertFrameToScreenCoordinates, UIAccessibilityPriority, UIAccessibilityTraits,
     UICoordinateSpace, UIView,
@@ -34,7 +34,7 @@ unsafe impl RefEncode for UIAccessibilityExpandedStatus {
     const ENCODING_REF: Encoding = Encoding::Pointer(&Self::ENCODING);
 }
 
-pub(crate) fn from_cg_point(view: &UIView, node: &NodeRef, point: CGPoint) -> Option<Point> {
+pub(crate) fn from_cg_point(view: &UIView, node: &NodeRef, point: NSPoint) -> Option<Point> {
     let window = view.window()?;
     let screen_space = window.screen().coordinateSpace();
     let local_point = view.convertPoint_fromCoordinateSpace(point, &screen_space);
@@ -43,18 +43,18 @@ pub(crate) fn from_cg_point(view: &UIView, node: &NodeRef, point: CGPoint) -> Op
     Some(node.transform().inverse() * point)
 }
 
-pub(crate) fn to_screen_rect(view: &UIView, rect: CGRect) -> CGRect {
-    unsafe { UIAccessibilityConvertFrameToScreenCoordinates(rect, view) }
+pub(crate) fn to_screen_rect(view: &UIView, rect: NSRect) -> NSRect {
+    UIAccessibilityConvertFrameToScreenCoordinates(rect, view)
 }
 
-pub(crate) fn to_cg_rect(view: &UIView, rect: accesskit::Rect) -> CGRect {
+pub(crate) fn to_cg_rect(view: &UIView, rect: accesskit::Rect) -> NSRect {
     let factor = view.contentScaleFactor();
-    let local_rect = CGRect {
-        origin: CGPoint {
+    let local_rect = NSRect {
+        origin: NSPoint {
             x: rect.x0 / factor,
             y: rect.y0 / factor,
         },
-        size: CGSize {
+        size: NSSize {
             width: rect.width() / factor,
             height: rect.height() / factor,
         },

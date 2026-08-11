@@ -5,22 +5,26 @@
 
 use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, TreeUpdate};
 use objc2::{
-    ClassType, DeclaredClass,
+    DeclaredClass,
     declare::ClassBuilder,
-    declare_class,
+    define_class,
     ffi::{
         OBJC_ASSOCIATION_RETAIN_NONATOMIC, objc_getAssociatedObject, objc_setAssociatedObject,
         object_setClass,
     },
-    msg_send, msg_send_id,
-    mutability::MainThreadOnly,
+    msg_send,
     rc::Retained,
     runtime::{AnyClass, AnyObject, Bool, Sel},
     sel,
 };
-use objc2_foundation::{CGPoint, MainThreadMarker, NSArray, NSObject};
+use objc2_foundation::{MainThreadMarker, NSArray, NSObject, NSPoint};
 use objc2_ui_kit::{UIView, UIWindow};
-use std::{ffi::c_void, ptr::null_mut, sync::Mutex};
+use std::{
+    ffi::{CString, c_void},
+    ptr::null_mut,
+    str::FromStr,
+    sync::Mutex,
+};
 
 use crate::{Adapter, event::QueuedEvents};
 
@@ -37,18 +41,12 @@ struct AssociatedObjectIvars {
     prev_class: &'static AnyClass,
 }
 
-declare_class!(
+define_class!(
+    #[unsafe(super(NSObject))]
+    
+    #[ivars = AssociatedObjectIvars]
+    #[name = "AccessKitSubclassAssociatedObject"]
     struct AssociatedObject;
-
-    unsafe impl ClassType for AssociatedObject {
-        type Super = NSObject;
-        type Mutability = MainThreadOnly;
-        const NAME: &'static str = "AccessKitSubclassAssociatedObject";
-    }
-
-    impl DeclaredClass for AssociatedObject {
-        type Ivars = AssociatedObjectIvars;
-    }
 );
 
 impl AssociatedObject {
@@ -62,7 +60,7 @@ impl AssociatedObject {
             prev_class,
         });
 
-        unsafe { msg_send_id![super(this), init] }
+        unsafe { msg_send![super(this), init] }
     }
 }
 
@@ -103,7 +101,7 @@ unsafe extern "C" fn accessibility_elements(this: &UIView, _cmd: Sel) -> *mut NS
 unsafe extern "C" fn accessibility_hit_test(
     this: &UIView,
     _cmd: Sel,
-    point: CGPoint,
+    point: NSPoint,
 ) -> *mut AnyObject {
     let Some(associated) = associated_object(this) else {
         return null_mut();
@@ -207,8 +205,9 @@ impl SubclassingAdapter {
         let subclass = match subclasses.iter().find(|entry| entry.0 == prev_class) {
             Some(entry) => entry.1,
             None => {
-                let name = format!("AccessKitSubclassOf{}", prev_class.name());
-                let mut builder = ClassBuilder::new(&name, prev_class).unwrap();
+                let name = format!("AccessKitSubclassOf{}", prev_class.name().to_str().unwrap());
+                let mut builder =
+                    ClassBuilder::new(&CString::from_str(&name).unwrap(), prev_class).unwrap();
                 unsafe {
                     builder.add_method(
                         sel!(superclass),

@@ -38,4 +38,4 @@ pub use event::QueuedEvents;
 mod subclass;
 pub use subclass::SubclassingAdapter;
 
-pub use objc2_foundation::{CGPoint, NSArray, NSInteger, NSObject};
+pub use objc2_foundation::{NSArray, NSInteger, NSObject, NSPoint};

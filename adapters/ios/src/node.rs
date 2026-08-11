@@ -11,12 +11,11 @@
 use accesskit::{Action, ActionRequest, Live, Rect, Role, Toggled};
 use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, Tree};
 use objc2::{
-    ClassType, DeclaredClass, declare_class, msg_send_id,
-    mutability::MainThreadOnly,
+    DeclaredClass, define_class, msg_send,
     rc::Retained,
     runtime::{AnyObject, Bool},
 };
-use objc2_foundation::{CGRect, NSArray, NSObject, NSObjectProtocol, NSString};
+use objc2_foundation::{NSArray, NSObject, NSRect, NSString};
 use objc2_ui_kit::{
     UIAccessibilityContainerType, UIAccessibilityElement, UIAccessibilityScrollDirection,
     UIAccessibilityTraitAdjustable, UIAccessibilityTraitAllowsDirectInteraction,
@@ -181,31 +180,23 @@ impl NodeWrapper<'_> {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct PlatformNodeIvars {
     context: Weak<Context>,
     node_id: FullNodeId,
 }
 
-declare_class!(
+define_class!(
+    #[unsafe(super(UIAccessibilityElement))]
+    
     #[derive(Debug)]
+    #[ivars = PlatformNodeIvars]
+    #[name = "AccessKitNode"]
     pub(crate) struct PlatformNode;
 
-    unsafe impl ClassType for PlatformNode {
-        #[inherits(NSObject)]
-        type Super = UIAccessibilityElement;
-        type Mutability = MainThreadOnly;
-        const NAME: &'static str = "AccessKitNode";
-    }
-
-    impl DeclaredClass for PlatformNode {
-        type Ivars = PlatformNodeIvars;
-    }
-
-    unsafe impl NSObjectProtocol for PlatformNode {}
-
     #[allow(non_snake_case)]
-    unsafe impl PlatformNode {
-        #[method_id(accessibilityContainer)]
+    impl PlatformNode {
+        #[unsafe(method_id(accessibilityContainer))]
         fn container(&self) -> Option<Retained<AnyObject>> {
             self.resolve_container()
         }
@@ -215,16 +206,16 @@ declare_class!(
         // implementation stash the init-time placeholder, internal UIKit
         // paths can return it and bypass our getter override.
         // See https://github.com/flutter/flutter/issues/54366.
-        #[method(setAccessibilityContainer:)]
+        #[unsafe(method(setAccessibilityContainer:))]
         fn set_container(&self, _container: Option<&AnyObject>) {}
 
-        #[method(isAccessibilityElement)]
+        #[unsafe(method(isAccessibilityElement))]
         fn is_element(&self) -> bool {
             self.resolve(|node| filter_for_is_accessibility_element(node) == FilterResult::Include)
                 .unwrap_or(false)
         }
 
-        #[method_id(accessibilityLabel)]
+        #[unsafe(method_id(accessibilityLabel))]
         fn label(&self) -> Option<Retained<NSString>> {
             self.resolve(|node| {
                 let wrapper = NodeWrapper(node);
@@ -233,7 +224,7 @@ declare_class!(
             .flatten()
         }
 
-        #[method_id(accessibilityHint)]
+        #[unsafe(method_id(accessibilityHint))]
         fn hint(&self) -> Option<Retained<NSString>> {
             self.resolve(|node| {
                 let wrapper = NodeWrapper(node);
@@ -242,7 +233,7 @@ declare_class!(
             .flatten()
         }
 
-        #[method_id(accessibilityValue)]
+        #[unsafe(method_id(accessibilityValue))]
         fn value(&self) -> Option<Retained<NSString>> {
             self.resolve(|node| {
                 let wrapper = NodeWrapper(node);
@@ -253,33 +244,33 @@ declare_class!(
             .flatten()
         }
 
-        #[method(accessibilityTraits)]
+        #[unsafe(method(accessibilityTraits))]
         fn traits(&self) -> UIAccessibilityTraits {
             self.resolve(|node| NodeWrapper(node).traits())
                 .unwrap_or(unsafe { UIAccessibilityTraitNone })
         }
 
-        #[method(accessibilityFrame)]
-        fn frame(&self) -> CGRect {
+        #[unsafe(method(accessibilityFrame))]
+        fn frame(&self) -> NSRect {
             self.resolve_with_context(|node, _, context| {
                 let view = context.view.load()?;
                 Some(match NodeWrapper(node).frame_source() {
                     FrameSource::Rect(rect) => to_cg_rect(&view, rect),
                     FrameSource::ViewBounds => to_screen_rect(&view, view.bounds()),
-                    FrameSource::Zero => CGRect::ZERO,
+                    FrameSource::Zero => NSRect::ZERO,
                 })
             })
             .flatten()
-            .unwrap_or(CGRect::ZERO)
+            .unwrap_or(NSRect::ZERO)
         }
 
-        #[method_id(accessibilityLanguage)]
+        #[unsafe(method_id(accessibilityLanguage))]
         fn language(&self) -> Option<Retained<NSString>> {
             self.resolve(|node| node.language().map(NSString::from_str))
                 .flatten()
         }
 
-        #[method(accessibilityExpandedStatus)]
+        #[unsafe(method(accessibilityExpandedStatus))]
         fn expanded_status(&self) -> UIAccessibilityExpandedStatus {
             self.resolve(|node| match node.data().is_expanded() {
                 Some(true) => UIAccessibilityExpandedStatus::Expanded,
@@ -289,7 +280,7 @@ declare_class!(
             .unwrap_or(UIAccessibilityExpandedStatus::Unsupported)
         }
 
-        #[method(accessibilityActivate)]
+        #[unsafe(method(accessibilityActivate))]
         fn activate(&self) -> bool {
             self.resolve_with_context(|node, tree, context| {
                 if !node.is_clickable(&filter) {
@@ -309,7 +300,7 @@ declare_class!(
             .unwrap_or(false)
         }
 
-        #[method(accessibilityIncrement)]
+        #[unsafe(method(accessibilityIncrement))]
         fn increment(&self) {
             self.resolve_with_context(|node, tree, context| {
                 if !node.supports_increment(&filter) {
@@ -327,7 +318,7 @@ declare_class!(
             });
         }
 
-        #[method(accessibilityDecrement)]
+        #[unsafe(method(accessibilityDecrement))]
         fn decrement(&self) {
             self.resolve_with_context(|node, tree, context| {
                 if !node.supports_decrement(&filter) {
@@ -345,7 +336,7 @@ declare_class!(
             });
         }
 
-        #[method(accessibilityScroll:)]
+        #[unsafe(method(accessibilityScroll:))]
         fn scroll(&self, direction: UIAccessibilityScrollDirection) -> Bool {
             // `UIAccessibilityScrollDirection` describes the direction the
             // scroll bar moves, while AccessKit's scroll actions describe the
@@ -379,7 +370,7 @@ declare_class!(
             .unwrap_or(Bool::NO)
         }
 
-        #[method_id(accessibilityElements)]
+        #[unsafe(method_id(accessibilityElements))]
         fn elements(&self) -> Option<Retained<NSArray<NSObject>>> {
             self.resolve_with_context(|node, _, context| {
                 // If this node is itself a leaf accessibility element, hide
@@ -393,11 +384,11 @@ declare_class!(
                     .filter_map(|child| context.get_or_create_platform_node(child.id()))
                     .map(PlatformNode::into_ns_object)
                     .collect();
-                NSArray::from_vec(children)
+                NSArray::from_retained_slice(&children)
             })
         }
 
-        #[method(accessibilityContainerType)]
+        #[unsafe(method(accessibilityContainerType))]
         fn container_type(&self) -> UIAccessibilityContainerType {
             self.resolve(|node| {
                 let wrapper = NodeWrapper(node);
@@ -406,7 +397,7 @@ declare_class!(
             .unwrap_or(UIAccessibilityContainerType::None)
         }
 
-        #[method(accessibilityElementDidBecomeFocused)]
+        #[unsafe(method(accessibilityElementDidBecomeFocused))]
         fn element_did_become_focused(&self) {
             self.resolve_with_context(|node, tree, context| {
                 let node_id = node.id();
@@ -422,12 +413,10 @@ declare_class!(
             });
         }
 
-        #[method_id(accessibilityIdentifier)]
+        #[unsafe(method_id(accessibilityIdentifier))]
         fn identifier(&self) -> Option<Retained<NSString>> {
-            self.resolve(|node| {
-                node.author_id().map(NSString::from_str)
-            })
-            .flatten()
+            self.resolve(|node| node.author_id().map(NSString::from_str))
+                .flatten()
         }
     }
 );
@@ -456,7 +445,7 @@ impl PlatformNode {
             context: Rc::downgrade(context),
             node_id,
         });
-        Some(unsafe { msg_send_id![super(this), initWithAccessibilityContainer: &*container] })
+        Some(unsafe { msg_send![super(this), initWithAccessibilityContainer: &*container] })
     }
 
     fn resolve<F, T>(&self, f: F) -> Option<T>

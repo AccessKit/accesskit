@@ -12,7 +12,7 @@ use objc2_foundation::{
 use objc2_ui_kit::{
     UIAccessibilityAnnouncementNotification, UIAccessibilityLayoutChangedNotification,
     UIAccessibilityNotifications, UIAccessibilityPostNotification,
-    UIAccessibilityScreenChangedNotification, UIAccessibilitySpeechAttributeQueueAnnouncement,
+    UIAccessibilityScreenChangedNotification,
 };
 use std::collections::VecDeque;
 use std::rc::Rc;
@@ -75,14 +75,19 @@ impl QueuedEvent {
         };
         match (priority, announcement_priority_key()) {
             (Some(priority), Some(priority_key)) => {
-                let mut attrs: objc2::rc::Retained<
+                let attrs: objc2::rc::Retained<
                     NSMutableDictionary<NSAttributedStringKey, AnyObject>,
                 > = NSMutableDictionary::new();
                 unsafe {
                     attrs.setObject_forKey(priority, ProtocolObject::from_ref(priority_key));
                     attrs.setObject_forKey(
                         &*NSNumber::new_bool(true),
-                        ProtocolObject::from_ref(UIAccessibilitySpeechAttributeQueueAnnouncement),
+                        // Seems to be only deprecated on visionOS?
+                        // https://developer.apple.com/documentation/uikit/uiaccessibilityspeechattributequeueannouncement?language=objc
+                        #[allow(deprecated)]
+                        ProtocolObject::from_ref(
+                            objc2_ui_kit::UIAccessibilitySpeechAttributeQueueAnnouncement,
+                        ),
                     );
                 }
                 let announcement =
