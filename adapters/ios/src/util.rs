@@ -5,8 +5,7 @@
 
 use accesskit::Point;
 use accesskit_consumer::NodeRef;
-use objc2::encode::{Encode, Encoding, RefEncode};
-use objc2_foundation::{CGPoint, CGRect, CGSize, NSAttributedStringKey, NSInteger, NSString};
+use objc2_foundation::{NSAttributedStringKey, NSPoint, NSRect, NSSize, NSString};
 use objc2_ui_kit::{
     UIAccessibilityConvertFrameToScreenCoordinates, UIAccessibilityPriority, UIAccessibilityTraits,
     UICoordinateSpace, UIView,
@@ -14,27 +13,7 @@ use objc2_ui_kit::{
 use std::ffi::{c_char, c_void};
 use std::sync::OnceLock;
 
-// TODO: Remove once we update to objc2 0.6
-#[repr(transparent)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub(crate) struct UIAccessibilityExpandedStatus(pub NSInteger);
-
-#[allow(non_upper_case_globals)]
-impl UIAccessibilityExpandedStatus {
-    pub(crate) const Unsupported: Self = Self(0);
-    pub(crate) const Expanded: Self = Self(1);
-    pub(crate) const Collapsed: Self = Self(2);
-}
-
-unsafe impl Encode for UIAccessibilityExpandedStatus {
-    const ENCODING: Encoding = NSInteger::ENCODING;
-}
-
-unsafe impl RefEncode for UIAccessibilityExpandedStatus {
-    const ENCODING_REF: Encoding = Encoding::Pointer(&Self::ENCODING);
-}
-
-pub(crate) fn from_cg_point(view: &UIView, node: &NodeRef, point: CGPoint) -> Option<Point> {
+pub(crate) fn from_cg_point(view: &UIView, node: &NodeRef, point: NSPoint) -> Option<Point> {
     let window = view.window()?;
     let screen_space = window.screen().coordinateSpace();
     let local_point = view.convertPoint_fromCoordinateSpace(point, &screen_space);
@@ -43,18 +22,18 @@ pub(crate) fn from_cg_point(view: &UIView, node: &NodeRef, point: CGPoint) -> Op
     Some(node.transform().inverse() * point)
 }
 
-pub(crate) fn to_screen_rect(view: &UIView, rect: CGRect) -> CGRect {
-    unsafe { UIAccessibilityConvertFrameToScreenCoordinates(rect, view) }
+pub(crate) fn to_screen_rect(view: &UIView, rect: NSRect) -> NSRect {
+    UIAccessibilityConvertFrameToScreenCoordinates(rect, view)
 }
 
-pub(crate) fn to_cg_rect(view: &UIView, rect: accesskit::Rect) -> CGRect {
+pub(crate) fn to_cg_rect(view: &UIView, rect: accesskit::Rect) -> NSRect {
     let factor = view.contentScaleFactor();
-    let local_rect = CGRect {
-        origin: CGPoint {
+    let local_rect = NSRect {
+        origin: NSPoint {
             x: rect.x0 / factor,
             y: rect.y0 / factor,
         },
-        size: CGSize {
+        size: NSSize {
             width: rect.width() / factor,
             height: rect.height() / factor,
         },
