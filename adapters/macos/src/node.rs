@@ -822,7 +822,7 @@ define_class!(
                         result.beginEditing();
                         range.traverse_text::<_, ()>(|node, text| {
                             let ns_text = NSString::from_str(text);
-                            let  attrs = NSMutableDictionary::<NSAttributedStringKey, objc2::runtime::AnyObject>::new();
+                            let  attrs = NSMutableDictionary::<NSAttributedStringKey, AnyObject>::new();
                             if let Some(color) = node.background_color() {
                                 attrs.insert(
                                     unsafe { NSAccessibilityBackgroundColorTextAttribute },
