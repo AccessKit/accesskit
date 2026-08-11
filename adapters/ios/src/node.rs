@@ -17,11 +17,12 @@ use objc2::{
 };
 use objc2_foundation::{NSArray, NSObject, NSRect, NSString};
 use objc2_ui_kit::{
-    UIAccessibilityContainerType, UIAccessibilityElement, UIAccessibilityScrollDirection,
-    UIAccessibilityTraitAdjustable, UIAccessibilityTraitAllowsDirectInteraction,
-    UIAccessibilityTraitButton, UIAccessibilityTraitHeader, UIAccessibilityTraitImage,
-    UIAccessibilityTraitLink, UIAccessibilityTraitNone, UIAccessibilityTraitNotEnabled,
-    UIAccessibilityTraitSearchField, UIAccessibilityTraitSelected, UIAccessibilityTraitStaticText,
+    UIAccessibilityContainerType, UIAccessibilityElement, UIAccessibilityExpandedStatus,
+    UIAccessibilityScrollDirection, UIAccessibilityTraitAdjustable,
+    UIAccessibilityTraitAllowsDirectInteraction, UIAccessibilityTraitButton,
+    UIAccessibilityTraitHeader, UIAccessibilityTraitImage, UIAccessibilityTraitLink,
+    UIAccessibilityTraitNone, UIAccessibilityTraitNotEnabled, UIAccessibilityTraitSearchField,
+    UIAccessibilityTraitSelected, UIAccessibilityTraitStaticText,
     UIAccessibilityTraitUpdatesFrequently, UIAccessibilityTraits,
 };
 use std::rc::{Rc, Weak};
@@ -29,7 +30,7 @@ use std::rc::{Rc, Weak};
 use crate::{
     context::Context,
     filters::{filter, filter_for_is_accessibility_element},
-    util::{UIAccessibilityExpandedStatus, to_cg_rect, to_screen_rect, toggle_button_trait},
+    util::{to_cg_rect, to_screen_rect, toggle_button_trait},
 };
 
 #[derive(Debug, PartialEq)]
