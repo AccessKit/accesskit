@@ -1878,22 +1878,26 @@ vec_type_methods! {
 }
 
 node_id_vec_property_methods! {
-    /// The ordered list of this node's direct children in the tree.
+    /// The ordered list of this node's direct children in the tree. The order
+    /// should match the intended reading and navigation order.
     (Children, children, set_children, push_child, clear_children),
     /// The nodes whose contents or presence are controlled by this node. ARIA
     /// equivalent: [`aria-controls`].
     ///
     /// [`aria-controls`]: https://www.w3.org/TR/wai-aria-1.2/#aria-controls
     (Controls, controls, set_controls, push_controlled, clear_controls),
-    /// The nodes that provide detailed, extended descriptions for this node.
-    /// ARIA equivalent: [`aria-details`].
+    /// The nodes that provide detailed, structured descriptions for this node
+    /// and that users may navigate to. Use [`Node::described_by`] when a
+    /// plain-text description is sufficient. ARIA equivalent: [`aria-details`].
     ///
     /// **Difference with ARIA:** `aria-details` references a single element,
     /// while this property may reference multiple nodes.
     ///
     /// [`aria-details`]: https://www.w3.org/TR/wai-aria-1.2/#aria-details
     (Details, details, set_details, push_detail, clear_details),
-    /// The nodes that describe this node. ARIA equivalent: [`aria-describedby`].
+    /// The nodes whose contents provide a plain-text description for this node.
+    /// Use [`Node::details`] for structured content that users may need to
+    /// navigate. ARIA equivalent: [`aria-describedby`].
     ///
     /// [`aria-describedby`]: https://www.w3.org/TR/wai-aria-1.2/#aria-describedby
     (DescribedBy, described_by, set_described_by, push_described_by, clear_described_by),
