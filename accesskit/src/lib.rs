@@ -14,7 +14,7 @@ extern crate alloc;
 
 #[cfg(feature = "schemars")]
 use alloc::borrow::Cow;
-use alloc::{boxed::Box, string::String, vec::Vec};
+use alloc::{borrow::ToOwned, boxed::Box, string::String, vec::Vec};
 use core::fmt;
 #[cfg(feature = "pyo3")]
 use pyo3::pyclass;
@@ -760,7 +760,7 @@ impl TreeId {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct CustomAction {
     pub id: i32,
-    pub description: Box<str>,
+    pub description: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -852,19 +852,19 @@ pub struct TextDecoration {
 // The following is based on the technique described here:
 // https://viruta.org/reducing-memory-consumption-in-librsvg-2.html
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 enum PropertyValue {
     None,
     NodeIdVec(Vec<NodeId>),
     NodeId(NodeId),
-    String(Box<str>),
+    String(String),
     F64(f64),
     F32(f32),
     Usize(usize),
     Color(Color),
     TextDecoration(TextDecoration),
-    LengthSlice(Box<[u8]>),
-    CoordSlice(Box<[f32]>),
+    LengthVec(Vec<u8>),
+    CoordVec(Vec<f32>),
     Bool(bool),
     Invalid(Invalid),
     Toggled(Toggled),
@@ -970,11 +970,11 @@ enum PropertyId {
     Strikethrough,
     Underline,
 
-    // LengthSlice
+    // LengthVec
     CharacterLengths,
     WordStarts,
 
-    // CoordSlice
+    // CoordVec
     CharacterPositions,
     CharacterWidths,
 
@@ -1007,6 +1007,55 @@ enum PropertyId {
     Unset,
 }
 
+impl Clone for PropertyValue {
+    fn clone(&self) -> Self {
+        match self {
+            Self::None => Self::None,
+            Self::NodeIdVec(v) => Self::NodeIdVec(v.clone()),
+            Self::NodeId(v) => Self::NodeId(*v),
+            Self::String(v) => Self::String(v.clone()),
+            Self::F64(v) => Self::F64(*v),
+            Self::F32(v) => Self::F32(*v),
+            Self::Usize(v) => Self::Usize(*v),
+            Self::Color(v) => Self::Color(*v),
+            Self::TextDecoration(v) => Self::TextDecoration(*v),
+            Self::LengthVec(v) => Self::LengthVec(v.clone()),
+            Self::CoordVec(v) => Self::CoordVec(v.clone()),
+            Self::Bool(v) => Self::Bool(*v),
+            Self::Invalid(v) => Self::Invalid(*v),
+            Self::Toggled(v) => Self::Toggled(*v),
+            Self::Live(v) => Self::Live(*v),
+            Self::TextDirection(v) => Self::TextDirection(*v),
+            Self::Orientation(v) => Self::Orientation(*v),
+            Self::SortDirection(v) => Self::SortDirection(*v),
+            Self::AriaCurrent(v) => Self::AriaCurrent(*v),
+            Self::AutoComplete(v) => Self::AutoComplete(*v),
+            Self::HasPopup(v) => Self::HasPopup(*v),
+            Self::ListStyle(v) => Self::ListStyle(*v),
+            Self::TextAlign(v) => Self::TextAlign(*v),
+            Self::VerticalOffset(v) => Self::VerticalOffset(*v),
+            Self::Affine(v) => Self::Affine(v.clone()),
+            Self::Rect(v) => Self::Rect(*v),
+            Self::TextSelection(v) => Self::TextSelection(v.clone()),
+            Self::CustomActionVec(v) => Self::CustomActionVec(v.clone()),
+            Self::TreeId(v) => Self::TreeId(*v),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        match (self, source) {
+            (Self::NodeIdVec(dest), Self::NodeIdVec(source)) => dest.clone_from(source),
+            (Self::String(dest), Self::String(source)) => dest.clone_from(source),
+            (Self::LengthVec(dest), Self::LengthVec(source)) => dest.clone_from(source),
+            (Self::CoordVec(dest), Self::CoordVec(source)) => dest.clone_from(source),
+            (Self::CustomActionVec(dest), Self::CustomActionVec(source)) => dest.clone_from(source),
+            (Self::Affine(dest), Self::Affine(source)) => dest.clone_from(source),
+            (Self::TextSelection(dest), Self::TextSelection(source)) => dest.clone_from(source),
+            (dest, source) => *dest = source.clone(),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(transparent)]
 struct PropertyIndices([u8; PropertyId::Unset as usize]);
@@ -1017,7 +1066,7 @@ impl Default for PropertyIndices {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq)]
 struct Properties {
     indices: PropertyIndices,
     values: Vec<PropertyValue>,
@@ -1029,7 +1078,7 @@ struct Properties {
 /// to other languages, documentation of getter methods is written as if
 /// documenting fields in a struct, and such methods are referred to
 /// as properties.
-#[derive(Clone, Default, PartialEq)]
+#[derive(Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
@@ -1081,6 +1130,20 @@ impl Properties {
         if index != PropertyId::Unset as u8 {
             self.values[index as usize] = PropertyValue::None;
         }
+    }
+}
+
+impl Clone for Properties {
+    fn clone(&self) -> Self {
+        Self {
+            indices: self.indices,
+            values: self.values.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.indices = source.indices;
+        source.values.clone_into(&mut self.values);
     }
 }
 
@@ -1175,10 +1238,10 @@ macro_rules! copy_type_getters {
     }
 }
 
-macro_rules! box_type_setters {
+macro_rules! owned_type_setters {
     ($(($method:ident, $type:ty, $variant:ident)),+) => {
         impl Node {
-            $(fn $method(&mut self, id: PropertyId, value: impl Into<Box<$type>>) {
+            $(fn $method(&mut self, id: PropertyId, value: impl Into<$type>) {
                 self.properties.set(id, PropertyValue::$variant(value.into()));
             })*
         }
@@ -1248,7 +1311,7 @@ macro_rules! vec_property_methods {
     }
 }
 
-macro_rules! slice_properties_debug_method {
+macro_rules! vec_properties_debug_method {
     ($name:ident, [$($getter:ident,)*]) => {
         fn $name(&self, fmt: &mut fmt::DebugStruct) {
             $(
@@ -1268,7 +1331,7 @@ macro_rules! node_id_vec_property_methods {
             ($id, NodeId, $getter, get_node_id_vec, $setter, set_node_id_vec, $pusher, push_to_node_id_vec, $clearer)
         })*
         impl Node {
-            slice_properties_debug_method! { debug_node_id_vec_properties, [$($getter,)*] }
+            vec_properties_debug_method! { debug_node_id_vec_properties, [$($getter,)*] }
         }
         $(#[cfg(test)]
         mod $getter {
@@ -1357,7 +1420,7 @@ macro_rules! string_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_string_property, Option<&str>, $setter, set_string_property, impl Into<Box<str>>, $clearer)
+            ($id, $getter, get_string_property, Option<&str>, $setter, set_string_property, impl Into<String>, $clearer)
         })*
         impl Node {
             option_properties_debug_method! { debug_string_properties, [$($getter,)*] }
@@ -1573,14 +1636,14 @@ macro_rules! text_decoration_property_methods {
     }
 }
 
-macro_rules! length_slice_property_methods {
+macro_rules! length_vec_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_length_slice_property, &[u8], $setter, set_length_slice_property, impl Into<Box<[u8]>>, $clearer)
+            ($id, $getter, get_length_vec_property, &[u8], $setter, set_length_vec_property, impl Into<Vec<u8>>, $clearer)
         })*
         impl Node {
-            slice_properties_debug_method! { debug_length_slice_properties, [$($getter,)*] }
+            vec_properties_debug_method! { debug_length_vec_properties, [$($getter,)*] }
         }
         $(#[cfg(test)]
         mod $getter {
@@ -1610,14 +1673,14 @@ macro_rules! length_slice_property_methods {
     }
 }
 
-macro_rules! coord_slice_property_methods {
+macro_rules! coord_vec_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_coord_slice_property, Option<&[f32]>, $setter, set_coord_slice_property, impl Into<Box<[f32]>>, $clearer)
+            ($id, $getter, get_coord_vec_property, Option<&[f32]>, $setter, set_coord_vec_property, impl Into<Vec<f32>>, $clearer)
         })*
         impl Node {
-            option_properties_debug_method! { debug_coord_slice_properties, [$($getter,)*] }
+            option_properties_debug_method! { debug_coord_vec_properties, [$($getter,)*] }
         }
         $(#[cfg(test)]
         mod $getter {
@@ -1742,6 +1805,26 @@ impl Node {
     }
 }
 
+impl Clone for Node {
+    fn clone(&self) -> Self {
+        Self {
+            role: self.role,
+            actions: self.actions,
+            child_actions: self.child_actions,
+            flags: self.flags,
+            properties: self.properties.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.role = source.role;
+        self.actions = source.actions;
+        self.child_actions = source.child_actions;
+        self.flags = source.flags;
+        self.properties.clone_from(&source.properties);
+    }
+}
+
 impl Node {
     #[inline]
     pub fn role(&self) -> Role {
@@ -1832,12 +1915,12 @@ flag_methods! {
 option_ref_type_getters! {
     (get_affine_property, Affine, Affine),
     (get_string_property, str, String),
-    (get_coord_slice_property, [f32], CoordSlice),
+    (get_coord_vec_property, [f32], CoordVec),
     (get_text_selection_property, TextSelection, TextSelection)
 }
 
 slice_type_getters! {
-    (get_length_slice_property, u8, LengthSlice)
+    (get_length_vec_property, u8, LengthVec)
 }
 
 copy_type_getters! {
@@ -1852,12 +1935,12 @@ copy_type_getters! {
     (get_tree_id_property, TreeId, TreeId)
 }
 
-box_type_setters! {
-    (set_affine_property, Affine, Affine),
-    (set_string_property, str, String),
-    (set_length_slice_property, [u8], LengthSlice),
-    (set_coord_slice_property, [f32], CoordSlice),
-    (set_text_selection_property, TextSelection, TextSelection)
+owned_type_setters! {
+    (set_affine_property, Box<Affine>, Affine),
+    (set_string_property, String, String),
+    (set_length_vec_property, Vec<u8>, LengthVec),
+    (set_coord_vec_property, Vec<f32>, CoordVec),
+    (set_text_selection_property, Box<TextSelection>, TextSelection)
 }
 
 copy_type_setters! {
@@ -2140,7 +2223,7 @@ text_decoration_property_methods! {
     (Underline, underline, set_underline, clear_underline)
 }
 
-length_slice_property_methods! {
+length_vec_property_methods! {
     /// For text runs, the length (non-inclusive) of each character
     /// in UTF-8 code units (bytes). The sum of these lengths must equal
     /// the length of [`value`], also in bytes.
@@ -2193,7 +2276,7 @@ length_slice_property_methods! {
     (WordStarts, word_starts, set_word_starts, clear_word_starts)
 }
 
-coord_slice_property_methods! {
+coord_vec_property_methods! {
     /// For text runs, this is the position of each character within
     /// the node's bounding box, in the direction given by
     /// [`text_direction`], in the coordinate space of this node.
@@ -2527,8 +2610,8 @@ impl fmt::Debug for Node {
         self.debug_usize_properties(&mut fmt);
         self.debug_color_properties(&mut fmt);
         self.debug_text_decoration_properties(&mut fmt);
-        self.debug_length_slice_properties(&mut fmt);
-        self.debug_coord_slice_properties(&mut fmt);
+        self.debug_length_vec_properties(&mut fmt);
+        self.debug_coord_vec_properties(&mut fmt);
         self.debug_bool_properties(&mut fmt);
         self.debug_unique_enum_properties(&mut fmt);
         self.debug_option_properties(&mut fmt);
@@ -2596,8 +2679,8 @@ impl Serialize for Properties {
                 Usize,
                 Color,
                 TextDecoration,
-                LengthSlice,
-                CoordSlice,
+                LengthVec,
+                CoordVec,
                 Bool,
                 Invalid,
                 Toggled,
@@ -2720,11 +2803,11 @@ impl<'de> Visitor<'de> for PropertiesVisitor {
                     Strikethrough,
                     Underline
                 },
-                LengthSlice {
+                LengthVec {
                     CharacterLengths,
                     WordStarts
                 },
-                CoordSlice {
+                CoordVec {
                     CharacterPositions,
                     CharacterWidths
                 },
@@ -2812,7 +2895,7 @@ impl JsonSchema for Properties {
                 PreviousOnLine,
                 PopupFor
             },
-            Box<str> {
+            String {
                 Label,
                 Description,
                 Value,
@@ -2872,11 +2955,11 @@ impl JsonSchema for Properties {
                 Strikethrough,
                 Underline
             },
-            Box<[u8]> {
+            Vec<u8> {
                 CharacterLengths,
                 WordStarts
             },
-            Box<[f32]> {
+            Vec<f32> {
                 CharacterPositions,
                 CharacterWidths
             },
@@ -3137,6 +3220,53 @@ pub trait DeactivationHandler {
 mod tests {
     use super::*;
     use alloc::format;
+
+    #[test]
+    fn clone_from_should_be_equivalent_to_clone() {
+        let mut source = Node::new(Role::Button);
+        source.add_action(Action::Click);
+        source.add_child_action(Action::Focus);
+        source.set_hidden();
+        source.set_label("source");
+        source.set_children([NodeId(1)]);
+
+        let mut dest = Node::new(Role::CheckBox);
+        dest.add_action(Action::Focus);
+        dest.set_multiselectable();
+        dest.set_description("dest");
+        dest.set_children([NodeId(7), NodeId(8)]);
+        dest.clone_from(&source);
+
+        assert_eq!(dest, source.clone());
+    }
+
+    #[test]
+    fn clone_from_should_reuse_the_destination_string_buffer() {
+        let mut source = Node::new(Role::Button);
+        source.set_label("new label");
+        let mut dest = Node::new(Role::Button);
+        dest.set_label("old label with room to spare");
+        let buffer = dest.label().unwrap().as_ptr();
+
+        dest.clone_from(&source);
+
+        assert_eq!(dest.label(), Some("new label"));
+        assert_eq!(dest.label().unwrap().as_ptr(), buffer);
+    }
+
+    #[test]
+    fn clone_from_should_reuse_the_destination_slice_buffer() {
+        let mut source = Node::new(Role::TextRun);
+        source.set_character_lengths([1u8, 2, 3]);
+        let mut dest = Node::new(Role::TextRun);
+        dest.set_character_lengths([9u8; 16]);
+        let buffer = dest.character_lengths().as_ptr();
+
+        dest.clone_from(&source);
+
+        assert_eq!(dest.character_lengths(), &[1, 2, 3]);
+        assert_eq!(dest.character_lengths().as_ptr(), buffer);
+    }
 
     #[test]
     fn u64_should_be_convertible_to_node_id() {
