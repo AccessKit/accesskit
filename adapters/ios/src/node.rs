@@ -188,7 +188,6 @@ pub(crate) struct PlatformNodeIvars {
 
 define_class!(
     #[unsafe(super(UIAccessibilityElement))]
-    
     #[derive(Debug)]
     #[ivars = PlatformNodeIvars]
     #[name = "AccessKitNode"]

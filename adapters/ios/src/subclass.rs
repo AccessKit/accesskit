@@ -43,7 +43,6 @@ struct AssociatedObjectIvars {
 
 define_class!(
     #[unsafe(super(NSObject))]
-    
     #[ivars = AssociatedObjectIvars]
     #[name = "AccessKitSubclassAssociatedObject"]
     struct AssociatedObject;
