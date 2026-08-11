@@ -14,11 +14,27 @@ use crate::node::{FullNodeId, NodeRef, NodeState, ParentAndIndex};
 #[repr(transparent)]
 pub(crate) struct TreeIndex(pub(crate) u32);
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 struct TreeIndexMap {
     id_to_index: HashMap<TreeId, TreeIndex>,
     index_to_id: HashMap<TreeIndex, TreeId>,
     next: u32,
+}
+
+impl Clone for TreeIndexMap {
+    fn clone(&self) -> Self {
+        Self {
+            id_to_index: self.id_to_index.clone(),
+            index_to_id: self.index_to_id.clone(),
+            next: self.next,
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.id_to_index.clone_from(&source.id_to_index);
+        self.index_to_id.clone_from(&source.index_to_id);
+        self.next = source.next;
+    }
 }
 
 impl TreeIndexMap {
@@ -275,7 +291,7 @@ impl TreeState {
                             record_graft(&mut pending_grafts, new_subtree_id, node_id);
                         }
                     }
-                    node_state.data.clone_from(&node_data);
+                    node_state.data = node_data;
                     if let Some(changes) = &mut changes {
                         changes.updated_node_ids.insert(node_id);
                     }

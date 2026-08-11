@@ -54,10 +54,24 @@ impl From<FullNodeId> for u128 {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) struct ParentAndIndex(pub(crate) FullNodeId, pub(crate) usize);
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct NodeState {
     pub(crate) parent_and_index: Option<ParentAndIndex>,
     pub(crate) data: Node,
+}
+
+impl Clone for NodeState {
+    fn clone(&self) -> Self {
+        Self {
+            parent_and_index: self.parent_and_index,
+            data: self.data.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.parent_and_index = source.parent_and_index;
+        self.data.clone_from(&source.data);
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
