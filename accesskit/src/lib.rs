@@ -2259,18 +2259,62 @@ bool_property_methods! {
 }
 
 unique_enum_property_methods! {
+    /// Whether this node's input is invalid, and whether the error is related
+    /// to spelling or grammar. ARIA equivalent: [`aria-invalid`].
+    ///
+    /// [`aria-invalid`]: https://www.w3.org/TR/wai-aria-1.2/#aria-invalid
     (Invalid, invalid, set_invalid, clear_invalid, Grammar),
+    /// The checked or pressed state of a toggle control. ARIA equivalents:
+    /// [`aria-checked`] and [`aria-pressed`].
+    ///
+    /// **Difference with ARIA:** ARIA uses separate states for checked and
+    /// pressed controls, while this property is interpreted based on the
+    /// node's role.
+    ///
+    /// [`aria-checked`]: https://www.w3.org/TR/wai-aria-1.2/#aria-checked
+    /// [`aria-pressed`]: https://www.w3.org/TR/wai-aria-1.2/#aria-pressed
     (Toggled, toggled, set_toggled, clear_toggled, True),
+    /// The priority with which updates to this live region should be announced.
+    /// ARIA equivalent: [`aria-live`].
+    ///
+    /// [`aria-live`]: https://www.w3.org/TR/wai-aria-1.2/#aria-live
     (Live, live, set_live, clear_live, Polite),
+    /// The direction in which this node's text is laid out.
     (TextDirection, text_direction, set_text_direction, clear_text_direction, RightToLeft),
+    /// Whether this node is oriented horizontally or vertically. ARIA
+    /// equivalent: [`aria-orientation`].
+    ///
+    /// [`aria-orientation`]: https://www.w3.org/TR/wai-aria-1.2/#aria-orientation
     (Orientation, orientation, set_orientation, clear_orientation, Vertical),
+    /// The direction in which items are sorted by this row or column header.
+    /// ARIA equivalent: [`aria-sort`].
+    ///
+    /// [`aria-sort`]: https://www.w3.org/TR/wai-aria-1.2/#aria-sort
     (SortDirection, sort_direction, set_sort_direction, clear_sort_direction, Descending),
+    /// Whether and how this node represents the current item within a set. ARIA
+    /// equivalent: [`aria-current`].
+    ///
+    /// **Difference with ARIA:** `aria-current` accepts unrecognized non-empty
+    /// tokens and treats them as `true`, while this property accepts only the
+    /// values defined by [`AriaCurrent`].
+    ///
+    /// [`aria-current`]: https://www.w3.org/TR/wai-aria-1.2/#aria-current
     (AriaCurrent, aria_current, set_aria_current, clear_aria_current, True),
+    /// How predictions are presented while the user enters text. ARIA
+    /// equivalent: [`aria-autocomplete`].
+    ///
+    /// [`aria-autocomplete`]: https://www.w3.org/TR/wai-aria-1.2/#aria-autocomplete
     (AutoComplete, auto_complete, set_auto_complete, clear_auto_complete, List),
+    /// The type of interactive popup that can be triggered by this node. ARIA
+    /// equivalent: [`aria-haspopup`].
+    ///
+    /// [`aria-haspopup`]: https://www.w3.org/TR/wai-aria-1.2/#aria-haspopup
     (HasPopup, has_popup, set_has_popup, clear_has_popup, Menu),
-    /// The list style type. Only available on list items.
+    /// The list marker style. Only available on list items.
     (ListStyle, list_style, set_list_style, clear_list_style, Disc),
+    /// How this node's text is aligned horizontally.
     (TextAlign, text_align, set_text_align, clear_text_align, Right),
+    /// Whether this node's text is rendered as subscript or superscript.
     (VerticalOffset, vertical_offset, set_vertical_offset, clear_vertical_offset, Superscript)
 }
 
