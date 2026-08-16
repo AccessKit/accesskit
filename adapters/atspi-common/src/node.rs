@@ -9,7 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionRequest, Affine, Live, Orientation, Point, Rect, Role, Toggled,
+    Action, ActionData, ActionRequest, Affine, Live, NodeId, Orientation, Point, Rect, Role,
+    Toggled, TreeId,
 };
 use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, Tree, TreeState};
 use atspi_common::{
@@ -23,12 +24,12 @@ use std::{
 };
 
 use crate::{
-    Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
     adapter::Adapter,
     context::{AppContext, Context},
     filters::filter,
     text_attributes::ATTRIBUTE_GETTERS,
     util::*,
+    Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
 };
 
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a NodeRef<'a>);
@@ -493,7 +494,11 @@ impl NodeWrapper<'_> {
     }
 
     fn n_actions(&self) -> i32 {
-        if self.0.is_clickable(&filter) { 1 } else { 0 }
+        if self.0.is_clickable(&filter) {
+            1
+        } else {
+            0
+        }
     }
 
     fn get_action_name(&self, index: i32) -> String {
@@ -765,32 +770,20 @@ impl PlatformNode {
         self.resolve_for_text_with_context(|node, _, _| f(node))
     }
 
-    fn dispatch_action(&self, action: Action, data: Option<ActionData>) -> Result<()> {
-        self.dispatch_checked_action(action, data, |_| true)
-    }
-
-    fn dispatch_checked_action(
-        &self,
-        action: Action,
-        data: Option<ActionData>,
-        supports: impl for<'a> FnOnce(NodeRef<'a>) -> bool,
-    ) -> Result<()> {
+    fn do_action_internal<F>(&self, target: FullNodeId, f: F) -> Result<()>
+    where
+        F: FnOnce(&TreeState, &Context, NodeId, TreeId) -> ActionRequest,
+    {
         let context = self.upgrade_context()?;
         let tree = context.read_tree();
-        let state = tree.state();
-        let node = state.node_by_id(self.id).ok_or(Error::Defunct)?;
-        if !supports(node) {
-            return Err(Error::UnsupportedInterface);
+        if let Some((target_node, target_tree)) = tree.state().locate_node(target) {
+            let request = f(tree.state(), &context, target_node, target_tree);
+            drop(tree);
+            context.do_action(request);
+            Ok(())
+        } else {
+            Err(Error::Defunct)
         }
-        let (target_node, target_tree) = state.locate_node(self.id).ok_or(Error::Defunct)?;
-        drop(tree);
-        context.do_action(ActionRequest {
-            action,
-            target_tree,
-            target_node,
-            data,
-        });
-        Ok(())
     }
 
     pub fn name(&self) -> Result<String> {
@@ -1057,7 +1050,12 @@ impl PlatformNode {
         if index != 0 {
             return Ok(false);
         }
-        self.dispatch_action(Action::Click, None)?;
+        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
+            action: Action::Click,
+            target_tree,
+            target_node,
+            data: None,
+        })?;
         Ok(true)
     }
 
@@ -1113,15 +1111,22 @@ impl PlatformNode {
     }
 
     pub fn grab_focus(&self) -> Result<bool> {
-        self.dispatch_action(Action::Focus, None)?;
+        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
+            action: Action::Focus,
+            target_tree,
+            target_node,
+            data: None,
+        })?;
         Ok(true)
     }
 
     pub fn scroll_to(&self, scroll_type: ScrollType) -> Result<bool> {
-        self.dispatch_action(
-            Action::ScrollIntoView,
-            atspi_scroll_type_to_scroll_hint(scroll_type).map(ActionData::ScrollHint),
-        )?;
+        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
+            action: Action::ScrollIntoView,
+            target_tree,
+            target_node,
+            data: atspi_scroll_type_to_scroll_hint(scroll_type).map(ActionData::ScrollHint),
+        })?;
         Ok(true)
     }
 
@@ -1142,6 +1147,19 @@ impl PlatformNode {
                 data: Some(ActionData::ScrollToPoint(point)),
             });
             Ok(())
+        })?;
+        Ok(true)
+    }
+
+    pub fn set_text_contents(&self, value: &str) -> Result<bool> {
+        if self.resolve(|node| Ok(node.is_read_only()))? {
+            return Ok(false);
+        }
+        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
+            action: Action::SetValue,
+            target_tree,
+            target_node,
+            data: Some(ActionData::Value(value.into())),
         })?;
         Ok(true)
     }
@@ -1666,16 +1684,12 @@ impl PlatformNode {
     }
 
     pub fn set_current_value(&self, value: f64) -> Result<()> {
-        self.dispatch_action(Action::SetValue, Some(ActionData::NumericValue(value)))
-    }
-
-    pub fn set_text_contents(&self, value: &str) -> Result<bool> {
-        self.dispatch_checked_action(
-            Action::SetValue,
-            Some(ActionData::Value(value.into())),
-            |node| NodeWrapper(&node).supports_editable_text(),
-        )?;
-        Ok(true)
+        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
+            action: Action::SetValue,
+            target_tree,
+            target_node,
+            data: Some(ActionData::NumericValue(value)),
+        })
     }
 }
 
