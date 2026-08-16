@@ -438,8 +438,6 @@ impl NodeWrapper<'_> {
     }
 
     fn supports_editable_text(&self) -> bool {
-        // Empty inputs may have no text ranges. Numeric controls use AT-SPI Value because
-        // SetValue doesn't declare which ActionData variant the handler accepts.
         self.0.is_text_input()
             && !self.0.is_read_only()
             && !self.supports_value()
