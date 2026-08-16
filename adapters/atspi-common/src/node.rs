@@ -1970,3 +1970,85 @@ pub struct CacheNode {
     pub role: AtspiRole,
     pub states: StateSet,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{AdapterCallback, Event};
+    use accesskit::{ActionHandler, Node, TreeInfo, TreeUpdate};
+    use std::sync::mpsc::{self, Sender};
+
+    struct NoOpCallback;
+
+    impl AdapterCallback for NoOpCallback {
+        fn register_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
+        fn unregister_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
+        fn emit_event(&self, _: &Adapter, _: Event) {}
+    }
+
+    struct Recorder(Sender<ActionRequest>);
+
+    impl ActionHandler for Recorder {
+        fn do_action(&mut self, request: ActionRequest) {
+            self.0.send(request).unwrap();
+        }
+    }
+
+    #[test]
+    fn editable_text_support_and_dispatch() {
+        let mut input = Node::new(Role::TextInput);
+        input.push_child(NodeId(1));
+        let mut text_run = Node::new(Role::TextRun);
+        text_run.set_value("");
+        text_run.set_character_lengths([]);
+        let (sender, actions) = mpsc::channel();
+        let app_context = AppContext::new(None);
+        let mut adapter = Adapter::new(
+            &app_context,
+            NoOpCallback,
+            TreeUpdate {
+                nodes: vec![(NodeId(0), input.clone()), (NodeId(1), text_run)],
+                tree: Some(TreeInfo::new(NodeId(0))),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(0),
+            },
+            false,
+            WindowBounds::default(),
+            Recorder(sender),
+        );
+        let node = adapter.platform_node(adapter.root_id());
+
+        assert!(node.supports_editable_text().unwrap());
+        assert!(node.interfaces().unwrap().contains(Interface::EditableText));
+        assert!(node.set_text_contents("hello").unwrap());
+
+        input.set_read_only();
+        adapter.update(TreeUpdate {
+            nodes: vec![(NodeId(0), input.clone())],
+            tree: None,
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        });
+        assert!(node.supports_editable_text().unwrap());
+        assert!(!node.set_text_contents("ignored").unwrap());
+
+        input.clear_children();
+        adapter.update(TreeUpdate {
+            nodes: vec![(NodeId(0), input)],
+            tree: None,
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        });
+        assert!(!node.supports_editable_text().unwrap());
+
+        assert_eq!(
+            actions.try_iter().collect::<Vec<_>>(),
+            [ActionRequest {
+                action: Action::SetValue,
+                target_tree: TreeId::ROOT,
+                target_node: NodeId(0),
+                data: Some(ActionData::Value("hello".into())),
+            }]
+        );
+    }
+}
