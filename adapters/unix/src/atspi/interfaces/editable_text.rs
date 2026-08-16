@@ -16,6 +16,10 @@ impl EditableTextInterface {
     pub fn new(node: PlatformNode) -> Self {
         Self(node)
     }
+
+    fn map_error(&self) -> impl '_ + FnOnce(accesskit_atspi_common::Error) -> fdo::Error {
+        |error| crate::util::map_error_from_node(&self.0, error)
+    }
 }
 
 #[interface(name = "org.a11y.atspi.EditableText")]
@@ -43,6 +47,6 @@ impl EditableTextInterface {
     fn set_text_contents(&self, new_contents: &str) -> fdo::Result<bool> {
         self.0
             .set_text_contents(new_contents)
-            .map_err(|error| crate::util::map_error_from_node(&self.0, error))
+            .map_err(self.map_error())
     }
 }
