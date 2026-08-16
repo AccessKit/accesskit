@@ -438,10 +438,7 @@ impl NodeWrapper<'_> {
     }
 
     fn supports_editable_text(&self) -> bool {
-        self.0.is_text_input()
-            && !self.0.is_read_only()
-            && !self.supports_value()
-            && self.0.supports_action(Action::SetValue, &filter)
+        self.0.is_text_input() && self.0.supports_text_ranges()
     }
 
     fn supports_hyperlink(&self) -> bool {
