@@ -7,6 +7,7 @@ mod bus;
 pub(crate) mod interfaces;
 mod object_address;
 mod object_id;
+mod object_util;
 
 pub(crate) use bus::*;
 pub(crate) use object_address::OwnedObjectAddress;

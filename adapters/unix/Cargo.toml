@@ -19,7 +19,7 @@ tokio = ["dep:tokio", "dep:tokio-stream"]
 [dependencies]
 accesskit = { version = "0.24.1", path = "../../accesskit" }
 accesskit_atspi_common = { version = "0.19.1", path = "../atspi-common" }
-atspi = { version = "0.29", default-features = false, features = ["proxies"] }
+atspi = { git = "https://github.com/odilia-app/atspi", rev = "2aec2fc" }
 futures-lite = "2.3"
 serde = "1.0"
 zbus = { version = "5.5", default-features = false, features = ["async-io"] }
