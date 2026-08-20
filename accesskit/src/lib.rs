@@ -2294,10 +2294,6 @@ unique_enum_property_methods! {
     /// Whether and how this node represents the current item within a set. ARIA
     /// equivalent: [`aria-current`].
     ///
-    /// **Difference with ARIA:** `aria-current` accepts unrecognized non-empty
-    /// tokens and treats them as `true`, while this property accepts only the
-    /// values defined by [`AriaCurrent`].
-    ///
     /// [`aria-current`]: https://www.w3.org/TR/wai-aria-1.2/#aria-current
     (AriaCurrent, aria_current, set_aria_current, clear_aria_current, True),
     /// How predictions are presented while the user enters text. ARIA
