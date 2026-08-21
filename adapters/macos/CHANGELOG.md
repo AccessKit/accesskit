@@ -37,6 +37,21 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.26.4](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.26.3...accesskit_macos-v0.26.4) (2026-08-21)
+
+
+### Bug Fixes
+
+* Label via accessibilityValue for some roles on macOS ([#756](https://github.com/AccessKit/accesskit/issues/756)) ([cc49415](https://github.com/AccessKit/accesskit/commit/cc49415fa144d365af2337e869f86b953cfc239d))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.24.1 to 0.25.0
+    * accesskit_consumer bumped from 0.38.0 to 0.38.1
+
 ## [0.26.3](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.26.2...accesskit_macos-v0.26.3) (2026-07-14)
 
 
