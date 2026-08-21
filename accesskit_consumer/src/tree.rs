@@ -121,12 +121,7 @@ impl TreeState {
         current_focus
     }
 
-    fn update(
-        &mut self,
-        update: TreeUpdate,
-        is_host_focused: bool,
-        mut changes: Option<&mut InternalChanges>,
-    ) {
+    fn update(&mut self, update: TreeUpdate, mut changes: Option<&mut InternalChanges>) {
         let tree_index = self.tree_index_map.get_or_create_index(update.tree_id);
         let map_id = |id: NodeId| FullNodeId::new(id, tree_index);
 
@@ -355,8 +350,6 @@ impl TreeState {
             );
         }
 
-        self.is_host_focused = is_host_focused;
-
         if !unreachable.is_empty() {
             fn traverse_unreachable(
                 nodes: &mut HashMap<FullNodeId, NodeState>,
@@ -492,21 +485,6 @@ impl TreeState {
         self.validate_global();
     }
 
-    fn update_host_focus_state(
-        &mut self,
-        is_host_focused: bool,
-        changes: Option<&mut InternalChanges>,
-    ) {
-        let (focus, _) = self.focus.to_components();
-        let update = TreeUpdate {
-            nodes: vec![],
-            tree: None,
-            tree_id: TreeId::ROOT,
-            focus,
-        };
-        self.update(update, is_host_focused, changes);
-    }
-
     pub fn has_node(&self, id: FullNodeId) -> bool {
         self.nodes.contains_key(&id)
     }
@@ -632,7 +610,7 @@ impl Tree {
             graft_parents: HashMap::new(),
             tree_index_map,
         };
-        state.update(initial_state, is_host_focused, None);
+        state.update(initial_state, None);
         Self {
             next_state: state.clone(),
             state,
@@ -645,8 +623,7 @@ impl Tree {
         handler: &mut impl ChangeHandler,
     ) {
         let mut changes = InternalChanges::default();
-        self.next_state
-            .update(update, self.state.is_host_focused, Some(&mut changes));
+        self.next_state.update(update, Some(&mut changes));
         self.process_changes(changes, handler);
     }
 
@@ -655,9 +632,8 @@ impl Tree {
         is_host_focused: bool,
         handler: &mut impl ChangeHandler,
     ) {
-        let mut changes = InternalChanges::default();
-        self.next_state
-            .update_host_focus_state(is_host_focused, Some(&mut changes));
+        self.next_state.is_host_focused = is_host_focused;
+        let changes = InternalChanges::default();
         self.process_changes(changes, handler);
     }
 
@@ -3045,6 +3021,51 @@ mod tests {
         assert!(handler.added_nodes.is_empty());
         assert!(handler.updated_nodes.contains(&subtree_node_id(1)),);
         assert!(!handler.updated_nodes.contains(&subtree_node_id(0)),);
+    }
+
+    #[test]
+    fn host_focus_change_keeps_focus_in_subtree() {
+        let root_update = |focus| TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![NodeId(1)]);
+                    node
+                }),
+                (NodeId(1), {
+                    let mut node = Node::new(Role::GenericContainer);
+                    node.set_tree_id(subtree_id());
+                    node
+                }),
+            ],
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus,
+        };
+        let mut tree = super::Tree::new(root_update(NodeId(0)), true);
+        tree.update_and_process_changes(
+            TreeUpdate {
+                nodes: vec![
+                    (NodeId(100), {
+                        let mut node = Node::new(Role::Document);
+                        node.set_children(vec![NodeId(101)]);
+                        node
+                    }),
+                    (NodeId(101), Node::new(Role::Button)),
+                ],
+                tree: Some(TreeInfo::new(NodeId(100))),
+                tree_id: subtree_id(),
+                focus: NodeId(101),
+            },
+            &mut NoOpHandler,
+        );
+        tree.update_and_process_changes(root_update(NodeId(1)), &mut NoOpHandler);
+        assert_eq!(tree.state().focus_id_in_tree(), subtree_node_id(101));
+
+        tree.update_host_focus_state_and_process_changes(false, &mut NoOpHandler);
+
+        assert_eq!(tree.state().focus_id_in_tree(), subtree_node_id(101));
+        assert!(!tree.state().is_host_focused());
     }
 
     #[test]
