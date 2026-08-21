@@ -38,6 +38,21 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.34.1](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.34.0...accesskit_windows-v0.34.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* Fix imports in Windows tests ([#769](https://github.com/AccessKit/accesskit/issues/769)) ([edbd0ff](https://github.com/AccessKit/accesskit/commit/edbd0ff9a18c3df836a3cee42aac02f9e82fcf8b))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.24.1 to 0.25.0
+    * accesskit_consumer bumped from 0.38.0 to 0.38.1
+
 ## [0.34.0](https://github.com/AccessKit/accesskit/compare/accesskit_windows-v0.33.1...accesskit_windows-v0.34.0) (2026-07-14)
 
 

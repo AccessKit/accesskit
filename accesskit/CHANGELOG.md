@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.25.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.24.1...accesskit-v0.25.0) (2026-08-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* Reuse property buffers when cloning nodes
+
+### Performance Improvements
+
+* Reuse property buffers when cloning nodes ([97194ad](https://github.com/AccessKit/accesskit/commit/97194ad47e0c7a3ebd8afd5d5537fac4c7d2cf9f))
+
 ## [0.24.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.24.0...accesskit-v0.24.1) (2026-06-12)
 
 
