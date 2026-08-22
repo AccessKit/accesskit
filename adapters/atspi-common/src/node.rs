@@ -24,12 +24,12 @@ use std::{
 };
 
 use crate::{
-    Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
     adapter::Adapter,
     context::{AppContext, Context},
     filters::filter,
     text_attributes::ATTRIBUTE_GETTERS,
     util::*,
+    Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
 };
 
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a NodeRef<'a>);
@@ -438,6 +438,10 @@ impl NodeWrapper<'_> {
         self.0.raw_bounds().is_some() || self.is_root()
     }
 
+    fn supports_editable_text(&self) -> bool {
+        self.0.is_text_input() && self.0.supports_text_ranges()
+    }
+
     fn supports_hyperlink(&self) -> bool {
         self.0.supports_url()
     }
@@ -461,6 +465,9 @@ impl NodeWrapper<'_> {
         }
         if self.supports_component() {
             interfaces.insert(Interface::Component);
+        }
+        if self.supports_editable_text() {
+            interfaces.insert(Interface::EditableText);
         }
         if self.supports_hyperlink() {
             interfaces.insert(Interface::Hyperlink);
@@ -487,7 +494,11 @@ impl NodeWrapper<'_> {
     }
 
     fn n_actions(&self) -> i32 {
-        if self.0.is_clickable(&filter) { 1 } else { 0 }
+        if self.0.is_clickable(&filter) {
+            1
+        } else {
+            0
+        }
     }
 
     fn get_action_name(&self, index: i32) -> String {
@@ -966,6 +977,10 @@ impl PlatformNode {
         })
     }
 
+    pub fn supports_editable_text(&self) -> Result<bool> {
+        self.resolve(|node| Ok(NodeWrapper(&node).supports_editable_text()))
+    }
+
     pub fn supports_hyperlink(&self) -> Result<bool> {
         self.resolve(|node| {
             let wrapper = NodeWrapper(&node);
@@ -1132,6 +1147,19 @@ impl PlatformNode {
                 data: Some(ActionData::ScrollToPoint(point)),
             });
             Ok(())
+        })?;
+        Ok(true)
+    }
+
+    pub fn set_text_contents(&self, value: &str) -> Result<bool> {
+        if self.resolve(|node| Ok(node.is_read_only()))? {
+            return Ok(false);
+        }
+        self.do_action_internal(self.id, |_, _, target_node, target_tree| ActionRequest {
+            action: Action::SetValue,
+            target_tree,
+            target_node,
+            data: Some(ActionData::Value(value.into())),
         })?;
         Ok(true)
     }
@@ -1941,4 +1969,86 @@ pub struct CacheNode {
     pub description: String,
     pub role: AtspiRole,
     pub states: StateSet,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{AdapterCallback, Event};
+    use accesskit::{ActionHandler, Node, TreeInfo, TreeUpdate};
+    use std::sync::mpsc::{self, Sender};
+
+    struct NoOpCallback;
+
+    impl AdapterCallback for NoOpCallback {
+        fn register_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
+        fn unregister_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
+        fn emit_event(&self, _: &Adapter, _: Event) {}
+    }
+
+    struct Recorder(Sender<ActionRequest>);
+
+    impl ActionHandler for Recorder {
+        fn do_action(&mut self, request: ActionRequest) {
+            self.0.send(request).unwrap();
+        }
+    }
+
+    #[test]
+    fn editable_text_support_and_dispatch() {
+        let mut input = Node::new(Role::TextInput);
+        input.push_child(NodeId(1));
+        let mut text_run = Node::new(Role::TextRun);
+        text_run.set_value("");
+        text_run.set_character_lengths([]);
+        let (sender, actions) = mpsc::channel();
+        let app_context = AppContext::new(None);
+        let mut adapter = Adapter::new(
+            &app_context,
+            NoOpCallback,
+            TreeUpdate {
+                nodes: vec![(NodeId(0), input.clone()), (NodeId(1), text_run)],
+                tree: Some(TreeInfo::new(NodeId(0))),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(0),
+            },
+            false,
+            WindowBounds::default(),
+            Recorder(sender),
+        );
+        let node = adapter.platform_node(adapter.root_id());
+
+        assert!(node.supports_editable_text().unwrap());
+        assert!(node.interfaces().unwrap().contains(Interface::EditableText));
+        assert!(node.set_text_contents("hello").unwrap());
+
+        input.set_read_only();
+        adapter.update(TreeUpdate {
+            nodes: vec![(NodeId(0), input.clone())],
+            tree: None,
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        });
+        assert!(node.supports_editable_text().unwrap());
+        assert!(!node.set_text_contents("ignored").unwrap());
+
+        input.clear_children();
+        adapter.update(TreeUpdate {
+            nodes: vec![(NodeId(0), input)],
+            tree: None,
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        });
+        assert!(!node.supports_editable_text().unwrap());
+
+        assert_eq!(
+            actions.try_iter().collect::<Vec<_>>(),
+            [ActionRequest {
+                action: Action::SetValue,
+                target_tree: TreeId::ROOT,
+                target_node: NodeId(0),
+                data: Some(ActionData::Value("hello".into())),
+            }]
+        );
+    }
 }
