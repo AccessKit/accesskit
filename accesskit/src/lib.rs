@@ -1126,7 +1126,11 @@ impl Properties {
             self.indices.0[id as usize] = index as u8;
             &mut self.values[index]
         } else {
-            &mut self.values[index]
+            let value = &mut self.values[index];
+            if matches!(value, PropertyValue::None) {
+                *value = default;
+            }
+            value
         }
     }
 
@@ -1372,6 +1376,14 @@ macro_rules! node_id_vec_property_methods {
                 assert_eq!(node.$getter(), &[NodeId(0)]);
                 node.$pusher(NodeId(1));
                 assert_eq!(node.$getter(), &[NodeId(0), NodeId(1)]);
+            }
+            #[test]
+            fn pusher_should_start_a_new_list_after_the_clearer() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter([NodeId(0)]);
+                node.$clearer();
+                node.$pusher(NodeId(1));
+                assert_eq!(node.$getter(), &[NodeId(1)]);
             }
             #[test]
             fn clearer_should_reset_the_property() {
@@ -2627,6 +2639,21 @@ mod custom_actions {
         assert_eq!(node.custom_actions(), slice::from_ref(&first_action));
         node.push_custom_action(second_action.clone());
         assert_eq!(node.custom_actions(), &[first_action, second_action]);
+    }
+    #[test]
+    fn pusher_should_start_a_new_list_after_the_clearer() {
+        let mut node = Node::new(Role::Unknown);
+        node.set_custom_actions([CustomAction {
+            id: 0,
+            description: "first test action".into(),
+        }]);
+        node.clear_custom_actions();
+        let second_action = CustomAction {
+            id: 1,
+            description: "second test action".into(),
+        };
+        node.push_custom_action(second_action.clone());
+        assert_eq!(node.custom_actions(), slice::from_ref(&second_action));
     }
     #[test]
     fn clearer_should_reset_the_property() {
