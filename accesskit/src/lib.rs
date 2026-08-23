@@ -1066,10 +1066,30 @@ impl Default for PropertyIndices {
     }
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default)]
 struct Properties {
     indices: PropertyIndices,
     values: Vec<PropertyValue>,
+}
+
+fn value_at(values: &[PropertyValue], index: u8) -> &PropertyValue {
+    if index == PropertyId::Unset as u8 {
+        &PropertyValue::None
+    } else {
+        &values[index as usize]
+    }
+}
+
+impl PartialEq for Properties {
+    fn eq(&self, other: &Self) -> bool {
+        self.indices
+            .0
+            .iter()
+            .zip(other.indices.0.iter())
+            .all(|(&own, &other_index)| {
+                value_at(&self.values, own) == value_at(&other.values, other_index)
+            })
+    }
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
@@ -1093,12 +1113,7 @@ pub struct Node {
 
 impl PropertyIndices {
     fn get<'a>(&self, values: &'a [PropertyValue], id: PropertyId) -> &'a PropertyValue {
-        let index = self.0[id as usize];
-        if index == PropertyId::Unset as u8 {
-            &PropertyValue::None
-        } else {
-            &values[index as usize]
-        }
+        value_at(values, self.0[id as usize])
     }
 }
 
@@ -3260,6 +3275,30 @@ pub trait DeactivationHandler {
 mod tests {
     use super::*;
     use alloc::format;
+
+    #[test]
+    fn nodes_should_be_equal_regardless_of_the_order_properties_were_set() {
+        let mut node = Node::new(Role::Button);
+        node.set_label("a label");
+        node.set_children([NodeId(1)]);
+        node.set_description("a description");
+
+        let mut reordered = Node::new(Role::Button);
+        reordered.set_description("a description");
+        reordered.set_children([NodeId(1)]);
+        reordered.set_label("a label");
+
+        assert_eq!(node, reordered);
+    }
+
+    #[test]
+    fn cleared_property_should_be_equal_to_one_that_was_never_set() {
+        let mut node = Node::new(Role::Button);
+        node.set_label("a label");
+        node.clear_label();
+
+        assert_eq!(node, Node::new(Role::Button));
+    }
 
     #[test]
     fn clone_from_should_be_equivalent_to_clone() {
