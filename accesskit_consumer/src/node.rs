@@ -982,6 +982,14 @@ impl<'a> NodeRef<'a> {
         self.data().author_id()
     }
 
+    pub fn html_id(&self) -> Option<&str> {
+        self.data().html_id()
+    }
+
+    pub fn has_html_id(&self) -> bool {
+        self.data().html_id().is_some()
+    }
+
     pub fn class_name(&self) -> Option<&str> {
         self.data().class_name()
     }

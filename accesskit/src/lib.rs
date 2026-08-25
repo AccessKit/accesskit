@@ -918,6 +918,7 @@ enum PropertyId {
     AuthorId,
     ClassName,
     FontFamily,
+    HtmlId,
     HtmlTag,
     InnerHtml,
     KeyboardShortcut,
@@ -2082,6 +2083,12 @@ string_property_methods! {
     /// The font family used for this node's text. Only set this when it differs
     /// from the parent.
     (FontFamily, font_family, set_font_family, clear_font_family),
+    /// The ID of the HTML element represented by this node. On platforms
+    /// where both are mapped to the same platform property, this takes
+    /// precedence over [`author_id`].
+    ///
+    /// [`author_id`]: Node::author_id
+    (HtmlId, html_id, set_html_id, clear_html_id),
     /// The name of the HTML element represented by this node.
     (HtmlTag, html_tag, set_html_tag, clear_html_tag),
     /// Inner HTML of an element. Only used for a top-level math element,
@@ -2833,6 +2840,7 @@ impl<'de> Visitor<'de> for PropertiesVisitor {
                     AuthorId,
                     ClassName,
                     FontFamily,
+                    HtmlId,
                     HtmlTag,
                     InnerHtml,
                     KeyboardShortcut,
@@ -2985,6 +2993,7 @@ impl JsonSchema for Properties {
                 AuthorId,
                 ClassName,
                 FontFamily,
+                HtmlId,
                 HtmlTag,
                 InnerHtml,
                 KeyboardShortcut,

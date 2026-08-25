@@ -1086,6 +1086,8 @@ declare_class!(
                     return Some(NSString::from_str(node.braille_label().unwrap()))
                 } else if attr == ns_string!("AXBrailleRoleDescription") && node.has_braille_role_description() {
                     return Some(NSString::from_str(node.braille_role_description().unwrap()))
+                } else if attr == ns_string!("AXDOMIdentifier") && node.has_html_id() {
+                    return Some(NSString::from_str(node.html_id().unwrap()))
                 }
 
                 None
@@ -1280,7 +1282,9 @@ declare_class!(
                     return node.is_dialog();
                 }
                 if selector == sel!(accessibilityAttributeValue:) {
-                    return node.has_braille_label() || node.has_braille_role_description()
+                    return node.has_braille_label()
+                        || node.has_braille_role_description()
+                        || node.has_html_id()
                 }
                 if selector == sel!(accessibilityURL) {
                     return node.supports_url();

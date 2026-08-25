@@ -397,6 +397,10 @@ impl NodeWrapper<'_> {
             .map(|s| s.to_string())
     }
 
+    fn html_id(&self) -> Option<&str> {
+        self.0.html_id()
+    }
+
     fn braille_label(&self) -> Option<&str> {
         self.0.braille_label()
     }
@@ -415,6 +419,9 @@ impl NodeWrapper<'_> {
         }
         if let Some(size_of_set) = self.size_of_set() {
             attributes.insert("setsize", size_of_set);
+        }
+        if let Some(html_id) = self.html_id() {
+            attributes.insert("id", html_id.to_string());
         }
         if let Some(label) = self.braille_label() {
             attributes.insert("braillelabel", label.to_string());
