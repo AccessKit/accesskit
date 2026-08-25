@@ -238,6 +238,20 @@ impl Accessible {
         }
     }
 
+    pub fn supports_editable_text(&self) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.supports_editable_text(),
+            Self::Root(_) => Ok(false),
+        }
+    }
+
+    pub fn set_text_contents(&self, value: &str) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.set_text_contents(value),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
     pub fn supports_hyperlink(&self) -> Result<bool> {
         match self {
             Self::Node(node) => node.supports_hyperlink(),

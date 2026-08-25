@@ -141,6 +141,10 @@ impl Bus {
             )
             .await?;
         }
+        if new_interfaces.contains(Interface::EditableText) {
+            self.register_interface(&path, EditableTextInterface::new(node.clone()))
+                .await?;
+        }
         if new_interfaces.contains(Interface::Hyperlink) {
             self.register_interface(
                 &path,
@@ -198,6 +202,10 @@ impl Bus {
         }
         if old_interfaces.contains(Interface::Component) {
             self.unregister_interface::<ComponentInterface>(&path)
+                .await?;
+        }
+        if old_interfaces.contains(Interface::EditableText) {
+            self.unregister_interface::<EditableTextInterface>(&path)
                 .await?;
         }
         if old_interfaces.contains(Interface::Hyperlink) {

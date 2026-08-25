@@ -445,6 +445,10 @@ impl NodeWrapper<'_> {
         self.0.raw_bounds().is_some() || self.is_root()
     }
 
+    fn supports_editable_text(&self) -> bool {
+        self.0.is_text_input() && self.0.supports_text_ranges()
+    }
+
     fn supports_hyperlink(&self) -> bool {
         self.0.supports_url()
     }
@@ -468,6 +472,9 @@ impl NodeWrapper<'_> {
         }
         if self.supports_component() {
             interfaces.insert(Interface::Component);
+        }
+        if self.supports_editable_text() {
+            interfaces.insert(Interface::EditableText);
         }
         if self.supports_hyperlink() {
             interfaces.insert(Interface::Hyperlink);
@@ -973,6 +980,10 @@ impl PlatformNode {
         })
     }
 
+    pub fn supports_editable_text(&self) -> Result<bool> {
+        self.resolve(|node| Ok(NodeWrapper(&node).supports_editable_text()))
+    }
+
     pub fn supports_hyperlink(&self) -> Result<bool> {
         self.resolve(|node| {
             let wrapper = NodeWrapper(&node);
@@ -1141,6 +1152,23 @@ impl PlatformNode {
             Ok(())
         })?;
         Ok(true)
+    }
+
+    pub fn set_text_contents(&self, value: &str) -> Result<bool> {
+        self.resolve_with_context(|node, tree, context| {
+            if node.is_read_only() {
+                return Ok(false);
+            }
+            let (target_node, target_tree) =
+                tree.state().locate_node(self.id).ok_or(Error::Defunct)?;
+            context.do_action(ActionRequest {
+                action: Action::SetValue,
+                target_tree,
+                target_node,
+                data: Some(ActionData::Value(value.into())),
+            });
+            Ok(true)
+        })
     }
 
     pub fn n_anchors(&self) -> Result<i32> {
