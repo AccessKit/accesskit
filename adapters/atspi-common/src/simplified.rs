@@ -10,8 +10,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    Adapter, CacheEvent, Event as EventEnum, NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot,
-    Property, WindowEvent,
+    Adapter, CacheEvent, DocumentEvent, Event as EventEnum, NodeIdOrRoot, ObjectEvent,
+    PlatformNode, PlatformRoot, Property, WindowEvent,
 };
 
 pub use crate::{
@@ -234,6 +234,27 @@ impl Accessible {
     pub fn scroll_to_point(&self, coord_type: CoordType, x: i32, y: i32) -> Result<bool> {
         match self {
             Self::Node(node) => node.scroll_to_point(coord_type, x, y),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn supports_document(&self) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.supports_document(),
+            Self::Root(_) => Ok(false),
+        }
+    }
+
+    pub fn document_attributes(&self) -> Result<HashMap<&'static str, String>> {
+        match self {
+            Self::Node(node) => node.document_attributes(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn document_attribute_value(&self, name: &str) -> Result<String> {
+        match self {
+            Self::Node(node) => node.document_attribute_value(name),
             Self::Root(_) => Err(Error::UnsupportedInterface),
         }
     }
@@ -775,6 +796,18 @@ impl Event {
                     detail1: 0,
                     detail2: 0,
                     data: Some(EventData::String(name)),
+                }
+            }
+            EventEnum::Document { target, event } => {
+                let kind = match event {
+                    DocumentEvent::LoadComplete => "document:load-complete",
+                };
+                Self {
+                    kind: kind.into(),
+                    source: Accessible::Node(adapter.platform_node(target)),
+                    detail1: 0,
+                    detail2: 0,
+                    data: None,
                 }
             }
             EventEnum::Cache(cache_event) => {

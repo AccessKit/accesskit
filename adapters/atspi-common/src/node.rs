@@ -24,7 +24,7 @@ use std::{
 };
 
 use crate::{
-    Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
+    Action as AtspiAction, DocumentEvent, Error, ObjectEvent, Property, Rect as AtspiRect, Result,
     adapter::Adapter,
     context::{AppContext, Context},
     filters::filter,
@@ -336,6 +336,9 @@ impl NodeWrapper<'_> {
         if atspi_role != AtspiRole::ToggleButton && state.toggled().is_some() {
             atspi_state.insert(State::Checkable);
         }
+        if state.is_busy() {
+            atspi_state.insert(State::Busy);
+        }
         if state.is_modal() {
             atspi_state.insert(State::Modal);
         }
@@ -445,6 +448,29 @@ impl NodeWrapper<'_> {
         self.0.raw_bounds().is_some() || self.is_root()
     }
 
+    fn supports_document(&self) -> bool {
+        matches!(self.0.role(), Role::RootWebArea | Role::PdfRoot)
+    }
+
+    fn document_attributes(&self) -> HashMap<&'static str, String> {
+        let mut attributes = HashMap::new();
+        if let Some(title) = self.0.label() {
+            attributes.insert("title", title);
+        }
+        if let Some(uri) = self.0.url() {
+            attributes.insert("uri", uri.to_string());
+        }
+
+        attributes
+    }
+
+    fn document_attribute_value(&self, name: &str) -> Option<String> {
+        self.document_attributes()
+            .into_iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value)
+    }
+
     fn supports_editable_text(&self) -> bool {
         self.0.is_text_input() && self.0.supports_text_ranges()
     }
@@ -472,6 +498,9 @@ impl NodeWrapper<'_> {
         }
         if self.supports_component() {
             interfaces.insert(Interface::Component);
+        }
+        if self.supports_document() {
+            interfaces.insert(Interface::Document);
         }
         if self.supports_editable_text() {
             interfaces.insert(Interface::EditableText);
@@ -559,6 +588,7 @@ impl NodeWrapper<'_> {
         self.notify_property_changes(adapter, old);
         self.notify_bounds_changes(window_bounds, adapter, old);
         self.notify_children_changes(adapter, old);
+        self.notify_document_changes(adapter, old);
     }
 
     fn notify_state_changes(&self, adapter: &Adapter, old: &NodeWrapper<'_>) {
@@ -638,6 +668,12 @@ impl NodeWrapper<'_> {
             if let Some(extents) = self.extents(window_bounds, CoordType::Window) {
                 adapter.emit_object_event(self.id(), ObjectEvent::BoundsChanged(extents.into()));
             }
+        }
+    }
+
+    fn notify_document_changes(&self, adapter: &Adapter, old: &NodeWrapper<'_>) {
+        if self.supports_document() && old.0.is_busy() && !self.0.is_busy() {
+            adapter.emit_document_event(self.id(), DocumentEvent::LoadComplete);
         }
     }
 
@@ -977,6 +1013,22 @@ impl PlatformNode {
         self.resolve(|node| {
             let wrapper = NodeWrapper(&node);
             Ok(wrapper.supports_component())
+        })
+    }
+
+    pub fn supports_document(&self) -> Result<bool> {
+        self.resolve(|node| Ok(NodeWrapper(&node).supports_document()))
+    }
+
+    pub fn document_attributes(&self) -> Result<HashMap<&'static str, String>> {
+        self.resolve(|node| Ok(NodeWrapper(&node).document_attributes()))
+    }
+
+    pub fn document_attribute_value(&self, name: &str) -> Result<String> {
+        self.resolve(|node| {
+            Ok(NodeWrapper(&node)
+                .document_attribute_value(name)
+                .unwrap_or_default())
         })
     }
 
