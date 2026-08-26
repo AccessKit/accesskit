@@ -1907,36 +1907,70 @@ impl Node {
 }
 
 flag_methods! {
-    /// Exclude this node and its descendants from the tree presented to
-    /// assistive technologies, and from hit testing.
+    /// Whether this node and its descendants are excluded from the tree
+    /// presented to assistive technologies and from hit testing. ARIA
+    /// equivalent: [`aria-hidden`].
+    ///
+    /// **Difference with ARIA:** `aria-hidden` controls exposure to assistive
+    /// technologies, while this property also excludes the node from hit
+    /// testing.
+    ///
+    /// [`aria-hidden`]: https://www.w3.org/TR/wai-aria-1.2/#aria-hidden
     (Hidden, is_hidden, set_hidden, clear_hidden),
+    /// Whether users may select more than one selectable descendant. ARIA
+    /// equivalent: [`aria-multiselectable`].
+    ///
+    /// [`aria-multiselectable`]: https://www.w3.org/TR/wai-aria-1.2/#aria-multiselectable
     (Multiselectable, is_multiselectable, set_multiselectable, clear_multiselectable),
+    /// Whether user input or selection is required on this node. ARIA
+    /// equivalent: [`aria-required`].
+    ///
+    /// [`aria-required`]: https://www.w3.org/TR/wai-aria-1.2/#aria-required
     (Required, is_required, set_required, clear_required),
+    /// Whether this node represents a link that has been visited.
     (Visited, is_visited, set_visited, clear_visited),
+    /// Whether this node is being modified and updates should be withheld until
+    /// it is ready. ARIA equivalent: [`aria-busy`].
+    ///
+    /// [`aria-busy`]: https://www.w3.org/TR/wai-aria-1.2/#aria-busy
     (Busy, is_busy, set_busy, clear_busy),
+    /// Whether updates to this live region should be presented as a whole. ARIA
+    /// equivalent: [`aria-atomic`].
+    ///
+    /// [`aria-atomic`]: https://www.w3.org/TR/wai-aria-1.2/#aria-atomic
     (LiveAtomic, is_live_atomic, set_live_atomic, clear_live_atomic),
-    /// If a dialog box is marked as explicitly modal.
+    /// Whether this dialog is modal. ARIA equivalent: [`aria-modal`].
+    ///
+    /// [`aria-modal`]: https://www.w3.org/TR/wai-aria-1.2/#aria-modal
     (Modal, is_modal, set_modal, clear_modal),
-    /// This element allows touches to be passed through when a screen reader
-    /// is in touch exploration mode, e.g. a virtual keyboard normally
-    /// behaves this way.
+    /// Whether touches pass through this node when a screen reader is in touch
+    /// exploration mode, as they normally do on a virtual keyboard.
     (TouchTransparent, is_touch_transparent, set_touch_transparent, clear_touch_transparent),
-    /// Use for a text widget that allows focus/selection but not input.
+    /// Whether this text widget permits focus and selection but not editing.
+    /// ARIA equivalent: [`aria-readonly`].
+    ///
+    /// [`aria-readonly`]: https://www.w3.org/TR/wai-aria-1.2/#aria-readonly
     (ReadOnly, is_read_only, set_read_only, clear_read_only),
-    /// Use for a control or group of controls that disallows input.
+    /// Whether this control or group of controls is unavailable for interaction.
+    /// ARIA equivalent: [`aria-disabled`].
+    ///
+    /// [`aria-disabled`]: https://www.w3.org/TR/wai-aria-1.2/#aria-disabled
     (Disabled, is_disabled, set_disabled, clear_disabled),
+    /// Whether this node's text is italic.
     (Italic, is_italic, set_italic, clear_italic),
-    /// Indicates that this node clips its children, i.e. may have
-    /// `overflow: hidden` or clip children by default.
+    /// Whether this node clips child content outside its bounds.
     (ClipsChildren, clips_children, set_clips_children, clear_clips_children),
-    /// Indicates whether this node causes a hard line-break
-    /// (e.g. block level elements, or `<br>`).
+    /// Whether this node causes a hard line break.
     (IsLineBreakingObject, is_line_breaking_object, set_is_line_breaking_object, clear_is_line_breaking_object),
-    /// Indicates whether this node causes a page break.
+    /// Whether this node causes a page break.
     (IsPageBreakingObject, is_page_breaking_object, set_is_page_breaking_object, clear_is_page_breaking_object),
+    /// Whether this node's text is marked as a spelling error.
     (IsSpellingError, is_spelling_error, set_is_spelling_error, clear_is_spelling_error),
+    /// Whether this node's text is marked as a grammar error.
     (IsGrammarError, is_grammar_error, set_is_grammar_error, clear_is_grammar_error),
+    /// Whether this node represents text matching the current search.
     (IsSearchMatch, is_search_match, set_is_search_match, clear_is_search_match),
+    /// Whether this node's text is a suggested replacement.
     (IsSuggestion, is_suggestion, set_is_suggestion, clear_is_suggestion)
 }
 
