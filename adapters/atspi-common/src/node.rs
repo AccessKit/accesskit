@@ -455,10 +455,10 @@ impl NodeWrapper<'_> {
     fn document_attributes(&self) -> HashMap<&'static str, String> {
         let mut attributes = HashMap::new();
         if let Some(title) = self.0.label() {
-            attributes.insert("title", title);
+            attributes.insert("Title", title);
         }
         if let Some(uri) = self.0.url() {
-            attributes.insert("uri", uri.to_string());
+            attributes.insert("URI", uri.to_string());
         }
 
         attributes
