@@ -325,6 +325,14 @@ impl NodeWrapper<'_> {
         self.0.label()
     }
 
+    pub(crate) fn label(&self) -> Option<String> {
+        if self.0.label_comes_from_value() {
+            self.0.value()
+        } else {
+            self.0.label()
+        }
+    }
+
     pub(crate) fn description(&self) -> Option<String> {
         self.0.description()
     }

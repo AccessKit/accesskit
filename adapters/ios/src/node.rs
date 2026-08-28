@@ -61,8 +61,12 @@ enum FrameSource {
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a NodeRef<'a>);
 
 impl NodeWrapper<'_> {
-    fn label(&self) -> Option<String> {
-        self.0.label()
+    pub(crate) fn label(&self) -> Option<String> {
+        if self.0.label_comes_from_value() {
+            self.0.value()
+        } else {
+            self.0.label()
+        }
     }
 
     fn hint(&self) -> Option<String> {
@@ -72,6 +76,9 @@ impl NodeWrapper<'_> {
     fn value(&self) -> Option<Value> {
         if let Some(toggled) = self.0.toggled() {
             return Some(Value::Bool(toggled != Toggled::False));
+        }
+        if self.0.label_comes_from_value() {
+            return None;
         }
         if let Some(value) = self.0.value() {
             return Some(Value::String(value));
@@ -568,10 +575,17 @@ mod tests {
     // ---- label ----
 
     #[test]
-    fn label_present() {
+    fn label_when_it_comes_from_label() {
         let mut node = Node::new(Role::Button);
         node.set_label("OK");
         assert_eq!(wrapper_label(&node), Some("OK".into()));
+    }
+
+    #[test]
+    fn label_when_it_comes_from_value() {
+        let mut node = Node::new(Role::Label);
+        node.set_value("Hello");
+        assert_eq!(wrapper_label(&node), Some("Hello".into()));
     }
 
     #[test]
@@ -620,9 +634,16 @@ mod tests {
 
     #[test]
     fn value_text_string() {
-        let mut node = Node::new(Role::Label);
+        let mut node = Node::new(Role::TextInput);
         node.set_value("hello");
         assert_eq!(wrapper_value(&node), Some(Value::String("hello".into())));
+    }
+
+    #[test]
+    fn value_is_none_when_value_is_for_label() {
+        let mut node = Node::new(Role::Label);
+        node.set_value("hello");
+        assert!(wrapper_value(&node).is_none());
     }
 
     #[test]
@@ -643,7 +664,7 @@ mod tests {
 
     #[test]
     fn value_string_over_numeric() {
-        let mut node = Node::new(Role::Label);
+        let mut node = Node::new(Role::ProgressIndicator);
         node.set_value("text");
         node.set_numeric_value(1.0);
         assert_eq!(wrapper_value(&node), Some(Value::String("text".into())));
