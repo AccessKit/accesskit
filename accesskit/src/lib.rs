@@ -2069,13 +2069,28 @@ node_id_vec_property_methods! {
 node_id_property_methods! {
     /// For a composite widget such as a listbox, tree, or grid, identifies
     /// the currently active descendant. Used when focus remains on the container
-    /// while the active item changes.
+    /// while the active item changes. ARIA equivalent: [`aria-activedescendant`].
+    ///
+    /// [`aria-activedescendant`]: https://www.w3.org/TR/wai-aria-1.2/#aria-activedescendant
     (ActiveDescendant, active_descendant, set_active_descendant, clear_active_descendant),
+    /// The node that provides an error message for this node. This should
+    /// normally be used with [`Node::invalid`]. ARIA equivalent:
+    /// [`aria-errormessage`].
+    ///
+    /// [`aria-errormessage`]: https://www.w3.org/TR/wai-aria-1.2/#aria-errormessage
     (ErrorMessage, error_message, set_error_message, clear_error_message),
+    /// The target of this link when it points to another location in the same
+    /// document.
     (InPageLinkTarget, in_page_link_target, set_in_page_link_target, clear_in_page_link_target),
+    /// The group to which this node belongs.
     (MemberOf, member_of, set_member_of, clear_member_of),
+    /// The next text run on the same visual line. The target's
+    /// [`Node::previous_on_line`] should point back to this node.
     (NextOnLine, next_on_line, set_next_on_line, clear_next_on_line),
+    /// The previous text run on the same visual line. The target's
+    /// [`Node::next_on_line`] should point back to this node.
     (PreviousOnLine, previous_on_line, set_previous_on_line, clear_previous_on_line),
+    /// The node for which this node is a popup.
     (PopupFor, popup_for, set_popup_for, clear_popup_for)
 }
 
@@ -2190,16 +2205,38 @@ string_property_methods! {
 }
 
 f64_property_methods! {
+    /// The current horizontal scroll position of this scrollable container.
     (ScrollX, scroll_x, set_scroll_x, clear_scroll_x),
+    /// The minimum horizontal scroll position of this scrollable container.
     (ScrollXMin, scroll_x_min, set_scroll_x_min, clear_scroll_x_min),
+    /// The maximum horizontal scroll position of this scrollable container.
     (ScrollXMax, scroll_x_max, set_scroll_x_max, clear_scroll_x_max),
+    /// The current vertical scroll position of this scrollable container.
     (ScrollY, scroll_y, set_scroll_y, clear_scroll_y),
+    /// The minimum vertical scroll position of this scrollable container.
     (ScrollYMin, scroll_y_min, set_scroll_y_min, clear_scroll_y_min),
+    /// The maximum vertical scroll position of this scrollable container.
     (ScrollYMax, scroll_y_max, set_scroll_y_max, clear_scroll_y_max),
+    /// The current numeric value of this range widget. ARIA equivalent:
+    /// [`aria-valuenow`].
+    ///
+    /// [`aria-valuenow`]: https://www.w3.org/TR/wai-aria-1.2/#aria-valuenow
     (NumericValue, numeric_value, set_numeric_value, clear_numeric_value),
+    /// The minimum allowed numeric value of this range widget. ARIA equivalent:
+    /// [`aria-valuemin`].
+    ///
+    /// [`aria-valuemin`]: https://www.w3.org/TR/wai-aria-1.2/#aria-valuemin
     (MinNumericValue, min_numeric_value, set_min_numeric_value, clear_min_numeric_value),
+    /// The maximum allowed numeric value of this range widget. ARIA equivalent:
+    /// [`aria-valuemax`].
+    ///
+    /// [`aria-valuemax`]: https://www.w3.org/TR/wai-aria-1.2/#aria-valuemax
     (MaxNumericValue, max_numeric_value, set_max_numeric_value, clear_max_numeric_value),
+    /// The amount by which the numeric value changes when incremented or
+    /// decremented by one step.
     (NumericValueStep, numeric_value_step, set_numeric_value_step, clear_numeric_value_step),
+    /// The amount by which the numeric value changes for a large increment or
+    /// decrement.
     (NumericValueJump, numeric_value_jump, set_numeric_value_jump, clear_numeric_value_jump)
 }
 
@@ -2286,8 +2323,11 @@ color_property_methods! {
 }
 
 text_decoration_property_methods! {
+    /// The style and color of the overline applied to this node's text.
     (Overline, overline, set_overline, clear_overline),
+    /// The style and color of the strikethrough applied to this node's text.
     (Strikethrough, strikethrough, set_strikethrough, clear_strikethrough),
+    /// The style and color of the underline applied to this node's text.
     (Underline, underline, set_underline, clear_underline)
 }
 
@@ -2492,6 +2532,7 @@ property_methods! {
     /// [`transform`]: Node::transform
     (Bounds, bounds, get_rect_property, Option<Rect>, set_bounds, set_rect_property, Rect, clear_bounds),
 
+    /// The current text selection or caret position within this node's text.
     (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, impl Into<Box<TextSelection>>, clear_text_selection),
 
     /// The tree that this node grafts. When set, this node acts as a graft
@@ -2636,6 +2677,7 @@ mod tree_id {
 }
 
 vec_property_methods! {
+    /// The application-defined actions supported by this node.
     (CustomActions, CustomAction, custom_actions, get_custom_action_vec, set_custom_actions, set_custom_action_vec, push_custom_action, push_to_custom_action_vec, clear_custom_actions)
 }
 
