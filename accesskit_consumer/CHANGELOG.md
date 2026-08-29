@@ -24,6 +24,30 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.39.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.38.0...accesskit_consumer-v0.39.0) (2026-08-29)
+
+
+### Features
+
+* Add html_id node property ([#776](https://github.com/AccessKit/accesskit/issues/776)) ([5332ac0](https://github.com/AccessKit/accesskit/commit/5332ac0927b7fb78eff6b8b68c21ef4c801aae7c))
+
+
+### Bug Fixes
+
+* Update host focus state without rewriting the tree's focus ([#768](https://github.com/AccessKit/accesskit/issues/768)) ([5626dc8](https://github.com/AccessKit/accesskit/commit/5626dc8bc628878413d2c0d0014e45509fa8d536))
+
+
+### Performance Improvements
+
+* Avoid redundant node copies when applying tree updates ([2dfdd7b](https://github.com/AccessKit/accesskit/commit/2dfdd7b92e68edd4276841a5061f31ffc77e718b))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.24.1 to 0.25.0
+
 ## [0.38.0](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.37.0...accesskit_consumer-v0.38.0) (2026-07-14)
 
 

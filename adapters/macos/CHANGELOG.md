@@ -37,6 +37,28 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.27.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.26.3...accesskit_macos-v0.27.0) (2026-08-29)
+
+
+### Features
+
+* Add html_id node property ([#776](https://github.com/AccessKit/accesskit/issues/776)) ([5332ac0](https://github.com/AccessKit/accesskit/commit/5332ac0927b7fb78eff6b8b68c21ef4c801aae7c))
+
+
+### Bug Fixes
+
+* Improve macOS subrole mapping ([#775](https://github.com/AccessKit/accesskit/issues/775)) ([04b3513](https://github.com/AccessKit/accesskit/commit/04b351345825a8de5325c9b391696411d0c7207b))
+* Label via accessibilityValue for some roles on macOS ([#756](https://github.com/AccessKit/accesskit/issues/756)) ([cc49415](https://github.com/AccessKit/accesskit/commit/cc49415fa144d365af2337e869f86b953cfc239d))
+* Support live updates for non-label nodes on macOS and iOS ([#782](https://github.com/AccessKit/accesskit/issues/782)) ([e6ae72f](https://github.com/AccessKit/accesskit/commit/e6ae72f38ba06f082fac951726cf330c52566c83))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.24.1 to 0.25.0
+    * accesskit_consumer bumped from 0.38.0 to 0.39.0
+
 ## [0.26.3](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.26.2...accesskit_macos-v0.26.3) (2026-07-14)
 
 
