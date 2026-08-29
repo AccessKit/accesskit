@@ -20,7 +20,7 @@ checksum = "c71b1793ee61086797f5c80b6efa2b8ffa6d5dd703f118545808a7f2e27f7046"
 
 [[package]]
 name = "accesskit"
-version = "0.24.1"
+version = "0.25.0"
 dependencies = [
  "enumn",
  "pyo3",
@@ -32,7 +32,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_android"
-version = "0.7.5"
+version = "0.8.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -42,7 +42,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_atspi_common"
-version = "0.19.1"
+version = "0.20.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -54,7 +54,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_consumer"
-version = "0.38.0"
+version = "0.39.0"
 dependencies = [
  "accesskit",
  "hashbrown",
@@ -62,7 +62,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_ios"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -74,7 +74,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_macos"
-version = "0.26.3"
+version = "0.27.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -86,7 +86,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_unix"
-version = "0.22.1"
+version = "0.23.0"
 dependencies = [
  "accesskit",
  "accesskit_atspi_common",
@@ -104,7 +104,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_windows"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -119,7 +119,7 @@ dependencies = [
 
 [[package]]
 name = "accesskit_winit"
-version = "0.33.2"
+version = "0.34.0"
 dependencies = [
  "accesskit",
  "accesskit_android",

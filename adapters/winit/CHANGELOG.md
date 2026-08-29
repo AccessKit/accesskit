@@ -147,6 +147,25 @@
     * accesskit_macos bumped from 0.18.0 to 0.18.1
     * accesskit_unix bumped from 0.13.0 to 0.13.1
 
+## [0.34.0](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.33.2...accesskit_winit-v0.34.0) (2026-08-29)
+
+
+### Features
+
+* Add html_id node property ([#776](https://github.com/AccessKit/accesskit/issues/776)) ([5332ac0](https://github.com/AccessKit/accesskit/commit/5332ac0927b7fb78eff6b8b68c21ef4c801aae7c))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.24.1 to 0.25.0
+    * accesskit_windows bumped from 0.34.0 to 0.35.0
+    * accesskit_macos bumped from 0.26.3 to 0.27.0
+    * accesskit_unix bumped from 0.22.1 to 0.23.0
+    * accesskit_android bumped from 0.7.5 to 0.8.0
+    * accesskit_ios bumped from 0.1.2 to 0.2.0
+
 ## [0.33.2](https://github.com/AccessKit/accesskit/compare/accesskit_winit-v0.33.1...accesskit_winit-v0.33.2) (2026-07-14)
 
 

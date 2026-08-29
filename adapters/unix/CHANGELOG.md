@@ -68,6 +68,23 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_atspi_common bumped from 0.10.0 to 0.10.1
 
+## [0.23.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.22.1...accesskit_unix-v0.23.0) (2026-08-29)
+
+
+### Features
+
+* Add html_id node property ([#776](https://github.com/AccessKit/accesskit/issues/776)) ([5332ac0](https://github.com/AccessKit/accesskit/commit/5332ac0927b7fb78eff6b8b68c21ef4c801aae7c))
+* Support the Document interface on Unix ([#780](https://github.com/AccessKit/accesskit/issues/780)) ([58412b8](https://github.com/AccessKit/accesskit/commit/58412b89d64a00b2f79563c2ae8dc6b9e06cb68e))
+* Support the EditableText interface on Unix ([#779](https://github.com/AccessKit/accesskit/issues/779)) ([df0a19b](https://github.com/AccessKit/accesskit/commit/df0a19bab9125026ce2c2f6ac0f464909626563d))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.24.1 to 0.25.0
+    * accesskit_atspi_common bumped from 0.19.1 to 0.20.0
+
 ## [0.22.1](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.22.0...accesskit_unix-v0.22.1) (2026-07-14)
 
 
