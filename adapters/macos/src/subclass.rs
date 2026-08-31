@@ -254,6 +254,17 @@ impl SubclassingAdapter {
         let mut state = self.associated.ivars().state.borrow_mut();
         state.adapter.update_view_focus_state(is_focused)
     }
+
+    /// Re-post a focus notification so that VoiceOver re-reads the focused
+    /// element's frame; see [`Adapter::scroll_settled_event`].
+    ///
+    /// If a [`QueuedEvents`] instance is returned, the caller must call
+    /// [`QueuedEvents::raise`] on it. The internal borrow taken here is
+    /// released before this method returns.
+    pub fn scroll_settled_event(&self) -> Option<QueuedEvents> {
+        let state = self.associated.ivars().state.borrow();
+        state.adapter.scroll_settled_event()
+    }
 }
 
 impl Drop for SubclassingAdapter {
