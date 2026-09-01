@@ -8,6 +8,7 @@ categories.workspace = true
 keywords = ["gui", "ui", "accessibility"]
 repository.workspace = true
 readme = "README.md"
+exclude = ["examples"]
 edition.workspace = true
 rust-version.workspace = true
 
@@ -38,6 +39,8 @@ features = [
 ]
 
 [dev-dependencies]
+example_common = { path = "../../example_common" }
 parking_lot = "0.12.4"
+raw-window-handle = "0.6.2"
 scopeguard = "1.1.0"
 winit = "0.30"
