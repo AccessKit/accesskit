@@ -24,6 +24,13 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_consumer bumped from 0.25.0 to 0.26.0
 
+## [0.20.1](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.20.0...accesskit_atspi_common-v0.20.1) (2026-09-01)
+
+
+### Bug Fixes
+
+* Expose non-disabled nodes as enabled and sensitive on Unix ([#788](https://github.com/AccessKit/accesskit/issues/788)) ([6ee0558](https://github.com/AccessKit/accesskit/commit/6ee0558b6315b3ef1594db24ce45a030ecac7cb5))
+
 ## [0.20.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.19.1...accesskit_atspi_common-v0.20.0) (2026-08-29)
 
 
