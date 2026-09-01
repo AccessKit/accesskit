@@ -373,10 +373,12 @@ impl NodeWrapper<'_> {
             _ => {}
         }
 
-        if state.is_read_only_supported() && state.is_read_only_or_disabled() {
-            atspi_state.insert(State::ReadOnly);
-        } else {
-            atspi_state.insert(State::Enabled | State::Sensitive);
+        if !state.is_disabled() {
+            if state.is_read_only_supported() && state.is_read_only() {
+                atspi_state.insert(State::ReadOnly);
+            } else {
+                atspi_state.insert(State::Enabled | State::Sensitive);
+            }
         }
 
         if self.is_focused() {
