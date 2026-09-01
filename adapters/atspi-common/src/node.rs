@@ -375,7 +375,12 @@ impl NodeWrapper<'_> {
 
         if state.is_read_only_supported() && state.is_read_only_or_disabled() {
             atspi_state.insert(State::ReadOnly);
-        } else {
+        }
+
+        // `Enabled` and `Sensitive` track the disabled flag, not the read-only
+        // branch above. A read-only control is still enabled, and a disabled
+        // control is not, whether or not its role supports read-only.
+        if !state.is_disabled() {
             atspi_state.insert(State::Enabled | State::Sensitive);
         }
 
@@ -2028,4 +2033,71 @@ pub struct CacheNode {
     pub description: String,
     pub role: AtspiRole,
     pub states: StateSet,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::NodeWrapper;
+    use accesskit::{Node, NodeId, Role, TreeId, TreeInfo, TreeUpdate};
+    use accesskit_consumer::Tree;
+    use atspi_common::{State, StateSet};
+
+    fn state_of(node: Node) -> StateSet {
+        let mut root = Node::new(Role::Window);
+        root.set_children(vec![NodeId(1)]);
+        let tree = Tree::new(
+            TreeUpdate {
+                nodes: vec![(NodeId(0), root), (NodeId(1), node)],
+                tree: Some(TreeInfo::new(NodeId(0))),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(0),
+            },
+            true,
+        );
+        let state = tree.state();
+        let node = state.root().children().next().unwrap();
+        NodeWrapper(&node).state(true)
+    }
+
+    #[test]
+    fn disabled_node_is_neither_enabled_nor_sensitive() {
+        // A role that doesn't support read-only, so the read-only branch
+        // can't stand in for the disabled flag.
+        for role in [Role::Button, Role::Link, Role::MenuItem, Role::Tab] {
+            let mut node = Node::new(role);
+            node.set_disabled();
+            let state = state_of(node);
+            assert!(!state.contains(State::Enabled), "{role:?}");
+            assert!(!state.contains(State::Sensitive), "{role:?}");
+        }
+    }
+
+    #[test]
+    fn enabled_node_is_enabled_and_sensitive() {
+        for role in [Role::Button, Role::Link, Role::MenuItem, Role::Tab] {
+            let state = state_of(Node::new(role));
+            assert!(state.contains(State::Enabled), "{role:?}");
+            assert!(state.contains(State::Sensitive), "{role:?}");
+        }
+    }
+
+    #[test]
+    fn read_only_text_input_is_still_enabled_and_sensitive() {
+        let mut node = Node::new(Role::TextInput);
+        node.set_read_only();
+        let state = state_of(node);
+        assert!(state.contains(State::ReadOnly));
+        assert!(state.contains(State::Enabled));
+        assert!(state.contains(State::Sensitive));
+    }
+
+    #[test]
+    fn disabled_text_input_is_read_only_and_not_enabled() {
+        let mut node = Node::new(Role::TextInput);
+        node.set_disabled();
+        let state = state_of(node);
+        assert!(state.contains(State::ReadOnly));
+        assert!(!state.contains(State::Enabled));
+        assert!(!state.contains(State::Sensitive));
+    }
 }
