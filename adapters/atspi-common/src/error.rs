@@ -5,7 +5,7 @@
 
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Error {
     Defunct,
     UnsupportedInterface,

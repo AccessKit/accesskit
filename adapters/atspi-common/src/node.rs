@@ -485,6 +485,14 @@ impl NodeWrapper<'_> {
         self.0.is_container_with_selectable_children()
     }
 
+    fn supports_table(&self) -> bool {
+        matches!(self.0.role(), Role::Table | Role::Grid | Role::ListGrid)
+    }
+
+    fn supports_table_cell(&self) -> bool {
+        matches!(self.0.role(), Role::Cell | Role::GridCell)
+    }
+
     fn supports_text(&self) -> bool {
         self.0.supports_text_ranges()
     }
@@ -512,6 +520,12 @@ impl NodeWrapper<'_> {
         }
         if self.supports_selection() {
             interfaces.insert(Interface::Selection);
+        }
+        if self.supports_table() {
+            interfaces.insert(Interface::Table);
+        }
+        if self.supports_table_cell() {
+            interfaces.insert(Interface::TableCell);
         }
         if self.supports_text() {
             interfaces.insert(Interface::Text);
@@ -777,6 +791,41 @@ impl PlatformNode {
             let wrapper = NodeWrapper(&node);
             if wrapper.supports_text() {
                 f(node, tree, context)
+            } else {
+                Err(Error::UnsupportedInterface)
+            }
+        })
+    }
+
+    fn resolve_for_table_with_context<F, T>(&self, f: F) -> Result<T>
+    where
+        for<'a> F: FnOnce(NodeRef<'a>, &'a Tree, &Context) -> Result<T>,
+    {
+        self.resolve_with_context(|node, tree, context| {
+            let wrapper = NodeWrapper(&node);
+            if wrapper.supports_table() {
+                f(node, tree, context)
+            } else {
+                Err(Error::UnsupportedInterface)
+            }
+        })
+    }
+
+    fn resolve_for_table<F, T>(&self, f: F) -> Result<T>
+    where
+        for<'a> F: FnOnce(NodeRef<'a>) -> Result<T>,
+    {
+        self.resolve_for_table_with_context(|node, _, _| f(node))
+    }
+
+    fn resolve_for_table_cell<F, T>(&self, f: F) -> Result<T>
+    where
+        for<'a> F: FnOnce(NodeRef<'a>) -> Result<T>,
+    {
+        self.resolve(|node| {
+            let wrapper = NodeWrapper(&node);
+            if wrapper.supports_table_cell() {
+                f(node)
             } else {
                 Err(Error::UnsupportedInterface)
             }
@@ -1378,6 +1427,425 @@ impl PlatformNode {
                 Err(Error::Defunct)
             }
         })
+    }
+
+    pub fn table_row_count(&self) -> Result<i32> {
+        self.resolve_for_table(|node| {
+            i32::try_from(table_grid(&node).len()).map_err(|_| Error::TooManyChildren)
+        })
+    }
+
+    pub fn table_column_count(&self) -> Result<i32> {
+        self.resolve_for_table(|node| {
+            i32::try_from(table_column_count(&table_grid(&node)))
+                .map_err(|_| Error::TooManyChildren)
+        })
+    }
+
+    pub fn table_caption(&self) -> Result<Option<FullNodeId>> {
+        self.resolve_for_table(|node| {
+            Ok(node
+                .filtered_children(filter)
+                .find(|child| child.role() == Role::Caption)
+                .map(|child| child.id()))
+        })
+    }
+
+    pub fn table_summary(&self) -> Result<String> {
+        self.resolve_for_table(|node| {
+            let wrapper = NodeWrapper(&node);
+            Ok(wrapper.description().unwrap_or_default())
+        })
+    }
+
+    pub fn table_accessible_at(&self, row: i32, column: i32) -> Result<Option<FullNodeId>> {
+        self.resolve_for_table(|node| {
+            let (Ok(row), Ok(column)) = (usize::try_from(row), usize::try_from(column)) else {
+                return Ok(None);
+            };
+            Ok(table_grid_cell(&table_grid(&node), row, column).map(|cell| cell.id()))
+        })
+    }
+
+    pub fn table_index_at(&self, row: i32, column: i32) -> Result<i32> {
+        self.resolve_for_table(|node| {
+            let (Ok(row), Ok(column)) = (usize::try_from(row), usize::try_from(column)) else {
+                return Ok(-1);
+            };
+            let grid = table_grid(&node);
+            let columns = table_column_count(&grid);
+            if columns == 0 || table_grid_cell(&grid, row, column).is_none() {
+                return Ok(-1);
+            }
+            i32::try_from(row * columns + column).map_err(|_| Error::TooManyChildren)
+        })
+    }
+
+    pub fn table_row_at_index(&self, index: i32) -> Result<i32> {
+        self.resolve_for_table(|node| {
+            let Ok(index) = usize::try_from(index) else {
+                return Ok(-1);
+            };
+            let grid = table_grid(&node);
+            let columns = table_column_count(&grid);
+            if columns == 0 {
+                return Ok(-1);
+            }
+            let row = index / columns;
+            if row >= grid.len() {
+                return Ok(-1);
+            }
+            i32::try_from(row).map_err(|_| Error::TooManyChildren)
+        })
+    }
+
+    pub fn table_column_at_index(&self, index: i32) -> Result<i32> {
+        self.resolve_for_table(|node| {
+            let Ok(index) = usize::try_from(index) else {
+                return Ok(-1);
+            };
+            let grid = table_grid(&node);
+            let columns = table_column_count(&grid);
+            if columns == 0 {
+                return Ok(-1);
+            }
+            let row = index / columns;
+            if row >= grid.len() {
+                return Ok(-1);
+            }
+            i32::try_from(index % columns).map_err(|_| Error::TooManyChildren)
+        })
+    }
+
+    pub fn table_row_description(&self, row: i32) -> Result<String> {
+        self.resolve_for_table(|node| {
+            let Ok(row) = usize::try_from(row) else {
+                return Ok(String::new());
+            };
+            let grid = table_grid(&node);
+            Ok(table_row_cells(&grid, row)
+                .find(|cell| cell.role() == Role::RowHeader)
+                .and_then(|cell| cell.label())
+                .unwrap_or_default())
+        })
+    }
+
+    pub fn table_column_description(&self, column: i32) -> Result<String> {
+        self.resolve_for_table(|node| {
+            let Ok(column) = usize::try_from(column) else {
+                return Ok(String::new());
+            };
+            let grid = table_grid(&node);
+            Ok(table_column_cells(&grid, column)
+                .find(|cell| cell.role() == Role::ColumnHeader)
+                .and_then(|cell| cell.label())
+                .unwrap_or_default())
+        })
+    }
+
+    pub fn table_row_extent_at(&self, row: i32, column: i32) -> Result<i32> {
+        self.resolve_for_table(|node| {
+            let (Ok(row), Ok(column)) = (usize::try_from(row), usize::try_from(column)) else {
+                return Ok(1);
+            };
+            let span = table_grid_cell(&table_grid(&node), row, column)
+                .and_then(|cell| cell.data().row_span())
+                .unwrap_or(1);
+            i32::try_from(span).map_err(|_| Error::TooManyChildren)
+        })
+    }
+
+    pub fn table_column_extent_at(&self, row: i32, column: i32) -> Result<i32> {
+        self.resolve_for_table(|node| {
+            let (Ok(row), Ok(column)) = (usize::try_from(row), usize::try_from(column)) else {
+                return Ok(1);
+            };
+            let span = table_grid_cell(&table_grid(&node), row, column)
+                .and_then(|cell| cell.data().column_span())
+                .unwrap_or(1);
+            i32::try_from(span).map_err(|_| Error::TooManyChildren)
+        })
+    }
+
+    pub fn table_row_header(&self, row: i32) -> Result<Option<FullNodeId>> {
+        self.resolve_for_table(|node| {
+            let Ok(row) = usize::try_from(row) else {
+                return Ok(None);
+            };
+            let grid = table_grid(&node);
+            Ok(table_row_cells(&grid, row)
+                .find(|cell| cell.role() == Role::RowHeader)
+                .map(|cell| cell.id()))
+        })
+    }
+
+    pub fn table_column_header(&self, column: i32) -> Result<Option<FullNodeId>> {
+        self.resolve_for_table(|node| {
+            let Ok(column) = usize::try_from(column) else {
+                return Ok(None);
+            };
+            let grid = table_grid(&node);
+            Ok(table_column_cells(&grid, column)
+                .find(|cell| cell.role() == Role::ColumnHeader)
+                .map(|cell| cell.id()))
+        })
+    }
+
+    pub fn table_is_selected(&self, row: i32, column: i32) -> Result<bool> {
+        self.resolve_for_table(|node| {
+            let (Ok(row), Ok(column)) = (usize::try_from(row), usize::try_from(column)) else {
+                return Ok(false);
+            };
+            Ok(table_grid_cell(&table_grid(&node), row, column)
+                .and_then(|cell| cell.is_selected())
+                .unwrap_or(false))
+        })
+    }
+
+    pub fn table_is_row_selected(&self, row: i32) -> Result<bool> {
+        self.resolve_for_table(|node| {
+            let Ok(row) = usize::try_from(row) else {
+                return Ok(false);
+            };
+            Ok(table_row_is_selected(&table_grid(&node), row))
+        })
+    }
+
+    pub fn table_is_column_selected(&self, column: i32) -> Result<bool> {
+        self.resolve_for_table(|node| {
+            let Ok(column) = usize::try_from(column) else {
+                return Ok(false);
+            };
+            Ok(table_column_is_selected(&table_grid(&node), column))
+        })
+    }
+
+    pub fn table_selected_rows(&self) -> Result<Vec<i32>> {
+        self.resolve_for_table(|node| {
+            let grid = table_grid(&node);
+            (0..grid.len())
+                .filter(|&row| table_row_is_selected(&grid, row))
+                .map(|row| i32::try_from(row).map_err(|_| Error::TooManyChildren))
+                .collect()
+        })
+    }
+
+    pub fn table_selected_columns(&self) -> Result<Vec<i32>> {
+        self.resolve_for_table(|node| {
+            let grid = table_grid(&node);
+            let columns = table_column_count(&grid);
+            (0..columns)
+                .filter(|&column| table_column_is_selected(&grid, column))
+                .map(|column| i32::try_from(column).map_err(|_| Error::TooManyChildren))
+                .collect()
+        })
+    }
+
+    pub fn table_n_selected_rows(&self) -> Result<i32> {
+        i32::try_from(self.table_selected_rows()?.len()).map_err(|_| Error::TooManyChildren)
+    }
+
+    pub fn table_n_selected_columns(&self) -> Result<i32> {
+        i32::try_from(self.table_selected_columns()?.len()).map_err(|_| Error::TooManyChildren)
+    }
+
+    pub fn table_row_column_extents_at_index(
+        &self,
+        index: i32,
+    ) -> Result<(bool, i32, i32, i32, i32, bool)> {
+        self.resolve_for_table(|node| {
+            let Ok(index) = usize::try_from(index) else {
+                return Ok((false, -1, -1, 0, 0, false));
+            };
+            let grid = table_grid(&node);
+            let columns = table_column_count(&grid);
+            if columns == 0 {
+                return Ok((false, -1, -1, 0, 0, false));
+            }
+            let row = index / columns;
+            let column = index % columns;
+            let Some(cell) = table_grid_cell(&grid, row, column) else {
+                return Ok((false, -1, -1, 0, 0, false));
+            };
+            let row_span = cell.data().row_span().unwrap_or(1);
+            let column_span = cell.data().column_span().unwrap_or(1);
+            Ok((
+                true,
+                i32::try_from(row).map_err(|_| Error::TooManyChildren)?,
+                i32::try_from(column).map_err(|_| Error::TooManyChildren)?,
+                i32::try_from(row_span).map_err(|_| Error::TooManyChildren)?,
+                i32::try_from(column_span).map_err(|_| Error::TooManyChildren)?,
+                cell.is_selected().unwrap_or(false),
+            ))
+        })
+    }
+
+    /// Clicks every unselected, selectable cell in `row`.
+    pub fn table_add_row_selection(&self, row: i32) -> Result<bool> {
+        self.resolve_for_table_with_context(|node, tree, context| {
+            let Ok(row) = usize::try_from(row) else {
+                return Ok(false);
+            };
+            let grid = table_grid(&node);
+            let Some(cells) = grid.get(row) else {
+                return Ok(false);
+            };
+            let mut changed = false;
+            for cell in cells
+                .iter()
+                .flatten()
+                .filter(|cell| matches!(cell.role(), Role::Cell | Role::GridCell))
+            {
+                match cell.is_selected() {
+                    Some(true) => changed = true,
+                    _ if cell.is_selectable() && cell.is_clickable(&filter) => {
+                        let (target_node, target_tree) =
+                            tree.state().locate_node(cell.id()).ok_or(Error::Defunct)?;
+                        context.do_action(ActionRequest {
+                            action: Action::Click,
+                            target_tree,
+                            target_node,
+                            data: None,
+                        });
+                        changed = true;
+                    }
+                    _ => {}
+                }
+            }
+            Ok(changed)
+        })
+    }
+
+    pub fn table_remove_row_selection(&self, row: i32) -> Result<bool> {
+        self.resolve_for_table_with_context(|node, tree, context| {
+            let Ok(row) = usize::try_from(row) else {
+                return Ok(false);
+            };
+            let grid = table_grid(&node);
+            let Some(cells) = grid.get(row) else {
+                return Ok(false);
+            };
+            let mut changed = false;
+            for cell in cells
+                .iter()
+                .flatten()
+                .filter(|cell| matches!(cell.role(), Role::Cell | Role::GridCell))
+            {
+                if cell.is_selected() == Some(true) && cell.is_clickable(&filter) {
+                    let (target_node, target_tree) =
+                        tree.state().locate_node(cell.id()).ok_or(Error::Defunct)?;
+                    context.do_action(ActionRequest {
+                        action: Action::Click,
+                        target_tree,
+                        target_node,
+                        data: None,
+                    });
+                    changed = true;
+                }
+            }
+            Ok(changed)
+        })
+    }
+
+    pub fn table_add_column_selection(&self, column: i32) -> Result<bool> {
+        self.resolve_for_table_with_context(|node, tree, context| {
+            let Ok(column) = usize::try_from(column) else {
+                return Ok(false);
+            };
+            let grid = table_grid(&node);
+            if column >= table_column_count(&grid) {
+                return Ok(false);
+            }
+            let mut changed = false;
+            for cell in table_column_cells(&grid, column)
+                .filter(|cell| matches!(cell.role(), Role::Cell | Role::GridCell))
+            {
+                match cell.is_selected() {
+                    Some(true) => changed = true,
+                    _ if cell.is_selectable() && cell.is_clickable(&filter) => {
+                        let (target_node, target_tree) =
+                            tree.state().locate_node(cell.id()).ok_or(Error::Defunct)?;
+                        context.do_action(ActionRequest {
+                            action: Action::Click,
+                            target_tree,
+                            target_node,
+                            data: None,
+                        });
+                        changed = true;
+                    }
+                    _ => {}
+                }
+            }
+            Ok(changed)
+        })
+    }
+
+    pub fn table_remove_column_selection(&self, column: i32) -> Result<bool> {
+        self.resolve_for_table_with_context(|node, tree, context| {
+            let Ok(column) = usize::try_from(column) else {
+                return Ok(false);
+            };
+            let grid = table_grid(&node);
+            if column >= table_column_count(&grid) {
+                return Ok(false);
+            }
+            let mut changed = false;
+            for cell in table_column_cells(&grid, column)
+                .filter(|cell| matches!(cell.role(), Role::Cell | Role::GridCell))
+            {
+                if cell.is_selected() == Some(true) && cell.is_clickable(&filter) {
+                    let (target_node, target_tree) =
+                        tree.state().locate_node(cell.id()).ok_or(Error::Defunct)?;
+                    context.do_action(ActionRequest {
+                        action: Action::Click,
+                        target_tree,
+                        target_node,
+                        data: None,
+                    });
+                    changed = true;
+                }
+            }
+            Ok(changed)
+        })
+    }
+
+    pub fn table_cell_position(&self) -> Result<(i32, i32)> {
+        self.resolve_for_table_cell(|node| {
+            let Some(table) = find_table_ancestor(&node) else {
+                return Ok((-1, -1));
+            };
+            let Some((row, column)) = find_cell_position(&table_grid(&table), node.id()) else {
+                return Ok((-1, -1));
+            };
+            Ok((
+                i32::try_from(row).map_err(|_| Error::TooManyChildren)?,
+                i32::try_from(column).map_err(|_| Error::TooManyChildren)?,
+            ))
+        })
+    }
+
+    pub fn table_cell_row_column_span(&self) -> Result<(bool, i32, i32, i32, i32)> {
+        self.resolve_for_table_cell(|node| {
+            let Some(table) = find_table_ancestor(&node) else {
+                return Ok((false, -1, -1, 0, 0));
+            };
+            let Some((row, column)) = find_cell_position(&table_grid(&table), node.id()) else {
+                return Ok((false, -1, -1, 0, 0));
+            };
+            let row_span = node.data().row_span().unwrap_or(1);
+            let column_span = node.data().column_span().unwrap_or(1);
+            Ok((
+                true,
+                i32::try_from(row).map_err(|_| Error::TooManyChildren)?,
+                i32::try_from(column).map_err(|_| Error::TooManyChildren)?,
+                i32::try_from(row_span).map_err(|_| Error::TooManyChildren)?,
+                i32::try_from(column_span).map_err(|_| Error::TooManyChildren)?,
+            ))
+        })
+    }
+
+    pub fn table_cell_table(&self) -> Result<Option<FullNodeId>> {
+        self.resolve_for_table_cell(|node| Ok(find_table_ancestor(&node).map(|table| table.id())))
     }
 
     pub fn character_count(&self) -> Result<i32> {
@@ -2030,4 +2498,193 @@ pub struct CacheNode {
     pub description: String,
     pub role: AtspiRole,
     pub states: StateSet,
+}
+
+#[cfg(test)]
+mod table_tests {
+    use super::*;
+    use crate::{AdapterCallback, Event, adapter::Adapter, context::AppContext};
+    use accesskit::{ActionHandler, Node, TreeInfo, TreeUpdate};
+    use std::sync::{Arc, Mutex};
+
+    const WINDOW: NodeId = NodeId(0);
+    const TABLE: NodeId = NodeId(1);
+    const HEADER_ROW: NodeId = NodeId(2);
+    const NAME_HEADER: NodeId = NodeId(3);
+    const STATUS_HEADER: NodeId = NodeId(4);
+    const DATA_ROW: NodeId = NodeId(5);
+    const CELL_A: NodeId = NodeId(6);
+    const CELL_DONE: NodeId = NodeId(7);
+
+    struct NoOpCallback;
+
+    impl AdapterCallback for NoOpCallback {
+        fn register_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
+        fn unregister_interfaces(&self, _: &Adapter, _: FullNodeId, _: InterfaceSet) {}
+        fn emit_event(&self, _: &Adapter, _: Event) {}
+    }
+
+    struct CapturingActionHandler {
+        requests: Arc<Mutex<Vec<ActionRequest>>>,
+    }
+
+    impl ActionHandler for CapturingActionHandler {
+        fn do_action(&mut self, request: ActionRequest) {
+            self.requests.lock().unwrap().push(request);
+        }
+    }
+
+    fn with_children(role: Role, children: &[NodeId]) -> Node {
+        let mut node = Node::new(role);
+        node.set_children(children.to_vec());
+        node
+    }
+
+    fn build_table_tree() -> (Adapter, Arc<Mutex<Vec<ActionRequest>>>) {
+        let requests = Arc::new(Mutex::new(Vec::new()));
+        let app_context = AppContext::new(None);
+
+        let mut name_header = Node::new(Role::ColumnHeader);
+        name_header.set_label("Name");
+        let mut status_header = Node::new(Role::ColumnHeader);
+        status_header.set_label("Status");
+
+        let mut cell_a = Node::new(Role::Cell);
+        cell_a.set_label("a");
+        cell_a.set_selected(false);
+        cell_a.add_action(Action::Click);
+        let mut cell_done = Node::new(Role::Cell);
+        cell_done.set_label("done");
+        cell_done.set_selected(true);
+        cell_done.add_action(Action::Click);
+
+        let initial = TreeUpdate {
+            nodes: vec![
+                (WINDOW, with_children(Role::Window, &[TABLE])),
+                (TABLE, with_children(Role::Table, &[HEADER_ROW, DATA_ROW])),
+                (
+                    HEADER_ROW,
+                    with_children(Role::Row, &[NAME_HEADER, STATUS_HEADER]),
+                ),
+                (NAME_HEADER, name_header),
+                (STATUS_HEADER, status_header),
+                (DATA_ROW, with_children(Role::Row, &[CELL_A, CELL_DONE])),
+                (CELL_A, cell_a),
+                (CELL_DONE, cell_done),
+            ],
+            tree: Some(TreeInfo::new(WINDOW)),
+            tree_id: TreeId::ROOT,
+            focus: WINDOW,
+        };
+        let adapter = Adapter::new(
+            &app_context,
+            NoOpCallback,
+            initial,
+            false,
+            WindowBounds::default(),
+            CapturingActionHandler {
+                requests: requests.clone(),
+            },
+        );
+        (adapter, requests)
+    }
+
+    /// Walks from the tree root through `filtered_children` indices, e.g.
+    /// `&[0, 1]` is the table's second header/data row's... first child.
+    /// `child_at_index` (public on `PlatformNode`) is the only way to get a
+    /// `FullNodeId` for a test-built tree from outside `accesskit_consumer`.
+    fn node_at(adapter: &Adapter, path: &[usize]) -> PlatformNode {
+        let mut id = adapter.root_id();
+        for &index in path {
+            id = adapter
+                .platform_node(id)
+                .child_at_index(index)
+                .unwrap()
+                .unwrap();
+        }
+        adapter.platform_node(id)
+    }
+
+    #[test]
+    fn table_row_and_column_counts_match_live_children() {
+        let (adapter, _) = build_table_tree();
+        let table = node_at(&adapter, &[0]);
+        assert_eq!(table.table_row_count(), Ok(2));
+        assert_eq!(table.table_column_count(), Ok(2));
+    }
+
+    #[test]
+    fn only_table_like_roles_support_the_table_interface() {
+        let (adapter, _) = build_table_tree();
+        let table = node_at(&adapter, &[0]);
+        let window = node_at(&adapter, &[]);
+        assert!(table.table_row_count().is_ok());
+        assert_eq!(window.table_row_count(), Err(Error::UnsupportedInterface));
+    }
+
+    #[test]
+    fn only_cell_like_roles_support_the_table_cell_interface() {
+        let (adapter, _) = build_table_tree();
+        let cell = node_at(&adapter, &[0, 1, 0]);
+        let row = node_at(&adapter, &[0, 1]);
+        assert!(cell.table_cell_position().is_ok());
+        assert_eq!(row.table_cell_position(), Err(Error::UnsupportedInterface));
+    }
+
+    #[test]
+    fn accessible_at_and_index_at_round_trip() {
+        let (adapter, _) = build_table_tree();
+        let table = node_at(&adapter, &[0]);
+        for row in 0..2 {
+            for column in 0..2 {
+                let index = table.table_index_at(row, column).unwrap();
+                assert_ne!(index, -1);
+                assert_eq!(table.table_row_at_index(index), Ok(row));
+                assert_eq!(table.table_column_at_index(index), Ok(column));
+            }
+        }
+        let cell = table.table_accessible_at(1, 1).unwrap();
+        assert_eq!(cell, Some(node_at(&adapter, &[0, 1, 1]).id()));
+    }
+
+    #[test]
+    fn table_cell_get_table_returns_the_real_ancestor() {
+        let (adapter, _) = build_table_tree();
+        let cell = node_at(&adapter, &[0, 1, 1]);
+        let table = node_at(&adapter, &[0]);
+        assert_eq!(cell.table_cell_table(), Ok(Some(table.id())));
+        assert_eq!(cell.table_cell_position(), Ok((1, 1)));
+    }
+
+    #[test]
+    fn row_and_column_headers_and_descriptions_use_header_cells() {
+        let (adapter, _) = build_table_tree();
+        let table = node_at(&adapter, &[0]);
+        let name_header = node_at(&adapter, &[0, 0, 0]);
+        assert_eq!(table.table_column_header(0), Ok(Some(name_header.id())));
+        assert_eq!(table.table_column_description(1), Ok("Status".into()));
+        assert_eq!(table.table_row_header(1), Ok(None));
+        assert_eq!(table.table_row_description(1), Ok(String::new()));
+    }
+
+    #[test]
+    fn selection_queries_reflect_live_cell_state() {
+        let (adapter, _) = build_table_tree();
+        let table = node_at(&adapter, &[0]);
+        assert_eq!(table.table_is_selected(1, 1), Ok(true));
+        assert_eq!(table.table_is_selected(1, 0), Ok(false));
+        assert_eq!(table.table_selected_rows(), Ok(vec![]));
+        assert_eq!(table.table_selected_columns(), Ok(vec![1]));
+        assert_eq!(table.table_n_selected_columns(), Ok(1));
+    }
+
+    #[test]
+    fn add_row_selection_clicks_unselected_clickable_cells() {
+        let (adapter, requests) = build_table_tree();
+        let table = node_at(&adapter, &[0]);
+        assert_eq!(table.table_add_row_selection(1), Ok(true));
+        let requests = requests.lock().unwrap();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].action, Action::Click);
+    }
 }

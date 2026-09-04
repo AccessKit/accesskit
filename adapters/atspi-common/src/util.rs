@@ -3,11 +3,11 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::{Point, Rect, ScrollHint};
-use accesskit_consumer::{NodeRef, TextPosition, TextRange};
+use accesskit::{Point, Rect, Role, ScrollHint};
+use accesskit_consumer::{FullNodeId, NodeRef, TextPosition, TextRange};
 use atspi_common::{CoordType, Granularity, ScrollType};
 
-use crate::Error;
+use crate::{Error, filters::filter};
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct WindowBounds {
@@ -131,4 +131,149 @@ pub(crate) fn atspi_scroll_type_to_scroll_hint(scroll_type: ScrollType) -> Optio
         ScrollType::RightEdge => Some(ScrollHint::RightEdge),
         ScrollType::Anywhere => None,
     }
+}
+
+fn is_table_cell_role(role: Role) -> bool {
+    matches!(
+        role,
+        Role::Cell | Role::GridCell | Role::RowHeader | Role::ColumnHeader
+    )
+}
+
+fn collect_table_rows<'a>(node: &NodeRef<'a>, rows: &mut Vec<NodeRef<'a>>) {
+    for child in node.filtered_children(filter) {
+        match child.role() {
+            Role::Row => rows.push(child),
+            Role::RowGroup => collect_table_rows(&child, rows),
+            _ => {}
+        }
+    }
+}
+
+fn collect_table_cells<'a>(node: &NodeRef<'a>, cells: &mut Vec<NodeRef<'a>>) {
+    for child in node.filtered_children(filter) {
+        if is_table_cell_role(child.role()) {
+            cells.push(child);
+        } else {
+            collect_table_cells(&child, cells);
+        }
+    }
+}
+
+/// `grid[row][col]` for a `Table`/`Grid`/`ListGrid` node. Built from
+/// `Role::Row` children, the shape every known accesskit consumer produces.
+/// Falls back to `row_index`/`column_index` on descendant cells for
+/// ARIA-grid-style tables that have no `Row` children at all.
+pub(crate) fn table_grid<'a>(table: &NodeRef<'a>) -> Vec<Vec<Option<NodeRef<'a>>>> {
+    let mut rows = Vec::new();
+    collect_table_rows(table, &mut rows);
+    if !rows.is_empty() {
+        return rows
+            .into_iter()
+            .map(|row| {
+                row.filtered_children(filter)
+                    .filter(|cell| is_table_cell_role(cell.role()))
+                    .map(Some)
+                    .collect()
+            })
+            .collect();
+    }
+
+    let mut cells = Vec::new();
+    collect_table_cells(table, &mut cells);
+    let mut grid: Vec<Vec<Option<NodeRef<'a>>>> = Vec::new();
+    for cell in cells {
+        let (Some(row), Some(column)) = (cell.data().row_index(), cell.data().column_index())
+        else {
+            continue;
+        };
+        if grid.len() <= row {
+            grid.resize_with(row + 1, Vec::new);
+        }
+        if grid[row].len() <= column {
+            grid[row].resize(column + 1, None);
+        }
+        grid[row][column] = Some(cell);
+    }
+    grid
+}
+
+pub(crate) fn table_column_count(grid: &[Vec<Option<NodeRef>>]) -> usize {
+    grid.iter().map(Vec::len).max().unwrap_or(0)
+}
+
+pub(crate) fn table_grid_cell<'a, 'g>(
+    grid: &'g [Vec<Option<NodeRef<'a>>>],
+    row: usize,
+    column: usize,
+) -> Option<&'g NodeRef<'a>> {
+    grid.get(row)?.get(column)?.as_ref()
+}
+
+pub(crate) fn table_row_cells<'a, 'g>(
+    grid: &'g [Vec<Option<NodeRef<'a>>>],
+    row: usize,
+) -> impl Iterator<Item = &'g NodeRef<'a>> {
+    grid.get(row)
+        .into_iter()
+        .flat_map(|row| row.iter().filter_map(Option::as_ref))
+}
+
+pub(crate) fn table_column_cells<'a, 'g>(
+    grid: &'g [Vec<Option<NodeRef<'a>>>],
+    column: usize,
+) -> impl Iterator<Item = &'g NodeRef<'a>> {
+    grid.iter()
+        .filter_map(move |row| row.get(column).and_then(Option::as_ref))
+}
+
+fn is_data_cell_role(role: Role) -> bool {
+    matches!(role, Role::Cell | Role::GridCell)
+}
+
+pub(crate) fn table_row_is_selected(grid: &[Vec<Option<NodeRef>>], row: usize) -> bool {
+    let mut any = false;
+    for cell in table_row_cells(grid, row).filter(|cell| is_data_cell_role(cell.role())) {
+        any = true;
+        if cell.is_selected() != Some(true) {
+            return false;
+        }
+    }
+    any
+}
+
+pub(crate) fn table_column_is_selected(grid: &[Vec<Option<NodeRef>>], column: usize) -> bool {
+    let mut any = false;
+    for cell in table_column_cells(grid, column).filter(|cell| is_data_cell_role(cell.role())) {
+        any = true;
+        if cell.is_selected() != Some(true) {
+            return false;
+        }
+    }
+    any
+}
+
+pub(crate) fn find_table_ancestor<'a>(node: &NodeRef<'a>) -> Option<NodeRef<'a>> {
+    let mut current = node.filtered_parent(&filter);
+    while let Some(candidate) = current {
+        if matches!(candidate.role(), Role::Table | Role::Grid | Role::ListGrid) {
+            return Some(candidate);
+        }
+        current = candidate.filtered_parent(&filter);
+    }
+    None
+}
+
+pub(crate) fn find_cell_position(
+    grid: &[Vec<Option<NodeRef>>],
+    id: FullNodeId,
+) -> Option<(usize, usize)> {
+    for (row, cells) in grid.iter().enumerate() {
+        for (column, cell) in cells.iter().enumerate() {
+            if cell.as_ref().is_some_and(|cell| cell.id() == id) {
+                return Some((row, column));
+            }
+        }
+    }
+    None
 }

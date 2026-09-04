@@ -164,6 +164,17 @@ impl Bus {
             )
             .await?;
         }
+        if new_interfaces.contains(Interface::Table) {
+            self.register_interface(&path, TableInterface::new(bus_name.clone(), node.clone()))
+                .await?;
+        }
+        if new_interfaces.contains(Interface::TableCell) {
+            self.register_interface(
+                &path,
+                TableCellInterface::new(bus_name.clone(), node.clone()),
+            )
+            .await?;
+        }
         if new_interfaces.contains(Interface::Text) {
             self.register_interface(&path, TextInterface::new(node.clone()))
                 .await?;
