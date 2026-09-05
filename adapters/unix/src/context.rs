@@ -276,6 +276,14 @@ async fn process_adapter_message(
             }
         }
         Message::EmitEvent {
+            adapter_id,
+            event: Event::Document { target, event },
+        } => {
+            if let Some(bus) = atspi_bus {
+                bus.emit_document_event(adapter_id, target, event).await?;
+            }
+        }
+        Message::EmitEvent {
             event: Event::Cache(_),
             ..
         } => unreachable!("cache events are sent as EmitCacheAdd/EmitCacheRemove"),

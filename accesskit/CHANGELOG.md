@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.25.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.24.1...accesskit-v0.25.0) (2026-08-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* Reuse property buffers when cloning nodes
+
+### Features
+
+* Add html_id node property ([#776](https://github.com/AccessKit/accesskit/issues/776)) ([5332ac0](https://github.com/AccessKit/accesskit/commit/5332ac0927b7fb78eff6b8b68c21ef4c801aae7c))
+
+
+### Bug Fixes
+
+* Allow pushing to a previously cleared node property ([#774](https://github.com/AccessKit/accesskit/issues/774)) ([572addd](https://github.com/AccessKit/accesskit/commit/572addd4dbcc1023c48b2c2d918d5f9fedfa69aa))
+* Compare node properties by property ID ([#773](https://github.com/AccessKit/accesskit/issues/773)) ([05ea5c5](https://github.com/AccessKit/accesskit/commit/05ea5c574c060567d86681e213c756ded7f1e20e))
+
+
+### Performance Improvements
+
+* Reuse property buffers when cloning nodes ([97194ad](https://github.com/AccessKit/accesskit/commit/97194ad47e0c7a3ebd8afd5d5537fac4c7d2cf9f))
+
 ## [0.24.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.24.0...accesskit-v0.24.1) (2026-06-12)
 
 

@@ -19,6 +19,10 @@ pub enum Event {
         name: String,
         event: WindowEvent,
     },
+    Document {
+        target: FullNodeId,
+        event: DocumentEvent,
+    },
     Cache(CacheEvent),
 }
 
@@ -66,4 +70,9 @@ pub enum ObjectEvent {
 pub enum WindowEvent {
     Activated,
     Deactivated,
+}
+
+#[derive(Debug)]
+pub enum DocumentEvent {
+    LoadComplete,
 }

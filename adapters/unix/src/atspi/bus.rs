@@ -9,7 +9,8 @@ use crate::{
     executor::{Executor, Task},
 };
 use accesskit_atspi_common::{
-    FullNodeId, NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot, Property, WindowEvent,
+    DocumentEvent, FullNodeId, NodeIdOrRoot, ObjectEvent, PlatformNode, PlatformRoot, Property,
+    WindowEvent,
 };
 use atspi::{
     Interface, InterfaceSet, ObjectRef, ObjectRefOwned, events::EventBodyBorrowed, proxy::{bus::BusProxy, socket::SocketProxy},
@@ -141,6 +142,14 @@ impl Bus {
             )
             .await?;
         }
+        if new_interfaces.contains(Interface::Document) {
+            self.register_interface(&path, DocumentInterface::new(node.clone()))
+                .await?;
+        }
+        if new_interfaces.contains(Interface::EditableText) {
+            self.register_interface(&path, EditableTextInterface::new(node.clone()))
+                .await?;
+        }
         if new_interfaces.contains(Interface::Hyperlink) {
             self.register_interface(
                 &path,
@@ -205,6 +214,14 @@ impl Bus {
         }
         if old_interfaces.contains(Interface::Component) {
             self.unregister_interface::<ComponentInterface>(&path)
+                .await?;
+        }
+        if old_interfaces.contains(Interface::Document) {
+            self.unregister_interface::<DocumentInterface>(&path)
+                .await?;
+        }
+        if old_interfaces.contains(Interface::EditableText) {
+            self.unregister_interface::<EditableTextInterface>(&path)
                 .await?;
         }
         if old_interfaces.contains(Interface::Hyperlink) {
@@ -401,6 +418,28 @@ impl Bus {
         body.any_data = window_name.into();
         self.emit_event(target, "org.a11y.atspi.Event.Window", signal, body)
             .await
+    }
+
+    pub(crate) async fn emit_document_event(
+        &self,
+        adapter_id: usize,
+        target: FullNodeId,
+        event: DocumentEvent,
+    ) -> Result<()> {
+        let target = ObjectId::Node {
+            adapter: adapter_id,
+            node: target,
+        };
+        let signal = match event {
+            DocumentEvent::LoadComplete => "LoadComplete",
+        };
+        self.emit_event(
+            target,
+            "org.a11y.atspi.Event.Document",
+            signal,
+            EventBodyBorrowed::default(),
+        )
+        .await
     }
 
     pub(crate) async fn emit_cache_add(&self, node: PlatformNode) -> Result<()> {

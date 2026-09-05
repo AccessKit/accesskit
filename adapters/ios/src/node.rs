@@ -61,8 +61,12 @@ enum FrameSource {
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a NodeRef<'a>);
 
 impl NodeWrapper<'_> {
-    fn label(&self) -> Option<String> {
-        self.0.label()
+    pub(crate) fn label(&self) -> Option<String> {
+        if self.0.label_comes_from_value() {
+            self.0.value()
+        } else {
+            self.0.label()
+        }
     }
 
     fn hint(&self) -> Option<String> {
@@ -72,6 +76,9 @@ impl NodeWrapper<'_> {
     fn value(&self) -> Option<Value> {
         if let Some(toggled) = self.0.toggled() {
             return Some(Value::Bool(toggled != Toggled::False));
+        }
+        if self.0.label_comes_from_value() {
+            return None;
         }
         if let Some(value) = self.0.value() {
             return Some(Value::String(value));
@@ -178,6 +185,10 @@ impl NodeWrapper<'_> {
             Role::Group => UIAccessibilityContainerType::SemanticGroup,
             _ => UIAccessibilityContainerType::None,
         }
+    }
+
+    fn identifier(&self) -> Option<&str> {
+        self.0.html_id().or_else(|| self.0.author_id())
     }
 }
 
@@ -425,7 +436,8 @@ declare_class!(
         #[method_id(accessibilityIdentifier)]
         fn identifier(&self) -> Option<Retained<NSString>> {
             self.resolve(|node| {
-                node.author_id().map(NSString::from_str)
+                let wrapper = NodeWrapper(node);
+                wrapper.identifier().map(NSString::from_str)
             })
             .flatten()
         }
@@ -556,13 +568,24 @@ mod tests {
         NodeWrapper(&node).can_be_focused()
     }
 
+    fn wrapper_identifier(node: &Node) -> Option<String> {
+        with_single(node, |n| NodeWrapper(n).identifier().map(String::from))
+    }
+
     // ---- label ----
 
     #[test]
-    fn label_present() {
+    fn label_when_it_comes_from_label() {
         let mut node = Node::new(Role::Button);
         node.set_label("OK");
         assert_eq!(wrapper_label(&node), Some("OK".into()));
+    }
+
+    #[test]
+    fn label_when_it_comes_from_value() {
+        let mut node = Node::new(Role::Label);
+        node.set_value("Hello");
+        assert_eq!(wrapper_label(&node), Some("Hello".into()));
     }
 
     #[test]
@@ -611,9 +634,16 @@ mod tests {
 
     #[test]
     fn value_text_string() {
-        let mut node = Node::new(Role::Label);
+        let mut node = Node::new(Role::TextInput);
         node.set_value("hello");
         assert_eq!(wrapper_value(&node), Some(Value::String("hello".into())));
+    }
+
+    #[test]
+    fn value_is_none_when_value_is_for_label() {
+        let mut node = Node::new(Role::Label);
+        node.set_value("hello");
+        assert!(wrapper_value(&node).is_none());
     }
 
     #[test]
@@ -634,7 +664,7 @@ mod tests {
 
     #[test]
     fn value_string_over_numeric() {
-        let mut node = Node::new(Role::Label);
+        let mut node = Node::new(Role::ProgressIndicator);
         node.set_value("text");
         node.set_numeric_value(1.0);
         assert_eq!(wrapper_value(&node), Some(Value::String("text".into())));
@@ -1011,5 +1041,35 @@ mod tests {
             node_frame_source(vec![(ROOT_ID, node)], ROOT_ID),
             FrameSource::Rect(_),
         ));
+    }
+
+    // ---- identifier ----
+
+    #[test]
+    fn identifier_from_html_id() {
+        let mut node = Node::new(Role::Button);
+        node.set_html_id("html-btn1");
+        assert_eq!(wrapper_identifier(&node), Some("html-btn1".into()));
+    }
+
+    #[test]
+    fn identifier_from_author_id() {
+        let mut node = Node::new(Role::Button);
+        node.set_author_id("native-btn1");
+        assert_eq!(wrapper_identifier(&node), Some("native-btn1".into()));
+    }
+
+    #[test]
+    fn html_id_takes_precedence_over_author_id_for_identifier() {
+        let mut node = Node::new(Role::Button);
+        node.set_author_id("native-btn1");
+        node.set_html_id("html-btn1");
+        assert_eq!(wrapper_identifier(&node), Some("html-btn1".into()));
+    }
+
+    #[test]
+    fn identifier_absent() {
+        let node = Node::new(Role::Button);
+        assert!(wrapper_identifier(&node).is_none());
     }
 }

@@ -9,7 +9,7 @@ use accesskit::{
 };
 use windows::{Win32::UI::Accessibility::*, core::*};
 
-use super::*;
+use super::{FocusEventHandler, Scope};
 
 const WINDOW_TITLE: &str = "Simple test";
 

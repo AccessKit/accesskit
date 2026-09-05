@@ -22,7 +22,7 @@ use std::{
 };
 
 use crate::{
-    Action as AtspiAction, Error, ObjectEvent, Property, Rect as AtspiRect, Result, adapter::Adapter, context::{AppContext, Context}, filters::filter, node_matcher::recurse_scan_children, text_attributes::ATTRIBUTE_GETTERS, util::*,
+    Action as AtspiAction, DocumentEvent, Error, ObjectEvent, Property, Rect as AtspiRect, Result, adapter::Adapter, context::{AppContext, Context}, filters::filter, node_matcher::recurse_scan_children, text_attributes::ATTRIBUTE_GETTERS, util::*,
 };
 
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a NodeRef<'a>);
@@ -329,6 +329,9 @@ impl NodeWrapper<'_> {
         if atspi_role != AtspiRole::ToggleButton && state.toggled().is_some() {
             atspi_state.insert(State::Checkable);
         }
+        if state.is_busy() {
+            atspi_state.insert(State::Busy);
+        }
         if state.is_modal() {
             atspi_state.insert(State::Modal);
         }
@@ -363,10 +366,12 @@ impl NodeWrapper<'_> {
             _ => {}
         }
 
-        if state.is_read_only_supported() && state.is_read_only_or_disabled() {
-            atspi_state.insert(State::ReadOnly);
-        } else {
-            atspi_state.insert(State::Enabled | State::Sensitive);
+        if !state.is_disabled() {
+            if state.is_read_only_supported() && state.is_read_only() {
+                atspi_state.insert(State::ReadOnly);
+            } else {
+                atspi_state.insert(State::Enabled | State::Sensitive);
+            }
         }
 
         if self.is_focused() {
@@ -390,6 +395,10 @@ impl NodeWrapper<'_> {
             .map(|s| s.to_string())
     }
 
+    fn html_id(&self) -> Option<&str> {
+        self.0.html_id()
+    }
+
     fn braille_label(&self) -> Option<&str> {
         self.0.braille_label()
     }
@@ -408,6 +417,9 @@ impl NodeWrapper<'_> {
         }
         if let Some(size_of_set) = self.size_of_set() {
             attributes.insert("setsize", size_of_set);
+        }
+        if let Some(html_id) = self.html_id() {
+            attributes.insert("id", html_id.to_string());
         }
         if let Some(label) = self.braille_label() {
             attributes.insert("braillelabel", label.to_string());
@@ -429,6 +441,33 @@ impl NodeWrapper<'_> {
 
     fn supports_component(&self) -> bool {
         self.0.raw_bounds().is_some() || self.is_root()
+    }
+
+    fn supports_document(&self) -> bool {
+        matches!(self.0.role(), Role::RootWebArea | Role::PdfRoot)
+    }
+
+    fn document_attributes(&self) -> HashMap<&'static str, String> {
+        let mut attributes = HashMap::new();
+        if let Some(title) = self.0.label() {
+            attributes.insert("Title", title);
+        }
+        if let Some(uri) = self.0.url() {
+            attributes.insert("URI", uri.to_string());
+        }
+
+        attributes
+    }
+
+    fn document_attribute_value(&self, name: &str) -> Option<String> {
+        self.document_attributes()
+            .into_iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value)
+    }
+
+    fn supports_editable_text(&self) -> bool {
+        self.0.is_text_input() && self.0.supports_text_ranges()
     }
 
     fn supports_hyperlink(&self) -> bool {
@@ -458,6 +497,12 @@ impl NodeWrapper<'_> {
         }
         if self.supports_component() {
             interfaces.insert(Interface::Component);
+        }
+        if self.supports_document() {
+            interfaces.insert(Interface::Document);
+        }
+        if self.supports_editable_text() {
+            interfaces.insert(Interface::EditableText);
         }
         if self.supports_hyperlink() {
             interfaces.insert(Interface::Hyperlink);
@@ -545,6 +590,7 @@ impl NodeWrapper<'_> {
         self.notify_property_changes(adapter, old);
         self.notify_bounds_changes(window_bounds, adapter, old);
         self.notify_children_changes(adapter, old);
+        self.notify_document_changes(adapter, old);
     }
 
     fn notify_state_changes(&self, adapter: &Adapter, old: &NodeWrapper<'_>) {
@@ -624,6 +670,12 @@ impl NodeWrapper<'_> {
             if let Some(extents) = self.extents(window_bounds, CoordType::Window) {
                 adapter.emit_object_event(self.id(), ObjectEvent::BoundsChanged(extents.into()));
             }
+        }
+    }
+
+    fn notify_document_changes(&self, adapter: &Adapter, old: &NodeWrapper<'_>) {
+        if self.supports_document() && old.0.is_busy() && !self.0.is_busy() {
+            adapter.emit_document_event(self.id(), DocumentEvent::LoadComplete);
         }
     }
 
@@ -966,6 +1018,26 @@ impl PlatformNode {
         })
     }
 
+    pub fn supports_document(&self) -> Result<bool> {
+        self.resolve(|node| Ok(NodeWrapper(&node).supports_document()))
+    }
+
+    pub fn document_attributes(&self) -> Result<HashMap<&'static str, String>> {
+        self.resolve(|node| Ok(NodeWrapper(&node).document_attributes()))
+    }
+
+    pub fn document_attribute_value(&self, name: &str) -> Result<String> {
+        self.resolve(|node| {
+            Ok(NodeWrapper(&node)
+                .document_attribute_value(name)
+                .unwrap_or_default())
+        })
+    }
+
+    pub fn supports_editable_text(&self) -> Result<bool> {
+        self.resolve(|node| Ok(NodeWrapper(&node).supports_editable_text()))
+    }
+
     pub fn supports_hyperlink(&self) -> Result<bool> {
         self.resolve(|node| {
             let wrapper = NodeWrapper(&node);
@@ -1134,6 +1206,23 @@ impl PlatformNode {
             Ok(())
         })?;
         Ok(true)
+    }
+
+    pub fn set_text_contents(&self, value: &str) -> Result<bool> {
+        self.resolve_with_context(|node, tree, context| {
+            if node.is_read_only() {
+                return Ok(false);
+            }
+            let (target_node, target_tree) =
+                tree.state().locate_node(self.id).ok_or(Error::Defunct)?;
+            context.do_action(ActionRequest {
+                action: Action::SetValue,
+                target_tree,
+                target_node,
+                data: Some(ActionData::Value(value.into())),
+            });
+            Ok(true)
+        })
     }
 
     pub fn n_anchors(&self) -> Result<i32> {

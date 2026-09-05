@@ -230,57 +230,67 @@ fn ns_role(node: &NodeRef) -> &'static NSAccessibilityRole {
     }
 }
 
-fn ns_sub_role(node: &NodeRef) -> &'static NSAccessibilitySubrole {
+fn label_is_exposed_in_value(role: Role) -> bool {
+    matches!(
+        role,
+        Role::Label
+            | Role::ListBoxOption
+            | Role::ListMarker
+            | Role::MenuListOption
+            | Role::TitleBar
+    )
+}
+
+fn ns_sub_role(node: &NodeRef) -> Option<&'static NSAccessibilitySubrole> {
     let role = node.role();
 
     unsafe {
         match role {
-            Role::Alert => ns_string!("AXApplicationAlert"),
-            Role::AlertDialog => NSAccessibilityDialogSubrole,
-            Role::Article => ns_string!("AXDocumentArticle"),
-            Role::Banner => ns_string!("AXLandmarkBanner"),
-            Role::Button if node.toggled().is_some() => NSAccessibilityToggleSubrole,
-            Role::Code => ns_string!("AXCodeStyleGroup"),
-            Role::Complementary => ns_string!("AXLandmarkComplementary"),
-            Role::ContentDeletion => ns_string!("AXDeleteStyleGroup"),
-            Role::ContentInsertion => ns_string!("AXInsertStyleGroup"),
-            Role::ContentInfo => ns_string!("AXLandmarkContentInfo"),
-            Role::Definition => ns_string!("AXDefinition"),
-            Role::Dialog => NSAccessibilityDialogSubrole,
-            Role::Document => ns_string!("AXDocument"),
-            Role::Emphasis => ns_string!("AXEmphasisStyleGroup"),
-            Role::Feed => ns_string!("AXApplicationGroup"),
-            Role::Footer => ns_string!("AXLandmarkContentInfo"),
-            Role::Form => ns_string!("AXLandmarkForm"),
-            Role::GraphicsDocument => ns_string!("AXDocument"),
-            Role::Group => ns_string!("AXApplicationGroup"),
-            Role::Header => ns_string!("AXLandmarkBanner"),
-            Role::LayoutTableCell => NSAccessibilityGroupRole,
-            Role::LayoutTableRow => NSAccessibilityTableRowSubrole,
-            Role::Log => ns_string!("AXApplicationLog"),
-            Role::Main => ns_string!("AXLandmarkMain"),
-            Role::Marquee => ns_string!("AXApplicationMarquee"),
-            Role::Math => ns_string!("AXDocumentMath"),
-            Role::Meter => ns_string!("AXMeter"),
-            Role::Navigation => ns_string!("AXLandmarkNavigation"),
-            Role::Note => ns_string!("AXDocumentNote"),
-            Role::PasswordInput => NSAccessibilitySecureTextFieldSubrole,
-            Role::Region => ns_string!("AXLandmarkRegion"),
-            Role::Search => ns_string!("AXLandmarkSearch"),
-            Role::SearchInput => NSAccessibilitySearchFieldSubrole,
-            Role::SectionFooter => ns_string!("AXSectionFooter"),
-            Role::SectionHeader => ns_string!("AXSectionHeader"),
-            Role::Status => ns_string!("AXApplicationStatus"),
-            Role::Strong => ns_string!("AXStrongStyleGroup"),
-            Role::Switch => NSAccessibilitySwitchSubrole,
-            Role::Tab => NSAccessibilityTabButtonSubrole,
-            Role::TabPanel => ns_string!("AXTabPanel"),
-            Role::Term => ns_string!("AXTerm"),
-            Role::Time => ns_string!("AXTimeGroup"),
-            Role::Timer => ns_string!("AXApplicationTimer"),
-            Role::TreeItem => NSAccessibilityOutlineRowSubrole,
-            Role::Tooltip => ns_string!("AXUserInterfaceTooltip"),
-            _ => NSAccessibilityUnknownSubrole,
+            Role::Alert => Some(ns_string!("AXApplicationAlert")),
+            Role::AlertDialog => Some(NSAccessibilityDialogSubrole),
+            Role::Application => Some(ns_string!("AXWebApplication")),
+            Role::Article => Some(ns_string!("AXDocumentArticle")),
+            Role::Banner => Some(ns_string!("AXLandmarkBanner")),
+            Role::Button if node.toggled().is_some() => Some(NSAccessibilityToggleSubrole),
+            Role::Code => Some(ns_string!("AXCodeStyleGroup")),
+            Role::Complementary => Some(ns_string!("AXLandmarkComplementary")),
+            Role::ContentDeletion => Some(ns_string!("AXDeleteStyleGroup")),
+            Role::ContentInsertion => Some(ns_string!("AXInsertStyleGroup")),
+            Role::ContentInfo => Some(ns_string!("AXLandmarkContentInfo")),
+            Role::Definition => Some(ns_string!("AXDefinition")),
+            Role::Dialog => Some(NSAccessibilityDialogSubrole),
+            Role::Document => Some(ns_string!("AXDocument")),
+            Role::Emphasis => Some(ns_string!("AXEmphasisStyleGroup")),
+            Role::Feed => Some(ns_string!("AXApplicationGroup")),
+            Role::Footer => Some(ns_string!("AXLandmarkContentInfo")),
+            Role::Form => Some(ns_string!("AXLandmarkForm")),
+            Role::GraphicsDocument => Some(ns_string!("AXDocument")),
+            Role::Group => Some(ns_string!("AXApplicationGroup")),
+            Role::Header => Some(ns_string!("AXLandmarkBanner")),
+            Role::Log => Some(ns_string!("AXApplicationLog")),
+            Role::Main => Some(ns_string!("AXLandmarkMain")),
+            Role::Marquee => Some(ns_string!("AXApplicationMarquee")),
+            Role::Math => Some(ns_string!("AXDocumentMath")),
+            Role::Meter => Some(ns_string!("AXMeter")),
+            Role::Navigation => Some(ns_string!("AXLandmarkNavigation")),
+            Role::Note => Some(ns_string!("AXDocumentNote")),
+            Role::PasswordInput => Some(NSAccessibilitySecureTextFieldSubrole),
+            Role::Region => Some(ns_string!("AXLandmarkRegion")),
+            Role::Search => Some(ns_string!("AXLandmarkSearch")),
+            Role::SearchInput => Some(NSAccessibilitySearchFieldSubrole),
+            Role::SectionFooter => Some(ns_string!("AXSectionFooter")),
+            Role::SectionHeader => Some(ns_string!("AXSectionHeader")),
+            Role::Status => Some(ns_string!("AXApplicationStatus")),
+            Role::Strong => Some(ns_string!("AXStrongStyleGroup")),
+            Role::Switch => Some(NSAccessibilitySwitchSubrole),
+            Role::Tab => Some(NSAccessibilityTabButtonSubrole),
+            Role::TabPanel => Some(ns_string!("AXTabPanel")),
+            Role::Term => Some(ns_string!("AXTerm")),
+            Role::Time => Some(ns_string!("AXTimeGroup")),
+            Role::Timer => Some(ns_string!("AXApplicationTimer")),
+            Role::TreeItem => Some(NSAccessibilityOutlineRowSubrole),
+            Role::Tooltip => Some(ns_string!("AXUserInterfaceTooltip")),
+            _ => None,
         }
     }
 }
@@ -309,7 +319,18 @@ impl NodeWrapper<'_> {
             // includes a title, VoiceOver behavior is broken.
             return None;
         }
+        if label_is_exposed_in_value(self.0.role()) {
+            return None;
+        }
         self.0.label()
+    }
+
+    pub(crate) fn label(&self) -> Option<String> {
+        if self.0.label_comes_from_value() {
+            self.0.value()
+        } else {
+            self.0.label()
+        }
     }
 
     pub(crate) fn description(&self) -> Option<String> {
@@ -328,6 +349,11 @@ impl NodeWrapper<'_> {
             // On Mac, tabs are exposed as radio buttons, and are treated as checkable.
             // Also, `Node::is_selected` is mapped to checked via `accessibilityValue`.
             return Some(Value::Bool(self.0.is_selected().unwrap_or(false)));
+        }
+        if label_is_exposed_in_value(self.0.role()) {
+            if let Some(label) = self.0.label() {
+                return Some(Value::String(label));
+            }
         }
         if let Some(value) = self.0.value() {
             return Some(Value::String(value));
@@ -480,10 +506,9 @@ declare_class!(
         }
 
         #[method_id(accessibilitySubrole)]
-        fn sub_role(&self) -> Id<NSAccessibilitySubrole> {
-            self.resolve(ns_sub_role)
-                .unwrap_or(unsafe { NSAccessibilityUnknownSubrole })
-                .copy()
+        fn sub_role(&self) -> Option<Id<NSAccessibilitySubrole>> {
+            self.resolve(|node| ns_sub_role(node).map(|sub_role| sub_role.copy()))
+                .flatten()
         }
 
         #[method_id(accessibilityRoleDescription)]
@@ -1069,6 +1094,8 @@ declare_class!(
                     return Some(NSString::from_str(node.braille_label().unwrap()))
                 } else if attr == ns_string!("AXBrailleRoleDescription") && node.has_braille_role_description() {
                     return Some(NSString::from_str(node.braille_role_description().unwrap()))
+                } else if attr == ns_string!("AXDOMIdentifier") && node.has_html_id() {
+                    return Some(NSString::from_str(node.html_id().unwrap()))
                 }
 
                 None
@@ -1263,7 +1290,9 @@ declare_class!(
                     return node.is_dialog();
                 }
                 if selector == sel!(accessibilityAttributeValue:) {
-                    return node.has_braille_label() || node.has_braille_role_description()
+                    return node.has_braille_label()
+                        || node.has_braille_role_description()
+                        || node.has_html_id()
                 }
                 if selector == sel!(accessibilityURL) {
                     return node.supports_url();

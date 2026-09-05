@@ -14,7 +14,7 @@ extern crate alloc;
 
 #[cfg(feature = "schemars")]
 use alloc::borrow::Cow;
-use alloc::{boxed::Box, string::String, vec::Vec};
+use alloc::{borrow::ToOwned, boxed::Box, string::String, vec::Vec};
 use core::fmt;
 #[cfg(feature = "pyo3")]
 use pyo3::pyclass;
@@ -760,7 +760,7 @@ impl TreeId {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct CustomAction {
     pub id: i32,
-    pub description: Box<str>,
+    pub description: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -852,19 +852,19 @@ pub struct TextDecoration {
 // The following is based on the technique described here:
 // https://viruta.org/reducing-memory-consumption-in-librsvg-2.html
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 enum PropertyValue {
     None,
     NodeIdVec(Vec<NodeId>),
     NodeId(NodeId),
-    String(Box<str>),
+    String(String),
     F64(f64),
     F32(f32),
     Usize(usize),
     Color(Color),
     TextDecoration(TextDecoration),
-    LengthSlice(Box<[u8]>),
-    CoordSlice(Box<[f32]>),
+    LengthVec(Vec<u8>),
+    CoordVec(Vec<f32>),
     Bool(bool),
     Invalid(Invalid),
     Toggled(Toggled),
@@ -918,6 +918,7 @@ enum PropertyId {
     AuthorId,
     ClassName,
     FontFamily,
+    HtmlId,
     HtmlTag,
     InnerHtml,
     KeyboardShortcut,
@@ -970,11 +971,11 @@ enum PropertyId {
     Strikethrough,
     Underline,
 
-    // LengthSlice
+    // LengthVec
     CharacterLengths,
     WordStarts,
 
-    // CoordSlice
+    // CoordVec
     CharacterPositions,
     CharacterWidths,
 
@@ -1007,6 +1008,55 @@ enum PropertyId {
     Unset,
 }
 
+impl Clone for PropertyValue {
+    fn clone(&self) -> Self {
+        match self {
+            Self::None => Self::None,
+            Self::NodeIdVec(v) => Self::NodeIdVec(v.clone()),
+            Self::NodeId(v) => Self::NodeId(*v),
+            Self::String(v) => Self::String(v.clone()),
+            Self::F64(v) => Self::F64(*v),
+            Self::F32(v) => Self::F32(*v),
+            Self::Usize(v) => Self::Usize(*v),
+            Self::Color(v) => Self::Color(*v),
+            Self::TextDecoration(v) => Self::TextDecoration(*v),
+            Self::LengthVec(v) => Self::LengthVec(v.clone()),
+            Self::CoordVec(v) => Self::CoordVec(v.clone()),
+            Self::Bool(v) => Self::Bool(*v),
+            Self::Invalid(v) => Self::Invalid(*v),
+            Self::Toggled(v) => Self::Toggled(*v),
+            Self::Live(v) => Self::Live(*v),
+            Self::TextDirection(v) => Self::TextDirection(*v),
+            Self::Orientation(v) => Self::Orientation(*v),
+            Self::SortDirection(v) => Self::SortDirection(*v),
+            Self::AriaCurrent(v) => Self::AriaCurrent(*v),
+            Self::AutoComplete(v) => Self::AutoComplete(*v),
+            Self::HasPopup(v) => Self::HasPopup(*v),
+            Self::ListStyle(v) => Self::ListStyle(*v),
+            Self::TextAlign(v) => Self::TextAlign(*v),
+            Self::VerticalOffset(v) => Self::VerticalOffset(*v),
+            Self::Affine(v) => Self::Affine(v.clone()),
+            Self::Rect(v) => Self::Rect(*v),
+            Self::TextSelection(v) => Self::TextSelection(v.clone()),
+            Self::CustomActionVec(v) => Self::CustomActionVec(v.clone()),
+            Self::TreeId(v) => Self::TreeId(*v),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        match (self, source) {
+            (Self::NodeIdVec(dest), Self::NodeIdVec(source)) => dest.clone_from(source),
+            (Self::String(dest), Self::String(source)) => dest.clone_from(source),
+            (Self::LengthVec(dest), Self::LengthVec(source)) => dest.clone_from(source),
+            (Self::CoordVec(dest), Self::CoordVec(source)) => dest.clone_from(source),
+            (Self::CustomActionVec(dest), Self::CustomActionVec(source)) => dest.clone_from(source),
+            (Self::Affine(dest), Self::Affine(source)) => dest.clone_from(source),
+            (Self::TextSelection(dest), Self::TextSelection(source)) => dest.clone_from(source),
+            (dest, source) => *dest = source.clone(),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(transparent)]
 struct PropertyIndices([u8; PropertyId::Unset as usize]);
@@ -1017,10 +1067,30 @@ impl Default for PropertyIndices {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Debug, Default)]
 struct Properties {
     indices: PropertyIndices,
     values: Vec<PropertyValue>,
+}
+
+fn value_at(values: &[PropertyValue], index: u8) -> &PropertyValue {
+    if index == PropertyId::Unset as u8 {
+        &PropertyValue::None
+    } else {
+        &values[index as usize]
+    }
+}
+
+impl PartialEq for Properties {
+    fn eq(&self, other: &Self) -> bool {
+        self.indices
+            .0
+            .iter()
+            .zip(other.indices.0.iter())
+            .all(|(&own, &other_index)| {
+                value_at(&self.values, own) == value_at(&other.values, other_index)
+            })
+    }
 }
 
 /// A single accessible object. A complete UI is represented as a tree of these.
@@ -1029,7 +1099,7 @@ struct Properties {
 /// to other languages, documentation of getter methods is written as if
 /// documenting fields in a struct, and such methods are referred to
 /// as properties.
-#[derive(Clone, Default, PartialEq)]
+#[derive(Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
@@ -1044,12 +1114,7 @@ pub struct Node {
 
 impl PropertyIndices {
     fn get<'a>(&self, values: &'a [PropertyValue], id: PropertyId) -> &'a PropertyValue {
-        let index = self.0[id as usize];
-        if index == PropertyId::Unset as u8 {
-            &PropertyValue::None
-        } else {
-            &values[index as usize]
-        }
+        value_at(values, self.0[id as usize])
     }
 }
 
@@ -1062,7 +1127,11 @@ impl Properties {
             self.indices.0[id as usize] = index as u8;
             &mut self.values[index]
         } else {
-            &mut self.values[index]
+            let value = &mut self.values[index];
+            if matches!(value, PropertyValue::None) {
+                *value = default;
+            }
+            value
         }
     }
 
@@ -1081,6 +1150,20 @@ impl Properties {
         if index != PropertyId::Unset as u8 {
             self.values[index as usize] = PropertyValue::None;
         }
+    }
+}
+
+impl Clone for Properties {
+    fn clone(&self) -> Self {
+        Self {
+            indices: self.indices,
+            values: self.values.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.indices = source.indices;
+        source.values.clone_into(&mut self.values);
     }
 }
 
@@ -1175,10 +1258,10 @@ macro_rules! copy_type_getters {
     }
 }
 
-macro_rules! box_type_setters {
+macro_rules! owned_type_setters {
     ($(($method:ident, $type:ty, $variant:ident)),+) => {
         impl Node {
-            $(fn $method(&mut self, id: PropertyId, value: impl Into<Box<$type>>) {
+            $(fn $method(&mut self, id: PropertyId, value: impl Into<$type>) {
                 self.properties.set(id, PropertyValue::$variant(value.into()));
             })*
         }
@@ -1248,7 +1331,7 @@ macro_rules! vec_property_methods {
     }
 }
 
-macro_rules! slice_properties_debug_method {
+macro_rules! vec_properties_debug_method {
     ($name:ident, [$($getter:ident,)*]) => {
         fn $name(&self, fmt: &mut fmt::DebugStruct) {
             $(
@@ -1268,7 +1351,7 @@ macro_rules! node_id_vec_property_methods {
             ($id, NodeId, $getter, get_node_id_vec, $setter, set_node_id_vec, $pusher, push_to_node_id_vec, $clearer)
         })*
         impl Node {
-            slice_properties_debug_method! { debug_node_id_vec_properties, [$($getter,)*] }
+            vec_properties_debug_method! { debug_node_id_vec_properties, [$($getter,)*] }
         }
         $(#[cfg(test)]
         mod $getter {
@@ -1294,6 +1377,14 @@ macro_rules! node_id_vec_property_methods {
                 assert_eq!(node.$getter(), &[NodeId(0)]);
                 node.$pusher(NodeId(1));
                 assert_eq!(node.$getter(), &[NodeId(0), NodeId(1)]);
+            }
+            #[test]
+            fn pusher_should_start_a_new_list_after_the_clearer() {
+                let mut node = Node::new(Role::Unknown);
+                node.$setter([NodeId(0)]);
+                node.$clearer();
+                node.$pusher(NodeId(1));
+                assert_eq!(node.$getter(), &[NodeId(1)]);
             }
             #[test]
             fn clearer_should_reset_the_property() {
@@ -1357,7 +1448,7 @@ macro_rules! string_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_string_property, Option<&str>, $setter, set_string_property, impl Into<Box<str>>, $clearer)
+            ($id, $getter, get_string_property, Option<&str>, $setter, set_string_property, impl Into<String>, $clearer)
         })*
         impl Node {
             option_properties_debug_method! { debug_string_properties, [$($getter,)*] }
@@ -1573,14 +1664,14 @@ macro_rules! text_decoration_property_methods {
     }
 }
 
-macro_rules! length_slice_property_methods {
+macro_rules! length_vec_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_length_slice_property, &[u8], $setter, set_length_slice_property, impl Into<Box<[u8]>>, $clearer)
+            ($id, $getter, get_length_vec_property, &[u8], $setter, set_length_vec_property, impl Into<Vec<u8>>, $clearer)
         })*
         impl Node {
-            slice_properties_debug_method! { debug_length_slice_properties, [$($getter,)*] }
+            vec_properties_debug_method! { debug_length_vec_properties, [$($getter,)*] }
         }
         $(#[cfg(test)]
         mod $getter {
@@ -1610,14 +1701,14 @@ macro_rules! length_slice_property_methods {
     }
 }
 
-macro_rules! coord_slice_property_methods {
+macro_rules! coord_vec_property_methods {
     ($($(#[$doc:meta])* ($id:ident, $getter:ident, $setter:ident, $clearer:ident)),+) => {
         $(property_methods! {
             $(#[$doc])*
-            ($id, $getter, get_coord_slice_property, Option<&[f32]>, $setter, set_coord_slice_property, impl Into<Box<[f32]>>, $clearer)
+            ($id, $getter, get_coord_vec_property, Option<&[f32]>, $setter, set_coord_vec_property, impl Into<Vec<f32>>, $clearer)
         })*
         impl Node {
-            option_properties_debug_method! { debug_coord_slice_properties, [$($getter,)*] }
+            option_properties_debug_method! { debug_coord_vec_properties, [$($getter,)*] }
         }
         $(#[cfg(test)]
         mod $getter {
@@ -1742,6 +1833,26 @@ impl Node {
     }
 }
 
+impl Clone for Node {
+    fn clone(&self) -> Self {
+        Self {
+            role: self.role,
+            actions: self.actions,
+            child_actions: self.child_actions,
+            flags: self.flags,
+            properties: self.properties.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.role = source.role;
+        self.actions = source.actions;
+        self.child_actions = source.child_actions;
+        self.flags = source.flags;
+        self.properties.clone_from(&source.properties);
+    }
+}
+
 impl Node {
     #[inline]
     pub fn role(&self) -> Role {
@@ -1796,48 +1907,82 @@ impl Node {
 }
 
 flag_methods! {
-    /// Exclude this node and its descendants from the tree presented to
-    /// assistive technologies, and from hit testing.
+    /// Whether this node and its descendants are excluded from the tree
+    /// presented to assistive technologies and from hit testing. ARIA
+    /// equivalent: [`aria-hidden`].
+    ///
+    /// **Difference with ARIA:** `aria-hidden` controls exposure to assistive
+    /// technologies, while this property also excludes the node from hit
+    /// testing.
+    ///
+    /// [`aria-hidden`]: https://www.w3.org/TR/wai-aria-1.2/#aria-hidden
     (Hidden, is_hidden, set_hidden, clear_hidden),
+    /// Whether users may select more than one selectable descendant. ARIA
+    /// equivalent: [`aria-multiselectable`].
+    ///
+    /// [`aria-multiselectable`]: https://www.w3.org/TR/wai-aria-1.2/#aria-multiselectable
     (Multiselectable, is_multiselectable, set_multiselectable, clear_multiselectable),
+    /// Whether user input or selection is required on this node. ARIA
+    /// equivalent: [`aria-required`].
+    ///
+    /// [`aria-required`]: https://www.w3.org/TR/wai-aria-1.2/#aria-required
     (Required, is_required, set_required, clear_required),
+    /// Whether this node represents a link that has been visited.
     (Visited, is_visited, set_visited, clear_visited),
+    /// Whether this node is being modified and updates should be withheld until
+    /// it is ready. ARIA equivalent: [`aria-busy`].
+    ///
+    /// [`aria-busy`]: https://www.w3.org/TR/wai-aria-1.2/#aria-busy
     (Busy, is_busy, set_busy, clear_busy),
+    /// Whether updates to this live region should be presented as a whole. ARIA
+    /// equivalent: [`aria-atomic`].
+    ///
+    /// [`aria-atomic`]: https://www.w3.org/TR/wai-aria-1.2/#aria-atomic
     (LiveAtomic, is_live_atomic, set_live_atomic, clear_live_atomic),
-    /// If a dialog box is marked as explicitly modal.
+    /// Whether this dialog is modal. ARIA equivalent: [`aria-modal`].
+    ///
+    /// [`aria-modal`]: https://www.w3.org/TR/wai-aria-1.2/#aria-modal
     (Modal, is_modal, set_modal, clear_modal),
-    /// This element allows touches to be passed through when a screen reader
-    /// is in touch exploration mode, e.g. a virtual keyboard normally
-    /// behaves this way.
+    /// Whether touches pass through this node when a screen reader is in touch
+    /// exploration mode, as they normally do on a virtual keyboard.
     (TouchTransparent, is_touch_transparent, set_touch_transparent, clear_touch_transparent),
-    /// Use for a text widget that allows focus/selection but not input.
+    /// Whether this text widget permits focus and selection but not editing.
+    /// ARIA equivalent: [`aria-readonly`].
+    ///
+    /// [`aria-readonly`]: https://www.w3.org/TR/wai-aria-1.2/#aria-readonly
     (ReadOnly, is_read_only, set_read_only, clear_read_only),
-    /// Use for a control or group of controls that disallows input.
+    /// Whether this control or group of controls is unavailable for interaction.
+    /// ARIA equivalent: [`aria-disabled`].
+    ///
+    /// [`aria-disabled`]: https://www.w3.org/TR/wai-aria-1.2/#aria-disabled
     (Disabled, is_disabled, set_disabled, clear_disabled),
+    /// Whether this node's text is italic.
     (Italic, is_italic, set_italic, clear_italic),
-    /// Indicates that this node clips its children, i.e. may have
-    /// `overflow: hidden` or clip children by default.
+    /// Whether this node clips child content outside its bounds.
     (ClipsChildren, clips_children, set_clips_children, clear_clips_children),
-    /// Indicates whether this node causes a hard line-break
-    /// (e.g. block level elements, or `<br>`).
+    /// Whether this node causes a hard line break.
     (IsLineBreakingObject, is_line_breaking_object, set_is_line_breaking_object, clear_is_line_breaking_object),
-    /// Indicates whether this node causes a page break.
+    /// Whether this node causes a page break.
     (IsPageBreakingObject, is_page_breaking_object, set_is_page_breaking_object, clear_is_page_breaking_object),
+    /// Whether this node's text is marked as a spelling error.
     (IsSpellingError, is_spelling_error, set_is_spelling_error, clear_is_spelling_error),
+    /// Whether this node's text is marked as a grammar error.
     (IsGrammarError, is_grammar_error, set_is_grammar_error, clear_is_grammar_error),
+    /// Whether this node represents text matching the current search.
     (IsSearchMatch, is_search_match, set_is_search_match, clear_is_search_match),
+    /// Whether this node's text is a suggested replacement.
     (IsSuggestion, is_suggestion, set_is_suggestion, clear_is_suggestion)
 }
 
 option_ref_type_getters! {
     (get_affine_property, Affine, Affine),
     (get_string_property, str, String),
-    (get_coord_slice_property, [f32], CoordSlice),
+    (get_coord_vec_property, [f32], CoordVec),
     (get_text_selection_property, TextSelection, TextSelection)
 }
 
 slice_type_getters! {
-    (get_length_slice_property, u8, LengthSlice)
+    (get_length_vec_property, u8, LengthVec)
 }
 
 copy_type_getters! {
@@ -1852,12 +1997,12 @@ copy_type_getters! {
     (get_tree_id_property, TreeId, TreeId)
 }
 
-box_type_setters! {
-    (set_affine_property, Affine, Affine),
-    (set_string_property, str, String),
-    (set_length_slice_property, [u8], LengthSlice),
-    (set_coord_slice_property, [f32], CoordSlice),
-    (set_text_selection_property, TextSelection, TextSelection)
+owned_type_setters! {
+    (set_affine_property, Box<Affine>, Affine),
+    (set_string_property, String, String),
+    (set_length_vec_property, Vec<u8>, LengthVec),
+    (set_coord_vec_property, Vec<f32>, CoordVec),
+    (set_text_selection_property, Box<TextSelection>, TextSelection)
 }
 
 copy_type_setters! {
@@ -1878,33 +2023,74 @@ vec_type_methods! {
 }
 
 node_id_vec_property_methods! {
+    /// The ordered list of this node's direct children in the tree. The order
+    /// should match the intended reading and navigation order.
     (Children, children, set_children, push_child, clear_children),
+    /// The nodes whose contents or presence are controlled by this node. ARIA
+    /// equivalent: [`aria-controls`].
+    ///
+    /// [`aria-controls`]: https://www.w3.org/TR/wai-aria-1.2/#aria-controls
     (Controls, controls, set_controls, push_controlled, clear_controls),
+    /// The nodes that provide detailed, structured descriptions for this node
+    /// and that users may navigate to. Use [`Node::described_by`] when a
+    /// plain-text description is sufficient. ARIA equivalent: [`aria-details`].
+    ///
+    /// **Difference with ARIA:** `aria-details` references a single element,
+    /// while this property may reference multiple nodes.
+    ///
+    /// [`aria-details`]: https://www.w3.org/TR/wai-aria-1.2/#aria-details
     (Details, details, set_details, push_detail, clear_details),
+    /// The nodes whose contents provide a plain-text description for this node.
+    /// Use [`Node::details`] for structured content that users may need to
+    /// navigate. ARIA equivalent: [`aria-describedby`].
+    ///
+    /// [`aria-describedby`]: https://www.w3.org/TR/wai-aria-1.2/#aria-describedby
     (DescribedBy, described_by, set_described_by, push_described_by, clear_described_by),
+    /// The nodes that follow this node in an alternate reading order. ARIA
+    /// equivalent: [`aria-flowto`].
+    ///
+    /// [`aria-flowto`]: https://www.w3.org/TR/wai-aria-1.2/#aria-flowto
     (FlowTo, flow_to, set_flow_to, push_flow_to, clear_flow_to),
+    /// The nodes that label this node. ARIA equivalent: [`aria-labelledby`].
+    ///
+    /// [`aria-labelledby`]: https://www.w3.org/TR/wai-aria-1.2/#aria-labelledby
     (LabelledBy, labelled_by, set_labelled_by, push_labelled_by, clear_labelled_by),
-    /// As with the `aria-owns` property in ARIA, this property should be set
-    /// only if the nodes referenced in the property are not descendants
-    /// of the owning node in the AccessKit tree. In the common case, where the
-    /// owned nodes are direct children or indirect descendants, this property
-    /// is unnecessary.
+    /// Nodes owned by this node that are not already its descendants in the
+    /// tree. This property is unnecessary for direct children or other
+    /// descendants. ARIA equivalent: [`aria-owns`].
+    ///
+    /// [`aria-owns`]: https://www.w3.org/TR/wai-aria-1.2/#aria-owns
     (Owns, owns, set_owns, push_owned, clear_owns),
-    /// On radio buttons this should be set to a list of all of the buttons
-    /// in the same group as this one, including this radio button itself.
+    /// For a radio button, the list of all radio buttons in the same group,
+    /// including this node.
     (RadioGroup, radio_group, set_radio_group, push_to_radio_group, clear_radio_group)
 }
 
 node_id_property_methods! {
     /// For a composite widget such as a listbox, tree, or grid, identifies
     /// the currently active descendant. Used when focus remains on the container
-    /// while the active item changes.
+    /// while the active item changes. ARIA equivalent: [`aria-activedescendant`].
+    ///
+    /// [`aria-activedescendant`]: https://www.w3.org/TR/wai-aria-1.2/#aria-activedescendant
     (ActiveDescendant, active_descendant, set_active_descendant, clear_active_descendant),
+    /// The node that provides an error message for this node. This should
+    /// normally be used with [`Node::invalid`]. ARIA equivalent:
+    /// [`aria-errormessage`].
+    ///
+    /// [`aria-errormessage`]: https://www.w3.org/TR/wai-aria-1.2/#aria-errormessage
     (ErrorMessage, error_message, set_error_message, clear_error_message),
+    /// The target of this link when it points to another location in the same
+    /// document.
     (InPageLinkTarget, in_page_link_target, set_in_page_link_target, clear_in_page_link_target),
+    /// The group to which this node belongs.
     (MemberOf, member_of, set_member_of, clear_member_of),
+    /// The next text run on the same visual line. The target's
+    /// [`Node::previous_on_line`] should point back to this node.
     (NextOnLine, next_on_line, set_next_on_line, clear_next_on_line),
+    /// The previous text run on the same visual line. The target's
+    /// [`Node::next_on_line`] should point back to this node.
     (PreviousOnLine, previous_on_line, set_previous_on_line, clear_previous_on_line),
+    /// The node for which this node is a popup.
     (PopupFor, popup_for, set_popup_for, clear_popup_for)
 }
 
@@ -1946,6 +2132,12 @@ string_property_methods! {
     /// The font family used for this node's text. Only set this when it differs
     /// from the parent.
     (FontFamily, font_family, set_font_family, clear_font_family),
+    /// The ID of the HTML element represented by this node. On platforms
+    /// where both are mapped to the same platform property, this takes
+    /// precedence over [`author_id`].
+    ///
+    /// [`author_id`]: Node::author_id
+    (HtmlId, html_id, set_html_id, clear_html_id),
     /// The name of the HTML element represented by this node.
     (HtmlTag, html_tag, set_html_tag, clear_html_tag),
     /// Inner HTML of an element. Only used for a top-level math element,
@@ -2013,16 +2205,38 @@ string_property_methods! {
 }
 
 f64_property_methods! {
+    /// The current horizontal scroll position of this scrollable container.
     (ScrollX, scroll_x, set_scroll_x, clear_scroll_x),
+    /// The minimum horizontal scroll position of this scrollable container.
     (ScrollXMin, scroll_x_min, set_scroll_x_min, clear_scroll_x_min),
+    /// The maximum horizontal scroll position of this scrollable container.
     (ScrollXMax, scroll_x_max, set_scroll_x_max, clear_scroll_x_max),
+    /// The current vertical scroll position of this scrollable container.
     (ScrollY, scroll_y, set_scroll_y, clear_scroll_y),
+    /// The minimum vertical scroll position of this scrollable container.
     (ScrollYMin, scroll_y_min, set_scroll_y_min, clear_scroll_y_min),
+    /// The maximum vertical scroll position of this scrollable container.
     (ScrollYMax, scroll_y_max, set_scroll_y_max, clear_scroll_y_max),
+    /// The current numeric value of this range widget. ARIA equivalent:
+    /// [`aria-valuenow`].
+    ///
+    /// [`aria-valuenow`]: https://www.w3.org/TR/wai-aria-1.2/#aria-valuenow
     (NumericValue, numeric_value, set_numeric_value, clear_numeric_value),
+    /// The minimum allowed numeric value of this range widget. ARIA equivalent:
+    /// [`aria-valuemin`].
+    ///
+    /// [`aria-valuemin`]: https://www.w3.org/TR/wai-aria-1.2/#aria-valuemin
     (MinNumericValue, min_numeric_value, set_min_numeric_value, clear_min_numeric_value),
+    /// The maximum allowed numeric value of this range widget. ARIA equivalent:
+    /// [`aria-valuemax`].
+    ///
+    /// [`aria-valuemax`]: https://www.w3.org/TR/wai-aria-1.2/#aria-valuemax
     (MaxNumericValue, max_numeric_value, set_max_numeric_value, clear_max_numeric_value),
+    /// The amount by which the numeric value changes when incremented or
+    /// decremented by one step.
     (NumericValueStep, numeric_value_step, set_numeric_value_step, clear_numeric_value_step),
+    /// The amount by which the numeric value changes for a large increment or
+    /// decrement.
     (NumericValueJump, numeric_value_jump, set_numeric_value_jump, clear_numeric_value_jump)
 }
 
@@ -2035,19 +2249,67 @@ f32_property_methods! {
 }
 
 usize_property_methods! {
+    /// The total number of rows in a table, grid, or tree grid. ARIA equivalent:
+    /// [`aria-rowcount`].
+    ///
+    /// [`aria-rowcount`]: https://www.w3.org/TR/wai-aria-1.2/#aria-rowcount
     (RowCount, row_count, set_row_count, clear_row_count),
+    /// The total number of columns in a table, grid, or tree grid. ARIA
+    /// equivalent: [`aria-colcount`].
+    ///
+    /// [`aria-colcount`]: https://www.w3.org/TR/wai-aria-1.2/#aria-colcount
     (ColumnCount, column_count, set_column_count, clear_column_count),
+    /// The row index of this node within a table, grid, or tree grid. ARIA
+    /// equivalent: [`aria-rowindex`].
+    ///
+    /// **Difference with ARIA:** `aria-rowindex` is one-based, while this
+    /// property is zero-based.
+    ///
+    /// [`aria-rowindex`]: https://www.w3.org/TR/wai-aria-1.2/#aria-rowindex
     (RowIndex, row_index, set_row_index, clear_row_index),
+    /// The column index of this node within a table, grid, or tree grid. ARIA
+    /// equivalent: [`aria-colindex`].
+    ///
+    /// **Difference with ARIA:** `aria-colindex` is one-based, while this
+    /// property is zero-based.
+    ///
+    /// [`aria-colindex`]: https://www.w3.org/TR/wai-aria-1.2/#aria-colindex
     (ColumnIndex, column_index, set_column_index, clear_column_index),
+    /// The number of rows spanned by a cell or grid cell. ARIA equivalent:
+    /// [`aria-rowspan`].
+    ///
+    /// [`aria-rowspan`]: https://www.w3.org/TR/wai-aria-1.2/#aria-rowspan
     (RowSpan, row_span, set_row_span, clear_row_span),
+    /// The number of columns spanned by a cell or grid cell. ARIA equivalent:
+    /// [`aria-colspan`].
+    ///
+    /// [`aria-colspan`]: https://www.w3.org/TR/wai-aria-1.2/#aria-colspan
     (ColumnSpan, column_span, set_column_span, clear_column_span),
+    /// The hierarchical level of this node within a structure. ARIA equivalent:
+    /// [`aria-level`].
+    ///
+    /// **Difference with ARIA:** `aria-level` is one-based, while this property
+    /// is zero-based.
+    ///
+    /// [`aria-level`]: https://www.w3.org/TR/wai-aria-1.2/#aria-level
     (Level, level, set_level, clear_level),
     /// For containers like [`Role::ListBox`], specifies the total number of items.
+    /// ARIA equivalent: [`aria-setsize`].
+    ///
+    /// **Difference with ARIA:** `aria-setsize` is set on each item, while this
+    /// property is set on the container.
+    ///
+    /// [`aria-setsize`]: https://www.w3.org/TR/wai-aria-1.2/#aria-setsize
     (SizeOfSet, size_of_set, set_size_of_set, clear_size_of_set),
     /// For items like [`Role::ListBoxOption`], specifies their index in the item list.
-    /// This may not exceed the value of [`size_of_set`] as set on the container.
+    /// This must be less than the value of [`size_of_set`] as set on the container.
+    /// ARIA equivalent: [`aria-posinset`].
+    ///
+    /// **Difference with ARIA:** `aria-posinset` is one-based, while this
+    /// property is zero-based.
     ///
     /// [`size_of_set`]: Node::size_of_set
+    /// [`aria-posinset`]: https://www.w3.org/TR/wai-aria-1.2/#aria-posinset
     (PositionInSet, position_in_set, set_position_in_set, clear_position_in_set)
 }
 
@@ -2061,12 +2323,15 @@ color_property_methods! {
 }
 
 text_decoration_property_methods! {
+    /// The style and color of the overline applied to this node's text.
     (Overline, overline, set_overline, clear_overline),
+    /// The style and color of the strikethrough applied to this node's text.
     (Strikethrough, strikethrough, set_strikethrough, clear_strikethrough),
+    /// The style and color of the underline applied to this node's text.
     (Underline, underline, set_underline, clear_underline)
 }
 
-length_slice_property_methods! {
+length_vec_property_methods! {
     /// For text runs, the length (non-inclusive) of each character
     /// in UTF-8 code units (bytes). The sum of these lengths must equal
     /// the length of [`value`], also in bytes.
@@ -2119,7 +2384,7 @@ length_slice_property_methods! {
     (WordStarts, word_starts, set_word_starts, clear_word_starts)
 }
 
-coord_slice_property_methods! {
+coord_vec_property_methods! {
     /// For text runs, this is the position of each character within
     /// the node's bounding box, in the direction given by
     /// [`text_direction`], in the coordinate space of this node.
@@ -2160,13 +2425,17 @@ coord_slice_property_methods! {
 }
 
 bool_property_methods! {
-    /// Whether this node is expanded, collapsed, or neither.
+    /// Whether this node is expanded, collapsed, or neither. ARIA equivalent:
+    /// [`aria-expanded`].
     ///
     /// Setting this to `false` means the node is collapsed; omitting it means this state
     /// isn't applicable.
+    ///
+    /// [`aria-expanded`]: https://www.w3.org/TR/wai-aria-1.2/#aria-expanded
     (Expanded, is_expanded, set_expanded, clear_expanded),
 
-    /// Indicates whether this node is selected or unselected.
+    /// Indicates whether this node is selected or unselected. ARIA equivalent:
+    /// [`aria-selected`].
     ///
     /// The absence of this flag (as opposed to a `false` setting)
     /// means that the concept of "selected" doesn't apply.
@@ -2175,22 +2444,64 @@ bool_property_methods! {
     /// to announce "not selected". The ambiguity of this flag
     /// in platform accessibility APIs has made extraneous
     /// "not selected" announcements a common annoyance.
+    ///
+    /// [`aria-selected`]: https://www.w3.org/TR/wai-aria-1.2/#aria-selected
     (Selected, is_selected, set_selected, clear_selected)
 }
 
 unique_enum_property_methods! {
+    /// Whether this node's input is invalid, and whether the error is related
+    /// to spelling or grammar. ARIA equivalent: [`aria-invalid`].
+    ///
+    /// [`aria-invalid`]: https://www.w3.org/TR/wai-aria-1.2/#aria-invalid
     (Invalid, invalid, set_invalid, clear_invalid, Grammar),
+    /// The checked or pressed state of a toggle control. ARIA equivalents:
+    /// [`aria-checked`] and [`aria-pressed`].
+    ///
+    /// **Difference with ARIA:** ARIA uses separate states for checked and
+    /// pressed controls, while this property is interpreted based on the
+    /// node's role.
+    ///
+    /// [`aria-checked`]: https://www.w3.org/TR/wai-aria-1.2/#aria-checked
+    /// [`aria-pressed`]: https://www.w3.org/TR/wai-aria-1.2/#aria-pressed
     (Toggled, toggled, set_toggled, clear_toggled, True),
+    /// The priority with which updates to this live region should be announced.
+    /// ARIA equivalent: [`aria-live`].
+    ///
+    /// [`aria-live`]: https://www.w3.org/TR/wai-aria-1.2/#aria-live
     (Live, live, set_live, clear_live, Polite),
+    /// The direction in which this node's text is laid out.
     (TextDirection, text_direction, set_text_direction, clear_text_direction, RightToLeft),
+    /// Whether this node is oriented horizontally or vertically. ARIA
+    /// equivalent: [`aria-orientation`].
+    ///
+    /// [`aria-orientation`]: https://www.w3.org/TR/wai-aria-1.2/#aria-orientation
     (Orientation, orientation, set_orientation, clear_orientation, Vertical),
+    /// The direction in which items are sorted by this row or column header.
+    /// ARIA equivalent: [`aria-sort`].
+    ///
+    /// [`aria-sort`]: https://www.w3.org/TR/wai-aria-1.2/#aria-sort
     (SortDirection, sort_direction, set_sort_direction, clear_sort_direction, Descending),
+    /// Whether and how this node represents the current item within a set. ARIA
+    /// equivalent: [`aria-current`].
+    ///
+    /// [`aria-current`]: https://www.w3.org/TR/wai-aria-1.2/#aria-current
     (AriaCurrent, aria_current, set_aria_current, clear_aria_current, True),
+    /// How predictions are presented while the user enters text. ARIA
+    /// equivalent: [`aria-autocomplete`].
+    ///
+    /// [`aria-autocomplete`]: https://www.w3.org/TR/wai-aria-1.2/#aria-autocomplete
     (AutoComplete, auto_complete, set_auto_complete, clear_auto_complete, List),
+    /// The type of interactive popup that can be triggered by this node. ARIA
+    /// equivalent: [`aria-haspopup`].
+    ///
+    /// [`aria-haspopup`]: https://www.w3.org/TR/wai-aria-1.2/#aria-haspopup
     (HasPopup, has_popup, set_has_popup, clear_has_popup, Menu),
-    /// The list style type. Only available on list items.
+    /// The list marker style. Only available on list items.
     (ListStyle, list_style, set_list_style, clear_list_style, Disc),
+    /// How this node's text is aligned horizontally.
     (TextAlign, text_align, set_text_align, clear_text_align, Right),
+    /// Whether this node's text is rendered as subscript or superscript.
     (VerticalOffset, vertical_offset, set_vertical_offset, clear_vertical_offset, Superscript)
 }
 
@@ -2221,6 +2532,7 @@ property_methods! {
     /// [`transform`]: Node::transform
     (Bounds, bounds, get_rect_property, Option<Rect>, set_bounds, set_rect_property, Rect, clear_bounds),
 
+    /// The current text selection or caret position within this node's text.
     (TextSelection, text_selection, get_text_selection_property, Option<&TextSelection>, set_text_selection, set_text_selection_property, impl Into<Box<TextSelection>>, clear_text_selection),
 
     /// The tree that this node grafts. When set, this node acts as a graft
@@ -2365,6 +2677,7 @@ mod tree_id {
 }
 
 vec_property_methods! {
+    /// The application-defined actions supported by this node.
     (CustomActions, CustomAction, custom_actions, get_custom_action_vec, set_custom_actions, set_custom_action_vec, push_custom_action, push_to_custom_action_vec, clear_custom_actions)
 }
 
@@ -2411,6 +2724,21 @@ mod custom_actions {
         assert_eq!(node.custom_actions(), &[first_action, second_action]);
     }
     #[test]
+    fn pusher_should_start_a_new_list_after_the_clearer() {
+        let mut node = Node::new(Role::Unknown);
+        node.set_custom_actions([CustomAction {
+            id: 0,
+            description: "first test action".into(),
+        }]);
+        node.clear_custom_actions();
+        let second_action = CustomAction {
+            id: 1,
+            description: "second test action".into(),
+        };
+        node.push_custom_action(second_action.clone());
+        assert_eq!(node.custom_actions(), slice::from_ref(&second_action));
+    }
+    #[test]
     fn clearer_should_reset_the_property() {
         let mut node = Node::new(Role::Unknown);
         node.set_custom_actions([CustomAction {
@@ -2447,8 +2775,8 @@ impl fmt::Debug for Node {
         self.debug_usize_properties(&mut fmt);
         self.debug_color_properties(&mut fmt);
         self.debug_text_decoration_properties(&mut fmt);
-        self.debug_length_slice_properties(&mut fmt);
-        self.debug_coord_slice_properties(&mut fmt);
+        self.debug_length_vec_properties(&mut fmt);
+        self.debug_coord_vec_properties(&mut fmt);
         self.debug_bool_properties(&mut fmt);
         self.debug_unique_enum_properties(&mut fmt);
         self.debug_option_properties(&mut fmt);
@@ -2516,8 +2844,8 @@ impl Serialize for Properties {
                 Usize,
                 Color,
                 TextDecoration,
-                LengthSlice,
-                CoordSlice,
+                LengthVec,
+                CoordVec,
                 Bool,
                 Invalid,
                 Toggled,
@@ -2588,6 +2916,7 @@ impl<'de> Visitor<'de> for PropertiesVisitor {
                     AuthorId,
                     ClassName,
                     FontFamily,
+                    HtmlId,
                     HtmlTag,
                     InnerHtml,
                     KeyboardShortcut,
@@ -2640,11 +2969,11 @@ impl<'de> Visitor<'de> for PropertiesVisitor {
                     Strikethrough,
                     Underline
                 },
-                LengthSlice {
+                LengthVec {
                     CharacterLengths,
                     WordStarts
                 },
-                CoordSlice {
+                CoordVec {
                     CharacterPositions,
                     CharacterWidths
                 },
@@ -2732,7 +3061,7 @@ impl JsonSchema for Properties {
                 PreviousOnLine,
                 PopupFor
             },
-            Box<str> {
+            String {
                 Label,
                 Description,
                 Value,
@@ -2740,6 +3069,7 @@ impl JsonSchema for Properties {
                 AuthorId,
                 ClassName,
                 FontFamily,
+                HtmlId,
                 HtmlTag,
                 InnerHtml,
                 KeyboardShortcut,
@@ -2792,11 +3122,11 @@ impl JsonSchema for Properties {
                 Strikethrough,
                 Underline
             },
-            Box<[u8]> {
+            Vec<u8> {
                 CharacterLengths,
                 WordStarts
             },
-            Box<[f32]> {
+            Vec<f32> {
                 CharacterPositions,
                 CharacterWidths
             },
@@ -3057,6 +3387,77 @@ pub trait DeactivationHandler {
 mod tests {
     use super::*;
     use alloc::format;
+
+    #[test]
+    fn nodes_should_be_equal_regardless_of_the_order_properties_were_set() {
+        let mut node = Node::new(Role::Button);
+        node.set_label("a label");
+        node.set_children([NodeId(1)]);
+        node.set_description("a description");
+
+        let mut reordered = Node::new(Role::Button);
+        reordered.set_description("a description");
+        reordered.set_children([NodeId(1)]);
+        reordered.set_label("a label");
+
+        assert_eq!(node, reordered);
+    }
+
+    #[test]
+    fn cleared_property_should_be_equal_to_one_that_was_never_set() {
+        let mut node = Node::new(Role::Button);
+        node.set_label("a label");
+        node.clear_label();
+
+        assert_eq!(node, Node::new(Role::Button));
+    }
+
+    #[test]
+    fn clone_from_should_be_equivalent_to_clone() {
+        let mut source = Node::new(Role::Button);
+        source.add_action(Action::Click);
+        source.add_child_action(Action::Focus);
+        source.set_hidden();
+        source.set_label("source");
+        source.set_children([NodeId(1)]);
+
+        let mut dest = Node::new(Role::CheckBox);
+        dest.add_action(Action::Focus);
+        dest.set_multiselectable();
+        dest.set_description("dest");
+        dest.set_children([NodeId(7), NodeId(8)]);
+        dest.clone_from(&source);
+
+        assert_eq!(dest, source.clone());
+    }
+
+    #[test]
+    fn clone_from_should_reuse_the_destination_string_buffer() {
+        let mut source = Node::new(Role::Button);
+        source.set_label("new label");
+        let mut dest = Node::new(Role::Button);
+        dest.set_label("old label with room to spare");
+        let buffer = dest.label().unwrap().as_ptr();
+
+        dest.clone_from(&source);
+
+        assert_eq!(dest.label(), Some("new label"));
+        assert_eq!(dest.label().unwrap().as_ptr(), buffer);
+    }
+
+    #[test]
+    fn clone_from_should_reuse_the_destination_slice_buffer() {
+        let mut source = Node::new(Role::TextRun);
+        source.set_character_lengths([1u8, 2, 3]);
+        let mut dest = Node::new(Role::TextRun);
+        dest.set_character_lengths([9u8; 16]);
+        let buffer = dest.character_lengths().as_ptr();
+
+        dest.clone_from(&source);
+
+        assert_eq!(dest.character_lengths(), &[1, 2, 3]);
+        assert_eq!(dest.character_lengths().as_ptr(), buffer);
+    }
 
     #[test]
     fn u64_should_be_convertible_to_node_id() {

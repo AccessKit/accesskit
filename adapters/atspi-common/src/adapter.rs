@@ -9,7 +9,7 @@
 // found in the LICENSE.chromium file.
 
 use crate::{
-    AdapterCallback, CacheEvent, Event, ObjectEvent, WindowEvent,
+    AdapterCallback, CacheEvent, DocumentEvent, Event, ObjectEvent, WindowEvent,
     context::{ActionHandlerNoMut, ActionHandlerWrapper, AppContext, Context},
     filters::filter,
     node::{NodeIdOrRoot, NodeWrapper, PlatformNode, PlatformRoot},
@@ -508,6 +508,11 @@ impl Adapter {
         let target = NodeIdOrRoot::Root;
         self.callback
             .emit_event(self, Event::Object { target, event });
+    }
+
+    pub(crate) fn emit_document_event(&self, target: FullNodeId, event: DocumentEvent) {
+        self.callback
+            .emit_event(self, Event::Document { target, event });
     }
 
     fn emit_cache_added(&self, target: FullNodeId) {

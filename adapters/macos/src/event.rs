@@ -32,10 +32,10 @@ pub(crate) enum QueuedEvent {
 }
 
 impl QueuedEvent {
-    fn live_region_announcement(node: &NodeRef) -> Self {
+    fn live_region_announcement(text: String, live: Live) -> Self {
         Self::Announcement {
-            text: node.value().unwrap(),
-            priority: if node.live() == Live::Assertive {
+            text,
+            priority: if live == Live::Assertive {
                 NSAccessibilityPriorityLevel::NSAccessibilityPriorityHigh
             } else {
                 NSAccessibilityPriorityLevel::NSAccessibilityPriorityMedium
@@ -233,9 +233,11 @@ impl TreeChangeHandler for EventGenerator {
         if let Some(true) = node.is_selected() {
             self.enqueue_selected_rows_change_if_needed(node);
         }
-        if node.value().is_some() && node.live() != Live::Off {
-            self.events
-                .push(QueuedEvent::live_region_announcement(node));
+        if let Some(label) = NodeWrapper(node).label() {
+            if node.live() != Live::Off {
+                self.events
+                    .push(QueuedEvent::live_region_announcement(label, node.live()));
+            }
         }
     }
 
@@ -295,14 +297,17 @@ impl TreeChangeHandler for EventGenerator {
                 notification: unsafe { NSAccessibilitySelectedTextChangedNotification },
             });
         }
-        if new_node.value().is_some()
-            && new_node.live() != Live::Off
-            && (new_node.value() != old_node.value()
-                || new_node.live() != old_node.live()
-                || old_filter_result != FilterResult::Include)
-        {
-            self.events
-                .push(QueuedEvent::live_region_announcement(new_node));
+        if let Some(new_label) = new_wrapper.label() {
+            if new_node.live() != Live::Off
+                && (Some(&new_label) != old_wrapper.label().as_ref()
+                    || new_node.live() != old_node.live()
+                    || old_filter_result != FilterResult::Include)
+            {
+                self.events.push(QueuedEvent::live_region_announcement(
+                    new_label,
+                    new_node.live(),
+                ));
+            }
         }
         if new_node.is_selected() != old_node.is_selected()
             || (old_filter_result != FilterResult::Include && new_node.is_selected() == Some(true))

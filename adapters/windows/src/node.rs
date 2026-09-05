@@ -554,7 +554,8 @@ impl NodeWrapper<'_> {
 
     fn automation_id(&mut self) -> Option<StrWrapper<'_>> {
         self.node
-            .author_id()
+            .html_id()
+            .or_else(|| self.node.author_id())
             .map(|s| StrWrapper::new(s, self.string_buffer))
     }
 

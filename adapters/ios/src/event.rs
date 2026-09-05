@@ -20,7 +20,7 @@ use std::rc::Rc;
 use crate::{
     context::Context,
     filters::filter,
-    node::PlatformNode,
+    node::{NodeWrapper, PlatformNode},
     util::{announcement_priority_high, announcement_priority_key, announcement_priority_low},
 };
 
@@ -210,10 +210,10 @@ impl TreeChangeHandler for EventGenerator {
             return;
         }
         self.insert_layout_changed_event_if_needed();
-        if let Some(value) = node.value() {
+        if let Some(label) = NodeWrapper(node).label() {
             if node.live() != Live::Off {
                 self.events
-                    .push(QueuedEvent::live_region_announcement(value, node.live()));
+                    .push(QueuedEvent::live_region_announcement(label, node.live()));
             }
         }
     }
@@ -238,14 +238,14 @@ impl TreeChangeHandler for EventGenerator {
         }
 
         let was_filtered_out = old_filter_result != FilterResult::Include;
-        if let Some(value) = new_node.value() {
+        if let Some(label) = NodeWrapper(new_node).label() {
             if new_node.live() != Live::Off
-                && (Some(&value) != old_node.value().as_ref()
+                && (Some(&label) != NodeWrapper(old_node).label().as_ref()
                     || new_node.live() != old_node.live()
                     || was_filtered_out)
             {
                 self.events.push(QueuedEvent::live_region_announcement(
-                    value,
+                    label,
                     new_node.live(),
                 ));
             }
