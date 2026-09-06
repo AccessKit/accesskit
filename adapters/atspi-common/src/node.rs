@@ -454,25 +454,6 @@ impl NodeWrapper<'_> {
         matches!(self.0.role(), Role::RootWebArea | Role::PdfRoot)
     }
 
-    fn document_attributes(&self) -> HashMap<&'static str, String> {
-        let mut attributes = HashMap::new();
-        if let Some(title) = self.0.label() {
-            attributes.insert("Title", title);
-        }
-        if let Some(uri) = self.0.url() {
-            attributes.insert("URI", uri.to_string());
-        }
-
-        attributes
-    }
-
-    fn document_attribute_value(&self, name: &str) -> Option<String> {
-        self.document_attributes()
-            .into_iter()
-            .find(|(key, _)| key.eq_ignore_ascii_case(name))
-            .map(|(_, value)| value)
-    }
-
     fn supports_editable_text(&self) -> bool {
         self.0.is_text_input() && self.0.supports_text_ranges()
     }
@@ -584,6 +565,25 @@ impl NodeWrapper<'_> {
             );
             bounds.with_origin(new_origin)
         })
+    }
+
+    fn document_attributes(&self) -> HashMap<&'static str, String> {
+        let mut attributes = HashMap::new();
+        if let Some(title) = self.0.label() {
+            attributes.insert("Title", title);
+        }
+        if let Some(uri) = self.0.url() {
+            attributes.insert("URI", uri.to_string());
+        }
+
+        attributes
+    }
+
+    fn document_attribute_value(&self, name: &str) -> Option<String> {
+        self.document_attributes()
+            .into_iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value)
     }
 
     fn current_value(&self) -> Option<f64> {
