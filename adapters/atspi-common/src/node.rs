@@ -481,6 +481,13 @@ impl NodeWrapper<'_> {
         self.0.supports_url()
     }
 
+    fn supports_image(&self) -> bool {
+        matches!(
+            self.0.role(),
+            Role::Canvas | Role::DocCover | Role::GraphicsSymbol | Role::Image | Role::SvgRoot
+        )
+    }
+
     fn supports_selection(&self) -> bool {
         self.0.is_container_with_selectable_children()
     }
@@ -509,6 +516,9 @@ impl NodeWrapper<'_> {
         }
         if self.supports_hyperlink() {
             interfaces.insert(Interface::Hyperlink);
+        }
+        if self.supports_image() {
+            interfaces.insert(Interface::Image);
         }
         if self.supports_selection() {
             interfaces.insert(Interface::Selection);
@@ -1045,6 +1055,10 @@ impl PlatformNode {
         })
     }
 
+    pub fn supports_image(&self) -> Result<bool> {
+        self.resolve(|node| Ok(NodeWrapper(&node).supports_image()))
+    }
+
     pub fn supports_selection(&self) -> Result<bool> {
         self.resolve(|node| {
             let wrapper = NodeWrapper(&node);
@@ -1265,6 +1279,24 @@ impl PlatformNode {
 
     pub fn hyperlink_is_valid(&self) -> Result<bool> {
         self.resolve(|node| Ok(node.url().is_some()))
+    }
+
+    pub fn image_description(&self) -> Result<String> {
+        self.description()
+    }
+
+    pub fn image_extents(&self, coord_type: CoordType) -> Result<AtspiRect> {
+        self.extents(coord_type)
+    }
+
+    pub fn image_position(&self, coord_type: CoordType) -> Result<(i32, i32)> {
+        let extents = self.image_extents(coord_type)?;
+        Ok((extents.x, extents.y))
+    }
+
+    pub fn image_size(&self) -> Result<(i32, i32)> {
+        let extents = self.image_extents(CoordType::Window)?;
+        Ok((extents.width, extents.height))
     }
 
     pub fn n_selected_children(&self) -> Result<i32> {

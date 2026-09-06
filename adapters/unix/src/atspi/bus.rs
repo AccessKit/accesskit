@@ -157,6 +157,10 @@ impl Bus {
             )
             .await?;
         }
+        if new_interfaces.contains(Interface::Image) {
+            self.register_interface(&path, ImageInterface::new(node.clone()))
+                .await?;
+        }
         if new_interfaces.contains(Interface::Selection) {
             self.register_interface(
                 &path,
@@ -220,6 +224,9 @@ impl Bus {
         if old_interfaces.contains(Interface::Hyperlink) {
             self.unregister_interface::<HyperlinkInterface>(&path)
                 .await?;
+        }
+        if old_interfaces.contains(Interface::Image) {
+            self.unregister_interface::<ImageInterface>(&path).await?;
         }
         if old_interfaces.contains(Interface::Selection) {
             self.unregister_interface::<SelectionInterface>(&path)
