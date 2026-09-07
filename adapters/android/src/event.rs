@@ -55,6 +55,13 @@ fn send_completed_event(env: &mut JNIEnv, host: &JObject, event: JObject) {
         .unwrap()
         .l()
         .unwrap();
+    // Events are raised from a closure posted with `View.post`, which can run
+    // after the host view has been detached; `getParent()` is then null, and
+    // calling a method on it would fail. There is nothing to send the event to,
+    // so drop it.
+    if parent.is_null() {
+        return;
+    }
     env.call_method(
         &parent,
         "requestSendAccessibilityEvent",
