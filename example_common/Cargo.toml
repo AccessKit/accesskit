@@ -1,0 +1,26 @@
+[package]
+name = "example_common"
+version = "0.0.0"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+accesskit = { path = "../accesskit" }
+raw-window-handle = "0.6.2"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies.softbuffer]
+version = "0.4.8"
+default-features = false
+features = [
+    "x11",
+    "x11-dlopen",
+    "wayland",
+    "wayland-dlopen",
+]
+
+[target.'cfg(target_os = "ios")'.dependencies.softbuffer]
+version = "0.4.8"
+default-features = false

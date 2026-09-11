@@ -108,8 +108,10 @@ version = "0.35.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
+ "example_common",
  "hashbrown",
  "parking_lot",
+ "raw-window-handle 0.6.2",
  "scopeguard",
  "static_assertions",
  "windows",
@@ -127,9 +129,9 @@ dependencies = [
  "accesskit_macos",
  "accesskit_unix",
  "accesskit_windows",
+ "example_common",
  "raw-window-handle 0.5.2",
  "raw-window-handle 0.6.2",
- "softbuffer",
  "winit",
 ]
 
@@ -714,6 +716,15 @@ checksum = "0f214dc438f977e6d4e3500aaa277f5ad94ca83fbbd9b1a15713ce2344ccc5a1"
 dependencies = [
  "event-listener",
  "pin-project-lite",
+]
+
+[[package]]
+name = "example_common"
+version = "0.0.0"
+dependencies = [
+ "accesskit",
+ "raw-window-handle 0.6.2",
+ "softbuffer",
 ]
 
 [[package]]

@@ -11,6 +11,7 @@ targets = [
   { triple = "x86_64-unknown-linux-gnu" },
 ]
 all-features = true
+exclude = ["example_common"]
 
 [advisories]
 db-path = "~/.cargo/advisory-db"

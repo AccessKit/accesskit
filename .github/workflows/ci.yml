@@ -95,7 +95,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: cargo clippy (common packages)
-        run: cargo clippy -p accesskit -p accesskit_consumer -p accesskit_winit ${{ matrix.target && format('--target {0}', matrix.target) }} --all-targets -- -D warnings
+        run: cargo clippy -p accesskit -p accesskit_consumer -p accesskit_winit -p example_common ${{ matrix.target && format('--target {0}', matrix.target) }} --all-targets -- -D warnings
 
       - name: cargo clippy (adapters)
         run: cargo clippy ${{ matrix.adapters }} ${{ matrix.target && format('--target {0}', matrix.target) }} --all-targets -- -D warnings

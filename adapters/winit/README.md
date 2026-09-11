@@ -19,8 +19,8 @@ The Android implementation of this adapter currently only works with [GameActivi
 
 The `examples/` directory contains two runnable examples:
 
-- `simple` — a minimal window exposing a single accessible label.
-- `mixed_handlers` — demonstrates combining AccessKit's action handling with winit event handling.
+- `simple` — a window with two logical buttons and a live region, using a single winit event loop for both the initial tree request and action requests.
+- `mixed_handlers` — the same UI, but with a tear-off activation handler that builds the initial tree on whichever thread the platform asks on, while action requests still go through the event loop.
 
 On desktop platforms, run them with `cargo run --example simple` or `cargo run --example mixed_handlers` from this crate's directory.
 
