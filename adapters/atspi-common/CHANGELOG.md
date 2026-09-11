@@ -24,6 +24,18 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_consumer bumped from 0.25.0 to 0.26.0
 
+## [0.21.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.20.0...accesskit_atspi_common-v0.21.0) (2026-09-11)
+
+
+### Features
+
+* Support the Image interface on Unix ([#791](https://github.com/AccessKit/accesskit/issues/791)) ([93a6984](https://github.com/AccessKit/accesskit/commit/93a6984b8c3578dce1e319767b82c7652612d521))
+
+
+### Bug Fixes
+
+* Expose non-disabled nodes as enabled and sensitive on Unix ([#788](https://github.com/AccessKit/accesskit/issues/788)) ([6ee0558](https://github.com/AccessKit/accesskit/commit/6ee0558b6315b3ef1594db24ce45a030ecac7cb5))
+
 ## [0.20.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.19.1...accesskit_atspi_common-v0.20.0) (2026-08-29)
 
 
