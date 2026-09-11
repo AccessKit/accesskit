@@ -68,6 +68,20 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_atspi_common bumped from 0.10.0 to 0.10.1
 
+## [0.24.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.23.0...accesskit_unix-v0.24.0) (2026-09-11)
+
+
+### Features
+
+* Support the Image interface on Unix ([#791](https://github.com/AccessKit/accesskit/issues/791)) ([93a6984](https://github.com/AccessKit/accesskit/commit/93a6984b8c3578dce1e319767b82c7652612d521))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_atspi_common bumped from 0.20.0 to 0.21.0
+
 ## [0.23.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.22.1...accesskit_unix-v0.23.0) (2026-08-29)
 
 
