@@ -290,10 +290,14 @@ pub enum Action {
     /// Do the equivalent of a single click or tap.
     Click,
 
+    /// Move keyboard focus to the node.
     Focus,
+    /// Remove keyboard focus from the node.
     Blur,
 
+    /// Collapse the node.
     Collapse,
+    /// Expand the node.
     Expand,
 
     /// Requires [`ActionRequest::data`] to be set to [`ActionData::CustomAction`].
@@ -304,7 +308,9 @@ pub enum Action {
     /// Increment a numeric value by one step.
     Increment,
 
+    /// Hide the tooltip associated with the node.
     HideTooltip,
+    /// Show the tooltip associated with the node.
     ShowTooltip,
 
     /// Delete any selected text in the control's text value and
@@ -346,6 +352,7 @@ pub enum Action {
     /// to be set to [`ActionData::Value`] or [`ActionData::NumericValue`].
     SetValue,
 
+    /// Show the context menu for the node.
     ShowContextMenu,
 }
 
@@ -399,6 +406,10 @@ fn action_mask_to_action_vec(mask: u32) -> Vec<Action> {
     actions
 }
 
+/// The horizontal or vertical orientation of a node. ARIA equivalent:
+/// [`aria-orientation`].
+///
+/// [`aria-orientation`]: https://www.w3.org/TR/wai-aria-1.2/#aria-orientation
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -421,6 +432,7 @@ pub enum Orientation {
     Vertical,
 }
 
+/// The direction in which text is laid out.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -468,6 +480,11 @@ pub enum Invalid {
     Spelling,
 }
 
+/// The checked or pressed state of a toggle control, interpreted based on the
+/// node's role. ARIA equivalents: [`aria-checked`] and [`aria-pressed`].
+///
+/// [`aria-checked`]: https://www.w3.org/TR/wai-aria-1.2/#aria-checked
+/// [`aria-pressed`]: https://www.w3.org/TR/wai-aria-1.2/#aria-pressed
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -484,8 +501,11 @@ pub enum Invalid {
 )]
 #[repr(u8)]
 pub enum Toggled {
+    /// The control is not checked or pressed.
     False,
+    /// The control is checked or pressed.
     True,
+    /// The control is partially checked or pressed.
     Mixed,
 }
 
@@ -499,6 +519,9 @@ impl From<bool> for Toggled {
     }
 }
 
+/// The direction in which items are sorted. ARIA equivalent: [`aria-sort`].
+///
+/// [`aria-sort`]: https://www.w3.org/TR/wai-aria-1.2/#aria-sort
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -517,9 +540,14 @@ impl From<bool> for Toggled {
 pub enum SortDirection {
     Ascending,
     Descending,
+    /// A sort order other than ascending or descending.
     Other,
 }
 
+/// Whether and how a node represents the current item within a set. ARIA
+/// equivalent: [`aria-current`].
+///
+/// [`aria-current`]: https://www.w3.org/TR/wai-aria-1.2/#aria-current
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -536,7 +564,9 @@ pub enum SortDirection {
 )]
 #[repr(u8)]
 pub enum AriaCurrent {
+    /// The node does not represent the current item.
     False,
+    /// The node represents the current item without a more specific type.
     True,
     Page,
     Step,
@@ -545,6 +575,10 @@ pub enum AriaCurrent {
     Time,
 }
 
+/// How suggested values are presented while the user enters text. ARIA
+/// equivalent: [`aria-autocomplete`].
+///
+/// [`aria-autocomplete`]: https://www.w3.org/TR/wai-aria-1.2/#aria-autocomplete
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -561,11 +595,18 @@ pub enum AriaCurrent {
 )]
 #[repr(u8)]
 pub enum AutoComplete {
+    /// Suggested text is inserted after the caret.
     Inline,
+    /// Suggested values are presented as a collection.
     List,
+    /// Both inline text and a collection of suggested values are presented.
     Both,
 }
 
+/// The priority with which updates to a live region should be presented. ARIA
+/// equivalent: [`aria-live`].
+///
+/// [`aria-live`]: https://www.w3.org/TR/wai-aria-1.2/#aria-live
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -582,11 +623,18 @@ pub enum AutoComplete {
 )]
 #[repr(u8)]
 pub enum Live {
+    /// Updates should not be presented unless the node has focus.
     Off,
+    /// Updates should be presented at the next suitable opportunity.
     Polite,
+    /// Updates should be presented immediately.
     Assertive,
 }
 
+/// The type of interactive popup that can be triggered by a node. ARIA
+/// equivalent: [`aria-haspopup`].
+///
+/// [`aria-haspopup`]: https://www.w3.org/TR/wai-aria-1.2/#aria-haspopup
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -610,6 +658,7 @@ pub enum HasPopup {
     Dialog,
 }
 
+/// The marker style used by a list item.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -635,6 +684,7 @@ pub enum ListStyle {
     Other,
 }
 
+/// The horizontal alignment of text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -657,6 +707,7 @@ pub enum TextAlign {
     Justify,
 }
 
+/// The vertical position of text relative to the baseline.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -677,6 +728,7 @@ pub enum VerticalOffset {
     Superscript,
 }
 
+/// The line style used by a [`TextDecoration`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "enumn", derive(enumn::N))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -759,7 +811,9 @@ impl TreeId {
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct CustomAction {
+    /// An application-defined identifier for the action.
     pub id: i32,
+    /// A human-readable description of the action.
     pub description: String,
 }
 
@@ -3296,15 +3350,20 @@ pub enum ScrollHint {
     RightEdge,
 }
 
+/// Additional data required by some actions.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 #[repr(C)]
 pub enum ActionData {
+    /// The identifier of the [`CustomAction`] to perform.
     CustomAction(i32),
+    /// The text for [`Action::ReplaceSelectedText`] or [`Action::SetValue`].
     Value(Box<str>),
+    /// The numeric value for [`Action::SetValue`].
     NumericValue(f64),
+    /// The amount by which to perform a directional scroll action.
     ScrollUnit(ScrollUnit),
     /// Optional suggestion for [`Action::ScrollIntoView`], specifying
     /// the preferred position of the target node relative to the scrollable
@@ -3316,18 +3375,24 @@ pub enum ActionData {
     /// Target for [`Action::SetScrollOffset`], in the coordinate space
     /// of the action's target node.
     SetScrollOffset(Point),
+    /// The selection for [`Action::SetTextSelection`].
     SetTextSelection(TextSelection),
 }
 
+/// A request to perform an action on a node.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "schemars", derive(JsonSchema))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct ActionRequest {
+    /// The action to perform.
     pub action: Action,
+    /// The tree containing the target node.
     pub target_tree: TreeId,
+    /// The node on which to perform the action.
     pub target_node: NodeId,
+    /// Additional data required by the action, if any.
     pub data: Option<ActionData>,
 }
 
