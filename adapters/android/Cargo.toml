@@ -8,6 +8,7 @@ categories.workspace = true
 keywords = ["gui", "ui", "accessibility"]
 repository.workspace = true
 readme = "README.md"
+exclude = ["examples"]
 edition.workspace = true
 rust-version.workspace = true
 
@@ -20,3 +21,9 @@ accesskit_consumer = { version = "0.39.0", path = "../../accesskit_consumer" }
 jni = "0.21.1"
 log = "0.4.17"
 
+[dev-dependencies]
+example_common = { path = "../../example_common" }
+
+[[example]]
+name = "hello_world"
+crate-type = ["cdylib"]
