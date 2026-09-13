@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.8.0...accesskit_android-v0.9.0) (2026-09-13)
+
+
+### Features
+
+* Support live regions on Android ([#795](https://github.com/AccessKit/accesskit/issues/795)) ([c978212](https://github.com/AccessKit/accesskit/commit/c978212671e028175113ea92b987e62ed4be532d))
+
 ## [0.8.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.7.5...accesskit_android-v0.8.0) (2026-08-29)
 
 
