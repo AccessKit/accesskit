@@ -36,6 +36,7 @@ version = "0.8.0"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
+ "example_common",
  "jni",
  "log",
 ]
