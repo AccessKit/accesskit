@@ -9,8 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Orientation,
-    Point, Role, ScrollUnit, TextSelection, TreeId, TreeInfo, TreeUpdate,
+    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Live, Node, NodeId,
+    Orientation, Point, Role, ScrollUnit, TextSelection, TreeId, TreeInfo, TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, NodeRef, TextPosition, Tree, TreeChangeHandler};
 use jni::{
@@ -78,12 +78,24 @@ impl AdapterChangeHandler<'_> {
         enqueue_window_content_changed(self.events);
         self.enqueued_window_content_changed = true;
     }
+
+    fn enqueue_live_region_changed(&mut self, node: &NodeRef) {
+        let id = self.node_id_map.get_or_create_java_id(node);
+        self.events.push(QueuedEvent::WindowContentChanged {
+            virtual_view_id: id,
+        });
+    }
 }
 
 impl TreeChangeHandler for AdapterChangeHandler<'_> {
-    fn node_added(&mut self, _node: &NodeRef) {
+    fn node_added(&mut self, node: &NodeRef) {
         self.enqueue_window_content_changed_if_needed();
-        // TODO: live regions?
+        if filter(node) != FilterResult::Include {
+            return;
+        }
+        if node.live() != Live::Off && NodeWrapper(node).content_description().is_some() {
+            self.enqueue_live_region_changed(node);
+        }
     }
 
     fn node_updated(&mut self, old_node: &NodeRef, new_node: &NodeRef) {
@@ -93,6 +105,15 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
         let old_wrapper = NodeWrapper(old_node);
         let new_wrapper = NodeWrapper(new_node);
+        if let Some(new_desc) = new_wrapper.content_description() {
+            if new_node.live() != Live::Off
+                && (Some(&new_desc) != old_wrapper.content_description().as_ref()
+                    || new_node.live() != old_node.live()
+                    || filter(old_node) != FilterResult::Include)
+            {
+                self.enqueue_live_region_changed(new_node);
+            }
+        }
         let old_text = old_wrapper.text();
         let new_text = new_wrapper.text();
         if old_text != new_text {
