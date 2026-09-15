@@ -94,6 +94,10 @@ fn inner_adapter_from_handle(handle: jlong) -> Option<Arc<Mutex<InnerInjectingAd
     handle_map_guard.get(&handle).and_then(Weak::upgrade)
 }
 
+/// Local references created when posting to the UI thread from a thread
+/// the adapter attached itself: the upgraded host view and the runnable.
+const LOCAL_FRAME_CAPACITY: i32 = 2;
+
 static NEXT_CALLBACK_HANDLE: AtomicI64 = AtomicI64::new(0);
 #[allow(clippy::type_complexity)]
 static CALLBACK_MAP: Mutex<
@@ -390,80 +394,81 @@ impl InjectingAdapter {
     /// [`ActivationHandler::request_initial_tree`] initially returned `None`,
     /// the [`TreeUpdate`] returned by the provided function must contain
     /// a full tree.
+    ///
+    /// This method may be called from any thread. If the calling thread
+    /// isn't attached to the JVM, it's attached for the duration of the call,
+    /// which is expensive; callers that update frequently from a native
+    /// thread should attach that thread permanently.
     pub fn update_if_active(&mut self, update_factory: impl FnOnce() -> TreeUpdate) {
-        let mut env = self.vm.get_env().unwrap();
-        let Some(host) = self.host.upgrade_local(&env).unwrap() else {
-            return;
-        };
-        let mut inner = self.inner.lock().unwrap();
-        let Some(events) = inner.adapter.update_if_active(update_factory) else {
-            return;
-        };
-        drop(inner);
-        post_to_ui_thread(
-            &mut env,
-            self.delegate_class,
-            &host,
-            |env, _delegate_class, host| {
-                events.raise(env, host);
-            },
-        );
+        let mut env = self.vm.attach_current_thread().unwrap();
+        env.with_local_frame(LOCAL_FRAME_CAPACITY, |env| -> Result<()> {
+            let Some(host) = self.host.upgrade_local(env)? else {
+                return Ok(());
+            };
+            let mut inner = self.inner.lock().unwrap();
+            let Some(events) = inner.adapter.update_if_active(update_factory) else {
+                return Ok(());
+            };
+            drop(inner);
+            post_to_ui_thread(
+                env,
+                self.delegate_class,
+                &host,
+                |env, _delegate_class, host| {
+                    events.raise(env, host);
+                },
+            );
+            Ok(())
+        })
+        .unwrap();
     }
+}
+
+fn uninstall_delegate(env: &mut JNIEnv, delegate_class: &JClass, host: &JObject) {
+    let prev_delegate = env
+        .call_method(
+            host,
+            "getAccessibilityDelegate",
+            "()Landroid/view/View$AccessibilityDelegate;",
+            &[],
+        )
+        .unwrap()
+        .l()
+        .unwrap();
+    if prev_delegate.is_null() || !env.is_instance_of(&prev_delegate, delegate_class).unwrap() {
+        return;
+    }
+    let null = JObject::null();
+    env.call_method(
+        host,
+        "setAccessibilityDelegate",
+        "(Landroid/view/View$AccessibilityDelegate;)V",
+        &[(&null).into()],
+    )
+    .unwrap();
+    env.call_method(
+        host,
+        "setOnHoverListener",
+        "(Landroid/view/View$OnHoverListener;)V",
+        &[(&null).into()],
+    )
+    .unwrap();
 }
 
 impl Drop for InjectingAdapter {
     fn drop(&mut self) {
-        fn drop_impl(env: &mut JNIEnv, delegate_class: &JClass, host: &WeakRef) -> Result<()> {
-            let Some(host) = host.upgrade_local(env)? else {
-                return Ok(());
-            };
-            post_to_ui_thread(env, delegate_class, &host, |env, delegate_class, host| {
-                let prev_delegate = env
-                    .call_method(
-                        host,
-                        "getAccessibilityDelegate",
-                        "()Landroid/view/View$AccessibilityDelegate;",
-                        &[],
-                    )
-                    .unwrap()
-                    .l()
-                    .unwrap();
-                if prev_delegate.is_null()
-                    && !env.is_instance_of(&prev_delegate, delegate_class).unwrap()
-                {
-                    return;
-                }
-                let null = JObject::null();
-                env.call_method(
-                    host,
-                    "setAccessibilityDelegate",
-                    "(Landroid/view/View$AccessibilityDelegate;)V",
-                    &[(&null).into()],
-                )
-                .unwrap();
-                env.call_method(
-                    host,
-                    "setOnHoverListener",
-                    "(Landroid/view/View$OnHoverListener;)V",
-                    &[(&null).into()],
-                )
-                .unwrap();
-            });
-            Ok(())
-        }
-
-        let res = match self.vm.get_env() {
-            Ok(mut env) => drop_impl(&mut env, self.delegate_class, &self.host),
-            Err(_) => self
-                .vm
-                .attach_current_thread()
-                .and_then(|mut env| drop_impl(&mut env, self.delegate_class, &self.host)),
-        };
-
+        let res = self.vm.attach_current_thread().and_then(|mut env| {
+            env.with_local_frame(LOCAL_FRAME_CAPACITY, |env| {
+                let Some(host) = self.host.upgrade_local(env)? else {
+                    return Ok(());
+                };
+                post_to_ui_thread(env, self.delegate_class, &host, uninstall_delegate);
+                Ok(())
+            })
+        });
         if let Err(err) = res {
             debug!("error dropping InjectingAdapter: {:#?}", err);
         }
-
         HANDLE_MAP.lock().unwrap().remove(&self.handle);
     }
 }
