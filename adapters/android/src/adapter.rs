@@ -295,21 +295,19 @@ impl Adapter {
         &mut self,
         update_factory: impl FnOnce() -> TreeUpdate,
     ) -> Option<QueuedEvents> {
+        let mut events = Vec::new();
         match &mut self.state {
-            State::Inactive => None,
+            State::Inactive => return None,
             State::Placeholder(_) => {
                 let tree = Tree::new(update_factory(), true);
-                let mut events = Vec::new();
                 enqueue_window_content_changed(&mut events);
                 let state = tree.state();
                 if let Some(focus) = state.focus() {
                     enqueue_focus_event_if_applicable(&mut events, &mut self.node_id_map, &focus);
                 }
                 self.state = State::Active(tree);
-                Some(QueuedEvents(events))
             }
             State::Active(tree) => {
-                let mut events = Vec::new();
                 update_tree(
                     &mut events,
                     &mut self.node_id_map,
@@ -317,9 +315,9 @@ impl Adapter {
                     tree,
                     update_factory(),
                 );
-                Some(QueuedEvents(events))
             }
         }
+        (!events.is_empty()).then_some(QueuedEvents(events))
     }
 
     /// Create an `AccessibilityNodeInfo` for the AccessKit node
