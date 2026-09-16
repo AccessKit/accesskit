@@ -548,7 +548,7 @@ impl Adapter {
             tree_state.root()
         } else {
             let id = self.node_id_map.get_accesskit_id(virtual_view_id)?;
-            tree_state.node_by_id(id).unwrap()
+            tree_state.node_by_id(id)?
         };
         let (node_id, tree_id) = tree_state.locate_node(node.id())?;
         let (focus_id, _) = tree_state.locate_node(tree_state.focus_id_in_tree())?;
