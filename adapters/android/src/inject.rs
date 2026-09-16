@@ -400,27 +400,33 @@ impl InjectingAdapter {
     /// which is expensive; callers that update frequently from a native
     /// thread should attach that thread permanently.
     pub fn update_if_active(&mut self, update_factory: impl FnOnce() -> TreeUpdate) {
-        let mut env = self.vm.attach_current_thread().unwrap();
-        env.with_local_frame(LOCAL_FRAME_CAPACITY, |env| -> Result<()> {
+        let events = self
+            .inner
+            .lock()
+            .unwrap()
+            .adapter
+            .update_if_active(update_factory);
+        let Some(events) = events else {
+            return;
+        };
+        self.attach_and_post_to_ui_thread(|env, _delegate_class, host| {
+            events.raise(env, host);
+        })
+        .unwrap();
+    }
+
+    fn attach_and_post_to_ui_thread(
+        &self,
+        callback: impl FnOnce(&mut JNIEnv, &JClass, &JObject) + Send + 'static,
+    ) -> Result<()> {
+        let mut env = self.vm.attach_current_thread()?;
+        env.with_local_frame(LOCAL_FRAME_CAPACITY, |env| {
             let Some(host) = self.host.upgrade_local(env)? else {
                 return Ok(());
             };
-            let mut inner = self.inner.lock().unwrap();
-            let Some(events) = inner.adapter.update_if_active(update_factory) else {
-                return Ok(());
-            };
-            drop(inner);
-            post_to_ui_thread(
-                env,
-                self.delegate_class,
-                &host,
-                |env, _delegate_class, host| {
-                    events.raise(env, host);
-                },
-            );
+            post_to_ui_thread(env, self.delegate_class, &host, callback);
             Ok(())
         })
-        .unwrap();
     }
 }
 
@@ -457,16 +463,7 @@ fn uninstall_delegate(env: &mut JNIEnv, delegate_class: &JClass, host: &JObject)
 
 impl Drop for InjectingAdapter {
     fn drop(&mut self) {
-        let res = self.vm.attach_current_thread().and_then(|mut env| {
-            env.with_local_frame(LOCAL_FRAME_CAPACITY, |env| {
-                let Some(host) = self.host.upgrade_local(env)? else {
-                    return Ok(());
-                };
-                post_to_ui_thread(env, self.delegate_class, &host, uninstall_delegate);
-                Ok(())
-            })
-        });
-        if let Err(err) = res {
+        if let Err(err) = self.attach_and_post_to_ui_thread(uninstall_delegate) {
             debug!("error dropping InjectingAdapter: {:#?}", err);
         }
         HANDLE_MAP.lock().unwrap().remove(&self.handle);
