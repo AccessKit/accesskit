@@ -36,3 +36,15 @@ objc2-app-kit = { version = "0.2.0", features = [
     "NSView",
     "NSWindow",
 ] }
+
+[dev-dependencies]
+objc2-app-kit = { version = "0.2.0", features = [
+    "NSApplication",
+    "NSClipView",
+    "NSGraphics",
+    "NSScrollView",
+] }
+
+[[test]]
+name = "window_ownership"
+harness = false
