@@ -55,6 +55,11 @@ fn send_completed_event(env: &mut JNIEnv, host: &JObject, event: JObject) {
         .unwrap()
         .l()
         .unwrap();
+    // The host may have been detached from its window by the time
+    // a posted event is raised, in which case there's nothing to send it to.
+    if parent.is_null() {
+        return;
+    }
     env.call_method(
         &parent,
         "requestSendAccessibilityEvent",
