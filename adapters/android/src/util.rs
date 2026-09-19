@@ -4,8 +4,12 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit_consumer::{FullNodeId, NodeRef};
-use jni::{JNIEnv, objects::JObject, sys::jint};
-use std::collections::HashMap;
+use jni::{
+    JNIEnv,
+    objects::{GlobalRef, JObject},
+    sys::jint,
+};
+use std::{collections::HashMap, sync::OnceLock};
 
 pub(crate) const ACTION_FOCUS: jint = 1 << 0;
 pub(crate) const ACTION_CLICK: jint = 1 << 4;
@@ -121,17 +125,47 @@ pub(crate) fn bundle_get_bool(env: &mut JNIEnv, bundle: &JObject, key: &str) -> 
     .unwrap()
 }
 
+fn get_context<'local>(env: &mut JNIEnv<'local>, view: &JObject) -> JObject<'local> {
+    env.call_method(view, "getContext", "()Landroid/content/Context;", &[])
+        .unwrap()
+        .l()
+        .unwrap()
+}
+
 pub(crate) fn get_package_name<'local>(
     env: &mut JNIEnv<'local>,
     view: &JObject,
 ) -> JObject<'local> {
-    let context = env
-        .call_method(view, "getContext", "()Landroid/content/Context;", &[])
-        .unwrap()
-        .l()
-        .unwrap();
+    let context = get_context(env, view);
     env.call_method(&context, "getPackageName", "()Ljava/lang/String;", &[])
         .unwrap()
         .l()
+        .unwrap()
+}
+
+fn accessibility_manager(env: &mut JNIEnv, view: &JObject) -> &'static GlobalRef {
+    static MANAGER: OnceLock<GlobalRef> = OnceLock::new();
+    MANAGER.get_or_init(|| {
+        let context = get_context(env, view);
+        let service_name = env.new_string("accessibility").unwrap();
+        let manager = env
+            .call_method(
+                &context,
+                "getSystemService",
+                "(Ljava/lang/String;)Ljava/lang/Object;",
+                &[(&service_name).into()],
+            )
+            .unwrap()
+            .l()
+            .unwrap();
+        env.new_global_ref(manager).unwrap()
+    })
+}
+
+pub(crate) fn is_accessibility_enabled(env: &mut JNIEnv, view: &JObject) -> bool {
+    let manager = accessibility_manager(env, view);
+    env.call_method(manager, "isEnabled", "()Z", &[])
+        .unwrap()
+        .z()
         .unwrap()
 }
