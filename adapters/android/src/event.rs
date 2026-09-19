@@ -349,6 +349,11 @@ impl QueuedEvents {
     /// any locks required by the host view's implementations of Android
     /// framework callbacks.
     pub fn raise(self, env: &mut JNIEnv, host: &JObject) {
+        // The framework throws an exception if events are sent from the
+        // UI thread while accessibility is disabled.
+        if !is_accessibility_enabled(env, host) {
+            return;
+        }
         for event in self.0 {
             match event {
                 QueuedEvent::Simple {
