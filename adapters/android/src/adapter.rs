@@ -168,13 +168,8 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 y: scroll_y,
             });
         }
-        if old_node.numeric_value() != new_node.numeric_value() && new_node.data().value().is_none()
-        {
-            if let (Some(current), Some(min), Some(max)) = (
-                new_node.numeric_value(),
-                new_node.min_numeric_value(),
-                new_node.max_numeric_value(),
-            ) {
+        if let Some(range) = new_wrapper.range() {
+            if old_node.numeric_value() != Some(range.current) {
                 let id = self.node_id_map.get_or_create_java_id(new_node);
                 let event_type = if self.accessibility_focus == Some(id) {
                     EVENT_VIEW_SELECTED
@@ -184,9 +179,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 self.events.push(QueuedEvent::RangeValueChanged {
                     virtual_view_id: id,
                     event_type,
-                    current,
-                    min,
-                    max,
+                    range,
                 });
             }
         }

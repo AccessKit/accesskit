@@ -243,20 +243,18 @@ fn send_range_value_changed(
     host: &JObject,
     virtual_view_id: jint,
     event_type: jint,
-    current: f64,
-    min: f64,
-    max: f64,
+    range: Range,
 ) {
     let event = new_event(env, host, virtual_view_id, event_type);
-    let item_index = if max > min && current >= min && current <= max {
-        ((current - min) * 100.0 / (max - min)) as jint
-    } else {
-        0
-    };
     env.call_method(&event, "setItemCount", "(I)V", &[100i32.into()])
         .unwrap();
-    env.call_method(&event, "setCurrentItemIndex", "(I)V", &[item_index.into()])
-        .unwrap();
+    env.call_method(
+        &event,
+        "setCurrentItemIndex",
+        "(I)V",
+        &[range.current_item_index().into()],
+    )
+    .unwrap();
     send_completed_event(env, host, event);
 }
 
@@ -327,9 +325,7 @@ pub(crate) enum QueuedEvent {
     RangeValueChanged {
         virtual_view_id: jint,
         event_type: jint,
-        current: f64,
-        min: f64,
-        max: f64,
+        range: Range,
     },
     InvalidateHost,
 }
@@ -407,19 +403,9 @@ impl QueuedEvents {
                 QueuedEvent::RangeValueChanged {
                     virtual_view_id,
                     event_type,
-                    current,
-                    min,
-                    max,
+                    range,
                 } => {
-                    send_range_value_changed(
-                        env,
-                        host,
-                        virtual_view_id,
-                        event_type,
-                        current,
-                        min,
-                        max,
-                    );
+                    send_range_value_changed(env, host, virtual_view_id, event_type, range);
                 }
                 QueuedEvent::InvalidateHost => {
                     env.call_method(host, "invalidate", "()V", &[]).unwrap();
