@@ -137,7 +137,7 @@ impl TryInto<ObjectMatchRule> for FixedObjectMatchRule {
             return Err("Expected states vector with length 2".to_string())
         }
 
-        let states_bits = ((self.states[0] as u32 as u64) << 32) | (self.states[1] as u32 as u64);
+        let states_bits = ((self.states[1] as u32 as u64) << 32) | (self.states[0] as u32 as u64);
         let state_set = StateSet::from_bits(states_bits)
             .map_err(|e| e.to_string())?;
         let role_set = to_role_set(self.roles)?;
