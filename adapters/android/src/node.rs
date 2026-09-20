@@ -93,6 +93,14 @@ impl NodeWrapper<'_> {
         }
     }
 
+    fn supports_set_progress(&self) -> bool {
+        self.range().is_some() && self.0.supports_action(Action::SetValue, &filter)
+    }
+
+    fn is_range_control(&self) -> bool {
+        self.0.supports_increment(&filter) || self.0.supports_decrement(&filter)
+    }
+
     pub(crate) fn content_description(&self) -> Option<String> {
         if self.0.label_comes_from_value() {
             self.0.value()
@@ -377,7 +385,11 @@ impl NodeWrapper<'_> {
         .unwrap();
 
         let can_focus = self.is_focusable() && !self.0.is_focused();
-        if self.0.is_clickable(&filter) || can_focus {
+        // Like the framework's `SeekBar`, a range control doesn't advertise
+        // a click action unless it's really clickable. TalkBack then handles
+        // a double-tap by synthesizing a tap at the center of the control,
+        // which is how users expect to jump to the middle of the range.
+        if self.0.is_clickable(&filter) || (can_focus && !self.is_range_control()) {
             add_action(env, node_info, ACTION_CLICK);
         }
         if can_focus {
@@ -399,13 +411,18 @@ impl NodeWrapper<'_> {
             )
             .unwrap();
         }
+        // Like the framework's own `SeekBar`, a control with a numeric
+        // value is adjusted through the scroll actions; TalkBack's
+        // "adjust slider" reading control performs nothing else.
         if self.0.supports_action(Action::ScrollLeft, &filter)
             || self.0.supports_action(Action::ScrollUp, &filter)
+            || self.0.supports_decrement(&filter)
         {
             add_action(env, node_info, ACTION_SCROLL_BACKWARD);
         }
         if self.0.supports_action(Action::ScrollRight, &filter)
             || self.0.supports_action(Action::ScrollDown, &filter)
+            || self.0.supports_increment(&filter)
         {
             add_action(env, node_info, ACTION_SCROLL_FORWARD);
         }
@@ -434,6 +451,29 @@ impl NodeWrapper<'_> {
                 "setRangeInfo",
                 "(Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;)V",
                 &[(&range_info).into()],
+            )
+            .unwrap();
+        }
+        if self.supports_set_progress() {
+            // Unlike the legacy actions, this one isn't a bitmask
+            // and must be added as an `AccessibilityAction` object.
+            let action_class = env
+                .find_class("android/view/accessibility/AccessibilityNodeInfo$AccessibilityAction")
+                .unwrap();
+            let action = env
+                .get_static_field(
+                    &action_class,
+                    "ACTION_SET_PROGRESS",
+                    "Landroid/view/accessibility/AccessibilityNodeInfo$AccessibilityAction;",
+                )
+                .unwrap()
+                .l()
+                .unwrap();
+            env.call_method(
+                node_info,
+                "addAction",
+                "(Landroid/view/accessibility/AccessibilityNodeInfo$AccessibilityAction;)V",
+                &[(&action).into()],
             )
             .unwrap();
         }
