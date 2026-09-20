@@ -70,6 +70,29 @@ impl NodeWrapper<'_> {
         self.0.is_selected().unwrap_or(false)
     }
 
+    /// Returns the current, minimum, and maximum values to expose
+    /// through `RangeInfo`, if this node has a numeric value
+    /// but no textual one.
+    fn range(&self) -> Option<(f64, f64, f64)> {
+        if self.0.data().value().is_some() {
+            return None;
+        }
+        let current = self.0.numeric_value()?;
+        let min = self.0.min_numeric_value()?;
+        let max = self.0.max_numeric_value()?;
+        Some((current, min, max))
+    }
+
+    fn range_type(&self, current: f64, min: f64, max: f64) -> jint {
+        let is_integral = |value: f64| value.fract() == 0.0;
+        let step_is_integral = self.0.numeric_value_step().is_none_or(is_integral);
+        if is_integral(current) && is_integral(min) && is_integral(max) && step_is_integral {
+            RANGE_TYPE_INT
+        } else {
+            RANGE_TYPE_FLOAT
+        }
+    }
+
     pub(crate) fn content_description(&self) -> Option<String> {
         if self.0.label_comes_from_value() {
             self.0.value()
@@ -387,38 +410,32 @@ impl NodeWrapper<'_> {
             add_action(env, node_info, ACTION_SCROLL_FORWARD);
         }
 
-        if self.0.data().value().is_none() {
-            if let (Some(current), Some(min), Some(max)) = (
-                self.0.numeric_value(),
-                self.0.min_numeric_value(),
-                self.0.max_numeric_value(),
-            ) {
-                let range_info_class = env
-                    .find_class("android/view/accessibility/AccessibilityNodeInfo$RangeInfo")
-                    .unwrap();
-                let range_info = env
-                    .call_static_method(
-                        &range_info_class,
-                        "obtain",
-                        "(IFFF)Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;",
-                        &[
-                            RANGE_TYPE_FLOAT.into(),
-                            (min as f32).into(),
-                            (max as f32).into(),
-                            (current as f32).into(),
-                        ],
-                    )
-                    .unwrap()
-                    .l()
-                    .unwrap();
-                env.call_method(
-                    node_info,
-                    "setRangeInfo",
-                    "(Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;)V",
-                    &[(&range_info).into()],
-                )
+        if let Some((current, min, max)) = self.range() {
+            let range_info_class = env
+                .find_class("android/view/accessibility/AccessibilityNodeInfo$RangeInfo")
                 .unwrap();
-            }
+            let range_info = env
+                .call_static_method(
+                    &range_info_class,
+                    "obtain",
+                    "(IFFF)Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;",
+                    &[
+                        self.range_type(current, min, max).into(),
+                        (min as f32).into(),
+                        (max as f32).into(),
+                        (current as f32).into(),
+                    ],
+                )
+                .unwrap()
+                .l()
+                .unwrap();
+            env.call_method(
+                node_info,
+                "setRangeInfo",
+                "(Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;)V",
+                &[(&range_info).into()],
+            )
+            .unwrap();
         }
 
         let live = match self.0.live() {

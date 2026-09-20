@@ -61,6 +61,7 @@ pub(crate) const MOVEMENT_GRANULARITY_WORD: jint = 1 << 1;
 pub(crate) const MOVEMENT_GRANULARITY_LINE: jint = 1 << 2;
 pub(crate) const MOVEMENT_GRANULARITY_PARAGRAPH: jint = 1 << 3;
 
+pub(crate) const RANGE_TYPE_INT: jint = 0;
 pub(crate) const RANGE_TYPE_FLOAT: jint = 1;
 
 #[derive(Debug, Default)]
