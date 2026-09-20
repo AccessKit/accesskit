@@ -455,42 +455,52 @@ impl Adapter {
                 target_node,
                 data: None,
             },
-            ACTION_SCROLL_BACKWARD | ACTION_SCROLL_FORWARD => ActionRequest {
-                action: {
-                    let node = tree_state.node_by_id(target).unwrap();
-                    if let Some(orientation) = node.orientation() {
-                        match orientation {
-                            Orientation::Horizontal => {
-                                if action == ACTION_SCROLL_BACKWARD {
-                                    Action::ScrollLeft
-                                } else {
-                                    Action::ScrollRight
-                                }
-                            }
-                            Orientation::Vertical => {
-                                if action == ACTION_SCROLL_BACKWARD {
-                                    Action::ScrollUp
-                                } else {
-                                    Action::ScrollDown
-                                }
-                            }
-                        }
-                    } else if action == ACTION_SCROLL_BACKWARD {
-                        if node.supports_action(Action::ScrollUp, &filter) {
-                            Action::ScrollUp
-                        } else {
-                            Action::ScrollLeft
-                        }
-                    } else if node.supports_action(Action::ScrollDown, &filter) {
-                        Action::ScrollDown
+            ACTION_SCROLL_BACKWARD | ACTION_SCROLL_FORWARD => {
+                let node = tree_state.node_by_id(target).unwrap();
+                let backward = action == ACTION_SCROLL_BACKWARD;
+                let is_range_control =
+                    node.supports_increment(&filter) || node.supports_decrement(&filter);
+                let action = if is_range_control {
+                    if backward {
+                        Action::Decrement
                     } else {
-                        Action::ScrollRight
+                        Action::Increment
                     }
-                },
-                target_tree,
-                target_node,
-                data: Some(ActionData::ScrollUnit(ScrollUnit::Page)),
-            },
+                } else if let Some(orientation) = node.orientation() {
+                    match orientation {
+                        Orientation::Horizontal => {
+                            if backward {
+                                Action::ScrollLeft
+                            } else {
+                                Action::ScrollRight
+                            }
+                        }
+                        Orientation::Vertical => {
+                            if backward {
+                                Action::ScrollUp
+                            } else {
+                                Action::ScrollDown
+                            }
+                        }
+                    }
+                } else if backward {
+                    if node.supports_action(Action::ScrollUp, &filter) {
+                        Action::ScrollUp
+                    } else {
+                        Action::ScrollLeft
+                    }
+                } else if node.supports_action(Action::ScrollDown, &filter) {
+                    Action::ScrollDown
+                } else {
+                    Action::ScrollRight
+                };
+                ActionRequest {
+                    action,
+                    target_tree,
+                    target_node,
+                    data: (!is_range_control).then_some(ActionData::ScrollUnit(ScrollUnit::Page)),
+                }
+            }
             ACTION_ACCESSIBILITY_FOCUS => {
                 self.accessibility_focus = Some(virtual_view_id);
                 events.push(QueuedEvent::InvalidateHost);
@@ -523,6 +533,29 @@ impl Adapter {
             });
         }
         Some(QueuedEvents(events))
+    }
+
+    fn set_progress<H: ActionHandler + ?Sized>(
+        &mut self,
+        action_handler: &mut H,
+        virtual_view_id: jint,
+        value: jfloat,
+    ) -> Option<QueuedEvents> {
+        let tree = self.state.get_full_tree()?;
+        let tree_state = tree.state();
+        let target = self.node_id_map.get_accesskit_id(virtual_view_id)?;
+        let (target_node, target_tree) = tree_state.locate_node(target)?;
+        let node = tree_state.node_by_id(target)?;
+        if !node.supports_action(Action::SetValue, &filter) || node.numeric_value().is_none() {
+            return None;
+        }
+        action_handler.do_action(ActionRequest {
+            action: Action::SetValue,
+            target_tree,
+            target_node,
+            data: Some(ActionData::NumericValue(value.into())),
+        });
+        Some(QueuedEvents(Vec::new()))
     }
 
     fn set_text_selection_common<H: ActionHandler + ?Sized, F, Extra>(
@@ -795,6 +828,9 @@ impl Adapter {
                 forward,
                 extend_selection,
             ),
+            PlatformActionInner::SetProgress { value } => {
+                self.set_progress(action_handler, virtual_view_id, value)
+            }
         }
     }
 

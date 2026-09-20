@@ -7,7 +7,7 @@ use accesskit_consumer::{FullNodeId, NodeRef};
 use jni::{
     JNIEnv,
     objects::{GlobalRef, JObject},
-    sys::jint,
+    sys::{jfloat, jint},
 };
 use std::{collections::HashMap, sync::OnceLock};
 
@@ -20,6 +20,7 @@ pub(crate) const ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY: jint = 1 << 9;
 pub(crate) const ACTION_SCROLL_FORWARD: jint = 1 << 12;
 pub(crate) const ACTION_SCROLL_BACKWARD: jint = 1 << 13;
 pub(crate) const ACTION_SET_SELECTION: jint = 1 << 17;
+pub(crate) const ACTION_SET_PROGRESS: jint = 0x0102003d;
 
 pub(crate) const ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT: &str =
     "ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT";
@@ -27,6 +28,8 @@ pub(crate) const ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN: &str =
     "ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN";
 pub(crate) const ACTION_ARGUMENT_SELECTION_START_INT: &str = "ACTION_ARGUMENT_SELECTION_START_INT";
 pub(crate) const ACTION_ARGUMENT_SELECTION_END_INT: &str = "ACTION_ARGUMENT_SELECTION_END_INT";
+pub(crate) const ACTION_ARGUMENT_PROGRESS_VALUE: &str =
+    "android.view.accessibility.action.ARGUMENT_PROGRESS_VALUE";
 
 pub(crate) const CONTENT_CHANGE_TYPE_SUBTREE: jint = 1 << 0;
 
@@ -174,6 +177,19 @@ pub(crate) fn bundle_get_int(env: &mut JNIEnv, bundle: &JObject, key: &str) -> j
         .unwrap()
         .i()
         .unwrap()
+}
+
+pub(crate) fn bundle_get_float(env: &mut JNIEnv, bundle: &JObject, key: &str) -> jfloat {
+    let key = env.new_string(key).unwrap();
+    env.call_method(
+        bundle,
+        "getFloat",
+        "(Ljava/lang/String;)F",
+        &[(&key).into()],
+    )
+    .unwrap()
+    .f()
+    .unwrap()
 }
 
 pub(crate) fn bundle_get_bool(env: &mut JNIEnv, bundle: &JObject, key: &str) -> bool {
