@@ -74,6 +74,14 @@ impl NodeWrapper<'_> {
         Range::from_node(self.0)
     }
 
+    fn supports_set_progress(&self) -> bool {
+        self.range().is_some() && self.0.supports_action(Action::SetValue, &filter)
+    }
+
+    fn is_range_control(&self) -> bool {
+        self.0.supports_increment(&filter) || self.0.supports_decrement(&filter)
+    }
+
     pub(crate) fn content_description(&self) -> Option<String> {
         if self.0.label_comes_from_value() {
             self.0.value()
@@ -358,7 +366,10 @@ impl NodeWrapper<'_> {
         .unwrap();
 
         let can_focus = self.is_focusable() && !self.0.is_focused();
-        if self.0.is_clickable(&filter) || can_focus {
+        // Without a click action, TalkBack handles a double-tap on a range
+        // control by tapping its center which can be useful to quickly
+        // set a slider value in the middle.
+        if self.0.is_clickable(&filter) || (can_focus && !self.is_range_control()) {
             add_action(env, node_info, ACTION_CLICK);
         }
         if can_focus {
@@ -382,11 +393,13 @@ impl NodeWrapper<'_> {
         }
         if self.0.supports_action(Action::ScrollLeft, &filter)
             || self.0.supports_action(Action::ScrollUp, &filter)
+            || self.0.supports_decrement(&filter)
         {
             add_action(env, node_info, ACTION_SCROLL_BACKWARD);
         }
         if self.0.supports_action(Action::ScrollRight, &filter)
             || self.0.supports_action(Action::ScrollDown, &filter)
+            || self.0.supports_increment(&filter)
         {
             add_action(env, node_info, ACTION_SCROLL_FORWARD);
         }
@@ -398,6 +411,27 @@ impl NodeWrapper<'_> {
                 "setRangeInfo",
                 "(Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;)V",
                 &[(&range_info).into()],
+            )
+            .unwrap();
+        }
+        if self.supports_set_progress() {
+            let action_class = env
+                .find_class("android/view/accessibility/AccessibilityNodeInfo$AccessibilityAction")
+                .unwrap();
+            let action = env
+                .get_static_field(
+                    &action_class,
+                    "ACTION_SET_PROGRESS",
+                    "Landroid/view/accessibility/AccessibilityNodeInfo$AccessibilityAction;",
+                )
+                .unwrap()
+                .l()
+                .unwrap();
+            env.call_method(
+                node_info,
+                "addAction",
+                "(Landroid/view/accessibility/AccessibilityNodeInfo$AccessibilityAction;)V",
+                &[(&action).into()],
             )
             .unwrap();
         }
