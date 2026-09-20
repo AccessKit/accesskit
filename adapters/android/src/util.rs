@@ -61,7 +61,71 @@ pub(crate) const MOVEMENT_GRANULARITY_WORD: jint = 1 << 1;
 pub(crate) const MOVEMENT_GRANULARITY_LINE: jint = 1 << 2;
 pub(crate) const MOVEMENT_GRANULARITY_PARAGRAPH: jint = 1 << 3;
 
+pub(crate) const RANGE_TYPE_INT: jint = 0;
 pub(crate) const RANGE_TYPE_FLOAT: jint = 1;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Range {
+    pub(crate) current: f64,
+    pub(crate) min: f64,
+    pub(crate) max: f64,
+    step: Option<f64>,
+}
+
+impl Range {
+    pub(crate) fn from_node(node: &NodeRef) -> Option<Self> {
+        if node.has_value() {
+            return None;
+        }
+        Some(Self {
+            current: node.numeric_value()?,
+            min: node.min_numeric_value()?,
+            max: node.max_numeric_value()?,
+            step: node.numeric_value_step(),
+        })
+    }
+
+    fn range_type(&self) -> jint {
+        let is_integral = |value: f64| value.fract() == 0.0;
+        if is_integral(self.current)
+            && is_integral(self.min)
+            && is_integral(self.max)
+            && self.step.is_none_or(is_integral)
+        {
+            RANGE_TYPE_INT
+        } else {
+            RANGE_TYPE_FLOAT
+        }
+    }
+
+    pub(crate) fn current_item_index(&self) -> jint {
+        if self.max > self.min && self.current >= self.min && self.current <= self.max {
+            ((self.current - self.min) * 100.0 / (self.max - self.min)) as jint
+        } else {
+            0
+        }
+    }
+
+    pub(crate) fn to_java<'local>(self, env: &mut JNIEnv<'local>) -> JObject<'local> {
+        let range_info_class = env
+            .find_class("android/view/accessibility/AccessibilityNodeInfo$RangeInfo")
+            .unwrap();
+        env.call_static_method(
+            &range_info_class,
+            "obtain",
+            "(IFFF)Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;",
+            &[
+                self.range_type().into(),
+                (self.min as f32).into(),
+                (self.max as f32).into(),
+                (self.current as f32).into(),
+            ],
+        )
+        .unwrap()
+        .l()
+        .unwrap()
+    }
+}
 
 #[derive(Debug, Default)]
 pub(crate) struct NodeIdMap {
