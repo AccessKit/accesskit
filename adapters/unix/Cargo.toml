@@ -22,7 +22,7 @@ accesskit_atspi_common = { version = "0.20.0", path = "../atspi-common" }
 atspi = { version = "0.29", default-features = false, features = ["proxies"] }
 futures-lite = "2.3"
 serde = "1.0"
-zbus = { version = "5.5", default-features = false, features = ["async-io"] }
+zbus = { version = "5.19", default-features = false, features = ["async-io"] }
 
 # async-io support
 async-channel = { version = "2.1.1", optional = true }
