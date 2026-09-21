@@ -47,9 +47,11 @@ allow = []
 deny = []
 skip = [
     "bitflags:<2",
-    "quick-xml:<0.37",
+    "linux-raw-sys:<0.12",
     "raw-window-handle:<0.6",
-    "windows-sys:<0.59",
+    "rustix:<1",
+    "syn:<3",
+    "windows-sys:<0.61",
     "windows-targets:<0.52",
     "windows_i686_gnu:<0.52",
     "windows_i686_msvc:<0.52",
