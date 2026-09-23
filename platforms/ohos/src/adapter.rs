@@ -632,7 +632,7 @@ fn adjacent_focusable_node(state: &State, target: NodeId, forward: bool) -> Opti
         .filter(|id| {
             tree.state()
                 .node_by_id(*id)
-                .is_some_and(|node| node.is_focusable())
+                .is_some_and(|node| node.is_focusable(&filter))
         })
         .collect::<Vec<_>>();
     let index = nodes.iter().position(|id| *id == target)?;
