@@ -19,7 +19,7 @@ pub(crate) fn filter(node: &Node) -> FilterResult {
 pub(crate) fn populate_element(
     node: &Node,
     ids: &mut NodeIdMap,
-    accessibility_focus: Option<accesskit::NodeId>,
+    accessibility_focus: Option<accesskit_consumer::NodeId>,
     screen_offset: (i32, i32),
     element: &mut ElementInfo<'_>,
 ) -> Result<()> {
@@ -39,11 +39,11 @@ pub(crate) fn populate_element(
         .set_component_type(component_type(node.role()))?
         .set_enabled(!node.is_disabled())?
         .set_visible(!node.is_hidden())?
-        .set_focusable(node.is_focusable())?
+        .set_focusable(node.is_focusable(&filter))?
         .set_focused(node.is_focused())?
         .set_accessibility_focused(accessibility_focus == Some(node.id()))?
         .set_selected(node.is_selected().unwrap_or(false))?
-        .set_clickable(node.is_clickable())?
+        .set_clickable(node.is_clickable(&filter))?
         .set_long_clickable(false)?
         .set_scrollable(is_scrollable(node))?
         .set_editable(node.is_text_input() && !node.is_read_only())?
@@ -149,26 +149,24 @@ fn supported_actions(node: &Node) -> Vec<(ActionType, &'static str)> {
             "clear accessibility focus",
         ),
     ];
-    if node.supports_action(Action::Click) {
+    if node.supports_action(Action::Click, &filter) {
         actions.push((ActionType::Click, "click"));
     }
-    if node.supports_action(Action::ScrollForward)
-        || node.supports_action(Action::ScrollDown)
-        || node.supports_action(Action::ScrollRight)
+    if node.supports_action(Action::ScrollDown, &filter)
+        || node.supports_action(Action::ScrollRight, &filter)
     {
         actions.push((ActionType::ScrollForward, "scroll forward"));
     }
-    if node.supports_action(Action::ScrollBackward)
-        || node.supports_action(Action::ScrollUp)
-        || node.supports_action(Action::ScrollLeft)
+    if node.supports_action(Action::ScrollUp, &filter)
+        || node.supports_action(Action::ScrollLeft, &filter)
     {
         actions.push((ActionType::ScrollBackward, "scroll backward"));
     }
-    if node.supports_action(Action::SetTextSelection) {
+    if node.supports_action(Action::SetTextSelection, &filter) {
         actions.push((ActionType::SelectText, "select text"));
         actions.push((ActionType::SetCursorPosition, "set cursor position"));
     }
-    if node.supports_action(Action::SetValue) {
+    if node.supports_action(Action::SetValue, &filter) {
         actions.push((ActionType::SetText, "set text"));
     }
     actions
@@ -176,15 +174,13 @@ fn supported_actions(node: &Node) -> Vec<(ActionType, &'static str)> {
 
 fn is_scrollable(node: &Node) -> bool {
     [
-        Action::ScrollForward,
-        Action::ScrollBackward,
         Action::ScrollDown,
         Action::ScrollLeft,
         Action::ScrollRight,
         Action::ScrollUp,
     ]
     .into_iter()
-    .any(|action| node.supports_action(action))
+    .any(|action| node.supports_action(action, &filter))
 }
 
 fn coordinate_to_i32(value: f64) -> i32 {

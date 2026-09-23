@@ -29,11 +29,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "accesskit"
+version = "0.24.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3b7f7f85a7e5f68090000ed7622545829afd484d210358702ae4cb97dd0c320"
+dependencies = [
+ "uuid",
+]
+
+[[package]]
 name = "accesskit_android"
 version = "0.1.1"
 dependencies = [
- "accesskit",
- "accesskit_consumer",
+ "accesskit 0.18.0",
+ "accesskit_consumer 0.27.0",
  "jni",
  "log",
  "once_cell",
@@ -43,8 +52,8 @@ dependencies = [
 name = "accesskit_atspi_common"
 version = "0.11.0"
 dependencies = [
- "accesskit",
- "accesskit_consumer",
+ "accesskit 0.18.0",
+ "accesskit_consumer 0.27.0",
  "atspi-common",
  "serde",
  "thiserror",
@@ -55,18 +64,28 @@ dependencies = [
 name = "accesskit_consumer"
 version = "0.27.0"
 dependencies = [
- "accesskit",
- "hashbrown",
+ "accesskit 0.18.0",
+ "hashbrown 0.15.2",
  "immutable-chunkmap",
+]
+
+[[package]]
+name = "accesskit_consumer"
+version = "0.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53cf47daed85312e763fbf85ceca136e0d7abc68e0a7e12abe11f48172bc3b10"
+dependencies = [
+ "accesskit 0.24.1",
+ "hashbrown 0.16.1",
 ]
 
 [[package]]
 name = "accesskit_macos"
 version = "0.19.0"
 dependencies = [
- "accesskit",
- "accesskit_consumer",
- "hashbrown",
+ "accesskit 0.18.0",
+ "accesskit_consumer 0.27.0",
+ "hashbrown 0.15.2",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
@@ -76,8 +95,8 @@ dependencies = [
 name = "accesskit_ohos"
 version = "0.1.0"
 dependencies = [
- "accesskit",
- "accesskit_consumer",
+ "accesskit 0.24.1",
+ "accesskit_consumer 0.35.0",
  "ohos-accessibility-binding",
 ]
 
@@ -85,7 +104,7 @@ dependencies = [
 name = "accesskit_unix"
 version = "0.14.0"
 dependencies = [
- "accesskit",
+ "accesskit 0.18.0",
  "accesskit_atspi_common",
  "async-channel",
  "async-executor",
@@ -103,9 +122,9 @@ dependencies = [
 name = "accesskit_windows"
 version = "0.26.0"
 dependencies = [
- "accesskit",
- "accesskit_consumer",
- "hashbrown",
+ "accesskit 0.18.0",
+ "accesskit_consumer 0.27.0",
+ "hashbrown 0.15.2",
  "once_cell",
  "scopeguard",
  "static_assertions",
@@ -118,7 +137,7 @@ dependencies = [
 name = "accesskit_winit"
 version = "0.26.0"
 dependencies = [
- "accesskit",
+ "accesskit 0.18.0",
  "accesskit_android",
  "accesskit_macos",
  "accesskit_unix",
@@ -546,6 +565,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "convert_case"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec182b0ca2f35d8fc196cf3404988fd8b8c739a4d270ff118a398feb0cbec1ca"
+dependencies = [
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -721,6 +749,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f81ec6369c545a7d40e4589b5597581fa1c441fe1cce96dd1de43159910a36a2"
 
 [[package]]
+name = "foldhash"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
+
+[[package]]
 name = "foreign-types"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -848,7 +882,16 @@ version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf151400ff0baff5465007dd2f3e717f3fe502074ca563069ce3a6629d07b289"
 dependencies = [
- "foldhash",
+ "foldhash 0.1.3",
+]
+
+[[package]]
+name = "hashbrown"
+version = "0.16.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+dependencies = [
+ "foldhash 0.2.0",
 ]
 
 [[package]]
@@ -885,7 +928,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "707907fe3c25f5424cce2cb7e1cbcafee6bdbe735ca90ef77c29e84591e5b9da"
 dependencies = [
  "equivalent",
- "hashbrown",
+ "hashbrown 0.15.2",
 ]
 
 [[package]]
@@ -1329,15 +1372,20 @@ dependencies = [
 [[package]]
 name = "ohos-accessibility-binding"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9a8980b8d4e16cc38d2659a8c109c4b345c4187a916523112344d0a7b2dfe6d"
 dependencies = [
  "bitflags 2.8.0",
  "ohos-accessibility-sys",
  "ohos-arkui-input-sys",
+ "ohos-enum-derive",
 ]
 
 [[package]]
 name = "ohos-accessibility-sys"
 version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e49b0e83fb2b9ea8d1d079e5c73920f2e30743922091b095ed2cfdf2953fc602"
 dependencies = [
  "ohos-arkui-input-sys",
 ]
@@ -1345,6 +1393,20 @@ dependencies = [
 [[package]]
 name = "ohos-arkui-input-sys"
 version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8363f015a1ad653f01c620f43b166577ede75cb5eb8b8cd7bc7622480287ffe2"
+
+[[package]]
+name = "ohos-enum-derive"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dfaa27b9a5519879fcccdb845993e2d2c28df2f84e60f1016bad4557458a4889"
+dependencies = [
+ "convert_case",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "once_cell"
@@ -2027,6 +2089,12 @@ name = "unindent"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c7de7d73e1754487cb58364ee906a499937a0dfabd86bcb980fa99ec8c8fa2ce"
+
+[[package]]
+name = "uuid"
+version = "1.26.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ef6dac1e96601b4fb3acccccff2139741fcb757cb9a36089bf5be91cfb285ce"
 
 [[package]]
 name = "version_check"

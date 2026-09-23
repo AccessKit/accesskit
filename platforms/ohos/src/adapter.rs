@@ -10,10 +10,10 @@ use std::{
 };
 
 use accesskit::{
-    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node as NodeData, NodeId,
-    Role, TextSelection, Tree as TreeData, TreeUpdate,
+    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node as NodeData,
+    NodeId as LocalNodeId, Role, TextSelection, Tree as TreeData, TreeId, TreeUpdate,
 };
-use accesskit_consumer::{FilterResult, Node, Tree};
+use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeChangeHandler};
 use ohos_accessibility_binding::{
     AccessibilityError, ActionArguments, ActionType, ElementInfo, ElementInfoList, EventInfo,
     EventType, FocusMoveDirection, FocusType, Provider, ProviderCallbacks, ProviderRegistration,
@@ -25,7 +25,16 @@ use crate::node::{filter, populate_element, usize_to_i32};
 const ROOT_QUERY_ID: i64 = -1;
 const ROOT_ELEMENT_ID: i32 = 0;
 pub(crate) const ROOT_PARENT_ID: i32 = -2_100_000;
-const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
+const PLACEHOLDER_ROOT_ID: LocalNodeId = LocalNodeId(0);
+
+struct IgnoreChanges;
+
+impl TreeChangeHandler for IgnoreChanges {
+    fn node_added(&mut self, _node: &Node) {}
+    fn node_updated(&mut self, _old_node: &Node, _new_node: &Node) {}
+    fn focus_moved(&mut self, _old_node: Option<&Node>, _new_node: Option<&Node>) {}
+    fn node_removed(&mut self, _node: &Node) {}
+}
 
 #[derive(Debug, Default)]
 pub(crate) struct NodeIdMap {
@@ -136,6 +145,7 @@ impl State {
                 let update = TreeUpdate {
                     nodes: vec![(PLACEHOLDER_ROOT_ID, NodeData::new(Role::Window))],
                     tree: Some(TreeData::new(PLACEHOLDER_ROOT_ID)),
+                    tree_id: TreeId::ROOT,
                     focus: PLACEHOLDER_ROOT_ID,
                 };
                 TreeLifecycle::Placeholder(Tree::new(update, self.host_is_focused))
@@ -297,7 +307,7 @@ impl ProviderCallbacks for Callbacks {
             .filter(|id| {
                 tree.state()
                     .node_by_id(*id)
-                    .is_some_and(|node| node.is_focusable())
+                    .is_some_and(|node| node.is_focusable(&filter))
             })
             .collect::<Vec<_>>();
         let current_index = focusable.iter().position(|id| *id == current);
@@ -483,7 +493,9 @@ impl<'a> Adapter<'a> {
                 state.tree =
                     TreeLifecycle::Active(Tree::new(update_factory(), state.host_is_focused));
             }
-            TreeLifecycle::Active(tree) => tree.update(update_factory()),
+            TreeLifecycle::Active(tree) => {
+                tree.update_and_process_changes(update_factory(), &mut IgnoreChanges)
+            }
         }
         let new_focus = state.tree.get().map(|tree| tree.state().focus_id_in_tree());
         if state.accessibility_focus.is_some_and(|id| {
@@ -510,7 +522,7 @@ impl<'a> Adapter<'a> {
             .map_err(|_| AccessibilityError::LockPoisoned)?;
         state.host_is_focused = is_focused;
         if let Some(tree) = state.tree.get_active_mut() {
-            tree.update_host_focus_state(is_focused);
+            tree.update_host_focus_state_and_process_changes(is_focused, &mut IgnoreChanges);
         }
         Ok(())
     }
@@ -647,20 +659,16 @@ fn action_request(
     let (action, data) = match action {
         ActionType::Click => (Action::Click, None),
         ActionType::ScrollForward => {
-            let action = [
-                Action::ScrollForward,
-                Action::ScrollDown,
-                Action::ScrollRight,
-            ]
-            .into_iter()
-            .find(|action| node.supports_action(*action))
-            .ok_or(AccessibilityError::Unsupported)?;
+            let action = [Action::ScrollDown, Action::ScrollRight]
+                .into_iter()
+                .find(|action| node.supports_action(*action, &filter))
+                .ok_or(AccessibilityError::Unsupported)?;
             (action, None)
         }
         ActionType::ScrollBackward => {
-            let action = [Action::ScrollBackward, Action::ScrollUp, Action::ScrollLeft]
+            let action = [Action::ScrollUp, Action::ScrollLeft]
                 .into_iter()
-                .find(|action| node.supports_action(*action))
+                .find(|action| node.supports_action(*action, &filter))
                 .ok_or(AccessibilityError::Unsupported)?;
             (action, None)
         }
@@ -707,12 +715,14 @@ fn action_request(
         }
         _ => return Err(AccessibilityError::Unsupported),
     };
-    if !node.supports_action(action) {
+    if !node.supports_action(action, &filter) {
         return Err(AccessibilityError::Unsupported);
     }
+    let local_target = LocalNodeId((u128::from(target) >> 64) as u64);
     Ok(ActionRequest {
         action,
-        target,
+        target_tree: TreeId::ROOT,
+        target_node: local_target,
         data,
     })
 }
