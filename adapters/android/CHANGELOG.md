@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.9.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.8.0...accesskit_android-v0.9.0) (2026-09-25)
+
+
+### Features
+
+* Support adjusting sliders on Android ([#807](https://github.com/AccessKit/accesskit/issues/807)) ([d5abbd7](https://github.com/AccessKit/accesskit/commit/d5abbd7ddc123b9c4255237a17903fa357f76a16))
+* Support live regions on Android ([#795](https://github.com/AccessKit/accesskit/issues/795)) ([c978212](https://github.com/AccessKit/accesskit/commit/c978212671e028175113ea92b987e62ed4be532d))
+
+
+### Bug Fixes
+
+* Don't raise events if Android accessibility gets disabled ([#803](https://github.com/AccessKit/accesskit/issues/803)) ([c4e9eeb](https://github.com/AccessKit/accesskit/commit/c4e9eebcf3f1f3248e58f12e67f51d2ace91e895))
+* Don't try raising Android events on a detached host view ([#800](https://github.com/AccessKit/accesskit/issues/800)) ([4897f13](https://github.com/AccessKit/accesskit/commit/4897f1325fad0217c99a80bf772e22266fc203b4))
+* Ignore text selection actions for a dead node on Android ([#799](https://github.com/AccessKit/accesskit/issues/799)) ([d8b3e1f](https://github.com/AccessKit/accesskit/commit/d8b3e1f964fda0f3c8cb63910c23e21cac4cba05))
+* Make the Android injecting adapter usable from any thread ([#796](https://github.com/AccessKit/accesskit/issues/796)) ([2d37724](https://github.com/AccessKit/accesskit/commit/2d377245a64b7af4250665f54e5b62cba9815b8a))
+* Use an integer range type on Android when applicable ([#806](https://github.com/AccessKit/accesskit/issues/806)) ([a63f202](https://github.com/AccessKit/accesskit/commit/a63f20222f37dc41b6542553b9d1ac5ae700bdf9))
+
+
+### Performance Improvements
+
+* Only return QueuedEvents when needed on Android ([#798](https://github.com/AccessKit/accesskit/issues/798)) ([8b751e7](https://github.com/AccessKit/accesskit/commit/8b751e7069864f75188c7626db68d633cb6c2ad9))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.25.0 to 0.25.1
+    * accesskit_consumer bumped from 0.39.0 to 0.39.1
+
 ## [0.8.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.7.5...accesskit_android-v0.8.0) (2026-08-29)
 
 
