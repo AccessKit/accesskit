@@ -651,7 +651,11 @@ declare_class!(
 
         #[method(isAccessibilityFocused)]
         fn is_focused(&self) -> bool {
-            self.resolve(|node| node.is_focused() && can_be_focused(node))
+            self.resolve(|node| {
+                let focused = node.tree_state.focus_in_tree();
+                let focused = focused.active_descendant().unwrap_or(focused);
+                node.id() == focused.id() && can_be_focused(node)
+            })
                 .unwrap_or(false)
         }
 

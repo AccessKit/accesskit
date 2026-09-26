@@ -11,6 +11,10 @@ readme = "README.md"
 edition.workspace = true
 rust-version.workspace = true
 
+[[test]]
+name = "focus"
+harness = false
+
 [package.metadata.docs.rs]
 default-target = "x86_64-apple-darwin"
 
@@ -36,3 +40,6 @@ objc2-app-kit = { version = "0.2.0", features = [
     "NSView",
     "NSWindow",
 ] }
+
+[dev-dependencies]
+objc2-app-kit = { version = "0.2.0", features = ["NSApplication", "NSGraphics"] }
