@@ -128,8 +128,8 @@ fn send_text_changed(
     let first_difference = i as jint;
     env.call_method(&event, "setFromIndex", "(I)V", &[first_difference.into()])
         .unwrap();
-    let mut old_index = (old_u16.len() - 1) as jint;
-    let mut new_index = (new_u16.len() - 1) as jint;
+    let mut old_index = old_u16.len() as jint - 1;
+    let mut new_index = new_u16.len() as jint - 1;
     while old_index >= first_difference && new_index >= first_difference {
         if old_u16[old_index as usize] != new_u16[new_index as usize] {
             break;
