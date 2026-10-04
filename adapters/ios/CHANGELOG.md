@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/AccessKit/accesskit/compare/accesskit_ios-v0.2.1...accesskit_ios-v0.2.2) (2026-10-04)
+
+
+### Bug Fixes
+
+* Don't move focus when VoiceOver moves to an element on iOS ([#815](https://github.com/AccessKit/accesskit/issues/815)) ([466e24e](https://github.com/AccessKit/accesskit/commit/466e24e252103f4d82bd6fbab98141b551e46e0c))
+
 ## [0.2.1](https://github.com/AccessKit/accesskit/compare/accesskit_ios-v0.2.0...accesskit_ios-v0.2.1) (2026-09-25)
 
 

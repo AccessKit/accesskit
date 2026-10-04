@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.9.0...accesskit_android-v0.9.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* Fix a crash when typing into an empty field on Android ([#813](https://github.com/AccessKit/accesskit/issues/813)) ([115887d](https://github.com/AccessKit/accesskit/commit/115887d84f0254cfcad1d9a79d93bba1fde79e75))
+
 ## [0.9.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.8.0...accesskit_android-v0.9.0) (2026-09-25)
 
 
