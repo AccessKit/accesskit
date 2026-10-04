@@ -419,16 +419,17 @@ declare_class!(
 
         #[method(accessibilityElementDidBecomeFocused)]
         fn element_did_become_focused(&self) {
-            self.resolve_with_context(|node, tree, context| {
-                let node_id = node.id();
-                *context.platform_focus.borrow_mut() = Some(node_id);
-                if let Some((target_node, target_tree)) = tree.state().locate_node(node_id) {
-                    context.do_action(ActionRequest {
-                        action: Action::Focus,
-                        target_tree,
-                        target_node,
-                        data: None,
-                    });
+            self.resolve_with_context(|node, _, context| {
+                *context.platform_focus.borrow_mut() = Some(node.id());
+            });
+        }
+
+        #[method(accessibilityElementDidLoseFocus)]
+        fn element_did_lose_focus(&self) {
+            self.resolve_with_context(|node, _, context| {
+                let mut platform_focus = context.platform_focus.borrow_mut();
+                if *platform_focus == Some(node.id()) {
+                    *platform_focus = None;
                 }
             });
         }
