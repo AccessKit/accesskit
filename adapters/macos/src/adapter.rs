@@ -252,11 +252,13 @@ impl Adapter {
         let context = self.get_or_init_context(activation_handler);
         let tree = context.tree.borrow();
         let state = tree.state();
-        if let Some(node) = state.focus() {
-            if can_be_focused(&node) {
-                return Id::autorelease_return(context.get_or_create_platform_node(node.id()))
-                    as *mut _;
-            }
+        // AppKit exposes a window's first responder even when it isn't key.
+        // Global focus notifications still use the host-focused consumer state.
+        let focused = state.focus_in_tree();
+        let node = focused.active_descendant().unwrap_or(focused);
+        if can_be_focused(&node) {
+            return Id::autorelease_return(context.get_or_create_platform_node(node.id()))
+                as *mut _;
         }
         null_mut()
     }
