@@ -12,7 +12,7 @@
 
 use accesskit::{
     Action, ActionData, ActionRequest, AriaCurrent, HasPopup, Live, NodeId, Orientation, Point,
-    Role, SortDirection, Toggled, TreeId,
+    Role, ScrollUnit, SortDirection, Toggled, TreeId,
 };
 use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, Tree, TreeState};
 use std::{
@@ -36,6 +36,107 @@ use crate::{
 };
 
 const RUNTIME_ID_SIZE: usize = 5;
+
+fn axis_has_scroll_range(min: Option<f64>, max: Option<f64>) -> bool {
+    matches!(
+        (min, max),
+        (Some(min), Some(max)) if min.is_finite() && max.is_finite() && max > min
+    )
+}
+
+/// `UIA_ScrollPatternNoScroll` means "no position on this axis".
+fn scroll_percent(current: Option<f64>, min: Option<f64>, max: Option<f64>) -> f64 {
+    let (Some(current), Some(min), Some(max)) = (current, min, max) else {
+        return UIA_ScrollPatternNoScroll;
+    };
+    if !axis_has_scroll_range(Some(min), Some(max)) || !current.is_finite() {
+        return UIA_ScrollPatternNoScroll;
+    }
+    (100.0 * (current - min) / (max - min)).clamp(0.0, 100.0)
+}
+
+/// View size is the viewport as a percentage of the content.
+///
+/// AccessKit stores the viewport as the node's own bounds and the hidden
+/// remainder as `scroll_*_max - scroll_*_min`. There is no separate viewport
+/// field. When that pair is missing, report a fully visible view instead of
+/// inventing a content size.
+fn scroll_view_size(
+    viewport: Option<f64>,
+    min: Option<f64>,
+    max: Option<f64>,
+    scrollable: bool,
+) -> f64 {
+    if !scrollable {
+        return 100.0;
+    }
+    let (Some(viewport), Some(min), Some(max)) = (viewport, min, max) else {
+        return 100.0;
+    };
+    if !(viewport.is_finite() && viewport >= 0.0 && axis_has_scroll_range(Some(min), Some(max))) {
+        return 100.0;
+    }
+    let total = viewport + (max - min);
+    if total <= 0.0 {
+        return 100.0;
+    }
+    (100.0 * viewport / total).clamp(0.0, 100.0)
+}
+
+fn offset_for_scroll_percent(
+    current: Option<f64>,
+    min: Option<f64>,
+    max: Option<f64>,
+    percent: f64,
+) -> Result<f64> {
+    if percent == UIA_ScrollPatternNoScroll {
+        return Ok(current.unwrap_or(0.0));
+    }
+    if !(percent.is_finite() && (0.0..=100.0).contains(&percent)) {
+        return Err(invalid_arg());
+    }
+    if !axis_has_scroll_range(min, max) {
+        return Err(not_supported());
+    }
+    let min = min.unwrap();
+    let max = max.unwrap();
+    Ok(min + (percent / 100.0) * (max - min))
+}
+
+/// Map a UIA `ScrollAmount` onto AccessKit's existing directional scroll actions.
+/// Increment moves toward larger scroll offsets. `NoAmount` changes nothing.
+fn uia_scroll_action(
+    amount: ScrollAmount,
+    horizontal: bool,
+) -> Result<Option<(Action, ScrollUnit)>> {
+    let mapped = match (amount, horizontal) {
+        (ScrollAmount_NoAmount, _) => None,
+        (ScrollAmount_SmallDecrement, true) => Some((Action::ScrollLeft, ScrollUnit::Item)),
+        (ScrollAmount_LargeDecrement, true) => Some((Action::ScrollLeft, ScrollUnit::Page)),
+        (ScrollAmount_SmallIncrement, true) => Some((Action::ScrollRight, ScrollUnit::Item)),
+        (ScrollAmount_LargeIncrement, true) => Some((Action::ScrollRight, ScrollUnit::Page)),
+        (ScrollAmount_SmallDecrement, false) => Some((Action::ScrollUp, ScrollUnit::Item)),
+        (ScrollAmount_LargeDecrement, false) => Some((Action::ScrollUp, ScrollUnit::Page)),
+        (ScrollAmount_SmallIncrement, false) => Some((Action::ScrollDown, ScrollUnit::Item)),
+        (ScrollAmount_LargeIncrement, false) => Some((Action::ScrollDown, ScrollUnit::Page)),
+        _ => return Err(invalid_arg()),
+    };
+    Ok(mapped)
+}
+
+fn directed_scroll(
+    node: &NodeRef<'_>,
+    amount: ScrollAmount,
+    horizontal: bool,
+) -> Result<Option<(Action, ScrollUnit)>> {
+    let Some((action, unit)) = uia_scroll_action(amount, horizontal)? else {
+        return Ok(None);
+    };
+    if !node.supports_action(action, &filter) {
+        return Err(not_supported());
+    }
+    Ok(Some((action, unit)))
+}
 
 fn runtime_id_from_node_id(id: FullNodeId) -> [i32; RUNTIME_ID_SIZE] {
     static_assertions::assert_eq_size!(FullNodeId, u128);
@@ -265,9 +366,17 @@ impl NodeWrapper<'_> {
     }
 
     fn localized_control_type(&mut self) -> Option<StrWrapper<'_>> {
-        self.node
-            .role_description()
-            .map(|s| StrWrapper::new(s, self.string_buffer))
+        // `role_description` is the schema's localized override (ARIA
+        // `aria-roledescription`). The adapter has no string catalog of its own.
+        if let Some(description) = self.node.role_description() {
+            return Some(StrWrapper::new(description, self.string_buffer));
+        }
+        // Classic UI Automation has no Switch control type, so `control_type`
+        // stays Button. Reuse the English token already exposed as the ARIA role.
+        match self.node.role() {
+            Role::Switch => Some(StrWrapper::new("switch", self.string_buffer)),
+            _ => None,
+        }
     }
 
     fn aria_role(&mut self) -> Option<StrWrapper<'_>> {
@@ -645,6 +754,58 @@ impl NodeWrapper<'_> {
         self.node.supports_action(Action::ScrollIntoView, &filter)
     }
 
+    fn horizontally_scrollable(&self) -> bool {
+        axis_has_scroll_range(self.node.scroll_x_min(), self.node.scroll_x_max())
+            || self.node.supports_action(Action::ScrollLeft, &filter)
+            || self.node.supports_action(Action::ScrollRight, &filter)
+    }
+
+    fn vertically_scrollable(&self) -> bool {
+        axis_has_scroll_range(self.node.scroll_y_min(), self.node.scroll_y_max())
+            || self.node.supports_action(Action::ScrollUp, &filter)
+            || self.node.supports_action(Action::ScrollDown, &filter)
+    }
+
+    fn is_scroll_pattern_supported(&self) -> bool {
+        self.horizontally_scrollable() || self.vertically_scrollable()
+    }
+
+    fn horizontal_scroll_percent(&self) -> f64 {
+        scroll_percent(
+            self.node.scroll_x(),
+            self.node.scroll_x_min(),
+            self.node.scroll_x_max(),
+        )
+    }
+
+    fn vertical_scroll_percent(&self) -> f64 {
+        scroll_percent(
+            self.node.scroll_y(),
+            self.node.scroll_y_min(),
+            self.node.scroll_y_max(),
+        )
+    }
+
+    fn horizontal_view_size(&self) -> f64 {
+        let viewport = self.node.raw_bounds().map(|bounds| bounds.width());
+        scroll_view_size(
+            viewport,
+            self.node.scroll_x_min(),
+            self.node.scroll_x_max(),
+            self.horizontally_scrollable(),
+        )
+    }
+
+    fn vertical_view_size(&self) -> f64 {
+        let viewport = self.node.raw_bounds().map(|bounds| bounds.height());
+        scroll_view_size(
+            viewport,
+            self.node.scroll_y_min(),
+            self.node.scroll_y_max(),
+            self.vertically_scrollable(),
+        )
+    }
+
     pub(crate) fn is_selection_item_pattern_supported(&self) -> bool {
         match self.node.role() {
             // TODO: tables (#29)
@@ -796,6 +957,7 @@ fn enqueue_property_change(
     IValueProvider,
     IRangeValueProvider,
     IScrollItemProvider,
+    IScrollProvider,
     ISelectionItemProvider,
     ISelectionProvider,
     ITextProvider,
@@ -951,6 +1113,66 @@ impl PlatformNode {
 
     fn click(&self) -> Result<()> {
         self.do_action(|| (Action::Click, None))
+    }
+
+    fn scroll(&self, horizontal_amount: ScrollAmount, vertical_amount: ScrollAmount) -> Result<()> {
+        let context = self.upgrade_context()?;
+        if context.is_placeholder.load(Ordering::SeqCst) {
+            return Err(element_not_enabled());
+        }
+        let tree = context.read_tree();
+        let (node, target_node, target_tree) = self.node_with_location(&tree)?;
+        if node.is_disabled() {
+            return Err(element_not_enabled());
+        }
+        let requests = [
+            directed_scroll(&node, horizontal_amount, true)?,
+            directed_scroll(&node, vertical_amount, false)?,
+        ];
+        drop(tree);
+        for (action, unit) in requests.into_iter().flatten() {
+            context.do_action(ActionRequest {
+                action,
+                target_tree,
+                target_node,
+                data: Some(ActionData::ScrollUnit(unit)),
+            });
+        }
+        Ok(())
+    }
+
+    fn set_scroll_percent(&self, horizontal_percent: f64, vertical_percent: f64) -> Result<()> {
+        self.do_complex_action(|node, target_node, target_tree| {
+            if node.is_disabled() {
+                return Err(element_not_enabled());
+            }
+            if horizontal_percent == UIA_ScrollPatternNoScroll
+                && vertical_percent == UIA_ScrollPatternNoScroll
+            {
+                return Ok(None);
+            }
+            if !node.supports_action(Action::SetScrollOffset, &filter) {
+                return Err(not_supported());
+            }
+            let x = offset_for_scroll_percent(
+                node.scroll_x(),
+                node.scroll_x_min(),
+                node.scroll_x_max(),
+                horizontal_percent,
+            )?;
+            let y = offset_for_scroll_percent(
+                node.scroll_y(),
+                node.scroll_y_min(),
+                node.scroll_y_max(),
+                vertical_percent,
+            )?;
+            Ok(Some(ActionRequest {
+                action: Action::SetScrollOffset,
+                target_tree,
+                target_node,
+                data: Some(ActionData::SetScrollOffset(Point::new(x, y))),
+            }))
+        })
     }
 
     fn set_expanded(&self, expanded: bool) -> Result<()> {
@@ -1379,6 +1601,22 @@ patterns! {
             })
         }
     )),
+    (UIA_ScrollPatternId, IScrollProvider, IScrollProvider_Impl, is_scroll_pattern_supported, (
+        (UIA_ScrollHorizontalScrollPercentPropertyId, HorizontalScrollPercent, horizontal_scroll_percent, f64),
+        (UIA_ScrollVerticalScrollPercentPropertyId, VerticalScrollPercent, vertical_scroll_percent, f64),
+        (UIA_ScrollHorizontalViewSizePropertyId, HorizontalViewSize, horizontal_view_size, f64),
+        (UIA_ScrollVerticalViewSizePropertyId, VerticalViewSize, vertical_view_size, f64),
+        (UIA_ScrollHorizontallyScrollablePropertyId, HorizontallyScrollable, horizontally_scrollable, BOOL),
+        (UIA_ScrollVerticallyScrollablePropertyId, VerticallyScrollable, vertically_scrollable, BOOL)
+    ), (
+        fn Scroll(&self, horizontal_amount: ScrollAmount, vertical_amount: ScrollAmount) -> Result<()> {
+            self.scroll(horizontal_amount, vertical_amount)
+        },
+
+        fn SetScrollPercent(&self, horizontal_percent: f64, vertical_percent: f64) -> Result<()> {
+            self.set_scroll_percent(horizontal_percent, vertical_percent)
+        }
+    )),
     (UIA_SelectionItemPatternId, ISelectionItemProvider, ISelectionItemProvider_Impl, is_selection_item_pattern_supported, (), (
         fn IsSelected(&self) -> Result<BOOL> {
             self.resolve(|node| {
@@ -1536,4 +1774,203 @@ patterns! {
 fn platform_node_impl_send_sync() {
     fn assert_send_sync<T: Send + Sync>() {}
     assert_send_sync::<PlatformNode>();
+}
+
+#[cfg(test)]
+fn child_node(tree: &Tree, id: NodeId) -> NodeRef<'_> {
+    tree.state()
+        .node_by_tree_local_id(id, TreeId::ROOT)
+        .unwrap()
+}
+
+#[cfg(test)]
+fn localized_eq(actual: Option<StrWrapper<'_>>, expected: &str) -> bool {
+    let mut buffer = StringBuffer::acquire();
+    actual == Some(StrWrapper::new(expected, &mut buffer))
+}
+
+#[cfg(test)]
+fn single_child_tree(child_id: NodeId, child: accesskit::Node) -> Tree {
+    use accesskit::{TreeInfo, TreeUpdate};
+
+    let mut root = accesskit::Node::new(Role::Window);
+    root.set_children(vec![child_id]);
+    Tree::new(
+        TreeUpdate {
+            nodes: vec![(NodeId(0), root), (child_id, child)],
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        },
+        true,
+    )
+}
+
+#[test]
+fn switch_keeps_button_control_type_and_uses_switch_token() {
+    use accesskit::Node;
+
+    let child_id = NodeId(1);
+    let tree = single_child_tree(child_id, Node::new(Role::Switch));
+    let node = child_node(&tree, child_id);
+    let mut buffer = StringBuffer::acquire();
+    let mut wrapper = NodeWrapper {
+        node: &node,
+        string_buffer: &mut buffer,
+    };
+    assert_eq!(wrapper.control_type(), UIA_ButtonControlTypeId);
+    assert!(localized_eq(wrapper.localized_control_type(), "switch"));
+}
+
+#[test]
+fn switch_role_description_overrides_localized_control_type() {
+    use accesskit::Node;
+
+    let child_id = NodeId(1);
+    let mut node = Node::new(Role::Switch);
+    node.set_role_description("开关");
+    let tree = single_child_tree(child_id, node);
+    let node = child_node(&tree, child_id);
+    let mut buffer = StringBuffer::acquire();
+    let mut wrapper = NodeWrapper {
+        node: &node,
+        string_buffer: &mut buffer,
+    };
+    assert_eq!(wrapper.control_type(), UIA_ButtonControlTypeId);
+    assert!(localized_eq(wrapper.localized_control_type(), "开关"));
+}
+
+#[test]
+fn button_has_no_synthetic_localized_control_type() {
+    use accesskit::Node;
+
+    let child_id = NodeId(1);
+    let tree = single_child_tree(child_id, Node::new(Role::Button));
+    let node = child_node(&tree, child_id);
+    let mut buffer = StringBuffer::acquire();
+    let mut wrapper = NodeWrapper {
+        node: &node,
+        string_buffer: &mut buffer,
+    };
+    assert!(wrapper.localized_control_type().is_none());
+}
+
+#[test]
+fn scroll_view_maps_percent_and_viewport_from_existing_fields() {
+    use accesskit::{Node, Rect};
+
+    let child_id = NodeId(1);
+    let mut node = Node::new(Role::ScrollView);
+    node.set_bounds(Rect {
+        x0: 0.0,
+        y0: 0.0,
+        x1: 80.0,
+        y1: 100.0,
+    });
+    node.set_scroll_y(75.0);
+    node.set_scroll_y_min(0.0);
+    node.set_scroll_y_max(300.0);
+    node.add_action(Action::ScrollUp);
+    node.add_action(Action::ScrollDown);
+    let tree = single_child_tree(child_id, node);
+    let node = child_node(&tree, child_id);
+    let mut buffer = StringBuffer::acquire();
+    let wrapper = NodeWrapper {
+        node: &node,
+        string_buffer: &mut buffer,
+    };
+    assert!(wrapper.is_scroll_pattern_supported());
+    assert!(!wrapper.horizontally_scrollable());
+    assert!(wrapper.vertically_scrollable());
+    assert_eq!(
+        wrapper.horizontal_scroll_percent(),
+        UIA_ScrollPatternNoScroll
+    );
+    assert_eq!(wrapper.vertical_scroll_percent(), 25.0);
+    assert_eq!(wrapper.horizontal_view_size(), 100.0);
+    assert_eq!(wrapper.vertical_view_size(), 25.0);
+}
+
+#[test]
+fn scroll_pattern_follows_scroll_fields_on_other_roles() {
+    use accesskit::Node;
+
+    let child_id = NodeId(1);
+    let mut node = Node::new(Role::List);
+    node.set_scroll_x(0.0);
+    node.set_scroll_x_min(0.0);
+    node.set_scroll_x_max(10.0);
+    node.add_action(Action::ScrollLeft);
+    node.add_action(Action::ScrollRight);
+    let tree = single_child_tree(child_id, node);
+    let node = child_node(&tree, child_id);
+    let mut buffer = StringBuffer::acquire();
+    let wrapper = NodeWrapper {
+        node: &node,
+        string_buffer: &mut buffer,
+    };
+    assert!(wrapper.is_scroll_pattern_supported());
+    assert!(wrapper.horizontally_scrollable());
+}
+
+#[test]
+fn scroll_into_view_alone_does_not_expose_scroll_pattern() {
+    use accesskit::Node;
+
+    let child_id = NodeId(1);
+    let mut node = Node::new(Role::ListItem);
+    node.add_action(Action::ScrollIntoView);
+    let tree = single_child_tree(child_id, node);
+    let node = child_node(&tree, child_id);
+    let mut buffer = StringBuffer::acquire();
+    let wrapper = NodeWrapper {
+        node: &node,
+        string_buffer: &mut buffer,
+    };
+    assert!(wrapper.is_scroll_item_pattern_supported());
+    assert!(!wrapper.is_scroll_pattern_supported());
+}
+
+#[test]
+fn uia_scroll_amounts_use_existing_scroll_actions() {
+    assert_eq!(
+        uia_scroll_action(ScrollAmount_NoAmount, false).unwrap(),
+        None
+    );
+    assert_eq!(
+        uia_scroll_action(ScrollAmount_SmallIncrement, false).unwrap(),
+        Some((Action::ScrollDown, ScrollUnit::Item))
+    );
+    assert_eq!(
+        uia_scroll_action(ScrollAmount_LargeDecrement, true).unwrap(),
+        Some((Action::ScrollLeft, ScrollUnit::Page))
+    );
+    assert_eq!(
+        uia_scroll_action(ScrollAmount_LargeIncrement, true).unwrap(),
+        Some((Action::ScrollRight, ScrollUnit::Page))
+    );
+    assert_eq!(
+        uia_scroll_action(ScrollAmount_SmallDecrement, false).unwrap(),
+        Some((Action::ScrollUp, ScrollUnit::Item))
+    );
+}
+
+#[test]
+fn set_scroll_percent_converts_to_scroll_offset() {
+    assert_eq!(
+        offset_for_scroll_percent(Some(75.0), Some(0.0), Some(300.0), 50.0).unwrap(),
+        150.0
+    );
+    assert_eq!(
+        offset_for_scroll_percent(
+            Some(75.0),
+            Some(0.0),
+            Some(300.0),
+            UIA_ScrollPatternNoScroll
+        )
+        .unwrap(),
+        75.0
+    );
+    assert!(offset_for_scroll_percent(Some(0.0), Some(0.0), Some(10.0), 140.0).is_err());
+    assert!(offset_for_scroll_percent(None, None, None, 10.0).is_err());
 }
