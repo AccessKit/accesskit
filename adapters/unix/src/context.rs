@@ -166,6 +166,20 @@ fn sync_adapters(adapters: &mut [AdapterEntry], atspi_bus: &Option<Bus>) {
     }
 }
 
+/// Whether the app was handed the accessibility bus directly while the
+/// `IsEnabled` toggle that normally gates connecting to it is out of reach.
+///
+/// A Flatpak sandbox does exactly this: it hides `org.a11y.Bus` from the
+/// session bus and sets `AT_SPI_BUS_ADDRESS` to its own proxy of the
+/// accessibility bus. The toggle then can't be read or watched, so waiting for
+/// it means never registering with AT-SPI. GTK and Qt treat accessibility as
+/// enabled in that case, and so does this adapter. Where the toggle can be read,
+/// it stays in charge, whatever the environment says.
+async fn bus_provided_without_status(status: &StatusProxy<'_>) -> bool {
+    let provided = std::env::var("AT_SPI_BUS_ADDRESS").is_ok_and(|address| !address.is_empty());
+    provided && status.is_enabled().await.is_err()
+}
+
 async fn run_event_loop(
     executor: &Executor<'_>,
     session_bus: Connection,
@@ -191,7 +205,11 @@ async fn run_event_loop(
     let messages = UnboundedReceiverStream::new(rx).fuse();
     pin!(messages);
 
-    let mut atspi_bus = None;
+    let mut atspi_bus = if bus_provided_without_status(&status).await {
+        map_or_ignoring_recoverable_error(Bus::new(&session_bus, executor).await, None, Some)?
+    } else {
+        None
+    };
     let mut adapters: Vec<AdapterEntry> = Vec::new();
 
     loop {
