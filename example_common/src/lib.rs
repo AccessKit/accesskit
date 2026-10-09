@@ -1,5 +1,6 @@
 mod key;
 mod login;
+mod main_screen;
 mod render;
 pub mod widgets;
 
@@ -10,11 +11,14 @@ use accesskit::{
     ActionRequest, Affine, Node, NodeId, Rect, Size, TreeId, TreeInfo, TreeUpdate, Vec2,
 };
 use login::LoginScreen;
+use main_screen::MainScreen;
 use std::{
     collections::BTreeMap,
     time::{Duration, Instant},
 };
-use widgets::{ImeEdit, Response, TextInputInfo, TextInputState, Widget, Window, bubble, visit};
+use widgets::{
+    ImeEdit, Response, ScrollPosition, TextInputInfo, TextInputState, Widget, Window, bubble, visit,
+};
 
 /// The title of the example's window.
 pub const WINDOW_TITLE: &str = "AccessKit Example application";
@@ -45,6 +49,13 @@ enum Message {
     PasswordVisibilityChanged(bool),
     LogIn,
     LoginFinished,
+    // Main screen
+    ContactSelected(usize),
+    ChatMessageSelected(usize),
+    MessagesScrolled(ScrollPosition),
+    DraftChanged(TextInputState),
+    SendDraft,
+    ReplyReceived(usize),
 }
 
 /// What [`Model::update`] asks to happen next.
@@ -56,6 +67,7 @@ enum Command {
 
 enum Screen {
     Login(LoginScreen),
+    Main(MainScreen),
 }
 
 struct Model {
@@ -81,9 +93,14 @@ impl Model {
         match message {
             Message::ViewportChanged(viewport) => self.viewport = Some(viewport),
             Message::Focus(id) => self.focus = id,
+            Message::LoginFinished => {
+                self.screen = Screen::Main(MainScreen::new());
+                self.focus = main_screen::INITIAL_FOCUS;
+            }
             message => {
                 return match &mut self.screen {
                     Screen::Login(screen) => screen.update(message),
+                    Screen::Main(screen) => screen.update(message),
                 };
             }
         }
@@ -103,6 +120,7 @@ impl Model {
         let size = self.viewport.map_or(DEFAULT_SIZE, |viewport| viewport.size);
         let root = match &self.screen {
             Screen::Login(screen) => screen.view(root, size),
+            Screen::Main(screen) => screen.view(root, size),
         };
         View { root }
     }
@@ -322,6 +340,11 @@ pub fn print_instructions() {
     );
     println!("- [Enter] or [Space] presses buttons.");
     println!("On the login screen, any email and password are accepted.");
+    println!("On the main screen:");
+    println!("- In the lists of contacts and messages, [Up] and [Down] select an item.");
+    println!(
+        "- In the message field, [Enter] sends the message, and [Ctrl]+[Enter] starts a new line."
+    );
     #[cfg(target_os = "windows")]
     println!(
         "Enable Narrator with [Win]+[Ctrl]+[Enter] (or [Win]+[Enter] on older versions of Windows)."
