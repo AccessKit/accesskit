@@ -1,4 +1,4 @@
-use accesskit::Vec2;
+use accesskit::{Size, Vec2};
 use example_common::{Key, KeyEvent, KeyState, Modifiers, UiState};
 use winit::{
     event::{ElementState, KeyEvent as WinitKeyEvent, Modifiers as WinitModifiers},
@@ -8,7 +8,7 @@ use winit::{
 };
 
 #[cfg(target_os = "ios")]
-pub fn safe_area_inset(window: &Window) -> Vec2 {
+fn safe_area_inset(window: &Window) -> Vec2 {
     let Ok(outer) = window.outer_position() else {
         return Vec2::ZERO;
     };
@@ -19,8 +19,19 @@ pub fn safe_area_inset(window: &Window) -> Vec2 {
 }
 
 #[cfg(not(target_os = "ios"))]
-pub fn safe_area_inset(_: &Window) -> Vec2 {
+fn safe_area_inset(_: &Window) -> Vec2 {
     Vec2::ZERO
+}
+
+/// Tells the UI the window's scale factor, and the area it can use.
+pub fn set_viewport(ui: &mut UiState, window: &Window) {
+    let scale_factor = window.scale_factor();
+    let size = window.inner_size().to_logical::<f64>(scale_factor);
+    ui.set_viewport(
+        scale_factor,
+        safe_area_inset(window),
+        Size::new(size.width, size.height),
+    );
 }
 
 /// Translates a winit key event into the example's key events.
@@ -66,17 +77,13 @@ pub fn modifiers(modifiers: &WinitModifiers) -> Modifiers {
     }
 }
 
-pub fn flush_announcement(event_loop: &ActiveEventLoop, ui: &mut UiState) -> bool {
-    match ui.time_until_announcement() {
-        Some(remaining) if !remaining.is_zero() => {
-            event_loop.set_control_flow(ControlFlow::wait_duration(remaining));
-            false
-        }
-        Some(_) => {
-            let flushed = ui.flush_announcement();
-            event_loop.set_control_flow(ControlFlow::Wait);
-            flushed
-        }
-        None => false,
-    }
+/// Handles the delayed messages that are due, and schedules the next ones.
+pub fn process_due_messages(event_loop: &ActiveEventLoop, ui: &mut UiState) -> bool {
+    let processed = ui.process_due_messages();
+    let control_flow = match ui.time_until_next_message() {
+        Some(remaining) => ControlFlow::wait_duration(remaining),
+        None => ControlFlow::Wait,
+    };
+    event_loop.set_control_flow(control_flow);
+    processed
 }

@@ -1,4 +1,4 @@
-use accesskit::{ActionHandler, ActionRequest, ActivationHandler, TreeUpdate, Vec2};
+use accesskit::{ActionHandler, ActionRequest, ActivationHandler, Size, TreeUpdate, Vec2};
 use accesskit_android::{
     Adapter, PlatformAction, QueuedEvents,
     jni::{
@@ -84,12 +84,16 @@ impl ViewState {
 
     fn after_input(&mut self, deferred: &mut DeferredCallbacks) {
         self.update_accessibility_tree(deferred);
-        let Some(delay) = self.ui.time_until_announcement() else {
+        self.schedule_next_message(deferred);
+    }
+
+    fn schedule_next_message(&self, deferred: &mut DeferredCallbacks) {
+        let Some(delay) = self.ui.time_until_next_message() else {
             return;
         };
-        let delay = delay.as_millis() as jlong;
+        let delay = delay.as_nanos().div_ceil(1_000_000) as jlong;
         deferred.push(move |env, host| {
-            env.call_method(host, "scheduleAnnouncement", "(J)V", &[delay.into()])
+            env.call_method(host, "scheduleDelayedMessage", "(J)V", &[delay.into()])
                 .unwrap();
         });
     }
@@ -169,12 +173,15 @@ extern "system" fn set_viewport(
     scale_factor: jfloat,
     safe_area_inset_x: jfloat,
     safe_area_inset_y: jfloat,
+    safe_area_width: jfloat,
+    safe_area_height: jfloat,
 ) {
     unsafe {
         with_view_state(&mut env, &host, handle, |_env, state, deferred| {
             state.ui.set_viewport(
                 scale_factor.into(),
                 Vec2::new(safe_area_inset_x.into(), safe_area_inset_y.into()),
+                Size::new(safe_area_width.into(), safe_area_height.into()) / scale_factor.into(),
             );
             state.update_accessibility_tree(deferred);
         })
@@ -278,7 +285,7 @@ extern "system" fn on_key_event(
     };
     unsafe {
         with_view_state(&mut env, &host, handle, |_env, state, deferred| {
-            state.ui.handle_key(KeyEvent {
+            let handled = state.ui.handle_key(KeyEvent {
                 key,
                 state: key_state,
                 modifiers: Modifiers {
@@ -287,12 +294,12 @@ extern "system" fn on_key_event(
                 },
             });
             state.after_input(deferred);
-            JNI_TRUE
+            if handled { JNI_TRUE } else { JNI_FALSE }
         })
     }
 }
 
-extern "system" fn flush_announcement(
+extern "system" fn process_due_messages(
     mut env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -300,9 +307,10 @@ extern "system" fn flush_announcement(
 ) {
     unsafe {
         with_view_state(&mut env, &host, handle, |_env, state, deferred| {
-            if state.ui.flush_announcement() {
+            if state.ui.process_due_messages() {
                 state.update_accessibility_tree(deferred);
             }
+            state.schedule_next_message(deferred);
         })
     }
 }
@@ -333,7 +341,7 @@ pub unsafe extern "system" fn JNI_OnLoad(
             },
             NativeMethod {
                 name: "nativeSetViewport".into(),
-                sig: "(JLandroid/view/View;FFF)V".into(),
+                sig: "(JLandroid/view/View;FFFFF)V".into(),
                 fn_ptr: set_viewport as *mut c_void,
             },
             NativeMethod {
@@ -364,9 +372,9 @@ pub unsafe extern "system" fn JNI_OnLoad(
                 fn_ptr: on_key_event as *mut c_void,
             },
             NativeMethod {
-                name: "nativeFlushAnnouncement".into(),
+                name: "nativeProcessDueMessages".into(),
                 sig: "(JLandroid/view/View;)V".into(),
-                fn_ptr: flush_announcement as *mut c_void,
+                fn_ptr: process_due_messages as *mut c_void,
             },
         ],
     )

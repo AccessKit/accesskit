@@ -1,6 +1,6 @@
 // Based on the create_window sample in windows-samples-rs.
 
-use accesskit::{ActionHandler, ActionRequest, ActivationHandler, TreeUpdate};
+use accesskit::{ActionHandler, ActionRequest, ActivationHandler, Size, TreeUpdate, Vec2};
 use accesskit_windows::Adapter;
 use example_common::{Key, KeyEvent, KeyState, Modifiers, Renderer, UiState, WINDOW_TITLE};
 use raw_window_handle::{
@@ -43,7 +43,7 @@ static WINDOW_CLASS_ATOM: LazyLock<u16> = LazyLock::new(|| {
 
 const ACTION_REQUEST_MSG: u32 = WM_USER;
 
-const ANNOUNCEMENT_TIMER_ID: usize = 1;
+const DELAYED_MESSAGE_TIMER_ID: usize = 1;
 
 struct Ui(UiState);
 
@@ -106,27 +106,26 @@ impl WindowState {
 
     fn after_input(&self, window: HWND) {
         self.update_accessibility_tree();
-        let Some(delay) = self.ui.borrow().time_until_announcement() else {
+        self.schedule_next_message(window);
+    }
+
+    fn schedule_next_message(&self, window: HWND) {
+        let Some(delay) = self.ui.borrow().time_until_next_message() else {
+            let _ = unsafe { KillTimer(Some(window), DELAYED_MESSAGE_TIMER_ID) };
             return;
         };
-        let timer = unsafe {
-            SetTimer(
-                Some(window),
-                ANNOUNCEMENT_TIMER_ID,
-                delay.as_millis() as u32,
-                None,
-            )
-        };
+        let delay = delay.as_nanos().div_ceil(1_000_000) as u32;
+        let timer = unsafe { SetTimer(Some(window), DELAYED_MESSAGE_TIMER_ID, delay, None) };
         if timer == 0 {
             panic!("{}", Error::from_thread());
         }
     }
 
-    fn flush_announcement(&self, window: HWND) {
-        let _ = unsafe { KillTimer(Some(window), ANNOUNCEMENT_TIMER_ID) };
-        if self.ui.borrow_mut().flush_announcement() {
+    fn process_due_messages(&self, window: HWND) {
+        if self.ui.borrow_mut().process_due_messages() {
             self.update_accessibility_tree();
         }
+        self.schedule_next_message(window);
     }
 }
 
@@ -201,6 +200,22 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             });
             unsafe { SetWindowLongPtrW(window, GWLP_USERDATA, Box::into_raw(state) as _) };
             unsafe { DefWindowProcW(window, message, wparam, lparam) }
+        }
+        WM_SIZE => {
+            if wparam.0 == SIZE_MINIMIZED as usize {
+                return LRESULT(0);
+            }
+            let state = unsafe { &*get_window_state(window) };
+            let width = lparam.0 & 0xffff;
+            let height = (lparam.0 >> 16) & 0xffff;
+            // The example isn't DPI aware, so its coordinates are logical.
+            state.ui.borrow_mut().set_viewport(
+                1.0,
+                Vec2::ZERO,
+                Size::new(width as f64, height as f64),
+            );
+            state.update_accessibility_tree();
+            LRESULT(0)
         }
         WM_PAINT => {
             let state = unsafe { &*get_window_state(window) };
@@ -292,11 +307,11 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             LRESULT(0)
         }
         WM_TIMER => {
-            if wparam.0 != ANNOUNCEMENT_TIMER_ID {
+            if wparam.0 != DELAYED_MESSAGE_TIMER_ID {
                 return unsafe { DefWindowProcW(window, message, wparam, lparam) };
             }
             let state = unsafe { &*get_window_state(window) };
-            state.flush_announcement(window);
+            state.process_due_messages(window);
             LRESULT(0)
         }
         ACTION_REQUEST_MSG => {

@@ -19,12 +19,14 @@ public final class ShowcaseView extends View {
 
     private long nativeHandle;
 
-    private final Runnable flushAnnouncement =
+    private Insets safeArea = Insets.NONE;
+
+    private final Runnable processDueMessages =
             new Runnable() {
                 @Override
                 public void run() {
                     if (nativeHandle != 0) {
-                        nativeFlushAnnouncement(nativeHandle, ShowcaseView.this);
+                        nativeProcessDueMessages(nativeHandle, ShowcaseView.this);
                     }
                 }
             };
@@ -63,7 +65,13 @@ public final class ShowcaseView extends View {
     private static native void nativeDestroy(long handle);
 
     private static native void nativeSetViewport(
-            long handle, View host, float scaleFactor, float safeAreaInsetX, float safeAreaInsetY);
+            long handle,
+            View host,
+            float scaleFactor,
+            float safeAreaInsetX,
+            float safeAreaInsetY,
+            float safeAreaWidth,
+            float safeAreaHeight);
 
     private static native AccessibilityNodeInfo nativeCreateAccessibilityNodeInfo(
             long handle, View host, int virtualViewId);
@@ -80,7 +88,7 @@ public final class ShowcaseView extends View {
     private static native boolean nativeOnKeyEvent(
             long handle, View host, int action, int keyCode, boolean shiftPressed);
 
-    private static native void nativeFlushAnnouncement(long handle, View host);
+    private static native void nativeProcessDueMessages(long handle, View host);
 
     public ShowcaseView(Context context) {
         super(context);
@@ -97,7 +105,7 @@ public final class ShowcaseView extends View {
 
     @Override
     protected void onDetachedFromWindow() {
-        removeCallbacks(flushAnnouncement);
+        removeCallbacks(processDueMessages);
         nativeDestroy(nativeHandle);
         nativeHandle = 0;
         super.onDetachedFromWindow();
@@ -110,14 +118,32 @@ public final class ShowcaseView extends View {
 
     @Override
     public WindowInsets onApplyWindowInsets(WindowInsets insets) {
-        Insets safeArea =
+        safeArea =
                 insets.getInsets(
                         WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
-        float scaleFactor = getResources().getDisplayMetrics().density;
-        if (nativeHandle != 0) {
-            nativeSetViewport(nativeHandle, this, scaleFactor, safeArea.left, safeArea.top);
-        }
+        updateViewport();
         return super.onApplyWindowInsets(insets);
+    }
+
+    @Override
+    protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
+        super.onSizeChanged(width, height, oldWidth, oldHeight);
+        updateViewport();
+    }
+
+    private void updateViewport() {
+        if (nativeHandle == 0) {
+            return;
+        }
+        float scaleFactor = getResources().getDisplayMetrics().density;
+        nativeSetViewport(
+                nativeHandle,
+                this,
+                scaleFactor,
+                safeArea.left,
+                safeArea.top,
+                getWidth() - safeArea.left - safeArea.right,
+                getHeight() - safeArea.top - safeArea.bottom);
     }
 
     @Override
@@ -149,8 +175,8 @@ public final class ShowcaseView extends View {
     }
 
     /** Called from Rust. */
-    private void scheduleAnnouncement(long delayMillis) {
-        removeCallbacks(flushAnnouncement);
-        postDelayed(flushAnnouncement, delayMillis);
+    private void scheduleDelayedMessage(long delayMillis) {
+        removeCallbacks(processDueMessages);
+        postDelayed(processDueMessages, delayMillis);
     }
 }
