@@ -14,7 +14,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-pub const WINDOW_TITLE: &str = "Hello world";
+pub const WINDOW_TITLE: &str = "AccessKit Example application";
 
 const WINDOW_ID: NodeId = NodeId(0);
 const BUTTON_1_ID: NodeId = NodeId(1);

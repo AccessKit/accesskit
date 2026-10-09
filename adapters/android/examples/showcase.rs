@@ -318,7 +318,7 @@ pub unsafe extern "system" fn JNI_OnLoad(
     let vm = unsafe { JavaVM::from_raw(vm) }.unwrap();
     let mut env = vm.get_env().unwrap();
     env.register_native_methods(
-        "dev/accesskit/helloworld/HelloWorldView",
+        "dev/accesskit/showcase/ShowcaseView",
         &[
             NativeMethod {
                 name: "nativeCreate".into(),

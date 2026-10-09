@@ -1,4 +1,4 @@
-package dev.accesskit.helloworld;
+package dev.accesskit.showcase;
 
 import android.content.Context;
 import android.graphics.Insets;
@@ -10,9 +10,9 @@ import android.view.WindowInsets;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityNodeProvider;
 
-public final class HelloWorldView extends View {
+public final class ShowcaseView extends View {
     static {
-        System.loadLibrary("hello_world");
+        System.loadLibrary("showcase");
     }
 
     private static final int DARK_GRAY = 0xff181818;
@@ -24,7 +24,7 @@ public final class HelloWorldView extends View {
                 @Override
                 public void run() {
                     if (nativeHandle != 0) {
-                        nativeFlushAnnouncement(nativeHandle, HelloWorldView.this);
+                        nativeFlushAnnouncement(nativeHandle, ShowcaseView.this);
                     }
                 }
             };
@@ -37,7 +37,7 @@ public final class HelloWorldView extends View {
                         return null;
                     }
                     return nativeCreateAccessibilityNodeInfo(
-                            nativeHandle, HelloWorldView.this, virtualViewId);
+                            nativeHandle, ShowcaseView.this, virtualViewId);
                 }
 
                 @Override
@@ -45,7 +45,7 @@ public final class HelloWorldView extends View {
                     if (nativeHandle == 0) {
                         return null;
                     }
-                    return nativeFindFocus(nativeHandle, HelloWorldView.this, focusType);
+                    return nativeFindFocus(nativeHandle, ShowcaseView.this, focusType);
                 }
 
                 @Override
@@ -54,7 +54,7 @@ public final class HelloWorldView extends View {
                         return false;
                     }
                     return nativePerformAction(
-                            nativeHandle, HelloWorldView.this, virtualViewId, action, arguments);
+                            nativeHandle, ShowcaseView.this, virtualViewId, action, arguments);
                 }
             };
 
@@ -82,7 +82,7 @@ public final class HelloWorldView extends View {
 
     private static native void nativeFlushAnnouncement(long handle, View host);
 
-    public HelloWorldView(Context context) {
+    public ShowcaseView(Context context) {
         super(context);
         setBackgroundColor(DARK_GRAY);
         setFocusable(true);
