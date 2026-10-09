@@ -1,6 +1,8 @@
 mod button;
 mod image;
 mod label;
+mod list_box;
+mod scroll_bar;
 mod spinner;
 mod text_input;
 mod toggle_button;
@@ -9,6 +11,8 @@ mod window;
 pub use button::Button;
 pub use image::Image;
 pub use label::Label;
+pub use list_box::{ListBox, ListItem};
+pub use scroll_bar::{ScrollBar, ScrollPosition};
 pub use spinner::Spinner;
 pub use text_input::{ImeEdit, InputType, TextInput, TextInputInfo, TextInputState};
 pub use toggle_button::ToggleButton;
