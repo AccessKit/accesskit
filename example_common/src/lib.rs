@@ -214,6 +214,7 @@ impl UiState {
         match event.key {
             Key::Enter | Key::Space => self.press_button(self.focus),
             Key::Tab => self.move_focus(!event.modifiers.shift),
+            _ => (),
         }
     }
 

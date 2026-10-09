@@ -283,6 +283,7 @@ extern "system" fn on_key_event(
                 state: key_state,
                 modifiers: Modifiers {
                     shift: shift_pressed != JNI_FALSE,
+                    control: false,
                 },
             });
             state.after_input(deferred);

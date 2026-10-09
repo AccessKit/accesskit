@@ -9,7 +9,7 @@ use std::{
 };
 use winit::{
     application::ApplicationHandler,
-    event::{KeyEvent as WinitKeyEvent, WindowEvent},
+    event::WindowEvent,
     event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
     window::{Window, WindowId},
 };
@@ -113,14 +113,12 @@ impl ApplicationHandler<AccessKitEvent> for Application {
             WindowEvent::ModifiersChanged(modifiers) => {
                 window.modifiers = util::modifiers(&modifiers);
             }
-            WindowEvent::KeyboardInput {
-                event: WinitKeyEvent {
-                    logical_key, state, ..
-                },
-                ..
-            } => {
-                if let Some(event) = util::key_event(&logical_key, state, window.modifiers) {
-                    window.ui.lock().unwrap().handle_key(event);
+            WindowEvent::KeyboardInput { event, .. } => {
+                let events = util::key_events(&event, window.modifiers);
+                if !events.is_empty() {
+                    for event in events {
+                        window.ui.lock().unwrap().handle_key(event);
+                    }
                     window.update_accessibility_tree();
                     window.window.request_redraw();
                 }

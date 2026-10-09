@@ -7,7 +7,7 @@ use raw_window_handle::{
     DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, Win32WindowHandle, WindowHandle,
 };
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     num::NonZeroIsize,
     ops::{Deref, DerefMut},
     sync::LazyLock,
@@ -89,6 +89,8 @@ struct WindowState {
     adapter: RefCell<Adapter>,
     ui: RefCell<Ui>,
     renderer: RefCell<Renderer<RenderTarget>>,
+    /// The first half of a UTF-16 surrogate pair received by `WM_CHAR`.
+    high_surrogate: Cell<Option<u16>>,
 }
 
 impl WindowState {
@@ -131,6 +133,7 @@ impl WindowState {
 fn modifiers() -> Modifiers {
     Modifiers {
         shift: unsafe { GetKeyState(VK_SHIFT.0 as i32) } < 0,
+        control: unsafe { GetKeyState(VK_CONTROL.0 as i32) } < 0,
     }
 }
 
@@ -139,6 +142,14 @@ fn translate_key(key: VIRTUAL_KEY) -> Option<Key> {
         VK_RETURN => Some(Key::Enter),
         VK_SPACE => Some(Key::Space),
         VK_TAB => Some(Key::Tab),
+        VK_BACK => Some(Key::Backspace),
+        VK_DELETE => Some(Key::Delete),
+        VK_LEFT => Some(Key::Left),
+        VK_RIGHT => Some(Key::Right),
+        VK_UP => Some(Key::Up),
+        VK_DOWN => Some(Key::Down),
+        VK_HOME => Some(Key::Home),
+        VK_END => Some(Key::End),
         _ => None,
     }
 }
@@ -186,6 +197,7 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 adapter: RefCell::new(adapter),
                 ui: RefCell::new(Ui(UiState::new())),
                 renderer: RefCell::new(Renderer::new(RenderTarget(window))),
+                high_surrogate: Cell::new(None),
             });
             unsafe { SetWindowLongPtrW(window, GWLP_USERDATA, Box::into_raw(state) as _) };
             unsafe { DefWindowProcW(window, message, wparam, lparam) }
@@ -249,6 +261,31 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             state.ui.borrow_mut().handle_key(KeyEvent {
                 key,
                 state: key_state,
+                modifiers: modifiers(),
+            });
+            state.after_input(window);
+            LRESULT(0)
+        }
+        WM_CHAR => {
+            let state = unsafe { &*get_window_state(window) };
+            let unit = wparam.0 as u16;
+            if (0xd800..0xdc00).contains(&unit) {
+                state.high_surrogate.set(Some(unit));
+                return LRESULT(0);
+            }
+            let units = match state.high_surrogate.take() {
+                Some(high) if (0xdc00..0xe000).contains(&unit) => vec![high, unit],
+                _ => vec![unit],
+            };
+            let Some(Ok(c)) = char::decode_utf16(units).next() else {
+                return LRESULT(0);
+            };
+            let Some(key) = Key::character(c) else {
+                return unsafe { DefWindowProcW(window, message, wparam, lparam) };
+            };
+            state.ui.borrow_mut().handle_key(KeyEvent {
+                key,
+                state: KeyState::Pressed,
                 modifiers: modifiers(),
             });
             state.after_input(window);
