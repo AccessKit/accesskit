@@ -10,6 +10,7 @@ publish = false
 [dependencies]
 accesskit = { path = "../accesskit" }
 raw-window-handle = "0.6.2"
+unicode-segmentation = "1.10.1"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies.softbuffer]
 version = "0.4.8"

@@ -715,6 +715,7 @@ dependencies = [
  "accesskit",
  "raw-window-handle 0.6.2",
  "softbuffer",
+ "unicode-segmentation",
 ]
 
 [[package]]

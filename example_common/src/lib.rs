@@ -1,5 +1,6 @@
 mod key;
 mod render;
+pub mod widgets;
 
 pub use key::{Key, KeyEvent, KeyState, Modifiers};
 pub use render::Renderer;
