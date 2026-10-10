@@ -462,7 +462,7 @@ impl Bus {
 
     async fn emit_cache_signal<B>(&self, signal_name: &str, body: &B) -> Result<()>
     where
-        B: serde::Serialize + zbus::zvariant::DynamicType,
+        B: serde::Serialize + zbus::zvariant::Type,
     {
         map_or_ignoring_recoverable_error(
             self.conn
@@ -471,7 +471,7 @@ impl Bus {
                     cache_path(),
                     InterfaceName::from_str_unchecked("org.a11y.atspi.Cache"),
                     MemberName::from_str_unchecked(signal_name),
-                    body,
+                    &(body,),
                 )
                 .await,
             (),
