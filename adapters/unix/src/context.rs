@@ -222,15 +222,20 @@ async fn process_adapter_message(
             deactivation_handler,
             state,
         } => {
-            adapters.push(AdapterEntry {
-                id,
-                activation_handler,
-                deactivation_handler,
-                state,
-            });
+            let index = adapters
+                .binary_search_by(|entry| entry.id.cmp(&id))
+                .unwrap_or_else(|index| index);
+            adapters.insert(
+                index,
+                AdapterEntry {
+                    id,
+                    activation_handler,
+                    deactivation_handler,
+                    state,
+                },
+            );
             if atspi_bus.is_some() {
-                let entry = adapters.last_mut().unwrap();
-                activate_adapter(entry);
+                activate_adapter(&mut adapters[index]);
             }
         }
         Message::RemoveAdapter { id } => {
