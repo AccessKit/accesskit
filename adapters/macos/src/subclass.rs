@@ -255,9 +255,7 @@ impl SubclassingAdapter {
         state.adapter.update_view_focus_state(is_focused)
     }
 
-    /// The phase of activation the wrapped adapter is in; see
-    /// [`Adapter::activation_state`]. The internal borrow taken here is
-    /// released before this method returns.
+    /// See [`Adapter::activation_state`].
     pub fn activation_state(&self) -> ActivationState {
         let state = self.associated.ivars().state.borrow();
         state.adapter.activation_state()

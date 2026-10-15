@@ -23,20 +23,16 @@ use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
 const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
 
-/// Which phase of activation the adapter is in; see
-/// [`Adapter::activation_state`].
+/// See [`Adapter::activation_state`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ActivationState {
-    /// No assistive technology has activated the adapter yet. The factory
-    /// passed to [`Adapter::update_if_active`] is never called in this phase,
-    /// so a host that prepares its updates eagerly can skip that work.
+    /// No assistive technology has activated the adapter yet.
     Inactive,
-    /// An assistive technology activated the adapter while
-    /// [`ActivationHandler::request_initial_tree`] returned `None`. The
-    /// assistive technology currently sees a placeholder tree, and the next
-    /// update passed to [`Adapter::update_if_active`] must be a full tree.
+    /// Activated while [`ActivationHandler::request_initial_tree`] returned
+    /// `None`; the next update passed to [`Adapter::update_if_active`] must
+    /// contain a full tree.
     Placeholder,
-    /// The tree is live; updates are applied incrementally.
+    /// The tree is live.
     Active,
 }
 
@@ -161,14 +157,9 @@ impl Adapter {
         }
     }
 
-    /// The phase of activation the adapter is in.
-    ///
-    /// This is a read-only probe; it never changes the state. A host whose
-    /// [`ActivationHandler::request_initial_tree`] returns `None` otherwise
-    /// has to mirror the adapter's state machine itself to know when the
-    /// one full tree that [`Adapter::update_if_active`] then requires is due,
-    /// and a host that prepares its updates eagerly has no other way to tell
-    /// that nobody will consume them yet.
+    /// The adapter's current activation state. This lets a host whose
+    /// [`ActivationHandler::request_initial_tree`] returns `None` know when
+    /// the full tree is due without tracking activation itself.
     pub fn activation_state(&self) -> ActivationState {
         match &self.state {
             State::Inactive { .. } => ActivationState::Inactive,
