@@ -22,7 +22,7 @@ use objc2_app_kit::{NSView, NSWindow};
 use objc2_foundation::{NSArray, NSObject, NSPoint};
 use std::{cell::RefCell, ffi::c_void, sync::Mutex};
 
-use crate::{Adapter, event::QueuedEvents};
+use crate::{ActivationState, Adapter, event::QueuedEvents};
 
 static SUBCLASSES: Mutex<Vec<(&'static AnyClass, &'static AnyClass)>> = Mutex::new(Vec::new());
 
@@ -253,6 +253,14 @@ impl SubclassingAdapter {
     pub fn update_view_focus_state(&mut self, is_focused: bool) -> Option<QueuedEvents> {
         let mut state = self.associated.ivars().state.borrow_mut();
         state.adapter.update_view_focus_state(is_focused)
+    }
+
+    /// The phase of activation the wrapped adapter is in; see
+    /// [`Adapter::activation_state`]. The internal borrow taken here is
+    /// released before this method returns.
+    pub fn activation_state(&self) -> ActivationState {
+        let state = self.associated.ivars().state.borrow();
+        state.adapter.activation_state()
     }
 }
 
