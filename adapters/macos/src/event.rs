@@ -25,10 +25,9 @@ pub(crate) enum QueuedEvent {
         notification: &'static NSAccessibilityNotificationName,
     },
     NodeDestroyed(FullNodeId),
-    /// A single, batched notification that at least one node changed
-    /// geometry during one tree update. The target element is resolved when
-    /// the event is raised, not when it is queued, because the tree is still
-    /// mutably borrowed while the event generator runs.
+    /// One notification per tree update in which an exposed node changed
+    /// geometry. The target is resolved when raised, since the tree is still
+    /// borrowed while events are generated.
     LayoutChanged,
     Announcement {
         text: String,
@@ -68,16 +67,9 @@ impl QueuedEvent {
                 }
             }
             Self::LayoutChanged => {
-                // Post on an element rather than on the view, and without
-                // user info. `NSAccessibilityUIElementsKey` marks elements
-                // that the assistive technology should treat as added or
-                // changed, which makes VoiceOver move its cursor and
-                // re-announce -- the opposite of the silent "this element's
-                // frame is stale" hint we want here.
-                //
-                // The tree borrow is released before posting, because posting
-                // can synchronously re-enter the platform node, which borrows
-                // the same tree.
+                // Posted on an element without user info: `NSAccessibilityUIElementsKey`
+                // would make VoiceOver move focus and re-announce. The borrow is
+                // released first because posting can re-enter the platform node.
                 let target = {
                     let tree = context.tree.borrow();
                     layout_changed_target(tree.state())
@@ -158,13 +150,7 @@ impl QueuedEvents {
     }
 }
 
-/// The element that a batched layout-changed notification is posted on: the
-/// focused node, or the root if the host window isn't focused.
-///
-/// A layout-changed notification has no way to name the nodes that moved, so
-/// the target only needs to be a stable element in the affected tree. The
-/// focused node is preferred because it is the one whose frame the assistive
-/// technology is most likely to be relying on.
+/// The focused node, or the root if the host isn't focused.
 pub(crate) fn layout_changed_target(state: &TreeState) -> FullNodeId {
     state
         .focus()
@@ -183,9 +169,7 @@ pub(crate) struct EventGenerator {
     events: Vec<QueuedEvent>,
     text_changed: HashSet<FullNodeId>,
     selected_rows_changed: HashSet<FullNodeId>,
-    /// How many platform-exposed nodes changed their bounding box during this
-    /// update. Only the zero/non-zero distinction matters; see
-    /// [`EventGenerator::into_events`].
+    /// Number of exposed nodes whose bounding box changed in this update.
     moved: usize,
 }
 
@@ -195,11 +179,8 @@ impl EventGenerator {
     }
 
     pub(crate) fn into_events(mut self) -> Vec<QueuedEvent> {
-        // Every geometry change in one update is collapsed into one
-        // notification. Posting one per moved node would fire at scroll rate,
-        // and VoiceOver responds to a flood of layout-changed notifications by
-        // re-announcing repeatedly, which is worse for the user than the stale
-        // frame this is meant to fix.
+        // One notification per update; one per moved node would make VoiceOver
+        // re-announce at scroll rate.
         if self.moved > 0 {
             self.events.push(QueuedEvent::LayoutChanged);
         }
@@ -307,11 +288,6 @@ impl TreeChangeHandler for EventGenerator {
             return;
         }
         let node_id = new_node.id();
-        // A node that moved or was resized -- by scrolling, a window reflow or
-        // an animation -- reports a new frame, but assistive technologies do
-        // not poll geometry. Count it so that `into_events` emits one batched
-        // layout-changed notification for this update. Only included nodes get
-        // here; the early return above has already handled the rest.
         if old_node.bounding_box() != new_node.bounding_box() {
             self.moved += 1;
         }

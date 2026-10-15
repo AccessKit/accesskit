@@ -3,11 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-//! Tests for the parts of the adapter that decide *whether* and *where* to
-//! post a notification. They deliberately don't touch AppKit: an `NSView`
-//! would pin the tests to the main thread, which the test harness doesn't
-//! guarantee. Actually posting the notification is one call and is covered by
-//! manual VoiceOver testing.
+//! These tests don't touch AppKit, so they don't need the main thread.
 
 use accesskit::{Node, NodeId, Rect, Role, TreeId, TreeInfo, TreeUpdate};
 use accesskit_consumer::Tree;
@@ -95,7 +91,7 @@ fn moving_a_node_queues_a_layout_changed_event() {
 
 #[test]
 fn resizing_a_node_queues_a_layout_changed_event() {
-    // Same origin, different size: comparing origins alone would miss this.
+    // Same origin, different size.
     let mut tree = tree(true);
     let events = apply(
         &mut tree,
@@ -106,9 +102,6 @@ fn resizing_a_node_queues_a_layout_changed_event() {
 
 #[test]
 fn moving_several_nodes_queues_only_one_layout_changed_event() {
-    // The batching is load-bearing. One notification per moved node would fire
-    // at scroll rate, and VoiceOver reacts to a flood of layout-changed
-    // notifications by re-announcing repeatedly.
     let mut tree = tree(true);
     let events = apply(
         &mut tree,
@@ -128,7 +121,7 @@ fn an_update_that_moves_nothing_queues_no_layout_changed_event() {
         update(vec![(BUTTON, button("renamed", rect(0.0, 20.0)))]),
     );
     assert_eq!(layout_changed_count(&events), 0);
-    // The update did change something, so this isn't vacuously true.
+    // Not vacuous: the update did change something.
     assert!(!events.is_empty());
 }
 
@@ -147,8 +140,6 @@ fn re_submitting_an_unchanged_tree_queues_no_layout_changed_event() {
 
 #[test]
 fn moving_a_node_that_is_not_exposed_queues_no_layout_changed_event() {
-    // A hidden node is excluded by the filter, so its frame is not something
-    // any assistive technology is tracking.
     let mut tree = tree(true);
     let hidden = |bounds| {
         let mut node = button("second", bounds);
@@ -168,8 +159,7 @@ fn moving_a_node_that_is_not_exposed_queues_no_layout_changed_event() {
 
 #[test]
 fn adding_and_removing_nodes_queues_no_layout_changed_event() {
-    // Only a change of geometry on an existing node counts. Additions and
-    // removals are already reported by their own notifications.
+    // Additions and removals have their own notifications.
     let mut tree = tree(true);
     let mut root_with_one_child = Node::new(Role::Window);
     root_with_one_child.push_child(BUTTON);
@@ -220,9 +210,7 @@ fn scroll_settle_has_no_target_when_the_host_is_not_focused() {
 
 #[test]
 fn scroll_settle_has_no_target_when_focus_is_on_the_window_itself() {
-    // The placeholder tree the adapter builds before the toolkit supplies a
-    // real one focuses a `Window` node. Re-posting a focus notification on the
-    // window would tell VoiceOver nothing about an element's frame.
+    // The placeholder tree focuses the window node.
     let tree = Tree::new(
         TreeUpdate {
             nodes: vec![(ROOT, Node::new(Role::Window))],

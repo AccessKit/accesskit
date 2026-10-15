@@ -23,11 +23,7 @@ use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
 const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
 
-/// The node that a scroll-settle focus notification is posted on: the focused
-/// node, but only if it is one the platform can actually focus.
-///
-/// Re-posting a focus notification on the window itself would be meaningless,
-/// so an unfocusable focus yields no event at all.
+/// The focused node, if the platform can focus it.
 pub(crate) fn settle_focus_target(state: &TreeState) -> Option<FullNodeId> {
     state
         .focus()
@@ -161,21 +157,10 @@ impl Adapter {
         }
     }
 
-    /// If the tree is active and a node that the platform can focus currently
-    /// has focus, return events that re-post
-    /// `NSAccessibilityFocusedUIElementChangedNotification` on that node.
-    ///
-    /// Posting the focus notification again, without the focus having moved,
-    /// is the documented way to make VoiceOver re-read the focused element,
-    /// including its frame. A toolkit should call this once per scroll
-    /// gesture, after the scroll offset has settled, so that the VoiceOver
-    /// cursor re-anchors to the content that moved under it. It must not be
-    /// called once per frame: posting a focus notification at frame rate makes
-    /// VoiceOver announce the element repeatedly.
-    ///
-    /// Only the adapter can implement this, because the platform node objects
-    /// live in its private registry and the focused node comes from its
-    /// consumer tree state.
+    /// If a focusable node has focus, return events that re-post
+    /// `NSAccessibilityFocusedUIElementChangedNotification` on it, which makes
+    /// VoiceOver re-read the element's frame. Call this once per scroll
+    /// gesture, after the scroll offset has settled, never once per frame.
     ///
     /// If a [`QueuedEvents`] instance is returned, the caller must call
     /// [`QueuedEvents::raise`] on it.
