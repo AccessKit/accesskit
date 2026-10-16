@@ -27,6 +27,6 @@ api-23 = ["api-22", "ohos-accessibility-binding/api-23"]
 api-24 = ["api-23", "ohos-accessibility-binding/api-24"]
 
 [dependencies]
-accesskit.workspace = true
-accesskit_consumer.workspace = true
+accesskit = { version = "0.25.0", path = "../../accesskit" }
+accesskit_consumer = { version = "0.39.0", path = "../../accesskit_consumer" }
 ohos-accessibility-binding = { version = "0.1", default-features = false }

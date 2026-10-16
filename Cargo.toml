@@ -27,8 +27,6 @@ repository = "https://github.com/AccessKit/accesskit"
 rust-version = "1.85"
 
 [workspace.dependencies]
-accesskit = { version = "0.25.0", path = "accesskit" }
-accesskit_consumer = { version = "0.39.0", path = "accesskit_consumer" }
 hashbrown = { version = "0.17", default-features = false, features = ["default-hasher"] }
 
 [profile.release]
