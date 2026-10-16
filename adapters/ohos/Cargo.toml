@@ -26,7 +26,7 @@ api-22 = ["api-21", "ohos-accessibility-binding/api-22"]
 api-23 = ["api-22", "ohos-accessibility-binding/api-23"]
 api-24 = ["api-23", "ohos-accessibility-binding/api-24"]
 
-[target.'cfg(target_env = "ohos")'.dependencies]
+[dependencies]
 accesskit.workspace = true
 accesskit_consumer.workspace = true
-ohos-accessibility-binding.workspace = true
+ohos-accessibility-binding = { version = "0.1", default-features = false }

@@ -30,7 +30,6 @@ rust-version = "1.85"
 accesskit = { version = "0.25.0", path = "accesskit" }
 accesskit_consumer = { version = "0.39.0", path = "accesskit_consumer" }
 hashbrown = { version = "0.17", default-features = false, features = ["default-hasher"] }
-ohos-accessibility-binding = { version = "0.1.2", default-features = false }
 
 [profile.release]
 lto = true
