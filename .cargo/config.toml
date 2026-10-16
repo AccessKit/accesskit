@@ -1,0 +1,5 @@
+[target.aarch64-apple-ios-sim]
+runner = "./ios-sim-runner.sh"
+
+[target.x86_64-apple-ios]
+runner = "./ios-sim-runner.sh"

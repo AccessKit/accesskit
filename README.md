@@ -30,7 +30,7 @@ The interaction between the provider (toolkit or application) and the platform a
 
 One notable consequence of this design is that only the platform adapter needs to retain a complete accessibility tree in memory. That means that this design is suitable for immediate-mode GUI toolkits, as long as they can provide a stable ID for each UI element.
 
-The platform adapters are written primarily in Rust. We've chosen Rust for its combination of reliability and efficiency, including safe concurrency, which is especially important in modern software. Some future adapters will need to be partially written in another language, such as Java for the Android adapter.
+The platform adapters are written primarily in Rust. We've chosen Rust for its combination of reliability and efficiency, including safe concurrency, which is especially important in modern software. Some future adapters may need to be partially written in another language.
 
 The current released platform adapters are all at rough feature parity. They don't yet support all types of UI elements or all of the properties in the schema, but they have enough functionality to make non-trivial applications accessible, including support for both single-line and multi-line text input controls. They don't yet support rich text or hypertext.
 
@@ -38,14 +38,13 @@ The following platform adapters are currently available:
 
 * [Android adapter](https://crates.io/crates/accesskit_android): This adapter implements the Java-based Android accessibility API.
 * [OpenHarmony adapter](https://crates.io/crates/accesskit_ohos): This adapter implements the ArkUI native accessibility provider API.
+* [iOS adapter](https://crates.io/crates/accesskit_ios): This adapter implements the UIAccessibility protocols in the UIKit framework.
 * [macOS adapter](https://crates.io/crates/accesskit_macos): This adapter implements the NSAccessibility protocols in the AppKit framework.
 * [Unix adapter](https://crates.io/crates/accesskit_unix): This adapter implements the AT-SPI D-Bus interfaces, using [zbus](https://github.com/dbus2/zbus), a pure-Rust implementation of D-Bus.
 * [Windows adapter](https://crates.io/crates/accesskit_windows): This adapter implements UI Automation, the current Windows accessibility API.
 
 #### Planned adapters
 
-* Android
-* iOS
 * web (for applications that render their own UI elements to a canvas)
 
 ### Adapters for cross-platform windowing layers

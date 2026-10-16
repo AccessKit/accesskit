@@ -1,0 +1,22 @@
+[package]
+name = "accesskit_android"
+version = "0.8.0"
+authors.workspace = true
+license.workspace = true
+description = "AccessKit UI accessibility infrastructure: Android adapter"
+categories.workspace = true
+keywords = ["gui", "ui", "accessibility"]
+repository.workspace = true
+readme = "README.md"
+edition.workspace = true
+rust-version.workspace = true
+
+[features]
+embedded-dex = []
+
+[dependencies]
+accesskit = { version = "0.25.0", path = "../../accesskit" }
+accesskit_consumer = { version = "0.39.0", path = "../../accesskit_consumer" }
+jni = "0.21.1"
+log = "0.4.17"
+

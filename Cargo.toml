@@ -1,29 +1,36 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = [
-    "common",
-    "consumer",
-    "platforms/android",
-    "platforms/atspi-common",
-    "platforms/macos",
-    "platforms/ohos",
-    "platforms/unix",
-    "platforms/windows",
-    "platforms/winit",
+    "accesskit",
+    "accesskit_consumer",
+    "adapters/android",
+    "adapters/atspi-common",
+    "adapters/ios",
+    "adapters/macos",
+    "adapters/ohos",
+    "adapters/unix",
+    "adapters/windows",
+    "adapters/winit",
 ]
 default-members = [
-    "common",
-    "consumer",
-    "platforms/winit",
+    "accesskit",
+    "accesskit_consumer",
+    "adapters/winit",
 ]
 
 [workspace.package]
 authors = ["The AccessKit contributors"]
 categories = ["gui"]
-edition = "2021"
+edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/AccessKit/accesskit"
-rust-version = "1.77.2"
+rust-version = "1.85"
+
+[workspace.dependencies]
+accesskit = { version = "0.25.0", path = "accesskit" }
+accesskit_consumer = { version = "0.39.0", path = "accesskit_consumer" }
+hashbrown = { version = "0.17", default-features = false, features = ["default-hasher"] }
+ohos-accessibility-binding = { version = "0.1.2", default-features = false }
 
 [profile.release]
 lto = true
