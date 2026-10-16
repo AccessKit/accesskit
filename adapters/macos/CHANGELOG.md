@@ -37,6 +37,16 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.27.1](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.27.0...accesskit_macos-v0.27.1) (2026-09-25)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.25.0 to 0.25.1
+    * accesskit_consumer bumped from 0.39.0 to 0.39.1
+
 ## [0.27.0](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.26.3...accesskit_macos-v0.27.0) (2026-08-29)
 
 

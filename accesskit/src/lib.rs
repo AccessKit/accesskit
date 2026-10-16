@@ -3149,7 +3149,8 @@ impl JsonSchema for Properties {
             Affine { Transform },
             Rect { Bounds },
             TextSelection { TextSelection },
-            Vec<CustomAction> { CustomActions }
+            Vec<CustomAction> { CustomActions },
+            TreeId { TreeId }
         });
         json_schema!({
             "type": "object",

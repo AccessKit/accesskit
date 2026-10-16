@@ -3,7 +3,11 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use jni::{JNIEnv, objects::JObject, sys::jint};
+use jni::{
+    JNIEnv,
+    objects::JObject,
+    sys::{jfloat, jint},
+};
 
 use crate::util::*;
 
@@ -20,6 +24,9 @@ pub(crate) enum PlatformActionInner {
         granularity: jint,
         forward: bool,
         extend_selection: bool,
+    },
+    SetProgress {
+        value: jfloat,
     },
 }
 
@@ -62,6 +69,15 @@ impl PlatformAction {
                     forward,
                     extend_selection,
                 }))
+            }
+            ACTION_SET_PROGRESS => {
+                if arguments.is_null()
+                    || !bundle_contains_key(env, arguments, ACTION_ARGUMENT_PROGRESS_VALUE)
+                {
+                    return None;
+                }
+                let value = bundle_get_float(env, arguments, ACTION_ARGUMENT_PROGRESS_VALUE);
+                Some(Self(PlatformActionInner::SetProgress { value }))
             }
             _ => Some(Self(PlatformActionInner::Simple { action })),
         }

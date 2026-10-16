@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.25.0...accesskit-v0.25.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* Add tree_id node property to the JSON schema ([#811](https://github.com/AccessKit/accesskit/issues/811)) ([1d53dae](https://github.com/AccessKit/accesskit/commit/1d53dae607b1f405a48274a916caea121f2b5f39))
+
 ## [0.25.0](https://github.com/AccessKit/accesskit/compare/accesskit-v0.24.1...accesskit-v0.25.0) (2026-08-29)
 
 

@@ -373,10 +373,12 @@ impl NodeWrapper<'_> {
             _ => {}
         }
 
-        if state.is_read_only_supported() && state.is_read_only_or_disabled() {
-            atspi_state.insert(State::ReadOnly);
-        } else {
-            atspi_state.insert(State::Enabled | State::Sensitive);
+        if !state.is_disabled() {
+            if state.is_read_only_supported() && state.is_read_only() {
+                atspi_state.insert(State::ReadOnly);
+            } else {
+                atspi_state.insert(State::Enabled | State::Sensitive);
+            }
         }
 
         if self.is_focused() {
@@ -452,31 +454,19 @@ impl NodeWrapper<'_> {
         matches!(self.0.role(), Role::RootWebArea | Role::PdfRoot)
     }
 
-    fn document_attributes(&self) -> HashMap<&'static str, String> {
-        let mut attributes = HashMap::new();
-        if let Some(title) = self.0.label() {
-            attributes.insert("Title", title);
-        }
-        if let Some(uri) = self.0.url() {
-            attributes.insert("URI", uri.to_string());
-        }
-
-        attributes
-    }
-
-    fn document_attribute_value(&self, name: &str) -> Option<String> {
-        self.document_attributes()
-            .into_iter()
-            .find(|(key, _)| key.eq_ignore_ascii_case(name))
-            .map(|(_, value)| value)
-    }
-
     fn supports_editable_text(&self) -> bool {
         self.0.is_text_input() && self.0.supports_text_ranges()
     }
 
     fn supports_hyperlink(&self) -> bool {
         self.0.supports_url()
+    }
+
+    fn supports_image(&self) -> bool {
+        matches!(
+            self.0.role(),
+            Role::Canvas | Role::DocCover | Role::GraphicsSymbol | Role::Image | Role::SvgRoot
+        )
     }
 
     fn supports_selection(&self) -> bool {
@@ -507,6 +497,9 @@ impl NodeWrapper<'_> {
         }
         if self.supports_hyperlink() {
             interfaces.insert(Interface::Hyperlink);
+        }
+        if self.supports_image() {
+            interfaces.insert(Interface::Image);
         }
         if self.supports_selection() {
             interfaces.insert(Interface::Selection);
@@ -572,6 +565,25 @@ impl NodeWrapper<'_> {
             );
             bounds.with_origin(new_origin)
         })
+    }
+
+    fn document_attributes(&self) -> HashMap<&'static str, String> {
+        let mut attributes = HashMap::new();
+        if let Some(title) = self.0.label() {
+            attributes.insert("Title", title);
+        }
+        if let Some(uri) = self.0.url() {
+            attributes.insert("URI", uri.to_string());
+        }
+
+        attributes
+    }
+
+    fn document_attribute_value(&self, name: &str) -> Option<String> {
+        self.document_attributes()
+            .into_iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value)
     }
 
     fn current_value(&self) -> Option<f64> {
@@ -1043,6 +1055,10 @@ impl PlatformNode {
         })
     }
 
+    pub fn supports_image(&self) -> Result<bool> {
+        self.resolve(|node| Ok(NodeWrapper(&node).supports_image()))
+    }
+
     pub fn supports_selection(&self) -> Result<bool> {
         self.resolve(|node| {
             let wrapper = NodeWrapper(&node);
@@ -1263,6 +1279,24 @@ impl PlatformNode {
 
     pub fn hyperlink_is_valid(&self) -> Result<bool> {
         self.resolve(|node| Ok(node.url().is_some()))
+    }
+
+    pub fn image_description(&self) -> Result<String> {
+        self.description()
+    }
+
+    pub fn image_extents(&self, coord_type: CoordType) -> Result<AtspiRect> {
+        self.extents(coord_type)
+    }
+
+    pub fn image_position(&self, coord_type: CoordType) -> Result<(i32, i32)> {
+        let extents = self.image_extents(coord_type)?;
+        Ok((extents.x, extents.y))
+    }
+
+    pub fn image_size(&self) -> Result<(i32, i32)> {
+        let extents = self.image_extents(CoordType::Window)?;
+        Ok((extents.width, extents.height))
     }
 
     pub fn n_selected_children(&self) -> Result<i32> {

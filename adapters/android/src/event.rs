@@ -55,6 +55,11 @@ fn send_completed_event(env: &mut JNIEnv, host: &JObject, event: JObject) {
         .unwrap()
         .l()
         .unwrap();
+    // The host may have been detached from its window by the time
+    // a posted event is raised, in which case there's nothing to send it to.
+    if parent.is_null() {
+        return;
+    }
     env.call_method(
         &parent,
         "requestSendAccessibilityEvent",
@@ -123,8 +128,8 @@ fn send_text_changed(
     let first_difference = i as jint;
     env.call_method(&event, "setFromIndex", "(I)V", &[first_difference.into()])
         .unwrap();
-    let mut old_index = (old_u16.len() - 1) as jint;
-    let mut new_index = (new_u16.len() - 1) as jint;
+    let mut old_index = old_u16.len() as jint - 1;
+    let mut new_index = new_u16.len() as jint - 1;
     while old_index >= first_difference && new_index >= first_difference {
         if old_u16[old_index as usize] != new_u16[new_index as usize] {
             break;
@@ -238,20 +243,18 @@ fn send_range_value_changed(
     host: &JObject,
     virtual_view_id: jint,
     event_type: jint,
-    current: f64,
-    min: f64,
-    max: f64,
+    range: Range,
 ) {
     let event = new_event(env, host, virtual_view_id, event_type);
-    let item_index = if max > min && current >= min && current <= max {
-        ((current - min) * 100.0 / (max - min)) as jint
-    } else {
-        0
-    };
     env.call_method(&event, "setItemCount", "(I)V", &[100i32.into()])
         .unwrap();
-    env.call_method(&event, "setCurrentItemIndex", "(I)V", &[item_index.into()])
-        .unwrap();
+    env.call_method(
+        &event,
+        "setCurrentItemIndex",
+        "(I)V",
+        &[range.current_item_index().into()],
+    )
+    .unwrap();
     send_completed_event(env, host, event);
 }
 
@@ -322,9 +325,7 @@ pub(crate) enum QueuedEvent {
     RangeValueChanged {
         virtual_view_id: jint,
         event_type: jint,
-        current: f64,
-        min: f64,
-        max: f64,
+        range: Range,
     },
     InvalidateHost,
 }
@@ -344,6 +345,14 @@ impl QueuedEvents {
     /// any locks required by the host view's implementations of Android
     /// framework callbacks.
     pub fn raise(self, env: &mut JNIEnv, host: &JObject) {
+        if self.0.is_empty() {
+            return;
+        }
+        // The framework throws an exception if events are sent from the
+        // UI thread while accessibility is disabled.
+        if !is_accessibility_enabled(env, host) {
+            return;
+        }
         for event in self.0 {
             match event {
                 QueuedEvent::Simple {
@@ -397,19 +406,9 @@ impl QueuedEvents {
                 QueuedEvent::RangeValueChanged {
                     virtual_view_id,
                     event_type,
-                    current,
-                    min,
-                    max,
+                    range,
                 } => {
-                    send_range_value_changed(
-                        env,
-                        host,
-                        virtual_view_id,
-                        event_type,
-                        current,
-                        min,
-                        max,
-                    );
+                    send_range_value_changed(env, host, virtual_view_id, event_type, range);
                 }
                 QueuedEvent::InvalidateHost => {
                     env.call_method(host, "invalidate", "()V", &[]).unwrap();

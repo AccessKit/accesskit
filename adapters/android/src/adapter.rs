@@ -9,8 +9,8 @@
 // found in the LICENSE.chromium file.
 
 use accesskit::{
-    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Orientation,
-    Point, Role, ScrollUnit, TextSelection, TreeId, TreeInfo, TreeUpdate,
+    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Live, Node, NodeId,
+    Orientation, Point, Role, ScrollUnit, TextSelection, TreeId, TreeInfo, TreeUpdate,
 };
 use accesskit_consumer::{FilterResult, NodeRef, TextPosition, Tree, TreeChangeHandler};
 use jni::{
@@ -78,12 +78,24 @@ impl AdapterChangeHandler<'_> {
         enqueue_window_content_changed(self.events);
         self.enqueued_window_content_changed = true;
     }
+
+    fn enqueue_live_region_changed(&mut self, node: &NodeRef) {
+        let id = self.node_id_map.get_or_create_java_id(node);
+        self.events.push(QueuedEvent::WindowContentChanged {
+            virtual_view_id: id,
+        });
+    }
 }
 
 impl TreeChangeHandler for AdapterChangeHandler<'_> {
-    fn node_added(&mut self, _node: &NodeRef) {
+    fn node_added(&mut self, node: &NodeRef) {
         self.enqueue_window_content_changed_if_needed();
-        // TODO: live regions?
+        if filter(node) != FilterResult::Include {
+            return;
+        }
+        if node.live() != Live::Off && NodeWrapper(node).content_description().is_some() {
+            self.enqueue_live_region_changed(node);
+        }
     }
 
     fn node_updated(&mut self, old_node: &NodeRef, new_node: &NodeRef) {
@@ -93,6 +105,15 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
         }
         let old_wrapper = NodeWrapper(old_node);
         let new_wrapper = NodeWrapper(new_node);
+        if let Some(new_desc) = new_wrapper.content_description() {
+            if new_node.live() != Live::Off
+                && (Some(&new_desc) != old_wrapper.content_description().as_ref()
+                    || new_node.live() != old_node.live()
+                    || filter(old_node) != FilterResult::Include)
+            {
+                self.enqueue_live_region_changed(new_node);
+            }
+        }
         let old_text = old_wrapper.text();
         let new_text = new_wrapper.text();
         if old_text != new_text {
@@ -147,13 +168,8 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 y: scroll_y,
             });
         }
-        if old_node.numeric_value() != new_node.numeric_value() && new_node.data().value().is_none()
-        {
-            if let (Some(current), Some(min), Some(max)) = (
-                new_node.numeric_value(),
-                new_node.min_numeric_value(),
-                new_node.max_numeric_value(),
-            ) {
+        if let Some(range) = new_wrapper.range() {
+            if old_node.numeric_value() != Some(range.current) {
                 let id = self.node_id_map.get_or_create_java_id(new_node);
                 let event_type = if self.accessibility_focus == Some(id) {
                     EVENT_VIEW_SELECTED
@@ -163,9 +179,7 @@ impl TreeChangeHandler for AdapterChangeHandler<'_> {
                 self.events.push(QueuedEvent::RangeValueChanged {
                     virtual_view_id: id,
                     event_type,
-                    current,
-                    min,
-                    max,
+                    range,
                 });
             }
         }
@@ -274,21 +288,19 @@ impl Adapter {
         &mut self,
         update_factory: impl FnOnce() -> TreeUpdate,
     ) -> Option<QueuedEvents> {
+        let mut events = Vec::new();
         match &mut self.state {
-            State::Inactive => None,
+            State::Inactive => return None,
             State::Placeholder(_) => {
                 let tree = Tree::new(update_factory(), true);
-                let mut events = Vec::new();
                 enqueue_window_content_changed(&mut events);
                 let state = tree.state();
                 if let Some(focus) = state.focus() {
                     enqueue_focus_event_if_applicable(&mut events, &mut self.node_id_map, &focus);
                 }
                 self.state = State::Active(tree);
-                Some(QueuedEvents(events))
             }
             State::Active(tree) => {
-                let mut events = Vec::new();
                 update_tree(
                     &mut events,
                     &mut self.node_id_map,
@@ -296,9 +308,9 @@ impl Adapter {
                     tree,
                     update_factory(),
                 );
-                Some(QueuedEvents(events))
             }
         }
+        (!events.is_empty()).then_some(QueuedEvents(events))
     }
 
     /// Create an `AccessibilityNodeInfo` for the AccessKit node
@@ -443,42 +455,52 @@ impl Adapter {
                 target_node,
                 data: None,
             },
-            ACTION_SCROLL_BACKWARD | ACTION_SCROLL_FORWARD => ActionRequest {
-                action: {
-                    let node = tree_state.node_by_id(target).unwrap();
-                    if let Some(orientation) = node.orientation() {
-                        match orientation {
-                            Orientation::Horizontal => {
-                                if action == ACTION_SCROLL_BACKWARD {
-                                    Action::ScrollLeft
-                                } else {
-                                    Action::ScrollRight
-                                }
-                            }
-                            Orientation::Vertical => {
-                                if action == ACTION_SCROLL_BACKWARD {
-                                    Action::ScrollUp
-                                } else {
-                                    Action::ScrollDown
-                                }
-                            }
-                        }
-                    } else if action == ACTION_SCROLL_BACKWARD {
-                        if node.supports_action(Action::ScrollUp, &filter) {
-                            Action::ScrollUp
-                        } else {
-                            Action::ScrollLeft
-                        }
-                    } else if node.supports_action(Action::ScrollDown, &filter) {
-                        Action::ScrollDown
+            ACTION_SCROLL_BACKWARD | ACTION_SCROLL_FORWARD => {
+                let node = tree_state.node_by_id(target).unwrap();
+                let backward = action == ACTION_SCROLL_BACKWARD;
+                let is_range_control =
+                    node.supports_increment(&filter) || node.supports_decrement(&filter);
+                let action = if is_range_control {
+                    if backward {
+                        Action::Decrement
                     } else {
-                        Action::ScrollRight
+                        Action::Increment
                     }
-                },
-                target_tree,
-                target_node,
-                data: Some(ActionData::ScrollUnit(ScrollUnit::Page)),
-            },
+                } else if let Some(orientation) = node.orientation() {
+                    match orientation {
+                        Orientation::Horizontal => {
+                            if backward {
+                                Action::ScrollLeft
+                            } else {
+                                Action::ScrollRight
+                            }
+                        }
+                        Orientation::Vertical => {
+                            if backward {
+                                Action::ScrollUp
+                            } else {
+                                Action::ScrollDown
+                            }
+                        }
+                    }
+                } else if backward {
+                    if node.supports_action(Action::ScrollUp, &filter) {
+                        Action::ScrollUp
+                    } else {
+                        Action::ScrollLeft
+                    }
+                } else if node.supports_action(Action::ScrollDown, &filter) {
+                    Action::ScrollDown
+                } else {
+                    Action::ScrollRight
+                };
+                ActionRequest {
+                    action,
+                    target_tree,
+                    target_node,
+                    data: (!is_range_control).then_some(ActionData::ScrollUnit(ScrollUnit::Page)),
+                }
+            }
             ACTION_ACCESSIBILITY_FOCUS => {
                 self.accessibility_focus = Some(virtual_view_id);
                 events.push(QueuedEvent::InvalidateHost);
@@ -513,6 +535,29 @@ impl Adapter {
         Some(QueuedEvents(events))
     }
 
+    fn set_progress<H: ActionHandler + ?Sized>(
+        &mut self,
+        action_handler: &mut H,
+        virtual_view_id: jint,
+        value: jfloat,
+    ) -> Option<QueuedEvents> {
+        let tree = self.state.get_full_tree()?;
+        let tree_state = tree.state();
+        let target = self.node_id_map.get_accesskit_id(virtual_view_id)?;
+        let (target_node, target_tree) = tree_state.locate_node(target)?;
+        let node = tree_state.node_by_id(target)?;
+        if !node.supports_action(Action::SetValue, &filter) || node.numeric_value().is_none() {
+            return None;
+        }
+        action_handler.do_action(ActionRequest {
+            action: Action::SetValue,
+            target_tree,
+            target_node,
+            data: Some(ActionData::NumericValue(value.into())),
+        });
+        Some(QueuedEvents(Vec::new()))
+    }
+
     fn set_text_selection_common<H: ActionHandler + ?Sized, F, Extra>(
         &mut self,
         action_handler: &mut H,
@@ -529,7 +574,7 @@ impl Adapter {
             tree_state.root()
         } else {
             let id = self.node_id_map.get_accesskit_id(virtual_view_id)?;
-            tree_state.node_by_id(id).unwrap()
+            tree_state.node_by_id(id)?
         };
         let (node_id, tree_id) = tree_state.locate_node(node.id())?;
         let (focus_id, _) = tree_state.locate_node(tree_state.focus_id_in_tree())?;
@@ -783,6 +828,9 @@ impl Adapter {
                 forward,
                 extend_selection,
             ),
+            PlatformActionInner::SetProgress { value } => {
+                self.set_progress(action_handler, virtual_view_id, value)
+            }
         }
     }
 

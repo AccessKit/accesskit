@@ -11,14 +11,13 @@ targets = [
   { triple = "x86_64-unknown-linux-gnu" },
 ]
 all-features = true
+exclude = ["example_common"]
 
 [advisories]
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
 ignore = [
-    { id = "RUSTSEC-2026-0192", reason = "ttf-parser is unmaintained; pulled in by sctk-adwaita via ab_glyph/owned_ttf_parser; only a dev dependency" },
-    { id = "RUSTSEC-2026-0194", reason = "quick-xml DoS on untrusted XML; only used at build time by wayland-scanner on trusted protocol files, and wayland-scanner requires quick-xml 0.37.2; doesn't execute on end-users system" },
-    { id = "RUSTSEC-2026-0195", reason = "same quick-xml build-time usage as RUSTSEC-2026-0194; doesn't execute on end-users system" },
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser is unmaintained; pulled in by sctk-adwaita via ab_glyph/owned_ttf_parser; only a dev dependency" }
 ]
 
 [licenses]
@@ -46,9 +45,11 @@ allow = []
 deny = []
 skip = [
     "bitflags:<2",
-    "quick-xml:<0.37",
+    "linux-raw-sys:<0.12",
     "raw-window-handle:<0.6",
-    "windows-sys:<0.59",
+    "rustix:<1",
+    "syn:<3",
+    "windows-sys:<0.61",
     "windows-targets:<0.52",
     "windows_i686_gnu:<0.52",
     "windows_i686_msvc:<0.52",

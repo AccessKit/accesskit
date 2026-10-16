@@ -22,7 +22,7 @@ jobs:
       - name: cargo fmt
         run: cargo fmt --all -- --check
 
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -95,7 +95,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: cargo clippy (common packages)
-        run: cargo clippy -p accesskit -p accesskit_consumer -p accesskit_winit ${{ matrix.target && format('--target {0}', matrix.target) }} --all-targets -- -D warnings
+        run: cargo clippy -p accesskit -p accesskit_consumer -p accesskit_winit -p example_common ${{ matrix.target && format('--target {0}', matrix.target) }} --all-targets -- -D warnings
 
       - name: cargo clippy (adapters)
         run: cargo clippy ${{ matrix.adapters }} ${{ matrix.target && format('--target {0}', matrix.target) }} --all-targets -- -D warnings
@@ -206,11 +206,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '17'
       - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
       - run: sdkmanager "platforms;android-30"
       - run: sdkmanager "build-tools;33.0.2"
       - run: cp adapters/android/classes.dex adapters/android/classes.dex.orig

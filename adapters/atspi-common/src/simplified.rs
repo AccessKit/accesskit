@@ -324,6 +324,41 @@ impl Accessible {
         }
     }
 
+    pub fn supports_image(&self) -> Result<bool> {
+        match self {
+            Self::Node(node) => node.supports_image(),
+            Self::Root(_) => Ok(false),
+        }
+    }
+
+    pub fn image_description(&self) -> Result<String> {
+        match self {
+            Self::Node(node) => node.image_description(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn image_extents(&self, coord_type: CoordType) -> Result<Rect> {
+        match self {
+            Self::Node(node) => node.image_extents(coord_type),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn image_position(&self, coord_type: CoordType) -> Result<(i32, i32)> {
+        match self {
+            Self::Node(node) => node.image_position(coord_type),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
+    pub fn image_size(&self) -> Result<(i32, i32)> {
+        match self {
+            Self::Node(node) => node.image_size(),
+            Self::Root(_) => Err(Error::UnsupportedInterface),
+        }
+    }
+
     pub fn supports_selection(&self) -> Result<bool> {
         match self {
             Self::Node(node) => node.supports_selection(),

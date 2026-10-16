@@ -70,8 +70,24 @@ impl NodeWrapper<'_> {
         self.0.is_selected().unwrap_or(false)
     }
 
-    fn content_description(&self) -> Option<String> {
-        self.0.label()
+    pub(crate) fn range(&self) -> Option<Range> {
+        Range::from_node(self.0)
+    }
+
+    fn supports_set_progress(&self) -> bool {
+        self.range().is_some() && self.0.supports_action(Action::SetValue, &filter)
+    }
+
+    fn is_range_control(&self) -> bool {
+        self.0.supports_increment(&filter) || self.0.supports_decrement(&filter)
+    }
+
+    pub(crate) fn content_description(&self) -> Option<String> {
+        if self.0.label_comes_from_value() {
+            self.0.value()
+        } else {
+            self.0.label()
+        }
     }
 
     fn url(&self) -> Option<&str> {
@@ -83,11 +99,14 @@ impl NodeWrapper<'_> {
     }
 
     pub(crate) fn text(&self) -> Option<String> {
-        self.0.value().or_else(|| {
-            self.0
-                .supports_text_ranges()
-                .then(|| self.0.document_range().text())
-        })
+        if !self.0.label_comes_from_value() {
+            if let Some(value) = self.0.value() {
+                return Some(value);
+            }
+        }
+        self.0
+            .supports_text_ranges()
+            .then(|| self.0.document_range().text())
     }
 
     pub(crate) fn text_selection(&self) -> Option<(usize, usize)> {
@@ -347,7 +366,10 @@ impl NodeWrapper<'_> {
         .unwrap();
 
         let can_focus = self.is_focusable() && !self.0.is_focused();
-        if self.0.is_clickable(&filter) || can_focus {
+        // Without a click action, TalkBack handles a double-tap on a range
+        // control by tapping its center which can be useful to quickly
+        // set a slider value in the middle.
+        if self.0.is_clickable(&filter) || (can_focus && !self.is_range_control()) {
             add_action(env, node_info, ACTION_CLICK);
         }
         if can_focus {
@@ -371,47 +393,47 @@ impl NodeWrapper<'_> {
         }
         if self.0.supports_action(Action::ScrollLeft, &filter)
             || self.0.supports_action(Action::ScrollUp, &filter)
+            || self.0.supports_decrement(&filter)
         {
             add_action(env, node_info, ACTION_SCROLL_BACKWARD);
         }
         if self.0.supports_action(Action::ScrollRight, &filter)
             || self.0.supports_action(Action::ScrollDown, &filter)
+            || self.0.supports_increment(&filter)
         {
             add_action(env, node_info, ACTION_SCROLL_FORWARD);
         }
 
-        if self.0.data().value().is_none() {
-            if let (Some(current), Some(min), Some(max)) = (
-                self.0.numeric_value(),
-                self.0.min_numeric_value(),
-                self.0.max_numeric_value(),
-            ) {
-                let range_info_class = env
-                    .find_class("android/view/accessibility/AccessibilityNodeInfo$RangeInfo")
-                    .unwrap();
-                let range_info = env
-                    .call_static_method(
-                        &range_info_class,
-                        "obtain",
-                        "(IFFF)Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;",
-                        &[
-                            RANGE_TYPE_FLOAT.into(),
-                            (min as f32).into(),
-                            (max as f32).into(),
-                            (current as f32).into(),
-                        ],
-                    )
-                    .unwrap()
-                    .l()
-                    .unwrap();
-                env.call_method(
-                    node_info,
-                    "setRangeInfo",
-                    "(Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;)V",
-                    &[(&range_info).into()],
-                )
+        if let Some(range) = self.range() {
+            let range_info = range.to_java(env);
+            env.call_method(
+                node_info,
+                "setRangeInfo",
+                "(Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;)V",
+                &[(&range_info).into()],
+            )
+            .unwrap();
+        }
+        if self.supports_set_progress() {
+            let action_class = env
+                .find_class("android/view/accessibility/AccessibilityNodeInfo$AccessibilityAction")
                 .unwrap();
-            }
+            let action = env
+                .get_static_field(
+                    &action_class,
+                    "ACTION_SET_PROGRESS",
+                    "Landroid/view/accessibility/AccessibilityNodeInfo$AccessibilityAction;",
+                )
+                .unwrap()
+                .l()
+                .unwrap();
+            env.call_method(
+                node_info,
+                "addAction",
+                "(Landroid/view/accessibility/AccessibilityNodeInfo$AccessibilityAction;)V",
+                &[(&action).into()],
+            )
+            .unwrap();
         }
 
         let live = match self.0.live() {
