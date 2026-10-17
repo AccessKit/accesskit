@@ -1,13 +1,13 @@
 // Based on the create_window sample in windows-samples-rs.
 
-use accesskit::{ActionHandler, ActionRequest, ActivationHandler, TreeUpdate};
+use accesskit::{ActionHandler, ActionRequest, ActivationHandler, Size, TreeUpdate, Vec2};
 use accesskit_windows::Adapter;
 use example_common::{Key, KeyEvent, KeyState, Modifiers, Renderer, UiState, WINDOW_TITLE};
 use raw_window_handle::{
     DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, Win32WindowHandle, WindowHandle,
 };
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     num::NonZeroIsize,
     ops::{Deref, DerefMut},
     sync::LazyLock,
@@ -43,7 +43,7 @@ static WINDOW_CLASS_ATOM: LazyLock<u16> = LazyLock::new(|| {
 
 const ACTION_REQUEST_MSG: u32 = WM_USER;
 
-const ANNOUNCEMENT_TIMER_ID: usize = 1;
+const DELAYED_MESSAGE_TIMER_ID: usize = 1;
 
 struct Ui(UiState);
 
@@ -89,6 +89,8 @@ struct WindowState {
     adapter: RefCell<Adapter>,
     ui: RefCell<Ui>,
     renderer: RefCell<Renderer<RenderTarget>>,
+    /// The first half of a UTF-16 surrogate pair received by `WM_CHAR`.
+    high_surrogate: Cell<Option<u16>>,
 }
 
 impl WindowState {
@@ -104,33 +106,33 @@ impl WindowState {
 
     fn after_input(&self, window: HWND) {
         self.update_accessibility_tree();
-        let Some(delay) = self.ui.borrow().time_until_announcement() else {
+        self.schedule_next_message(window);
+    }
+
+    fn schedule_next_message(&self, window: HWND) {
+        let Some(delay) = self.ui.borrow().time_until_next_message() else {
+            let _ = unsafe { KillTimer(Some(window), DELAYED_MESSAGE_TIMER_ID) };
             return;
         };
-        let timer = unsafe {
-            SetTimer(
-                Some(window),
-                ANNOUNCEMENT_TIMER_ID,
-                delay.as_millis() as u32,
-                None,
-            )
-        };
+        let delay = delay.as_nanos().div_ceil(1_000_000) as u32;
+        let timer = unsafe { SetTimer(Some(window), DELAYED_MESSAGE_TIMER_ID, delay, None) };
         if timer == 0 {
             panic!("{}", Error::from_thread());
         }
     }
 
-    fn flush_announcement(&self, window: HWND) {
-        let _ = unsafe { KillTimer(Some(window), ANNOUNCEMENT_TIMER_ID) };
-        if self.ui.borrow_mut().flush_announcement() {
+    fn process_due_messages(&self, window: HWND) {
+        if self.ui.borrow_mut().process_due_messages() {
             self.update_accessibility_tree();
         }
+        self.schedule_next_message(window);
     }
 }
 
 fn modifiers() -> Modifiers {
     Modifiers {
         shift: unsafe { GetKeyState(VK_SHIFT.0 as i32) } < 0,
+        control: unsafe { GetKeyState(VK_CONTROL.0 as i32) } < 0,
     }
 }
 
@@ -139,6 +141,14 @@ fn translate_key(key: VIRTUAL_KEY) -> Option<Key> {
         VK_RETURN => Some(Key::Enter),
         VK_SPACE => Some(Key::Space),
         VK_TAB => Some(Key::Tab),
+        VK_BACK => Some(Key::Backspace),
+        VK_DELETE => Some(Key::Delete),
+        VK_LEFT => Some(Key::Left),
+        VK_RIGHT => Some(Key::Right),
+        VK_UP => Some(Key::Up),
+        VK_DOWN => Some(Key::Down),
+        VK_HOME => Some(Key::Home),
+        VK_END => Some(Key::End),
         _ => None,
     }
 }
@@ -186,9 +196,26 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
                 adapter: RefCell::new(adapter),
                 ui: RefCell::new(Ui(UiState::new())),
                 renderer: RefCell::new(Renderer::new(RenderTarget(window))),
+                high_surrogate: Cell::new(None),
             });
             unsafe { SetWindowLongPtrW(window, GWLP_USERDATA, Box::into_raw(state) as _) };
             unsafe { DefWindowProcW(window, message, wparam, lparam) }
+        }
+        WM_SIZE => {
+            if wparam.0 == SIZE_MINIMIZED as usize {
+                return LRESULT(0);
+            }
+            let state = unsafe { &*get_window_state(window) };
+            let width = lparam.0 & 0xffff;
+            let height = (lparam.0 >> 16) & 0xffff;
+            // The example isn't DPI aware, so its coordinates are logical.
+            state.ui.borrow_mut().set_viewport(
+                1.0,
+                Vec2::ZERO,
+                Size::new(width as f64, height as f64),
+            );
+            state.update_accessibility_tree();
+            LRESULT(0)
         }
         WM_PAINT => {
             let state = unsafe { &*get_window_state(window) };
@@ -254,12 +281,37 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
             state.after_input(window);
             LRESULT(0)
         }
+        WM_CHAR => {
+            let state = unsafe { &*get_window_state(window) };
+            let unit = wparam.0 as u16;
+            if (0xd800..0xdc00).contains(&unit) {
+                state.high_surrogate.set(Some(unit));
+                return LRESULT(0);
+            }
+            let units = match state.high_surrogate.take() {
+                Some(high) if (0xdc00..0xe000).contains(&unit) => vec![high, unit],
+                _ => vec![unit],
+            };
+            let Some(Ok(c)) = char::decode_utf16(units).next() else {
+                return LRESULT(0);
+            };
+            let Some(key) = Key::character(c) else {
+                return unsafe { DefWindowProcW(window, message, wparam, lparam) };
+            };
+            state.ui.borrow_mut().handle_key(KeyEvent {
+                key,
+                state: KeyState::Pressed,
+                modifiers: modifiers(),
+            });
+            state.after_input(window);
+            LRESULT(0)
+        }
         WM_TIMER => {
-            if wparam.0 != ANNOUNCEMENT_TIMER_ID {
+            if wparam.0 != DELAYED_MESSAGE_TIMER_ID {
                 return unsafe { DefWindowProcW(window, message, wparam, lparam) };
             }
             let state = unsafe { &*get_window_state(window) };
-            state.flush_announcement(window);
+            state.process_due_messages(window);
             LRESULT(0)
         }
         ACTION_REQUEST_MSG => {

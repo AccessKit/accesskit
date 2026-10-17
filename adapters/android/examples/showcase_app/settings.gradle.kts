@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "AccessKit Hello World"
+rootProject.name = "AccessKit Showcase"
 include(":app")

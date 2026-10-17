@@ -18,7 +18,7 @@ The `examples/` directory contains a runnable example built on the low-level `Ad
 Install [cargo-ndk](https://github.com/bbqsrc/cargo-ndk) (version 4 or later) and the Rust target for your device, e.g. `rustup target add aarch64-linux-android`. The Android SDK must be discoverable by Gradle (through `ANDROID_HOME` or a `local.properties` file), and cargo-ndk needs an NDK, which it finds inside the SDK or through `ANDROID_NDK_HOME`. Then, with a device connected or an emulator running:
 
 ```sh
-cd examples/hello_world_app
+cd examples/showcase_app
 ./gradlew installDebug
 ```
 
