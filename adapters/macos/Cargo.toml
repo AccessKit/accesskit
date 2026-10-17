@@ -36,3 +36,7 @@ objc2-app-kit = { version = "0.2.0", features = [
     "NSView",
     "NSWindow",
 ] }
+
+[[test]]
+name = "kvo_teardown"
+harness = false
