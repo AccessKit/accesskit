@@ -4,7 +4,7 @@
 // the LICENSE-MIT file), at your option.
 
 use accesskit::{Live, Role};
-use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, TreeChangeHandler};
+use accesskit_consumer::{FilterResult, FullNodeId, NodeRef, TreeChangeHandler, TreeState};
 use hashbrown::HashSet;
 use objc2::runtime::{AnyObject, ProtocolObject};
 use objc2_app_kit::*;
@@ -25,6 +25,10 @@ pub(crate) enum QueuedEvent {
         notification: &'static NSAccessibilityNotificationName,
     },
     NodeDestroyed(FullNodeId),
+    /// One notification per tree update in which an exposed node changed
+    /// geometry. The target is resolved when raised, since the tree is still
+    /// borrowed while events are generated.
+    LayoutChanged,
     Announcement {
         text: String,
         priority: NSAccessibilityPriorityLevel,
@@ -61,6 +65,22 @@ impl QueuedEvent {
                         )
                     };
                 }
+            }
+            Self::LayoutChanged => {
+                // Posted on an element without user info: `NSAccessibilityUIElementsKey`
+                // would make VoiceOver move focus and re-announce. The borrow is
+                // released first because posting can re-enter the platform node.
+                let target = {
+                    let tree = context.tree.borrow();
+                    layout_changed_target(tree.state())
+                };
+                let platform_node = context.get_or_create_platform_node(target);
+                unsafe {
+                    NSAccessibilityPostNotification(
+                        &platform_node,
+                        NSAccessibilityLayoutChangedNotification,
+                    )
+                };
             }
             Self::Announcement { text, priority } => {
                 let view = match context.view.load() {
@@ -130,6 +150,13 @@ impl QueuedEvents {
     }
 }
 
+/// The focused node, or the root if the host isn't focused.
+pub(crate) fn layout_changed_target(state: &TreeState) -> FullNodeId {
+    state
+        .focus()
+        .map_or_else(|| state.root().id(), |node| node.id())
+}
+
 pub(crate) fn focus_event(node_id: FullNodeId) -> QueuedEvent {
     QueuedEvent::Generic {
         node_id,
@@ -137,25 +164,27 @@ pub(crate) fn focus_event(node_id: FullNodeId) -> QueuedEvent {
     }
 }
 
+#[derive(Default)]
 pub(crate) struct EventGenerator {
-    context: Rc<Context>,
     events: Vec<QueuedEvent>,
     text_changed: HashSet<FullNodeId>,
     selected_rows_changed: HashSet<FullNodeId>,
+    /// Number of exposed nodes whose bounding box changed in this update.
+    moved: usize,
 }
 
 impl EventGenerator {
-    pub(crate) fn new(context: Rc<Context>) -> Self {
-        Self {
-            context,
-            events: Vec::new(),
-            text_changed: HashSet::new(),
-            selected_rows_changed: HashSet::new(),
-        }
+    pub(crate) fn new() -> Self {
+        Self::default()
     }
 
-    pub(crate) fn into_result(self) -> QueuedEvents {
-        QueuedEvents::new(self.context, self.events)
+    pub(crate) fn into_events(mut self) -> Vec<QueuedEvent> {
+        // One notification per update; one per moved node would make VoiceOver
+        // re-announce at scroll rate.
+        if self.moved > 0 {
+            self.events.push(QueuedEvent::LayoutChanged);
+        }
+        self.events
     }
 
     fn remove_subtree(&mut self, node: &NodeRef) {
@@ -259,6 +288,9 @@ impl TreeChangeHandler for EventGenerator {
             return;
         }
         let node_id = new_node.id();
+        if old_node.bounding_box() != new_node.bounding_box() {
+            self.moved += 1;
+        }
         let old_wrapper = NodeWrapper(old_node);
         let new_wrapper = NodeWrapper(new_node);
         if old_wrapper.title() != new_wrapper.title() {
