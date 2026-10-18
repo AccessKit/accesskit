@@ -23,6 +23,19 @@ use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
 const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
 
+/// See [`Adapter::activation_state`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ActivationState {
+    /// No assistive technology has activated the adapter yet.
+    Inactive,
+    /// Activated while [`ActivationHandler::request_initial_tree`] returned
+    /// `None`; the next update passed to [`Adapter::update_if_active`] must
+    /// contain a full tree.
+    Placeholder,
+    /// The tree is live.
+    Active,
+}
+
 enum State {
     Inactive {
         view: WeakId<NSView>,
@@ -141,6 +154,17 @@ impl Adapter {
                 tree.update_and_process_changes(update_factory(), &mut event_generator);
                 Some(event_generator.into_result())
             }
+        }
+    }
+
+    /// The adapter's current activation state. This lets a host whose
+    /// [`ActivationHandler::request_initial_tree`] returns `None` know when
+    /// the full tree is due without tracking activation itself.
+    pub fn activation_state(&self) -> ActivationState {
+        match &self.state {
+            State::Inactive { .. } => ActivationState::Inactive,
+            State::Placeholder { .. } => ActivationState::Placeholder,
+            State::Active(_) => ActivationState::Active,
         }
     }
 
