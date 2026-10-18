@@ -853,14 +853,31 @@ declare_class!(
 
         #[method_id(accessibilityAttributedStringForRange:)]
         fn attributed_string_for_range(&self, range: NSRange) -> Option<Id<NSAttributedString>> {
-            self.resolve(|node| {
+            self.resolve_with_context(|node, _, context| {
                 if node.supports_text_ranges() {
                     if let Some(range) = from_ns_range(node, range) {
+                        let root = node.id();
                         let mut result = NSMutableAttributedString::new();
                         unsafe { result.beginEditing() };
                         range.traverse_text::<_, ()>(|node, text| {
                             let ns_text = NSString::from_str(text);
                             let mut attrs = NSMutableDictionary::new();
+                            // Hypertext: text inside a link carries
+                            // NSAccessibilityLinkTextAttribute, whose value
+                            // is the link's own element.
+                            let mut ancestor = node.parent();
+                            while let Some(a) = ancestor.filter(|a| a.id() != root) {
+                                if a.role() == Role::Link {
+                                    attrs.insert_id(
+                                        unsafe { NSAccessibilityLinkTextAttribute },
+                                        Id::into_super(Id::into_super(Id::into_super(
+                                            context.get_or_create_platform_node(a.id()),
+                                        ))),
+                                    );
+                                    break;
+                                }
+                                ancestor = a.parent();
+                            }
                             if let Some(color) = node.background_color() {
                                 attrs.insert_id(
                                     unsafe { NSAccessibilityBackgroundColorTextAttribute },
