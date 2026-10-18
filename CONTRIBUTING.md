@@ -4,12 +4,16 @@
 
 When reporting an issue, in order to help the maintainers understand what the problem is, please make your description of the issue as detailed as possible:
 
-- if it is a bug, please provide clear explanation of what happens, what should happen, and how to reproduce the issue, ideally by providing a minimal program exhibiting the problem
+- if it is a bug, please provide clear explanation of what happens, what should happen, which platforms are affected and how to reproduce the issue, ideally by providing a minimal program exhibiting the problem
 - if it is a feature request, please provide a clear argumentation about why you believe this feature should be supported by AccessKit
+
+If you have some knowledge in the UI accessibility field and are interested in tackling the issue yourself, please propose an implementation plan, consider feature parity on all supported platforms and compare your solution to what already exists in [Chromium](https://chromium.googlesource.com/chromium/src/).
 
 ## Making a Pull Request
 
-When making a code contribution to AccessKit, before opening your pull request please make sure that:
+AccessKit currently does not accept pull requests from external contributors. Please open an issue to propose changes. If you demonstrate that you have a good understanding of the situation and come up with a reasonable plan to address the issue, you will be granted repository membership.
+
+For repository members, before opening your pull request please make sure that:
 
 - your patch builds with AccessKit's minimal supported Rust version (currently Rust 1.87)
 - you added tests where applicable
@@ -45,6 +49,8 @@ We have platform-specific tests that do not run when doing `cargo test` from the
    cargo test -p accesskit_macos
    cargo test -p accesskit_unix
    cargo test -p accesskit_windows
+   cargo test -p accesskit_ios --target aarch64-apple-ios-sim
+   cargo test -p accesskit_android
    ```
 
 > [!WARNING]
