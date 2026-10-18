@@ -69,7 +69,7 @@ We realize that most developers who might use AccessKit are not experts in acces
 
 ## Contributing
 
-Contributions to AccessKit are welcome. Please see [CONTRIBUTING.md](./CONTRIBUTING.md).
+Non-code contributions to AccessKit are welcome. Please see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## License
 
