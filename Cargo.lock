@@ -67,6 +67,7 @@ version = "0.2.1"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
+ "example_common",
  "hashbrown",
  "objc2 0.5.2",
  "objc2-foundation 0.2.2",
