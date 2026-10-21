@@ -33,6 +33,16 @@ use crate::{context::Context, filters::filter, util::*};
 
 const SCROLL_TO_VISIBLE_ACTION: &str = "AXScrollToVisible";
 
+// The view's accessibility parent is only its window when the view is the
+// window's content view. Nested inside a scroll or split view, the parent is
+// that ancestor, so AppKit clients such as VoiceOver would get a non-window
+// object for accessibilityWindow and accessibilityTopLevelUIElement.
+fn window_of(context: &Context) -> Option<Id<AnyObject>> {
+    let view = context.view.load()?;
+    let window = view.window()?;
+    Some(Id::into_super(Id::into_super(Id::into_super(window))))
+}
+
 fn ns_role(node: &NodeRef) -> &'static NSAccessibilityRole {
     let role = node.role();
     // TODO: Handle special cases.
@@ -426,24 +436,14 @@ declare_class!(
 
         #[method_id(accessibilityWindow)]
         fn window(&self) -> Option<Id<AnyObject>> {
-            self.resolve_with_context(|_, _, context| {
-                context
-                    .view
-                    .load()
-                    .and_then(|view| unsafe { NSAccessibility::accessibilityParent(&*view) })
-            })
-            .flatten()
+            self.resolve_with_context(|_, _, context| window_of(context))
+                .flatten()
         }
 
         #[method_id(accessibilityTopLevelUIElement)]
         fn top_level(&self) -> Option<Id<AnyObject>> {
-            self.resolve_with_context(|_, _, context| {
-                context
-                    .view
-                    .load()
-                    .and_then(|view| unsafe { NSAccessibility::accessibilityParent(&*view) })
-            })
-            .flatten()
+            self.resolve_with_context(|_, _, context| window_of(context))
+                .flatten()
         }
 
         #[method_id(accessibilityChildren)]
