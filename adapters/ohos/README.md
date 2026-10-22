@@ -32,6 +32,10 @@ The OpenHarmony native API does not expose an unregister function. Dropping
 the adapter disables its Rust callback target, so any late native callback
 returns a failure without touching released application state.
 
+Action descriptions use static C strings because ArkUI snapshots retain their
+description pointers. Event submission keeps its attached element alive through
+the binding's borrowed event lifetime.
+
 ## API levels
 
 The adapter defaults to the `api-13` feature, which is sufficient for an

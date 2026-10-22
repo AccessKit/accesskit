@@ -108,20 +108,22 @@ impl ProviderAddress {
         accessibility_focus: Option<NodeId>,
         screen_offset: (i32, i32),
     ) -> Result<()> {
-        let mut event = EventInfo::new()?;
-        event.set_event_type(event_type)?;
-        let mut element = None;
-        if let Some(node) = node {
+        let element = if let Some(node) = node {
             let mut value = ElementInfo::new()?;
             populate_element(node, ids, accessibility_focus, screen_offset, &mut value)?;
-            event.set_element_info(&value)?;
-            element = Some(value);
+            Some(value)
+        } else {
+            None
+        };
+        // The event borrows this final element allocation until it is dropped.
+        let mut event = EventInfo::new()?;
+        event.set_event_type(event_type)?;
+        if let Some(element) = element.as_ref() {
+            event.set_element_info(element)?;
         }
 
         let provider = unsafe { Provider::from_raw(self.0 as *mut _) }?;
         provider.send_event(&event, None);
-        // Keep the associated element alive through the send call.
-        drop(element);
         Ok(())
     }
 }

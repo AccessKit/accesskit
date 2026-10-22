@@ -11,6 +11,7 @@ use ohos_accessibility_binding::{
     AccessibilityError, AccessibleRect, ActionType, ElementInfo, GridInfo, GridItemInfo, RangeInfo,
     Result,
 };
+use std::ffi::CStr;
 
 use crate::adapter::{NodeIdMap, ROOT_PARENT_ID};
 
@@ -140,36 +141,36 @@ pub(crate) fn populate_element(
     Ok(())
 }
 
-fn supported_actions(node: &Node) -> Vec<(ActionType, &'static str)> {
+fn supported_actions(node: &Node) -> Vec<(ActionType, &'static CStr)> {
     let mut actions = vec![
         (
             ActionType::GainAccessibilityFocus,
-            "gain accessibility focus",
+            c"gain accessibility focus",
         ),
         (
             ActionType::ClearAccessibilityFocus,
-            "clear accessibility focus",
+            c"clear accessibility focus",
         ),
     ];
     if node.supports_action(Action::Click, &filter) {
-        actions.push((ActionType::Click, "click"));
+        actions.push((ActionType::Click, c"click"));
     }
     if node.supports_action(Action::ScrollDown, &filter)
         || node.supports_action(Action::ScrollRight, &filter)
     {
-        actions.push((ActionType::ScrollForward, "scroll forward"));
+        actions.push((ActionType::ScrollForward, c"scroll forward"));
     }
     if node.supports_action(Action::ScrollUp, &filter)
         || node.supports_action(Action::ScrollLeft, &filter)
     {
-        actions.push((ActionType::ScrollBackward, "scroll backward"));
+        actions.push((ActionType::ScrollBackward, c"scroll backward"));
     }
     if node.supports_action(Action::SetTextSelection, &filter) {
-        actions.push((ActionType::SelectText, "select text"));
-        actions.push((ActionType::SetCursorPosition, "set cursor position"));
+        actions.push((ActionType::SelectText, c"select text"));
+        actions.push((ActionType::SetCursorPosition, c"set cursor position"));
     }
     if node.supports_action(Action::SetValue, &filter) {
-        actions.push((ActionType::SetText, "set text"));
+        actions.push((ActionType::SetText, c"set text"));
     }
     actions
 }
