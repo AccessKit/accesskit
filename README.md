@@ -37,6 +37,7 @@ The current released platform adapters are all at rough feature parity. They don
 The following platform adapters are currently available:
 
 * [Android adapter](https://crates.io/crates/accesskit_android): This adapter implements the Java-based Android accessibility API.
+* [OpenHarmony adapter](https://crates.io/crates/accesskit_ohos): This adapter implements the ArkUI native accessibility provider API.
 * [iOS adapter](https://crates.io/crates/accesskit_ios): This adapter implements the UIAccessibility protocols in the UIKit framework.
 * [macOS adapter](https://crates.io/crates/accesskit_macos): This adapter implements the NSAccessibility protocols in the AppKit framework.
 * [Unix adapter](https://crates.io/crates/accesskit_unix): This adapter implements the AT-SPI D-Bus interfaces, using [zbus](https://github.com/dbus2/zbus), a pure-Rust implementation of D-Bus.
