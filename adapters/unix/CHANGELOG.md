@@ -68,6 +68,21 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_atspi_common bumped from 0.10.0 to 0.10.1
 
+## [0.24.1](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.24.0...accesskit_unix-v0.24.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* Keep Unix adapter lists sorted by ID ([#821](https://github.com/AccessKit/accesskit/issues/821)) ([fb7efa8](https://github.com/AccessKit/accesskit/commit/fb7efa8cdbe6ebb48106f30c1c66163ebc781b49))
+* Preserve cache signal structure arguments on Unix ([#819](https://github.com/AccessKit/accesskit/issues/819)) ([bffadac](https://github.com/AccessKit/accesskit/commit/bffadacde348b0b73d3d7201bfb0b7f69a54b0bf))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_atspi_common bumped from 0.21.0 to 0.21.1
+
 ## [0.24.0](https://github.com/AccessKit/accesskit/compare/accesskit_unix-v0.23.0...accesskit_unix-v0.24.0) (2026-09-25)
 
 
