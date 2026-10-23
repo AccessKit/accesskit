@@ -74,26 +74,55 @@ fn associated_object(view: &UIView) -> Option<&AssociatedObject> {
     }
 }
 
+// Unlike `[view class]`, this sees the subclass that key-value observing
+// hides by overriding `class`.
+fn runtime_class(view: &UIView) -> &'static AnyClass {
+    let object: &AnyObject = view;
+    object.class()
+}
+
+// Key-value observing may have subclassed our subclass in turn.
+fn installed_subclass(view: &UIView) -> Option<(&'static AnyClass, &'static AnyClass)> {
+    let subclasses = SUBCLASSES.lock().unwrap();
+    let mut class: Option<&AnyClass> = Some(runtime_class(view));
+    while let Some(current) = class {
+        if let Some(entry) = subclasses
+            .iter()
+            .find(|entry| std::ptr::eq(entry.1, current))
+        {
+            return Some(*entry);
+        }
+        class = current.superclass();
+    }
+    None
+}
+
+fn prev_class(view: &UIView) -> &'static AnyClass {
+    match associated_object(view) {
+        Some(associated) => associated.ivars().prev_class,
+        None => installed_subclass(view).unwrap().0,
+    }
+}
+
 // Some view classes assume that they are the lowest subclass,
 // and call [self superclass] to get their superclass.
 // Give them the answer they need.
 unsafe extern "C" fn superclass(this: &UIView, _cmd: Sel) -> Option<&AnyClass> {
-    let associated = associated_object(this)?;
-    associated.ivars().prev_class.superclass()
+    prev_class(this).superclass()
 }
 
 // UIAccessibilityContainer methods
 
 unsafe extern "C" fn is_accessibility_element(this: &UIView, _cmd: Sel) -> Bool {
     let Some(associated) = associated_object(this) else {
-        return Bool::YES;
+        return unsafe { msg_send![super(this, prev_class(this)), isAccessibilityElement] };
     };
     Bool::new(associated.ivars().adapter.is_accessibility_element())
 }
 
 unsafe extern "C" fn accessibility_elements(this: &UIView, _cmd: Sel) -> *mut NSArray<NSObject> {
     let Some(associated) = associated_object(this) else {
-        return Retained::autorelease_return(NSArray::new());
+        return unsafe { msg_send![super(this, prev_class(this)), accessibilityElements] };
     };
     associated.ivars().adapter.accessibility_elements()
 }
@@ -106,7 +135,14 @@ unsafe extern "C" fn accessibility_hit_test(
     point: CGPoint,
 ) -> *mut AnyObject {
     let Some(associated) = associated_object(this) else {
-        return null_mut();
+        let prev_class = prev_class(this);
+        if prev_class
+            .instance_method(sel!(accessibilityHitTest:))
+            .is_none()
+        {
+            return null_mut();
+        }
+        return unsafe { msg_send![super(this, prev_class), accessibilityHitTest: point] };
     };
     associated.ivars().adapter.hit_test(point) as *mut AnyObject
 }
@@ -114,12 +150,8 @@ unsafe extern "C" fn accessibility_hit_test(
 // UIView lifecycle
 
 unsafe extern "C" fn did_move_to_window(this: &UIView, _cmd: Sel) {
-    let Some(associated) = associated_object(this) else {
-        return;
-    };
-    let prev_class = associated.ivars().prev_class;
     unsafe {
-        let _: () = msg_send![super(this, prev_class), didMoveToWindow];
+        let _: () = msg_send![super(this, prev_class(this)), didMoveToWindow];
     }
 
     if this.window().is_none() {
@@ -134,6 +166,45 @@ unsafe extern "C" fn did_move_to_window(this: &UIView, _cmd: Sel) {
     }
 }
 
+fn subclass_of(prev_class: &'static AnyClass) -> &'static AnyClass {
+    let mut subclasses = SUBCLASSES.lock().unwrap();
+    match subclasses
+        .iter()
+        .find(|entry| std::ptr::eq(entry.0, prev_class))
+    {
+        Some(entry) => entry.1,
+        None => {
+            let name = format!("AccessKitSubclassOf{}", prev_class.name());
+            let mut builder = ClassBuilder::new(&name, prev_class).unwrap();
+            unsafe {
+                builder.add_method(
+                    sel!(superclass),
+                    superclass as unsafe extern "C" fn(_, _) -> _,
+                );
+                builder.add_method(
+                    sel!(isAccessibilityElement),
+                    is_accessibility_element as unsafe extern "C" fn(_, _) -> _,
+                );
+                builder.add_method(
+                    sel!(accessibilityElements),
+                    accessibility_elements as unsafe extern "C" fn(_, _) -> _,
+                );
+                builder.add_method(
+                    sel!(accessibilityHitTest:),
+                    accessibility_hit_test as unsafe extern "C" fn(_, _, _) -> _,
+                );
+                builder.add_method(
+                    sel!(didMoveToWindow),
+                    did_move_to_window as unsafe extern "C" fn(_, _),
+                );
+            }
+            let class = builder.register();
+            subclasses.push((prev_class, class));
+            class
+        }
+    }
+}
+
 /// Uses dynamic Objective-C subclassing to implement the `UIView`
 /// accessibility methods when normal subclassing isn't an option.
 pub struct SubclassingAdapter {
@@ -144,7 +215,8 @@ pub struct SubclassingAdapter {
 impl SubclassingAdapter {
     /// Create an adapter that dynamically subclasses the specified view.
     /// This must be done before the view is shown or focused for
-    /// the first time.
+    /// the first time, and before anything observes the view with
+    /// key-value observing.
     ///
     /// All handlers will always be called on the main thread.
     ///
@@ -182,6 +254,22 @@ impl SubclassingAdapter {
         {
             panic!("subclassing adapter already instantiated on view {view:?}");
         }
+        // A previous adapter may have left its subclass on the view,
+        // if key-value observing had subclassed it in turn.
+        let installed = installed_subclass(unsafe { &*view });
+        if installed.is_none() {
+            // Key-value observing crashes when it adds or removes an observer
+            // while our subclass sits on top of its own.
+            let reported_class: &AnyClass = unsafe { msg_send![view, class] };
+            let actual_class = runtime_class(unsafe { &*view });
+            if !std::ptr::eq(reported_class, actual_class) {
+                panic!(
+                    "view {view:?} is already observed with key-value observing (its class {} reports itself as {}); create the subclassing adapter before anything observes the view",
+                    actual_class.name(),
+                    reported_class.name()
+                );
+            }
+        }
         let adapter = unsafe {
             Adapter::new(
                 view as *mut c_void,
@@ -190,10 +278,10 @@ impl SubclassingAdapter {
                 deactivation_handler,
             )
         };
-        // Cast to a pointer and back to force the lifetime to 'static
-        // SAFETY: We know the class will live as long as the instance,
-        // and we only use this reference while the instance is alive.
-        let prev_class = unsafe { &*((*view).class() as *const AnyClass) };
+        let (prev_class, subclass) = installed.unwrap_or_else(|| {
+            let prev_class = runtime_class(unsafe { &*view });
+            (prev_class, subclass_of(prev_class))
+        });
         let associated = AssociatedObject::new(adapter, prev_class, mtm);
         unsafe {
             objc_setAssociatedObject(
@@ -203,43 +291,12 @@ impl SubclassingAdapter {
                 OBJC_ASSOCIATION_RETAIN_NONATOMIC,
             )
         };
-        let mut subclasses = SUBCLASSES.lock().unwrap();
-        let subclass = match subclasses.iter().find(|entry| entry.0 == prev_class) {
-            Some(entry) => entry.1,
-            None => {
-                let name = format!("AccessKitSubclassOf{}", prev_class.name());
-                let mut builder = ClassBuilder::new(&name, prev_class).unwrap();
-                unsafe {
-                    builder.add_method(
-                        sel!(superclass),
-                        superclass as unsafe extern "C" fn(_, _) -> _,
-                    );
-                    builder.add_method(
-                        sel!(isAccessibilityElement),
-                        is_accessibility_element as unsafe extern "C" fn(_, _) -> _,
-                    );
-                    builder.add_method(
-                        sel!(accessibilityElements),
-                        accessibility_elements as unsafe extern "C" fn(_, _) -> _,
-                    );
-                    builder.add_method(
-                        sel!(accessibilityHitTest:),
-                        accessibility_hit_test as unsafe extern "C" fn(_, _, _) -> _,
-                    );
-                    builder.add_method(
-                        sel!(didMoveToWindow),
-                        did_move_to_window as unsafe extern "C" fn(_, _),
-                    );
-                }
-                let class = builder.register();
-                subclasses.push((prev_class, class));
-                class
-            }
-        };
         // SAFETY: Changing the view's class is only safe because
         // the subclass doesn't add any instance variables;
         // it uses an associated object instead.
-        unsafe { object_setClass(view as *mut _, (subclass as *const AnyClass).cast()) };
+        if installed.is_none() {
+            unsafe { object_setClass(view as *mut _, (subclass as *const AnyClass).cast()) };
+        }
         let result = Self {
             view: retained_view,
             associated,
@@ -311,7 +368,6 @@ impl Drop for SubclassingAdapter {
     fn drop(&mut self) {
         let prev_class = self.associated.ivars().prev_class;
         let view = Retained::as_ptr(&self.view) as *mut UIView;
-        unsafe { object_setClass(view as *mut _, (prev_class as *const AnyClass).cast()) };
         unsafe {
             objc_setAssociatedObject(
                 view as *mut _,
@@ -320,5 +376,22 @@ impl Drop for SubclassingAdapter {
                 OBJC_ASSOCIATION_RETAIN_NONATOMIC,
             )
         };
+        // Key-value observing may have subclassed our subclass in turn,
+        // and resetting the class would then break those observers.
+        // Our subclass is harmless without the associated object.
+        let view = unsafe { &*view };
+        let is_our_subclass = SUBCLASSES
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|entry| std::ptr::eq(entry.1, runtime_class(view)));
+        if is_our_subclass {
+            unsafe {
+                object_setClass(
+                    view as *const _ as *mut _,
+                    (prev_class as *const AnyClass).cast(),
+                )
+            };
+        }
     }
 }
