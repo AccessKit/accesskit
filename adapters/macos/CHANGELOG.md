@@ -37,6 +37,13 @@
     * accesskit bumped from 0.16.2 to 0.16.3
     * accesskit_consumer bumped from 0.24.2 to 0.24.3
 
+## [0.27.2](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.27.1...accesskit_macos-v0.27.2) (2026-10-23)
+
+
+### Bug Fixes
+
+* Fully drop macOS SubclassingAdapter if KVO is detected ([#835](https://github.com/AccessKit/accesskit/issues/835)) ([451885c](https://github.com/AccessKit/accesskit/commit/451885c1850ec1800cea1d0660bf8ba62e0f410d))
+
 ## [0.27.1](https://github.com/AccessKit/accesskit/compare/accesskit_macos-v0.27.0...accesskit_macos-v0.27.1) (2026-09-25)
 
 
