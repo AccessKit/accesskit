@@ -36,3 +36,11 @@ objc2-app-kit = { version = "0.2.0", features = [
     "NSView",
     "NSWindow",
 ] }
+
+[dev-dependencies]
+libtest-mimic = "0.8.2"
+
+# AppKit must be used from the main thread, where libtest doesn't run tests.
+[[test]]
+name = "integration"
+harness = false
