@@ -41,3 +41,11 @@ objc2-ui-kit = { version = "0.2.0", features = [
     "UIViewController",
     "UIWindow",
 ] }
+
+[dev-dependencies]
+libtest-mimic = "0.8.2"
+
+# UIKit must be used from the main thread, where libtest doesn't run tests.
+[[test]]
+name = "integration"
+harness = false
