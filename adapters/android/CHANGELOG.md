@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.9.1](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.9.0...accesskit_android-v0.9.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* Avoid disclosing the content of password inputs ([#841](https://github.com/AccessKit/accesskit/issues/841)) ([d62a496](https://github.com/AccessKit/accesskit/commit/d62a49614ffbb0d85ce2d34e0340df711eb86e46))
+* Fix a crash when typing into an empty field on Android ([#813](https://github.com/AccessKit/accesskit/issues/813)) ([115887d](https://github.com/AccessKit/accesskit/commit/115887d84f0254cfcad1d9a79d93bba1fde79e75))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.25.1 to 0.25.2
+    * accesskit_consumer bumped from 0.39.1 to 0.39.2
+
 ## [0.9.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.8.0...accesskit_android-v0.9.0) (2026-09-25)
 
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.2](https://github.com/AccessKit/accesskit/compare/accesskit_ios-v0.2.1...accesskit_ios-v0.2.2) (2026-10-25)
+
+
+### Bug Fixes
+
+* Don't move focus when VoiceOver moves to an element on iOS ([#815](https://github.com/AccessKit/accesskit/issues/815)) ([466e24e](https://github.com/AccessKit/accesskit/commit/466e24e252103f4d82bd6fbab98141b551e46e0c))
+* Fully drop iOS SubclassingAdapter if KVO is detected ([#839](https://github.com/AccessKit/accesskit/issues/839)) ([9671c2d](https://github.com/AccessKit/accesskit/commit/9671c2d3122c091b9e6c4f0e33021e3dce1377b1))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.25.1 to 0.25.2
+    * accesskit_consumer bumped from 0.39.1 to 0.39.2
+
 ## [0.2.1](https://github.com/AccessKit/accesskit/compare/accesskit_ios-v0.2.0...accesskit_ios-v0.2.1) (2026-09-25)
 
 

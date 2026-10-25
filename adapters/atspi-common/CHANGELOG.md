@@ -24,6 +24,21 @@
     * accesskit bumped from 0.17.0 to 0.17.1
     * accesskit_consumer bumped from 0.25.0 to 0.26.0
 
+## [0.21.1](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.21.0...accesskit_atspi_common-v0.21.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* Keep Unix adapter lists sorted by ID ([#821](https://github.com/AccessKit/accesskit/issues/821)) ([fb7efa8](https://github.com/AccessKit/accesskit/commit/fb7efa8cdbe6ebb48106f30c1c66163ebc781b49))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit bumped from 0.25.1 to 0.25.2
+    * accesskit_consumer bumped from 0.39.1 to 0.39.2
+
 ## [0.21.0](https://github.com/AccessKit/accesskit/compare/accesskit_atspi_common-v0.20.0...accesskit_atspi_common-v0.21.0) (2026-09-25)
 
 
