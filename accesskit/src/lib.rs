@@ -2114,6 +2114,10 @@ string_property_methods! {
     /// used for text controls and the text content of nodes such as [`Role::Label`]
     /// and [`Role::TextRun`].
     ///
+    /// Within a [`Role::PasswordInput`], this property must only contain
+    /// masking characters. When the password is revealed, use
+    /// [`Role::TextInput`] instead.
+    ///
     /// [`aria-valuetext`]: https://www.w3.org/TR/wai-aria-1.2/#aria-valuetext
     (Value, value, set_value, clear_value),
     /// A single character, usually part of this node's name, that can be pressed,
