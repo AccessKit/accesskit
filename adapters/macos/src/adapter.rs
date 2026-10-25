@@ -14,7 +14,7 @@ use accesskit::{
     ActionHandler, ActionRequest, ActivationHandler, Node, NodeId, Role, TreeId, TreeInfo,
     TreeUpdate,
 };
-use accesskit_consumer::{FilterResult, Tree};
+use accesskit_consumer::{FilterResult, FullNodeId, Tree, TreeState};
 use objc2::rc::{Id, WeakId};
 use objc2_app_kit::NSView;
 use objc2_foundation::{MainThreadMarker, NSArray, NSObject, NSPoint};
@@ -22,6 +22,14 @@ use std::fmt::{Debug, Formatter};
 use std::{ffi::c_void, ptr::null_mut, rc::Rc};
 
 const PLACEHOLDER_ROOT_ID: NodeId = NodeId(0);
+
+/// The focused node, if the platform can focus it.
+pub(crate) fn settle_focus_target(state: &TreeState) -> Option<FullNodeId> {
+    state
+        .focus()
+        .filter(|node| can_be_focused(node))
+        .map(|node| node.id())
+}
 
 enum State {
     Inactive {
@@ -136,12 +144,35 @@ impl Adapter {
                 result
             }
             State::Active(context) => {
-                let mut event_generator = EventGenerator::new(context.clone());
-                let mut tree = context.tree.borrow_mut();
-                tree.update_and_process_changes(update_factory(), &mut event_generator);
-                Some(event_generator.into_result())
+                let mut event_generator = EventGenerator::new();
+                {
+                    let mut tree = context.tree.borrow_mut();
+                    tree.update_and_process_changes(update_factory(), &mut event_generator);
+                }
+                Some(QueuedEvents::new(
+                    Rc::clone(context),
+                    event_generator.into_events(),
+                ))
             }
         }
+    }
+
+    /// If a focusable node has focus, return events that re-post
+    /// `NSAccessibilityFocusedUIElementChangedNotification` on it, which makes
+    /// VoiceOver re-read the element's frame. Call this once per scroll
+    /// gesture, after the scroll offset has settled, never once per frame.
+    ///
+    /// If a [`QueuedEvents`] instance is returned, the caller must call
+    /// [`QueuedEvents::raise`] on it.
+    pub fn scroll_settled_event(&self) -> Option<QueuedEvents> {
+        let State::Active(context) = &self.state else {
+            return None;
+        };
+        let target = {
+            let tree = context.tree.borrow();
+            settle_focus_target(tree.state())
+        };
+        target.map(|id| QueuedEvents::new(Rc::clone(context), vec![focus_event(id)]))
     }
 
     /// Update the tree state based on whether the window is focused.
@@ -163,10 +194,18 @@ impl Adapter {
                 None
             }
             State::Active(context) => {
-                let mut event_generator = EventGenerator::new(context.clone());
-                let mut tree = context.tree.borrow_mut();
-                tree.update_host_focus_state_and_process_changes(is_focused, &mut event_generator);
-                Some(event_generator.into_result())
+                let mut event_generator = EventGenerator::new();
+                {
+                    let mut tree = context.tree.borrow_mut();
+                    tree.update_host_focus_state_and_process_changes(
+                        is_focused,
+                        &mut event_generator,
+                    );
+                }
+                Some(QueuedEvents::new(
+                    Rc::clone(context),
+                    event_generator.into_events(),
+                ))
             }
         }
     }
