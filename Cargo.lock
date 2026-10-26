@@ -1404,9 +1404,9 @@ dependencies = [
 
 [[package]]
 name = "ohos-accessibility-binding"
-version = "0.1.3"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87d05c58a5626a4749a02e42fd62b771740fbdd2daebbf969ee3b38fce475e3d"
+checksum = "627d99fc7c5e585c3a482a6b8d54cf8e6f7c737117ede592100089f65bfe6e44"
 dependencies = [
  "bitflags 2.8.0",
  "ohos-accessibility-sys",

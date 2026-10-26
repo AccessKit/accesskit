@@ -29,6 +29,7 @@ rust-version = "1.87"
 
 [workspace.dependencies]
 hashbrown = { version = "0.17", default-features = false, features = ["default-hasher"] }
+ohos-accessibility-binding = { version = "0.2.0", default-features = false }
 
 [profile.release]
 lto = true
