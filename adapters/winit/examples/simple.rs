@@ -5,7 +5,7 @@ use example_common::{Modifiers, Renderer, UiState, WINDOW_TITLE};
 use std::{error::Error, sync::Arc};
 use winit::{
     application::ApplicationHandler,
-    event::{KeyEvent as WinitKeyEvent, WindowEvent},
+    event::WindowEvent,
     event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
     window::{Window, WindowId},
 };
@@ -56,7 +56,7 @@ impl Application {
 
         let window = Arc::new(event_loop.create_window(window_attributes)?);
         let mut ui = UiState::new();
-        ui.set_viewport(window.scale_factor(), util::safe_area_inset(&window));
+        util::set_viewport(&mut ui, &window);
         let adapter =
             Adapter::with_event_loop_proxy(event_loop, &window, self.event_loop_proxy.clone());
         window.set_visible(true);
@@ -78,9 +78,7 @@ impl ApplicationHandler<AccessKitEvent> for Application {
                 self.window = None;
             }
             WindowEvent::Resized(_) => {
-                let scale_factor = window.window.scale_factor();
-                let inset = util::safe_area_inset(&window.window);
-                window.ui.set_viewport(scale_factor, inset);
+                util::set_viewport(&mut window.ui, &window.window);
                 window.update_accessibility_tree();
                 window.window.request_redraw();
             }
@@ -91,14 +89,12 @@ impl ApplicationHandler<AccessKitEvent> for Application {
             WindowEvent::ModifiersChanged(modifiers) => {
                 window.modifiers = util::modifiers(&modifiers);
             }
-            WindowEvent::KeyboardInput {
-                event: WinitKeyEvent {
-                    logical_key, state, ..
-                },
-                ..
-            } => {
-                if let Some(event) = util::key_event(&logical_key, state, window.modifiers) {
-                    window.ui.handle_key(event);
+            WindowEvent::KeyboardInput { event, .. } => {
+                let events = util::key_events(&event, window.modifiers);
+                if !events.is_empty() {
+                    for event in events {
+                        window.ui.handle_key(event);
+                    }
                     window.update_accessibility_tree();
                     window.window.request_redraw();
                 }
@@ -143,7 +139,7 @@ impl ApplicationHandler<AccessKitEvent> for Application {
             return;
         };
 
-        if util::flush_announcement(event_loop, &mut window.ui) {
+        if util::process_due_messages(event_loop, &mut window.ui) {
             window.update_accessibility_tree();
         }
     }

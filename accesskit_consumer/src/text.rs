@@ -10,7 +10,10 @@ use accesskit::{
 use alloc::{string::String, vec::Vec};
 use core::{cmp::Ordering, fmt};
 
-use crate::{FilterResult, NodeRef, TreeState, node::FullNodeId};
+use crate::{
+    FilterResult, NodeRef, TreeState,
+    node::{FullNodeId, PASSWORD_MASKING_CHARACTER, has_distinct_items},
+};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct InnerPosition<'a> {
@@ -172,6 +175,14 @@ impl<'a> Position<'a> {
         &self.inner.node
     }
 
+    fn word_starts(&self, node: &NodeRef<'a>) -> &'a [u8] {
+        if self.root_node.is_password_input() {
+            &[]
+        } else {
+            node.data().word_starts()
+        }
+    }
+
     pub fn is_format_start(&self) -> bool {
         self.is_document_start()
             || (self.inner.character_index == 0
@@ -188,10 +199,7 @@ impl<'a> Position<'a> {
     pub fn is_word_start(&self) -> bool {
         self.is_paragraph_start()
             || self
-                .inner
-                .node
-                .data()
-                .word_starts()
+                .word_starts(&self.inner.node)
                 .binary_search(&(self.inner.character_index as u8))
                 .is_ok()
     }
@@ -239,8 +247,16 @@ impl<'a> Position<'a> {
     }
 
     pub fn to_global_usv_index(&self) -> usize {
+        let is_masked = self.root_node.text_runs_need_masking();
         let mut total_length = 0usize;
         for node in self.root_node.text_runs() {
+            if is_masked {
+                if node.id() == self.inner.node.id() {
+                    return total_length + self.inner.character_index;
+                }
+                total_length += node.data().character_lengths().len();
+                continue;
+            }
             let node_text = node.data().value().unwrap();
             if node.id() == self.inner.node.id() {
                 let character_lengths = node.data().character_lengths();
@@ -257,8 +273,18 @@ impl<'a> Position<'a> {
     }
 
     pub fn to_global_utf16_index(&self) -> usize {
+        let is_masked = self.root_node.text_runs_need_masking();
         let mut total_length = 0usize;
         for node in self.root_node.text_runs() {
+            if is_masked {
+                if node.id() == self.inner.node.id() {
+                    return total_length
+                        + self.inner.character_index * PASSWORD_MASKING_CHARACTER.len_utf16();
+                }
+                total_length +=
+                    node.data().character_lengths().len() * PASSWORD_MASKING_CHARACTER.len_utf16();
+                continue;
+            }
             let node_text = node.data().value().unwrap();
             if node.id() == self.inner.node.id() {
                 let character_lengths = node.data().character_lengths();
@@ -392,7 +418,7 @@ impl<'a> Position<'a> {
         // Wrap the following in a scope to make sure we can't misuse the
         // `word_starts` local later.
         {
-            let word_starts = pos.node.data().word_starts();
+            let word_starts = self.word_starts(&pos.node);
             let index = match word_starts.binary_search(&(pos.character_index as u8)) {
                 Ok(index) => index + 1,
                 Err(index) => index,
@@ -418,7 +444,7 @@ impl<'a> Position<'a> {
             if start_pos.is_paragraph_start() {
                 return start_pos;
             }
-            if let Some(start) = node.data().word_starts().first() {
+            if let Some(start) = self.word_starts(&node).first() {
                 return Self {
                     root_node: self.root_node,
                     inner: InnerPosition {
@@ -439,7 +465,7 @@ impl<'a> Position<'a> {
         // Wrap the following in a scope to make sure we can't misuse the
         // `word_starts` local later.
         {
-            let word_starts = self.inner.node.data().word_starts();
+            let word_starts = self.word_starts(&self.inner.node);
             let index = match word_starts.binary_search(&(self.inner.character_index as u8)) {
                 Ok(index) => index,
                 Err(index) => index,
@@ -467,7 +493,7 @@ impl<'a> Position<'a> {
             }
         }
         for node in self.inner.node.preceding_text_runs(&self.root_node) {
-            if let Some(start) = node.data().word_starts().last() {
+            if let Some(start) = self.word_starts(&node).last() {
                 return Self {
                     root_node: self.root_node,
                     inner: InnerPosition {
@@ -681,6 +707,8 @@ impl<'a> Range<'a> {
     where
         F: FnMut(&NodeRef<'a>, &str) -> Option<T>,
     {
+        let is_masked = self.node.text_runs_need_masking();
+        let mut masked_text = String::new();
         self.walk(|node| {
             let character_lengths = node.data().character_lengths();
             let start_index = if node.id() == self.start.node.id() {
@@ -693,6 +721,14 @@ impl<'a> Range<'a> {
             } else {
                 character_lengths.len()
             };
+            if is_masked {
+                masked_text.clear();
+                masked_text.extend(core::iter::repeat_n(
+                    PASSWORD_MASKING_CHARACTER,
+                    end_index - start_index,
+                ));
+                return f(node, &masked_text);
+            }
             let value = node.data().value().unwrap();
             let s = if start_index == end_index {
                 ""
@@ -746,14 +782,8 @@ impl<'a> Range<'a> {
                     return Some(Vec::new());
                 }
             };
-            let positions = match node.data().character_positions() {
-                Some(positions) => positions,
-                None => {
-                    return Some(Vec::new());
-                }
-            };
-            let widths = match node.data().character_widths() {
-                Some(widths) => widths,
+            let metrics = match CharacterMetrics::new(node, &self.node) {
+                Some(metrics) => metrics,
                 None => {
                     return Some(Vec::new());
                 }
@@ -777,14 +807,14 @@ impl<'a> Range<'a> {
             };
             if start_index != 0 || end_index != character_lengths.len() {
                 let pixel_start = if start_index < character_lengths.len() {
-                    positions[start_index]
+                    metrics.position(start_index)
                 } else {
-                    positions[start_index - 1] + widths[start_index - 1]
+                    metrics.position(start_index - 1) + metrics.width(start_index - 1)
                 };
                 let pixel_end = if end_index == start_index {
                     pixel_start
                 } else {
-                    positions[end_index - 1] + widths[end_index - 1]
+                    metrics.position(end_index - 1) + metrics.width(end_index - 1)
                 };
                 let pixel_start = f64::from(pixel_start);
                 let pixel_end = f64::from(pixel_end);
@@ -937,19 +967,54 @@ fn text_node_filter(root_id: FullNodeId, node: &NodeRef) -> FilterResult {
     }
 }
 
-fn character_index_at_point(node: &NodeRef, point: Point) -> usize {
+#[derive(Clone, Copy)]
+struct CharacterMetrics<'a> {
+    positions: &'a [f32],
+    widths: &'a [f32],
+    is_password: bool,
+}
+
+impl<'a> CharacterMetrics<'a> {
+    fn new(node: &NodeRef<'a>, root_node: &NodeRef) -> Option<Self> {
+        Some(Self {
+            positions: node.data().character_positions()?,
+            widths: node.data().character_widths()?,
+            is_password: root_node.is_password_input(),
+        })
+    }
+
+    fn len(&self) -> usize {
+        self.positions.len().min(self.widths.len())
+    }
+
+    fn position(&self, index: usize) -> f32 {
+        if self.is_password {
+            let step = match self.positions {
+                [first, second, ..] => second - first,
+                _ => self.widths[0],
+            };
+            self.positions[0] + index as f32 * step
+        } else {
+            self.positions[index]
+        }
+    }
+
+    fn width(&self, index: usize) -> f32 {
+        if self.is_password {
+            self.widths[0]
+        } else {
+            self.widths[index]
+        }
+    }
+}
+
+fn character_index_at_point(node: &NodeRef, root_node: &NodeRef, point: Point) -> usize {
     // We know the node has a bounding rectangle because it was returned
     // by a hit test.
     let rect = node.data().bounds().unwrap();
     let character_lengths = node.data().character_lengths();
-    let positions = match node.data().character_positions() {
-        Some(positions) => positions,
-        None => {
-            return 0;
-        }
-    };
-    let widths = match node.data().character_widths() {
-        Some(widths) => widths,
+    let metrics = match CharacterMetrics::new(node, root_node) {
+        Some(metrics) => metrics,
         None => {
             return 0;
         }
@@ -960,7 +1025,8 @@ fn character_index_at_point(node: &NodeRef, point: Point) -> usize {
             return 0;
         }
     };
-    for (i, (position, width)) in positions.iter().zip(widths.iter()).enumerate().rev() {
+    for i in (0..metrics.len()).rev() {
+        let (position, width) = (metrics.position(i), metrics.width(i));
         let relative_pos = match direction {
             TextDirection::LeftToRight => point.x - rect.x0,
             TextDirection::RightToLeft => rect.x1 - point.x,
@@ -970,7 +1036,7 @@ fn character_index_at_point(node: &NodeRef, point: Point) -> usize {
             TextDirection::TopToBottom => point.y - rect.y0,
             TextDirection::BottomToTop => rect.y1 - point.y,
         };
-        if relative_pos >= f64::from(*position) && relative_pos < f64::from(*position + *width) {
+        if relative_pos >= f64::from(position) && relative_pos < f64::from(position + width) {
             return i;
         }
     }
@@ -1383,6 +1449,21 @@ impl<'a> NodeRef<'a> {
         self.filtered_children(move |node| text_node_filter(id, node))
     }
 
+    fn characters(&self) -> impl Iterator<Item = &'a str> + use<'a> {
+        let value = self.data().value().unwrap_or_default();
+        let mut end = 0;
+        self.data().character_lengths().iter().map(move |length| {
+            let start = end;
+            end += usize::from(*length);
+            value.get(start..end).unwrap_or_default()
+        })
+    }
+
+    pub(crate) fn text_runs_need_masking(&self) -> bool {
+        self.is_password_input()
+            && has_distinct_items(self.text_runs().flat_map(|node| node.characters()))
+    }
+
     fn following_text_runs(
         &self,
         root_node: &NodeRef,
@@ -1488,7 +1569,7 @@ impl<'a> NodeRef<'a> {
             if node.role() == Role::TextRun {
                 let pos = InnerPosition {
                     node,
-                    character_index: character_index_at_point(&node, point),
+                    character_index: character_index_at_point(&node, self, point),
                 };
                 return Position {
                     root_node: *self,
@@ -1569,8 +1650,23 @@ impl<'a> NodeRef<'a> {
     }
 
     pub fn text_position_from_global_usv_index(&self, index: usize) -> Option<Position<'_>> {
+        let is_masked = self.text_runs_need_masking();
         let mut total_length = 0usize;
         for node in self.text_runs() {
+            if is_masked {
+                let new_total_length = total_length + node.data().character_lengths().len();
+                if index >= total_length && index < new_total_length {
+                    return Some(Position {
+                        root_node: *self,
+                        inner: InnerPosition {
+                            node,
+                            character_index: index - total_length,
+                        },
+                    });
+                }
+                total_length = new_total_length;
+                continue;
+            }
             let node_text = node.data().value().unwrap();
             let node_text_length = node_text.chars().count();
             let new_total_length = total_length + node_text_length;
@@ -1608,8 +1704,26 @@ impl<'a> NodeRef<'a> {
     }
 
     pub fn text_position_from_global_utf16_index(&self, index: usize) -> Option<Position<'_>> {
+        let is_masked = self.text_runs_need_masking();
         let mut total_length = 0usize;
         for node in self.text_runs() {
+            if is_masked {
+                let new_total_length = total_length
+                    + node.data().character_lengths().len()
+                        * PASSWORD_MASKING_CHARACTER.len_utf16();
+                if index >= total_length && index < new_total_length {
+                    return Some(Position {
+                        root_node: *self,
+                        inner: InnerPosition {
+                            node,
+                            character_index: (index - total_length)
+                                / PASSWORD_MASKING_CHARACTER.len_utf16(),
+                        },
+                    });
+                }
+                total_length = new_total_length;
+                continue;
+            }
             let node_text = node.data().value().unwrap();
             let node_text_length = node_text.chars().map(char::len_utf16).sum::<usize>();
             let new_total_length = total_length + node_text_length;
@@ -1651,7 +1765,7 @@ impl<'a> NodeRef<'a> {
 mod tests {
     use crate::tests::nid;
     use accesskit::{
-        Color, NodeId, Point, Rect, TextDecoration, TextDecorationStyle, TextSelection,
+        Color, NodeId, Point, Rect, Role, TextDecoration, TextDecorationStyle, TextSelection,
     };
     use alloc::vec;
 
@@ -1695,7 +1809,7 @@ mod tests {
     // This was originally based on an actual tree produced by egui but
     // has since been heavily modified by hand to cover various test cases.
     fn main_multiline_tree(selection: Option<TextSelection>) -> crate::Tree {
-        use accesskit::{Action, Affine, Node, Role, TextDirection, TreeId, TreeInfo, TreeUpdate};
+        use accesskit::{Action, Affine, Node, TextDirection, TreeId, TreeInfo, TreeUpdate};
 
         let update = TreeUpdate {
             nodes: vec![
@@ -2815,6 +2929,238 @@ mod tests {
         let state = tree.state();
         let node = state.node_by_id(nid(NodeId(1))).unwrap();
         let _ = node.text_selection().unwrap();
+    }
+
+    fn word_starts_tree(role: Role) -> crate::Tree {
+        use accesskit::{Node, TextPosition, TreeId, TreeInfo, TreeUpdate};
+
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![NodeId(1)]);
+                    node
+                }),
+                (NodeId(1), {
+                    let mut node = Node::new(role);
+                    node.set_children(vec![NodeId(2), NodeId(3)]);
+                    node.set_text_selection(TextSelection {
+                        anchor: TextPosition {
+                            node: NodeId(2),
+                            character_index: 3,
+                        },
+                        focus: TextPosition {
+                            node: NodeId(2),
+                            character_index: 3,
+                        },
+                    });
+                    node
+                }),
+                (NodeId(2), {
+                    let mut node = Node::new(Role::TextRun);
+                    node.set_value("ab cd");
+                    node.set_character_lengths([1, 1, 1, 1, 1]);
+                    node.set_word_starts([3]);
+                    node.set_next_on_line(NodeId(3));
+                    node
+                }),
+                (NodeId(3), {
+                    let mut node = Node::new(Role::TextRun);
+                    node.set_value(" ef");
+                    node.set_character_lengths([1, 1, 1]);
+                    node.set_word_starts([1]);
+                    node.set_previous_on_line(NodeId(2));
+                    node
+                }),
+            ],
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: NodeId(1),
+        };
+
+        crate::Tree::new(update, true)
+    }
+
+    #[test]
+    fn word_starts_are_exposed_on_text_input() {
+        let tree = word_starts_tree(Role::TextInput);
+        let state = tree.state();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
+        let pos = node.text_selection().unwrap().start();
+        assert!(pos.is_word_start());
+        let range = node.document_range();
+        let next = range.start().forward_to_word_start();
+        assert_eq!(next, pos);
+        assert_eq!(pos.backward_to_word_start(), range.start());
+        let next = next.forward_to_word_start();
+        assert_eq!(next.inner.node.id(), nid(NodeId(3)));
+        assert_eq!(next.inner.character_index, 1);
+        assert_eq!(range.end().backward_to_word_start(), next);
+    }
+
+    #[test]
+    fn word_starts_are_ignored_on_password_input() {
+        let tree = word_starts_tree(Role::PasswordInput);
+        let state = tree.state();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
+        let pos = node.text_selection().unwrap().start();
+        assert!(!pos.is_word_start());
+        let range = node.document_range();
+        assert_eq!(pos.forward_to_word_start(), range.end());
+        assert_eq!(range.start().forward_to_word_start(), range.end());
+        assert_eq!(pos.backward_to_word_start(), range.start());
+        assert_eq!(range.end().backward_to_word_start(), range.start());
+    }
+
+    fn password_tree(
+        role: Role,
+        first_run: (&str, [u8; 2]),
+        second_run: (&str, [u8; 1]),
+    ) -> crate::Tree {
+        use accesskit::{Node, TextDirection, TreeId, TreeInfo, TreeUpdate};
+
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![NodeId(1)]);
+                    node
+                }),
+                (NodeId(1), {
+                    let mut node = Node::new(role);
+                    node.set_bounds(Rect {
+                        x0: 0.0,
+                        y0: 0.0,
+                        x1: 100.0,
+                        y1: 10.0,
+                    });
+                    node.set_children(vec![NodeId(2), NodeId(3)]);
+                    node
+                }),
+                (NodeId(2), {
+                    let mut node = Node::new(Role::TextRun);
+                    node.set_bounds(Rect {
+                        x0: 10.0,
+                        y0: 0.0,
+                        x1: 24.0,
+                        y1: 10.0,
+                    });
+                    node.set_value(first_run.0);
+                    node.set_character_lengths(first_run.1);
+                    node.set_character_positions([0.0, 6.0]);
+                    node.set_character_widths([5.0, 8.0]);
+                    node.set_text_direction(TextDirection::LeftToRight);
+                    node.set_next_on_line(NodeId(3));
+                    node
+                }),
+                (NodeId(3), {
+                    let mut node = Node::new(Role::TextRun);
+                    node.set_bounds(Rect {
+                        x0: 24.0,
+                        y0: 0.0,
+                        x1: 27.0,
+                        y1: 10.0,
+                    });
+                    node.set_value(second_run.0);
+                    node.set_character_lengths(second_run.1);
+                    node.set_character_positions([0.0]);
+                    node.set_character_widths([3.0]);
+                    node.set_text_direction(TextDirection::LeftToRight);
+                    node.set_previous_on_line(NodeId(2));
+                    node
+                }),
+            ],
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: NodeId(1),
+        };
+
+        crate::Tree::new(update, true)
+    }
+
+    #[test]
+    fn masked_password_text_is_exposed_as_is() {
+        let tree = password_tree(Role::PasswordInput, ("**", [1, 1]), ("*", [1]));
+        let state = tree.state();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
+        assert_eq!(node.document_range().text(), "***");
+        assert_eq!(node.value().as_deref(), Some("***"));
+    }
+
+    #[test]
+    fn unmasked_password_text_is_masked() {
+        let tree = password_tree(Role::PasswordInput, ("a\u{1f44d}", [1, 4]), ("b", [1]));
+        let state = tree.state();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
+        assert_eq!(node.document_range().text(), "\u{2022}\u{2022}\u{2022}");
+        assert_eq!(node.value().as_deref(), Some("\u{2022}\u{2022}\u{2022}"));
+        let end = node.document_range().end();
+        assert_eq!(end.to_global_usv_index(), 3);
+        assert_eq!(end.to_global_utf16_index(), 3);
+        let pos = node.text_position_from_global_usv_index(1).unwrap();
+        assert_eq!(pos.inner.node.id(), nid(NodeId(2)));
+        assert_eq!(pos.inner.character_index, 1);
+        let pos = node.text_position_from_global_utf16_index(2).unwrap();
+        assert_eq!(pos.inner.node.id(), nid(NodeId(3)));
+        assert_eq!(pos.inner.character_index, 0);
+        assert_eq!(pos.to_global_utf16_index(), 2);
+    }
+
+    #[test]
+    fn text_input_text_is_not_masked() {
+        let tree = password_tree(Role::TextInput, ("a\u{1f44d}", [1, 4]), ("b", [1]));
+        let state = tree.state();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
+        assert_eq!(node.document_range().text(), "a\u{1f44d}b");
+        let end = node.document_range().end();
+        assert_eq!(end.to_global_usv_index(), 3);
+        assert_eq!(end.to_global_utf16_index(), 4);
+        let pos = node.text_position_from_global_utf16_index(3).unwrap();
+        assert_eq!(pos.inner.node.id(), nid(NodeId(3)));
+        assert_eq!(pos.inner.character_index, 0);
+    }
+
+    fn second_character_metrics(role: Role) -> (Rect, usize) {
+        let tree = password_tree(role, ("**", [1, 1]), ("*", [1]));
+        let state = tree.state();
+        let node = state.node_by_id(nid(NodeId(1))).unwrap();
+        let start = node.text_position_from_global_usv_index(1).unwrap();
+        let mut range = node.document_range();
+        range.set_start(start);
+        range.set_end(start.forward_to_character_end());
+        let pos = node.text_position_at_point(Point { x: 22.0, y: 5.0 });
+        assert_eq!(pos.inner.node.id(), nid(NodeId(2)));
+        (range.bounding_boxes()[0], pos.inner.character_index)
+    }
+
+    #[test]
+    fn text_input_character_metrics_are_exposed_as_is() {
+        let (rect, character_index) = second_character_metrics(Role::TextInput);
+        assert_eq!(
+            rect,
+            Rect {
+                x0: 16.0,
+                y0: 0.0,
+                x1: 24.0,
+                y1: 10.0
+            }
+        );
+        assert_eq!(character_index, 1);
+    }
+
+    #[test]
+    fn password_character_metrics_are_normalized() {
+        let (rect, character_index) = second_character_metrics(Role::PasswordInput);
+        assert_eq!(
+            rect,
+            Rect {
+                x0: 16.0,
+                y0: 0.0,
+                x1: 21.0,
+                y1: 10.0
+            }
+        );
+        assert_eq!(character_index, 2);
     }
 
     #[test]

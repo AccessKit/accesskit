@@ -1,6 +1,6 @@
 [package]
 name = "example_common"
-version = "0.0.1"
+version = "0.0.2"
 authors.workspace = true
 repository.workspace = true
 edition.workspace = true
@@ -10,6 +10,7 @@ publish = false
 [dependencies]
 accesskit = { path = "../accesskit" }
 raw-window-handle = "0.6.2"
+unicode-segmentation = "1.10.1"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies.softbuffer]
 version = "0.4.8"

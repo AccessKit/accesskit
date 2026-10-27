@@ -8,8 +8,9 @@ categories.workspace = true
 keywords = ["gui", "ui", "accessibility", "openharmony"]
 repository.workspace = true
 readme = "README.md"
+exclude = ["examples"]
 edition.workspace = true
-rust-version = "1.88"
+rust-version.workspace = true
 
 [features]
 default = ["api-13"]
@@ -27,6 +28,6 @@ api-23 = ["api-22", "ohos-accessibility-binding/api-23"]
 api-24 = ["api-23", "ohos-accessibility-binding/api-24"]
 
 [dependencies]
-accesskit = { version = "0.25.0", path = "../../accesskit" }
-accesskit_consumer = { version = "0.39.0", path = "../../accesskit_consumer" }
+accesskit = { version = "0.25.2", path = "../../accesskit" }
+accesskit_consumer = { version = "0.39.2", path = "../../accesskit_consumer" }
 ohos-accessibility-binding = { workspace = true }

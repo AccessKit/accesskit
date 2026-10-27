@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.2](https://github.com/AccessKit/accesskit/compare/accesskit-v0.25.1...accesskit-v0.25.2) (2026-10-25)
+
+
+### Bug Fixes
+
+* Avoid disclosing the content of password inputs ([#841](https://github.com/AccessKit/accesskit/issues/841)) ([d62a496](https://github.com/AccessKit/accesskit/commit/d62a49614ffbb0d85ce2d34e0340df711eb86e46))
+
 ## [0.25.1](https://github.com/AccessKit/accesskit/compare/accesskit-v0.25.0...accesskit-v0.25.1) (2026-09-25)
 
 

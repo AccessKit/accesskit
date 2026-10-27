@@ -584,6 +584,10 @@ impl<'a> NodeRef<'a> {
         self.role() == Role::MultilineTextInput
     }
 
+    pub fn is_password_input(&self) -> bool {
+        self.role() == Role::PasswordInput
+    }
+
     pub fn orientation(&self) -> Option<Orientation> {
         self.data().orientation().or_else(|| {
             if self.role() == Role::ListBox {
@@ -705,6 +709,14 @@ impl<'a> NodeRef<'a> {
     pub fn supports_decrement(&self, parent_filter: &impl Fn(&NodeRef) -> FilterResult) -> bool {
         self.supports_action(Action::Decrement, parent_filter)
     }
+}
+
+pub(crate) const PASSWORD_MASKING_CHARACTER: char = '\u{2022}';
+
+pub(crate) fn has_distinct_items<T: PartialEq>(mut items: impl Iterator<Item = T>) -> bool {
+    items
+        .next()
+        .is_some_and(|first| items.any(|item| item != first))
 }
 
 fn descendant_label_filter(node: &NodeRef) -> FilterResult {
@@ -844,7 +856,11 @@ impl<'a> NodeRef<'a> {
 
     pub fn write_value<W: fmt::Write>(&self, mut writer: W) -> Result<bool, fmt::Error> {
         if let Some(value) = &self.data().value() {
-            writer.write_str(value)?;
+            if self.is_password_input() {
+                self.write_password_value(value, writer)?;
+            } else {
+                writer.write_str(value)?;
+            }
             Ok(true)
         } else if self.supports_text_ranges() && !self.is_multiline() {
             self.document_range().write_text(writer)?;
@@ -852,6 +868,26 @@ impl<'a> NodeRef<'a> {
         } else {
             Ok(false)
         }
+    }
+
+    fn write_password_value<W: fmt::Write>(&self, value: &str, mut writer: W) -> fmt::Result {
+        let character_count = if self.supports_text_ranges() {
+            if !self.text_runs_need_masking() {
+                return writer.write_str(value);
+            }
+            self.text_runs()
+                .map(|node| node.data().character_lengths().len())
+                .sum()
+        } else {
+            if !has_distinct_items(value.chars()) {
+                return writer.write_str(value);
+            }
+            value.chars().count()
+        };
+        for _ in 0..character_count {
+            writer.write_char(PASSWORD_MASKING_CHARACTER)?;
+        }
+        Ok(())
     }
 
     pub fn has_value(&self) -> bool {
@@ -2115,6 +2151,52 @@ mod tests {
                 .node_by_id(nid(LISTBOX_ID))
                 .unwrap()
                 .is_focused()
+        );
+    }
+
+    fn text_input_value(role: Role, value: &str) -> Option<alloc::string::String> {
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![NodeId(1)]);
+                    node
+                }),
+                (NodeId(1), {
+                    let mut node = Node::new(role);
+                    node.set_value(value);
+                    node
+                }),
+            ],
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        };
+        let tree = crate::Tree::new(update, false);
+        tree.state().node_by_id(nid(NodeId(1))).unwrap().value()
+    }
+
+    #[test]
+    fn masked_password_value_is_exposed_as_is() {
+        assert_eq!(
+            text_input_value(Role::PasswordInput, "***").as_deref(),
+            Some("***")
+        );
+    }
+
+    #[test]
+    fn unmasked_password_value_is_masked() {
+        assert_eq!(
+            text_input_value(Role::PasswordInput, "a\u{1f44d}b").as_deref(),
+            Some("\u{2022}\u{2022}\u{2022}")
+        );
+    }
+
+    #[test]
+    fn text_input_value_is_not_masked() {
+        assert_eq!(
+            text_input_value(Role::TextInput, "a\u{1f44d}b").as_deref(),
+            Some("a\u{1f44d}b")
         );
     }
 }

@@ -44,7 +44,7 @@ impl NodeWrapper<'_> {
     }
 
     fn is_password(&self) -> bool {
-        self.0.role() == Role::PasswordInput
+        self.0.is_password_input()
     }
 
     fn is_checkable(&self) -> bool {

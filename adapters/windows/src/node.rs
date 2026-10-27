@@ -725,7 +725,7 @@ impl NodeWrapper<'_> {
     }
 
     fn is_password(&self) -> bool {
-        self.node.role() == Role::PasswordInput
+        self.node.is_password_input()
     }
 
     fn is_dialog(&self) -> bool {

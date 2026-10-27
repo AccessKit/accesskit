@@ -10,11 +10,11 @@ plugins {
 val rustAbis = (findProperty("rustAbis") as String? ?: "arm64-v8a").split(',')
 
 android {
-    namespace = "dev.accesskit.helloworld"
+    namespace = "dev.accesskit.showcase"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "dev.accesskit.helloworld"
+        applicationId = "dev.accesskit.showcase"
         minSdk = 30
         targetSdk = 37
         versionCode = 1
@@ -69,7 +69,7 @@ abstract class CargoNdkBuild @Inject constructor(private val execOperations: Exe
                 }
                 add("build")
                 add("--example")
-                add("hello_world")
+                add("showcase")
                 if (release.get()) {
                     add("--release")
                 }
