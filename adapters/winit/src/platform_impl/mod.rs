@@ -22,7 +22,8 @@ mod platform;
         target_os = "freebsd",
         target_os = "netbsd",
         target_os = "openbsd"
-    )
+    ),
+    not(target_env = "ohos")
 ))]
 #[path = "unix.rs"]
 mod platform;
@@ -46,7 +47,8 @@ mod platform;
             target_os = "freebsd",
             target_os = "netbsd",
             target_os = "openbsd"
-        )
+        ),
+        not(target_env = "ohos")
     ),
     all(feature = "accesskit_android", target_os = "android"),
     target_os = "ios"

@@ -31,3 +31,10 @@ api-24 = ["api-23", "ohos-accessibility-binding/api-24"]
 accesskit = { version = "0.25.2", path = "../../accesskit" }
 accesskit_consumer = { version = "0.39.2", path = "../../accesskit_consumer" }
 ohos-accessibility-binding = { workspace = true }
+
+[dev-dependencies]
+example_common = { path = "../../example_common" }
+
+[[example]]
+name = "showcase"
+crate-type = ["cdylib", "staticlib"]

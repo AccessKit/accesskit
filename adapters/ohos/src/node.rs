@@ -36,6 +36,10 @@ pub(crate) fn populate_element(
         .map(|child| i64::from(ids.get_or_create(&child)))
         .collect::<Vec<_>>();
 
+    let is_accessibility_focused = accessibility_focus == Some(node.id());
+    let is_clickable =
+        node.is_clickable(&filter) || (node.is_focusable(&filter) && !node.is_focused());
+
     element
         .set_element_id(element_id)?
         .set_parent_id(parent_id)?
@@ -44,13 +48,13 @@ pub(crate) fn populate_element(
         .set_visible(!node.is_hidden())?
         .set_focusable(node.is_focusable(&filter))?
         .set_focused(node.is_focused())?
-        .set_accessibility_focused(accessibility_focus == Some(node.id()))?
+        .set_accessibility_focused(is_accessibility_focused)?
         .set_selected(node.is_selected().unwrap_or(false))?
-        .set_clickable(node.is_clickable(&filter))?
+        .set_clickable(is_clickable)?
         .set_long_clickable(false)?
         .set_scrollable(is_scrollable(node))?
         .set_editable(node.is_text_input() && !node.is_read_only())?
-        .set_password(node.role() == Role::PasswordInput)?
+        .set_password(node.is_password_input())?
         .set_accessibility_level(if node.is_root() { "no" } else { "yes" })?;
 
     // ArkUI rejects a zero child count with BAD_PARAMETER. Leaf nodes already
@@ -133,7 +137,7 @@ pub(crate) fn populate_element(
         element.set_item_count(usize_to_i32(count)?)?;
     }
 
-    let actions = supported_actions(node);
+    let actions = supported_actions(node, is_accessibility_focused);
     if !actions.is_empty() {
         element.set_operation_actions(&actions)?;
     }
@@ -141,27 +145,35 @@ pub(crate) fn populate_element(
     Ok(())
 }
 
-fn supported_actions(node: &Node) -> Vec<(ActionType, &'static CStr)> {
-    let mut actions = vec![
-        (
-            ActionType::GainAccessibilityFocus,
-            c"gain accessibility focus",
-        ),
+fn supported_actions(
+    node: &Node,
+    is_accessibility_focused: bool,
+) -> Vec<(ActionType, &'static CStr)> {
+    let mut actions = vec![if is_accessibility_focused {
         (
             ActionType::ClearAccessibilityFocus,
             c"clear accessibility focus",
-        ),
-    ];
-    if node.supports_action(Action::Click, &filter) {
+        )
+    } else {
+        (
+            ActionType::GainAccessibilityFocus,
+            c"gain accessibility focus",
+        )
+    }];
+    if node.supports_action(Action::Click, &filter)
+        || (node.is_focusable(&filter) && !node.is_focused())
+    {
         actions.push((ActionType::Click, c"click"));
     }
     if node.supports_action(Action::ScrollDown, &filter)
         || node.supports_action(Action::ScrollRight, &filter)
+        || node.supports_increment(&filter)
     {
         actions.push((ActionType::ScrollForward, c"scroll forward"));
     }
     if node.supports_action(Action::ScrollUp, &filter)
         || node.supports_action(Action::ScrollLeft, &filter)
+        || node.supports_decrement(&filter)
     {
         actions.push((ActionType::ScrollBackward, c"scroll backward"));
     }
@@ -176,14 +188,16 @@ fn supported_actions(node: &Node) -> Vec<(ActionType, &'static CStr)> {
 }
 
 fn is_scrollable(node: &Node) -> bool {
-    [
-        Action::ScrollDown,
-        Action::ScrollLeft,
-        Action::ScrollRight,
-        Action::ScrollUp,
-    ]
-    .into_iter()
-    .any(|action| node.supports_action(action, &filter))
+    node.supports_increment(&filter)
+        || node.supports_decrement(&filter)
+        || [
+            Action::ScrollDown,
+            Action::ScrollLeft,
+            Action::ScrollRight,
+            Action::ScrollUp,
+        ]
+        .into_iter()
+        .any(|action| node.supports_action(action, &filter))
 }
 
 fn coordinate_to_i32(value: f64) -> i32 {

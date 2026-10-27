@@ -9,3 +9,4 @@ mod adapter;
 mod node;
 
 pub use adapter::Adapter;
+pub use ohos_accessibility_binding::{self, AccessibilityError, Provider, Result};

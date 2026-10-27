@@ -10,8 +10,9 @@ use std::{
 };
 
 use accesskit::{
-    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Node as NodeData,
-    NodeId as LocalNodeId, Role, TextSelection, TreeId, TreeInfo as TreeData, TreeUpdate,
+    Action, ActionData, ActionHandler, ActionRequest, ActivationHandler, Live, Node as NodeData,
+    NodeId as LocalNodeId, Role, ScrollUnit, TextSelection, TreeId, TreeInfo as TreeData,
+    TreeUpdate,
 };
 use accesskit_consumer::{
     FilterResult, FullNodeId as NodeId, NodeRef as Node, Tree, TreeChangeHandler,
@@ -29,12 +30,94 @@ const ROOT_ELEMENT_ID: i32 = 0;
 pub(crate) const ROOT_PARENT_ID: i32 = -2_100_000;
 const PLACEHOLDER_ROOT_ID: LocalNodeId = LocalNodeId(0);
 
-struct IgnoreChanges;
+enum PendingEvent {
+    Node {
+        target: NodeId,
+        event_type: EventType,
+    },
+    Announce {
+        target: NodeId,
+        text: String,
+    },
+}
 
-impl TreeChangeHandler for IgnoreChanges {
-    fn node_added(&mut self, _node: &Node) {}
-    fn node_updated(&mut self, _old_node: &Node, _new_node: &Node) {}
-    fn focus_moved(&mut self, _old_node: Option<&Node>, _new_node: Option<&Node>) {}
+#[derive(Default)]
+struct AdapterChangeHandler {
+    events: Vec<PendingEvent>,
+}
+
+impl AdapterChangeHandler {
+    fn enqueue_live_region(&mut self, node: &Node) {
+        if let Some(text) = node.label().or_else(|| node.value()) {
+            if !text.is_empty() {
+                self.events.push(PendingEvent::Announce {
+                    target: node.id(),
+                    text,
+                });
+            }
+        }
+    }
+}
+
+impl TreeChangeHandler for AdapterChangeHandler {
+    fn node_added(&mut self, node: &Node) {
+        if filter(node) != FilterResult::Include {
+            return;
+        }
+        if node.live() != Live::Off {
+            self.enqueue_live_region(node);
+        }
+    }
+
+    fn node_updated(&mut self, old_node: &Node, new_node: &Node) {
+        if filter(new_node) != FilterResult::Include {
+            return;
+        }
+        if new_node.value() != old_node.value()
+            || new_node.raw_text_selection() != old_node.raw_text_selection()
+        {
+            self.events.push(PendingEvent::Node {
+                target: new_node.id(),
+                event_type: EventType::TextUpdate,
+            });
+        }
+        if new_node.is_selected() == Some(true) && new_node.is_selected() != old_node.is_selected()
+        {
+            self.events.push(PendingEvent::Node {
+                target: new_node.id(),
+                event_type: EventType::Selected,
+            });
+        }
+        if new_node.scroll_x() != old_node.scroll_x()
+            || new_node.scroll_y() != old_node.scroll_y()
+            || new_node.numeric_value() != old_node.numeric_value()
+        {
+            self.events.push(PendingEvent::Node {
+                target: new_node.id(),
+                event_type: EventType::Scrolled,
+            });
+        }
+        if new_node.live() != Live::Off
+            && (filter(old_node) != FilterResult::Include
+                || new_node.label() != old_node.label()
+                || new_node.value() != old_node.value()
+                || new_node.live() != old_node.live())
+        {
+            self.enqueue_live_region(new_node);
+        }
+    }
+
+    fn focus_moved(&mut self, _old_node: Option<&Node>, new_node: Option<&Node>) {
+        if let Some(new_node) = new_node {
+            if new_node.role() != Role::Window || !new_node.is_root() {
+                self.events.push(PendingEvent::Node {
+                    target: new_node.id(),
+                    event_type: EventType::FocusNodeUpdate,
+                });
+            }
+        }
+    }
+
     fn node_removed(&mut self, _node: &Node) {}
 }
 
@@ -104,6 +187,7 @@ impl ProviderAddress {
         self,
         event_type: EventType,
         node: Option<&Node>,
+        announced_text: Option<&str>,
         ids: &mut NodeIdMap,
         accessibility_focus: Option<NodeId>,
         screen_offset: (i32, i32),
@@ -118,6 +202,9 @@ impl ProviderAddress {
         // The event borrows this final element allocation until it is dropped.
         let mut event = EventInfo::new()?;
         event.set_event_type(event_type)?;
+        if let Some(text) = announced_text {
+            event.set_announced_text(text)?;
+        }
         if let Some(element) = element.as_ref() {
             event.set_element_info(element)?;
         }
@@ -382,6 +469,10 @@ impl ProviderCallbacks for Callbacks {
             .lock()
             .map_err(|_| AccessibilityError::LockPoisoned)?
             .do_action(request);
+        if action == ActionType::Click {
+            let mut state = self.lock()?;
+            let _ = send_target_event(&mut state, target, EventType::Clicked);
+        }
         Ok(())
     }
 
@@ -418,6 +509,12 @@ impl ProviderCallbacks for Callbacks {
 pub struct Adapter<'a> {
     _registration: ProviderRegistration<'a>,
     state: Arc<Mutex<State>>,
+}
+
+impl std::fmt::Debug for Adapter<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Adapter").finish_non_exhaustive()
+    }
 }
 
 impl<'a> Adapter<'a> {
@@ -488,18 +585,25 @@ impl<'a> Adapter<'a> {
             .state
             .lock()
             .map_err(|_| AccessibilityError::LockPoisoned)?;
-        let old_focus = state.tree.get().map(|tree| tree.state().focus_id_in_tree());
+        let mut handler = AdapterChangeHandler::default();
         match &mut state.tree {
             TreeLifecycle::Inactive => return Ok(()),
             TreeLifecycle::Placeholder(_) => {
-                state.tree =
-                    TreeLifecycle::Active(Tree::new(update_factory(), state.host_is_focused));
+                let tree = Tree::new(update_factory(), state.host_is_focused);
+                if let Some(focus) = tree.state().focus() {
+                    if focus.role() != Role::Window || !focus.is_root() {
+                        handler.events.push(PendingEvent::Node {
+                            target: focus.id(),
+                            event_type: EventType::FocusNodeUpdate,
+                        });
+                    }
+                }
+                state.tree = TreeLifecycle::Active(tree);
             }
             TreeLifecycle::Active(tree) => {
-                tree.update_and_process_changes(update_factory(), &mut IgnoreChanges)
+                tree.update_and_process_changes(update_factory(), &mut handler)
             }
         }
-        let new_focus = state.tree.get().map(|tree| tree.state().focus_id_in_tree());
         if state.accessibility_focus.is_some_and(|id| {
             state
                 .tree
@@ -509,12 +613,7 @@ impl<'a> Adapter<'a> {
             state.accessibility_focus = None;
         }
         send_root_event(&mut state, EventType::PageContentUpdate)?;
-        if old_focus != new_focus
-            && let Some(new_focus) = new_focus
-        {
-            send_target_event(&mut state, new_focus, EventType::FocusNodeUpdate)?;
-        }
-        Ok(())
+        flush_pending_events(&mut state, handler.events)
     }
 
     pub fn set_host_focus_state(&self, is_focused: bool) -> Result<()> {
@@ -523,10 +622,11 @@ impl<'a> Adapter<'a> {
             .lock()
             .map_err(|_| AccessibilityError::LockPoisoned)?;
         state.host_is_focused = is_focused;
+        let mut handler = AdapterChangeHandler::default();
         if let Some(tree) = state.tree.get_active_mut() {
-            tree.update_host_focus_state_and_process_changes(is_focused, &mut IgnoreChanges);
+            tree.update_host_focus_state_and_process_changes(is_focused, &mut handler);
         }
-        Ok(())
+        flush_pending_events(&mut state, handler.events)
     }
 
     /// Apply an additional provider-local pixel offset to AccessKit bounds.
@@ -581,11 +681,11 @@ fn search_node_ids(target: &Node, mode: SearchMode) -> Vec<NodeId> {
             parent = node.filtered_parent(&filter);
         }
     }
-    if mode.contains(SearchMode::SIBLINGS)
-        && let Some(parent) = target.filtered_parent(&filter)
-    {
-        for node in parent.filtered_children(&filter) {
-            push(node, &mut result, &mut seen);
+    if mode.contains(SearchMode::SIBLINGS) {
+        if let Some(parent) = target.filtered_parent(&filter) {
+            for node in parent.filtered_children(&filter) {
+                push(node, &mut result, &mut seen);
+            }
         }
     }
     if mode.contains(SearchMode::CHILDREN) {
@@ -659,20 +759,38 @@ fn action_request(
         .node_by_id(target)
         .ok_or(AccessibilityError::BadParameter)?;
     let (action, data) = match action {
-        ActionType::Click => (Action::Click, None),
-        ActionType::ScrollForward => {
-            let action = [Action::ScrollDown, Action::ScrollRight]
-                .into_iter()
-                .find(|action| node.supports_action(*action, &filter))
-                .ok_or(AccessibilityError::Unsupported)?;
+        ActionType::Click => {
+            let action = if !node.supports_action(Action::Click, &filter)
+                && node.is_focusable(&filter)
+                && !node.is_focused()
+            {
+                Action::Focus
+            } else {
+                Action::Click
+            };
             (action, None)
         }
+        ActionType::ScrollForward => {
+            if node.supports_increment(&filter) {
+                (Action::Increment, None)
+            } else {
+                let action = [Action::ScrollDown, Action::ScrollRight]
+                    .into_iter()
+                    .find(|action| node.supports_action(*action, &filter))
+                    .ok_or(AccessibilityError::Unsupported)?;
+                (action, Some(ActionData::ScrollUnit(ScrollUnit::Page)))
+            }
+        }
         ActionType::ScrollBackward => {
-            let action = [Action::ScrollUp, Action::ScrollLeft]
-                .into_iter()
-                .find(|action| node.supports_action(*action, &filter))
-                .ok_or(AccessibilityError::Unsupported)?;
-            (action, None)
+            if node.supports_decrement(&filter) {
+                (Action::Decrement, None)
+            } else {
+                let action = [Action::ScrollUp, Action::ScrollLeft]
+                    .into_iter()
+                    .find(|action| node.supports_action(*action, &filter))
+                    .ok_or(AccessibilityError::Unsupported)?;
+                (action, Some(ActionData::ScrollUnit(ScrollUnit::Page)))
+            }
         }
         ActionType::SetText => {
             let value = argument_string(
@@ -743,6 +861,20 @@ fn argument_usize(arguments: &ActionArguments<'_>, keys: &[&str]) -> Option<usiz
     argument_string(arguments, keys)?.parse().ok()
 }
 
+fn flush_pending_events(state: &mut State, events: Vec<PendingEvent>) -> Result<()> {
+    for event in events {
+        match event {
+            PendingEvent::Node { target, event_type } => {
+                send_target_event(state, target, event_type)?;
+            }
+            PendingEvent::Announce { target, text } => {
+                send_target_announcement(state, target, &text)?;
+            }
+        }
+    }
+    Ok(())
+}
+
 fn send_target_event(state: &mut State, target: NodeId, event_type: EventType) -> Result<()> {
     let State {
         tree,
@@ -760,6 +892,31 @@ fn send_target_event(state: &mut State, target: NodeId, event_type: EventType) -
     provider.send(
         event_type,
         Some(&node),
+        None,
+        ids,
+        *accessibility_focus,
+        *screen_offset,
+    )
+}
+
+fn send_target_announcement(state: &mut State, target: NodeId, text: &str) -> Result<()> {
+    let State {
+        tree,
+        ids,
+        accessibility_focus,
+        screen_offset,
+        provider,
+        ..
+    } = state;
+    let tree = tree.get().ok_or(AccessibilityError::Failed)?;
+    let node = tree
+        .state()
+        .node_by_id(target)
+        .ok_or(AccessibilityError::BadParameter)?;
+    provider.send(
+        EventType::Announce,
+        Some(&node),
+        Some(text),
         ids,
         *accessibility_focus,
         *screen_offset,
@@ -780,6 +937,7 @@ fn send_root_event(state: &mut State, event_type: EventType) -> Result<()> {
     provider.send(
         event_type,
         Some(&root),
+        None,
         ids,
         *accessibility_focus,
         *screen_offset,
