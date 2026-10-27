@@ -1,0 +1,11 @@
+{
+  "name": "entry",
+  "version": "1.0.0",
+  "description": "AccessKit OpenHarmony Showcase Entry Module",
+  "main": "",
+  "author": "",
+  "license": "Apache-2.0 OR MIT",
+  "dependencies": {
+    "libentry.so": "file:./src/main/cpp/types/libentry"
+  }
+}

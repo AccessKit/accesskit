@@ -2,7 +2,7 @@
 
 pub use platform::Renderer;
 
-#[cfg(not(target_os = "android"))]
+#[cfg(not(any(target_os = "android", target_env = "ohos")))]
 mod platform {
     use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
     use softbuffer::{Context, Surface};
@@ -58,12 +58,12 @@ mod platform {
     }
 }
 
-#[cfg(target_os = "android")]
+#[cfg(any(target_os = "android", target_env = "ohos"))]
 mod platform {
     use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
     use std::marker::PhantomData;
 
-    /// Drawing is a no-op on Android, which softbuffer doesn't support.
+    /// Drawing is a no-op on Android and OpenHarmony, which softbuffer doesn't support.
     pub struct Renderer<W>(PhantomData<W>);
 
     impl<W: HasDisplayHandle + HasWindowHandle + Clone> Renderer<W> {
