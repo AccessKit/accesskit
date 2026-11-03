@@ -260,7 +260,10 @@ impl TreeState {
 
             if let Some(node_state) = self.nodes.get_mut(&node_id) {
                 if local_node_id == root {
-                    node_state.parent_and_index = None;
+                    node_state.parent_and_index = self
+                        .graft_parents
+                        .get(&tree_id)
+                        .map(|&graft_id| ParentAndIndex(graft_id, 0));
                 }
                 for child_id in node_state.data.children().iter() {
                     let mapped_existing_child_id = map_id(*child_id);
@@ -3021,6 +3024,67 @@ mod tests {
         assert!(handler.added_nodes.is_empty());
         assert!(handler.updated_nodes.contains(&subtree_node_id(1)),);
         assert!(!handler.updated_nodes.contains(&subtree_node_id(0)),);
+    }
+
+    #[test]
+    fn subtree_root_update_without_tree_keeps_graft_parent() {
+        let update = TreeUpdate {
+            nodes: vec![
+                (NodeId(0), {
+                    let mut node = Node::new(Role::Window);
+                    node.set_children(vec![NodeId(1)]);
+                    node
+                }),
+                (NodeId(1), {
+                    let mut node = Node::new(Role::GenericContainer);
+                    node.set_tree_id(subtree_id());
+                    node
+                }),
+            ],
+            tree: Some(TreeInfo::new(NodeId(0))),
+            tree_id: TreeId::ROOT,
+            focus: NodeId(0),
+        };
+        let mut tree = super::Tree::new(update, false);
+
+        let subtree_root = |label: &str| {
+            let mut node = Node::new(Role::Document);
+            node.set_label(label);
+            node
+        };
+        tree.update_and_process_changes(
+            TreeUpdate {
+                nodes: vec![(NodeId(0), subtree_root("original"))],
+                tree: Some(TreeInfo::new(NodeId(0))),
+                tree_id: subtree_id(),
+                focus: NodeId(0),
+            },
+            &mut NoOpHandler,
+        );
+        assert_eq!(
+            tree.state()
+                .node_by_id(subtree_node_id(0))
+                .unwrap()
+                .parent_id(),
+            Some(node_id(1))
+        );
+
+        tree.update_and_process_changes(
+            TreeUpdate {
+                nodes: vec![(NodeId(0), subtree_root("modified"))],
+                tree: None,
+                tree_id: subtree_id(),
+                focus: NodeId(0),
+            },
+            &mut NoOpHandler,
+        );
+
+        let subtree_root = tree.state().node_by_id(subtree_node_id(0)).unwrap();
+        assert_eq!(subtree_root.label().as_deref(), Some("modified"));
+        assert_eq!(subtree_root.parent_id(), Some(node_id(1)));
+
+        let graft_node = tree.state().node_by_id(node_id(1)).unwrap();
+        assert_eq!(graft_node.child_ids().next(), Some(subtree_node_id(0)));
     }
 
     #[test]
