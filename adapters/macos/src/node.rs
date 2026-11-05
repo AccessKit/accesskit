@@ -122,7 +122,7 @@ fn ns_role(node: &NodeRef) -> &'static NSAccessibilityRole {
             Role::Grid => NSAccessibilityTableRole,
             Role::Group => NSAccessibilityGroupRole,
             Role::Header => NSAccessibilityGroupRole,
-            Role::Heading => ns_string!("Heading"),
+            Role::Heading => ns_string!("AXHeading"),
             Role::Iframe => NSAccessibilityGroupRole,
             Role::IframePresentational => NSAccessibilityGroupRole,
             Role::ImeCandidate => NSAccessibilityUnknownRole,
@@ -295,6 +295,34 @@ fn ns_sub_role(node: &NodeRef) -> Option<&'static NSAccessibilitySubrole> {
     }
 }
 
+fn is_table(node: &NodeRef) -> bool {
+    matches!(node.role(), Role::Table | Role::Grid | Role::TreeGrid)
+}
+
+fn is_cell(node: &NodeRef) -> bool {
+    matches!(
+        node.role(),
+        Role::Cell | Role::GridCell | Role::ColumnHeader | Role::RowHeader
+    )
+}
+
+/// A table's rows: its row children, and the rows of its row groups.
+fn table_rows<'a>(node: &NodeRef<'a>) -> Vec<NodeRef<'a>> {
+    let mut rows = Vec::new();
+    for child in node.filtered_children(filter) {
+        match child.role() {
+            Role::Row => rows.push(child),
+            Role::RowGroup => rows.extend(
+                child
+                    .filtered_children(filter)
+                    .filter(|r| r.role() == Role::Row),
+            ),
+            _ => {}
+        }
+    }
+    rows
+}
+
 pub(crate) fn can_be_focused(node: &NodeRef) -> bool {
     filter(node) == FilterResult::Include && node.role() != Role::Window
 }
@@ -353,6 +381,11 @@ impl NodeWrapper<'_> {
         if label_is_exposed_in_value(self.0.role()) {
             if let Some(label) = self.0.label() {
                 return Some(Value::String(label));
+            }
+        }
+        if self.0.role() == Role::Heading {
+            if let Some(level) = self.0.level() {
+                return Some(Value::Number(level as f64));
             }
         }
         if let Some(value) = self.0.value() {
@@ -1088,14 +1121,19 @@ declare_class!(
         }
 
         #[method_id(accessibilityAttributeValue:)]
-        fn accessibility_attribute_value(&self, attr: &NSString) -> Option<Id<NSString>> {
+        fn accessibility_attribute_value(&self, attr: &NSString) -> Option<Id<NSObject>> {
             self.resolve(|node| {
                 if attr == ns_string!("AXBrailleLabel") && node.has_braille_label() {
-                    return Some(NSString::from_str(node.braille_label().unwrap()))
+                    return Some(Id::into_super(NSString::from_str(node.braille_label().unwrap())))
                 } else if attr == ns_string!("AXBrailleRoleDescription") && node.has_braille_role_description() {
-                    return Some(NSString::from_str(node.braille_role_description().unwrap()))
+                    return Some(Id::into_super(NSString::from_str(node.braille_role_description().unwrap())))
                 } else if attr == ns_string!("AXDOMIdentifier") && node.has_html_id() {
-                    return Some(NSString::from_str(node.html_id().unwrap()))
+                    return Some(Id::into_super(NSString::from_str(node.html_id().unwrap())))
+                } else if attr == ns_string!("AXHeadingLevel") && node.role() == Role::Heading {
+                    // NSAccessibilityHeadingLevelAttribute (macOS 26): 1-based.
+                    if let Some(level) = node.level() {
+                        return Some(Id::into_super(Id::into_super(NSNumber::new_isize(level as isize))))
+                    }
                 }
 
                 None
@@ -1107,6 +1145,13 @@ declare_class!(
         fn rows(&self) -> Option<Id<NSArray<PlatformNode>>> {
             self.resolve_with_context(|node, _, context| {
                 let wrapper = NodeWrapper(node);
+                if is_table(node) {
+                    let platform_nodes = table_rows(node)
+                        .iter()
+                        .map(|row| context.get_or_create_platform_node(row.id()))
+                        .collect::<Vec<Id<PlatformNode>>>();
+                    return Some(NSArray::from_vec(platform_nodes));
+                }
                 if !wrapper.is_container_with_selectable_children() {
                     return None;
                 }
@@ -1231,6 +1276,71 @@ declare_class!(
             });
         }
 
+        // Counts and indices come from the provider. Without them a table
+        // still answers AXRowCount (the rows it exposes); every other
+        // structural attribute is withheld (isAccessibilitySelectorAllowed:)
+        // rather than reported as 0.
+        #[method(accessibilityRowCount)]
+        fn row_count(&self) -> NSInteger {
+            self.resolve(|node| {
+                node.data()
+                    .row_count()
+                    .unwrap_or_else(|| table_rows(node).len()) as NSInteger
+            })
+            .unwrap_or(0)
+        }
+
+        #[method(accessibilityColumnCount)]
+        fn column_count(&self) -> NSInteger {
+            self.resolve(|node| node.data().column_count().unwrap_or(0) as NSInteger)
+                .unwrap_or(0)
+        }
+
+        #[method(accessibilityIndex)]
+        fn index(&self) -> NSInteger {
+            self.resolve(|node| node.data().row_index().unwrap_or(0) as NSInteger)
+                .unwrap_or(0)
+        }
+
+        #[method(accessibilityRowIndexRange)]
+        fn row_index_range(&self) -> NSRange {
+            self.resolve(|node| {
+                NSRange::new(
+                    node.data().row_index().unwrap_or(0),
+                    node.data().row_span().unwrap_or(1),
+                )
+            })
+            .unwrap_or_else(|| NSRange::new(0, 0))
+        }
+
+        #[method(accessibilityColumnIndexRange)]
+        fn column_index_range(&self) -> NSRange {
+            self.resolve(|node| {
+                NSRange::new(
+                    node.data().column_index().unwrap_or(0),
+                    node.data().column_span().unwrap_or(1),
+                )
+            })
+            .unwrap_or_else(|| NSRange::new(0, 0))
+        }
+
+        #[method_id(accessibilityColumnHeaderUIElements)]
+        fn column_headers(&self) -> Option<Id<NSArray<PlatformNode>>> {
+            self.resolve_with_context(|node, _, context| {
+                if !is_table(node) {
+                    return None;
+                }
+                let platform_nodes = table_rows(node)
+                    .iter()
+                    .flat_map(|row| row.filtered_children(filter))
+                    .filter(|cell| cell.role() == Role::ColumnHeader)
+                    .map(|cell| context.get_or_create_platform_node(cell.id()))
+                    .collect::<Vec<Id<PlatformNode>>>();
+                Some(NSArray::from_vec(platform_nodes))
+            })
+            .flatten()
+        }
+
         #[method(isAccessibilitySelectorAllowed:)]
         fn is_selector_allowed(&self, selector: Sel) -> bool {
             self.resolve(|node| {
@@ -1269,11 +1379,31 @@ declare_class!(
                     let wrapper = NodeWrapper(node);
                     return wrapper.is_item_like();
                 }
+                if selector == sel!(accessibilityRows) && is_table(node) {
+                    return true;
+                }
                 if selector == sel!(accessibilityRows)
                     || selector == sel!(accessibilitySelectedRows)
                 {
                     let wrapper = NodeWrapper(node);
                     return wrapper.is_container_with_selectable_children()
+                }
+                if selector == sel!(accessibilityRowCount)
+                    || selector == sel!(accessibilityColumnHeaderUIElements)
+                {
+                    return is_table(node);
+                }
+                if selector == sel!(accessibilityColumnCount) {
+                    return is_table(node) && node.data().column_count().is_some();
+                }
+                if selector == sel!(accessibilityIndex) {
+                    return node.role() == Role::Row && node.data().row_index().is_some();
+                }
+                if selector == sel!(accessibilityRowIndexRange) {
+                    return is_cell(node) && node.data().row_index().is_some();
+                }
+                if selector == sel!(accessibilityColumnIndexRange) {
+                    return is_cell(node) && node.data().column_index().is_some();
                 }
                 if selector == sel!(setAccessibilitySelected:)
                     || selector == sel!(accessibilityPerformPick)
@@ -1290,7 +1420,8 @@ declare_class!(
                     return node.is_dialog();
                 }
                 if selector == sel!(accessibilityAttributeValue:) {
-                    return node.has_braille_label()
+                    return (node.role() == Role::Heading && node.level().is_some())
+                        || node.has_braille_label()
                         || node.has_braille_role_description()
                         || node.has_html_id()
                 }
