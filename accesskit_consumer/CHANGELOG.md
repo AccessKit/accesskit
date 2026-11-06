@@ -24,6 +24,13 @@
   * dependencies
     * accesskit bumped from 0.16.2 to 0.16.3
 
+## [0.39.3](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.39.2...accesskit_consumer-v0.39.3) (2026-11-06)
+
+
+### Bug Fixes
+
+* Keep subtree root grafted on updates without tree info ([#849](https://github.com/AccessKit/accesskit/issues/849)) ([52d3ee4](https://github.com/AccessKit/accesskit/commit/52d3ee4994087743bd7e0a6c2db516e02de82193))
+
 ## [0.39.2](https://github.com/AccessKit/accesskit/compare/accesskit_consumer-v0.39.1...accesskit_consumer-v0.39.2) (2026-10-25)
 
 
