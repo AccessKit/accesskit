@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "AccessKit Showcase module"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "AccessKit Showcase"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "AccessKit Showcase"
+    }
+  ]
+}

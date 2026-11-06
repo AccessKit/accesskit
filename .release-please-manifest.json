@@ -1,1 +1,1 @@
-{"accesskit":"0.25.2","accesskit_consumer":"0.39.2","adapters/macos":"0.27.2","adapters/windows":"0.35.2","adapters/winit":"0.34.2","adapters/unix":"0.24.1","adapters/atspi-common":"0.21.1","adapters/android":"0.9.1","adapters/ios":"0.2.2","example_common":"0.0.2"}
+{"accesskit":"0.25.2","accesskit_consumer":"0.39.2","adapters/macos":"0.27.2","adapters/ohos":"0.1.0","adapters/windows":"0.35.2","adapters/winit":"0.34.2","adapters/unix":"0.24.1","adapters/atspi-common":"0.21.1","adapters/android":"0.9.1","adapters/ios":"0.2.2","example_common":"0.0.2"}

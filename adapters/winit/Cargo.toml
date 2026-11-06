@@ -31,7 +31,7 @@ accesskit_windows = { version = "0.35.2", path = "../windows" }
 [target.'cfg(target_os = "macos")'.dependencies]
 accesskit_macos = { version = "0.27.2", path = "../macos" }
 
-[target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
+[target.'cfg(all(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"), not(target_env = "ohos")))'.dependencies]
 accesskit_unix = { version = "0.24.1", path = "../unix", optional = true, default-features = false }
 
 [target.'cfg(target_os = "android")'.dependencies]
