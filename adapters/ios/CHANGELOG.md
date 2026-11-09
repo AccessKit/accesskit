@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.3](https://github.com/AccessKit/accesskit/compare/accesskit_ios-v0.2.2...accesskit_ios-v0.2.3) (2026-11-09)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.39.2 to 0.39.3
+
 ## [0.2.2](https://github.com/AccessKit/accesskit/compare/accesskit_ios-v0.2.1...accesskit_ios-v0.2.2) (2026-10-25)
 
 
