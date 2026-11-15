@@ -44,7 +44,7 @@ use std::{ffi::c_void, ptr::null_mut};
 use crate::{
     context::{ActionHandlerNoMut, ActionHandlerWrapper, Context},
     event::{EventGenerator, QueuedEvents, layout_event, screen_changed_event},
-    filters::filter,
+    filters::{element_at_point, filter},
     node::PlatformNode,
     util::from_cg_point,
 };
@@ -495,7 +495,9 @@ impl Adapter {
         let Some(point) = from_cg_point(&view, &root, point) else {
             return null_mut();
         };
-        let node = root.node_at_point(point, &filter).unwrap_or(root);
+        let Some(node) = element_at_point(root, point) else {
+            return null_mut();
+        };
         match context.get_or_create_platform_node(node.id()) {
             Some(platform_node) => Retained::autorelease_return(platform_node) as *mut _,
             None => null_mut(),
