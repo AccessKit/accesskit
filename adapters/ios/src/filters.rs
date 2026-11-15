@@ -3,7 +3,9 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
+use accesskit::Point;
 use accesskit_consumer::{FilterResult, NodeRef};
+use std::iter::successors;
 
 pub(crate) use accesskit_consumer::common_filter as filter;
 
@@ -51,10 +53,20 @@ pub(crate) fn filter_for_is_accessibility_element(node: &NodeRef) -> FilterResul
     FilterResult::Include
 }
 
+/// Finds the accessibility element at a point, if any. Hit testing must only
+/// return accessibility elements: VoiceOver reads whatever it is given, then
+/// moves its cursor back to a real element.
+pub(crate) fn element_at_point<'a>(root: NodeRef<'a>, point: Point) -> Option<NodeRef<'a>> {
+    let hit = root.node_at_point(point, &filter).unwrap_or(root);
+    successors(Some(hit), |node| node.filtered_parent(&filter))
+        .filter(|node| filter_for_is_accessibility_element(node) == FilterResult::Include)
+        .last()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use accesskit::{Action, Node, NodeId, Role, TreeId, TreeInfo, TreeUpdate};
+    use accesskit::{Action, Node, NodeId, Rect, Role, TreeId, TreeInfo, TreeUpdate};
 
     const ROOT_ID: NodeId = NodeId(0);
     const CHILD_1_ID: NodeId = NodeId(1);
@@ -126,5 +138,49 @@ mod tests {
             ),
             FilterResult::Include,
         );
+    }
+
+    const CONTAINER_ID: NodeId = NodeId(1);
+    const BUTTON_ID: NodeId = NodeId(2);
+    const LABEL_ID: NodeId = NodeId(3);
+
+    // A container whose button covers only its right half, and whose button
+    // gets its label from a child.
+    fn hit_test(point: Point) -> Option<NodeId> {
+        let mut root = Node::new(Role::Window);
+        root.set_bounds(Rect::new(0.0, 0.0, 200.0, 200.0));
+        root.set_children(vec![CONTAINER_ID]);
+        let mut container = Node::new(Role::Group);
+        container.set_bounds(Rect::new(0.0, 0.0, 200.0, 100.0));
+        container.set_children(vec![BUTTON_ID]);
+        let mut button = Node::new(Role::Button);
+        button.add_action(Action::Click);
+        button.set_bounds(Rect::new(100.0, 0.0, 200.0, 100.0));
+        button.set_children(vec![LABEL_ID]);
+        let mut label = Node::new(Role::Label);
+        label.set_value("OK");
+        label.set_bounds(Rect::new(120.0, 20.0, 180.0, 80.0));
+        let tree = build_tree(vec![
+            (ROOT_ID, root),
+            (CONTAINER_ID, container),
+            (BUTTON_ID, button),
+            (LABEL_ID, label),
+        ]);
+        element_at_point(tree.state().root(), point).map(|node| node.locate().0)
+    }
+
+    #[test]
+    fn hit_test_skips_containers() {
+        assert_eq!(hit_test(Point::new(50.0, 50.0)), None);
+    }
+
+    #[test]
+    fn hit_test_finds_leaf() {
+        assert_eq!(hit_test(Point::new(110.0, 50.0)), Some(BUTTON_ID));
+    }
+
+    #[test]
+    fn hit_test_skips_children_of_leaf() {
+        assert_eq!(hit_test(Point::new(150.0, 50.0)), Some(BUTTON_ID));
     }
 }
