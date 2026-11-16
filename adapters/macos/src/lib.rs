@@ -22,4 +22,7 @@ pub use patch::add_focus_forwarder_to_window_class;
 mod subclass;
 pub use subclass::SubclassingAdapter;
 
+#[cfg(test)]
+mod tests;
+
 pub use objc2_foundation::{NSArray, NSObject, NSPoint};
