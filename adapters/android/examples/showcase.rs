@@ -4,7 +4,9 @@ use accesskit::{
 use accesskit_android::{
     Adapter, PlatformAction, QueuedEvents,
     jni::{
-        JNIEnv, JavaVM, NativeMethod,
+        Env, JavaVM, NativeMethod,
+        errors::Result,
+        jni_sig, jni_str, native_method,
         objects::{JClass, JObject, JString},
         sys::{JNI_FALSE, JNI_TRUE, JNI_VERSION_1_6, jboolean, jfloat, jint, jlong},
     },
@@ -259,10 +261,10 @@ fn input_connection_edits(
 #[derive(Default)]
 struct DeferredCallbacks(Vec<DeferredCallback>);
 
-type DeferredCallback = Box<dyn FnOnce(&mut JNIEnv, &JObject)>;
+type DeferredCallback = Box<dyn FnOnce(&mut Env, &JObject) -> Result<()>>;
 
 impl DeferredCallbacks {
-    fn push(&mut self, callback: impl FnOnce(&mut JNIEnv, &JObject) + 'static) {
+    fn push(&mut self, callback: impl FnOnce(&mut Env, &JObject) -> Result<()> + 'static) {
         self.0.push(Box::new(callback));
     }
 
@@ -270,10 +272,11 @@ impl DeferredCallbacks {
         self.push(move |env, host| events.raise(env, host));
     }
 
-    fn run(self, env: &mut JNIEnv, host: &JObject) {
+    fn run(self, env: &mut Env, host: &JObject) -> Result<()> {
         for callback in self.0 {
-            callback(env, host);
+            callback(env, host)?;
         }
+        Ok(())
     }
 }
 
@@ -326,8 +329,13 @@ impl ViewState {
             state.batch_edit_depth = 0;
             let is_text_editor = connection.is_some();
             deferred.push(move |env, host| {
-                env.call_method(host, "restartInput", "(Z)V", &[is_text_editor.into()])
-                    .unwrap();
+                env.call_method(
+                    host,
+                    jni_str!("restartInput"),
+                    jni_sig!("(Z)V"),
+                    &[is_text_editor.into()],
+                )?;
+                Ok(())
             });
         } else if let Some(input) = input.filter(|_| state.batch_edit_depth == 0) {
             let selection = reported_selection(&input);
@@ -339,22 +347,23 @@ impl ViewState {
                 deferred.push(move |env, host| {
                     env.call_method(
                         host,
-                        "updateSelection",
-                        "(IIII)V",
+                        jni_str!("updateSelection"),
+                        jni_sig!("(IIII)V"),
                         &[
                             anchor.into(),
                             focus.into(),
                             composition_start.into(),
                             composition_end.into(),
                         ],
-                    )
-                    .unwrap();
+                    )?;
+                    Ok(())
                 });
             }
         }
         if std::mem::take(&mut self.ui.show_keyboard) {
             deferred.push(|env, host| {
-                env.call_method(host, "showKeyboard", "()V", &[]).unwrap();
+                env.call_method(host, jni_str!("showKeyboard"), jni_sig!("()V"), &[])?;
+                Ok(())
             });
         }
     }
@@ -379,8 +388,13 @@ impl ViewState {
         };
         let delay = delay.as_nanos().div_ceil(1_000_000) as jlong;
         deferred.push(move |env, host| {
-            env.call_method(host, "scheduleDelayedMessage", "(J)V", &[delay.into()])
-                .unwrap();
+            env.call_method(
+                host,
+                jni_str!("scheduleDelayedMessage"),
+                jni_sig!("(J)V"),
+                &[delay.into()],
+            )?;
+            Ok(())
         });
     }
 }
@@ -392,18 +406,19 @@ type ViewHandle = Mutex<ViewState>;
 /// `handle` must have been returned by `nativeCreate` and not yet passed
 /// to `nativeDestroy`.
 unsafe fn with_view_state<'local, T>(
-    env: &mut JNIEnv<'local>,
+    env: &mut Env<'local>,
     host: &JObject,
     handle: jlong,
-    f: impl FnOnce(&mut JNIEnv<'local>, &mut ViewState, &mut DeferredCallbacks) -> T,
-) -> T {
+    f: impl FnOnce(&mut Env<'local>, &mut ViewState, &mut DeferredCallbacks) -> Result<T>,
+) -> Result<T> {
     let state = unsafe { &*(handle as *const ViewHandle) };
     let mut deferred = DeferredCallbacks::default();
     let mut guard = state.lock().unwrap();
     let result = f(env, &mut guard, &mut deferred);
     drop(guard);
-    deferred.run(env, host);
-    result
+    let result = result?;
+    deferred.run(env, host)?;
+    Ok(result)
 }
 
 fn translate_key(key_code: jint, unicode_char: jint, key_state: KeyState) -> Option<Key> {
@@ -448,7 +463,7 @@ fn install_panic_hook() {
 #[cfg(not(target_os = "android"))]
 fn install_panic_hook() {}
 
-extern "system" fn create(_env: JNIEnv, _class: JClass) -> jlong {
+fn native_create<'local>(_env: &mut Env<'local>, _class: JClass<'local>) -> Result<jlong> {
     let state = Box::new(Mutex::new(ViewState {
         adapter: Adapter::default(),
         ui: Ui {
@@ -457,28 +472,34 @@ extern "system" fn create(_env: JNIEnv, _class: JClass) -> jlong {
         },
         input_method: InputMethodState::default(),
     }));
-    Box::into_raw(state) as jlong
+    Ok(Box::into_raw(state) as jlong)
 }
 
-extern "system" fn destroy(_env: JNIEnv, _class: JClass, handle: jlong) {
+fn native_destroy<'local>(
+    _env: &mut Env<'local>,
+    _class: JClass<'local>,
+    handle: jlong,
+) -> Result<()> {
     // SAFETY: The Java view calls this at most once per handle and never
     // uses the handle afterwards.
     drop(unsafe { Box::from_raw(handle as *mut ViewHandle) });
+    Ok(())
 }
 
-extern "system" fn set_viewport(
-    mut env: JNIEnv,
-    _class: JClass,
+#[allow(clippy::too_many_arguments)]
+fn native_set_viewport<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
     handle: jlong,
-    host: JObject,
+    host: JObject<'local>,
     scale_factor: jfloat,
     safe_area_inset_x: jfloat,
     safe_area_inset_y: jfloat,
     safe_area_width: jfloat,
     safe_area_height: jfloat,
-) {
+) -> Result<()> {
     unsafe {
-        with_view_state(&mut env, &host, handle, |_env, state, deferred| {
+        with_view_state(env, &host, handle, |_env, state, deferred| {
             state.ui.set_viewport(
                 scale_factor.into(),
                 Vec2::new(safe_area_inset_x.into(), safe_area_inset_y.into()),
@@ -486,19 +507,20 @@ extern "system" fn set_viewport(
             );
             state.update_accessibility_tree(deferred);
             state.update_input_method(deferred);
+            Ok(())
         })
     }
 }
 
-extern "system" fn create_accessibility_node_info<'local>(
-    mut env: JNIEnv<'local>,
+fn native_create_accessibility_node_info<'local>(
+    env: &mut Env<'local>,
     _class: JClass<'local>,
     handle: jlong,
     host: JObject<'local>,
     virtual_view_id: jint,
-) -> JObject<'local> {
+) -> Result<JObject<'local>> {
     unsafe {
-        with_view_state(&mut env, &host, handle, |env, state, _deferred| {
+        with_view_state(env, &host, handle, |env, state, _deferred| {
             state
                 .adapter
                 .create_accessibility_node_info(&mut state.ui, env, &host, virtual_view_id)
@@ -506,15 +528,15 @@ extern "system" fn create_accessibility_node_info<'local>(
     }
 }
 
-extern "system" fn find_focus<'local>(
-    mut env: JNIEnv<'local>,
+fn native_find_focus<'local>(
+    env: &mut Env<'local>,
     _class: JClass<'local>,
     handle: jlong,
     host: JObject<'local>,
     focus_type: jint,
-) -> JObject<'local> {
+) -> Result<JObject<'local>> {
     unsafe {
-        with_view_state(&mut env, &host, handle, |env, state, _deferred| {
+        with_view_state(env, &host, handle, |env, state, _deferred| {
             state
                 .adapter
                 .find_focus(&mut state.ui, env, &host, focus_type)
@@ -522,73 +544,74 @@ extern "system" fn find_focus<'local>(
     }
 }
 
-extern "system" fn perform_action(
-    mut env: JNIEnv,
-    _class: JClass,
+fn native_perform_action<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
     handle: jlong,
-    host: JObject,
+    host: JObject<'local>,
     virtual_view_id: jint,
     action: jint,
-    arguments: JObject,
-) -> jboolean {
+    arguments: JObject<'local>,
+) -> Result<jboolean> {
     unsafe {
-        with_view_state(&mut env, &host, handle, |env, state, deferred| {
-            let Some(action) = PlatformAction::from_java(env, action, &arguments) else {
-                return JNI_FALSE;
+        with_view_state(env, &host, handle, |env, state, deferred| {
+            let Some(action) = PlatformAction::from_java(env, action, &arguments)? else {
+                return Ok(JNI_FALSE);
             };
             let ViewState { adapter, ui, .. } = state;
             let Some(events) = adapter.perform_action(ui, virtual_view_id, &action) else {
-                return JNI_FALSE;
+                return Ok(JNI_FALSE);
             };
             deferred.raise(events);
             state.after_input(deferred);
-            JNI_TRUE
+            Ok(JNI_TRUE)
         })
     }
 }
 
-extern "system" fn on_hover_event(
-    mut env: JNIEnv,
-    _class: JClass,
+fn native_on_hover_event<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
     handle: jlong,
-    host: JObject,
+    host: JObject<'local>,
     action: jint,
     x: jfloat,
     y: jfloat,
-) -> jboolean {
+) -> Result<jboolean> {
     unsafe {
-        with_view_state(&mut env, &host, handle, |_env, state, deferred| {
+        with_view_state(env, &host, handle, |_env, state, deferred| {
             let ViewState { adapter, ui, .. } = state;
             let Some(events) = adapter.on_hover_event(ui, action, x, y) else {
-                return JNI_FALSE;
+                return Ok(JNI_FALSE);
             };
             deferred.raise(events);
-            JNI_TRUE
+            Ok(JNI_TRUE)
         })
     }
 }
 
-extern "system" fn on_key_event(
-    mut env: JNIEnv,
-    _class: JClass,
+#[allow(clippy::too_many_arguments)]
+fn native_on_key_event<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
     handle: jlong,
-    host: JObject,
+    host: JObject<'local>,
     action: jint,
     key_code: jint,
     unicode_char: jint,
     shift_pressed: jboolean,
     ctrl_pressed: jboolean,
-) -> jboolean {
+) -> Result<jboolean> {
     let key_state = match action {
         ACTION_DOWN => KeyState::Pressed,
         ACTION_UP => KeyState::Released,
-        _ => return JNI_FALSE,
+        _ => return Ok(JNI_FALSE),
     };
     let Some(key) = translate_key(key_code, unicode_char, key_state) else {
-        return JNI_FALSE;
+        return Ok(JNI_FALSE);
     };
     unsafe {
-        with_view_state(&mut env, &host, handle, |_env, state, deferred| {
+        with_view_state(env, &host, handle, |_env, state, deferred| {
             let handled = state.ui.handle_key(KeyEvent {
                 key,
                 state: key_state,
@@ -598,39 +621,40 @@ extern "system" fn on_key_event(
                 },
             });
             state.after_input(deferred);
-            if handled { JNI_TRUE } else { JNI_FALSE }
+            Ok(if handled { JNI_TRUE } else { JNI_FALSE })
         })
     }
 }
 
-extern "system" fn process_due_messages(
-    mut env: JNIEnv,
-    _class: JClass,
+fn native_process_due_messages<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
     handle: jlong,
-    host: JObject,
-) {
+    host: JObject<'local>,
+) -> Result<()> {
     unsafe {
-        with_view_state(&mut env, &host, handle, |_env, state, deferred| {
+        with_view_state(env, &host, handle, |_env, state, deferred| {
             if state.ui.process_due_messages() {
                 state.update_accessibility_tree(deferred);
                 state.update_input_method(deferred);
             }
             state.schedule_next_message(deferred);
+            Ok(())
         })
     }
 }
 
-extern "system" fn create_input_connection(
-    mut env: JNIEnv,
-    _class: JClass,
+fn native_create_input_connection<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
     handle: jlong,
-    host: JObject,
-    editor_info: JObject,
-) -> jboolean {
+    host: JObject<'local>,
+    editor_info: JObject<'local>,
+) -> Result<jboolean> {
     unsafe {
-        with_view_state(&mut env, &host, handle, |env, state, _deferred| {
+        with_view_state(env, &host, handle, |env, state, _deferred| {
             let Some(input) = state.connect_input_method() else {
-                return JNI_FALSE;
+                return Ok(JNI_FALSE);
             };
             let enter_action = if input.input_type == InputType::Multiline {
                 IME_FLAG_NO_ENTER_ACTION
@@ -657,31 +681,30 @@ extern "system" fn create_input_connection(
             let ime_options = ime_options | IME_FLAG_NO_FULLSCREEN | IME_FLAG_NO_EXTRACT_UI;
             let (anchor, focus, _) = reported_selection(&input);
             for (name, value) in [
-                ("inputType", input_type),
-                ("imeOptions", ime_options),
-                ("initialSelStart", anchor),
-                ("initialSelEnd", focus),
+                (jni_str!("inputType"), input_type),
+                (jni_str!("imeOptions"), ime_options),
+                (jni_str!("initialSelStart"), anchor),
+                (jni_str!("initialSelEnd"), focus),
             ] {
-                env.set_field(&editor_info, name, "I", value.into())
-                    .unwrap();
+                env.set_field(&editor_info, name, jni_sig!("I"), value.into())?;
             }
-            JNI_TRUE
+            Ok(JNI_TRUE)
         })
     }
 }
 
-extern "system" fn ime_get_text<'local>(
-    mut env: JNIEnv<'local>,
+fn native_ime_get_text<'local>(
+    env: &mut Env<'local>,
     _class: JClass<'local>,
     handle: jlong,
     host: JObject<'local>,
     request: jint,
     length: jint,
-) -> JString<'local> {
+) -> Result<JString<'local>> {
     unsafe {
-        with_view_state(&mut env, &host, handle, |env, state, _deferred| {
+        with_view_state(env, &host, handle, |env, state, _deferred| {
             let Some(input) = state.ui.focused_text_input() else {
-                return JObject::null().into();
+                return Ok(JString::default());
             };
             let selection = selection(&input);
             let start = utf16_offset(&input.text, selection.start);
@@ -692,31 +715,31 @@ extern "system" fn ime_get_text<'local>(
                 IME_TEXT_BEFORE_CURSOR => start.saturating_sub(length)..start,
                 IME_TEXT_AFTER_CURSOR => end..end.saturating_add(length).min(text.len()),
                 IME_SELECTED_TEXT if start != end => start..end,
-                _ => return JObject::null().into(),
+                _ => return Ok(JString::default()),
             };
             env.new_string(String::from_utf16_lossy(&text[range]))
-                .unwrap()
         })
     }
 }
 
-extern "system" fn ime_edit(
-    mut env: JNIEnv,
-    _class: JClass,
+#[allow(clippy::too_many_arguments)]
+fn native_ime_edit<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
     handle: jlong,
-    host: JObject,
+    host: JObject<'local>,
     request: jint,
-    text: JString,
+    text: JString<'local>,
     a: jint,
     b: jint,
-) -> jboolean {
-    let text = if text.is_null() {
-        String::new()
-    } else {
-        env.get_string(&text).unwrap().into()
-    };
+) -> Result<jboolean> {
     unsafe {
-        with_view_state(&mut env, &host, handle, |_env, state, deferred| {
+        with_view_state(env, &host, handle, |env, state, deferred| {
+            let text = if text.is_null() {
+                String::new()
+            } else {
+                text.try_to_string(env)?
+            };
             if request == IME_PERFORM_EDITOR_ACTION {
                 let handled = match a {
                     IME_ACTION_NEXT | IME_ACTION_PREVIOUS => state.ui.handle_key(KeyEvent {
@@ -730,50 +753,163 @@ extern "system" fn ime_edit(
                     _ => state.ui.edit_focused_text(&ImeEdit::Submit),
                 };
                 state.after_input(deferred);
-                return if handled { JNI_TRUE } else { JNI_FALSE };
+                return Ok(if handled { JNI_TRUE } else { JNI_FALSE });
             }
             let Some(edits) = state
                 .ui
                 .focused_text_input()
                 .and_then(|input| input_connection_edits(&input, request, text, a, b))
             else {
-                return JNI_FALSE;
+                return Ok(JNI_FALSE);
             };
             for edit in &edits {
                 state.ui.edit_focused_text(edit);
             }
             state.after_ime_edit(deferred);
-            JNI_TRUE
+            Ok(JNI_TRUE)
         })
     }
 }
 
-extern "system" fn ime_batch_edit(
-    mut env: JNIEnv,
-    _class: JClass,
+fn native_ime_batch_edit<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
     handle: jlong,
-    host: JObject,
+    host: JObject<'local>,
     begin: jboolean,
-) -> jboolean {
+) -> Result<jboolean> {
     unsafe {
-        with_view_state(&mut env, &host, handle, |_env, state, deferred| {
+        with_view_state(env, &host, handle, |_env, state, deferred| {
             let depth = &mut state.input_method.batch_edit_depth;
             if begin != JNI_FALSE {
                 *depth += 1;
-                return JNI_TRUE;
+                return Ok(JNI_TRUE);
             }
             let Some(new_depth) = depth.checked_sub(1) else {
-                return JNI_FALSE;
+                return Ok(JNI_FALSE);
             };
             *depth = new_depth;
             if new_depth > 0 {
-                return JNI_TRUE;
+                return Ok(JNI_TRUE);
             }
             state.update_input_method(deferred);
-            JNI_FALSE
+            Ok(JNI_FALSE)
         })
     }
 }
+
+// `native_method!` expands to `AtomicBool::fetch_update`, deprecated since Rust 1.100.
+#[allow(deprecated)]
+const NATIVE_METHODS: &[NativeMethod] = &[
+    native_method! {
+        catch_unwind = false,
+        static fn native_create() -> jlong,
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn native_destroy(handle: jlong),
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn native_set_viewport(
+            handle: jlong,
+            host: android.view.View,
+            scale_factor: jfloat,
+            safe_area_inset_x: jfloat,
+            safe_area_inset_y: jfloat,
+            safe_area_width: jfloat,
+            safe_area_height: jfloat,
+        ),
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn native_create_accessibility_node_info(
+            handle: jlong,
+            host: android.view.View,
+            virtual_view_id: jint,
+        ) -> android.view.accessibility.AccessibilityNodeInfo,
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn native_find_focus(
+            handle: jlong,
+            host: android.view.View,
+            focus_type: jint,
+        ) -> android.view.accessibility.AccessibilityNodeInfo,
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn native_perform_action(
+            handle: jlong,
+            host: android.view.View,
+            virtual_view_id: jint,
+            action: jint,
+            arguments: android.os.Bundle,
+        ) -> jboolean,
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn native_on_hover_event(
+            handle: jlong,
+            host: android.view.View,
+            action: jint,
+            x: jfloat,
+            y: jfloat,
+        ) -> jboolean,
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn native_on_key_event(
+            handle: jlong,
+            host: android.view.View,
+            action: jint,
+            key_code: jint,
+            unicode_char: jint,
+            shift_pressed: jboolean,
+            ctrl_pressed: jboolean,
+        ) -> jboolean,
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn native_process_due_messages(handle: jlong, host: android.view.View),
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn native_create_input_connection(
+            handle: jlong,
+            host: android.view.View,
+            editor_info: android.view.inputmethod.EditorInfo,
+        ) -> jboolean,
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn native_ime_get_text(
+            handle: jlong,
+            host: android.view.View,
+            request: jint,
+            length: jint,
+        ) -> JString,
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn native_ime_edit(
+            handle: jlong,
+            host: android.view.View,
+            request: jint,
+            text: JString,
+            a: jint,
+            b: jint,
+        ) -> jboolean,
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn native_ime_batch_edit(
+            handle: jlong,
+            host: android.view.View,
+            begin: jboolean,
+        ) -> jboolean,
+    },
+];
 
 /// # Safety
 ///
@@ -784,80 +920,16 @@ pub unsafe extern "system" fn JNI_OnLoad(
     _reserved: *mut c_void,
 ) -> jint {
     install_panic_hook();
-    let vm = unsafe { JavaVM::from_raw(vm) }.unwrap();
-    let mut env = vm.get_env().unwrap();
-    env.register_native_methods(
-        "dev/accesskit/showcase/ShowcaseView",
-        &[
-            NativeMethod {
-                name: "nativeCreate".into(),
-                sig: "()J".into(),
-                fn_ptr: create as *mut c_void,
-            },
-            NativeMethod {
-                name: "nativeDestroy".into(),
-                sig: "(J)V".into(),
-                fn_ptr: destroy as *mut c_void,
-            },
-            NativeMethod {
-                name: "nativeSetViewport".into(),
-                sig: "(JLandroid/view/View;FFFFF)V".into(),
-                fn_ptr: set_viewport as *mut c_void,
-            },
-            NativeMethod {
-                name: "nativeCreateAccessibilityNodeInfo".into(),
-                sig: "(JLandroid/view/View;I)Landroid/view/accessibility/AccessibilityNodeInfo;"
-                    .into(),
-                fn_ptr: create_accessibility_node_info as *mut c_void,
-            },
-            NativeMethod {
-                name: "nativeFindFocus".into(),
-                sig: "(JLandroid/view/View;I)Landroid/view/accessibility/AccessibilityNodeInfo;"
-                    .into(),
-                fn_ptr: find_focus as *mut c_void,
-            },
-            NativeMethod {
-                name: "nativePerformAction".into(),
-                sig: "(JLandroid/view/View;IILandroid/os/Bundle;)Z".into(),
-                fn_ptr: perform_action as *mut c_void,
-            },
-            NativeMethod {
-                name: "nativeOnHoverEvent".into(),
-                sig: "(JLandroid/view/View;IFF)Z".into(),
-                fn_ptr: on_hover_event as *mut c_void,
-            },
-            NativeMethod {
-                name: "nativeOnKeyEvent".into(),
-                sig: "(JLandroid/view/View;IIIZZ)Z".into(),
-                fn_ptr: on_key_event as *mut c_void,
-            },
-            NativeMethod {
-                name: "nativeProcessDueMessages".into(),
-                sig: "(JLandroid/view/View;)V".into(),
-                fn_ptr: process_due_messages as *mut c_void,
-            },
-            NativeMethod {
-                name: "nativeCreateInputConnection".into(),
-                sig: "(JLandroid/view/View;Landroid/view/inputmethod/EditorInfo;)Z".into(),
-                fn_ptr: create_input_connection as *mut c_void,
-            },
-            NativeMethod {
-                name: "nativeImeGetText".into(),
-                sig: "(JLandroid/view/View;II)Ljava/lang/String;".into(),
-                fn_ptr: ime_get_text as *mut c_void,
-            },
-            NativeMethod {
-                name: "nativeImeEdit".into(),
-                sig: "(JLandroid/view/View;ILjava/lang/String;II)Z".into(),
-                fn_ptr: ime_edit as *mut c_void,
-            },
-            NativeMethod {
-                name: "nativeImeBatchEdit".into(),
-                sig: "(JLandroid/view/View;Z)Z".into(),
-                fn_ptr: ime_batch_edit as *mut c_void,
-            },
-        ],
-    )
+    let vm = unsafe { JavaVM::from_raw(vm) };
+    vm.attach_current_thread(|env| {
+        // SAFETY: `native_method!` checks each function against its signature.
+        unsafe {
+            env.register_native_methods(
+                jni_str!("dev/accesskit/showcase/ShowcaseView"),
+                NATIVE_METHODS,
+            )
+        }
+    })
     .unwrap();
     JNI_VERSION_1_6
 }

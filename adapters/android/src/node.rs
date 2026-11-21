@@ -10,18 +10,23 @@
 
 use accesskit::{Action, Live, Role, Toggled};
 use accesskit_consumer::NodeRef;
-use jni::{JNIEnv, objects::JObject, sys::jint};
+use jni::{Env, errors::Result, jni_sig, jni_str, objects::JObject, sys::jint};
 
 use crate::{filters::filter, util::*};
 
-pub(crate) fn add_action(env: &mut JNIEnv, node_info: &JObject, action: jint) {
+pub(crate) fn add_action(env: &mut Env, node_info: &JObject, action: jint) -> Result<()> {
     // Note: We're using the deprecated addAction signature.
     // But this one is much easier to call from JNI since it uses
     // a simple integer constant. Revisit if Android ever gets strict
     // about prohibiting deprecated methods for applications targeting
     // newer SDKs.
-    env.call_method(node_info, "addAction", "(I)V", &[action.into()])
-        .unwrap();
+    env.call_method(
+        node_info,
+        jni_str!("addAction"),
+        jni_sig!("(I)V"),
+        &[action.into()],
+    )?;
+    Ok(())
 }
 
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a NodeRef<'a>);
@@ -195,245 +200,254 @@ impl NodeWrapper<'_> {
 
     pub(crate) fn populate_node_info(
         &self,
-        env: &mut JNIEnv,
+        env: &mut Env,
         host: &JObject,
         id_map: &mut NodeIdMap,
         node_info: &JObject,
-    ) {
+    ) -> Result<()> {
         for child in self.0.filtered_children(&filter) {
             env.call_method(
                 node_info,
-                "addChild",
-                "(Landroid/view/View;I)V",
+                jni_str!("addChild"),
+                jni_sig!("(Landroid/view/View;I)V"),
                 &[host.into(), id_map.get_or_create_java_id(&child).into()],
-            )
-            .unwrap();
+            )?;
         }
         if let Some(parent) = self.0.filtered_parent(&filter) {
             if parent.is_root() {
                 env.call_method(
                     node_info,
-                    "setParent",
-                    "(Landroid/view/View;)V",
+                    jni_str!("setParent"),
+                    jni_sig!("(Landroid/view/View;)V"),
                     &[host.into()],
-                )
-                .unwrap();
+                )?;
             } else {
                 env.call_method(
                     node_info,
-                    "setParent",
-                    "(Landroid/view/View;I)V",
+                    jni_str!("setParent"),
+                    jni_sig!("(Landroid/view/View;I)V"),
                     &[host.into(), id_map.get_or_create_java_id(&parent).into()],
-                )
-                .unwrap();
+                )?;
             }
         }
 
         if let Some(rect) = self.0.bounding_box() {
-            let location = env.new_int_array(2).unwrap();
-            env.call_method(host, "getLocationOnScreen", "([I)V", &[(&location).into()])
-                .unwrap();
+            let location = env.new_int_array(2)?;
+            env.call_method(
+                host,
+                jni_str!("getLocationOnScreen"),
+                jni_sig!("([I)V"),
+                &[(&location).into()],
+            )?;
             let mut location_buf = [0; 2];
-            env.get_int_array_region(&location, 0, &mut location_buf)
-                .unwrap();
+            location.get_region(env, 0, &mut location_buf)?;
             let host_screen_x = location_buf[0];
             let host_screen_y = location_buf[1];
-            let android_rect_class = env.find_class("android/graphics/Rect").unwrap();
-            let android_rect = env
-                .new_object(
-                    &android_rect_class,
-                    "(IIII)V",
-                    &[
-                        ((rect.x0 as jint) + host_screen_x).into(),
-                        ((rect.y0 as jint) + host_screen_y).into(),
-                        ((rect.x1 as jint) + host_screen_x).into(),
-                        ((rect.y1 as jint) + host_screen_y).into(),
-                    ],
-                )
-                .unwrap();
+            let android_rect_class = env.find_class(jni_str!("android/graphics/Rect"))?;
+            let android_rect = env.new_object(
+                &android_rect_class,
+                jni_sig!("(IIII)V"),
+                &[
+                    ((rect.x0 as jint) + host_screen_x).into(),
+                    ((rect.y0 as jint) + host_screen_y).into(),
+                    ((rect.x1 as jint) + host_screen_x).into(),
+                    ((rect.y1 as jint) + host_screen_y).into(),
+                ],
+            )?;
             env.call_method(
                 node_info,
-                "setBoundsInScreen",
-                "(Landroid/graphics/Rect;)V",
+                jni_str!("setBoundsInScreen"),
+                jni_sig!("(Landroid/graphics/Rect;)V"),
                 &[(&android_rect).into()],
-            )
-            .unwrap();
+            )?;
         }
 
         if self.is_checkable() {
-            env.call_method(node_info, "setCheckable", "(Z)V", &[true.into()])
-                .unwrap();
-            env.call_method(node_info, "setChecked", "(Z)V", &[self.is_checked().into()])
-                .unwrap();
+            env.call_method(
+                node_info,
+                jni_str!("setCheckable"),
+                jni_sig!("(Z)V"),
+                &[true.into()],
+            )?;
+            env.call_method(
+                node_info,
+                jni_str!("setChecked"),
+                jni_sig!("(Z)V"),
+                &[self.is_checked().into()],
+            )?;
         }
         env.call_method(
             node_info,
-            "setEditable",
-            "(Z)V",
+            jni_str!("setEditable"),
+            jni_sig!("(Z)V"),
             &[self.is_editable().into()],
-        )
-        .unwrap();
-        env.call_method(node_info, "setEnabled", "(Z)V", &[self.is_enabled().into()])
-            .unwrap();
+        )?;
         env.call_method(
             node_info,
-            "setFocusable",
-            "(Z)V",
+            jni_str!("setEnabled"),
+            jni_sig!("(Z)V"),
+            &[self.is_enabled().into()],
+        )?;
+        env.call_method(
+            node_info,
+            jni_str!("setFocusable"),
+            jni_sig!("(Z)V"),
             &[self.is_focusable().into()],
-        )
-        .unwrap();
-        env.call_method(node_info, "setFocused", "(Z)V", &[self.is_focused().into()])
-            .unwrap();
+        )?;
         env.call_method(
             node_info,
-            "setPassword",
-            "(Z)V",
+            jni_str!("setFocused"),
+            jni_sig!("(Z)V"),
+            &[self.is_focused().into()],
+        )?;
+        env.call_method(
+            node_info,
+            jni_str!("setPassword"),
+            jni_sig!("(Z)V"),
             &[self.is_password().into()],
-        )
-        .unwrap();
+        )?;
         env.call_method(
             node_info,
-            "setScrollable",
-            "(Z)V",
+            jni_str!("setScrollable"),
+            jni_sig!("(Z)V"),
             &[self.is_scrollable().into()],
-        )
-        .unwrap();
+        )?;
         env.call_method(
             node_info,
-            "setSelected",
-            "(Z)V",
+            jni_str!("setSelected"),
+            jni_sig!("(Z)V"),
             &[self.is_selected().into()],
-        )
-        .unwrap();
+        )?;
         // TBD: When, if ever, should the visible-to-user property be false?
-        env.call_method(node_info, "setVisibleToUser", "(Z)V", &[true.into()])
-            .unwrap();
+        env.call_method(
+            node_info,
+            jni_str!("setVisibleToUser"),
+            jni_sig!("(Z)V"),
+            &[true.into()],
+        )?;
         if let Some(desc) = self.content_description() {
-            let desc = env.new_string(desc).unwrap();
+            let desc = env.new_string(desc)?;
             env.call_method(
                 node_info,
-                "setContentDescription",
-                "(Ljava/lang/CharSequence;)V",
+                jni_str!("setContentDescription"),
+                jni_sig!("(Ljava/lang/CharSequence;)V"),
                 &[(&desc).into()],
-            )
-            .unwrap();
+            )?;
         }
 
         if let Some(text) = self.text() {
-            let text = env.new_string(text).unwrap();
+            let text = env.new_string(text)?;
             env.call_method(
                 node_info,
-                "setText",
-                "(Ljava/lang/CharSequence;)V",
+                jni_str!("setText"),
+                jni_sig!("(Ljava/lang/CharSequence;)V"),
                 &[(&text).into()],
-            )
-            .unwrap();
+            )?;
         }
         if let Some((start, end)) = self.text_selection() {
             env.call_method(
                 node_info,
-                "setTextSelection",
-                "(II)V",
+                jni_str!("setTextSelection"),
+                jni_sig!("(II)V"),
                 &[(start as jint).into(), (end as jint).into()],
-            )
-            .unwrap();
+            )?;
         }
 
         if let Some(url) = self.url() {
             let extras = env
-                .call_method(node_info, "getExtras", "()Landroid/os/Bundle;", &[])
-                .unwrap()
-                .l()
-                .unwrap();
-            let key = env.new_string("AccessibilityNodeInfo.targetUrl").unwrap();
-            let value = env.new_string(url).unwrap();
+                .call_method(
+                    node_info,
+                    jni_str!("getExtras"),
+                    jni_sig!("()Landroid/os/Bundle;"),
+                    &[],
+                )?
+                .l()?;
+            let key = env.new_string("AccessibilityNodeInfo.targetUrl")?;
+            let value = env.new_string(url)?;
             env.call_method(
                 &extras,
-                "putString",
-                "(Ljava/lang/String;Ljava/lang/String;)V",
+                jni_str!("putString"),
+                jni_sig!("(Ljava/lang/String;Ljava/lang/String;)V"),
                 &[(&key).into(), (&value).into()],
-            )
-            .unwrap();
+            )?;
         }
 
-        let class_name = env.new_string(self.class_name()).unwrap();
+        let class_name = env.new_string(self.class_name())?;
         env.call_method(
             node_info,
-            "setClassName",
-            "(Ljava/lang/CharSequence;)V",
+            jni_str!("setClassName"),
+            jni_sig!("(Ljava/lang/CharSequence;)V"),
             &[(&class_name).into()],
-        )
-        .unwrap();
+        )?;
 
         let can_focus = self.is_focusable() && !self.0.is_focused();
         // Without a click action, TalkBack handles a double-tap on a range
         // control by tapping its center which can be useful to quickly
         // set a slider value in the middle.
         if self.0.is_clickable(&filter) || (can_focus && !self.is_range_control()) {
-            add_action(env, node_info, ACTION_CLICK);
+            add_action(env, node_info, ACTION_CLICK)?;
         }
         if can_focus {
-            add_action(env, node_info, ACTION_FOCUS);
+            add_action(env, node_info, ACTION_FOCUS)?;
         }
         if self.0.supports_text_ranges() {
-            add_action(env, node_info, ACTION_SET_SELECTION);
-            add_action(env, node_info, ACTION_NEXT_AT_MOVEMENT_GRANULARITY);
-            add_action(env, node_info, ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY);
+            add_action(env, node_info, ACTION_SET_SELECTION)?;
+            add_action(env, node_info, ACTION_NEXT_AT_MOVEMENT_GRANULARITY)?;
+            add_action(env, node_info, ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY)?;
             env.call_method(
                 node_info,
-                "setMovementGranularities",
-                "(I)V",
+                jni_str!("setMovementGranularities"),
+                jni_sig!("(I)V"),
                 &[(MOVEMENT_GRANULARITY_CHARACTER
                     | MOVEMENT_GRANULARITY_WORD
                     | MOVEMENT_GRANULARITY_LINE
                     | MOVEMENT_GRANULARITY_PARAGRAPH)
                     .into()],
-            )
-            .unwrap();
+            )?;
         }
         if self.0.supports_action(Action::ScrollLeft, &filter)
             || self.0.supports_action(Action::ScrollUp, &filter)
             || self.0.supports_decrement(&filter)
         {
-            add_action(env, node_info, ACTION_SCROLL_BACKWARD);
+            add_action(env, node_info, ACTION_SCROLL_BACKWARD)?;
         }
         if self.0.supports_action(Action::ScrollRight, &filter)
             || self.0.supports_action(Action::ScrollDown, &filter)
             || self.0.supports_increment(&filter)
         {
-            add_action(env, node_info, ACTION_SCROLL_FORWARD);
+            add_action(env, node_info, ACTION_SCROLL_FORWARD)?;
         }
 
         if let Some(range) = self.range() {
-            let range_info = range.to_java(env);
+            let range_info = range.to_java(env)?;
             env.call_method(
                 node_info,
-                "setRangeInfo",
-                "(Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;)V",
+                jni_str!("setRangeInfo"),
+                jni_sig!("(Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;)V"),
                 &[(&range_info).into()],
-            )
-            .unwrap();
+            )?;
         }
         if self.supports_set_progress() {
-            let action_class = env
-                .find_class("android/view/accessibility/AccessibilityNodeInfo$AccessibilityAction")
-                .unwrap();
+            let action_class = env.find_class(jni_str!(
+                "android/view/accessibility/AccessibilityNodeInfo$AccessibilityAction"
+            ))?;
             let action = env
                 .get_static_field(
                     &action_class,
-                    "ACTION_SET_PROGRESS",
-                    "Landroid/view/accessibility/AccessibilityNodeInfo$AccessibilityAction;",
-                )
-                .unwrap()
-                .l()
-                .unwrap();
+                    jni_str!("ACTION_SET_PROGRESS"),
+                    jni_sig!(
+                        "Landroid/view/accessibility/AccessibilityNodeInfo$AccessibilityAction;"
+                    ),
+                )?
+                .l()?;
             env.call_method(
                 node_info,
-                "addAction",
-                "(Landroid/view/accessibility/AccessibilityNodeInfo$AccessibilityAction;)V",
+                jni_str!("addAction"),
+                jni_sig!(
+                    "(Landroid/view/accessibility/AccessibilityNodeInfo$AccessibilityAction;)V"
+                ),
                 &[(&action).into()],
-            )
-            .unwrap();
+            )?;
         }
 
         let live = match self.0.live() {
@@ -441,7 +455,12 @@ impl NodeWrapper<'_> {
             Live::Polite => LIVE_REGION_POLITE,
             Live::Assertive => LIVE_REGION_ASSERTIVE,
         };
-        env.call_method(node_info, "setLiveRegion", "(I)V", &[live.into()])
-            .unwrap();
+        env.call_method(
+            node_info,
+            jni_str!("setLiveRegion"),
+            jni_sig!("(I)V"),
+            &[live.into()],
+        )?;
+        Ok(())
     }
 }

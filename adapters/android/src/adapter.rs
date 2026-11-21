@@ -14,7 +14,9 @@ use accesskit::{
 };
 use accesskit_consumer::{FilterResult, NodeRef, TextPosition, Tree, TreeChangeHandler};
 use jni::{
-    JNIEnv,
+    Env,
+    errors::Result,
+    jni_sig, jni_str,
     objects::JObject,
     sys::{jfloat, jint},
 };
@@ -322,58 +324,55 @@ impl Adapter {
     pub fn create_accessibility_node_info<'local, H: ActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
-        env: &mut JNIEnv<'local>,
+        env: &mut Env<'local>,
         host: &JObject,
         virtual_view_id: jint,
-    ) -> JObject<'local> {
+    ) -> Result<JObject<'local>> {
         let tree = self.state.get_or_init_tree(activation_handler);
         let tree_state = tree.state();
         let node = if virtual_view_id == HOST_VIEW_ID {
             tree_state.root()
         } else {
             let Some(accesskit_id) = self.node_id_map.get_accesskit_id(virtual_view_id) else {
-                return JObject::null();
+                return Ok(JObject::null());
             };
             let Some(node) = tree_state.node_by_id(accesskit_id) else {
-                return JObject::null();
+                return Ok(JObject::null());
             };
             node
         };
 
-        let node_info_class = env
-            .find_class("android/view/accessibility/AccessibilityNodeInfo")
-            .unwrap();
+        let node_info_class =
+            env.find_class(jni_str!("android/view/accessibility/AccessibilityNodeInfo"))?;
         let node_info = env
             .call_static_method(
                 &node_info_class,
-                "obtain",
-                "(Landroid/view/View;I)Landroid/view/accessibility/AccessibilityNodeInfo;",
+                jni_str!("obtain"),
+                jni_sig!(
+                    "(Landroid/view/View;I)Landroid/view/accessibility/AccessibilityNodeInfo;"
+                ),
                 &[host.into(), virtual_view_id.into()],
-            )
-            .unwrap()
-            .l()
-            .unwrap();
+            )?
+            .l()?;
 
-        let package_name = get_package_name(env, host);
+        let package_name = get_package_name(env, host)?;
         env.call_method(
             &node_info,
-            "setPackageName",
-            "(Ljava/lang/CharSequence;)V",
+            jni_str!("setPackageName"),
+            jni_sig!("(Ljava/lang/CharSequence;)V"),
             &[(&package_name).into()],
-        )
-        .unwrap();
+        )?;
 
         let wrapper = NodeWrapper(&node);
-        wrapper.populate_node_info(env, host, &mut self.node_id_map, &node_info);
+        wrapper.populate_node_info(env, host, &mut self.node_id_map, &node_info)?;
 
         let is_accessibility_focus = self.accessibility_focus == Some(virtual_view_id);
         env.call_method(
             &node_info,
-            "setAccessibilityFocused",
-            "(Z)V",
+            jni_str!("setAccessibilityFocused"),
+            jni_sig!("(Z)V"),
             &[is_accessibility_focus.into()],
-        )
-        .unwrap();
+        )?;
         add_action(
             env,
             &node_info,
@@ -382,9 +381,9 @@ impl Adapter {
             } else {
                 ACTION_ACCESSIBILITY_FOCUS
             },
-        );
+        )?;
 
-        node_info
+        Ok(node_info)
     }
 
     /// Create an `AccessibilityNodeInfo` for the AccessKit node
@@ -395,10 +394,10 @@ impl Adapter {
     pub fn find_focus<'local, H: ActivationHandler + ?Sized>(
         &mut self,
         activation_handler: &mut H,
-        env: &mut JNIEnv<'local>,
+        env: &mut Env<'local>,
         host: &JObject,
         focus_type: jint,
-    ) -> JObject<'local> {
+    ) -> Result<JObject<'local>> {
         let virtual_view_id = match focus_type {
             FOCUS_INPUT => {
                 let tree = self.state.get_or_init_tree(activation_handler);
@@ -408,11 +407,11 @@ impl Adapter {
             }
             FOCUS_ACCESSIBILITY => {
                 let Some(id) = self.accessibility_focus else {
-                    return JObject::null();
+                    return Ok(JObject::null());
                 };
                 id
             }
-            _ => return JObject::null(),
+            _ => return Ok(JObject::null()),
         };
         self.create_accessibility_node_info(activation_handler, env, host, virtual_view_id)
     }

@@ -18,7 +18,7 @@ embedded-dex = []
 [dependencies]
 accesskit = { version = "0.25.2", path = "../../accesskit" }
 accesskit_consumer = { version = "0.39.2", path = "../../accesskit_consumer" }
-jni = "0.21.1"
+jni = "0.22.4"
 log = "0.4.17"
 
 [dev-dependencies]

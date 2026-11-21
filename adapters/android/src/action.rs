@@ -4,7 +4,8 @@
 // the LICENSE-MIT file), at your option.
 
 use jni::{
-    JNIEnv,
+    Env,
+    errors::Result,
     objects::JObject,
     sys::{jfloat, jint},
 };
@@ -33,21 +34,21 @@ pub(crate) enum PlatformActionInner {
 pub struct PlatformAction(pub(crate) PlatformActionInner);
 
 impl PlatformAction {
-    pub fn from_java(env: &mut JNIEnv, action: jint, arguments: &JObject) -> Option<Self> {
+    pub fn from_java(env: &mut Env, action: jint, arguments: &JObject) -> Result<Option<Self>> {
         match action {
             ACTION_SET_SELECTION => {
                 if !(!arguments.is_null()
-                    && bundle_contains_key(env, arguments, ACTION_ARGUMENT_SELECTION_START_INT)
-                    && bundle_contains_key(env, arguments, ACTION_ARGUMENT_SELECTION_END_INT))
+                    && bundle_contains_key(env, arguments, ACTION_ARGUMENT_SELECTION_START_INT)?
+                    && bundle_contains_key(env, arguments, ACTION_ARGUMENT_SELECTION_END_INT)?)
                 {
-                    return Some(Self(PlatformActionInner::CollapseTextSelection));
+                    return Ok(Some(Self(PlatformActionInner::CollapseTextSelection)));
                 }
-                let anchor = bundle_get_int(env, arguments, ACTION_ARGUMENT_SELECTION_START_INT);
-                let focus = bundle_get_int(env, arguments, ACTION_ARGUMENT_SELECTION_END_INT);
-                Some(Self(PlatformActionInner::SetTextSelection {
+                let anchor = bundle_get_int(env, arguments, ACTION_ARGUMENT_SELECTION_START_INT)?;
+                let focus = bundle_get_int(env, arguments, ACTION_ARGUMENT_SELECTION_END_INT)?;
+                Ok(Some(Self(PlatformActionInner::SetTextSelection {
                     anchor,
                     focus,
-                }))
+                })))
             }
             ACTION_NEXT_AT_MOVEMENT_GRANULARITY | ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY => {
                 if arguments.is_null()
@@ -55,31 +56,31 @@ impl PlatformAction {
                         env,
                         arguments,
                         ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT,
-                    )
+                    )?
                 {
-                    return None;
+                    return Ok(None);
                 }
                 let granularity =
-                    bundle_get_int(env, arguments, ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT);
+                    bundle_get_int(env, arguments, ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT)?;
                 let forward = action == ACTION_NEXT_AT_MOVEMENT_GRANULARITY;
                 let extend_selection =
-                    bundle_get_bool(env, arguments, ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN);
-                Some(Self(PlatformActionInner::TraverseText {
+                    bundle_get_bool(env, arguments, ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN)?;
+                Ok(Some(Self(PlatformActionInner::TraverseText {
                     granularity,
                     forward,
                     extend_selection,
-                }))
+                })))
             }
             ACTION_SET_PROGRESS => {
                 if arguments.is_null()
-                    || !bundle_contains_key(env, arguments, ACTION_ARGUMENT_PROGRESS_VALUE)
+                    || !bundle_contains_key(env, arguments, ACTION_ARGUMENT_PROGRESS_VALUE)?
                 {
-                    return None;
+                    return Ok(None);
                 }
-                let value = bundle_get_float(env, arguments, ACTION_ARGUMENT_PROGRESS_VALUE);
-                Some(Self(PlatformActionInner::SetProgress { value }))
+                let value = bundle_get_float(env, arguments, ACTION_ARGUMENT_PROGRESS_VALUE)?;
+                Ok(Some(Self(PlatformActionInner::SetProgress { value })))
             }
-            _ => Some(Self(PlatformActionInner::Simple { action })),
+            _ => Ok(Some(Self(PlatformActionInner::Simple { action }))),
         }
     }
 }
