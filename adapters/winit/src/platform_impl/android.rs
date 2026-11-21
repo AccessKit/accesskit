@@ -4,8 +4,8 @@
 
 use accesskit::{ActionHandler, ActivationHandler, DeactivationHandler, TreeUpdate};
 use accesskit_android::{
-    InjectingAdapter,
-    jni::{JavaVM, objects::JObject},
+    InjectingAdapter, jni,
+    jni::{JavaVM, jni_sig, jni_str, objects::JObject},
 };
 use winit::{
     event::WindowEvent, event_loop::ActiveEventLoop, platform::android::ActiveEventLoopExtAndroid,
@@ -25,19 +25,28 @@ impl Adapter {
         _deactivation_handler: impl 'static + DeactivationHandler,
     ) -> Self {
         let app = event_loop.android_app();
-        let vm = unsafe { JavaVM::from_raw(app.vm_as_ptr() as *mut _) }.unwrap();
-        let mut env = vm.get_env().unwrap();
-        let activity = unsafe { JObject::from_raw(app.activity_as_ptr() as *mut _) };
-        let view = env
-            .get_field(
-                &activity,
-                "mSurfaceView",
-                "Lcom/google/androidgamesdk/GameActivity$InputEnabledSurfaceView;",
-            )
-            .unwrap()
-            .l()
+        let vm = unsafe { JavaVM::from_raw(app.vm_as_ptr() as *mut _) };
+        let adapter = vm
+            .attach_current_thread(|env| -> jni::errors::Result<_> {
+                let activity = unsafe { JObject::from_raw(env, app.activity_as_ptr() as *mut _) };
+                let view = env
+                    .get_field(
+                        &activity,
+                        jni_str!(jni = jni, "mSurfaceView"),
+                        jni_sig!(
+                            jni = jni,
+                            "Lcom/google/androidgamesdk/GameActivity$InputEnabledSurfaceView;"
+                        ),
+                    )?
+                    .l()?;
+                Ok(InjectingAdapter::new(
+                    env,
+                    &view,
+                    activation_handler,
+                    action_handler,
+                ))
+            })
             .unwrap();
-        let adapter = InjectingAdapter::new(&mut env, &view, activation_handler, action_handler);
         Self { adapter }
     }
 
