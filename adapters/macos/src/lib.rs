@@ -11,7 +11,7 @@ mod node;
 mod util;
 
 mod adapter;
-pub use adapter::Adapter;
+pub use adapter::{ActivationState, Adapter};
 
 mod event;
 pub use event::QueuedEvents;
