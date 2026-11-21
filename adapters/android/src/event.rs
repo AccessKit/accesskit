@@ -8,91 +8,92 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE.chromium file.
 
-use jni::{JNIEnv, objects::JObject, sys::jint};
+use jni::{Env, errors::Result, jni_sig, jni_str, objects::JObject, sys::jint};
 
 use crate::util::*;
 
 fn new_event<'local>(
-    env: &mut JNIEnv<'local>,
+    env: &mut Env<'local>,
     host: &JObject,
     virtual_view_id: jint,
     event_type: jint,
-) -> JObject<'local> {
-    let event_class = env
-        .find_class("android/view/accessibility/AccessibilityEvent")
-        .unwrap();
+) -> Result<JObject<'local>> {
+    let event_class = env.find_class(jni_str!("android/view/accessibility/AccessibilityEvent"))?;
     let event = env
         .call_static_method(
             &event_class,
-            "obtain",
-            "(I)Landroid/view/accessibility/AccessibilityEvent;",
+            jni_str!("obtain"),
+            jni_sig!("(I)Landroid/view/accessibility/AccessibilityEvent;"),
             &[event_type.into()],
-        )
-        .unwrap()
-        .l()
-        .unwrap();
-    let package_name = get_package_name(env, host);
+        )?
+        .l()?;
+    let package_name = get_package_name(env, host)?;
     env.call_method(
         &event,
-        "setPackageName",
-        "(Ljava/lang/CharSequence;)V",
+        jni_str!("setPackageName"),
+        jni_sig!("(Ljava/lang/CharSequence;)V"),
         &[(&package_name).into()],
-    )
-    .unwrap();
+    )?;
     env.call_method(
         &event,
-        "setSource",
-        "(Landroid/view/View;I)V",
+        jni_str!("setSource"),
+        jni_sig!("(Landroid/view/View;I)V"),
         &[host.into(), virtual_view_id.into()],
-    )
-    .unwrap();
-    event
+    )?;
+    Ok(event)
 }
 
-fn send_completed_event(env: &mut JNIEnv, host: &JObject, event: JObject) {
+fn send_completed_event(env: &mut Env, host: &JObject, event: JObject) -> Result<()> {
     let parent = env
-        .call_method(host, "getParent", "()Landroid/view/ViewParent;", &[])
-        .unwrap()
-        .l()
-        .unwrap();
+        .call_method(
+            host,
+            jni_str!("getParent"),
+            jni_sig!("()Landroid/view/ViewParent;"),
+            &[],
+        )?
+        .l()?;
     // The host may have been detached from its window by the time
     // a posted event is raised, in which case there's nothing to send it to.
     if parent.is_null() {
-        return;
+        return Ok(());
     }
     env.call_method(
         &parent,
-        "requestSendAccessibilityEvent",
-        "(Landroid/view/View;Landroid/view/accessibility/AccessibilityEvent;)Z",
+        jni_str!("requestSendAccessibilityEvent"),
+        jni_sig!("(Landroid/view/View;Landroid/view/accessibility/AccessibilityEvent;)Z"),
         &[host.into(), (&event).into()],
-    )
-    .unwrap();
+    )?;
+    Ok(())
 }
 
-fn send_simple_event(env: &mut JNIEnv, host: &JObject, virtual_view_id: jint, event_type: jint) {
-    let event = new_event(env, host, virtual_view_id, event_type);
-    send_completed_event(env, host, event);
+fn send_simple_event(
+    env: &mut Env,
+    host: &JObject,
+    virtual_view_id: jint,
+    event_type: jint,
+) -> Result<()> {
+    let event = new_event(env, host, virtual_view_id, event_type)?;
+    send_completed_event(env, host, event)
 }
 
-fn send_window_content_changed(env: &mut JNIEnv, host: &JObject, virtual_view_id: jint) {
-    let event = new_event(env, host, virtual_view_id, EVENT_WINDOW_CONTENT_CHANGED);
+fn send_window_content_changed(env: &mut Env, host: &JObject, virtual_view_id: jint) -> Result<()> {
+    let event = new_event(env, host, virtual_view_id, EVENT_WINDOW_CONTENT_CHANGED)?;
     env.call_method(
         &event,
-        "setContentChangeTypes",
-        "(I)V",
+        jni_str!("setContentChangeTypes"),
+        jni_sig!("(I)V"),
         &[CONTENT_CHANGE_TYPE_SUBTREE.into()],
-    )
-    .unwrap();
-    send_completed_event(env, host, event);
+    )?;
+    send_completed_event(env, host, event)
 }
 
 fn send_text_changed(
-    env: &mut JNIEnv,
+    env: &mut Env,
     host: &JObject,
     virtual_view_id: jint,
     old: String,
     new: String,
-) {
+) -> Result<()> {
     let old_u16 = old.encode_utf16().collect::<Vec<u16>>();
     let new_u16 = new.encode_utf16().collect::<Vec<u16>>();
     let mut i = 0usize;
@@ -104,30 +105,40 @@ fn send_text_changed(
     }
     if i == old_u16.len() && i == new_u16.len() {
         // The text didn't change.
-        return;
+        return Ok(());
     }
-    let event = new_event(env, host, virtual_view_id, EVENT_VIEW_TEXT_CHANGED);
-    let old = env.new_string(old).unwrap();
+    let event = new_event(env, host, virtual_view_id, EVENT_VIEW_TEXT_CHANGED)?;
+    let old = env.new_string(old)?;
     env.call_method(
         &event,
-        "setBeforeText",
-        "(Ljava/lang/CharSequence;)V",
+        jni_str!("setBeforeText"),
+        jni_sig!("(Ljava/lang/CharSequence;)V"),
         &[(&old).into()],
-    )
-    .unwrap();
+    )?;
     let text_list = env
-        .call_method(&event, "getText", "()Ljava/util/List;", &[])
-        .unwrap()
-        .l()
-        .unwrap();
-    let new = env.new_string(new).unwrap();
-    env.call_method(&text_list, "add", "(Ljava/lang/Object;)Z", &[(&new).into()])
-        .unwrap();
+        .call_method(
+            &event,
+            jni_str!("getText"),
+            jni_sig!("()Ljava/util/List;"),
+            &[],
+        )?
+        .l()?;
+    let new = env.new_string(new)?;
+    env.call_method(
+        &text_list,
+        jni_str!("add"),
+        jni_sig!("(Ljava/lang/Object;)Z"),
+        &[(&new).into()],
+    )?;
     // Note: This algorithm, translated from code in Flutter, assumes
     // that the indices are signed.
     let first_difference = i as jint;
-    env.call_method(&event, "setFromIndex", "(I)V", &[first_difference.into()])
-        .unwrap();
+    env.call_method(
+        &event,
+        jni_str!("setFromIndex"),
+        jni_sig!("(I)V"),
+        &[first_difference.into()],
+    )?;
     let mut old_index = old_u16.len() as jint - 1;
     let mut new_index = new_u16.len() as jint - 1;
     while old_index >= first_difference && new_index >= first_difference {
@@ -139,97 +150,115 @@ fn send_text_changed(
     }
     env.call_method(
         &event,
-        "setRemovedCount",
-        "(I)V",
+        jni_str!("setRemovedCount"),
+        jni_sig!("(I)V"),
         &[(old_index - first_difference + 1).into()],
-    )
-    .unwrap();
+    )?;
     env.call_method(
         &event,
-        "setAddedCount",
-        "(I)V",
+        jni_str!("setAddedCount"),
+        jni_sig!("(I)V"),
         &[(new_index - first_difference + 1).into()],
-    )
-    .unwrap();
-    send_completed_event(env, host, event);
+    )?;
+    send_completed_event(env, host, event)
 }
 
 fn send_text_selection_changed(
-    env: &mut JNIEnv,
+    env: &mut Env,
     host: &JObject,
     virtual_view_id: jint,
     text: String,
     start: jint,
     end: jint,
-) {
+) -> Result<()> {
     let text_u16_len = text.encode_utf16().count();
     let event = new_event(
         env,
         host,
         virtual_view_id,
         EVENT_VIEW_TEXT_SELECTION_CHANGED,
-    );
+    )?;
     let text_list = env
-        .call_method(&event, "getText", "()Ljava/util/List;", &[])
-        .unwrap()
-        .l()
-        .unwrap();
-    let text = env.new_string(text).unwrap();
+        .call_method(
+            &event,
+            jni_str!("getText"),
+            jni_sig!("()Ljava/util/List;"),
+            &[],
+        )?
+        .l()?;
+    let text = env.new_string(text)?;
     env.call_method(
         &text_list,
-        "add",
-        "(Ljava/lang/Object;)Z",
+        jni_str!("add"),
+        jni_sig!("(Ljava/lang/Object;)Z"),
         &[(&text).into()],
-    )
-    .unwrap();
-    env.call_method(&event, "setFromIndex", "(I)V", &[(start as jint).into()])
-        .unwrap();
-    env.call_method(&event, "setToIndex", "(I)V", &[(end as jint).into()])
-        .unwrap();
+    )?;
     env.call_method(
         &event,
-        "setItemCount",
-        "(I)V",
+        jni_str!("setFromIndex"),
+        jni_sig!("(I)V"),
+        &[(start as jint).into()],
+    )?;
+    env.call_method(
+        &event,
+        jni_str!("setToIndex"),
+        jni_sig!("(I)V"),
+        &[(end as jint).into()],
+    )?;
+    env.call_method(
+        &event,
+        jni_str!("setItemCount"),
+        jni_sig!("(I)V"),
         &[(text_u16_len as jint).into()],
-    )
-    .unwrap();
-    send_completed_event(env, host, event);
+    )?;
+    send_completed_event(env, host, event)
 }
 
 fn send_text_traversed(
-    env: &mut JNIEnv,
+    env: &mut Env,
     host: &JObject,
     virtual_view_id: jint,
     granularity: jint,
     forward: bool,
     segment_start: jint,
     segment_end: jint,
-) {
+) -> Result<()> {
     let event = new_event(
         env,
         host,
         virtual_view_id,
         EVENT_VIEW_TEXT_TRAVERSED_AT_MOVEMENT_GRANULARITY,
-    );
+    )?;
     env.call_method(
         &event,
-        "setMovementGranularity",
-        "(I)V",
+        jni_str!("setMovementGranularity"),
+        jni_sig!("(I)V"),
         &[granularity.into()],
-    )
-    .unwrap();
+    )?;
     let action = if forward {
         ACTION_NEXT_AT_MOVEMENT_GRANULARITY
     } else {
         ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY
     };
-    env.call_method(&event, "setAction", "(I)V", &[action.into()])
-        .unwrap();
-    env.call_method(&event, "setFromIndex", "(I)V", &[segment_start.into()])
-        .unwrap();
-    env.call_method(&event, "setToIndex", "(I)V", &[segment_end.into()])
-        .unwrap();
-    send_completed_event(env, host, event);
+    env.call_method(
+        &event,
+        jni_str!("setAction"),
+        jni_sig!("(I)V"),
+        &[action.into()],
+    )?;
+    env.call_method(
+        &event,
+        jni_str!("setFromIndex"),
+        jni_sig!("(I)V"),
+        &[segment_start.into()],
+    )?;
+    env.call_method(
+        &event,
+        jni_str!("setToIndex"),
+        jni_sig!("(I)V"),
+        &[segment_end.into()],
+    )?;
+    send_completed_event(env, host, event)
 }
 
 pub(crate) struct ScrollDimension {
@@ -239,56 +268,87 @@ pub(crate) struct ScrollDimension {
 }
 
 fn send_range_value_changed(
-    env: &mut JNIEnv,
+    env: &mut Env,
     host: &JObject,
     virtual_view_id: jint,
     event_type: jint,
     range: Range,
-) {
-    let event = new_event(env, host, virtual_view_id, event_type);
-    env.call_method(&event, "setItemCount", "(I)V", &[100i32.into()])
-        .unwrap();
+) -> Result<()> {
+    let event = new_event(env, host, virtual_view_id, event_type)?;
     env.call_method(
         &event,
-        "setCurrentItemIndex",
-        "(I)V",
+        jni_str!("setItemCount"),
+        jni_sig!("(I)V"),
+        &[100i32.into()],
+    )?;
+    env.call_method(
+        &event,
+        jni_str!("setCurrentItemIndex"),
+        jni_sig!("(I)V"),
         &[range.current_item_index().into()],
-    )
-    .unwrap();
-    send_completed_event(env, host, event);
+    )?;
+    send_completed_event(env, host, event)
 }
 
 fn send_scrolled(
-    env: &mut JNIEnv,
+    env: &mut Env,
     host: &JObject,
     virtual_view_id: jint,
     x: Option<ScrollDimension>,
     y: Option<ScrollDimension>,
-) {
-    let event = new_event(env, host, virtual_view_id, EVENT_VIEW_SCROLLED);
-    env.call_method(&event, "setScrollable", "(Z)V", &[true.into()])
-        .unwrap();
+) -> Result<()> {
+    let event = new_event(env, host, virtual_view_id, EVENT_VIEW_SCROLLED)?;
+    env.call_method(
+        &event,
+        jni_str!("setScrollable"),
+        jni_sig!("(Z)V"),
+        &[true.into()],
+    )?;
     if let Some(x) = x {
-        env.call_method(&event, "setScrollX", "(I)V", &[x.current.into()])
-            .unwrap();
-        env.call_method(&event, "setScrollDeltaX", "(I)V", &[x.delta.into()])
-            .unwrap();
+        env.call_method(
+            &event,
+            jni_str!("setScrollX"),
+            jni_sig!("(I)V"),
+            &[x.current.into()],
+        )?;
+        env.call_method(
+            &event,
+            jni_str!("setScrollDeltaX"),
+            jni_sig!("(I)V"),
+            &[x.delta.into()],
+        )?;
         if let Some(max) = x.max {
-            env.call_method(&event, "setMaxScrollX", "(I)V", &[max.into()])
-                .unwrap();
+            env.call_method(
+                &event,
+                jni_str!("setMaxScrollX"),
+                jni_sig!("(I)V"),
+                &[max.into()],
+            )?;
         }
     }
     if let Some(y) = y {
-        env.call_method(&event, "setScrollY", "(I)V", &[y.current.into()])
-            .unwrap();
-        env.call_method(&event, "setScrollDeltaY", "(I)V", &[y.delta.into()])
-            .unwrap();
+        env.call_method(
+            &event,
+            jni_str!("setScrollY"),
+            jni_sig!("(I)V"),
+            &[y.current.into()],
+        )?;
+        env.call_method(
+            &event,
+            jni_str!("setScrollDeltaY"),
+            jni_sig!("(I)V"),
+            &[y.delta.into()],
+        )?;
         if let Some(max) = y.max {
-            env.call_method(&event, "setMaxScrollY", "(I)V", &[max.into()])
-                .unwrap();
+            env.call_method(
+                &event,
+                jni_str!("setMaxScrollY"),
+                jni_sig!("(I)V"),
+                &[max.into()],
+            )?;
         }
     }
-    send_completed_event(env, host, event);
+    send_completed_event(env, host, event)
 }
 
 pub(crate) enum QueuedEvent {
@@ -344,14 +404,14 @@ impl QueuedEvents {
     /// This function must be called on the Android UI thread, while not holding
     /// any locks required by the host view's implementations of Android
     /// framework callbacks.
-    pub fn raise(self, env: &mut JNIEnv, host: &JObject) {
+    pub fn raise(self, env: &mut Env, host: &JObject) -> Result<()> {
         if self.0.is_empty() {
-            return;
+            return Ok(());
         }
         // The framework throws an exception if events are sent from the
         // UI thread while accessibility is disabled.
-        if !is_accessibility_enabled(env, host) {
-            return;
+        if !is_accessibility_enabled(env, host)? {
+            return Ok(());
         }
         for event in self.0 {
             match event {
@@ -359,17 +419,17 @@ impl QueuedEvents {
                     virtual_view_id,
                     event_type,
                 } => {
-                    send_simple_event(env, host, virtual_view_id, event_type);
+                    send_simple_event(env, host, virtual_view_id, event_type)?;
                 }
                 QueuedEvent::WindowContentChanged { virtual_view_id } => {
-                    send_window_content_changed(env, host, virtual_view_id);
+                    send_window_content_changed(env, host, virtual_view_id)?;
                 }
                 QueuedEvent::TextChanged {
                     virtual_view_id,
                     old,
                     new,
                 } => {
-                    send_text_changed(env, host, virtual_view_id, old, new);
+                    send_text_changed(env, host, virtual_view_id, old, new)?;
                 }
                 QueuedEvent::TextSelectionChanged {
                     virtual_view_id,
@@ -377,7 +437,7 @@ impl QueuedEvents {
                     start,
                     end,
                 } => {
-                    send_text_selection_changed(env, host, virtual_view_id, text, start, end);
+                    send_text_selection_changed(env, host, virtual_view_id, text, start, end)?;
                 }
                 QueuedEvent::TextTraversed {
                     virtual_view_id,
@@ -394,26 +454,27 @@ impl QueuedEvents {
                         forward,
                         segment_start,
                         segment_end,
-                    );
+                    )?;
                 }
                 QueuedEvent::Scrolled {
                     virtual_view_id,
                     x,
                     y,
                 } => {
-                    send_scrolled(env, host, virtual_view_id, x, y);
+                    send_scrolled(env, host, virtual_view_id, x, y)?;
                 }
                 QueuedEvent::RangeValueChanged {
                     virtual_view_id,
                     event_type,
                     range,
                 } => {
-                    send_range_value_changed(env, host, virtual_view_id, event_type, range);
+                    send_range_value_changed(env, host, virtual_view_id, event_type, range)?;
                 }
                 QueuedEvent::InvalidateHost => {
-                    env.call_method(host, "invalidate", "()V", &[]).unwrap();
+                    env.call_method(host, jni_str!("invalidate"), jni_sig!("()V"), &[])?;
                 }
             }
         }
+        Ok(())
     }
 }

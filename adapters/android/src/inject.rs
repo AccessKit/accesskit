@@ -11,15 +11,16 @@
 
 use accesskit::{ActionHandler, ActivationHandler, TreeUpdate};
 use jni::{
-    JNIEnv, JavaVM, NativeMethod,
+    Env, JavaVM, NativeMethod,
     errors::Result,
-    objects::{GlobalRef, JClass, JObject, WeakRef},
-    sys::{JNI_FALSE, JNI_TRUE, jboolean, jfloat, jint, jlong},
+    jni_sig, jni_str, native_method,
+    objects::{JClass, JObject},
+    refs::{Global, Weak as WeakRef},
+    sys::{jfloat, jint, jlong},
 };
 use log::debug;
 use std::{
     collections::BTreeMap,
-    ffi::c_void,
     fmt::{Debug, Formatter},
     sync::{
         Arc, Mutex, OnceLock, Weak,
@@ -48,10 +49,10 @@ impl Debug for InnerInjectingAdapter {
 impl InnerInjectingAdapter {
     fn create_accessibility_node_info<'local>(
         &mut self,
-        env: &mut JNIEnv<'local>,
+        env: &mut Env<'local>,
         host: &JObject,
         virtual_view_id: jint,
-    ) -> JObject<'local> {
+    ) -> Result<JObject<'local>> {
         self.adapter.create_accessibility_node_info(
             &mut *self.activation_handler,
             env,
@@ -62,10 +63,10 @@ impl InnerInjectingAdapter {
 
     fn find_focus<'local>(
         &mut self,
-        env: &mut JNIEnv<'local>,
+        env: &mut Env<'local>,
         host: &JObject,
         focus_type: jint,
-    ) -> JObject<'local> {
+    ) -> Result<JObject<'local>> {
         self.adapter
             .find_focus(&mut *self.activation_handler, env, host, focus_type)
     }
@@ -94,138 +95,183 @@ fn inner_adapter_from_handle(handle: jlong) -> Option<Arc<Mutex<InnerInjectingAd
     handle_map_guard.get(&handle).and_then(Weak::upgrade)
 }
 
-/// Local references created when posting to the UI thread from a thread
-/// the adapter attached itself: the upgraded host view and the runnable.
-const LOCAL_FRAME_CAPACITY: i32 = 2;
-
 static NEXT_CALLBACK_HANDLE: AtomicI64 = AtomicI64::new(0);
 #[allow(clippy::type_complexity)]
 static CALLBACK_MAP: Mutex<
-    BTreeMap<jlong, Box<dyn FnOnce(&mut JNIEnv, &JClass, &JObject) + Send>>,
+    BTreeMap<jlong, Box<dyn FnOnce(&mut Env, &JClass, &JObject) -> Result<()> + Send>>,
 > = Mutex::new(BTreeMap::new());
 
 fn post_to_ui_thread(
-    env: &mut JNIEnv,
+    env: &mut Env,
     delegate_class: &JClass,
     host: &JObject,
-    callback: impl FnOnce(&mut JNIEnv, &JClass, &JObject) + Send + 'static,
-) {
+    callback: impl FnOnce(&mut Env, &JClass, &JObject) -> Result<()> + Send + 'static,
+) -> Result<()> {
     let handle = NEXT_CALLBACK_HANDLE.fetch_add(1, Ordering::Relaxed);
     CALLBACK_MAP
         .lock()
         .unwrap()
         .insert(handle, Box::new(callback));
-    let runnable = env
-        .call_static_method(
-            delegate_class,
-            "newCallback",
-            "(Landroid/view/View;J)Ljava/lang/Runnable;",
-            &[host.into(), handle.into()],
-        )
-        .unwrap()
-        .l()
-        .unwrap();
-    env.call_method(
-        host,
-        "post",
-        "(Ljava/lang/Runnable;)Z",
-        &[(&runnable).into()],
-    )
-    .unwrap();
+    let result = (|| {
+        let runnable = env
+            .call_static_method(
+                delegate_class,
+                jni_str!("newCallback"),
+                jni_sig!("(Landroid/view/View;J)Ljava/lang/Runnable;"),
+                &[host.into(), handle.into()],
+            )?
+            .l()?;
+        env.call_method(
+            host,
+            jni_str!("post"),
+            jni_sig!("(Ljava/lang/Runnable;)Z"),
+            &[(&runnable).into()],
+        )?
+        .z()
+    })();
+    if !matches!(result, Ok(true)) {
+        CALLBACK_MAP.lock().unwrap().remove(&handle);
+    }
+    result.map(|_| ())
 }
 
-extern "system" fn run_callback<'local>(
-    mut env: JNIEnv<'local>,
+fn run_callback<'local>(
+    env: &mut Env<'local>,
     class: JClass<'local>,
     host: JObject<'local>,
     handle: jlong,
-) {
+) -> Result<()> {
     let Some(callback) = CALLBACK_MAP.lock().unwrap().remove(&handle) else {
-        return;
+        return Ok(());
     };
-    callback(&mut env, &class, &host);
+    callback(env, &class, &host)
 }
 
-extern "system" fn create_accessibility_node_info<'local>(
-    mut env: JNIEnv<'local>,
+fn create_accessibility_node_info<'local>(
+    env: &mut Env<'local>,
     _class: JClass<'local>,
     adapter_handle: jlong,
     host: JObject<'local>,
     virtual_view_id: jint,
-) -> JObject<'local> {
+) -> Result<JObject<'local>> {
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return JObject::null();
+        return Ok(JObject::null());
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    inner_adapter.create_accessibility_node_info(&mut env, &host, virtual_view_id)
+    inner_adapter.create_accessibility_node_info(env, &host, virtual_view_id)
 }
 
-extern "system" fn find_focus<'local>(
-    mut env: JNIEnv<'local>,
+fn find_focus<'local>(
+    env: &mut Env<'local>,
     _class: JClass<'local>,
     adapter_handle: jlong,
     host: JObject<'local>,
     focus_type: jint,
-) -> JObject<'local> {
+) -> Result<JObject<'local>> {
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return JObject::null();
+        return Ok(JObject::null());
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
-    inner_adapter.find_focus(&mut env, &host, focus_type)
+    inner_adapter.find_focus(env, &host, focus_type)
 }
 
-extern "system" fn perform_action<'local>(
-    mut env: JNIEnv<'local>,
+fn perform_action<'local>(
+    env: &mut Env<'local>,
     _class: JClass<'local>,
     adapter_handle: jlong,
     host: JObject<'local>,
     virtual_view_id: jint,
     action: jint,
     arguments: JObject<'local>,
-) -> jboolean {
-    let Some(action) = PlatformAction::from_java(&mut env, action, &arguments) else {
-        return JNI_FALSE;
+) -> Result<bool> {
+    let Some(action) = PlatformAction::from_java(env, action, &arguments)? else {
+        return Ok(false);
     };
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return JNI_FALSE;
+        return Ok(false);
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
     let Some(events) = inner_adapter.perform_action(virtual_view_id, &action) else {
-        return JNI_FALSE;
+        return Ok(false);
     };
     drop(inner_adapter);
-    events.raise(&mut env, &host);
-    JNI_TRUE
+    events.raise(env, &host)?;
+    Ok(true)
 }
 
-extern "system" fn on_hover_event<'local>(
-    mut env: JNIEnv<'local>,
+fn on_hover_event<'local>(
+    env: &mut Env<'local>,
     _class: JClass<'local>,
     adapter_handle: jlong,
     host: JObject<'local>,
     action: jint,
     x: jfloat,
     y: jfloat,
-) -> jboolean {
+) -> Result<bool> {
     let Some(inner_adapter) = inner_adapter_from_handle(adapter_handle) else {
-        return JNI_FALSE;
+        return Ok(false);
     };
     let mut inner_adapter = inner_adapter.lock().unwrap();
     let Some(events) = inner_adapter.on_hover_event(action, x, y) else {
-        return JNI_FALSE;
+        return Ok(false);
     };
     drop(inner_adapter);
-    events.raise(&mut env, &host);
-    JNI_TRUE
+    events.raise(env, &host)?;
+    Ok(true)
 }
 
-fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
-    static CLASS: OnceLock<GlobalRef> = OnceLock::new();
-    let global = CLASS.get_or_init(|| {
+// `native_method!` expands to `AtomicBool::fetch_update`, deprecated since Rust 1.100.
+#[allow(deprecated)]
+const NATIVE_METHODS: &[NativeMethod] = &[
+    native_method! {
+        catch_unwind = false,
+        static fn run_callback(host: android.view.View, handle: jlong),
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn create_accessibility_node_info(
+            adapter_handle: jlong,
+            host: android.view.View,
+            virtual_view_id: jint,
+        ) -> android.view.accessibility.AccessibilityNodeInfo,
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn find_focus(
+            adapter_handle: jlong,
+            host: android.view.View,
+            focus_type: jint,
+        ) -> android.view.accessibility.AccessibilityNodeInfo,
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn perform_action(
+            adapter_handle: jlong,
+            host: android.view.View,
+            virtual_view_id: jint,
+            action: jint,
+            arguments: android.os.Bundle,
+        ) -> bool,
+    },
+    native_method! {
+        catch_unwind = false,
+        static fn on_hover_event(
+            adapter_handle: jlong,
+            host: android.view.View,
+            action: jint,
+            x: jfloat,
+            y: jfloat,
+        ) -> bool,
+    },
+];
+
+fn delegate_class(env: &mut Env) -> &'static JClass<'static> {
+    static CLASS: OnceLock<Global<JClass<'static>>> = OnceLock::new();
+    CLASS.get_or_init(|| {
         #[cfg(feature = "embedded-dex")]
         let class = {
             let dex_class_loader_class = env
-                .find_class("dalvik/system/InMemoryDexClassLoader")
+                .find_class(jni_str!("dalvik/system/InMemoryDexClassLoader"))
                 .unwrap();
             let dex_bytes = include_bytes!("../classes.dex");
             let dex_buffer = unsafe {
@@ -235,7 +281,7 @@ fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
             let dex_class_loader = env
                 .new_object(
                     &dex_class_loader_class,
-                    "(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V",
+                    jni_sig!("(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V"),
                     &[(&dex_buffer).into(), (&JObject::null()).into()],
                 )
                 .unwrap();
@@ -243,55 +289,23 @@ fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
             let class_obj = env
                 .call_method(
                     &dex_class_loader,
-                    "loadClass",
-                    "(Ljava/lang/String;)Ljava/lang/Class;",
+                    jni_str!("loadClass"),
+                    jni_sig!("(Ljava/lang/String;)Ljava/lang/Class;"),
                     &[(&class_name).into()],
                 )
                 .unwrap()
                 .l()
                 .unwrap();
-            JClass::from(class_obj)
+            env.cast_local::<JClass>(class_obj).unwrap()
         };
         #[cfg(not(feature = "embedded-dex"))]
-        let class = env.find_class("dev/accesskit/android/Delegate").unwrap();
-        env.register_native_methods(
-            &class,
-            &[
-                NativeMethod {
-                    name: "runCallback".into(),
-                    sig: "(Landroid/view/View;J)V".into(),
-                    fn_ptr: run_callback as *mut c_void,
-                },
-                NativeMethod {
-                    name: "createAccessibilityNodeInfo".into(),
-                    sig:
-                        "(JLandroid/view/View;I)Landroid/view/accessibility/AccessibilityNodeInfo;"
-                            .into(),
-                    fn_ptr: create_accessibility_node_info as *mut c_void,
-                },
-                NativeMethod {
-                    name: "findFocus".into(),
-                    sig:
-                        "(JLandroid/view/View;I)Landroid/view/accessibility/AccessibilityNodeInfo;"
-                            .into(),
-                    fn_ptr: find_focus as *mut c_void,
-                },
-                NativeMethod {
-                    name: "performAction".into(),
-                    sig: "(JLandroid/view/View;IILandroid/os/Bundle;)Z".into(),
-                    fn_ptr: perform_action as *mut c_void,
-                },
-                NativeMethod {
-                    name: "onHoverEvent".into(),
-                    sig: "(JLandroid/view/View;IFF)Z".into(),
-                    fn_ptr: on_hover_event as *mut c_void,
-                },
-            ],
-        )
-        .unwrap();
+        let class = env
+            .find_class(jni_str!("dev/accesskit/android/Delegate"))
+            .unwrap();
+        // SAFETY: `native_method!` checks each function against its signature.
+        unsafe { env.register_native_methods(&class, NATIVE_METHODS) }.unwrap();
         env.new_global_ref(class).unwrap()
-    });
-    global.as_obj().into()
+    })
 }
 
 /// High-level AccessKit Android adapter that injects itself into an Android
@@ -308,7 +322,7 @@ fn delegate_class(env: &mut JNIEnv) -> &'static JClass<'static> {
 pub struct InjectingAdapter {
     vm: JavaVM,
     delegate_class: &'static JClass<'static>,
-    host: WeakRef,
+    host: WeakRef<JObject<'static>>,
     handle: jlong,
     inner: Arc<Mutex<InnerInjectingAdapter>>,
 }
@@ -327,7 +341,7 @@ impl Debug for InjectingAdapter {
 
 impl InjectingAdapter {
     pub fn new(
-        env: &mut JNIEnv,
+        env: &mut Env,
         host: &JObject,
         activation_handler: impl 'static + ActivationHandler + Send,
         action_handler: impl 'static + ActionHandler + Send,
@@ -337,13 +351,15 @@ impl InjectingAdapter {
             activation_handler: Box::new(activation_handler),
             action_handler: Box::new(action_handler),
         }));
+        let vm = env.get_java_vm().unwrap();
+        let weak_host = env.new_weak_ref(host).unwrap();
+        let delegate_class = delegate_class(env);
         let handle = NEXT_HANDLE.fetch_add(1, Ordering::Relaxed);
         HANDLE_MAP
             .lock()
             .unwrap()
             .insert(handle, Arc::downgrade(&inner));
-        let delegate_class = delegate_class(env);
-        post_to_ui_thread(
+        if let Err(err) = post_to_ui_thread(
             env,
             delegate_class,
             host,
@@ -351,39 +367,38 @@ impl InjectingAdapter {
                 let prev_delegate = env
                     .call_method(
                         host,
-                        "getAccessibilityDelegate",
-                        "()Landroid/view/View$AccessibilityDelegate;",
+                        jni_str!("getAccessibilityDelegate"),
+                        jni_sig!("()Landroid/view/View$AccessibilityDelegate;"),
                         &[],
-                    )
-                    .unwrap()
-                    .l()
-                    .unwrap();
+                    )?
+                    .l()?;
                 if !prev_delegate.is_null() {
                     panic!("host already has an accessibility delegate");
                 }
-                let delegate = env
-                    .new_object(delegate_class, "(J)V", &[handle.into()])
-                    .unwrap();
+                let delegate =
+                    env.new_object(delegate_class, jni_sig!("(J)V"), &[handle.into()])?;
                 env.call_method(
                     host,
-                    "setAccessibilityDelegate",
-                    "(Landroid/view/View$AccessibilityDelegate;)V",
+                    jni_str!("setAccessibilityDelegate"),
+                    jni_sig!("(Landroid/view/View$AccessibilityDelegate;)V"),
                     &[(&delegate).into()],
-                )
-                .unwrap();
+                )?;
                 env.call_method(
                     host,
-                    "setOnHoverListener",
-                    "(Landroid/view/View$OnHoverListener;)V",
+                    jni_str!("setOnHoverListener"),
+                    jni_sig!("(Landroid/view/View$OnHoverListener;)V"),
                     &[(&delegate).into()],
-                )
-                .unwrap();
+                )?;
+                Ok(())
             },
-        );
+        ) {
+            HANDLE_MAP.lock().unwrap().remove(&handle);
+            panic!("failed to post accessibility delegate installation: {err}");
+        }
         Self {
-            vm: env.get_java_vm().unwrap(),
+            vm,
             delegate_class,
-            host: env.new_weak_ref(host).unwrap().unwrap(),
+            host: weak_host,
             handle,
             inner,
         }
@@ -409,56 +424,49 @@ impl InjectingAdapter {
         let Some(events) = events else {
             return;
         };
-        self.attach_and_post_to_ui_thread(|env, _delegate_class, host| {
-            events.raise(env, host);
-        })
-        .unwrap();
+        self.attach_and_post_to_ui_thread(|env, _delegate_class, host| events.raise(env, host))
+            .expect("failed to post accessibility events to the UI thread");
     }
 
     fn attach_and_post_to_ui_thread(
         &self,
-        callback: impl FnOnce(&mut JNIEnv, &JClass, &JObject) + Send + 'static,
+        callback: impl FnOnce(&mut Env, &JClass, &JObject) -> Result<()> + Send + 'static,
     ) -> Result<()> {
-        let mut env = self.vm.attach_current_thread()?;
-        env.with_local_frame(LOCAL_FRAME_CAPACITY, |env| {
+        self.vm.attach_current_thread_for_scope(|env| {
             let Some(host) = self.host.upgrade_local(env)? else {
                 return Ok(());
             };
-            post_to_ui_thread(env, self.delegate_class, &host, callback);
-            Ok(())
+            post_to_ui_thread(env, self.delegate_class, &host, callback)
         })
     }
 }
 
-fn uninstall_delegate(env: &mut JNIEnv, delegate_class: &JClass, host: &JObject) {
+fn uninstall_delegate(env: &mut Env, delegate_class: &JClass, host: &JObject) -> Result<()> {
     let prev_delegate = env
         .call_method(
             host,
-            "getAccessibilityDelegate",
-            "()Landroid/view/View$AccessibilityDelegate;",
+            jni_str!("getAccessibilityDelegate"),
+            jni_sig!("()Landroid/view/View$AccessibilityDelegate;"),
             &[],
-        )
-        .unwrap()
-        .l()
-        .unwrap();
-    if prev_delegate.is_null() || !env.is_instance_of(&prev_delegate, delegate_class).unwrap() {
-        return;
+        )?
+        .l()?;
+    if prev_delegate.is_null() || !env.is_instance_of(&prev_delegate, delegate_class)? {
+        return Ok(());
     }
     let null = JObject::null();
     env.call_method(
         host,
-        "setAccessibilityDelegate",
-        "(Landroid/view/View$AccessibilityDelegate;)V",
+        jni_str!("setAccessibilityDelegate"),
+        jni_sig!("(Landroid/view/View$AccessibilityDelegate;)V"),
         &[(&null).into()],
-    )
-    .unwrap();
+    )?;
     env.call_method(
         host,
-        "setOnHoverListener",
-        "(Landroid/view/View$OnHoverListener;)V",
+        jni_str!("setOnHoverListener"),
+        jni_sig!("(Landroid/view/View$OnHoverListener;)V"),
         &[(&null).into()],
-    )
-    .unwrap();
+    )?;
+    Ok(())
 }
 
 impl Drop for InjectingAdapter {

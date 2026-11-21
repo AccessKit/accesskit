@@ -5,8 +5,11 @@
 
 use accesskit_consumer::{FullNodeId, NodeRef};
 use jni::{
-    JNIEnv,
-    objects::{GlobalRef, JObject},
+    Env,
+    errors::Result,
+    jni_sig, jni_str,
+    objects::JObject,
+    refs::Global,
     sys::{jfloat, jint},
 };
 use std::{collections::HashMap, sync::OnceLock};
@@ -109,24 +112,22 @@ impl Range {
         }
     }
 
-    pub(crate) fn to_java<'local>(self, env: &mut JNIEnv<'local>) -> JObject<'local> {
-        let range_info_class = env
-            .find_class("android/view/accessibility/AccessibilityNodeInfo$RangeInfo")
-            .unwrap();
+    pub(crate) fn to_java<'local>(self, env: &mut Env<'local>) -> Result<JObject<'local>> {
+        let range_info_class = env.find_class(jni_str!(
+            "android/view/accessibility/AccessibilityNodeInfo$RangeInfo"
+        ))?;
         env.call_static_method(
             &range_info_class,
-            "obtain",
-            "(IFFF)Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;",
+            jni_str!("obtain"),
+            jni_sig!("(IFFF)Landroid/view/accessibility/AccessibilityNodeInfo$RangeInfo;"),
             &[
                 self.range_type().into(),
                 (self.min as f32).into(),
                 (self.max as f32).into(),
                 (self.current as f32).into(),
             ],
-        )
-        .unwrap()
+        )?
         .l()
-        .unwrap()
     }
 }
 
@@ -158,94 +159,98 @@ impl NodeIdMap {
     }
 }
 
-pub(crate) fn bundle_contains_key(env: &mut JNIEnv, bundle: &JObject, key: &str) -> bool {
-    let key = env.new_string(key).unwrap();
+pub(crate) fn bundle_contains_key(env: &mut Env, bundle: &JObject, key: &str) -> Result<bool> {
+    let key = env.new_string(key)?;
     env.call_method(
         bundle,
-        "containsKey",
-        "(Ljava/lang/String;)Z",
+        jni_str!("containsKey"),
+        jni_sig!("(Ljava/lang/String;)Z"),
         &[(&key).into()],
-    )
-    .unwrap()
+    )?
     .z()
-    .unwrap()
 }
 
-pub(crate) fn bundle_get_int(env: &mut JNIEnv, bundle: &JObject, key: &str) -> jint {
-    let key = env.new_string(key).unwrap();
-    env.call_method(bundle, "getInt", "(Ljava/lang/String;)I", &[(&key).into()])
-        .unwrap()
-        .i()
-        .unwrap()
-}
-
-pub(crate) fn bundle_get_float(env: &mut JNIEnv, bundle: &JObject, key: &str) -> jfloat {
-    let key = env.new_string(key).unwrap();
+pub(crate) fn bundle_get_int(env: &mut Env, bundle: &JObject, key: &str) -> Result<jint> {
+    let key = env.new_string(key)?;
     env.call_method(
         bundle,
-        "getFloat",
-        "(Ljava/lang/String;)F",
+        jni_str!("getInt"),
+        jni_sig!("(Ljava/lang/String;)I"),
         &[(&key).into()],
-    )
-    .unwrap()
+    )?
+    .i()
+}
+
+pub(crate) fn bundle_get_float(env: &mut Env, bundle: &JObject, key: &str) -> Result<jfloat> {
+    let key = env.new_string(key)?;
+    env.call_method(
+        bundle,
+        jni_str!("getFloat"),
+        jni_sig!("(Ljava/lang/String;)F"),
+        &[(&key).into()],
+    )?
     .f()
-    .unwrap()
 }
 
-pub(crate) fn bundle_get_bool(env: &mut JNIEnv, bundle: &JObject, key: &str) -> bool {
-    let key = env.new_string(key).unwrap();
+pub(crate) fn bundle_get_bool(env: &mut Env, bundle: &JObject, key: &str) -> Result<bool> {
+    let key = env.new_string(key)?;
     env.call_method(
         bundle,
-        "getBoolean",
-        "(Ljava/lang/String;)Z",
+        jni_str!("getBoolean"),
+        jni_sig!("(Ljava/lang/String;)Z"),
         &[(&key).into()],
-    )
-    .unwrap()
+    )?
     .z()
-    .unwrap()
 }
 
-fn get_context<'local>(env: &mut JNIEnv<'local>, view: &JObject) -> JObject<'local> {
-    env.call_method(view, "getContext", "()Landroid/content/Context;", &[])
-        .unwrap()
-        .l()
-        .unwrap()
+fn get_context<'local>(env: &mut Env<'local>, view: &JObject) -> Result<JObject<'local>> {
+    env.call_method(
+        view,
+        jni_str!("getContext"),
+        jni_sig!("()Landroid/content/Context;"),
+        &[],
+    )?
+    .l()
 }
 
 pub(crate) fn get_package_name<'local>(
-    env: &mut JNIEnv<'local>,
+    env: &mut Env<'local>,
     view: &JObject,
-) -> JObject<'local> {
-    let context = get_context(env, view);
-    env.call_method(&context, "getPackageName", "()Ljava/lang/String;", &[])
-        .unwrap()
-        .l()
-        .unwrap()
+) -> Result<JObject<'local>> {
+    let context = get_context(env, view)?;
+    env.call_method(
+        &context,
+        jni_str!("getPackageName"),
+        jni_sig!("()Ljava/lang/String;"),
+        &[],
+    )?
+    .l()
 }
 
-fn accessibility_manager(env: &mut JNIEnv, view: &JObject) -> &'static GlobalRef {
-    static MANAGER: OnceLock<GlobalRef> = OnceLock::new();
-    MANAGER.get_or_init(|| {
-        let context = get_context(env, view);
-        let service_name = env.new_string("accessibility").unwrap();
-        let manager = env
-            .call_method(
-                &context,
-                "getSystemService",
-                "(Ljava/lang/String;)Ljava/lang/Object;",
-                &[(&service_name).into()],
-            )
-            .unwrap()
-            .l()
-            .unwrap();
-        env.new_global_ref(manager).unwrap()
-    })
+fn accessibility_manager(
+    env: &mut Env,
+    view: &JObject,
+) -> Result<&'static Global<JObject<'static>>> {
+    static MANAGER: OnceLock<Global<JObject<'static>>> = OnceLock::new();
+    if let Some(manager) = MANAGER.get() {
+        return Ok(manager);
+    }
+    let context = get_context(env, view)?;
+    let service_name = env.new_string("accessibility")?;
+    let manager = env
+        .call_method(
+            &context,
+            jni_str!("getSystemService"),
+            jni_sig!("(Ljava/lang/String;)Ljava/lang/Object;"),
+            &[(&service_name).into()],
+        )?
+        .l()?;
+    let manager = env.new_global_ref(manager)?;
+    Ok(MANAGER.get_or_init(|| manager))
 }
 
-pub(crate) fn is_accessibility_enabled(env: &mut JNIEnv, view: &JObject) -> bool {
-    let manager = accessibility_manager(env, view);
-    env.call_method(manager, "isEnabled", "()Z", &[])
-        .unwrap()
+pub(crate) fn is_accessibility_enabled(env: &mut Env, view: &JObject) -> Result<bool> {
+    let manager = accessibility_manager(env, view)?;
+    env.call_method(manager, jni_str!("isEnabled"), jni_sig!("()Z"), &[])?
         .z()
-        .unwrap()
 }
