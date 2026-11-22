@@ -3,7 +3,7 @@
 // the LICENSE-APACHE file) or the MIT license (found in
 // the LICENSE-MIT file), at your option.
 
-use accesskit::Point;
+use accesskit::{Action, Point};
 use accesskit_consumer::{FilterResult, NodeRef};
 use std::iter::successors;
 
@@ -11,21 +11,11 @@ pub(crate) use accesskit_consumer::common_filter as filter;
 
 use crate::node::NodeWrapper;
 
-/// Filter for determining if a node should be an accessibility element.
-/// On iOS, a node with focusable children must NOT be an accessibility element
-/// (must return false for isAccessibilityElement), otherwise VoiceOver will
-/// ignore its children entirely.
+/// VoiceOver ignores the children of an accessibility element, so a node
+/// with children it must reach is a container instead.
 ///
-/// A node that has its own interaction semantics — actions, a value, or a
-/// toggled state — is always a leaf accessibility element. Its descendants
-/// (e.g. a `Role::Label` child) are collapsed into the parent's
-/// `accessibilityLabel` via `accesskit_consumer::Node::labelled_by`, so
-/// exposing them separately would let VoiceOver focus the label and skip
-/// the actionable parent.
-///
-/// Otherwise, non-focusable children (e.g. Labels, Images) just provide
-/// labeling info to the parent, so the parent should remain the
-/// accessibility element.
+/// A node with a value, a toggled state, or actions other than focus is
+/// always a leaf: its descendants only contribute to its label.
 pub(crate) fn filter_for_is_accessibility_element(node: &NodeRef) -> FilterResult {
     let result = filter(node);
     if result != FilterResult::Include {
@@ -33,7 +23,7 @@ pub(crate) fn filter_for_is_accessibility_element(node: &NodeRef) -> FilterResul
     }
 
     let wrapper = NodeWrapper(node);
-    if wrapper.has_non_scroll_action()
+    if wrapper.has_non_scroll_non_focus_action()
         || node.toggled().is_some()
         || node.has_value()
         || node.numeric_value().is_some()
@@ -41,16 +31,32 @@ pub(crate) fn filter_for_is_accessibility_element(node: &NodeRef) -> FilterResul
         return FilterResult::Include;
     }
 
-    // If this node has any filtered children that are focusable or are
-    // themselves containers (have their own filtered children), it should be
-    // a container, not an accessibility element.
-    if node.filtered_children(&filter).any(|child| {
-        NodeWrapper(&child).can_be_focused() || child.filtered_children(&filter).next().is_some()
-    }) {
+    if node.supports_action(Action::Focus, &filter) {
+        return if has_actionable_or_container_child(node) {
+            FilterResult::ExcludeNode
+        } else {
+            FilterResult::Include
+        };
+    }
+
+    if has_focusable_child_or_any_grandchild(node) {
         return FilterResult::ExcludeNode;
     }
 
     FilterResult::Include
+}
+
+fn has_actionable_or_container_child(node: &NodeRef) -> bool {
+    node.filtered_children(&filter).any(|child| {
+        NodeWrapper(&child).has_non_scroll_action()
+            || filter_for_is_accessibility_element(&child) == FilterResult::ExcludeNode
+    })
+}
+
+fn has_focusable_child_or_any_grandchild(node: &NodeRef) -> bool {
+    node.filtered_children(&filter).any(|child| {
+        NodeWrapper(&child).can_be_focused() || child.filtered_children(&filter).next().is_some()
+    })
 }
 
 /// Finds the accessibility element at a point, if any. Hit testing must only
@@ -72,17 +78,32 @@ mod tests {
     const CHILD_1_ID: NodeId = NodeId(1);
 
     fn build_tree(nodes: Vec<(NodeId, Node)>) -> accesskit_consumer::Tree {
+        build_tree_with_focus(nodes, None)
+    }
+
+    fn build_tree_with_focus(
+        nodes: Vec<(NodeId, Node)>,
+        focus: Option<NodeId>,
+    ) -> accesskit_consumer::Tree {
         let update = TreeUpdate {
             nodes,
             tree: Some(TreeInfo::new(ROOT_ID)),
             tree_id: TreeId::ROOT,
-            focus: ROOT_ID,
+            focus: focus.unwrap_or(ROOT_ID),
         };
-        accesskit_consumer::Tree::new(update, false)
+        accesskit_consumer::Tree::new(update, focus.is_some())
     }
 
     fn filter_node(nodes: Vec<(NodeId, Node)>, target: NodeId) -> FilterResult {
-        let tree = build_tree(nodes);
+        filter_focused_node(nodes, None, target)
+    }
+
+    fn filter_focused_node(
+        nodes: Vec<(NodeId, Node)>,
+        focus: Option<NodeId>,
+        target: NodeId,
+    ) -> FilterResult {
+        let tree = build_tree_with_focus(nodes, focus);
         let node = tree
             .state()
             .node_by_tree_local_id(target, TreeId::ROOT)
@@ -182,5 +203,95 @@ mod tests {
     #[test]
     fn hit_test_skips_children_of_leaf() {
         assert_eq!(hit_test(Point::new(150.0, 50.0)), Some(BUTTON_ID));
+    }
+
+    const LIST_BOX_ID: NodeId = NodeId(1);
+    const OPTION_1_ID: NodeId = NodeId(2);
+    const OPTION_2_ID: NodeId = NodeId(3);
+
+    fn focusable_list_box(active_descendant: Option<NodeId>) -> Vec<(NodeId, Node)> {
+        let mut root = Node::new(Role::Window);
+        root.set_bounds(Rect::new(0.0, 0.0, 200.0, 200.0));
+        root.set_children(vec![LIST_BOX_ID]);
+        let mut list_box = Node::new(Role::ListBox);
+        list_box.set_label("List");
+        list_box.add_action(Action::Focus);
+        list_box.set_bounds(Rect::new(0.0, 0.0, 200.0, 100.0));
+        list_box.set_children(vec![OPTION_1_ID, OPTION_2_ID]);
+        if let Some(id) = active_descendant {
+            list_box.set_active_descendant(id);
+        }
+        let mut option_1 = Node::new(Role::ListBoxOption);
+        option_1.set_label("Option 1");
+        option_1.add_action(Action::Click);
+        option_1.set_bounds(Rect::new(0.0, 0.0, 100.0, 50.0));
+        let mut option_2 = Node::new(Role::ListBoxOption);
+        option_2.set_label("Option 2");
+        option_2.add_action(Action::Click);
+        option_2.set_bounds(Rect::new(0.0, 50.0, 100.0, 100.0));
+        vec![
+            (ROOT_ID, root),
+            (LIST_BOX_ID, list_box),
+            (OPTION_1_ID, option_1),
+            (OPTION_2_ID, option_2),
+        ]
+    }
+
+    #[test]
+    fn focusable_list_box_is_container() {
+        assert_eq!(
+            filter_node(focusable_list_box(None), LIST_BOX_ID),
+            FilterResult::ExcludeNode,
+        );
+    }
+
+    #[test]
+    fn focused_list_box_with_active_descendant_is_container() {
+        assert_eq!(
+            filter_focused_node(
+                focusable_list_box(Some(OPTION_1_ID)),
+                Some(LIST_BOX_ID),
+                LIST_BOX_ID,
+            ),
+            FilterResult::ExcludeNode,
+        );
+    }
+
+    #[test]
+    fn focusable_node_with_label_child_is_leaf() {
+        const GROUP_ID: NodeId = NodeId(1);
+        const LABEL_ID: NodeId = NodeId(2);
+        let mut root = Node::new(Role::Window);
+        root.set_children(vec![GROUP_ID]);
+        let mut group = Node::new(Role::Group);
+        group.add_action(Action::Focus);
+        group.set_children(vec![LABEL_ID]);
+        let mut label = Node::new(Role::Label);
+        label.set_value("Label");
+        assert_eq!(
+            filter_node(
+                vec![(ROOT_ID, root), (GROUP_ID, group), (LABEL_ID, label)],
+                GROUP_ID,
+            ),
+            FilterResult::Include,
+        );
+    }
+
+    fn hit_test_focusable_list_box(point: Point) -> Option<NodeId> {
+        let tree = build_tree(focusable_list_box(None));
+        element_at_point(tree.state().root(), point).map(|node| node.locate().0)
+    }
+
+    #[test]
+    fn hit_test_finds_child_of_focusable_container() {
+        assert_eq!(
+            hit_test_focusable_list_box(Point::new(50.0, 75.0)),
+            Some(OPTION_2_ID),
+        );
+    }
+
+    #[test]
+    fn hit_test_skips_focusable_container() {
+        assert_eq!(hit_test_focusable_list_box(Point::new(150.0, 50.0)), None);
     }
 }

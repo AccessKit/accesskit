@@ -58,6 +58,20 @@ enum FrameSource {
     Zero,
 }
 
+// Focus comes first so the other actions can be checked on their own.
+const NON_SCROLL_ACTIONS: [Action; 10] = [
+    Action::Focus,
+    Action::Click,
+    Action::Increment,
+    Action::Decrement,
+    Action::Expand,
+    Action::Collapse,
+    Action::CustomAction,
+    Action::ReplaceSelectedText,
+    Action::SetTextSelection,
+    Action::SetValue,
+];
+
 pub(crate) struct NodeWrapper<'a>(pub(crate) &'a NodeRef<'a>);
 
 impl NodeWrapper<'_> {
@@ -99,17 +113,25 @@ impl NodeWrapper<'_> {
         }
     }
 
+    fn supports_any_action(&self, actions: &[Action]) -> bool {
+        let data = self.0.data();
+        if actions.iter().any(|&action| data.supports_action(action)) {
+            return true;
+        }
+        self.0.filtered_parent(&filter).is_some_and(|parent| {
+            let parent = parent.data();
+            actions
+                .iter()
+                .any(|&action| parent.child_supports_action(action))
+        })
+    }
+
     pub(crate) fn has_non_scroll_action(&self) -> bool {
-        self.0.supports_action(Action::Click, &filter)
-            || self.0.supports_action(Action::Focus, &filter)
-            || self.0.supports_action(Action::Increment, &filter)
-            || self.0.supports_action(Action::Decrement, &filter)
-            || self.0.supports_action(Action::Expand, &filter)
-            || self.0.supports_action(Action::Collapse, &filter)
-            || self.0.supports_action(Action::CustomAction, &filter)
-            || self.0.supports_action(Action::ReplaceSelectedText, &filter)
-            || self.0.supports_action(Action::SetTextSelection, &filter)
-            || self.0.supports_action(Action::SetValue, &filter)
+        self.supports_any_action(&NON_SCROLL_ACTIONS)
+    }
+
+    pub(crate) fn has_non_scroll_non_focus_action(&self) -> bool {
+        self.supports_any_action(&NON_SCROLL_ACTIONS[1..])
     }
 
     pub(crate) fn can_be_focused(&self) -> bool {
