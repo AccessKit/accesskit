@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.10.0](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.9.1...accesskit_android-v0.10.0) (2026-11-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* Update jni to 0.22
+
+### deps
+
+* Update jni to 0.22 ([93c9a5d](https://github.com/AccessKit/accesskit/commit/93c9a5dc7d3c168a296ecafc01e4d00abaad9535))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * accesskit_consumer bumped from 0.39.2 to 0.39.3
+
 ## [0.9.1](https://github.com/AccessKit/accesskit/compare/accesskit_android-v0.9.0...accesskit_android-v0.9.1) (2026-10-25)
 
 
