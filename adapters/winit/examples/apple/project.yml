@@ -7,30 +7,32 @@ targets:
   Simple:
     type: application
     platform: iOS
-    deploymentTarget: "18.0"
+    deploymentTarget: "15.0"
     info:
         path: Info.plist
         properties:
             UILaunchScreen:
-                - ImageRespectSafeAreaInsets: false
+                ImageRespectSafeAreaInsets: false
     sources: []
     postCompileScripts:
       - script: |
-          ./build_with_cargo.bash simple
+          ../../../ios/examples/apple/build_with_cargo.bash simple \
+            --no-default-features --features rwh_06
         outputFiles:
           - $(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)
   MixedHandlers:
     type: application
     platform: iOS
-    deploymentTarget: "18.0"
+    deploymentTarget: "15.0"
     info:
         path: Info.plist
         properties:
             UILaunchScreen:
-                - ImageRespectSafeAreaInsets: false
+                ImageRespectSafeAreaInsets: false
     sources: []
     postCompileScripts:
       - script: |
-          ./build_with_cargo.bash mixed_handlers
+          ../../../ios/examples/apple/build_with_cargo.bash mixed_handlers \
+            --no-default-features --features rwh_06
         outputFiles:
           - $(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)
