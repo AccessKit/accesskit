@@ -40,6 +40,7 @@ jobs:
           - target: aarch64-apple-darwin
           - target: aarch64-apple-ios
           - target: aarch64-linux-android
+          - target: aarch64-unknown-linux-ohos
           - target: i686-pc-windows-gnu
           - target: i686-pc-windows-msvc
           - target: x86_64-pc-windows-gnu
@@ -77,6 +78,10 @@ jobs:
           - os: ubuntu-latest
             name: Android
             adapters: "-p accesskit_android"
+          - os: ubuntu-latest
+            name: OpenHarmony
+            target: "aarch64-unknown-linux-ohos"
+            adapters: "-p accesskit_ohos --all-features"
           - os: macOS-latest
             name: iOS Simulator
             target: "aarch64-apple-ios-sim"
@@ -124,6 +129,10 @@ jobs:
           - os: ubuntu-latest
             name: Android
             adapters: "-p accesskit_android"
+          - os: ubuntu-latest
+            name: OpenHarmony
+            target: "aarch64-unknown-linux-ohos"
+            adapters: "-p accesskit_ohos --all-features"
           - os: macOS-latest
             name: iOS Simulator
             target: "aarch64-apple-ios-sim"
@@ -181,6 +190,11 @@ jobs:
           - os: ubuntu-latest
             name: Android
             adapters: "-p accesskit_android"
+          - os: ubuntu-latest
+            name: OpenHarmony
+            target: "aarch64-unknown-linux-ohos"
+            adapters: "-p accesskit_ohos --all-features"
+            command: check
           - os: macOS-latest
             name: iOS Simulator
             target: "aarch64-apple-ios-sim"
@@ -199,10 +213,10 @@ jobs:
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: cargo test (common packages)
-        run: cargo test -p accesskit -p accesskit_consumer -p accesskit_winit ${{ matrix.target && format('--target {0}', matrix.target) }}
+        run: cargo ${{ matrix.command || 'test' }} -p accesskit -p accesskit_consumer -p accesskit_winit ${{ matrix.target && format('--target {0}', matrix.target) }}
 
       - name: cargo test (adapters)
-        run: cargo test ${{ matrix.adapters }} ${{ matrix.target && format('--target {0}', matrix.target) }}
+        run: cargo ${{ matrix.command || 'test' }} ${{ matrix.adapters }} ${{ matrix.target && format('--target {0}', matrix.target) }}
 
   check-android-dex:
     runs-on: ubuntu-latest

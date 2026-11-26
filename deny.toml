@@ -4,6 +4,7 @@
 targets = [
   { triple = "aarch64-apple-darwin" },
   { triple = "aarch64-linux-android" },
+  { triple = "aarch64-unknown-linux-ohos" },
   { triple = "i686-pc-windows-gnu" },
   { triple = "i686-pc-windows-msvc" },
   { triple = "x86_64-pc-windows-gnu" },
